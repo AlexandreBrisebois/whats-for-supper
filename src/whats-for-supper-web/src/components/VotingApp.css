@@ -1,0 +1,489 @@
+/* VotingApp.css */
+
+.voting-app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.loading {
+  text-align: center;
+  font-size: 1.2rem;
+  padding: 2rem;
+}
+
+.error-message {
+  background-color: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-message button {
+  background: none;
+  border: none;
+  color: #c33;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 0.5rem;
+}
+
+/* Family Member Selector */
+.family-member-selector {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.family-member-selector h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.member-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.member-btn {
+  background: #fff;
+  border: 2px solid #ddd;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.member-btn:hover {
+  border-color: #667eea;
+  background: #f0f2ff;
+}
+
+.member-btn.active {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.custom-member-input {
+  border: 2px solid #ddd;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  outline: none;
+  max-width: 120px;
+}
+
+.custom-member-input:focus {
+  border-color: #667eea;
+}
+
+.current-member {
+  margin: 0.5rem 0 0 0;
+  color: #667eea;
+  font-size: 1.1rem;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.control-btn {
+  background: #fff;
+  border: 2px solid #667eea;
+  color: #667eea;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: #667eea;
+  color: white;
+}
+
+.control-btn.active {
+  background: #667eea;
+  color: white;
+}
+
+.control-btn.refresh {
+  border-color: #28a745;
+  color: #28a745;
+}
+
+.control-btn.refresh:hover {
+  background: #28a745;
+  color: white;
+}
+
+/* Add Option Form */
+.add-option-form {
+  background: #f8f9fa;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.add-option-form h3 {
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-family: inherit;
+  outline: none;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #667eea;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.submit-btn,
+.cancel-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.submit-btn {
+  background: #28a745;
+  color: white;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.submit-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: #5a6268;
+}
+
+/* Supper Options */
+.supper-options h2 {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Supper Option Card */
+.supper-option-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.supper-option-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.card-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.3rem;
+}
+
+.vote-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #667eea;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 50%;
+  min-width: 60px;
+  min-height: 60px;
+  justify-content: center;
+}
+
+.vote-count .count {
+  font-size: 1.5rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.vote-count .label {
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+
+.description {
+  color: #666;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.voters {
+  margin-bottom: 1rem;
+}
+
+.voters-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0 0 0.5rem 0;
+}
+
+.voters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.voter-tag {
+  background: #e9ecef;
+  color: #495057;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.card-actions {
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.vote-btn,
+.remove-vote-btn {
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+.vote-btn {
+  background: #28a745;
+  color: white;
+}
+
+.vote-btn:hover {
+  background: #218838;
+  transform: scale(1.05);
+}
+
+.remove-vote-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.remove-vote-btn:hover {
+  background: #c82333;
+}
+
+.no-member-message {
+  color: #666;
+  font-style: italic;
+  margin: 0;
+}
+
+.card-footer {
+  border-top: 1px solid #eee;
+  padding-top: 1rem;
+  color: #888;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* Voting Results */
+.voting-results {
+  background: #f8f9fa;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.voting-results h3 {
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+  color: #333;
+}
+
+.results-summary {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+}
+
+.results-summary p {
+  margin: 0.5rem 0;
+}
+
+.winner {
+  color: #28a745;
+  font-size: 1.1rem;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.result-item {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.rank {
+  background: #667eea;
+  color: white;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+}
+
+.option-name {
+  font-weight: 600;
+  color: #333;
+  flex-grow: 1;
+  margin-left: 1rem;
+}
+
+.vote-info {
+  color: #666;
+  font-weight: 500;
+}
+
+.progress-bar {
+  background: #e9ecef;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.voters-summary {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .options-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .controls {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .member-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .result-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+}
