@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E43DFE28-67F3-49E5-815A-28D195B2D07F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhatsForSupper.Api", "src\WhatsForSupper.Api\WhatsForSupper.Api.csproj", "{CBABE38E-6356-4BDD-B347-F3ED3AAB9028}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhatsForSupper.AppHost", "src\WhatsForSupper.AppHost\WhatsForSupper.AppHost.csproj", "{B9B3F14E-1D04-416B-BE33-F62CA13A4A24}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhatsForSupper.ServiceDefaults", "src\WhatsForSupper.ServiceDefaults\WhatsForSupper.ServiceDefaults.csproj", "{62A0D6C1-6437-496C-94D3-2D1E14E53236}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CBABE38E-6356-4BDD-B347-F3ED3AAB9028}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBABE38E-6356-4BDD-B347-F3ED3AAB9028}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBABE38E-6356-4BDD-B347-F3ED3AAB9028}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBABE38E-6356-4BDD-B347-F3ED3AAB9028}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9B3F14E-1D04-416B-BE33-F62CA13A4A24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9B3F14E-1D04-416B-BE33-F62CA13A4A24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9B3F14E-1D04-416B-BE33-F62CA13A4A24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9B3F14E-1D04-416B-BE33-F62CA13A4A24}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62A0D6C1-6437-496C-94D3-2D1E14E53236}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62A0D6C1-6437-496C-94D3-2D1E14E53236}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62A0D6C1-6437-496C-94D3-2D1E14E53236}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62A0D6C1-6437-496C-94D3-2D1E14E53236}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CBABE38E-6356-4BDD-B347-F3ED3AAB9028} = {E43DFE28-67F3-49E5-815A-28D195B2D07F}
+		{B9B3F14E-1D04-416B-BE33-F62CA13A4A24} = {E43DFE28-67F3-49E5-815A-28D195B2D07F}
+		{62A0D6C1-6437-496C-94D3-2D1E14E53236} = {E43DFE28-67F3-49E5-815A-28D195B2D07F}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,6 @@
+@WhatsForSupper.Api_HostAddress = http://localhost:5223
+
+GET {{WhatsForSupper.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
