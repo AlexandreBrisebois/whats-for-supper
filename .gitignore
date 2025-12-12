@@ -52,3 +52,15 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Docker Compose environment-specific files
+docker-compose.synology.yml
+/.vs/whats-for-supper/CopilotIndices/18.0.934.24903
+/.vs/whats-for-supper.slnx/copilot-chat/df136752/sessions
+/.vs/whats-for-supper.slnx/FileContentIndex
+/.vs/whats-for-supper.slnx/v18
+/.vs
+/Experiments/Import/WhatsForSupper.Import/.vs
+/Experiments/Import/WhatsForSupper.Import/WhatsForSupper.Import.ApiService/WhatsForSupper.Import.ApiService.csproj.user
+/Experiments/Import/WhatsForSupper.Import/publish-images.ps1
+/Experiments/Import/WhatsForSupper.Import/WhatsForSupper.Import.ApiService/appsettings.Development.json
