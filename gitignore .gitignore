@@ -1,0 +1,72 @@
+# Recommended .gitignore for C# / .NET projects (Visual Studio / dotnet)
+# Keep this file at the repository root.
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+**/bin/
+**/obj/
+artifacts/
+
+# Rider / IntelliJ
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+
+# NuGet
+packages/
+*.nupkg
+.nuget/
+.nuget/packages/
+
+# dotnet publish
+publish/
+*.Publish.xml
+.publish/
+
+# Test results and coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+
+# Logs
+*.log
+
+# Tools
+*.dotCover
+_ReSharper*/
+*/.ReSharper*/
+*.DotSettings.user
+
+# Database and generated files
+*.dbmdl
+*.bak
+*.backup
+
+# Node/npm (if present in repo)
+node_modules/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Sensitive / local configuration (do NOT commit secrets)
+secrets.json
+appsettings.*.Local.json
+local.settings.json
+
+# Ignore JetBrains Rider caches and workspace files
+.idea/
+*.sublime-workspace
+*.sublime-project

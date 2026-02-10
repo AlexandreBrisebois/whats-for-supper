@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.synology.yml" />
+    <File Path="publish-images.ps1" />
+  </Folder>
+  <Project Path="WhatsForSupper.Import.ApiService/WhatsForSupper.Import.ApiService.csproj" />
+  <Project Path="WhatsForSupper.Import.AppHost/WhatsForSupper.Import.AppHost.csproj" />
+  <Project Path="WhatsForSupper.Import.Exploration/WhatsForSupper.Import.Exploration.csproj" Id="4061b6b3-6ff1-4ddb-b7c5-de523d551127" />
+  <Project Path="WhatsForSupper.Import.ServiceDefaults/WhatsForSupper.Import.ServiceDefaults.csproj" />
+  <Project Path="WhatsForSupper.Import.WebJS/WhatsForSupper.Import.WebJS.csproj" />
+</Solution>
