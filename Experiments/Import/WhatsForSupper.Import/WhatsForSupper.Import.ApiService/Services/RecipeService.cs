@@ -3,14 +3,21 @@ using WhatsForSupper.Import.ApiService.Models;
 
 namespace WhatsForSupper.Import.ApiService.Services;
 
-public class RecipeStorageService
+public class RecipeService
 {
     private readonly string _recipesBasePath;
-    private readonly ILogger<RecipeStorageService> _logger;
+    private readonly ILogger<RecipeService> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
 
-    public RecipeStorageService(ILogger<RecipeStorageService> logger)
+    public RecipeService(
+        ILogger<RecipeService> logger,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration)
     {
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
 
         // Allow overriding the recipes base path via environment variable so containers
         // can mount a volume and provide the path. Env var name: RECIPES_ROOT
@@ -42,6 +49,8 @@ public class RecipeStorageService
 
         try
         {
+            var imageFileNames = new List<string>();
+
             // Save images
             for (int i = 0; i < request.Images.Count; i++)
             {
@@ -62,6 +71,7 @@ public class RecipeStorageService
                 var imageFileName = $"{recipeId}_{i}{ext}";
                 var imagePath = Path.Combine(originalPath, imageFileName);
                 await File.WriteAllBytesAsync(imagePath, image.Data);
+                imageFileNames.Add(imageFileName);
             }
 
             // Save recipe info
@@ -85,6 +95,9 @@ public class RecipeStorageService
             await File.WriteAllTextAsync(infoPath, json);
 
             _logger.LogInformation($"Recipe {recipeId} saved successfully with {request.Images.Count} images");
+
+            await TriggerWebhookAsync(recipeId, imageFileNames);
+
             return recipeId;
         }
         catch (Exception ex)
@@ -99,5 +112,68 @@ public class RecipeStorageService
             catch { }
             throw;
         }
+    }
+
+    private async Task TriggerWebhookAsync(string recipeId, List<string> imageFileNames)
+    {
+        try
+        {
+            var webhookUrl = _configuration["N8N_WEBHOOK_URL"];
+            
+            if (string.IsNullOrWhiteSpace(webhookUrl))
+            {
+                _logger.LogWarning("N8N_WEBHOOK_URL not configured. Skipping webhook trigger for recipe {RecipeId}", recipeId);
+                return;
+            }
+            
+            var baseUrl = _configuration["API_BASE_URL"];
+            
+            if (string.IsNullOrWhiteSpace(baseUrl))
+            {
+                _logger.LogWarning("API_BASE_URL not configured. Skipping webhook trigger for recipe {RecipeId}", recipeId);
+                return;
+            }
+
+            var imageUrls = imageFileNames.Select((fileName, index) => 
+                $"{baseUrl}/recipe/{recipeId}/original/{index}").ToList();
+
+            var payload = new
+            {
+                recipeId = recipeId,
+                imageUrls = imageUrls
+            };
+
+            var httpClient = _httpClientFactory.CreateClient();
+            var response = await httpClient.PostAsJsonAsync(webhookUrl, payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation($"Webhook triggered successfully for recipe {recipeId}");
+            }
+            else
+            {
+                _logger.LogWarning($"Webhook returned status {response.StatusCode} for recipe {recipeId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to trigger webhook for recipe {recipeId}");
+        }
+    }
+
+    public string? GetImagePath(string recipeId, string photoId)
+    {
+        var recipePath = Path.Combine(_recipesBasePath, recipeId);
+        var originalPath = Path.Combine(recipePath, "original");
+        
+        var pattern = $"{recipeId}_{photoId}.*";
+        var matchingFiles = Directory.GetFiles(originalPath, pattern);
+        
+        if (matchingFiles.Length > 0)
+        {
+            return matchingFiles[0];
+        }
+
+        return null;
     }
 }

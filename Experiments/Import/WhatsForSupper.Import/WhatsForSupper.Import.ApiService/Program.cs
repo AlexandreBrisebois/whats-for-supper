@@ -9,7 +9,8 @@ builder.AddServiceDefaults();
 
 // Add services to the container.
 builder.Services.AddProblemDetails();
-builder.Services.AddScoped<RecipeStorageService>();
+builder.Services.AddScoped<RecipeService>();
+builder.Services.AddHttpClient();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -38,7 +39,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapPost("/api/recipes", async (HttpRequest request, RecipeStorageService storageService) =>
+app.MapPost("/api/recipes", async (HttpRequest request, RecipeService recipeService) =>
 {
     if (!request.HasFormContentType)
     {
@@ -82,7 +83,7 @@ app.MapPost("/api/recipes", async (HttpRequest request, RecipeStorageService sto
             });
         }
 
-        var recipeId = await storageService.SaveRecipeAsync(uploadRequest);
+        var recipeId = await recipeService.SaveRecipeAsync(uploadRequest);
         return Results.Ok(new { recipeId = recipeId });
     }
     catch (Exception ex)
@@ -91,6 +92,45 @@ app.MapPost("/api/recipes", async (HttpRequest request, RecipeStorageService sto
     }
 })
 .WithName("UploadRecipe")
+.WithOpenApi();
+
+app.MapGet("/recipe/{recipeId}/original/{photoId:int}", async (string recipeId, int photoId, RecipeService recipeService) =>
+{
+    var imagePath = recipeService.GetImagePath(recipeId, photoId.ToString());
+    
+    if (imagePath == null)
+    {
+        return Results.NotFound(new { error = "Image not found" });
+    }
+
+    try
+    {
+        var imageBytes = await File.ReadAllBytesAsync(imagePath);
+        var base64String = Convert.ToBase64String(imageBytes);
+        
+        var contentType = Path.GetExtension(imagePath).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            _ => "image/jpeg"
+        };
+
+        return Results.Ok(new
+        {
+            recipeId = recipeId,
+            photoId = photoId,
+            contentType = contentType,
+            base64Data = base64String
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.StatusCode(500);
+    }
+})
+.WithName("GetRecipeImageBase64")
 .WithOpenApi();
 
 app.MapDefaultEndpoints();
