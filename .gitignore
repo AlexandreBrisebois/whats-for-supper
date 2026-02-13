@@ -69,3 +69,6 @@ docker-compose.synology.yml
 /Experiments/Import/WhatsForSupper.Import/WhatsForSupper.Import.Exploration/batches/originals
 /Experiments/Import/WhatsForSupper.Import/WhatsForSupper.Import.Exploration/originals
 /Experiments/Import/WhatsForSupper.Import/WhatsForSupper.Import.lutconfig
+
+# User-specific files (MacOS)
+.DS_Store
