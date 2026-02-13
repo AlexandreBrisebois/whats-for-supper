@@ -13,4 +13,10 @@
      <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Prompts\extract-recipe-prompt.md" />
+    <EmbeddedResource Include="Prompts\generate-thumbnail-prompt.md" />
+    <EmbeddedResource Include="Prompts\generate-descriptions-and-keywords-prompt.md" />
+  </ItemGroup>
+
 </Project>

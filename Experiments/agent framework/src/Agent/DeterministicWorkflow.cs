@@ -2,7 +2,6 @@
 using Agent.Utils;
 using Google.GenAI.Types;
 using Newtonsoft.Json;
-using File = System.IO.File;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Agent;
@@ -18,13 +17,15 @@ public class DeterministicWorkflow
     private readonly string _recipeId;
     private readonly string _apiKey;
     private readonly RecipeRepository _recipeRepository;
+    private readonly IPromptRepository _promptRepository;
 
-    public DeterministicWorkflow(string recipeId)
+    public DeterministicWorkflow(string recipeId, IPromptRepository promptRepository)
     {
         _recipeId = recipeId;
+        _promptRepository = promptRepository;
         
         IConfiguration configuration = new ConfigurationBuilder()
-                                 .AddUserSecrets<Deterministic>()
+                                 .AddUserSecrets<DeterministicWorkflow>()
                                  .Build();
 
         IStorageProvider storage = new LocalStorage(configuration);
@@ -40,8 +41,7 @@ public class DeterministicWorkflow
         const string gemini3ProPreview = "models/gemini-3-pro-preview";
         const string gemini3ProImagePreview = "models/gemini-3-pro-image-preview";
         
-        var instructions = await File.ReadAllTextAsync(
-            "/Users/alex/Code/whats-for-supper/experiments/agent framework/src/Agent/Prompts/extract-recipe-prompt.md");
+        var instructions = _promptRepository.GetPrompt(PromptType.RecipeExtraction);
 
         ChatClientAgent recipeExtractionAgent = new(
             new Client(vertexAI:false, apiKey: _apiKey, httpOptions: new HttpOptions
@@ -76,9 +76,8 @@ public class DeterministicWorkflow
 
         await _recipeRepository.SetRecipeAsync(_recipeId, recipe);
         
-        // Load the thumbnail generation prompt
-        var thumbnailInstructions = await File.ReadAllTextAsync(
-            "/Users/alex/Code/whats-for-supper/experiments/agent framework/src/Agent/Prompts/generate-thumbnail-prompt.md");
+        
+        var thumbnailInstructions = _promptRepository.GetPrompt(PromptType.ThumbnailGeneration);
 
         ChatClientAgent thumbnailGenerationAgent = new(
             new Client(vertexAI:false, apiKey: _apiKey, httpOptions: new HttpOptions
@@ -96,15 +95,12 @@ public class DeterministicWorkflow
 
         await _recipeRepository.SetThumbnailAsync(_recipeId, thumbnailBytes);
         
+        var marketingInstructions = _promptRepository.GetPrompt(PromptType.RecipeMarketing);
+        
         ChatClientAgent recipeMarketingAgent = new(
             new Client(vertexAI:false, apiKey: _apiKey).AsIChatClient(gemini3ProPreview),
             name: "Recipe Marketing Agent",
-            instructions: "You are a marketing assistant for a recipe website. " +
-                          "Your task is to create an engaging description and keywords for a recipe based on " +
-                          "the recipe information and thumbnail image provided.\n\n"+
-                          "Use a simple JSON object to respond."+
-                          "Example response format:\n" +
-                          "{ description:'', keywords:[] }");
+            instructions: marketingInstructions);
         
         var marketingMessage = new ChatMessage(ChatRole.User, [
             new TextContent(JsonConvert.SerializeObject(recipe)),
