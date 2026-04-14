@@ -1,6 +1,8 @@
-﻿using Agent.Models;
+﻿using Agent;
+using Agent.Models;
 using Agent.Utils;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit.Abstractions;
 
 namespace Tests;
@@ -8,25 +10,39 @@ namespace Tests;
 public class AgentFrameworkTests : IAsyncLifetime
 {
     private readonly ITestOutputHelper _output;
-    private readonly IConfiguration _configuration;
-
+    private readonly IServiceProvider _provider;
+    
     private string _recipeId;
     
+    private readonly IConfigurationRoot _configuration;
+    private readonly EmbeddedPromptRepository _promptRepository;
+
     public AgentFrameworkTests(ITestOutputHelper output)
     {
         _output = output;
-
+        
         _configuration = new ConfigurationBuilder()
             .AddUserSecrets<AgentFrameworkTests>()
             .Build();
+        
+        _promptRepository = new EmbeddedPromptRepository();
     }
-    
-    [Fact(DisplayName = "Run the agent workflow to extract recipe information and generate a thumbnail")]
+
+    [Fact(DisplayName = "Run the Agentic workflow to extract recipe information and generate a thumbnail")]
+    [Trait("Category", "Integration")]
+    public async Task ExecuteAgenticWorkflow()
+    {
+        var agenticWorkflow = new GenerativeWorkflow(_recipeId);
+        
+        await agenticWorkflow.Execute();
+    }
+
+    [Fact(DisplayName = "Run the deterministic agent workflow to extract recipe information and generate a thumbnail")]
     [Trait("Category", "Integration")]
     public async Task ExecuteWorkflow()
     {
-        var promptRepository = new EmbeddedPromptRepository();
-        var agentWorkflow = new Agent.DeterministicWorkflow(_recipeId, promptRepository);
+        
+        var agentWorkflow = new Agent.DeterministicWorkflow(_recipeId, _promptRepository);
         
         await agentWorkflow.Execute();
         

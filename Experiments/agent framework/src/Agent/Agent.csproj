@@ -8,9 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-preview.260209.1" />
-    <PackageReference Include="Google.GenAI" Version="0.15.0" />
-     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-preview.260212.1" />
+    <PackageReference Include="Google.GenAI" Version="1.0.0" />
+    <PackageReference Include="Microsoft.Agents.AI.Workflows" Version="1.0.0-preview.260212.1" />
+     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="11.0.0-preview.1.26104.118" />
   </ItemGroup>
 
   <ItemGroup>
