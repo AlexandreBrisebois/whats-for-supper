@@ -1,0 +1,10 @@
+{
+  "onboarding": {
+    "title": "Getting started",
+    "description": "Set up your family profile"
+  },
+  "capture": {
+    "title": "Capture a recipe",
+    "description": "Log what you cooked tonight"
+  }
+}

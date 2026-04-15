@@ -1,0 +1,66 @@
+{
+  "phase0-onboarding": {
+    "step1": {
+      "title": "Family member list",
+      "description": "Everyone in your household appears here."
+    },
+    "step2": {
+      "title": "Select your name",
+      "description": "Tap your name to continue."
+    },
+    "step3": {
+      "title": "Add yourself",
+      "description": "Not on the list? Add your name below."
+    },
+    "step4": {
+      "title": "Enter your name",
+      "description": "Type your name here."
+    },
+    "step5": {
+      "title": "Save your selection",
+      "description": "Tap to confirm."
+    },
+    "step6": {
+      "title": "Welcome!",
+      "description": "You're all set."
+    }
+  },
+  "phase0-capture": {
+    "step1": {
+      "title": "Add Recipe",
+      "description": "Tap here to start capturing a new recipe."
+    },
+    "step2": {
+      "title": "Take a photo",
+      "description": "Use your camera or select from your gallery."
+    },
+    "step3": {
+      "title": "Review photos",
+      "description": "Check the images you've selected."
+    },
+    "step4": {
+      "title": "Select cooked recipe photo",
+      "description": "Pick the photo that best shows the finished dish."
+    },
+    "step5": {
+      "title": "Rate the recipe",
+      "description": "How was it? Pick an emoji."
+    },
+    "step6": {
+      "title": "Save recipe",
+      "description": "Tap to save your recipe."
+    },
+    "step7": {
+      "title": "Recipe saved!",
+      "description": "Your recipe has been captured."
+    },
+    "step8": {
+      "title": "Add another?",
+      "description": "Capture more recipes right away."
+    },
+    "step9": {
+      "title": "Add another?",
+      "description": "Or head back to your collection."
+    }
+  }
+}

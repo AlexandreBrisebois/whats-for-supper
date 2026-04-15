@@ -1,0 +1,10 @@
+{
+  "onboarding": {
+    "title": "Premiers pas",
+    "description": "Configurez votre profil familial"
+  },
+  "capture": {
+    "title": "Capturer un repas",
+    "description": "Enregistrez ce que vous avez cuisiné ce soir"
+  }
+}

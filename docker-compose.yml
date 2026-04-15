@@ -1,0 +1,103 @@
+# What's For Supper — Phase 0 Docker Compose
+# Usage: docker-compose up
+# Services: postgres → api → pwa
+
+services:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 18
+  # ──────────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:18-alpine3.23
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recipe_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-recipe_app_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-recipe_app} -d ${POSTGRES_DB:-recipe_app_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - app-network
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # .NET 10 Recipe API
+  #
+  # Note: the runtime image is Ubuntu Chiseled (no shell, no curl/wget).
+  # Health checks must use the orchestrator's native HTTP probe (Kubernetes)
+  # or be omitted in docker-compose so that services downstream can use
+  # condition: service_started. The API self-migrates the database on boot.
+  # ──────────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-5000}:5000"
+    environment:
+      POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING:-postgres://recipe_app:secure_dev_password@postgres:5432/recipe_app_db}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:5000
+      # Requests arrive from the PWA container (server-side rewrite), so allow the
+      # pwa service hostname. Wildcard covers any LAN IP the browser might use directly.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa:3000,http://localhost:3000,http://localhost:3001}
+      RECIPES_ROOT: /data/recipes
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - recipes_data:/data/recipes
+    networks:
+      - app-network
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Next.js 16 PWA
+  # ──────────────────────────────────────────────────────────────────────────
+  pwa:
+    build:
+      context: ./pwa
+      dockerfile: Dockerfile
+      args:
+        # Bakes the rewrite destination into the Next.js build.
+        # Must point to the API service name on the Docker network.
+        API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:5000}
+    restart: unless-stopped
+    ports:
+      - "${PWA_PORT:-3000}:3000"
+    environment:
+      # /backend is the default — only override when running the PWA outside Docker.
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/backend}
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - app-network
+
+# ────────────────────────────────────────────────────────────────────────────
+# Networks
+# ────────────────────────────────────────────────────────────────────────────
+networks:
+  app-network:
+    driver: bridge
+
+# ────────────────────────────────────────────────────────────────────────────
+# Volumes
+# ────────────────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    name: whats-for-supper-postgres
+  recipes_data:
+    name: whats-for-supper-recipes

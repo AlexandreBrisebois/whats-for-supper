@@ -55,6 +55,11 @@ nunit-*.xml
 
 # Docker Compose environment-specific files
 docker-compose.synology.yml
+
+# Local environment overrides (never commit real credentials)
+.env
+.env.local
+.env.*.local
 /.vs/whats-for-supper/CopilotIndices/18.0.934.24903
 /.vs/whats-for-supper.slnx/copilot-chat/df136752/sessions
 /.vs/whats-for-supper.slnx/FileContentIndex
@@ -72,3 +77,12 @@ docker-compose.synology.yml
 
 # User-specific files (MacOS)
 .DS_Store
+
+# Node / Next.js
+node_modules/
+.next/
+*.tsbuildinfo
+
+# Playwright output
+playwright-report/
+test-results/

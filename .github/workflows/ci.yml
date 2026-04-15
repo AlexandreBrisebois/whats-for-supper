@@ -1,0 +1,239 @@
+name: Phase 0 CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch/PR when a new commit arrives.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # API — build & unit tests
+  # ────────────────────────────────────────────────────────────────────────────
+  build-api:
+    name: API — build & test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine3.23
+        env:
+          POSTGRES_USER: recipe_app
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: recipe_app_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U recipe_app -d recipe_app_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore dependencies
+        run: dotnet restore api/RecipeApi.csproj
+        working-directory: api
+
+      - name: Build
+        run: dotnet build api/RecipeApi.csproj --no-restore --configuration Release
+        working-directory: api
+
+      - name: Test
+        run: >
+          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory ./test-results
+        working-directory: api
+        env:
+          POSTGRES_CONNECTION_STRING: postgres://recipe_app:ci_password@localhost:5432/recipe_app_test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-results
+          path: api/test-results/*.trx
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PWA — type-check, lint, and E2E tests
+  # ────────────────────────────────────────────────────────────────────────────
+  test-pwa:
+    name: PWA — typecheck, lint & E2E
+    runs-on: ubuntu-latest
+    needs: build-api
+
+    services:
+      postgres:
+        image: postgres:18-alpine3.23
+        env:
+          POSTGRES_USER: recipe_app
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: recipe_app_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U recipe_app -d recipe_app_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: pwa/package-lock.json
+
+      - name: Set up .NET 10 (for API)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Install PWA dependencies
+        run: npm ci
+        working-directory: pwa
+
+      - name: Type-check
+        run: npm run typecheck
+        working-directory: pwa
+
+      - name: Lint
+        run: npm run lint
+        working-directory: pwa
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: pwa
+
+      - name: Start API in background
+        run: |
+          dotnet run --project api/src/RecipeApi/RecipeApi.csproj \
+            --configuration Release &
+          echo "API_PID=$!" >> $GITHUB_ENV
+        env:
+          POSTGRES_CONNECTION_STRING: postgres://recipe_app:ci_password@localhost:5432/recipe_app_db
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://+:5000
+          CORS_ALLOWED_ORIGINS: http://localhost:3000
+          RECIPES_ROOT: /tmp/recipes
+
+      - name: Wait for API to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5000/health; then
+              echo "API is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API did not start in time" && exit 1
+
+      - name: Build PWA
+        run: npm run build
+        working-directory: pwa
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5000
+
+      - name: Start PWA in background
+        run: npm run start &
+        working-directory: pwa
+        env:
+          PORT: 3000
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5000
+
+      - name: Wait for PWA to be ready
+        run: |
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:3000/api/health; then
+              echo "PWA is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "PWA did not start in time" && exit 1
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        working-directory: pwa
+        env:
+          CI: true
+          BASE_URL: http://localhost:3000
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: pwa/playwright-report/
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Docker Compose smoke test — verify all services start and pass health checks
+  # ────────────────────────────────────────────────────────────────────────────
+  docker-smoke:
+    name: Docker Compose — smoke test
+    runs-on: ubuntu-latest
+    # Only run on push to main to keep PR feedback fast
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env for CI
+        run: |
+          cat > .env <<EOF
+          POSTGRES_USER=recipe_app
+          POSTGRES_PASSWORD=ci_password
+          POSTGRES_DB=recipe_app_db
+          POSTGRES_CONNECTION_STRING=postgres://recipe_app:ci_password@postgres:5432/recipe_app_db
+          ASPNETCORE_ENVIRONMENT=Development
+          CORS_ALLOWED_ORIGINS=http://localhost:3000
+          NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+          DOCKER_BUILDKIT=1
+          COMPOSE_DOCKER_CLI_BUILD=1
+          EOF
+
+      - name: Build and start all services
+        run: docker compose up --build --detach
+
+      - name: Wait for Postgres health
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(docker compose ps postgres --format json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('Health',''))" 2>/dev/null || echo "")
+            if [ "$STATUS" = "healthy" ]; then echo "postgres healthy"; break; fi
+            sleep 2
+          done
+
+      - name: Wait for PWA health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health; then echo "PWA healthy"; break; fi
+            sleep 3
+          done
+
+      - name: Verify API health endpoint
+        run: curl -sf http://localhost:5000/health | python3 -m json.tool
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes

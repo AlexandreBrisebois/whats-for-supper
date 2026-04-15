@@ -6,13 +6,39 @@
     "skip": "Skip",
     "add": "Add",
     "save": "Save",
-    "submit": "Submit"
+    "submit": "Submit",
+    "cancel": "Cancel"
+  },
+  "labels": {
+    "onboarding": "Onboarding",
+    "capture": "Capture",
+    "home": "Home",
+    "settings": "Settings"
+  },
+  "messages": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "success": "Done!"
   },
   "progress": {
     "step": "Step {{current}} of {{total}}"
   },
-  "common": {
-    "loading": "Loading...",
-    "error": "Something went wrong"
+  "capture": {
+    "title": "Add Your First Recipe",
+    "reviewPhotos": "Review Photos",
+    "selectDishPhoto": "Select Dish Photo",
+    "rateAndSave": "Rate & Save",
+    "addMorePhotos": "+ Add More Photos",
+    "selectDishPrompt": "Which photo shows your finished dish?",
+    "ratePrompt": "How was the recipe?",
+    "saveRecipe": "Save Recipe",
+    "recipeSaved": "Recipe saved!",
+    "addAnother": "Add Another Recipe",
+    "backHome": "Back Home",
+    "photoAdded": "{{count}} photo added",
+    "photosAdded": "{{count}} photos added",
+    "cameraUnavailable": "No camera found",
+    "cameraDenied": "Camera access denied",
+    "choosePhotos": "Choose Photos"
   }
 }

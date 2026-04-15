@@ -1,0 +1,9 @@
+<Project>
+  <!-- Centralise EF Core version to avoid transitive version conflicts between
+       the main project (10.0.*) and the Npgsql provider (which may pin an
+       older patch). Both projects inherit this override. -->
+  <ItemGroup>
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="10.0.*" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational.Design" Version="10.0.*" />
+  </ItemGroup>
+</Project>

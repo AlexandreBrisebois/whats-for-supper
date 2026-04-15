@@ -1,0 +1,130 @@
+using Microsoft.EntityFrameworkCore;
+using RecipeApi.Data;
+using RecipeApi.Dto;
+using RecipeApi.Models;
+
+namespace RecipeApi.Services;
+
+public class RecipeService(
+    RecipeDbContext db,
+    ValidationService validation,
+    ImageService images)
+{
+    /// <summary>
+    /// Creates a new recipe from a multipart upload.
+    /// Validates images and form fields, saves to disk and DB, writes recipe.info.
+    /// </summary>
+    public async Task<Guid> CreateRecipe(
+        Guid familyMemberId,
+        IFormFileCollection files,
+        CreateRecipeDto request)
+    {
+        // Validate inputs
+        validation.ValidateImageCount(files.Count);
+        foreach (var file in files)
+            validation.ValidateImage(file);
+        validation.ValidateRating(request.Rating);
+        validation.ValidateFinishedDishImageIndex(request.FinishedDishImageIndex, files.Count);
+
+        var recipeId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        // Save images to disk first — fail fast before writing to DB
+        await images.SaveImages(recipeId, files);
+
+        // Write recipe.info metadata file
+        await images.CreateRecipeInfo(new RecipeInfo
+        {
+            Id = recipeId,
+            FinishedDishImageIndex = request.FinishedDishImageIndex,
+            ImageCount = files.Count,
+            AddedBy = familyMemberId,
+            CreatedAt = now
+        });
+
+        // Persist DB record
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Rating = (RecipeRating)request.Rating,
+            AddedBy = familyMemberId,
+            ImageCount = files.Count,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+
+        return recipeId;
+    }
+
+    /// <summary>Returns a paginated list of recipes, newest first.</summary>
+    public async Task<RecipeListResponseDto> GetRecipesList(int page, int limit)
+    {
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var total = await db.Recipes.CountAsync();
+
+        var recipes = await db.Recipes
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(r => new RecipeDto
+            {
+                Id = r.Id,
+                Rating = (int)r.Rating,
+                AddedBy = r.AddedBy,
+                Images = Enumerable.Range(0, r.ImageCount).ToList(),
+                CreatedAt = r.CreatedAt
+            })
+            .ToListAsync();
+
+        return new RecipeListResponseDto
+        {
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Recipes = recipes,
+            Pagination = new PaginationDto
+            {
+                Page = page,
+                Limit = limit,
+                Total = total
+            }
+        };
+    }
+
+    /// <summary>Returns the full detail for a single recipe.</summary>
+    public async Task<RecipeDetailResponseDto> GetRecipeDetail(Guid id)
+    {
+        var recipe = await db.Recipes.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        return new RecipeDetailResponseDto
+        {
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Recipe = new RecipeDto
+            {
+                Id = recipe.Id,
+                Rating = (int)recipe.Rating,
+                AddedBy = recipe.AddedBy,
+                Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
+                CreatedAt = recipe.CreatedAt
+            }
+        };
+    }
+
+    /// <summary>
+    /// Marks a hint tour as completed for the given family member.
+    /// Idempotent — calling it twice for the same tourId is a no-op.
+    /// </summary>
+    public async Task CompleteTour(Guid familyMemberId, string tourId)
+    {
+        var member = await db.FamilyMembers.FindAsync(familyMemberId)
+            ?? throw new KeyNotFoundException($"Family member {familyMemberId} not found.");
+
+        member.CompletedTours[tourId] = true;
+        member.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+    }
+}

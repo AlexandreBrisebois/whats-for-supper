@@ -1,0 +1,66 @@
+{
+  "phase0-onboarding": {
+    "step1": {
+      "title": "Liste des membres",
+      "description": "Tous les membres de votre foyer apparaissent ici."
+    },
+    "step2": {
+      "title": "Sélectionnez votre nom",
+      "description": "Appuyez sur votre nom pour continuer."
+    },
+    "step3": {
+      "title": "Ajoutez-vous",
+      "description": "Vous n'êtes pas dans la liste ? Ajoutez votre nom ci-dessous."
+    },
+    "step4": {
+      "title": "Entrez votre nom",
+      "description": "Tapez votre nom ici."
+    },
+    "step5": {
+      "title": "Confirmez votre choix",
+      "description": "Appuyez pour confirmer."
+    },
+    "step6": {
+      "title": "Bienvenue !",
+      "description": "Tout est prêt."
+    }
+  },
+  "phase0-capture": {
+    "step1": {
+      "title": "Ajouter une recette",
+      "description": "Appuyez ici pour capturer une nouvelle recette."
+    },
+    "step2": {
+      "title": "Prenez une photo",
+      "description": "Utilisez votre appareil ou choisissez dans la galerie."
+    },
+    "step3": {
+      "title": "Vérifiez les photos",
+      "description": "Consultez les images sélectionnées."
+    },
+    "step4": {
+      "title": "Photo du plat cuisiné",
+      "description": "Choisissez la photo qui montre le mieux le plat fini."
+    },
+    "step5": {
+      "title": "Notez le repas",
+      "description": "Comment c'était ? Choisissez un emoji."
+    },
+    "step6": {
+      "title": "Sauvegarder",
+      "description": "Appuyez pour sauvegarder votre recette."
+    },
+    "step7": {
+      "title": "Recette sauvegardée !",
+      "description": "Votre repas a été capturé."
+    },
+    "step8": {
+      "title": "Ajouter une autre ?",
+      "description": "Capturez d'autres recettes tout de suite."
+    },
+    "step9": {
+      "title": "Ajouter une autre ?",
+      "description": "Ou retournez à votre collection."
+    }
+  }
+}

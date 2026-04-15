@@ -1,0 +1,22 @@
+{
+  "name": "What's for Supper",
+  "short_name": "Supper",
+  "description": "Capture meals, plan your week, discover what to cook next.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDF8ED",
+  "theme_color": "#4B5D4D",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

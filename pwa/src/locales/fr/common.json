@@ -1,0 +1,44 @@
+{
+  "buttons": {
+    "next": "Suivant",
+    "back": "Retour",
+    "done": "Compris !",
+    "skip": "Passer",
+    "add": "Ajouter",
+    "save": "Sauvegarder",
+    "submit": "Envoyer",
+    "cancel": "Annuler"
+  },
+  "labels": {
+    "onboarding": "Démarrage",
+    "capture": "Capturer",
+    "home": "Accueil",
+    "settings": "Paramètres"
+  },
+  "messages": {
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "success": "Terminé !"
+  },
+  "progress": {
+    "step": "Étape {{current}} sur {{total}}"
+  },
+  "capture": {
+    "title": "Ajouter votre première recette",
+    "reviewPhotos": "Vérifier les photos",
+    "selectDishPhoto": "Choisir la photo du plat",
+    "rateAndSave": "Noter et sauvegarder",
+    "addMorePhotos": "+ Ajouter d'autres photos",
+    "selectDishPrompt": "Quelle photo montre votre plat fini ?",
+    "ratePrompt": "Comment était le repas ?",
+    "saveRecipe": "Sauvegarder la recette",
+    "recipeSaved": "Recette sauvegardée !",
+    "addAnother": "Ajouter une autre recette",
+    "backHome": "Retour à l'accueil",
+    "photoAdded": "{{count}} photo ajoutée",
+    "photosAdded": "{{count}} photos ajoutées",
+    "cameraUnavailable": "Aucune caméra trouvée",
+    "cameraDenied": "Accès caméra refusé",
+    "choosePhotos": "Choisir des photos"
+  }
+}

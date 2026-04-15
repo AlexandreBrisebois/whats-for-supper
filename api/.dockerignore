@@ -1,0 +1,36 @@
+# Build artifacts
+bin/
+obj/
+out/
+
+# Test projects and results
+src/RecipeApi.Tests/
+TestResults/
+coverage/
+*.trx
+*.coveragexml
+
+# Logs
+logs/
+*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.rsuser
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Temp files
+*.tmp
+*.swp
+*~

@@ -43,7 +43,7 @@ export function FamilySelector({ onMemberSelected, isLoading = false }: FamilySe
         <Button
           type="button"
           variant="secondary"
-          size="sm"
+          size="md"
           data-hint="add-member-toggle"
           onClick={() => setShowAddForm(true)}
           fullWidth
