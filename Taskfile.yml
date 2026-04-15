@@ -1,0 +1,458 @@
+version: '3'
+
+# What's For Supper - Development Tasks
+# Install: https://taskfile.dev/installation/
+# Usage: task [task-name] or task -l (list all)
+
+set: [pipefail]
+shopt: [globstar]
+
+vars:
+  DOCKER_COMPOSE_FILE: 'docker-compose.yml'
+  API_PORT: '5000'
+  PWA_PORT: '3000'
+  DB_PORT: '5432'
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task -l
+
+  # ============================================================================
+  # CORE DEVELOPMENT
+  # ============================================================================
+
+  dev:
+    desc: "🚀 Start all Phase 0 services (docker-compose)"
+    cmds:
+      - docker-compose up -d
+      - task: health
+      - echo ""
+      - echo "✓ Services started:"
+      - echo "  - API:      http://localhost:{{.API_PORT}}"
+      - echo "  - PWA:      http://localhost:{{.PWA_PORT}}"
+      - echo "  - Database: localhost:{{.DB_PORT}}"
+      - echo ""
+      - echo "View logs: task logs"
+      - echo "Stop all: task stop"
+
+  dev:api:
+    desc: "API development (hot reload)"
+    dir: api
+    cmds:
+      - dotnet watch run --project src/RecipeApi/RecipeApi.csproj
+
+  dev:pwa:
+    desc: "PWA development (hot reload)"
+    dir: pwa
+    cmds:
+      - npm run dev
+
+  dev:db:
+    desc: "Start only database (for local API/PWA dev)"
+    cmds:
+      - docker-compose up -d postgres
+      - echo "✓ Database started on localhost:{{.DB_PORT}}"
+      - echo ""
+      - echo "Set these env vars:"
+      - echo "  POSTGRES_CONNECTION_STRING=postgres://postgres:password@localhost:{{.DB_PORT}}/recipes"
+      - echo "  RECIPES_ROOT=/tmp/recipes"
+
+  # ============================================================================
+  # TESTING
+  # ============================================================================
+
+  test:
+    desc: "🧪 Run all tests (API + PWA)"
+    cmds:
+      - task: test:api
+      - task: test:pwa
+      - echo ""
+      - echo "✓ All tests passed!"
+
+  test:api:
+    desc: "Test API (unit + integration)"
+    dir: api
+    cmds:
+      - dotnet test
+
+  test:api:watch:
+    desc: "Test API in watch mode"
+    dir: api
+    cmds:
+      - dotnet watch test
+
+  test:pwa:
+    desc: "Test PWA"
+    dir: pwa
+    cmds:
+      - npm run test
+
+  test:pwa:watch:
+    desc: "Test PWA in watch mode"
+    dir: pwa
+    cmds:
+      - npm run test -- --watch
+
+  test:e2e:
+    desc: "Run E2E tests (Phase 2+)"
+    dir: tools/tests/e2e-testing
+    cmds:
+      - npm test
+    status:
+      - test -f package.json
+
+  # ============================================================================
+  # BUILDING
+  # ============================================================================
+
+  build:
+    desc: "📦 Build all Docker images"
+    cmds:
+      - task: build:api
+      - task: build:pwa
+      - echo "✓ All images built"
+
+  build:api:
+    desc: "Build API Docker image"
+    cmds:
+      - docker build -t whats-for-supper/api:latest ./api
+      - echo "✓ API image built: whats-for-supper/api:latest"
+
+  build:pwa:
+    desc: "Build PWA Docker image"
+    cmds:
+      - docker build -t whats-for-supper/pwa:latest ./pwa
+      - echo "✓ PWA image built: whats-for-supper/pwa:latest"
+
+  # ============================================================================
+  # CONTAINER MANAGEMENT
+  # ============================================================================
+
+  stop:
+    desc: "⛔ Stop all running containers"
+    cmds:
+      - docker-compose down
+      - echo "✓ All containers stopped"
+
+  ps:
+    desc: "Show running containers"
+    cmds:
+      - docker-compose ps
+
+  restart:
+    desc: "Restart all containers"
+    cmds:
+      - task: stop
+      - task: dev
+
+  # ============================================================================
+  # LOGGING & DEBUGGING
+  # ============================================================================
+
+  logs:
+    desc: "📋 View logs from all services"
+    cmds:
+      - docker-compose logs -f
+
+  logs:api:
+    desc: "View API logs"
+    cmds:
+      - docker-compose logs -f api
+
+  logs:pwa:
+    desc: "View PWA logs"
+    cmds:
+      - docker-compose logs -f pwa
+
+  logs:db:
+    desc: "View database logs"
+    cmds:
+      - docker-compose logs -f postgres
+
+  logs:tail:
+    desc: "Tail logs from all services (last 50 lines)"
+    cmds:
+      - docker-compose logs --tail=50
+
+  # ============================================================================
+  # DATABASE
+  # ============================================================================
+
+  migrate:
+    desc: "🗄️  Run database migrations"
+    cmds:
+      - docker exec recipe-api dotnet ef database update
+      - echo "✓ Migrations applied"
+
+  seed:
+    desc: "Populate database with test data"
+    cmds:
+      - docker exec recipe-api bash -c "cd src/RecipeApi && dotnet user-secrets set SeedDatabase true"
+      - docker restart recipe-api
+      - sleep 2
+      - echo "✓ Test data seeded"
+
+  db:backup:
+    desc: "Backup database"
+    cmds:
+      - docker exec recipe-db pg_dump -U postgres recipes > backup_$(date +%s).sql
+      - echo "✓ Database backed up"
+
+  db:restore:
+    desc: "Restore database from backup"
+    cmds:
+      - |
+        read -p "Enter backup file path: " backup_file
+        docker exec -i recipe-db psql -U postgres recipes < "$backup_file"
+        echo "✓ Database restored"
+
+  # ============================================================================
+  # CONTAINER SHELLS
+  # ============================================================================
+
+  shell:api:
+    desc: "Open bash shell in API container"
+    cmds:
+      - docker exec -it recipe-api bash
+
+  shell:pwa:
+    desc: "Open shell in PWA container"
+    cmds:
+      - docker exec -it recipe-pwa sh
+
+  shell:db:
+    desc: "Open psql shell in database"
+    cmds:
+      - docker exec -it recipe-db psql -U postgres -d recipes
+
+  # ============================================================================
+  # CODE QUALITY
+  # ============================================================================
+
+  format:
+    desc: "✨ Format code (API + PWA)"
+    cmds:
+      - task: format:api
+      - task: format:pwa
+      - echo "✓ Code formatted"
+
+  format:api:
+    desc: "Format C# code"
+    dir: api
+    cmds:
+      - dotnet format
+
+  format:pwa:
+    desc: "Format JavaScript/TypeScript code"
+    dir: pwa
+    cmds:
+      - npx prettier --write "src/**/*.{ts,tsx,json,css}"
+
+  lint:
+    desc: "🔍 Lint code (API + PWA)"
+    cmds:
+      - task: lint:api
+      - task: lint:pwa
+      - echo "✓ No lint errors"
+
+  lint:api:
+    desc: "Lint C# code"
+    dir: api
+    cmds:
+      - dotnet format --verify-no-changes --verbosity diagnostic
+
+  lint:pwa:
+    desc: "Lint JavaScript/TypeScript code"
+    dir: pwa
+    cmds:
+      - npm run lint
+
+  typecheck:
+    desc: "Type check TypeScript code"
+    dir: pwa
+    cmds:
+      - npm run typecheck
+
+  # ============================================================================
+  # HEALTH & DIAGNOSTICS
+  # ============================================================================
+
+  health:
+    desc: "🏥 Check service health"
+    cmds:
+      - |
+        echo "Checking services..."
+        echo ""
+        echo "API health:"
+        curl -s http://localhost:{{.API_PORT}}/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ API running" || echo "  ✗ API not responding"
+        echo ""
+        echo "PWA health:"
+        curl -s http://localhost:{{.PWA_PORT}}/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ PWA running" || echo "  ✗ PWA not responding"
+        echo ""
+        echo "Database:"
+        docker exec recipe-db pg_isready -U postgres 2>/dev/null && echo "  ✓ Database running" || echo "  ✗ Database not responding"
+
+  env:
+    desc: "Show environment configuration"
+    cmds:
+      - |
+        echo "Environment Variables:"
+        echo ""
+        grep -E "^(POSTGRES|API|REDIS|OLLAMA)" .env.local 2>/dev/null || echo "  No service env vars in .env.local"
+        echo ""
+        echo "Service Ports:"
+        echo "  API: {{.API_PORT}}"
+        echo "  PWA: {{.PWA_PORT}}"
+        echo "  DB:  {{.DB_PORT}}"
+
+  # ============================================================================
+  # CLEANUP
+  # ============================================================================
+
+  clean:
+    desc: "🧹 Clean up everything (containers, volumes, caches)"
+    cmds:
+      - docker-compose down -v
+      - rm -rf api/bin api/obj
+      - rm -rf pwa/node_modules pwa/.next
+      - rm -rf tools/tests/node_modules
+      - echo "✓ Cleaned up"
+    interactive: true
+
+  clean:soft:
+    desc: "Stop containers (keep volumes for quick restart)"
+    cmds:
+      - docker-compose down
+      - echo "✓ Containers stopped (data preserved)"
+
+  # ============================================================================
+  # SETUP & INITIALIZATION
+  # ============================================================================
+
+  init:
+    desc: "Initialize project (first-time setup)"
+    cmds:
+      - |
+        echo "Setting up What's For Supper..."
+        echo ""
+      - task: init:env
+      - task: init:dependencies
+      - task: dev
+      - task: migrate
+      - task: seed
+      - |
+        echo ""
+        echo "✓ Project initialized!"
+        echo ""
+        echo "Next steps:"
+        echo "  1. Open http://localhost:{{.PWA_PORT}} in your browser"
+        echo "  2. Run: task logs (to watch all services)"
+        echo "  3. Edit code and see changes instantly"
+        echo "  4. Run: task test (before committing)"
+
+  init:env:
+    desc: "Create .env.local from template"
+    cmds:
+      - |
+        if [ ! -f .env.local ]; then
+          cp .env.example .env.local
+          echo "✓ Created .env.local"
+        else
+          echo "✓ .env.local already exists"
+        fi
+    status:
+      - test -f .env.local
+
+  init:dependencies:
+    desc: "Install all dependencies"
+    cmds:
+      - |
+        echo "Installing API dependencies..."
+        cd api && dotnet restore
+        echo "✓ API dependencies installed"
+        echo ""
+        echo "Installing PWA dependencies..."
+        cd ../pwa && npm install
+        echo "✓ PWA dependencies installed"
+
+  # ============================================================================
+  # GIT HOOKS (optional)
+  # ============================================================================
+
+  hooks:install:
+    desc: "Install git pre-commit hook"
+    cmds:
+      - cp tools/hooks/pre-commit .git/hooks/pre-commit
+      - chmod +x .git/hooks/pre-commit
+      - echo "✓ Pre-commit hook installed"
+    status:
+      - test -f tools/hooks/pre-commit
+
+  # ============================================================================
+  # DOCUMENTATION
+  # ============================================================================
+
+  docs:dev-loop:
+    desc: "Open local development loop documentation"
+    cmds:
+      - |
+        if command -v open &> /dev/null; then
+          open LOCAL_DEV_LOOP.md
+        elif command -v xdg-open &> /dev/null; then
+          xdg-open LOCAL_DEV_LOOP.md
+        else
+          cat LOCAL_DEV_LOOP.md
+        fi
+
+  docs:spec:
+    desc: "Open Phase 0 specification"
+    cmds:
+      - |
+        if command -v open &> /dev/null; then
+          open src/specs/phase0-mvp.spec.md
+        elif command -v xdg-open &> /dev/null; then
+          xdg-open src/specs/phase0-mvp.spec.md
+        else
+          cat src/specs/phase0-mvp.spec.md
+        fi
+
+  # ============================================================================
+  # SHORTCUTS FOR COMMON WORKFLOWS
+  # ============================================================================
+
+  work:
+    desc: "Developer workflow: dev + api logs + pwa logs"
+    cmds:
+      - |
+        echo "Starting development workflow..."
+        echo ""
+        echo "Running: docker-compose up -d"
+        docker-compose up -d
+        echo ""
+        echo "Services starting. Open new terminal windows for:"
+        echo "  Terminal 1: task logs:api"
+        echo "  Terminal 2: task logs:pwa"
+        echo "  Terminal 3: task dev:api (or cd api && dotnet watch run)"
+        echo ""
+        echo "Then open http://localhost:{{.PWA_PORT}} in your browser"
+
+  review:
+    desc: "Pre-commit review: format + lint + test"
+    cmds:
+      - task: format
+      - task: lint
+      - task: test
+      - echo ""
+      - echo "✓ Ready to commit!"
+
+  ship:
+    desc: "Ship checklist: review + clean build + test"
+    cmds:
+      - task: review
+      - task: build
+      - task: dev
+      - task: health
+      - echo ""
+      - echo "✓ Everything looks good! Ready to push."

@@ -1,0 +1,18 @@
+{
+  "buttons": {
+    "next": "Next",
+    "back": "Back",
+    "done": "Got it!",
+    "skip": "Skip",
+    "add": "Add",
+    "save": "Save",
+    "submit": "Submit"
+  },
+  "progress": {
+    "step": "Step {{current}} of {{total}}"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong"
+  }
+}

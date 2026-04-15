@@ -1,0 +1,633 @@
+# Local Development Loop & CI/CD Strategy
+
+Fast local feedback loop for development + comprehensive GitHub Actions for validation.
+
+## Setup: Install Task
+
+First, install [Task](https://taskfile.dev/installation/):
+
+```bash
+# macOS
+brew install go-task
+
+# Linux
+curl -sL https://taskfile.dev/install.sh | sh
+
+# Windows
+choco install task
+# or download from: https://github.com/go-task/task/releases
+```
+
+Verify installation:
+```bash
+task --version
+```
+
+---
+
+## Local Development Commands
+
+All commands run from project root using Task:
+
+### Quick Reference
+
+View all tasks:
+```bash
+task -l
+# or just
+task
+```
+
+**Most common tasks:**
+
+| Task | Description |
+|------|-------------|
+| `task dev` | Start all Phase 0 services 🚀 |
+| `task dev:api` | Start API with hot reload |
+| `task dev:pwa` | Start PWA with hot reload |
+| `task test` | Run all tests 🧪 |
+| `task logs` | View logs from all services 📋 |
+| `task logs:api` | View API logs only |
+| `task health` | Check if services are running 🏥 |
+| `task stop` | Stop all containers ⛔ |
+| `task clean` | Clean everything up 🧹 |
+
+**Detailed usage:**
+
+```bash
+# First time setup
+task init              # Initialize project (installs deps, starts services)
+
+# Development
+task dev               # Start all services
+task dev:api           # API with hot reload
+task dev:pwa           # PWA with hot reload
+task dev:db            # Only database (for local API/PWA dev)
+
+# Testing
+task test              # Run all tests
+task test:api          # API tests only
+task test:api:watch    # API tests in watch mode
+task test:pwa          # PWA tests only
+task test:pwa:watch    # PWA tests in watch mode
+task test:e2e          # End-to-end tests (Phase 2+)
+
+# Building
+task build             # Build all Docker images
+task build:api         # Build API image only
+task build:pwa         # Build PWA image only
+
+# Container management
+task ps                # Show running containers
+task restart           # Restart all containers
+task stop              # Stop all containers
+
+# Logging & debugging
+task logs              # View all logs (streaming)
+task logs:api          # View API logs
+task logs:pwa          # View PWA logs
+task logs:db           # View database logs
+task logs:tail         # View last 50 lines from all services
+
+# Database
+task migrate           # Run migrations
+task seed              # Populate test data
+task db:backup         # Backup database
+task db:restore        # Restore from backup
+
+# Container shells
+task shell:api         # Bash in API container
+task shell:pwa         # Shell in PWA container
+task shell:db          # psql in database
+
+# Code quality
+task format            # Format all code
+task lint              # Lint all code
+task typecheck         # Type check TypeScript
+
+# Health & diagnostics
+task health            # Check all services
+task env               # Show environment vars
+
+# Cleanup
+task clean             # Delete containers, volumes, caches
+task clean:soft        # Stop containers (keep data)
+
+# Workflows
+task work              # Start dev workflow (shows next steps)
+task review            # Pre-commit review (format + lint + test)
+task ship              # Final ship checklist
+```
+
+---
+
+## Local Development Loop: Fast Feedback
+
+### Workflow 1: Full Stack (Docker)
+
+**Best for testing complete end-to-end flows:**
+
+```bash
+# Terminal 1: Start all services
+task dev
+
+# Terminal 2: Watch API logs
+task logs:api
+
+# Terminal 3: Watch PWA logs
+task logs:pwa
+
+# Browser: http://localhost:3000
+# API: http://localhost:5000
+```
+
+**Feedback loop:**
+- Edit code → Docker auto-reloads (if using `dotnet watch` / Next.js dev)
+- Refresh browser → See changes immediately
+- Check logs → Debug issues in real-time
+
+**When to use:** Testing complete flows, integration testing, or when you want everything in containers.
+
+---
+
+### Workflow 2: API + PWA (Local Dev Servers)
+
+**FASTEST for rapid iteration:**
+
+```bash
+# Terminal 1: Start just the database
+task dev:db
+
+# Terminal 2: Start API with hot reload
+task dev:api
+
+# Terminal 3: Start PWA with hot reload
+task dev:pwa
+
+# Browser: http://localhost:3000
+```
+
+**Why this is faster:**
+- ⚡ API changes: instant recompile (dotnet watch)
+- ⚡ PWA changes: instant HMR (Next.js dev server)
+- ⚡ No Docker rebuild needed
+- 🐛 Better IDE integration (breakpoints, debugging)
+- 🎯 Exact error messages (not buried in docker logs)
+
+**Environment setup (`.env.local`):**
+```bash
+# API
+POSTGRES_CONNECTION_STRING=postgres://postgres:password@localhost:5432/recipes
+RECIPES_ROOT=/tmp/recipes
+API_BASE_URL=http://localhost:5000
+
+# PWA
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+```
+
+**When to use:** Daily development, debugging, feature work.
+
+---
+
+### Workflow 3: Testing Mode
+
+**For writing & running tests:**
+
+```bash
+# Run all tests once
+task test
+
+# Run API tests in watch mode
+task test:api:watch
+
+# Run PWA tests in watch mode
+task test:pwa:watch
+
+# Run both in watch mode (separate terminals)
+task test:api:watch &
+task test:pwa:watch &
+```
+
+**When to use:** TDD, debugging test failures, before committing.
+
+---
+
+### Workflow 4: Quick Commands
+
+**Pre-commit checks:**
+```bash
+# Format + Lint + Test
+task review
+```
+
+**Full ship checklist:**
+```bash
+# Review + Build + Dev + Health check
+task ship
+```
+
+**Guided development workflow:**
+```bash
+# Shows instructions for next steps
+task work
+```
+
+---
+
+## Local Loop Best Practices
+
+### 1. **Database Snapshots**
+Before making breaking schema changes, save a snapshot:
+```bash
+# Backup
+task db:backup
+# Creates: backup_1712345678.sql
+
+# Restore
+task db:restore
+```
+
+### 2. **Test Data**
+Always have test families and recipes:
+```bash
+task seed
+```
+
+### 3. **Hot Reload Setup**
+Both API and PWA are configured for hot reload by default:
+
+**API:** Uses `dotnet watch run`
+```bash
+task dev:api
+```
+
+**PWA:** Uses Next.js dev server (HMR enabled by default)
+```bash
+task dev:pwa
+```
+
+### 4. **Environment Variables**
+Keep `.env.local` (gitignored) with your local settings:
+```bash
+# Initialize from template
+cp .env.example .env.local
+
+# Then edit with your settings
+# .env.local (never commit!)
+POSTGRES_CONNECTION_STRING=postgres://postgres:password@localhost:5432/recipes
+RECIPES_ROOT=/tmp/recipes
+API_BASE_URL=http://localhost:5000
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+```
+
+### 5. **Know Your Workflows**
+Use Task's built-in workflows:
+```bash
+# Development workflow (with instructions)
+task work
+
+# Pre-commit review (format + lint + test)
+task review
+
+# Ship checklist (full validation)
+task ship
+```
+
+---
+
+## GitHub Actions: Cloud Loop
+
+Full CI/CD pipeline that validates everything on every push/PR.
+
+### Structure
+
+```
+.github/workflows/
+├── test.yml           # Runs on every PR: unit tests, lint, type check
+├── build.yml          # Runs on merge to main: build containers
+├── deploy.yml         # Runs on release tag: deploy to production
+└── nightly.yml        # Runs daily: E2E tests, performance tests
+```
+
+### Workflow 1: Test on PR (`test.yml`)
+
+Runs on every PR to catch bugs early:
+
+```yaml
+name: Test & Lint
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  api-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: recipes
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: cd api && dotnet restore
+
+      - name: Build
+        run: cd api && dotnet build --no-restore
+
+      - name: Run tests
+        run: cd api && dotnet test --no-build --verbosity normal
+
+      - name: Run analyzers
+        run: cd api && dotnet format --verify-no-changes --verbosity diagnostic
+
+  pwa-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: pwa/package-lock.json
+
+      - name: Install dependencies
+        run: cd pwa && npm ci
+
+      - name: Run tests
+        run: cd pwa && npm run test
+
+      - name: Run lint
+        run: cd pwa && npm run lint
+
+      - name: Type check
+        run: cd pwa && npm run typecheck
+
+      - name: Build
+        run: cd pwa && npm run build
+```
+
+---
+
+### Workflow 2: Build on Merge (`build.yml`)
+
+Builds Docker images on merge to main:
+
+```yaml
+name: Build
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-containers:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v2
+
+      - name: Build API image
+        run: docker build -t whats-for-supper/api:latest -t whats-for-supper/api:${{ github.sha }} ./api
+
+      - name: Build PWA image
+        run: docker build -t whats-for-supper/pwa:latest -t whats-for-supper/pwa:${{ github.sha }} ./pwa
+
+      # Optional: Push to registry
+      # - uses: docker/login-action@v2
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+
+      # - uses: docker/build-push-action@v4
+      #   with:
+      #     context: ./api
+      #     push: true
+      #     tags: ghcr.io/${{ github.repository }}/api:latest
+```
+
+---
+
+### Workflow 3: Deploy on Release (`deploy.yml`)
+
+Runs when you create a release tag:
+
+```yaml
+name: Deploy
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying ${{ github.event.release.tag_name }}"
+          # Add your deployment logic here
+          # e.g., ssh to server, pull images, run docker-compose up
+```
+
+---
+
+## Sync Between Local & Cloud
+
+### Local → Cloud (Push to GitHub)
+```bash
+# Make changes locally
+# Run local tests
+make test
+
+# If tests pass, push
+git push origin feature-branch
+
+# GitHub Actions automatically:
+# 1. Runs all tests
+# 2. Builds Docker images
+# 3. Checks linting/types
+# 4. Comments on PR with results
+```
+
+### Cloud → Local (Pull from GitHub)
+```bash
+# Get latest main with all validated changes
+git pull origin main
+
+# Local tests may pass/fail differently (different OS, versions)
+# If tests fail locally, debug with:
+make logs
+make shell-api
+make shell-db
+```
+
+---
+
+## Example: Complete Development Session
+
+### Setup (first time)
+```bash
+# Clone repo
+git clone https://github.com/yourorg/whats-for-supper.git
+cd whats-for-supper
+
+# Install Task if you haven't already
+brew install go-task  # or your OS equivalent
+
+# One-command setup (installs deps, starts services, seeds data)
+task init
+```
+
+### Development (iterative)
+```bash
+# Terminal 1: Watch API
+task dev:api
+
+# Terminal 2: Watch PWA
+task dev:pwa
+
+# Terminal 3: Watch logs
+task logs
+
+# Or use the guided workflow
+task work
+
+# Edit code → see changes in browser instantly
+# Tests fail → fix issue → tests pass
+```
+
+### Testing before commit
+```bash
+# Run pre-commit review (format + lint + test)
+task review
+
+# If tests fail, check logs
+task logs:api
+task logs:pwa
+
+# Debug in container
+task shell:db
+
+# If everything passes
+git add .
+git commit -m "feature: add hint system"
+git push
+
+# GitHub Actions takes over:
+# - Runs full test suite in cloud
+# - Builds Docker images
+# - Checks formatting & types
+# - Comments on PR with results
+```
+
+### Cleanup
+```bash
+# Stop everything (keep data)
+task stop
+
+# Or full reset (delete containers, volumes, caches)
+task clean
+```
+
+---
+
+## Performance Optimization
+
+### Slow Local Loop? Try This:
+
+1. **Use local dev servers (FASTEST):**
+   ```bash
+   task dev:db      # Just database
+   task dev:api     # API with hot reload (much faster!)
+   task dev:pwa     # PWA with hot reload
+   ```
+   This skips Docker rebuilds and gives instant feedback.
+
+2. **Run only the service you're testing:**
+   ```bash
+   # Only testing PWA?
+   cd pwa && npm run test
+   
+   # Only testing API?
+   cd api && dotnet test
+   ```
+
+3. **Run specific test file for quick feedback:**
+   ```bash
+   cd pwa && npm run test -- capture.test.ts
+   cd api && dotnet test -- --filter "CaptureTests"
+   ```
+
+4. **Clear caches if build seems stuck:**
+   ```bash
+   # npm cache
+   cd pwa && npm cache clean --force
+   
+   # dotnet cache
+   cd api && dotnet nuget locals all --clear
+   ```
+
+---
+
+## Troubleshooting Local Loop
+
+| Problem | Solution |
+|---------|----------|
+| Port 5000 in use | `task stop` or `lsof -i :5000 \| kill` |
+| Port 3000 in use | `lsof -i :3000 \| kill` or `task stop` |
+| Database won't start | `task clean` then `task dev` |
+| API can't connect to DB | Check `POSTGRES_CONNECTION_STRING` in `.env.local` |
+| PWA can't reach API | Ensure API is running (`task logs:api`), check `NEXT_PUBLIC_API_BASE_URL` |
+| Tests timeout | Run individual tests instead of full suite |
+| Docker image stale | `docker-compose build` to rebuild from scratch |
+| Services won't stop cleanly | `docker-compose down -v && task dev` |
+| Check service health | `task health` (shows which services are responding) |
+| Need to inspect database | `task shell:db` (opens psql) |
+| Lost test data | `task seed` to repopulate |
+| API throwing errors | `task logs:api` to see stack traces |
+
+---
+
+## Next Steps
+
+1. ✅ **Taskfile.yml** created at project root
+2. ✅ **LOCAL_DEV_LOOP.md** (this file) documents all workflows
+3. ⏭️ **Create `.env.example`** with all needed vars
+4. ⏭️ **Create `.github/workflows/test.yml`** for PR validation on every push
+5. ⏭️ **Create `.github/workflows/build.yml`** to build containers on merge
+6. ⏭️ **Document in README.md** which `task` commands to run first
+
+## Quick Start Checklist
+
+- [ ] Install Task: `brew install go-task`
+- [ ] Verify Task: `task --version`
+- [ ] View all tasks: `task -l`
+- [ ] First run: `task init` (does everything automatically)
+- [ ] Check if services are healthy: `task health`
+- [ ] Open http://localhost:3000 in browser
+- [ ] Edit code and see changes instantly
+- [ ] Before pushing: `task review`
+- [ ] Done! 🎉
+
