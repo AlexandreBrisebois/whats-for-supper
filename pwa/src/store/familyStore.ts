@@ -1,9 +1,8 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
 import { getFamilyMembers, createFamilyMember, updateFamilyMember, deleteFamilyMember } from '@/lib/api/family';
+import { getFamilyMemberIdCookie, setFamilyMemberIdCookie, removeFamilyMemberIdCookie } from '@/lib/identity/cookie';
 import type { FamilyMember } from '@/types/domain';
 
 interface FamilyState {
@@ -21,84 +20,85 @@ interface FamilyState {
   loadFamilyMembers: () => Promise<void>;
 }
 
-export const useFamilyStore = create<FamilyState>()(
-  persist(
-    (set, get) => ({
-      familyMembers: [],
-      selectedFamilyMemberId: null,
-      isLoading: false,
-      error: null,
-      _hasHydrated: false,
+export const useFamilyStore = create<FamilyState>((set, get) => ({
+  familyMembers: [],
+  // Initialize from cookie if on client
+  selectedFamilyMemberId: typeof window !== 'undefined' ? getFamilyMemberIdCookie() ?? null : null,
+  isLoading: false,
+  error: null,
+  _hasHydrated: typeof window !== 'undefined',
 
-      setFamilyMembers: (members) => set({ familyMembers: members }),
+  setFamilyMembers: (members) => set({ familyMembers: members }),
 
-      selectFamilyMember: (id) => set({ selectedFamilyMemberId: id }),
-
-      addMember: async (name: string) => {
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        set({ isLoading: true, error: null });
-        try {
-          const member = await createFamilyMember({ name: trimmed });
-          set((state) => ({
-            familyMembers: [...state.familyMembers, member],
-            isLoading: false,
-          }));
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'Failed to add member';
-          set({ isLoading: false, error: message });
-        }
-      },
-
-      updateMember: async (id: string, name: string) => {
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        set({ isLoading: true, error: null });
-        try {
-          const updated = await updateFamilyMember(id, { name: trimmed });
-          set((state) => ({
-            familyMembers: state.familyMembers.map((m) => (m.id === id ? updated : m)),
-            isLoading: false,
-          }));
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'Failed to update member';
-          set({ isLoading: false, error: message });
-        }
-      },
-
-      removeMember: async (id: string) => {
-        set({ isLoading: true, error: null });
-        try {
-          await deleteFamilyMember(id);
-          set((state) => ({
-            familyMembers: state.familyMembers.filter((m) => m.id !== id),
-            selectedFamilyMemberId: state.selectedFamilyMemberId === id ? null : state.selectedFamilyMemberId,
-            isLoading: false,
-          }));
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'Failed to remove member';
-          set({ isLoading: false, error: message });
-        }
-      },
-
-      loadFamilyMembers: async () => {
-        if (get().isLoading) return;
-        set({ isLoading: true, error: null });
-        try {
-          const members = await getFamilyMembers();
-          set({ familyMembers: members, isLoading: false });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'Failed to load family members';
-          set({ isLoading: false, error: message });
-        }
-      },
-    }),
-    {
-      name: 'family-storage',
-      partialize: (state) => ({ selectedFamilyMemberId: state.selectedFamilyMemberId }),
-      onRehydrateStorage: () => (state) => {
-        if (state) state._hasHydrated = true;
-      },
+  selectFamilyMember: (id) => {
+    if (id) {
+      setFamilyMemberIdCookie(id);
+    } else {
+      removeFamilyMemberIdCookie();
     }
-  )
-);
+    set({ selectedFamilyMemberId: id });
+  },
+
+  addMember: async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set({ isLoading: true, error: null });
+    try {
+      const member = await createFamilyMember({ name: trimmed });
+      set((state) => ({
+        familyMembers: [...state.familyMembers, member],
+        isLoading: false,
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add member';
+      set({ isLoading: false, error: message });
+    }
+  },
+
+  updateMember: async (id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set({ isLoading: true, error: null });
+    try {
+      const updated = await updateFamilyMember(id, { name: trimmed });
+      set((state) => ({
+        familyMembers: state.familyMembers.map((m) => (m.id === id ? updated : m)),
+        isLoading: false,
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update member';
+      set({ isLoading: false, error: message });
+    }
+  },
+
+  removeMember: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await deleteFamilyMember(id);
+      const isSelected = get().selectedFamilyMemberId === id;
+      if (isSelected) {
+        removeFamilyMemberIdCookie();
+      }
+      set((state) => ({
+        familyMembers: state.familyMembers.filter((m) => m.id !== id),
+        selectedFamilyMemberId: isSelected ? null : state.selectedFamilyMemberId,
+        isLoading: false,
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to remove member';
+      set({ isLoading: false, error: message });
+    }
+  },
+
+  loadFamilyMembers: async () => {
+    if (get().isLoading) return;
+    set({ isLoading: true, error: null });
+    try {
+      const members = await getFamilyMembers();
+      set({ familyMembers: members, isLoading: false });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load family members';
+      set({ isLoading: false, error: message });
+    }
+  },
+}));

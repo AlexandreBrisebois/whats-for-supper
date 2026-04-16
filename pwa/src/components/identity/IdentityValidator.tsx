@@ -24,7 +24,7 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
   useEffect(() => {
     async function verifyIdentity() {
-      // 1. Wait for store rehydration
+      // 1. Wait for store hydration (now from cookies)
       if (!_hasHydrated) return;
 
       const isPublicPage = pathname === ROUTES.LANDING || pathname === ROUTES.ONBOARDING;
@@ -35,10 +35,11 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
         return;
       }
 
-      // 3. Identify selected member from store (localStorage)
+      // 3. Identify selected member from store (Cookie)
       if (!selectedFamilyMemberId) {
-        console.warn('No identity found in localStorage. Redirecting to onboarding.');
-        router.replace(ROUTES.ONBOARDING);
+        // Redirection should have been handled by middleware. 
+        // We only redirect here as a fallback if client state is out of sync.
+        setIsReady(true); 
         return;
       }
 
@@ -50,10 +51,10 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
       const latestMembers = useFamilyStore.getState().familyMembers;
       const exists = latestMembers.some((m) => m.id === selectedFamilyMemberId);
       
-      // Only clear and redirect if we HAVE members but the ID is missing
+      // Only clear and redirect if we HAVE members but the ID is missing (e.g. deleted on another device)
       if (!exists && latestMembers.length > 0) {
         console.warn('Selected member no longer exists. Clearing identity.');
-        useFamilyStore.setState({ selectedFamilyMemberId: null });
+        useFamilyStore.getState().selectFamilyMember(null);
         router.replace(ROUTES.ONBOARDING);
         return;
       }
