@@ -122,4 +122,17 @@ public class RecipeService(
         };
     }
 
+    /// <summary>Deletes a recipe from disk and database.</summary>
+    public async Task DeleteRecipe(Guid id)
+    {
+        var recipe = await db.Recipes.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        // 1. Delete physical files
+        images.DeleteRecipeFiles(id);
+
+        // 2. Remove from DB
+        db.Recipes.Remove(recipe);
+        await db.SaveChangesAsync();
+    }
 }

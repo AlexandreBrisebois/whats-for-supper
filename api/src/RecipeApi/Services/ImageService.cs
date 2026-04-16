@@ -100,4 +100,20 @@ public class ImageService(IConfiguration configuration, ILogger<ImageService> lo
         await File.WriteAllTextAsync(path, json);
         logger.LogDebug("Wrote recipe.info for {RecipeId}", info.Id);
     }
+
+    /// <summary>Deletes the entire directory for the specified recipe.</summary>
+    public void DeleteRecipeFiles(Guid recipeId)
+    {
+        var dir = Path.Combine(RecipesRoot, recipeId.ToString());
+        if (Directory.Exists(dir))
+        {
+            logger.LogInformation("Deleting physical files for recipe {RecipeId} at {Directory}", recipeId, dir);
+            Directory.Delete(dir, recursive: true);
+            logger.LogInformation("Successfully deleted physical files for recipe {RecipeId}", recipeId);
+        }
+        else
+        {
+            logger.LogWarning("Delete requested for recipe {RecipeId}, but directory {Directory} does not exist.", recipeId, dir);
+        }
+    }
 }

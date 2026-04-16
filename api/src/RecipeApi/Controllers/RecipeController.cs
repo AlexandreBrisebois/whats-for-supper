@@ -54,4 +54,12 @@ public class RecipeController(RecipeService recipeService, ImageService imageSer
     {
         return NotFound(new { message = "Hero images are generated in Phase 1." });
     }
+
+    /// <summary>DELETE /api/recipes/{id} — delete a recipe and its associated files.</summary>
+    [HttpDelete("api/recipes/{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await recipeService.DeleteRecipe(id);
+        return NoContent();
+    }
 }
