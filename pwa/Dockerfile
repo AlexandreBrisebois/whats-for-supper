@@ -8,10 +8,6 @@ RUN npm ci
 
 COPY . .
 
-# API_INTERNAL_URL is used by next.config.js rewrites at build time.
-# Defaults to the docker-compose service name so it works out of the box.
-ARG API_INTERNAL_URL=http://api:5000
-ENV API_INTERNAL_URL=$API_INTERNAL_URL
 
 RUN npm run build
 
@@ -22,6 +18,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 # Bind to all interfaces so health checks via localhost work inside the container
 ENV HOSTNAME=0.0.0.0
+# Allow runtime override of API_INTERNAL_URL
+ENV API_INTERNAL_URL=http://api:5000
 
 RUN apk add --no-cache curl
 
