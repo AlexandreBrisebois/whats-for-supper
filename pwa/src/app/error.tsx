@@ -18,7 +18,7 @@ export default function Error({ error, reset }: ErrorProps) {
       <p className="text-charcoal-400">An unexpected error occurred. Please try again.</p>
       <button
         onClick={reset}
-        className="rounded-xl bg-sage-green px-6 py-3 font-semibold text-cream transition-opacity hover:opacity-90"
+        className="rounded-xl bg-indigo px-6 py-3 font-semibold text-lavender transition-opacity hover:opacity-90"
       >
         Try again
       </button>

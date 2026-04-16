@@ -1,0 +1,11 @@
+@baseUrl = http://localhost:5001
+@familyMemberId = 00000000-0000-0000-0000-000000000000
+@recipeId = 00000000-0000-0000-0000-000000000000
+@image1 = /absolute/path/to/recipe-photo-1.jpg
+@image2 = /absolute/path/to/recipe-photo-2.jpg
+
+###
+# Docker currently exposes the API on port 5001.
+# Update baseUrl only if you publish the API on another host or port.
+GET {{baseUrl}}/health
+Accept: application/json

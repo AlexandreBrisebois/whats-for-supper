@@ -28,14 +28,9 @@ export default function HomePage() {
       <div className="flex flex-col gap-8">
         {/* Welcome heading */}
         <div className="pt-4 text-center">
-          <h1 className="text-3xl font-bold text-sage-green">
+          <h1 className="text-3xl font-bold text-indigo">
             {selectedMember ? `Welcome, ${selectedMember.name}!` : 'Welcome!'}
           </h1>
-          {selectedMember && (
-            <span className="mt-1 inline-block text-2xl" aria-hidden="true">
-              {selectedMember.emoji}
-            </span>
-          )}
         </div>
 
         {/* Quick-action cards */}
@@ -43,7 +38,7 @@ export default function HomePage() {
           {/* Capture — Session 9 */}
           <Link
             href={ROUTES.CAPTURE}
-            className="flex items-center gap-4 rounded-2xl bg-white px-5 py-4 shadow-card transition-all hover:bg-sage-green/5 active:scale-[0.98]"
+            className="flex items-center gap-4 rounded-2xl bg-white px-5 py-4 shadow-card transition-all hover:bg-indigo/5 active:scale-[0.98]"
           >
             <span className="text-3xl" aria-hidden="true">📸</span>
             <div>

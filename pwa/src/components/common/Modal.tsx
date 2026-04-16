@@ -66,7 +66,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       {/* Panel */}
       <div
         ref={dialogRef}
-        className="relative z-10 w-full max-w-md rounded-t-3xl bg-cream p-6 shadow-glass sm:rounded-3xl"
+        className="relative z-10 w-full max-w-md rounded-t-3xl bg-lavender p-6 shadow-glass sm:rounded-3xl"
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           {title && (
@@ -78,7 +78,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             ref={closeBtnRef}
             onClick={onClose}
             aria-label="Close modal"
-            className="ml-auto rounded-full p-1 text-charcoal-400 transition-colors hover:bg-sage-green/10 hover:text-sage-green"
+            className="ml-auto rounded-full p-1 text-charcoal-400 transition-colors hover:bg-indigo/10 hover:text-indigo"
           >
             <X size={20} aria-hidden="true" />
           </button>

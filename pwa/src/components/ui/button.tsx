@@ -4,10 +4,10 @@ import type { ButtonVariant } from '@/types/ui';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-sage-green text-cream hover:opacity-90 active:opacity-75',
-  secondary: 'bg-cream text-sage-green border border-sage-green hover:bg-sage-green/10',
-  ghost: 'text-sage-green hover:bg-sage-green/10',
-  danger: 'bg-terracotta text-cream hover:opacity-90 active:opacity-75',
+  primary: 'bg-indigo text-lavender hover:opacity-90 active:opacity-75',
+  secondary: 'bg-lavender text-indigo border border-indigo hover:bg-indigo/10',
+  ghost: 'text-indigo hover:bg-indigo/10',
+  danger: 'bg-pink text-lavender hover:opacity-90 active:opacity-75',
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {

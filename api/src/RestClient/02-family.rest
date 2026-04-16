@@ -1,0 +1,26 @@
+@baseUrl = http://localhost:5001
+@familyMemberId = e6ba4d3f-e257-44b0-8d29-d541c394f4cf
+
+### List family members
+GET {{baseUrl}}/api/family
+Accept: application/json
+
+### Create a family member
+# @name createFamilyMember
+POST {{baseUrl}}/api/family
+Content-Type: application/json
+
+{
+  "name": "papa"
+}
+
+> {%
+  const payload = response.body?.data ?? response.body;
+  if (payload?.id) {
+    client.global.set("familyMemberId", payload.id);
+  }
+%}
+
+### Delete a family member
+DELETE {{baseUrl}}/api/family/{{familyMemberId}}
+Accept: application/json

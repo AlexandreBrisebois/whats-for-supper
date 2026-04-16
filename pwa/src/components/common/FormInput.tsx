@@ -42,12 +42,12 @@ export function FormInput({
           'placeholder:text-charcoal-300 focus:outline-none focus:ring-2',
           'disabled:cursor-not-allowed disabled:opacity-50',
           error
-            ? 'border-terracotta focus:ring-terracotta/40'
-            : 'border-sage-green/30 focus:ring-sage-green/40',
+            ? 'border-pink focus:ring-pink/40'
+            : 'border-indigo/30 focus:ring-indigo/40',
         ].join(' ')}
       />
       {error && (
-        <p id={`${inputId}-error`} role="alert" className="text-xs text-terracotta">
+        <p id={`${inputId}-error`} role="alert" className="text-xs text-pink">
           {error}
         </p>
       )}

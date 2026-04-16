@@ -15,16 +15,18 @@ interface RatingOption {
 }
 
 const RATING_OPTIONS: RatingOption[] = [
-  { value: 3, emoji: '😊', className: 'happy-emoji', label: 'Delicious' },
-  { value: 2, emoji: '🙂', className: 'good-emoji', label: 'Good' },
-  { value: 1, emoji: '😐', className: 'neutral-emoji', label: 'Okay' },
-  { value: 0, emoji: '😞', className: 'sad-emoji', label: 'Not great' },
+  { value: 0, emoji: '❓', className: 'unknown-emoji', label: 'Unknown' },
+  { value: 1, emoji: '👎', className: 'dislike-emoji', label: 'Dislike' },
+  { value: 2, emoji: '👍', className: 'like-emoji', label: 'Like' },
+  { value: 3, emoji: '❤️', className: 'love-emoji', label: 'Love' },
 ];
 
 export function RatingSelector({ selectedRating, onSelect }: RatingSelectorProps) {
   return (
-    <div data-hint="recipe-rating" className="flex flex-col gap-4">
-      <p className="text-sm font-medium text-charcoal">How was it?</p>
+    <div className="flex flex-col gap-6">
+      <div className="text-center">
+        <p className="text-xl font-bold text-charcoal">Did the family like this recipe?</p>
+      </div>
       <div className="flex justify-around">
         {RATING_OPTIONS.map(({ value, emoji, className, label }) => {
           const isSelected = selectedRating === value;
@@ -39,13 +41,13 @@ export function RatingSelector({ selectedRating, onSelect }: RatingSelectorProps
                 className,
                 'flex flex-col items-center gap-1 rounded-2xl px-4 py-3 text-4xl transition-all active:scale-95',
                 isSelected
-                  ? 'bg-sage-green/15 ring-2 ring-sage-green scale-110'
+                  ? 'bg-indigo/15 ring-2 ring-indigo scale-110'
                   : 'opacity-60 hover:opacity-90',
               ].join(' ')}
             >
               <span aria-hidden>{emoji}</span>
               {isSelected && (
-                <span className="text-xs font-medium text-sage-green">{label}</span>
+                <span className="text-xs font-medium text-indigo">{label}</span>
               )}
             </button>
           );

@@ -9,7 +9,7 @@ export async function getFamilyMembers(): Promise<FamilyMember[]> {
 }
 
 export async function createFamilyMember(
-  payload: Pick<FamilyMember, 'name' | 'emoji'>
+  payload: Pick<FamilyMember, 'name'>
 ): Promise<FamilyMember> {
   const { data } = await apiClient.post<ApiResponse<FamilyMember>>('/api/family', payload);
   return data.data;

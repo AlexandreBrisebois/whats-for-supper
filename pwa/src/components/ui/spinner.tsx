@@ -11,7 +11,7 @@ export function Spinner({ size = 'md', className = '' }: SpinnerProps) {
       role="status"
       aria-label="Loading"
       className={[
-        'animate-spin rounded-full border-2 border-sage-green border-t-transparent',
+        'animate-spin rounded-full border-2 border-indigo border-t-transparent',
         SIZE_CLASSES[size],
         className,
       ].join(' ')}

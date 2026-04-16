@@ -15,7 +15,7 @@ export function LocaleToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="rounded-md px-2 py-1 text-sm font-semibold text-cream transition-colors hover:bg-sage-green-700"
+      className="rounded-md px-2 py-1 text-sm font-semibold text-lavender transition-colors hover:bg-indigo-700"
       aria-label={locale === 'en' ? 'Switch to French' : 'Passer en anglais'}
     >
       {locale === 'en' ? 'FR' : 'EN'}

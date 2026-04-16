@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --color-sage-green: #4b5d4d;
-  --color-terracotta: #b25e4c;
-  --color-cream: #fdf8ed;
+  --color-indigo: #4f46e5;
+  --color-pink: #db2777;
+  --color-lavender: #f5f3ff;
   --color-charcoal: #2d312e;
 
-  --background: var(--color-cream);
+  --background: var(--color-lavender);
   --foreground: var(--color-charcoal);
-  --primary: var(--color-sage-green);
-  --accent: var(--color-terracotta);
+  --primary: var(--color-indigo);
+  --accent: var(--color-pink);
 }
 
 @layer base {
@@ -50,10 +50,10 @@
 
 @layer utilities {
   .glass {
-    background: rgba(253, 248, 237, 0.7);
+    background: rgba(245, 243, 255, 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(75, 93, 77, 0.12);
+    border: 1px solid rgba(79, 70, 229, 0.12);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
   }
 

@@ -1,0 +1,54 @@
+@baseUrl = http://localhost:5001
+@familyMemberId = 00000000-0000-0000-0000-000000000000
+@recipeId = 00000000-0000-0000-0000-000000000000
+@image1 = /absolute/path/to/recipe-photo-1.jpg
+@image2 = /absolute/path/to/recipe-photo-2.jpg
+
+### List recipes
+GET {{baseUrl}}/api/recipes?page=1&limit=20
+Accept: application/json
+
+### Create a recipe from images
+# Replace image paths and ensure familyMemberId is a real value.
+# @name createRecipe
+POST {{baseUrl}}/api/recipes
+X-Family-Member-Id: {{familyMemberId}}
+Content-Type: multipart/form-data; boundary=Boundary123
+
+--Boundary123
+Content-Disposition: form-data; name="rating"
+
+2
+--Boundary123
+Content-Disposition: form-data; name="finishedDishImageIndex"
+
+0
+--Boundary123
+Content-Disposition: form-data; name="files"; filename="recipe-photo-1.jpg"
+Content-Type: image/jpeg
+
+< {{image1}}
+--Boundary123
+Content-Disposition: form-data; name="files"; filename="recipe-photo-2.jpg"
+Content-Type: image/jpeg
+
+< {{image2}}
+--Boundary123--
+
+> {%
+  if (response.body?.recipeId) {
+    client.global.set("recipeId", response.body.recipeId);
+  }
+%}
+
+### Get recipe detail
+GET {{baseUrl}}/api/recipes/{{recipeId}}
+Accept: application/json
+
+### Get original uploaded image
+GET {{baseUrl}}/recipe/{{recipeId}}/original/0
+Accept: image/*
+
+### Get hero image placeholder response
+GET {{baseUrl}}/recipe/{{recipeId}}/hero
+Accept: application/json

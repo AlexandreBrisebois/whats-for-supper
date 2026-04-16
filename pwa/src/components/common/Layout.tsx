@@ -11,7 +11,7 @@ interface LayoutProps {
 
 export function Layout({ children, headerAction }: LayoutProps) {
   return (
-    <div className="flex min-h-dvh flex-col bg-cream">
+    <div className="flex min-h-dvh flex-col bg-lavender">
       {/*
        * Header contains the logo, desktop nav (inline), and optional action.
        * Navigation also renders the mobile fixed bottom bar independently
@@ -23,7 +23,7 @@ export function Layout({ children, headerAction }: LayoutProps) {
         {children}
       </main>
 
-      <footer className="hidden border-t border-sage-green/10 py-4 text-center text-xs text-charcoal-400 md:block">
+      <footer className="hidden border-t border-indigo/10 py-4 text-center text-xs text-charcoal-400 md:block">
         &copy; {new Date().getFullYear()} What&apos;s for Supper
       </footer>
     </div>

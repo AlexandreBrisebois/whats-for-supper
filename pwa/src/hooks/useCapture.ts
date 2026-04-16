@@ -10,12 +10,13 @@ export type CaptureRating = 0 | 1 | 2 | 3;
 export interface UseCaptureReturn {
   images: File[];
   selectedDishPhotoIndex: number | null;
-  rating: CaptureRating | null;
+  rating: CaptureRating;
+  notes: string;
   isSubmitting: boolean;
   error: string | null;
   addImage: (file: File) => void;
   removeImage: (index: number) => void;
-  selectDishPhotoIndex: (index: number) => void;
+  setNotes: (notes: string) => void;
   setRating: (rating: CaptureRating) => void;
   submitRecipe: () => Promise<string | null>;
   reset: () => void;
@@ -25,7 +26,8 @@ export interface UseCaptureReturn {
 export function useCapture(): UseCaptureReturn {
   const [images, setImages] = useState<File[]>([]);
   const [selectedDishPhotoIndex, setSelectedDishPhotoIndex] = useState<number | null>(null);
-  const [rating, setRatingState] = useState<CaptureRating | null>(null);
+  const [rating, setRatingState] = useState<CaptureRating>(0); // Default to Unknown
+  const [notes, setNotesState] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +47,10 @@ export function useCapture(): UseCaptureReturn {
         setError(countValidation.error ?? 'Too many images.');
         return prev;
       }
+      // Auto-set first photo as finished dish if it's the first image
+      if (prev.length === 0) {
+        setSelectedDishPhotoIndex(0);
+      }
       return next;
     });
   }, []);
@@ -54,17 +60,23 @@ export function useCapture(): UseCaptureReturn {
       const next = prev.filter((_, i) => i !== index);
       return next;
     });
-    // Adjust dish photo index if the removed image was selected or before it
+    // Keep first photo (index 0) as finished dish if any images remain
     setSelectedDishPhotoIndex((prev) => {
       if (prev === null) return null;
-      if (prev === index) return null;
-      if (prev > index) return prev - 1;
+      // If we're deleting an image, keep the finished dish at index 0 if images exist
+      // This will be adjusted based on the new images length
+      if (index === 0) {
+        // If we're deleting the first photo, and it was the finished dish,
+        // the new first photo becomes the finished dish (still 0)
+        // Unless it's the only remaining image scenario handled by image count
+        return 0;
+      }
       return prev;
     });
   }, []);
 
-  const selectDishPhotoIndex = useCallback((index: number) => {
-    setSelectedDishPhotoIndex(index);
+  const setNotes = useCallback((newNotes: string) => {
+    setNotesState(newNotes);
   }, []);
 
   const setRating = useCallback((r: CaptureRating) => {
@@ -78,12 +90,6 @@ export function useCapture(): UseCaptureReturn {
     const countValidation = validateImageCount(images.length);
     if (!countValidation.valid) {
       setError(countValidation.error ?? 'Please add at least one photo.');
-      return null;
-    }
-
-    // Validate rating
-    if (rating === null) {
-      setError('Please rate the recipe before saving.');
       return null;
     }
 
@@ -116,7 +122,8 @@ export function useCapture(): UseCaptureReturn {
   const reset = useCallback(() => {
     setImages([]);
     setSelectedDishPhotoIndex(null);
-    setRatingState(null);
+    setRatingState(0); // Reset to Unknown
+    setNotesState('');
     setError(null);
     setIsSubmitting(false);
   }, []);
@@ -125,11 +132,12 @@ export function useCapture(): UseCaptureReturn {
     images,
     selectedDishPhotoIndex,
     rating,
+    notes,
     isSubmitting,
     error,
     addImage,
     removeImage,
-    selectDishPhotoIndex,
+    setNotes,
     setRating,
     submitRecipe,
     reset,

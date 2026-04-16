@@ -1,5 +1,5 @@
 export { CameraView } from './CameraView';
 export { ImageReview } from './ImageReview';
-export { FinishedDishSelector } from './FinishedDishSelector';
+export { NotesField } from './NotesField';
 export { RatingSelector } from './RatingSelector';
 export { SubmitConfirmation } from './SubmitConfirmation';

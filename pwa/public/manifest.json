@@ -4,9 +4,10 @@
   "description": "Capture meals, plan your week, discover what to cook next.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FDF8ED",
-  "theme_color": "#4B5D4D",
+  "background_color": "#F5F3FF",
+  "theme_color": "#4F46E5",
   "orientation": "portrait",
+  "permissions": ["camera"],
   "icons": [
     {
       "src": "/icons/icon-192.png",

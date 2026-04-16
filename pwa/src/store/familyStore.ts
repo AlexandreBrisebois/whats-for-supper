@@ -6,13 +6,6 @@ import { persist } from 'zustand/middleware';
 import { getFamilyMembers, createFamilyMember, deleteFamilyMember } from '@/lib/api/family';
 import type { FamilyMember } from '@/types/domain';
 
-const DEFAULT_EMOJIS = ['🧑', '👩', '👨', '🧒', '👧', '👦', '🧓', '👴', '👵'];
-
-function pickEmoji(name: string): string {
-  const index = name.charCodeAt(0) % DEFAULT_EMOJIS.length;
-  return DEFAULT_EMOJIS[index] ?? '🧑';
-}
-
 interface FamilyState {
   familyMembers: FamilyMember[];
   selectedMemberId: string | null;
@@ -43,10 +36,7 @@ export const useFamilyStore = create<FamilyState>()(
         if (!trimmed) return;
         set({ isLoading: true, error: null });
         try {
-          // Check if user selected a custom emoji
-          const selectedEmoji = typeof window !== 'undefined' ? sessionStorage.getItem('selectedEmoji') : null;
-          const emoji = selectedEmoji || pickEmoji(trimmed);
-          const member = await createFamilyMember({ name: trimmed, emoji });
+          const member = await createFamilyMember({ name: trimmed });
           set((state) => ({
             familyMembers: [...state.familyMembers, member],
             isLoading: false,

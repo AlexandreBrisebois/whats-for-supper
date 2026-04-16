@@ -31,20 +31,17 @@ export function FamilySelector({ onMemberSelected, isLoading = false }: FamilySe
 
   return (
     <div className="w-full space-y-6">
-      <div data-hint="family-list">
-        <FamilyMemberList
-          members={familyMembers ?? []}
-          selectedId={selectedMember?.id ?? null}
-          onSelect={onMemberSelected}
-        />
-      </div>
+      <FamilyMemberList
+        members={familyMembers ?? []}
+        selectedId={selectedMember?.id ?? null}
+        onSelect={onMemberSelected}
+      />
 
       {!showAddForm && (
         <Button
           type="button"
           variant="secondary"
           size="md"
-          data-hint="add-member-toggle"
           onClick={() => setShowAddForm(true)}
           fullWidth
         >
