@@ -36,21 +36,25 @@ services:
   # condition: service_started. The API self-migrates the database on boot.
   # ──────────────────────────────────────────────────────────────────────────
   api:
-    image: 192.168.1.226:5050/whats-for-supper-api:latest
+    build:
+      context: ./api
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "${API_PORT:-5000}:5000"
     environment:
-      POSTGRES_CONNECTION_STRING: postgres://recipe_app:<your-strong-password>@postgres:5432/recipe_app_db
-      ASPNETCORE_ENVIRONMENT: Production
+      POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING:-postgres://recipe_app:secure_dev_password@postgres:5432/recipe_app_db}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:5000
-      CORS_ALLOWED_ORIGINS: https://yourdomain.com
+      # Requests arrive from the PWA container (server-side rewrite), so allow the
+      # pwa service hostname. Wildcard covers any LAN IP the browser might use directly.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa:3000,http://localhost:3000,http://localhost:3001}
       RECIPES_ROOT: /data/recipes
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - /volume1/docker/whats-for-supper/recipes_data:/data/recipes
+      - recipes_data:/data/recipes
     networks:
       - app-network
 
@@ -58,13 +62,19 @@ services:
   # Next.js 16 PWA
   # ──────────────────────────────────────────────────────────────────────────
   pwa:
-    image: 192.168.1.226:5050/whats-for-supper-pwa:latest
+    build:
+      context: ./pwa
+      dockerfile: Dockerfile
+      args:
+        # Bakes the rewrite destination into the Next.js build.
+        # Must point to the API service name on the Docker network.
+        API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:5000}
     restart: unless-stopped
     ports:
-      - "80:3000"
+      - "${PWA_PORT:-3000}:3000"
     environment:
-      API_INTERNAL_URL: http://api:5000
-      NEXT_PUBLIC_API_BASE_URL: /backend
+      # /backend is the default — only override when running the PWA outside Docker.
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/backend}
     depends_on:
       - api
     healthcheck:

@@ -1,4 +1,7 @@
-@baseUrl = http://localhost:5001
+### @baseUrl = http://localhost:5001
+
+@baseUrl = http://192.168.1.226:9101
+
 @familyMemberId = 43cda4d2-9f07-44e5-9979-1c0d23635214
 @recipeId = 00000000-0000-0000-0000-000000000000
 @image1 = /Users/alex/WhatsForSupper/recipes/54533403-3951-4bf0-b159-a940c7e5e99e/original-0.jpg

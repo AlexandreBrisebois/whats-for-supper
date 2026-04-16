@@ -1,4 +1,7 @@
-@baseUrl = http://localhost:5001
+### @baseUrl = http://localhost:5001
+
+@baseUrl = http://192.168.1.226:9101
+
 @familyMemberId = e6ba4d3f-e257-44b0-8d29-d541c394f4cf
 
 ### List family members
