@@ -8,160 +8,16 @@ This document outlines the recommended folder structure for `pwa/src` to support
 pwa/
 ├── src/
 │   ├── app/                          # Next.js App Router
-│   │   ├── layout.tsx                # Root layout (design tokens, fonts, providers)
-│   │   ├── page.tsx                  # Home (redirects based on identity state)
-│   │   ├── error.tsx                 # Error boundary
-│   │   ├── not-found.tsx             # 404 page
-│   │   │
-│   │   ├── (auth)/                   # Route group: identity flows
+│   │   ├── layout.tsx                # Root layout
+│   │   ├── (auth)/                   # Identity flows
 │   │   │   ├── onboarding/
-│   │   │   │   ├── page.tsx          # Phase 0: Who are you? + hint system
-│   │   │   │   └── layout.tsx        # Onboarding layout
-│   │   │   └── settings/             # Phase 4+: Family management
-│   │   │       └── page.tsx
-│   │   │
-│   │   ├── (app)/                    # Route group: authenticated flows
-│   │   │   ├── capture/              # Phase 0+: Camera + upload
-│   │   │   │   ├── page.tsx          # Capture flow + hints
-│   │   │   │   ├── layout.tsx
+│   │   │   │   └── page.tsx          # "Who are you?"
+│   │   ├── (app)/                    # Authenticated flows
+│   │   │   ├── home/
+│   │   │   │   └── page.tsx
+│   │   │   ├── capture/
+│   │   │   │   ├── page.tsx
 │   │   │   │   └── confirm/
-│   │   │   │       └── page.tsx      # Confirmation screen
-│   │   │   │
-│   │   │   ├── planner/              # Phase 2+: Weekly dashboard
-│   │   │   │   ├── page.tsx
-│   │   │   │   └── layout.tsx
-│   │   │   │
-│   │   │   ├── discovery/            # Phase 3+: Swipe card UI
-│   │   │   │   ├── page.tsx
-│   │   │   │   └── layout.tsx
-│   │   │   │
-│   │   │   └── recipes/              # Phase 4+: Recipe detail
-│   │   │       ├── [id]/
-│   │   │       │   └── page.tsx
-│   │   │       └── layout.tsx
-│   │   │
-│   │   ├── api/                      # API routes (BFF pattern)
-│   │   │   ├── identity/
-│   │   │   │   └── route.ts          # Cookie read/write helpers
-│   │   │   ├── auth/
-│   │   │   │   └── route.ts          # Session management
-│   │   │   └── health/
-│   │   │       └── route.ts          # Health check endpoint
-│   │   │
-│   │   └── globals.css               # Design tokens, tailwind directives
-│   │
-│   ├── components/                   # Reusable UI components
-│   │   ├── ui/                       # Primitive/basic components
-│   │   │   ├── Button.tsx
-│   │   │   ├── Input.tsx
-│   │   │   ├── Card.tsx
-│   │   │   ├── Overlay.tsx
-│   │   │   ├── Spinner.tsx
-│   │   │   ├── GlassPanel.tsx        # Glassmorphic container
-│   │   │   └── index.ts              # Barrel export
-│   │   │
-│   │   ├── hints/                    # Hint/tour system
-│   │   │   ├── HintOverlay.tsx       # Spotlight overlay component
-│   │   │   ├── HintStep.tsx          # Individual hint step
-│   │   │   ├── Spotlight.tsx         # Spotlight effect (canvas/SVG)
-│   │   │   ├── HintPopover.tsx       # Text popover for hints
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── identity/                 # Identity/profile components
-│   │   │   ├── ProfileCard.tsx       # Individual family member profile card
-│   │   │   ├── ProfileList.tsx       # List of profiles to select from
-│   │   │   ├── CreateProfileForm.tsx # Input form for new family member
-│   │   │   ├── WhoAreYouOverlay.tsx  # Main onboarding overlay
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── capture/                  # Recipe capture components
-│   │   │   ├── CameraCapture.tsx     # Camera access + photo taking
-│   │   │   ├── PhotoGallery.tsx      # Horizontal scrollable gallery
-│   │   │   ├── PhotoRemoveButton.tsx # Remove button for photos
-│   │   │   ├── CookedMealSelector.tsx # Select which photo is the cooked meal
-│   │   │   ├── RatingSelector.tsx    # 4-point emoji rating system
-│   │   │   ├── RecipeForm.tsx        # Label + notes input (optional)
-│   │   │   ├── SubmitButton.tsx      # Upload + loading state
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── planner/                  # Planner components (Phase 2+)
-│   │   │   ├── DayScruber.tsx        # Horizontal calendar strip
-│   │   │   ├── MealSlot.tsx          # Individual meal slot
-│   │   │   ├── WeeklyList.tsx        # Weekly meal list
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── discovery/                # Discovery components (Phase 3+)
-│   │   │   ├── SwipeCard.tsx         # Individual recipe card
-│   │   │   ├── CardStack.tsx         # Stack container
-│   │   │   ├── SwipeStamp.tsx        # Like/Nope stamp animation
-│   │   │   ├── ActionBar.tsx         # Back/Undo buttons
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── layout/                   # Layout components
-│   │   │   ├── Header.tsx            # Top navigation
-│   │   │   ├── Footer.tsx            # Bottom navigation
-│   │   │   ├── SafeAreaLayout.tsx    # Safe area wrapper for notches
-│   │   │   └── index.ts
-│   │   │
-│   │   └── common/                   # Shared/utility components
-│   │       ├── Loading.tsx
-│   │       ├── ErrorFallback.tsx
-│   │       ├── EmptyState.tsx
-│   │       └── index.ts
-│   │
-│   ├── hooks/                        # Custom React hooks
-│   │   ├── useIdentity.ts            # Read/write family member ID
-│   │   ├── useHintTour.ts            # Manage hint tour state
-│   │   ├── useMediaQuery.ts          # Responsive breakpoints
-│   │   ├── useLocalStorage.ts        # Persistent state in localStorage
-│   │   ├── useAsync.ts               # Data fetching wrapper
-│   │   ├── useCamera.ts              # Camera access (Phase 0+)
-│   │   ├── usePlan.ts                # Planner state (Phase 2+)
-│   │   ├── useDiscovery.ts           # Discovery pool state (Phase 3+)
-│   │   └── index.ts                  # Barrel export
-│   │
-│   ├── store/                        # Zustand stores (state management)
-│   │   ├── identityStore.ts          # Family member identity
-│   │   ├── tourStore.ts              # Hint tour state
-│   │   ├── plannerStore.ts           # Weekly planner state (Phase 2+)
-│   │   ├── discoveryStore.ts         # Discovery pool + votes (Phase 3+)
-│   │   ├── uiStore.ts                # UI state (modals, loading, etc)
-│   │   └── index.ts                  # Barrel export
-│   │
-│   ├── lib/                          # Utilities and helpers
-│   │   ├── api/
-│   │   │   ├── client.ts             # Typed fetch wrapper
-│   │   │   ├── family.ts             # Family member endpoints
-│   │   │   ├── recipes.ts            # Recipe endpoints
-│   │   │   ├── tours.ts              # Tour completion endpoints
-│   │   │   └── types.ts              # API response types
-│   │   │
-│   │   ├── i18n/
-│   │   │   ├── index.ts              # i18n initialization + helpers
-│   │   │   ├── translate.ts          # Translation function with interpolation
-│   │   │   ├── getLocale.ts          # Get current locale from cookie/storage
-│   │   │   └── types.ts              # Locale types
-│   │   │
-│   │   ├── identity/
-│   │   │   ├── cookie.ts             # Family member ID cookie helpers
-│   │   │   ├── storage.ts            # localStorage helpers
-│   │   │   └── types.ts
-│   │   │
-│   │   ├── validation/
-│   │   │   ├── forms.ts              # Form validation schemas
-│   │   │   └── image.ts              # Image validation (size, type, etc)
-│   │   │
-│   │   ├── constants/
-│   │   │   ├── routes.ts             # Route paths
-│   │   │   ├── api.ts                # API endpoints
-│   │   │   ├── config.ts             # App configuration
-│   │   │   └── theme.ts              # Design token values
-│   │   │
-│   │   ├── errors/
-│   │   │   ├── AppError.ts           # Custom error class
-│   │   │   └── errorHandler.ts       # Global error handling
-│   │   │
-│   │   └── utils/
 │   │       ├── device.ts             # Device detection (mobile/tablet/desktop)
 │   │       ├── time.ts               # Date/time utilities
 │   │       ├── file.ts               # File handling (image conversion, etc)
@@ -188,7 +44,7 @@ pwa/
 │   ├── context/                      # React context (if needed, avoid unless necessary)
 │   │   └── ThemeContext.tsx          # Light/dark mode context (future)
 │   │
-│   └── middleware.ts                 # Next.js middleware (routing, redirects)
+│   └── proxy.ts                      # Next.js proxy (routing, redirects)
 │
 ├── public/                           # Static assets
 │   ├── icons/                        # App icons (favicon, apple-touch-icon, etc)
@@ -256,7 +112,7 @@ src/
 ├── lib/ (api, i18n, identity)
 ├── locales/ (en, fr)
 ├── types/
-├── middleware.ts
+├── proxy.ts
 └── globals.css
 ```
 

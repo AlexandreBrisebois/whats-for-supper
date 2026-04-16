@@ -40,5 +40,28 @@
     "cameraUnavailable": "Aucune caméra trouvée",
     "cameraDenied": "Accès caméra refusé",
     "choosePhotos": "Choisir des photos"
+  },
+  "profile": {
+    "title": "Profil de famille",
+    "subtitle": "Changer de membre ou gérer votre groupe.",
+    "activeMember": "Membre actif",
+    "language": "Langue",
+    "selectLanguage": "Choisir la langue de l'interface",
+    "english": "Anglais",
+    "french": "Français",
+    "loading": "Chargement des membres…"
+  },
+  "family": {
+    "addPrompt": "Vous ne voyez pas votre nom ? Ajoutez-le",
+    "addMember": "Ajouter un membre",
+    "noMembers": "Aucun membre pour le moment. Ajoutez-en un !",
+    "selected": "Sélectionné",
+    "saveName": "Enregistrer le nom",
+    "cancelEditing": "Annuler l'édition",
+    "editMember": "Modifier {{name}}",
+    "nameLabel": "Nom",
+    "namePlaceholder": "ex: Alex",
+    "addMemberButton": "Ajouter le membre",
+    "nameError": "Veuillez entrer un nom."
   }
 }

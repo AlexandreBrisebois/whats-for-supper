@@ -21,6 +21,14 @@ Content-Type: application/json
   }
 %}
 
+### Update a family member
+PUT {{baseUrl}}/api/family/{{familyMemberId}}
+Content-Type: application/json
+
+{
+  "name": "papa (updated)"
+}
+
 ### Delete a family member
 DELETE {{baseUrl}}/api/family/{{familyMemberId}}
 Accept: application/json

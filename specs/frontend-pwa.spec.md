@@ -6,64 +6,49 @@ The "What's For Supper" frontend is a mobile-first Progressive Web App (PWA) bui
 
 | Concern | Choice | Rationale |
 |---|---|---|
-| Framework | Next.js (App Router) | SSR for initial load speed; API routes for BFF pattern; aligns with project direction |
-| Language | TypeScript | Type safety across components and API contracts |
-| Styling | Tailwind CSS | Utility-first; easy to enforce design tokens and responsive breakpoints |
-| State | Zustand | Lightweight client store for identity, planner state, and inspiration pool |
-| PWA | `next-pwa` (Workbox) | Service Worker generation; offline caching; home screen installability |
-| Animations | Framer Motion | Swipe physics, card transitions, micro-animations |
-| Camera | `react-webcam` or native `getUserMedia` | Camera access for recipe capture |
+| Framework | Next.js 16.2.3 (App Router) | Current stable release; SSR for speed; built-in API routing |
+| Language | TypeScript 5.7+ | Type safety across components and API contracts |
+| Styling | Tailwind CSS 3.4+ | Utility-first; design tokens centralized in `tailwind.config.ts` |
+| State | Zustand 5.0+ | Lightweight client store for identity and UI state |
+| I18n | `next-intl` 4.9+ | Server-side internationalization support |
+| Icons | Lucide React 0.468+ | Consistent, accessible iconography |
 
 ## 2. Project Structure
 
 ```
 src/
-├── app/
-│   ├── layout.tsx              # Root layout, design tokens, font loading
-│   ├── page.tsx                # Home: redirects based on identity state
-│   ├── onboarding/
-│   │   └── page.tsx            # Phase 0: "Who are you?" profile selection
-│   ├── capture/
-│   │   └── page.tsx            # Phase 1: Camera + rating + save
-│   ├── planner/
-│   │   └── page.tsx            # Phase 2: Weekly dashboard
-│   ├── discovery/
-│   │   └── page.tsx            # Phase 3: Swipe card UI
-│   └── settings/
-│       └── page.tsx            # Family management, profile switch
+├── app/                          # Next.js App Router
+│   ├── layout.tsx                # Root layout, design tokens, fonts
+│   ├── page.tsx                  # Landing/Safe Redirect
+│   ├── (auth)/                   # Identity flows
+│   │   ├── onboarding/
+│   │   │   └── page.tsx          # "Who are you?" selection
+│   │   └── settings/
+│   │       └── page.tsx          # Phase 4: Family management
+│   ├── (app)/                    # App-shell flows
+│   │   ├── home/
+│   │   ├── capture/
+│   │   ├── planner/
+│   │   └── discovery/
+│   └── api/                      # BFF Routes (Proxied to backend)
 ├── components/
-│   ├── identity/
-│   │   ├── ProfileCard.tsx
-│   │   └── WhoAreYouOverlay.tsx
-│   ├── capture/
-│   │   ├── CameraCapture.tsx
-│   │   ├── PhotoGallery.tsx
-│   │   └── RatingSelector.tsx
-│   ├── planner/
-│   │   ├── DayScrubber.tsx
-│   │   ├── MealSlot.tsx
-│   │   └── WeeklyList.tsx
-│   ├── discovery/
-│   │   ├── SwipeCard.tsx
-│   │   ├── CardStack.tsx
-│   │   └── SwipeStamp.tsx
-│   └── ui/
-│       ├── GlassPanel.tsx
-│       └── Spinner.tsx
+│   ├── identity/                 # IdentityValidator, Profile cards
+│   ├── capture/                  # CameraView, ImageReview, Rating
+│   ├── common/                   # Navigation, Layout, Header
+│   └── ui/                       # Button, Card, Spinner
 ├── lib/
-│   ├── api.ts                  # Typed fetch wrappers for the Recipe API
-│   ├── identity.ts             # Cookie read/write for X-Family-Member-Id
-│   └── store.ts                # Zustand store definitions
-└── styles/
-    └── globals.css             # Design token CSS variables
+│   ├── api/                      # typed fetch (client/server-client)
+│   ├── constants/                # Routes, config
+│   └── i18n/                     # next-intl configuration
+└── store/                        # identity-store, ui-store
 ```
 
 ## 3. Identity & Cookie
 
 - On first launch, if no identity cookie exists, redirect to `/onboarding`.
-- The selected `familyMemberId` is stored in a **persistent cookie** (30-day expiry, `SameSite=Lax`).
-- Every API call includes the `X-Family-Member-Id` header, populated from the cookie value via `lib/identity.ts`.
-- Profile switching is available in Settings; clears the cookie and redirects to `/onboarding`.
+- The selected `member_id` is stored in a **persistent cookie** (30-day expiry).
+- Every API call includes the `X-Family-Member-Id` header, populated from the `member_id` cookie.
+- Profile switching is handled via the onboarding page; clearing the cookie resets the state.
 
 ## 4. API Communication
 
@@ -99,10 +84,10 @@ See [recipe-pwa.spec.md §1](recipe-pwa.spec.md) for color palettes (Earth Tones
 
 ## 9. Phase Rollout
 
-| Phase | Route | Features |
-|---|---|---|
-| 0 | `/onboarding` | Profile selection, cookie persistence |
-| 1 | `/capture` | Camera, photo gallery, 4-point rating, upload |
-| 2 | `/planner` | Weekly list, day scrubber, sparse meal slots |
-| 3 | `/discovery` | Swipe card stack, stamps, inspiration pool |
-| 4 | `/settings` | Family management, profile switch |
+| Phase | Purpose | Features | Status |
+|---|---|---|---|
+| 0 | Foundation | Onboarding, Identity, Basic Capture | **Implemented** |
+| 1 | AI Logic | Smart extraction, Hero images, Redis | **Next Focus** |
+| 2 | Planning | Weekly dashboard, day scrubber | Planned |
+| 3 | Discovery | Swipe interaction, Consensus logic | Planned |
+| 4 | Management | Profile settings, recipe history | Planned |

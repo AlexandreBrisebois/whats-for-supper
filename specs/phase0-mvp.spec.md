@@ -340,41 +340,27 @@ if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("REDIS_CONNECTION_S
 **Note:** REST API endpoints for recipe retrieval (`/api/recipes`, `/api/recipes/{id}`) exist for testing via curl/Postman; no browser UI for recipe viewing in Phase 0.
 
 ### 3.2 First Launch Flow
-
 1. **User opens app in browser.**
-2. Check for `familyMemberId` cookie (30-day expiry).
+2. Check for `member_id` cookie (30-day expiry).
 3. If no cookie → redirect to `/onboarding`.
 4. `/onboarding` renders family member selection:
    - Fetches `GET /api/family` → list of family members.
    - Shows list + "Don't see your name? Add it" button.
-   - Tapping "Add it" → input name → `POST /api/family` → adds to list.
-   - User taps their name → `familyMemberId` cookie set → redirect to `/` (home).
-5. Home screen (`/`) shows "Add Recipe" button.
+   - User taps their name → `member_id` cookie set → redirect to `/home`.
+5. Home screen (`/home`) shows welcome message and navigation to Capture.
 
 ### 3.3 Capture Flow
-
-1. User taps "Add Recipe" (in `/planner` or `/recipes` view).
-2. Navigate to `/capture`.
-3. Camera component (using `react-webcam` or native `getUserMedia`):
+1. User navigates to `/capture`.
+2. Camera component (using native `getUserMedia`):
    - User can take multiple photos.
-   - After each photo, add to a gallery strip.
-4. Cooked meal image selection (required):
-   - User must tap one image to mark it as the "cooked recipe" image, OR
-   - Select "None of these show the cooked meal" to set `cookedMealImageIndex = -1` (for GenAI to generate later).
-5. Rating selector:
+   - Photos are displayed in an `ImageReview` gallery strip.
+3. Cooked meal image selection:
+   - User can select which image shows the finished dish (sets `finishedDishImageIndex`).
+4. Rating selector:
    - 4-point scale (0 = Unknown, 1 = Dislike, 2 = Like, 3 = Love).
-   - Star or emoji icons.
-6. Submit button → `POST /api/recipes` with:
-   - All photos as multipart files.
-   - `rating` as form field.
-   - `cookedMealImageIndex` as form field (0–based index or `-1`).
-   - `X-Family-Member-Id` header from cookie.
-7. On success (recipeId returned) → navigate to `/capture/confirm`.
-8. `/capture/confirm` shows:
-   - Confirmation message ("Recipe saved!").
-   - Recipe ID displayed.
-   - [Add Another] button → `/capture` (reset form).
-   - Auto-redirect to home (`/`) after brief delay or user dismissal.
+   - Large touchable icons.
+5. Submit button → `POST /api/recipes` with multipart data and `X-Family-Member-Id` header.
+6. On success → show `SubmitConfirmation` modal/view.
 
 ### 3.4 Recipe API (Testing Only)
 

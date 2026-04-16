@@ -122,17 +122,4 @@ public class RecipeService(
         };
     }
 
-    /// <summary>
-    /// Marks a hint tour as completed for the given family member.
-    /// Idempotent — calling it twice for the same tourId is a no-op.
-    /// </summary>
-    public async Task CompleteTour(Guid familyMemberId, string tourId)
-    {
-        var member = await db.FamilyMembers.FindAsync(familyMemberId)
-            ?? throw new KeyNotFoundException($"Family member {familyMemberId} not found.");
-
-        member.CompletedTours[tourId] = true;
-        member.UpdatedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync();
-    }
 }

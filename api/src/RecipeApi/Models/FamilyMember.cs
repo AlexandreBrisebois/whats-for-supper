@@ -15,13 +15,6 @@ public class FamilyMember
     [Column("name")]
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>
-    /// JSON object tracking which onboarding hint tours this member has dismissed.
-    /// e.g. { "capture": true, "planner": true }
-    /// </summary>
-    [Column("completed_tours", TypeName = "jsonb")]
-    public Dictionary<string, bool> CompletedTours { get; set; } = [];
-
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 

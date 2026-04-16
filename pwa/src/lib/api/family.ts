@@ -15,6 +15,14 @@ export async function createFamilyMember(
   return data.data;
 }
 
+export async function updateFamilyMember(
+  id: string,
+  payload: Pick<FamilyMember, 'name'>
+): Promise<FamilyMember> {
+  const { data } = await apiClient.put<ApiResponse<FamilyMember>>(`/api/family/${id}`, payload);
+  return data.data;
+}
+
 export async function deleteFamilyMember(id: string): Promise<void> {
   await apiClient.delete(`/api/family/${id}`);
 }

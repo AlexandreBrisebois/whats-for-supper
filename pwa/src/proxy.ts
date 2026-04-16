@@ -5,7 +5,7 @@ import { ROUTES } from '@/lib/constants/routes';
 /** Paths accessible without a selected family member. */
 const PUBLIC_PATHS: string[] = [ROUTES.LANDING, ROUTES.ONBOARDING, '/api/health'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Always allow static assets and internal Next.js paths
@@ -26,24 +26,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 3. Read the identity cookie
-  const memberId = request.cookies.get('member_id')?.value;
-
-  // 4. Case: Authenticated user visiting / → skip to /home
-  // (We now allow access to /onboarding so users can switch members)
-  if (pathname === ROUTES.LANDING && memberId) {
-    return NextResponse.redirect(new URL(ROUTES.HOME, request.url));
-  }
-
-  // 5. Case: Public paths are always reachable
-  if (PUBLIC_PATHS.includes(pathname)) {
-    return NextResponse.next();
-  }
-
-  // 6. Case: Protected path without a member selection → redirect to onboarding
-  if (!memberId) {
-    return NextResponse.redirect(new URL(ROUTES.ONBOARDING, request.url));
-  }
+  // 3. (Note) LocalStorage-exclusive identity:
+  // Middleware cannot access localStorage, so we always allow the request 
+  // and let the client-side IdentityValidator handle redirection if no member is set.
 
   return NextResponse.next();
 }

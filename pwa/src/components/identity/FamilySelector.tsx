@@ -7,13 +7,14 @@ import { AddFamilyMemberForm } from '@/components/identity/AddFamilyMemberForm';
 import { Button } from '@/components/ui/button';
 import { useFamilyStore } from '@/store/familyStore';
 import { useFamily } from '@/hooks/useFamily';
+import { t } from '@/locales';
 
 interface FamilySelectorProps {
-  onMemberSelected: (memberId: string) => void;
+  onFamilyMemberSelected: (familyMemberId: string) => void;
   isLoading?: boolean;
 }
 
-export function FamilySelector({ onMemberSelected, isLoading = false }: FamilySelectorProps) {
+export function FamilySelector({ onFamilyMemberSelected, isLoading = false }: FamilySelectorProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const { familyMembers, selectedMember, addMember, isLoading: storeLoading } = useFamily();
 
@@ -25,7 +26,7 @@ export function FamilySelector({ onMemberSelected, isLoading = false }: FamilySe
     const members = useFamilyStore.getState().familyMembers;
     const newest = members[members.length - 1];
     if (newest) {
-      onMemberSelected(newest.id);
+      onFamilyMemberSelected(newest.id);
     }
   }
 
@@ -34,7 +35,7 @@ export function FamilySelector({ onMemberSelected, isLoading = false }: FamilySe
       <FamilyMemberList
         members={familyMembers ?? []}
         selectedId={selectedMember?.id ?? null}
-        onSelect={onMemberSelected}
+        onSelect={onFamilyMemberSelected}
       />
 
       {!showAddForm && (
@@ -45,21 +46,23 @@ export function FamilySelector({ onMemberSelected, isLoading = false }: FamilySe
           onClick={() => setShowAddForm(true)}
           fullWidth
         >
-          Don&apos;t see your name? Add it
+          {t('family.addPrompt', "Don't see your name? Add it")}
         </Button>
       )}
 
       {showAddForm && (
         <div className="rounded-2xl bg-white/60 p-5 shadow-card">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-medium text-charcoal">Add a family member</p>
+            <p className="text-sm font-medium text-charcoal">
+              {t('family.addMember', 'Add a family member')}
+            </p>
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
               className="text-xs text-charcoal-400 hover:text-charcoal focus:outline-none"
               aria-label="Hide add member form"
             >
-              Cancel
+              {t('buttons.cancel', 'Cancel')}
             </button>
           </div>
           <AddFamilyMemberForm onSubmit={handleAddAndSelect} isLoading={isBusy} />

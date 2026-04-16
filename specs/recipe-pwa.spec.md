@@ -7,34 +7,17 @@ The application uses a modern, vibrant, and approachable design language. Users 
 - **Option B (Vibrant Tones)**: [vibrant_light_mockup.png](file:///Users/alex/Code/whats-for-supper/src/specs/mockups/vibrant_light_mockup.png)
 - **Dark Mode Reference**: [demo_mockup.png](file:///Users/alex/Code/whats-for-supper/src/specs/mockups/demo_mockup.png)
 
-### 1.1 Color Option A: Sophisticated Home (Earth Tones)
-Curated to feel warm, organic, and premium. Targeting a "Modern Organic" vibe.
+### 1.1 Design System: Discovery Spark
+Curated to feel energetic, clean, and tech-forward. This is the primary design language for the application.
 
 #### Light Mode
-- **Background**: `#FDF8ED` (Warm Cream)
+- **Background**: `#F5F3FF` (Lavender)
 - **Surface**: `#FFFFFF` (White)
-- **Primary**: `#4B5D4D` (Dark Sage Green)
-- **Secondary**: `#B25E4C` (Deep Terracotta)
-- **Text (Primary)**: `#2D312E` (Deep Charcoal Green)
+- **Primary**: `#4F46E5` (Indigo)
+- **Secondary**: `#DB2777` (Pink)
+- **Text (Primary)**: `#2D312E` (Charcoal)
 
-#### Dark Mode
-- **Background**: `#1A1C1A` (Deep Pine Charcoal)
-- **Surface**: `#2D312E` (Dark Forest)
-- **Primary**: `#9DA993` (Light Sage)
-- **Secondary**: `#E2A292` (Soft Terracotta)
-- **Text (Primary)**: `#FDFBF7` (Off-White)
-
-### 1.2 Color Option B: Modern Professional (Vibrant Tones)
-Curated to feel energetic, clean, and tech-forward.
-
-#### Light Mode
-- **Background**: `#F5F3FF` (Light Lavender)
-- **Surface**: `#FFFFFF` (White)
-- **Primary**: `#4F46E5` (Indigo 600)
-- **Secondary**: `#DB2777` (Pink 600)
-- **Text (Primary)**: `#111827` (Gray 950)
-
-#### Dark Mode
+#### Dark Mode (Phase 5+)
 - **Background**: `#0F172A` (Slate 950)
 - **Surface**: `#1E293B` (Slate 800)
 - **Primary**: `#818CF8` (Indigo 400)
@@ -62,10 +45,10 @@ Curated to feel energetic, clean, and tech-forward.
 
 ### 1.5 Family Identity & Persistence
 The application uses a passwordless, profile-based identity model to track family involvement.
-- **Identity Selection**: Upon first launch, the user is presented with a "Who are you?" overlay to select their family profile.
-- **Persistence**: The selected identity is stored in `localStorage` or a persistent cookie, ensuring the user remains logged in across sessions on the same device.
-- **Profile Management**: New family members can be added or removed at any time through a dedicated "Family Settings" interface (accessible via Settings).
-- **Manual Override**: Profile switching is available in the Settings menu for devices shared by multiple family members.
+- **Identity Selection**: Upon first launch, the user is presented with a "Who are you?" onboarding page to select their family profile.
+- **Persistence**: The selected identity is stored in a persistent cookie named `member_id`, ensuring the user remains logged in across sessions on the same device.
+- **Profile Management**: New family members can be added or removed through a dedicated management interface (Settings/Onboarding).
+- **Manual Override**: Profile switching is available in the Onboarding flow (accessible via navigation) for devices shared by multiple family members.
 
 ## 2. PWA Asset Requirements
 
@@ -205,15 +188,15 @@ To support planning and the "Light Bulb" mode:
 
 ## 7. Implementation Roadmap
 
-### Phase 0: Family Foundation
-**Goal**: Establish the passwordless identity layer and shared household data.
-- **Features**: Identity API (`/api/family`), "Who are you?" onboarding, device persistence, "Manage Family" settings.
-- **Value**: Ensures every action is attributed to a family member from day one.
+### Phase 0: Family Foundation & Basic Capture (Implemented)
+**Goal**: Establish the passwordless identity layer and the core "digital shoe-box" for recipes.
+- **Features**: Identity API (`/api/family`), "Who are you?" onboarding, `member_id` cookie persistence, manual camera capture, 4-point rating, and raw photo storage.
+- **Value**: Establishes the attribution layer and allows immediate digitization of physical recipes.
 
-### Phase 1: Recipe Acquisition (Current Focus)
-**Goal**: Build the entry-point for digitizing recipes with a focus on mobile speed and attribution.
-- **Features**: Camera capture, 4-point rating, `addedBy` metadata, PWA home-screen foundation.
-- **Value**: Replaces manual uploads with a frictionless, personalized tool.
+### Phase 1: Intelligent Acquisition (Current Focus)
+**Goal**: Add intelligence to the capture process using AI.
+- **Features**: AI-driven metadata extraction (ingredients, instructions), automated "Hero" image generation, and background processing via Redis.
+- **Value**: Transforms raw photos into searchable, structured data.
 
 ### Phase 2: Weekly Dashboard
 **Goal**: The "Home Base" for the family to see what's planned.
@@ -232,4 +215,4 @@ To support planning and the "Light Bulb" mode:
 
 ### Phase 5: PWA Polish & Hosting
 **Goal**: Deployment and final UX refinements.
-- **Features**: Dark/Light mode optimization, full asset deployment, Docker-based self-hosting guide.
+- **Features**: Dark mode (Slate theme), full asset deployment, Docker-based self-hosting guide.

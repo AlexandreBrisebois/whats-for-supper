@@ -1,3 +1,5 @@
-export { useIdentity } from './use-identity';
-export { useLocalStorage } from './use-local-storage';
-export { useMediaQuery } from './use-media-query';
+export { useFamily } from './useFamily';
+export { useLocalStorage } from './useLocalStorage';
+export { useMediaQuery } from './useMediaQuery';
+export { useDevice } from './useDevice';
+export { useCapture } from './useCapture';

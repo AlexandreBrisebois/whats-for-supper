@@ -1,5 +1,3 @@
-import { cookies } from 'next/headers';
-
 /**
  * serverFetch is a lightweight wrapper around the native fetch API
  * for use in Server Components. It automatically routes to the internal 
@@ -10,13 +8,9 @@ export async function serverFetch<T>(endpoint: string, options: RequestInit = {}
   const baseUrl = process.env.API_INTERNAL_URL ?? 'http://api:5000';
   const url = `${baseUrl}${endpoint.replace(/^\/backend/, '')}`;
 
-  const cookieStore = await cookies();
-  const memberId = cookieStore.get('member_id')?.value;
-
   const headers = new Headers(options.headers);
-  if (memberId) {
-    headers.set('X-Family-Member-Id', memberId);
-  }
+  // NOTE: Identity (localStorage) is not accessible to Server Components.
+  // Any member-specific data must be fetched by Client Components.
 
   const response = await fetch(url, {
     ...options,

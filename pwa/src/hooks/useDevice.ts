@@ -1,6 +1,6 @@
 'use client';
 
-import { useMediaQuery } from './use-media-query';
+import { useMediaQuery } from './useMediaQuery';
 
 /**
  * Detects the current device type and orientation.

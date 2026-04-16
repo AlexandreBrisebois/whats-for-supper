@@ -7,28 +7,21 @@ import { FamilySelector } from '@/components/identity/FamilySelector';
 import { useFamily } from '@/hooks/useFamily';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { ROUTES } from '@/lib/constants/routes';
-import { getMemberIdFromCookie, setMemberIdCookie } from '@/lib/identity/cookie';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { isLoading, error, loadFamily } = useFamily();
+  const { isLoading, error, selectedFamilyMemberId, loadFamily, selectFamilyMember } = useFamily();
   const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
 
   const [isSwitching, setIsSwitching] = useState(false);
   
   useEffect(() => {
-    setIsSwitching(!!getMemberIdFromCookie());
+    setIsSwitching(!!selectedFamilyMemberId);
     void loadFamily();
-  }, [loadFamily]);
+  }, [loadFamily, selectedFamilyMemberId]);
 
-  function handleMemberSelected(memberId: string) {
-    // Persist in cookie so server-side middleware can read it
-    setMemberIdCookie(memberId);
-    try {
-      localStorage.setItem('selectedMemberId', memberId);
-    } catch {
-      // localStorage may be unavailable in private-browsing edge cases
-    }
+  function handleFamilyMemberSelected(familyMemberId: string) {
+    selectFamilyMember(familyMemberId);
     completeOnboarding();
     router.push(ROUTES.HOME);
   }
@@ -58,7 +51,7 @@ export default function OnboardingPage() {
 
       {/* Family selector */}
       <div className="w-full max-w-sm">
-        <FamilySelector onMemberSelected={handleMemberSelected} isLoading={isLoading} />
+        <FamilySelector onFamilyMemberSelected={handleFamilyMemberSelected} isLoading={isLoading} />
       </div>
     </main>
   );

@@ -1,11 +1,24 @@
-import type { Metadata, Viewport } from 'next';
+import { Metadata, Viewport } from 'next';
+import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 import { LocaleProvider } from '@/components/common/LocaleProvider';
 import { IdentityValidator } from '@/components/identity/IdentityValidator';
 
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-outfit',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: "What's for Supper",
-  description: 'Capture meals, plan your week, discover what to cook next.',
+  description: 'Capture recipes, plan your week, discover what to cook next.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -19,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#4F46E5',
+  themeColor: '#CD5D45',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -28,8 +41,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-dvh bg-lavender text-charcoal antialiased">
+    <html lang="en" className={`${outfit.variable} ${inter.variable}`}>
+      <body className="min-h-dvh bg-cream text-charcoal antialiased">
         <LocaleProvider>
           <IdentityValidator>
             {children}

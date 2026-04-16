@@ -19,9 +19,6 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 CREATE TABLE IF NOT EXISTS family_members (
     id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     name            VARCHAR(100) NOT NULL,
-    -- JSON object tracking which onboarding hint tours this member has dismissed.
-    -- e.g. { "capture": true, "planner": true }
-    completed_tours JSONB        NOT NULL DEFAULT '{}',
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );

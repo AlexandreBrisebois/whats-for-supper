@@ -16,8 +16,8 @@ public class FamilyController(FamilyService familyService) : ControllerBase
         {
             Id = m.Id,
             Name = m.Name,
-            CompletedTours = m.CompletedTours,
-            CreatedAt = m.CreatedAt
+            CreatedAt = m.CreatedAt,
+            UpdatedAt = m.UpdatedAt
         }).ToList();
         return Ok(new { data = dtos });
     }
@@ -30,10 +30,24 @@ public class FamilyController(FamilyService familyService) : ControllerBase
         {
             Id = member.Id,
             Name = member.Name,
-            CompletedTours = member.CompletedTours,
-            CreatedAt = member.CreatedAt
+            CreatedAt = member.CreatedAt,
+            UpdatedAt = member.UpdatedAt
         };
         return CreatedAtAction(nameof(GetAll), new { data = result });
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateFamilyMemberDto dto)
+    {
+        var member = await familyService.UpdateFamilyMember(id, dto.Name);
+        var result = new FamilyMemberDto
+        {
+            Id = member.Id,
+            Name = member.Name,
+            CreatedAt = member.CreatedAt,
+            UpdatedAt = member.UpdatedAt
+        };
+        return Ok(new { data = result });
     }
 
     [HttpDelete("{id:guid}")]

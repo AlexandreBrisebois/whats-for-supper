@@ -1,3 +1,3 @@
-export { useIdentityStore } from './identity-store';
-export { useUiStore } from './ui-store';
+export { useUiStore } from './uiStore';
 export { useOnboardingStore } from './onboardingStore';
+export { useFamilyStore } from './familyStore';

@@ -4,6 +4,7 @@ export interface FamilyMember {
   id: string;
   name: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface RecipeImage {

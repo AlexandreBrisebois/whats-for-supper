@@ -25,6 +25,21 @@ public class FamilyService(RecipeDbContext db)
         return member;
     }
 
+    public async Task<FamilyMember> UpdateFamilyMember(Guid id, string name)
+    {
+        var trimmed = name.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+            throw new ArgumentException("Family member name must not be empty.");
+
+        var member = await db.FamilyMembers.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Family member {id} not found.");
+
+        member.Name = trimmed;
+        member.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+        return member;
+    }
+
     public async Task DeleteFamilyMember(Guid id)
     {
         var member = await db.FamilyMembers.FindAsync(id)

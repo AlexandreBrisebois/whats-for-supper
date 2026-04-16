@@ -57,27 +57,34 @@ export function useCapture(): UseCaptureReturn {
   }, []);
 
   const removeImage = useCallback((index: number) => {
+    let newImages: File[] = [];
     setImages((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      return next;
+      newImages = prev.filter((_, i) => i !== index);
+      return newImages;
     });
-    // Keep first photo (index 0) as finished dish if any images remain
+
     setSelectedDishPhotoIndex((prev) => {
-      if (prev === null) return null;
-      // If we're deleting an image, keep the finished dish at index 0 if images exist
-      // This will be adjusted based on the new images length
-      if (index === 0) {
-        // If we're deleting the first photo, and it was the finished dish,
-        // the new first photo becomes the finished dish (still 0)
-        // Unless it's the only remaining image scenario handled by image count
+      if (newImages.length === 0) return null;
+      if (prev === null) return 0;
+
+      // If we're deleting the selected image, default to the first image
+      if (index === prev) {
         return 0;
       }
-      return prev;
+
+      // If we're deleting an image before the selected one, shift the index back
+      if (index < prev) {
+        return prev - 1;
+      }
+
+      // If we're deleting an image after the selected one, keep it as is
+      // But ensure it's within bounds
+      return Math.min(prev, newImages.length - 1);
     });
   }, []);
 
   const setSelectedDishPhotoIndexFn = useCallback((index: number | null) => {
-    setSelectedDishPhotoIndex(index);
+    setSelectedDishPhotoIndex((prev) => (prev === index ? null : index));
   }, []);
 
   const setNotes = useCallback((newNotes: string) => {

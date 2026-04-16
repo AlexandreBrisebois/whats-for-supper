@@ -1,37 +1,43 @@
-# ADR 012: Branding and Logo Identity
+# ADR 012: Branding and Logo Identity (Solar Earth Pivot)
 
-The Discovery Spark: Modern, energized, and tech-forward. Highlighting the ' eureka' moment of finding the perfect recipe.
+The Solar Earth Identity: Grounded, warm, and utility-focused. Designed to reduce mealtime anxiety for busy families while maintaining a premium, aesthetic sanctuary.
 
 ## Status
-Accepted
+Accepted (Pivoted from Discovery Spark)
 
 ## Context
-The identity needed to resonate with the target audience of busy moms (ages 30–40) while balancing the app's two core features: frictionless entry (Capture) and decision-making inspiration (Discovery).
+The initial "Discovery Spark" identity was tech-forward and energetic but felt "clinical" for a household environment. To become a "daily driver" for a busy family of 6, the app needed to transition from a project management feel to a "hearth" feel—warm, organized, and reachable.
 
 ## Decision
-We have selected the **"Discovery Spark"** concept as the primary brand identity. This identity is centered around a stylized light bulb motif, representing the "eureka" moment of finding the perfect meal.
+We have selected the **"Solar Earth"** concept as the primary brand identity, led by the Designer Agent (Mère-Designer). This identity focuses on the "Command Center" philosophy, where the app serves as the central hub for the kitchen.
 
-### 1. The Logo Prompt
-To achieve a "Refined Restoration" that preserves the app's calm and elegant energy, the following final prompt was used:
-
-Prompt: Minimalist abstract logo icon for a mobile app titled 'What's for Supper'. The icon features a stylized, glowing filament in the shape of a simple, elegant loop, encased within a modern, minimalist light bulb silhouette made of translucent frosted glass (glassmorphism). Color palette: vibrant Indigo (#4F46E5) and deep Pink (#DB2777) gradients. Set against a clean, soft lavender background (#F5F3FF). Energetic, tech-forward, premium 3D design. No humans, no literal food objects. High quality, centered, balanced, suitable for a favicon and splash screen.
+### 1. The Logo
+The logo has been updated to the **"Solar Earth Hearth"**.
+- **Prompt**: Minimalist abstract logo icon of a warm, circular ember shape nestled within an organic, open bowl silhouette. 
+- **Palette**: Deep Terracotta (#CD5D45), Warm Ochre (#E1AD01), and Sage Green (#8A9A5B).
+- **Aesthetic**: 3D depth with soft, matte textures.
 
 ### 2. Implementation Strategy
-- **Favicons**: The logo is used as the standard web favicon and Android/PWA icon suite.
-- **Apple Touch Icon**: A square, padded version is used for iOS home screens.
-- **Primary Feature**: The logo is used as the central "hero" action in the PWA navigation bar, identifying the Discovery module as the heart of the application.
-- **Color Palette**: The brand colors adhere to the "Modern Professional" palette (Indigo 600 and Pink 600).
+- **Design Pulse**: Shift from Indigo/Pink to Solar Earth tones.
+- **The Command Center**: The Home screen is transformed from a greeting into a high-utility hub showing "Tonight's Menu" and "Prep Alerts."
+- **Reachability**: All primary navigation and actions are optimized for one-handed use (bottom 40% of the screen).
+- **Floating Action Button (FAB)**: A central, prominent button for "Quick Capture" replaces the buried capture flow.
+
+### 3. Designer Agent Personality
+All future design activities will be guided by the "Mère-Designer" persona: empathy-first, aesthetic rigor, and zero-fluff.
 
 ## Rationale
-- **Calm Elegance**: Restoring the full silhouette and balanced proportions to maintain the brand's premium, energizing, yet calm "Discovery" spirit.
-- **Iconic Clarity**: The single-loop "Discovery Spark" is most effective when presented with enough negative space to breathe.
-- **Visual Confidence**: Professional studio lighting and hyper-realistic glass textures communicate quality and reliability.
+- **Organic Warmth**: Colors like Terracotta and Ochre are grounding and stimulate appetite.
+- **Sanity-Saving UX**: Moving to a "Command Center" model addresses the daily stress of "What's for Supper?" immediately.
+- **Reachability**: Busy parents need to use the app while multi-tasking; the new layout prioritizes thumb-accessible zones.
 
 ## Consequences
-- **Positive**: Strong, recognizable brand identity that scales across all platforms.
-- **Neutral**: Future branding must align with the glassmorphism and gradient-based aesthetic.
+- **Positive**: Higher emotional connection and daily utility.
+- **Neutral**: Requires updating all existing Phase 0 components to the new design system.
+- **Negative**: Archiving previous tech-forward assets to avoid "brand drift."
 
 ## Participants
 - **David** (Product/UX Engineer)
+- **Designer Agent** (Senior Graphic Designer / Mother of 4)
 - **Architect Alex** (Infrastructure Lead)
-- **Maya** (AI Designer)
+

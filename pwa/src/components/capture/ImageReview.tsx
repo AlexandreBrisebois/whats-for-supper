@@ -44,10 +44,9 @@ export function ImageReview({ images, onDelete, finishedDishIndex = null, onSetF
             >
               {/* Thumbnail Container */}
               <div
-                className={[
-                  'relative h-full w-full overflow-hidden rounded-[2rem] border-2 transition-all duration-300 shadow-sm',
-                  isHero ? 'border-indigo shadow-indigo/20 ring-4 ring-indigo/10' : 'border-white ring-1 ring-charcoal/5',
-                ].join(' ')}
+                className={`relative h-full w-full overflow-hidden rounded-[1.5rem] border transition-all duration-300 ${
+                  isHero ? 'border-terracotta ring-4 ring-terracotta/10 shadow-lg shadow-terracotta/10' : 'border-terracotta/10'
+                }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -74,14 +73,13 @@ export function ImageReview({ images, onDelete, finishedDishIndex = null, onSetF
                   e.stopPropagation();
                   onSetFinishedDish?.(index);
                 }}
-                className={[
-                  'absolute -right-1 -bottom-1 flex h-10 w-10 items-center justify-center rounded-full transition-all active:scale-90 shadow-lg border-2 border-white',
+                className={`absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full transition-all active:scale-90 shadow-md border border-white ${
                   isHero
-                    ? 'bg-indigo text-white scale-110'
-                    : 'bg-white/90 text-charcoal-200 hover:bg-white hover:text-indigo backdrop-blur-md',
-                ].join(' ')}
+                    ? 'bg-terracotta text-white scale-110'
+                    : 'bg-white/90 text-charcoal/20 hover:bg-white hover:text-terracotta backdrop-blur-md'
+                }`}
               >
-                <Star size={18} fill={isHero ? 'currentColor' : 'none'} strokeWidth={isHero ? 0 : 2} />
+                <Star size={14} fill={isHero ? 'currentColor' : 'none'} strokeWidth={isHero ? 0 : 2} />
               </button>
 
               {/* Delete button: Only visible on hover or mobile always for accessibility */}
@@ -89,9 +87,9 @@ export function ImageReview({ images, onDelete, finishedDishIndex = null, onSetF
                 type="button"
                 aria-label={`Delete photo ${index + 1}`}
                 onClick={() => onDelete(index)}
-                className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full bg-pink text-white shadow-lg border-2 border-white transition-all active:scale-90 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                className="absolute -left-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-terracotta shadow-sm border border-terracotta/10 transition-all active:scale-90 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               >
-                <X size={14} strokeWidth={3} />
+                <X size={12} strokeWidth={2.5} />
               </button>
             </div>
           );

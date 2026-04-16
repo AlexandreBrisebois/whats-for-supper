@@ -17,10 +17,17 @@ const translations: Record<Locale, Record<string, unknown>> = {
 
 export function getLocale(): Locale {
   if (typeof window === 'undefined') return 'en';
+  
+  // 1. Check for manual override
   const stored = localStorage.getItem(LOCALE_KEY) as Locale | null;
   if (stored === 'en' || stored === 'fr') return stored;
+  
+  // 2. Check system default
   const lang = navigator.language.split('-')[0];
-  return lang === 'fr' ? 'fr' : 'en';
+  if (lang === 'fr') return 'fr';
+  
+  // 3. Fallback to English for everything else
+  return 'en';
 }
 
 export function setLocale(locale: Locale): void {

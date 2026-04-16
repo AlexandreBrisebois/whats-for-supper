@@ -14,7 +14,10 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@swc/helpers": "^0.5.21",
     "axios": "^1.7.9",
+    "canvas-confetti": "^1.9.3",
+    "framer-motion": "^12.4.7",
     "lucide-react": "^0.468.0",
     "next": "16.2.3",
     "next-intl": "^4.9.1",
@@ -27,6 +30,7 @@
     "@tailwindcss/forms": "^0.5.9",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",

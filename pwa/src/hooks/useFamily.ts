@@ -9,25 +9,29 @@ import { useFamilyStore } from '@/store/familyStore';
 export function useFamily() {
   const {
     familyMembers,
-    selectedMemberId,
+    selectedFamilyMemberId,
     isLoading,
     error,
-    selectMember,
+    selectFamilyMember,
     addMember,
+    updateMember,
     removeMember,
     loadFamilyMembers,
+    _hasHydrated,
   } = useFamilyStore();
 
-  const selectedMember = familyMembers?.find((m) => m.id === selectedMemberId) ?? null;
+  const selectedMember = familyMembers?.find((m) => m.id === selectedFamilyMemberId) ?? null;
 
   return {
     familyMembers,
     selectedMember,
-    selectedMemberId,
+    selectedFamilyMemberId,
     isLoading,
     error,
-    selectMember,
+    _hasHydrated,
+    selectFamilyMember,
     addMember,
+    updateMember,
     removeMember,
     loadFamily: loadFamilyMembers,
   };

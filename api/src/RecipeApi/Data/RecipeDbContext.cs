@@ -16,12 +16,6 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         modelBuilder.Entity<FamilyMember>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.CompletedTours)
-                  .HasColumnType("jsonb")
-                  .HasDefaultValueSql("'{}'")
-                  .HasConversion(
-                      v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                      v => JsonSerializer.Deserialize<Dictionary<string, bool>>(v, (JsonSerializerOptions?)null) ?? new());
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt)

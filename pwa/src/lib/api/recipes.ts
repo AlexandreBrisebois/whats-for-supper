@@ -19,3 +19,14 @@ export async function createRecipe(formData: FormData): Promise<CreateRecipeResp
   const { data } = await apiClient.post<CreateRecipeResponse>('/api/recipes', formData);
   return data;
 }
+
+/**
+ * Fetches a recipe image by recipe ID and index.
+ * Returns the image as a blob URL for use in <img> tags.
+ */
+export async function getRecipeImage(recipeId: string, index: number): Promise<string> {
+  const response = await apiClient.get(`/api/recipes/${recipeId}/original/${index}`, {
+    responseType: 'blob',
+  });
+  return URL.createObjectURL(response.data as Blob);
+}

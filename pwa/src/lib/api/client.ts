@@ -9,16 +9,14 @@ export const apiClient = axios.create({
   timeout: 30_000,
 });
 
-apiClient.interceptors.request.use((config) => {
-  if (typeof document !== 'undefined') {
-    const memberId = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('member_id='))
-      ?.split('=')[1];
+import { useFamilyStore } from '@/store/familyStore';
 
-    if (memberId) {
-      config.headers['X-Family-Member-Id'] = memberId;
-    }
+apiClient.interceptors.request.use((config) => {
+  // Access the store state directly from the exported hook's getState method
+  const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
+
+  if (familyMemberId) {
+    config.headers['X-Family-Member-Id'] = familyMemberId;
   }
   return config;
 });

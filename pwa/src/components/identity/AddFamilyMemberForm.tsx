@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 
 import { FormInput } from '@/components/common/FormInput';
 import { Button } from '@/components/ui/button';
+import { t } from '@/locales';
 
 interface AddFamilyMemberFormProps {
   onSubmit: (name: string) => Promise<void> | void;
@@ -19,7 +20,7 @@ export function AddFamilyMemberForm({ onSubmit, isLoading = false }: AddFamilyMe
     const trimmed = name.trim();
 
     if (!trimmed) {
-      setError('Please enter a name.');
+      setError(t('family.nameError', 'Please enter a name.'));
       return;
     }
 
@@ -31,20 +32,20 @@ export function AddFamilyMemberForm({ onSubmit, isLoading = false }: AddFamilyMe
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <FormInput
-        label="Name"
+        label={t('family.nameLabel', 'Name')}
         value={name}
         onChange={(v) => {
           setName(v);
           if (error) setError('');
         }}
-        placeholder="e.g. Alex"
+        placeholder={t('family.namePlaceholder', 'e.g. Alex')}
         error={error}
         disabled={isLoading}
         autoComplete="given-name"
       />
 
       <Button type="submit" isLoading={isLoading} fullWidth>
-        Add Member
+        {t('family.addMemberButton', 'Add Member')}
       </Button>
     </form>
   );

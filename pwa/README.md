@@ -94,7 +94,7 @@ pwa/
 │   ├── lib/          # API client, utilities, constants
 │   ├── locales/      # i18n translation files (en, fr)
 │   ├── types/        # TypeScript types
-│   └── middleware.ts # Route middleware (identity redirect)
+│   └── proxy.ts      # Route proxy (identity redirect)
 └── public/           # Static assets and PWA manifest
 ```
 

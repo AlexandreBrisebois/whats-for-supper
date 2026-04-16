@@ -40,5 +40,28 @@
     "cameraUnavailable": "No camera found",
     "cameraDenied": "Camera access denied",
     "choosePhotos": "Choose Photos"
+  },
+  "profile": {
+    "title": "Family Profile",
+    "subtitle": "Switch active family member or manage your group.",
+    "activeMember": "Active Member",
+    "language": "Language",
+    "selectLanguage": "Select UI Language",
+    "english": "English",
+    "french": "French",
+    "loading": "Loading family members…"
+  },
+  "family": {
+    "addPrompt": "Don't see your name? Add it",
+    "addMember": "Add a family member",
+    "noMembers": "No family members yet. Add one below!",
+    "selected": "Selected",
+    "saveName": "Save name",
+    "cancelEditing": "Cancel editing",
+    "editMember": "Edit {{name}}",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Alex",
+    "addMemberButton": "Add Member",
+    "nameError": "Please enter a name."
   }
 }

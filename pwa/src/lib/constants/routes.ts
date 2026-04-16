@@ -6,6 +6,7 @@ export const ROUTES = {
   CAPTURE_CONFIRM: '/capture/confirm',
   PLANNER: '/planner',
   DISCOVERY: '/discovery',
+  PROFILE: '/profile',
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
