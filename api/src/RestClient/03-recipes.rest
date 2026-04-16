@@ -1,8 +1,8 @@
 @baseUrl = http://localhost:5001
-@familyMemberId = 00000000-0000-0000-0000-000000000000
+@familyMemberId = 43cda4d2-9f07-44e5-9979-1c0d23635214
 @recipeId = 00000000-0000-0000-0000-000000000000
-@image1 = /absolute/path/to/recipe-photo-1.jpg
-@image2 = /absolute/path/to/recipe-photo-2.jpg
+@image1 = /Users/alex/WhatsForSupper/recipes/54533403-3951-4bf0-b159-a940c7e5e99e/original-0.jpg
+@image2 = /Users/alex/WhatsForSupper/recipes/54533403-3951-4bf0-b159-a940c7e5e99e/original-1.jpg
 
 ### List recipes
 GET {{baseUrl}}/api/recipes?page=1&limit=20

@@ -19,7 +19,14 @@ public class RecipeService(
         IFormFileCollection files,
         CreateRecipeDto request)
     {
-        // Validate inputs
+        // 1. Verify family member exists (prevent FK violation and 500 error)
+        var memberExists = await db.FamilyMembers.AnyAsync(m => m.Id == familyMemberId);
+        if (!memberExists)
+        {
+            throw new KeyNotFoundException($"Family member with ID {familyMemberId} not found. Your session may be stale.");
+        }
+
+        // 2. Validate inputs
         validation.ValidateImageCount(files.Count);
         foreach (var file in files)
             validation.ValidateImage(file);
@@ -47,6 +54,7 @@ public class RecipeService(
         {
             Id = recipeId,
             Rating = (RecipeRating)request.Rating,
+            Notes = request.Notes,
             AddedBy = familyMemberId,
             ImageCount = files.Count,
             CreatedAt = now,

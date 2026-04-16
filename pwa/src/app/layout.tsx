@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { LocaleProvider } from '@/components/common/LocaleProvider';
+import { IdentityValidator } from '@/components/identity/IdentityValidator';
 
 export const metadata: Metadata = {
   title: "What's for Supper",
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
     title: "What's for Supper",
   },
   icons: {
-    apple: '/icons/apple-touch-icon.png',
+    icon: '/favicon.png',
+    apple: '/apple-touch-icon.png',
   },
 };
 
@@ -28,7 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-dvh bg-lavender text-charcoal antialiased">
-        <LocaleProvider>{children}</LocaleProvider>
+        <LocaleProvider>
+          <IdentityValidator>
+            {children}
+          </IdentityValidator>
+        </LocaleProvider>
       </body>
     </html>
   );

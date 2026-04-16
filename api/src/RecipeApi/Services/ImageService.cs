@@ -29,23 +29,47 @@ public class ImageService(IConfiguration configuration, ILogger<ImageService> lo
     /// </summary>
     public async Task<int> SaveImages(Guid recipeId, IFormFileCollection files)
     {
-        var dir = Path.Combine(RecipesRoot, recipeId.ToString(), "original");
-        Directory.CreateDirectory(dir);
+        var root = RecipesRoot;
+        var dir = Path.Combine(root, recipeId.ToString(), "original");
+        
+        logger.LogInformation("Saving {Count} images for recipe {RecipeId} to {Directory}. Root: {RecipesRoot}", 
+            files.Count, recipeId, dir, root);
 
-        for (int i = 0; i < files.Count; i++)
+        try 
         {
-            var file = files[i];
-            var ext = MimeToExtension.GetValueOrDefault(
-                file.ContentType.ToLowerInvariant(), ".jpg");
-            var path = Path.Combine(dir, $"{i}{ext}");
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+                logger.LogDebug("Created directory: {Directory}", dir);
+            }
 
-            await using var dest = File.Create(path);
-            await file.CopyToAsync(dest);
-            logger.LogDebug("Saved image {Index} for recipe {RecipeId} → {Path}", i, recipeId, path);
+            for (int i = 0; i < files.Count; i++)
+            {
+                var file = files[i];
+                var ext = MimeToExtension.GetValueOrDefault(
+                    file.ContentType.ToLowerInvariant(), ".jpg");
+                var path = Path.Combine(dir, $"{i}{ext}");
+
+                logger.LogDebug("Writing image {Index} (size: {Size} bytes) to {Path}", i, file.Length, path);
+                
+                await using var dest = File.Create(path);
+                await file.CopyToAsync(dest);
+                
+                // Flush to ensure it's written to disk before logging success
+                await dest.FlushAsync();
+                
+                logger.LogInformation("Successfully saved image {Index} for recipe {RecipeId}", i, recipeId);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save images for recipe {RecipeId} in {Directory}", recipeId, dir);
+            throw; // Re-throw to be caught by middleware
         }
 
         return files.Count;
     }
+
 
     /// <summary>
     /// Opens a stream for the requested photo. Returns (stream, contentType).

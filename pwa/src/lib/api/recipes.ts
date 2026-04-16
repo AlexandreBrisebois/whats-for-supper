@@ -10,9 +10,12 @@ export async function getRecipes(page = 1, pageSize = 20): Promise<PaginatedResp
   return data;
 }
 
-export async function createRecipe(formData: FormData): Promise<Recipe> {
-  const { data } = await apiClient.post<ApiResponse<Recipe>>('/api/recipes', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return data.data;
+export interface CreateRecipeResponse {
+  recipeId: string;
+  message: string;
+}
+
+export async function createRecipe(formData: FormData): Promise<CreateRecipeResponse> {
+  const { data } = await apiClient.post<CreateRecipeResponse>('/api/recipes', formData);
+  return data;
 }

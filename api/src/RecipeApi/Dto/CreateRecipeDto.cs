@@ -10,4 +10,7 @@ public class CreateRecipeDto
 
     /// <summary>Index of the image that shows the finished dish. -1 means none selected.</summary>
     public int FinishedDishImageIndex { get; set; } = -1;
+
+    /// <summary>Optional notes captured during recipe creation.</summary>
+    public string? Notes { get; set; }
 }

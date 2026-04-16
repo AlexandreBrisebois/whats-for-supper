@@ -1,63 +1,48 @@
-'use client';
-
-import { useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-
+import { cookies } from 'next/headers';
 import { Layout } from '@/components/common/Layout';
-import { useFamily } from '@/hooks/useFamily';
-import { ROUTES } from '@/lib/constants/routes';
+import { StoreInitializer } from '@/components/common/StoreInitializer';
+import { serverFetch } from '@/lib/api/server-client';
+import type { FamilyMember } from '@/types/domain';
+import type { ApiResponse } from '@/types/api';
 
-export default function HomePage() {
-  const router = useRouter();
-  const { selectedMember, familyMembers, loadFamily } = useFamily();
+/**
+ * HomePage is now a Server Component.
+ * It fetches the family data on the server to prevent FOUC 
+ * and hydrates the client-side store via StoreInitializer.
+ */
+export default async function HomePage() {
+  const cookieStore = await cookies();
+  const selectedMemberId = cookieStore.get('member_id')?.value ?? null;
 
-  useEffect(() => {
-    void loadFamily();
-  }, [loadFamily]);
+  let familyMembers: FamilyMember[] = [];
+  let selectedMember: FamilyMember | null = null;
 
-  // If somehow landed here without a selection, send back to onboarding
-  useEffect(() => {
-    if (familyMembers.length > 0 && !selectedMember) {
-      router.replace(ROUTES.ONBOARDING);
-    }
-  }, [familyMembers, selectedMember, router]);
+  try {
+    const response = await serverFetch<ApiResponse<FamilyMember[]>>('/api/family');
+    familyMembers = response.data;
+    selectedMember = familyMembers.find((m) => m.id === selectedMemberId) ?? null;
+  } catch (error) {
+    console.error('Failed to fetch family members on server:', error);
+    // In a production app, you might redirect to an error page or onboarding
+  }
 
   return (
     <Layout>
+      {/* Hydrate the Zustand store on the client immediately */}
+      <StoreInitializer 
+        familyMembers={familyMembers} 
+        selectedMemberId={selectedMemberId} 
+      />
+
       <div className="flex flex-col gap-8">
-        {/* Welcome heading */}
-        <div className="pt-4 text-center">
-          <h1 className="text-3xl font-bold text-indigo">
+        {/* Welcome heading - now rendered purely on the server! */}
+        <div className="flex flex-1 flex-col items-center justify-center pt-12 text-center">
+          <h1 className="text-4xl font-bold text-indigo tracking-tight">
             {selectedMember ? `Welcome, ${selectedMember.name}!` : 'Welcome!'}
           </h1>
-        </div>
-
-        {/* Quick-action cards */}
-        <div className="flex flex-col gap-4">
-          {/* Capture — Session 9 */}
-          <Link
-            href={ROUTES.CAPTURE}
-            className="flex items-center gap-4 rounded-2xl bg-white px-5 py-4 shadow-card transition-all hover:bg-indigo/5 active:scale-[0.98]"
-          >
-            <span className="text-3xl" aria-hidden="true">📸</span>
-            <div>
-              <p className="font-semibold text-charcoal">Capture a recipe</p>
-              <p className="text-sm text-charcoal-400">Photo + notes in seconds</p>
-            </div>
-          </Link>
-
-          {/* Recipes — Phase 1 placeholder */}
-          <div
-            className="flex items-center gap-4 rounded-2xl bg-white/50 px-5 py-4 shadow-card opacity-60"
-            aria-disabled="true"
-          >
-            <span className="text-3xl" aria-hidden="true">📖</span>
-            <div>
-              <p className="font-semibold text-charcoal">Recipes</p>
-              <p className="text-sm text-charcoal-400">No recipes yet. Add your first?</p>
-            </div>
-          </div>
+          <p className="mt-4 text-charcoal-300 max-w-[200px]">
+            Ready to cook something delicious?
+          </p>
         </div>
       </div>
     </Layout>

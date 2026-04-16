@@ -23,12 +23,14 @@ const RATING_OPTIONS: RatingOption[] = [
 
 export function RatingSelector({ selectedRating, onSelect }: RatingSelectorProps) {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="text-center">
-        <p className="text-xl font-bold text-charcoal">Did the family like this recipe?</p>
+    <div className="flex flex-col gap-8 rounded-[2rem] bg-indigo/[0.03] p-6 border border-white/50 shadow-sm">
+      <div className="text-center space-y-1">
+        <p className="text-lg font-bold text-charcoal tracking-tight">Family Verdict</p>
+        <p className="text-xs text-charcoal-300 font-medium">Did everyone enjoy this meal?</p>
       </div>
-      <div className="flex justify-around">
-        {RATING_OPTIONS.map(({ value, emoji, className, label }) => {
+      
+      <div className="flex justify-between items-center px-2">
+        {RATING_OPTIONS.map(({ value, emoji, label }) => {
           const isSelected = selectedRating === value;
           return (
             <button
@@ -38,16 +40,22 @@ export function RatingSelector({ selectedRating, onSelect }: RatingSelectorProps
               aria-pressed={isSelected}
               onClick={() => onSelect(value)}
               className={[
-                className,
-                'flex flex-col items-center gap-1 rounded-2xl px-4 py-3 text-4xl transition-all active:scale-95',
+                'relative flex flex-col items-center gap-2 rounded-[1.5rem] px-3 py-4 transition-all duration-300',
                 isSelected
-                  ? 'bg-indigo/15 ring-2 ring-indigo scale-110'
-                  : 'opacity-60 hover:opacity-90',
+                  ? 'bg-white shadow-card ring-1 ring-indigo/5 scale-110 z-10'
+                  : 'hover:bg-white/40 opacity-40 hover:opacity-100',
               ].join(' ')}
             >
-              <span aria-hidden>{emoji}</span>
+              <span className="text-4xl filter saturate-[0.8]" aria-hidden>{emoji}</span>
+              <span className={[
+                'text-[10px] font-bold uppercase tracking-wider transition-all',
+                isSelected ? 'text-indigo opacity-100' : 'text-charcoal-400 opacity-60'
+              ].join(' ')}>
+                {label}
+              </span>
+              
               {isSelected && (
-                <span className="text-xs font-medium text-indigo">{label}</span>
+                <div className="absolute -bottom-1 left-1/2 h-1 w-4 -translate-x-1/2 rounded-full bg-indigo animate-in fade-in zoom-in" />
               )}
             </button>
           );

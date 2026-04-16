@@ -16,6 +16,7 @@ export interface UseCaptureReturn {
   error: string | null;
   addImage: (file: File) => void;
   removeImage: (index: number) => void;
+  setSelectedDishPhotoIndex: (index: number | null) => void;
   setNotes: (notes: string) => void;
   setRating: (rating: CaptureRating) => void;
   submitRecipe: () => Promise<string | null>;
@@ -75,6 +76,10 @@ export function useCapture(): UseCaptureReturn {
     });
   }, []);
 
+  const setSelectedDishPhotoIndexFn = useCallback((index: number | null) => {
+    setSelectedDishPhotoIndex(index);
+  }, []);
+
   const setNotes = useCallback((newNotes: string) => {
     setNotesState(newNotes);
   }, []);
@@ -106,9 +111,12 @@ export function useCapture(): UseCaptureReturn {
       images.forEach((img) => formData.append('files', img));
       formData.append('rating', String(rating));
       formData.append('finishedDishImageIndex', String(finishedDishImageIndex));
+      if (notes.trim()) {
+        formData.append('notes', notes.trim());
+      }
 
-      const recipe = await createRecipe(formData);
-      return recipe.id;
+      const result = await createRecipe(formData);
+      return result.recipeId;
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to save recipe. Please try again.';
@@ -137,6 +145,7 @@ export function useCapture(): UseCaptureReturn {
     error,
     addImage,
     removeImage,
+    setSelectedDishPhotoIndex: setSelectedDishPhotoIndexFn,
     setNotes,
     setRating,
     submitRecipe,

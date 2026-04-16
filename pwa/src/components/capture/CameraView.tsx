@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
+import { Camera, Image } from 'lucide-react';
 
 import { validateImage } from '@/lib/imageUtils';
 
@@ -32,39 +33,44 @@ export function CameraView({ onPhotoCapture }: CameraViewProps) {
   );
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-6 py-4">
       {/* Validation error */}
       {captureError && (
-        <p className="text-sm text-pink">{captureError}</p>
+        <p className="text-xs font-semibold text-pink animate-in zoom-in-95">{captureError}</p>
       )}
 
-      {/* Controls row */}
-      <div className="flex w-full items-center justify-center gap-6">
-        {/* Gallery / file picker */}
-        <button
-          type="button"
-          aria-label="Select from gallery"
-          onClick={() => galleryInputRef.current?.click()}
-          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-lavender text-2xl shadow-card transition-transform active:scale-95"
-        >
-          🖼️
-        </button>
+      {/* Controls: Balanced Pro Layout */}
+      <div className="flex w-full items-center justify-center gap-12 px-8">
+        {/* Gallery Action */}
+        <div className="flex flex-col items-center gap-2">
+          <button
+            type="button"
+            aria-label="Select from gallery"
+            onClick={() => galleryInputRef.current?.click()}
+            className="group flex h-14 w-14 items-center justify-center rounded-2xl bg-white/40 text-indigo shadow-glass ring-1 ring-indigo/10 backdrop-blur-xl transition-all hover:bg-white/60 active:scale-90"
+          >
+            <Image size={24} strokeWidth={1.5} className="transition-transform group-hover:scale-110" />
+          </button>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-charcoal-300 opacity-60">Library</span>
+        </div>
 
-        {/* Camera capture button */}
-        <button
-          type="button"
-          aria-label="Take photo"
-          onClick={() => cameraInputRef.current?.click()}
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo shadow-card transition-transform active:scale-95"
-        >
-          <span className="h-14 w-14 rounded-full border-4 border-lavender bg-transparent" />
-        </button>
-
-        {/* Spacer keeps shutter centred */}
-        <div className="h-12 w-12" aria-hidden />
+        {/* Shutter: Main Action */}
+        <div className="relative flex items-center justify-center">
+          {/* Shutter Ring */}
+          <div className="absolute h-24 w-24 rounded-full border-2 border-indigo/20 animate-pulse" />
+          
+          <button
+            type="button"
+            aria-label="Take photo"
+            onClick={() => cameraInputRef.current?.click()}
+            className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-tr from-indigo to-indigo-400 text-white shadow-[0_10px_25px_rgba(79,70,229,0.4)] ring-4 ring-white transition-all hover:scale-105 active:scale-90"
+          >
+            <Camera size={32} strokeWidth={2} />
+          </button>
+        </div>
       </div>
 
-      {/* Camera input - capture from device camera */}
+      {/* Inputs */}
       <input
         ref={cameraInputRef}
         type="file"
@@ -74,8 +80,6 @@ export function CameraView({ onPhotoCapture }: CameraViewProps) {
         aria-hidden
         onChange={handleFileChange}
       />
-
-      {/* Gallery input - select from device photos */}
       <input
         ref={galleryInputRef}
         type="file"

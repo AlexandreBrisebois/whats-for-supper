@@ -6,9 +6,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/backend';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
   timeout: 30_000,
 });
 
@@ -20,7 +17,7 @@ apiClient.interceptors.request.use((config) => {
       ?.split('=')[1];
 
     if (memberId) {
-      config.headers['X-Member-Id'] = memberId;
+      config.headers['X-Family-Member-Id'] = memberId;
     }
   }
   return config;
