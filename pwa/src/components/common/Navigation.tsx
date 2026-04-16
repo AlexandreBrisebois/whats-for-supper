@@ -17,8 +17,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.HOME as Route, label: 'Home', icon: Home },
-  { href: ROUTES.DISCOVERY as Route, label: 'Discover', icon: Compass },
-  { href: ROUTES.CAPTURE as Route, label: 'Capture', icon: Plus, isPrimary: true },
+  { href: ROUTES.CAPTURE as Route, label: 'Capture', icon: Plus },
+  { href: ROUTES.DISCOVERY as Route, label: 'Discover', icon: Compass, isPrimary: true },
   { href: ROUTES.PLANNER as Route, label: 'Planner', icon: Calendar },
   { href: ROUTES.PROFILE as Route, label: 'Profile', icon: UserCircle },
 ];
@@ -47,7 +47,7 @@ export function Navigation({ className = '' }: NavigationProps) {
               className="relative -top-6 flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 active:scale-95 z-40"
               aria-current={active ? 'page' : undefined}
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#CD5D45] shadow-[0_12px_24px_rgba(205,93,69,0.4)] ring-4 ring-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E1AD01] shadow-[0_12px_24px_rgba(225,173,1,0.4)] ring-4 ring-white animate-pulse-ochre">
                 <Icon
                   size={28}
                   strokeWidth={2}
@@ -55,7 +55,7 @@ export function Navigation({ className = '' }: NavigationProps) {
                   aria-hidden="true"
                 />
               </div>
-              <span className="text-[10px] font-medium text-charcoal/80 mt-1">{item.label}</span>
+              <span className="text-[10px] font-bold text-ochre mt-1 uppercase tracking-wider">{item.label}</span>
             </Link>
           );
         }
