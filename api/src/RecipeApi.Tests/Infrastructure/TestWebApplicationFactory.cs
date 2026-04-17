@@ -65,6 +65,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<ValidationService>();
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
+        builder.Services.AddScoped<RecipeImportService>();
 
         builder.Services.AddDbContext<RecipeDbContext>(opts =>
             opts.UseInMemoryDatabase(_dbName));

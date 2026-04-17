@@ -75,4 +75,27 @@ public class RecipeImportService(RecipeDbContext db)
             ErrorMessage = latestImport.Status == RecipeImportStatus.Failed ? latestImport.ErrorMessage : null
         };
     }
+
+    /// <summary>
+    /// Gets a high-level summary of the import pipeline's health and throughput.
+    /// </summary>
+    /// <returns>A consolidated JSON summary.</returns>
+    public async Task<RecipeImportSummaryDto> GetImportSummary()
+    {
+        var importedCount = await db.Recipes.CountAsync(r => r.RawMetadata != null);
+
+        var queueCount = await db.RecipeImports.CountAsync(ri =>
+            ri.Status == RecipeImportStatus.Pending ||
+            ri.Status == RecipeImportStatus.Processing);
+
+        var failedCount = await db.RecipeImports.CountAsync(ri =>
+            ri.Status == RecipeImportStatus.Failed);
+
+        return new RecipeImportSummaryDto
+        {
+            ImportedCount = importedCount,
+            QueueCount = queueCount,
+            FailedCount = failedCount
+        };
+    }
 }

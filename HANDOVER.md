@@ -65,3 +65,23 @@ The repository is now "Agent-Optimized." The root is clean, the tech stack is co
 - **Identity Flow**: The `IdentityValidator` wraps the entire app in `layout.tsx`. It handles the Landing page (`/`) redirect based on cookie presence.
 - **Mocks**: When updating PWA data fetching, ensure the `mock-api.js` is updated to reflect the new schema/endpoint to keep CI green.
 - **Trust**: If `task review` passes locally, it WILL pass in CI. If not, check if `MOCK_API_PORT` changed.
+
+## [2026-04-17] AI Agent Docker & Configuration
+### Status: COMPLETED ✅
+**Agent**: Antigravity (Gemini 3 Flash)
+
+### Executed Changes
+- **Environment Updates**:
+    - [x] Updated `.env.example` with `GEMINI_API_KEY`, `OLLAMA_API_ENDPOINT`, and `OLLAMA_MODEL_ID`.
+- **Infrastructure Orchestration**:
+    - [x] Updated `docker/compose/apps.yml` to pass AI variables to the `api` service.
+    - [x] Mapped `AgentSettings__Endpoint` and `AgentSettings__ModelId` from user variables to .NET internal configuration.
+
+### Technical Details & Decisions
+- **Ollama Persistence**: The default endpoint for the API in Docker is set to `http://host.docker.internal:11434/v1` to bridge to a host-managed Ollama instance without requiring a containerized model in the MVP.
+- **Gemini Strategy**: `RecipeHeroAgent` uses the direct `Google.GenAI` SDK; thus, it only requires the `GEMINI_API_KEY` and does not need a custom endpoint configuration.
+- **Convention**: Follows ASP.NET Core environment variable naming conventions (`Section__Key`) to override `appsettings.json`.
+
+### Technical Context for Next Agent
+- **Verification**: Run `task health` to verify container health. 
+- **Setup**: Users must provide a `GEMINI_API_KEY` in their local `.env` for `RecipeHeroAgent` to function. If missing, the agent will throw an `InvalidOperationException` upon invocation.

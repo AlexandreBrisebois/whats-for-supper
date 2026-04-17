@@ -57,7 +57,7 @@ export default defineConfig({
   ],
 
   // Automatically start necessary servers when running tests locally.
-  webServer: (isCI)
+  webServer: isCI
     ? undefined
     : [
         // Only start mock API if we're not explicitly pointing at a live local backend

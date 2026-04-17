@@ -5,7 +5,7 @@ const PORT = 5001;
 // In-memory state for family members
 let familyMembers = [
   { id: '1', name: 'Alex' },
-  { id: '2', name: 'Jordan' }
+  { id: '2', name: 'Jordan' },
 ];
 
 const server = http.createServer((req, res) => {
@@ -31,9 +31,11 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ status: 'Healthy' }));
   } else if (url.pathname === '/api/family' && req.method === 'GET') {
     res.writeHead(200);
-    res.end(JSON.stringify({
-      data: familyMembers
-    }));
+    res.end(
+      JSON.stringify({
+        data: familyMembers,
+      })
+    );
   } else if (url.pathname === '/api/family' && req.method === 'POST') {
     let body = '';
     req.on('data', (chunk) => {
@@ -41,16 +43,18 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
       const payload = JSON.parse(body || '{}');
-      const newMember = { 
-        id: (familyMembers.length + 1).toString(), 
-        name: payload.name || 'E2E-New' 
+      const newMember = {
+        id: (familyMembers.length + 1).toString(),
+        name: payload.name || 'E2E-New',
       };
       familyMembers.push(newMember);
-      
+
       res.writeHead(201);
-      res.end(JSON.stringify({
-        data: newMember
-      }));
+      res.end(
+        JSON.stringify({
+          data: newMember,
+        })
+      );
     });
   } else if (url.pathname === '/api/recipes' && req.method === 'GET') {
     res.writeHead(200);

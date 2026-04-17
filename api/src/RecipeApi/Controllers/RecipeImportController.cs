@@ -43,4 +43,15 @@ public class RecipeImportController(RecipeImportService importService) : Control
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// GET /api/recipes/import-status — get a summary of the import pipeline's health.
+    /// </summary>
+    /// <returns>200 OK with the consolidated summary counts.</returns>
+    [HttpGet("api/recipes/import-status")]
+    public async Task<IActionResult> GetImportSummary()
+    {
+        var summary = await importService.GetImportSummary();
+        return Ok(summary);
+    }
 }
