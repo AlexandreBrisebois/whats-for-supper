@@ -37,7 +37,7 @@ export default defineConfig({
 
   use: {
     // All tests hit the local Next.js dev server
-    baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:3000',
+    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
 
     // Collect traces on first retry
     trace: 'on-first-retry',
@@ -56,14 +56,26 @@ export default defineConfig({
     },
   ],
 
-  // Automatically start the Next.js dev server when running tests locally.
-  // On CI the server is assumed to be running before Playwright is invoked.
-  webServer: isCI
+  // Automatically start necessary servers when running tests locally.
+  webServer: (isCI)
     ? undefined
-    : {
-        command: 'npm run dev',
-        url: 'http://127.0.0.1:3000',
-        reuseExistingServer: true,
-        timeout: 60_000,
-      },
+    : [
+        // Only start mock API if we're not explicitly pointing at a live local backend
+        ...(process.env.USE_LIVE_API !== 'true'
+          ? [
+              {
+                command: 'node mock-api.js',
+                url: 'http://localhost:5001/health',
+                reuseExistingServer: true,
+                timeout: 10_000,
+              },
+            ]
+          : []),
+        {
+          command: 'npm run dev',
+          url: 'http://localhost:3000',
+          reuseExistingServer: true,
+          timeout: 60_000,
+        },
+      ],
 });

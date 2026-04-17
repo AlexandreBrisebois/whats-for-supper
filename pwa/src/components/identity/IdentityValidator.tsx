@@ -24,37 +24,33 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
   useEffect(() => {
     async function verifyIdentity() {
-      // 1. Wait for store hydration (now from cookies)
       if (!_hasHydrated) return;
 
-      // 2. Landing page redirects to Home (if authenticated) or Onboarding (if fresh user)
-      if (pathname === ROUTES.LANDING) {
-        if (selectedFamilyMemberId) {
-          router.replace(ROUTES.HOME);
-        } else {
-          router.replace(ROUTES.ONBOARDING);
-        }
+      const isLanding = pathname === ROUTES.LANDING;
+      const isOnboarding = pathname === ROUTES.ONBOARDING;
+
+      // 1. Landing page: Instant redirect based on identity
+      if (isLanding) {
+        router.replace(selectedFamilyMemberId ? ROUTES.HOME : ROUTES.ONBOARDING);
         return;
       }
 
-      // 3. Onboarding page redirects to Home if already authenticated
-      if (pathname === ROUTES.ONBOARDING) {
-        if (selectedFamilyMemberId) {
-          router.replace(ROUTES.HOME);
-          return;
-        }
+      // 2. Onboarding page: Always allow (Ready).
+      // If the user is already authenticated, the page component can choose to redirect,
+      // but we don't force a router.replace here to avoid collisions during the 'add member' flow.
+      if (isOnboarding) {
         setIsReady(true);
         return;
       }
 
-      // 4. Protected routes: if no identity, redirect to onboarding
+      // 3. Protected routes: If no identity, redirect to onboarding
       if (!selectedFamilyMemberId) {
         console.warn('[IdentityValidator] No identity found. Redirecting to onboarding.');
         router.replace(ROUTES.ONBOARDING);
         return;
       }
 
-      // 5. Validate if the stored ID actually exists in the family
+      // 4. Validate if the stored ID actually exists in the family
       if (familyMembers.length === 0) {
         await loadFamily();
       }

@@ -56,7 +56,6 @@ async function getRecipeCountViaApi(request: APIRequestContext, memberId: string
   }
 }
 
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Full E2E journey
 // ──────────────────────────────────────────────────────────────────────────────

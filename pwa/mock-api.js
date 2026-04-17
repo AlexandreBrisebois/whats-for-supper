@@ -2,6 +2,12 @@ const http = require('http');
 
 const PORT = 5001;
 
+// In-memory state for family members
+let familyMembers = [
+  { id: '1', name: 'Alex' },
+  { id: '2', name: 'Jordan' }
+];
+
 const server = http.createServer((req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,45 +29,49 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/health') {
     res.writeHead(200);
     res.end(JSON.stringify({ status: 'Healthy' }));
-  } 
-  else if (url.pathname === '/api/family' && req.method === 'GET') {
+  } else if (url.pathname === '/api/family' && req.method === 'GET') {
     res.writeHead(200);
     res.end(JSON.stringify({
-      data: [
-        { id: '1', name: 'Alex' },
-        { id: '2', name: 'Jordan' }
-      ]
+      data: familyMembers
     }));
-  }
-  else if (url.pathname === '/api/family' && req.method === 'POST') {
+  } else if (url.pathname === '/api/family' && req.method === 'POST') {
     let body = '';
-    req.on('data', chunk => { body += chunk; });
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
     req.on('end', () => {
       const payload = JSON.parse(body || '{}');
+      const newMember = { 
+        id: (familyMembers.length + 1).toString(), 
+        name: payload.name || 'E2E-New' 
+      };
+      familyMembers.push(newMember);
+      
       res.writeHead(201);
       res.end(JSON.stringify({
-        data: { id: '3', name: payload.name || 'E2E-New' }
+        data: newMember
       }));
     });
-  }
-  else if (url.pathname === '/api/recipes' && req.method === 'GET') {
+  } else if (url.pathname === '/api/recipes' && req.method === 'GET') {
     res.writeHead(200);
-    res.end(JSON.stringify({
-      data: [],
-      total: 0
-    }));
-  }
-  else if (url.pathname === '/api/recipes' && req.method === 'POST') {
+    res.end(
+      JSON.stringify({
+        data: [],
+        total: 0,
+      })
+    );
+  } else if (url.pathname === '/api/recipes' && req.method === 'POST') {
     req.on('data', () => {}); // Consume stream
     req.on('end', () => {
       res.writeHead(201);
-      res.end(JSON.stringify({
-        recipeId: 'rec-1',
-        message: 'Success'
-      }));
+      res.end(
+        JSON.stringify({
+          recipeId: 'rec-1',
+          message: 'Success',
+        })
+      );
     });
-  }
-  else {
+  } else {
     res.writeHead(404);
     res.end(JSON.stringify({ message: 'Not Found' }));
   }

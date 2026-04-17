@@ -21,7 +21,6 @@ async function clearIdentity(page: Page) {
   await page.context().clearCookies();
 }
 
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Scenario 1 — Fresh user is redirected to /onboarding
 // ──────────────────────────────────────────────────────────────────────────────

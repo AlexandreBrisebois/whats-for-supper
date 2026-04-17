@@ -22,7 +22,7 @@ export default function OnboardingPage() {
   function handleFamilyMemberSelected(familyMemberId: string) {
     selectFamilyMember(familyMemberId);
     completeOnboarding();
-    router.push(ROUTES.HOME);
+    router.replace(ROUTES.HOME);
   }
 
   return (

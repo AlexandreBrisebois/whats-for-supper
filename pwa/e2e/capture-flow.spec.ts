@@ -16,7 +16,6 @@ import { test, expect, type Page } from '@playwright/test';
 // Path to a small fixture image bundled with the E2E suite
 const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────

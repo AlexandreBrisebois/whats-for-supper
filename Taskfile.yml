@@ -106,6 +106,22 @@ tasks:
     cmds:
       - npm run test -- --watch
 
+  test:pwa:ci:
+    desc: "Test PWA against production build (CI Parity)"
+    dir: pwa
+    cmds:
+      - npm run test:e2e:ci
+
+  test:pwa:live:
+    desc: "Test PWA against live local backend (port 5000)"
+    dir: pwa
+    envs:
+      USE_LIVE_API: "true"
+      API_INTERNAL_URL: "http://localhost:5000"
+      NEXT_PUBLIC_API_BASE_URL: "http://localhost:5000"
+    cmds:
+      - npm run test:e2e
+
   test:e2e:
     desc: "Run E2E tests (Phase 2+)"
     dir: tools/tests/e2e-testing
