@@ -1,0 +1,37 @@
+
+Running 1 test using 1 worker
+
+  ✘  1 [chromium] › e2e/capture-flow.spec.ts:107:5 › user can complete the capture flow and see a success message (16.8s)
+
+
+  1) [chromium] › e2e/capture-flow.spec.ts:107:5 › user can complete the capture flow and see a success message 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText(/captured/i)
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+    [2m  - waiting for getByText(/captured/i)[22m
+
+
+      150 |   // ── Done ─────────────────────────────────────────────────────────────────
+      151 |   // A success confirmation message should appear
+    > 152 |   await expect(page.getByText(/captured/i)).toBeVisible({ timeout: 15_000 });
+          |                                             ^
+      153 | });
+      154 |
+      155 | // ──────────────────────────────────────────────────────────────────────────────
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/capture-flow.spec.ts:152:45
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/capture-flow-user-can-comp-9408f-w-and-see-a-success-message-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/capture-flow-user-can-comp-9408f-w-and-see-a-success-message-chromium/error-context.md
+
+  1 failed
+    [chromium] › e2e/capture-flow.spec.ts:107:5 › user can complete the capture flow and see a success message 

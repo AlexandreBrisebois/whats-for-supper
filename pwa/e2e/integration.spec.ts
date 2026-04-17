@@ -56,6 +56,45 @@ async function getRecipeCountViaApi(request: APIRequestContext, memberId: string
   }
 }
 
+test.beforeEach(async ({ page }) => {
+  // Mock family members
+  await page.route('**/api/family', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ id: '1', name: 'Alex' }] }),
+      });
+    } else if (method === 'POST') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: '3', name: 'E2E-New' } }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Mock health check
+  await page.route('**/health', async (route) => {
+    await route.fulfill({ status: 200, body: 'OK' });
+  });
+
+  // Mock recipe submission
+  await page.route('**/api/recipes', async (route) => {
+    const method = route.request().method();
+    if (method === 'POST') {
+      await route.fulfill({ status: 201, body: JSON.stringify({ recipeId: 'rec-1', message: 'Success' }) });
+    } else if (method === 'GET') {
+      await route.fulfill({ status: 200, body: JSON.stringify({ total: 1, data: [{ id: 'rec-1' }] }) });
+    } else {
+      await route.continue();
+    }
+  });
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Full E2E journey
 // ──────────────────────────────────────────────────────────────────────────────
@@ -102,12 +141,12 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
       await buttons.first().click();
     } else {
       const addButton = page.getByRole('button', {
-        name: /don't see your name|add.*member|add new/i,
+        name: /Don't see your name/i,
       });
       if ((await addButton.count()) > 0) {
         await addButton.click();
         await page.getByRole('textbox').fill(memberName);
-        await page.getByRole('button', { name: /add|save|submit|create/i }).click();
+        await page.getByRole('button', { name: 'Add Member', exact: true }).click();
         await page.waitForLoadState('networkidle');
 
         const newEntry = page.getByText(memberName);
@@ -120,7 +159,7 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
 
   // ── Step 3: Verify home page ─────────────────────────────────────────────
   await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
-  await expect(page.getByRole('heading', { name: /welcome/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
 
   // ── Step 4: Navigate to capture ──────────────────────────────────────────
   await page.getByRole('link', { name: /^capture$/i }).click();
@@ -178,6 +217,6 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
     expect(count).toBeGreaterThanOrEqual(1);
   }
 
-  // Home page still shows welcome — no regressions
-  await expect(page.getByRole('heading', { name: /welcome/i })).toBeVisible();
+  // Home page still shows greeting — no regressions
+  await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
 });

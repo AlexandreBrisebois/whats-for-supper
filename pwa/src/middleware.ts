@@ -7,7 +7,6 @@ const IDENTITY_COOKIE = 'x-family-member-id';
 
 /** Paths accessible without a selected family member ID. */
 const PUBLIC_PATHS: string[] = [
-  ROUTES.LANDING,
   ROUTES.ONBOARDING,
   '/api/health',
   '/manifest.json',

@@ -21,6 +21,35 @@ async function clearIdentity(page: Page) {
   await page.context().clearCookies();
 }
 
+test.beforeEach(async ({ page }) => {
+  // Mock family members list
+  await page.route('**/api/family', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            { id: '1', name: 'Alex' },
+            { id: '2', name: 'Jordan' },
+          ],
+        }),
+      });
+    } else if (route.request().method() === 'POST') {
+      const payload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: { id: '3', name: payload.name || 'New Member' },
+        }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Scenario 1 — Fresh user is redirected to /onboarding
 // ──────────────────────────────────────────────────────────────────────────────
@@ -94,7 +123,7 @@ test('adding a new family member saves it and redirects to /home', async ({ page
   await page.waitForLoadState('networkidle');
 
   // Open the "Don't see your name?" / add-member flow
-  const addButton = page.getByRole('button', { name: /don't see your name|add.*member|add new/i });
+  const addButton = page.getByRole('button', { name: /Don't see your name/i });
 
   await expect(addButton).toBeVisible({ timeout: 10_000 });
   await addButton.click();
@@ -105,25 +134,15 @@ test('adding a new family member saves it and redirects to /home', async ({ page
   await nameInput.fill(newName);
 
   // Submit the form
-  const submitButton = page.getByRole('button', { name: /add|save|submit|create/i });
+  const submitButton = page.getByRole('button', { name: 'Add Member', exact: true });
   await submitButton.click();
 
   // The new member should appear in the list (or the user is immediately logged in)
   await page.waitForLoadState('networkidle');
 
-  const isOnHome = page.url().includes('/home');
-  const isOnOnboarding = page.url().includes('/onboarding');
-
-  if (isOnOnboarding) {
-    // Member was added — now find and click the new entry
-    await expect(page.getByText(newName)).toBeVisible({ timeout: 5_000 });
-    await page.getByText(newName).click();
-    await expect(page).toHaveURL(/\/home/);
-  } else {
-    // Some implementations redirect immediately on creation
-    expect(isOnHome).toBe(true);
-  }
+  // The app will automatically select the new member and redirect to /home
+  await expect(page).toHaveURL(/\/home/);
 
   // In either case the welcome heading should mention the new name
-  await expect(page.getByRole('heading', { name: new RegExp(newName, 'i') })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
 });

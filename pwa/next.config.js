@@ -7,6 +7,9 @@ const nextConfig = {
     remotePatterns: [],
   },
   typedRoutes: true,
+  experimental: {
+    allowedDevOrigins: ['127.0.0.1', 'localhost'],
+  },
 
   // Proxy /backend/* → API container so the browser only ever calls the PWA's
   // own origin. Works on any device on the LAN without CORS or IP config.
