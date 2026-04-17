@@ -30,21 +30,19 @@ cp .env.example .env
 # Edit .env if you want non-default credentials (optional for local dev)
 
 # 3. Build and start all services
-docker-compose up --build
+task up
 
-# 4. Wait until all services are healthy (≈30 s on first run)
-# Postgres:  "database system is ready to accept connections"
-# API:       "Database migrations applied."
-# PWA:       "Ready on http://0.0.0.0:3000"
+# 4. Wait until all services are healthy (≈15 s)
+task health
 
 # 5. Open the app
-open http://localhost:3000
+open http://pwa.wfs.localhost
 ```
 
-On subsequent starts you can omit `--build` if you haven't changed any source files:
+On subsequent starts:
 
 ```bash
-docker-compose up
+task up
 ```
 
 ---
@@ -53,11 +51,12 @@ docker-compose up
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| PWA | http://localhost:3000 | Main entry point |
-| API | http://localhost:5000 | REST JSON API |
-| API health | http://localhost:5000/health | Liveness check |
-| PWA health | http://localhost:3000/api/health | Liveness check |
-| PostgreSQL | localhost:5432 | Connect with any PG client |
+| PWA | http://pwa.wfs.localhost | Main entry point |
+| API | http://api.wfs.localhost | REST JSON API |
+| API health | http://api.wfs.localhost/health | Liveness check |
+| PWA health | http://pwa.wfs.localhost/api/health | Liveness check |
+| Dashboard | http://localhost:8080 | Traefik dashboard |
+| PostgreSQL | localhost:5434 | Connect with any PG client |
 
 ---
 
@@ -67,32 +66,30 @@ docker-compose up
 
 ```bash
 # All services
-docker-compose logs -f
+task logs
 
 # Single service
-docker-compose logs -f api
-docker-compose logs -f pwa
-docker-compose logs -f postgres
+task logs:api
+task logs:pwa
+task logs:db
 ```
 
-### Restarting a single service
+### Restarting services
 
 ```bash
-docker-compose restart api
+task restart
 ```
 
 ### Rebuilding after source changes
 
 ```bash
-docker-compose up --build api   # rebuild + restart API only
-docker-compose up --build pwa   # rebuild + restart PWA only
+task build   # rebuild all
+# or
+docker compose build api   # rebuild specific
+task up
 ```
 
-### Running API tests inside the container
-
-```bash
-docker-compose exec api dotnet test
-```
+task test:api
 
 Or on the host (requires .NET SDK 10):
 
@@ -140,11 +137,7 @@ dotnet ef migrations add <MigrationName> \
   --startup-project src/RecipeApi/RecipeApi.csproj
 ```
 
-To inspect current schema via psql:
-
-```bash
-docker-compose exec postgres psql -U recipe_app -d recipe_app_db
-```
+task shell:db
 
 ---
 
@@ -199,23 +192,9 @@ npm run dev
 Error: bind: address already in use
 ```
 
-Another process is using port 5432, 5000, or 3000. Either stop the conflicting process or change the host port in `.env`:
+Another process is using port 5432, 80, or 8080. Since we use Traefik as a reverse proxy, port 80 must be available.
+If you need to change the host ports, edit `docker/compose/infrastructure.yml`.
 
-```env
-POSTGRES_PORT=5433
-API_PORT=5001
-PWA_PORT=3001
-```
-
-### PostgreSQL won't start / health check failing
-
-```bash
-docker-compose ps          # check the "Status" column
-docker-compose logs postgres
-```
-
-Common causes:
-- A stale `postgres_data` volume with an incompatible Postgres version — remove it with `docker volume rm whats-for-supper-postgres`.
 - Wrong `POSTGRES_USER` or `POSTGRES_PASSWORD` in `.env`.
 
 ### API not responding
@@ -224,18 +203,16 @@ Common causes:
 docker-compose logs api
 ```
 
-The API prints the exact error at startup. Common causes:
-- Cannot reach the `postgres` container — check that Postgres is healthy first (`docker-compose ps`).
-- Invalid connection string — verify `POSTGRES_CONNECTION_STRING` in `.env` uses the service name `postgres`, not `localhost`.
+- Cannot reach the `postgres` container — check that Postgres is healthy first (`task health`).
 
 ### PWA shows "Network Error" when making API calls
 
-The browser makes requests to `NEXT_PUBLIC_API_BASE_URL`. In Docker mode this should be `http://localhost:5000` (the host-side port), **not** `http://api:5000` (the container network name, which is not accessible from the browser).
+The browser makes requests to `NEXT_PUBLIC_API_BASE_URL`. In Docker mode this is `http://api.wfs.localhost`, which Traefik routes correctly.
 
 Check `.env`:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost
 ```
 
 ### Camera not working in browser
@@ -290,11 +267,15 @@ whats-for-supper/
 │   ├── e2e/              Playwright E2E tests
 │   └── src/
 ├── database/             Reference SQL migrations (EF Core is authoritative)
-│   └── migrations/
 ├── docs/                 Guides (this file, PHASE0_WALKTHROUGH.md)
-├── docker-compose.yml    Orchestrates all three services
+├── docker/               Orchestration
+│   └── compose/
+│       ├── infrastructure.yml
+│       ├── apps.yml
+│       └── traefik_dynamic.yml
 ├── .env                  Local overrides (git-ignored)
-└── .env.example          Template for all available variables
+├── .env.example          Template for all available variables
+└── Taskfile.yml          Primary entrypoint for all commands
 ```
 
 ---

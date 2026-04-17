@@ -1,0 +1,63 @@
+services:
+  # ──────────────────────────────────────────────────────────────────────────
+  # .NET 10 Recipe API
+  # ──────────────────────────────────────────────────────────────────────────
+  api:
+    container_name: whats-for-supper-api
+    build:
+      context: ../../api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING:-postgres://recipe_app:secure_dev_password@postgres:5432/recipe_app_db}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:5000
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost,http://localhost:3000}
+      RECIPES_ROOT: /data/recipes
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - recipes_data:/data/recipes
+    networks:
+      - proxy
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=wfs-proxy"
+      - "traefik.http.routers.api.rule=Host(`api.wfs.localhost`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=5000"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Next.js 15 PWA
+  # ──────────────────────────────────────────────────────────────────────────
+  pwa:
+    container_name: whats-for-supper-pwa
+    build:
+      context: ../../pwa
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://api.wfs.localhost}
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:5000}
+    depends_on:
+      - api
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=wfs-proxy"
+      - "traefik.http.routers.pwa.rule=Host(`pwa.wfs.localhost`)"
+      - "traefik.http.routers.pwa.entrypoints=web"
+      - "traefik.http.services.pwa.loadbalancer.server.port=3000"
+
+networks:
+  proxy:
+    name: wfs-proxy
+  internal:
+    name: wfs-internal
+
+volumes:
+  recipes_data:
+    name: whats-for-supper-recipes

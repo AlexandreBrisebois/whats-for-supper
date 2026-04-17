@@ -42,14 +42,15 @@ task
 
 | Task | Description |
 |------|-------------|
-| `task dev` | Start all Phase 0 services 🚀 |
+| `task up` | Start all Phase 0 services (Traefik) 🚀 |
+| `task down` | Stop all modular services ⛔ |
+| `task dev` | Alias for `task up` |
 | `task dev:api` | Start API with hot reload |
 | `task dev:pwa` | Start PWA with hot reload |
 | `task test` | Run all tests 🧪 |
 | `task logs` | View logs from all services 📋 |
-| `task logs:api` | View API logs only |
+| `task agent:summary` | 🤖 Context-dense AI summary |
 | `task health` | Check if services are running 🏥 |
-| `task stop` | Stop all containers ⛔ |
 | `task clean` | Clean everything up 🧹 |
 
 **Detailed usage:**
@@ -59,7 +60,7 @@ task
 task init              # Initialize project (installs deps, starts services)
 
 # Development
-task dev               # Start all services
+task up               # Start all services
 task dev:api           # API with hot reload
 task dev:pwa           # PWA with hot reload
 task dev:db            # Only database (for local API/PWA dev)
@@ -70,7 +71,7 @@ task test:api          # API tests only
 task test:api:watch    # API tests in watch mode
 task test:pwa          # PWA tests only
 task test:pwa:watch    # PWA tests in watch mode
-task test:e2e          # End-to-end tests (Phase 2+)
+task test:e2e          # Run E2E tests (Playwright)
 
 # Building
 task build             # Build all Docker images
@@ -80,7 +81,7 @@ task build:pwa         # Build PWA image only
 # Container management
 task ps                # Show running containers
 task restart           # Restart all containers
-task stop              # Stop all containers
+task down              # Stop all containers
 
 # Logging & debugging
 task logs              # View all logs (streaming)
@@ -129,7 +130,7 @@ task ship              # Final ship checklist
 
 ```bash
 # Terminal 1: Start all services
-task dev
+task up
 
 # Terminal 2: Watch API logs
 task logs:api
@@ -137,14 +138,14 @@ task logs:api
 # Terminal 3: Watch PWA logs
 task logs:pwa
 
-# Browser: http://localhost:3000
-# API: http://localhost:5000
+# Browser: http://pwa.wfs.localhost
+# API: http://api.wfs.localhost
 ```
 
 **Feedback loop:**
-- Edit code → Docker auto-reloads (if using `dotnet watch` / Next.js dev)
+- Edit code → Docker auto-reloads (via `dotnet watch` and Next.js HMR)
 - Refresh browser → See changes immediately
-- Check logs → Debug issues in real-time
+- Check logs → `task logs:api` or `task logs:pwa`
 
 **When to use:** Testing complete flows, integration testing, or when you want everything in containers.
 
@@ -182,7 +183,7 @@ RECIPES_ROOT=/tmp/recipes
 API_BASE_URL=http://localhost:5000
 
 # PWA
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost
 ```
 
 **When to use:** Daily development, debugging, feature work.
@@ -276,8 +277,8 @@ cp .env.example .env.local
 # .env.local (never commit!)
 POSTGRES_CONNECTION_STRING=postgres://postgres:password@localhost:5432/recipes
 RECIPES_ROOT=/tmp/recipes
-API_BASE_URL=http://localhost:5000
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+API_BASE_URL=http://api.wfs.localhost
+NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost
 ```
 
 ### 5. **Know Your Workflows**
@@ -341,7 +342,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore dependencies
         run: cd api && dotnet restore
@@ -595,15 +596,13 @@ task clean
 
 | Problem | Solution |
 |---------|----------|
-| Port 5000 in use | `task stop` or `lsof -i :5000 \| kill` |
-| Port 3000 in use | `lsof -i :3000 \| kill` or `task stop` |
-| Database won't start | `task clean` then `task dev` |
-| API can't connect to DB | Check `POSTGRES_CONNECTION_STRING` in `.env.local` |
-| PWA can't reach API | Ensure API is running (`task logs:api`), check `NEXT_PUBLIC_API_BASE_URL` |
-| Tests timeout | Run individual tests instead of full suite |
-| Docker image stale | `docker-compose build` to rebuild from scratch |
-| Services won't stop cleanly | `docker-compose down -v && task dev` |
-| Check service health | `task health` (shows which services are responding) |
+| Port 80 in use | Another web server is running. Stop it or change Traefik ports in `infrastructure.yml` |
+| Traefik returns 404 | Docker Provider hasn't discovered services. Check `task health` and `task logs:traefik` |
+| Docker Provider is `null` | Handshake failed. Check `infrastructure.yml` for correct `/var/run/docker.sock` mount |
+| Database won't start | `task clean` then `task up` |
+| API can't connect to DB | Check `POSTGRES_CONNECTION_STRING` in `.env`. Ensure DB is healthy. |
+| PWA can't reach API | Check `NEXT_PUBLIC_API_BASE_URL` - should be `http://api.wfs.localhost` |
+| Check service health | `task health` (the single source of truth) |
 | Need to inspect database | `task shell:db` (opens psql) |
 | Lost test data | `task seed` to repopulate |
 | API throwing errors | `task logs:api` to see stack traces |
@@ -619,6 +618,13 @@ task clean
 5. ⏭️ **Create `.github/workflows/build.yml`** to build containers on merge
 6. ⏭️ **Document in README.md** which `task` commands to run first
 
+## Working with AI Agents
+
+This repository is optimized for **Universal Agent Protocol (UAP)**.
+- **Master Rules**: See [AGENT.md](../../AGENT.md).
+- **Session Log**: See [HANDOVER.md](../../HANDOVER.md) for transient execution state.
+- **Discovery**: Use `task agent:summary` to rapidly map the workspace.
+
 ## Quick Start Checklist
 
 - [ ] Install Task: `brew install go-task`
@@ -627,7 +633,7 @@ task clean
 - [ ] First run: `task init` (does everything automatically)
 - [ ] Check if services are healthy: `task health`
 - [ ] Open http://localhost:3000 in browser
-- [ ] Edit code and see changes instantly
+- [ ] Use AI? Read **AGENT.md** first.
 - [ ] Before pushing: `task review`
 - [ ] Done! 🎉
 

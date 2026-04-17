@@ -62,7 +62,9 @@ Health endpoints:
 
 ## Development
 
-For detailed setup instructions, local dev without Docker, troubleshooting, and environment variable reference, see [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md).
+**AI-Optimized Entry**: If you are an AI agent (Copilot, Gemini, Claude), start with **[AGENT.md](AGENT.md)**.
+
+**Human Developer Guide**: For detailed setup instructions, local dev without Docker, troubleshooting, and environment variable reference, see **[docs/meta/LOCAL_DEV_LOOP.md](docs/meta/LOCAL_DEV_LOOP.md)**.
 
 ### Common commands
 
@@ -137,7 +139,7 @@ See [docs/PHASE0_WALKTHROUGH.md](docs/PHASE0_WALKTHROUGH.md) for a step-by-step 
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+See **[docs/meta/CONTRIBUTING.md](docs/meta/CONTRIBUTING.md)** and **[docs/meta/CODE_OF_CONDUCT.md](docs/meta/CODE_OF_CONDUCT.md)**.
 
 1. Fork and create a feature branch.
 2. `docker-compose up --build` — all services must start clean.
@@ -148,4 +150,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see **[docs/meta/LICENSE](docs/meta/LICENSE)**.

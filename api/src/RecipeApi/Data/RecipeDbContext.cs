@@ -8,6 +8,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
 {
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
+    public DbSet<RecipeImport> RecipeImports => Set<RecipeImport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +52,26 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.HasIndex(e => e.AddedBy)
                   .HasDatabaseName("idx_recipes_added_by")
                   .HasFilter("added_by IS NOT NULL");
+        });
+
+        modelBuilder.Entity<RecipeImport>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status)
+                  .HasConversion<short>();
+            entity.Property(e => e.CreatedAt)
+                  .HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt)
+                  .HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Recipe)
+                  .WithMany()
+                  .HasForeignKey(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.RecipeId)
+                  .HasDatabaseName("idx_recipe_imports_recipe_id");
+            entity.HasIndex(e => e.Status)
+                  .HasDatabaseName("idx_recipe_imports_status");
         });
     }
 }

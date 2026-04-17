@@ -8,10 +8,13 @@ set: [pipefail]
 shopt: [globstar]
 
 vars:
-  DOCKER_COMPOSE_FILE: 'docker-compose.yml'
   API_PORT: '5000'
   PWA_PORT: '3000'
   DB_PORT: '5432'
+  REGISTRY: '192.168.1.226:5050'
+  PLATFORMS: 'linux/amd64,linux/arm64'
+  TAG: 'v0.1' # Default — override with environment or CLI
+  COMPOSE_CMD: 'docker compose -p whats-for-supper -f docker/compose/infrastructure.yml -f docker/compose/apps.yml'
 
 tasks:
   default:
@@ -23,19 +26,27 @@ tasks:
   # CORE DEVELOPMENT
   # ============================================================================
 
-  dev:
-    desc: "🚀 Start all Phase 0 services (docker-compose)"
+  up:
+    desc: "🚀 Start all services (Traefik-based orchestration)"
     cmds:
-      - docker-compose up -d
+      - '{{.COMPOSE_CMD}} up -d'
       - task: health
-      - echo ""
-      - echo "✓ Services started:"
-      - echo "  - API:      http://localhost:{{.API_PORT}}"
-      - echo "  - PWA:      http://localhost:{{.PWA_PORT}}"
-      - echo "  - Database: localhost:{{.DB_PORT}}"
-      - echo ""
-      - echo "View logs: task logs"
-      - echo "Stop all: task stop"
+      - |
+        echo ""
+        echo "✓ Ecosystem started:"
+        echo "  - PWA:       http://pwa.wfs.localhost"
+        echo "  - API:       http://api.wfs.localhost"
+        echo "  - Dashboard: http://localhost:8080"
+        echo ""
+        echo "Stop all: task down"
+
+  dev:
+    desc: "🚀 Start all services (Traefik-based orchestration)"
+    cmds:
+      - '{{.COMPOSE_CMD}} up -d'
+      - task: health
+      - |
+        echo "NOTE: Use 'task up' for the new Traefik-based modular environment."
 
   dev:api:
     desc: "API development (hot reload)"
@@ -52,7 +63,7 @@ tasks:
   dev:db:
     desc: "Start only database (for local API/PWA dev)"
     cmds:
-      - docker-compose up -d postgres
+      - '{{.COMPOSE_CMD}} up -d postgres'
       - echo "✓ Database started on localhost:{{.DB_PORT}}"
       - echo ""
       - echo "Set these env vars:"
@@ -108,44 +119,67 @@ tasks:
   # ============================================================================
 
   build:
-    desc: "📦 Build all Docker images"
+    desc: "📦 Build all Docker images (Local arch)"
     cmds:
       - task: build:api
       - task: build:pwa
-      - echo "✓ All images built"
+      - echo "✓ All local images built"
+
+  publish:
+    desc: "🚀 Build and Push multi-arch images (NASA-ready)"
+    vars:
+      TAG: '{{default .TAG .CLI_ARGS}}'
+    cmds:
+      - echo "Publishing version {{.TAG}} to {{.REGISTRY}}..."
+      - 'docker buildx build --platform {{.PLATFORMS}} -t {{.REGISTRY}}/whats-for-supper-api:{{.TAG}} ./api --push --target production'
+      - 'docker buildx build --platform {{.PLATFORMS}} -t {{.REGISTRY}}/whats-for-supper-pwa:{{.TAG}} ./pwa --push --target production'
+      - echo "✓ Version {{.TAG}} pushed to {{.REGISTRY}}"
+
+  infra:prod:
+    desc: "📄 Generate flat production manifest for NAS"
+    cmds:
+      - '{{.COMPOSE_CMD}} config > docker-compose.prod.yml'
+      - 'echo "✓ Production manifest generated in docker-compose.prod.yml"'
+      - 'echo "  Copy this file to your Synology DS723+ Container Manager."'
 
   build:api:
     desc: "Build API Docker image"
     cmds:
-      - docker build -t whats-for-supper/api:latest ./api
-      - echo "✓ API image built: whats-for-supper/api:latest"
+      - 'docker build -t whats-for-supper/api:latest ./api'
+      - 'echo "✓ API image built: whats-for-supper/api:latest"'
 
   build:pwa:
     desc: "Build PWA Docker image"
     cmds:
-      - docker build -t whats-for-supper/pwa:latest ./pwa
-      - echo "✓ PWA image built: whats-for-supper/pwa:latest"
+      - 'docker build -t whats-for-supper/pwa:latest ./pwa'
+      - 'echo "✓ PWA image built: whats-for-supper/pwa:latest"'
 
   # ============================================================================
   # CONTAINER MANAGEMENT
   # ============================================================================
 
-  stop:
-    desc: "⛔ Stop all running containers"
+  down:
+    desc: "⛔ Stop all modular services"
     cmds:
-      - docker-compose down
-      - echo "✓ All containers stopped"
+      - '{{.COMPOSE_CMD}} down'
+      - echo "✓ Modular services stopped"
+
+  stop:
+    desc: "⛔ Stop all services"
+    cmds:
+      - '{{.COMPOSE_CMD}} stop'
+      - echo "✓ Legacy containers stopped"
 
   ps:
     desc: "Show running containers"
     cmds:
-      - docker-compose ps
+      - '{{.COMPOSE_CMD}} ps'
 
   restart:
     desc: "Restart all containers"
     cmds:
-      - task: stop
-      - task: dev
+      - task: down
+      - task: up
 
   # ============================================================================
   # LOGGING & DEBUGGING
@@ -154,27 +188,27 @@ tasks:
   logs:
     desc: "📋 View logs from all services"
     cmds:
-      - docker-compose logs -f
+      - '{{.COMPOSE_CMD}} logs -f'
 
   logs:api:
     desc: "View API logs"
     cmds:
-      - docker-compose logs -f api
+      - '{{.COMPOSE_CMD}} logs -f api'
 
   logs:pwa:
     desc: "View PWA logs"
     cmds:
-      - docker-compose logs -f pwa
+      - '{{.COMPOSE_CMD}} logs -f pwa'
 
   logs:db:
     desc: "View database logs"
     cmds:
-      - docker-compose logs -f postgres
+      - '{{.COMPOSE_CMD}} logs -f postgres'
 
   logs:tail:
     desc: "Tail logs from all services (last 50 lines)"
     cmds:
-      - docker-compose logs --tail=50
+      - '{{.COMPOSE_CMD}} logs --tail=50'
 
   # ============================================================================
   # DATABASE
@@ -183,21 +217,21 @@ tasks:
   migrate:
     desc: "🗄️  Run database migrations"
     cmds:
-      - docker exec recipe-api dotnet ef database update
+      - 'docker exec whats-for-supper-api dotnet ef database update'
       - echo "✓ Migrations applied"
 
   seed:
     desc: "Populate database with test data"
     cmds:
-      - docker exec recipe-api bash -c "cd src/RecipeApi && dotnet user-secrets set SeedDatabase true"
-      - docker restart recipe-api
+      - 'docker exec whats-for-supper-api bash -c "cd src/RecipeApi && dotnet user-secrets set SeedDatabase true"'
+      - 'docker restart whats-for-supper-api'
       - sleep 2
       - echo "✓ Test data seeded"
 
   db:backup:
     desc: "Backup database"
     cmds:
-      - docker exec recipe-db pg_dump -U postgres recipes > backup_$(date +%s).sql
+      - 'docker exec whats-for-supper-postgres pg_dump -U postgres recipes > backup_$(date +%s).sql'
       - echo "✓ Database backed up"
 
   db:restore:
@@ -205,7 +239,7 @@ tasks:
     cmds:
       - |
         read -p "Enter backup file path: " backup_file
-        docker exec -i recipe-db psql -U postgres recipes < "$backup_file"
+        docker exec -i whats-for-supper-postgres psql -U postgres recipes < "$backup_file"
         echo "✓ Database restored"
 
   # ============================================================================
@@ -215,17 +249,17 @@ tasks:
   shell:api:
     desc: "Open bash shell in API container"
     cmds:
-      - docker exec -it recipe-api bash
+      - 'docker exec -it whats-for-supper-api bash'
 
   shell:pwa:
     desc: "Open shell in PWA container"
     cmds:
-      - docker exec -it recipe-pwa sh
+      - 'docker exec -it whats-for-supper-pwa sh'
 
   shell:db:
     desc: "Open psql shell in database"
     cmds:
-      - docker exec -it recipe-db psql -U postgres -d recipes
+      - 'docker exec -it whats-for-supper-postgres psql -U postgres -d recipes'
 
   # ============================================================================
   # CODE QUALITY
@@ -285,14 +319,14 @@ tasks:
       - |
         echo "Checking services..."
         echo ""
-        echo "API health:"
-        curl -s http://localhost:{{.API_PORT}}/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ API running" || echo "  ✗ API not responding"
+        echo "API (Traefik Route):"
+        curl -s -H "Host: api.wfs.localhost" http://localhost/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ API running" || echo "  ✗ API not responding"
         echo ""
-        echo "PWA health:"
-        curl -s http://localhost:{{.PWA_PORT}}/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ PWA running" || echo "  ✗ PWA not responding"
+        echo "PWA (Traefik Route):"
+        curl -s -H "Host: pwa.wfs.localhost" http://localhost/api/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ PWA running" || echo "  ✗ PWA not responding"
         echo ""
         echo "Database:"
-        docker exec recipe-db pg_isready -U postgres 2>/dev/null && echo "  ✓ Database running" || echo "  ✗ Database not responding"
+        docker exec whats-for-supper-postgres pg_isready -U postgres 2>/dev/null && echo "  ✓ Database running" || echo "  ✗ Database not responding"
 
   env:
     desc: "Show environment configuration"
@@ -314,7 +348,7 @@ tasks:
   clean:
     desc: "🧹 Clean up everything (containers, volumes, caches)"
     cmds:
-      - docker-compose down -v
+      - '{{.COMPOSE_CMD}} down -v'
       - rm -rf api/bin api/obj
       - rm -rf pwa/node_modules pwa/.next
       - rm -rf tools/tests/node_modules
@@ -324,7 +358,7 @@ tasks:
   clean:soft:
     desc: "Stop containers (keep volumes for quick restart)"
     cmds:
-      - docker-compose down
+      - '{{.COMPOSE_CMD}} down'
       - echo "✓ Containers stopped (data preserved)"
 
   # ============================================================================
@@ -428,8 +462,8 @@ tasks:
       - |
         echo "Starting development workflow..."
         echo ""
-        echo "Running: docker-compose up -d"
-        docker-compose up -d
+        echo "Running: task up"
+        task up
         echo ""
         echo "Services starting. Open new terminal windows for:"
         echo "  Terminal 1: task logs:api"
@@ -456,3 +490,39 @@ tasks:
       - task: health
       - echo ""
       - echo "✓ Everything looks good! Ready to push."
+
+  # ============================================================================
+  # AGENT TOOLS (AI OPTIMIZED)
+  # ============================================================================
+
+  agent:summary:
+    desc: "🤖 Context-dense project summary for AI agents"
+    cmds:
+      - |
+        echo "=== PROJECT SUMMARY ==="
+        echo "Tech Stack: .NET 10, Next.js, Postgres (pgvector)"
+        echo ""
+        echo "Directory Tree (Depth 2):"
+        find . -maxdepth 2 -not -path '*/.*'
+        echo ""
+        echo "Service Health:"
+        task health
+        echo ""
+        echo "Active Session:"
+        cat HANDOVER.md 2>/dev/null || echo "No active handover log found."
+
+  agent:api:
+    desc: "🤖 Map all API endpoints (Low token discovery)"
+    cmds:
+      - python3 scripts/agent/map_api.py
+
+  agent:status:
+    desc: "🤖 Read the handover journal"
+    cmds:
+      - cat HANDOVER.md
+
+  agent:list:
+    desc: "🤖 List all agent-specific tasks"
+    cmds:
+      - task -l | grep "agent:"
+    silent: true

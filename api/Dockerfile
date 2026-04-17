@@ -1,15 +1,30 @@
 # =============================================================================
-# Stage 1 — Build
+# Stage 1 — Base
+# =============================================================================
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS base
+WORKDIR /app
+EXPOSE 5000
+ENV ASPNETCORE_URLS=http://+:5000
+
+# =============================================================================
+# Stage 2 — Development (Hot Reload)
+# =============================================================================
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS development
+WORKDIR /src
+COPY RecipeApi.csproj ./
+RUN dotnet restore RecipeApi.csproj
+COPY . .
+# dotnet watch run uses the source code mounted via volume
+ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls", "http://+:5000"]
+
+# =============================================================================
+# Stage 3 — Build
 # =============================================================================
 FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 WORKDIR /src
-
-# Restore dependencies first (layer-cache friendly)
 COPY RecipeApi.csproj ./
 RUN dotnet restore RecipeApi.csproj
-
-# Copy source and publish
-COPY src/ src/
+COPY . .
 RUN dotnet publish RecipeApi.csproj \
     --configuration Release \
     --no-restore \
@@ -17,23 +32,12 @@ RUN dotnet publish RecipeApi.csproj \
     /p:UseAppHost=false
 
 # =============================================================================
-# Stage 2 — Runtime (Ubuntu Noble)
+# Stage 4 — Production (Ubuntu Chiseled)
 #
-# Using regular Ubuntu image instead of chiseled for dev/debugging visibility.
-# For production, switch to chiseled: mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled
+# ADR 006: High-Efficiency Containerization
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS production
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgssapi-krb5-2 \
- && rm -rf /var/lib/apt/lists/*
-
-EXPOSE 5000
-
-ENV ASPNETCORE_URLS=http://+:5000
-ENV ASPNETCORE_ENVIRONMENT=Production
-
 COPY --from=build /app/publish .
-
+USER $APP_UID
 ENTRYPOINT ["dotnet", "RecipeApi.dll"]

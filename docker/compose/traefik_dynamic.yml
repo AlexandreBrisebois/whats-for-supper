@@ -1,0 +1,22 @@
+http:
+  routers:
+    api:
+      rule: "Host(`api.wfs.localhost`)"
+      service: api
+      entryPoints:
+        - web
+    pwa:
+      rule: "Host(`pwa.wfs.localhost`)"
+      service: pwa
+      entryPoints:
+        - web
+
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://api:5000"
+    pwa:
+      loadBalancer:
+        servers:
+          - url: "http://pwa:3000"

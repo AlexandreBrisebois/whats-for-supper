@@ -1,70 +1,60 @@
-# Recipe Import Worker Specification
+# Recipe Import Pipeline Specification (CQRS & Hybrid)
 
-The Recipe Import Worker is a service designed to process raw recipe imports by extracting structured data from images and generating high-quality hero thumbnails. It runs within its own Docker container and follows a two-pass AI pipeline to ensure local data sovereignty for text while utilizing cloud-based models for high-fidelity image processing.
+The Recipe Import Pipeline is a robust, agentic workflow designed for "What's For Supper". It uses a CQRS-inspired command table to manage work and follows a local-first, two-phase process using the **Microsoft Agent Framework v1 (GA)**.
 
 ## 1. System Overview
 
-- **Trigger**: Redis Stream message containing `recipeId`.
-- **Primary Data Source**: Local NAS filesystem.
-- **Text Extraction Model**: Gemma 4:e4b (Local).
-- **Hero Extraction Model**: Gemini Image Pro 3.1 (Google GenAI).
+- **Trigger**: Manual API call (`POST /api/recipes/{id}/import`).
+- **Framework**: **Microsoft Agent Framework** (`Microsoft.Agents.AI` v1.0+).
+- **Execution Mode**: Hybrid (Local Gemma4 for text, Cloud Gemini Image Pro 3.1 for visuals).
+- **Lifecycle**: Commands are transient; records in `recipe_imports` are **deleted** immediately upon successful synchronization to the main `recipes` table.
 
-## 2. Input Structure
+## 2. Data Architecture
 
-### 2.1 Queue Message (Redis)
-The worker listens for messages on a Redis Stream (e.g., `recipe:import:queue`). Each message contains:
-- `recipeId`: The unique ID of the recipe (used as the folder name).
-- `imageUrls`: A list of URLs pointing to the original images for processing.
+### 2.1 Command Table: `recipe_imports`
+Tracks transient import attempts:
+- `id`: UUID.
+- `recipe_id`: UUID.
+- `status`: `Pending` | `Processing` | `Failed`.
+- `error_message`: Text (populated if `Failed`).
 
-### 2.2 Directory Structure
-The worker operates on the following structure located on the NAS:
-```text
-/recipes/{recipeId}/
-├── recipe.info (JSON) - Input metadata
-└── originals/         - Directory containing raw JPEG/PNG images
+### 2.2 Ingredients Schema (JSONB)
+Stored in `recipes.ingredients` as a normalized array inspired by the **Schema.org Ontology**:
+```json
+[{
+  "@type": "HowToSupply",
+  "name": "Buttermilk",
+  "amount": {
+    "@type": "QuantitativeValue",
+    "value": 1.5,
+    "unitText": "cups",
+    "unitCode": "CUP"
+  },
+  "text": "1 1/2 cups cold buttermilk",
+  "notes": "cold"
+}]
 ```
 
-### 2.3 `recipe.info` (Input)
-A JSON file containing initial user-provided data:
-- `rating`: Integer (0-3).
-- `ratingType`: String (e.g., "love", "like").
-- `imageCount`: Number of files in `originals/`.
+## 3. Worker Workflow (The "Brain")
 
-## 3. Processing Pipeline
+The `RecipeImportWorker` coordinates specialized agents via the **Microsoft Agent Framework**.
 
-### 3.1 Pass 1: Local Extraction & Tagging
-- **Model**: Gemma 4:e4b (Local via Ollama/Service).
-- **Input**: All images in the `originals/` folder.
-- **Logic**:
-    1. Perform OCR and structured data extraction.
-    2. Format output as `Schema.org/Recipe` JSON.
-    3. **Hero Identification**: Analyze the images to determine which one contains the "ready to serve" (cooked) recipe.
-- **Output**:
-    - Create `recipe.json` in the recipe root folder.
-    - Update `recipe.info` with `heroImageSource`: "filename.jpg".
+### 3.1 Phase 1: Local Extraction & Assets (Disk-Focused)
+1. **Agent 1 (Extraction - Gemma4)**: Performs local OCR and saves `recipe.json` to the NAS.
+2. **Agent 2 (Visual - Gemini Image Pro 3.1)**: Generates high-fidelity `hero.jpg` and saves it to the NAS.
 
-### 3.2 Pass 2: Hero Thumbnail Generation
-- **Model**: Gemini Image Pro 3.1 (Google GenAI).
-- **Input**: The binary hero image identified in Pass 1 (read from disk or API).
-- **Logic**: 
-    - **JIT Encoding**: Encode the binary image to Base64 for the `inline_data` payload required by the Gemini API.
-    - Extract the visual subject matter and generate a high-quality hero thumbnail.
-    - Transform/Enhance based on the "What's For Supper" aesthetic.
-- **Output**:
-    - Save as `hero.jpg` in the recipe root folder.
+### 3.2 Phase 2: Database Synchronization & Cleanup
+1. The worker syncs `recipe.json` data to `recipes.raw_metadata` and `recipes.ingredients`.
+2. The transient `recipe_imports` record is **deleted** on success.
 
-## 4. Final Output State
+## 4. API Surface
 
-After successful processing, the directory should contain:
-```text
-/recipes/{recipeId}/
-├── recipe.info      (Updated with Hero metadata)
-├── recipe.json      (Structured Schema.org data)
-├── hero.jpg         (AI-generated thumbnail)
-└── originals/       (Raw source images)
-```
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/recipes/{id}/import` | `POST` | Queue a recipe for import. |
+| `/api/recipes/{id}/import/status` | `GET` | Get status: "Completed" (if in DB), "Pending", "Processing", or "Failed". |
+| `/api/recipes/import-status` | `GET` | Summary of imported counts and queue length. |
 
 ## 5. Error Handling
-- **Missing Images**: If no images are found, the job is moved to a dead-letter stream.
-- **Extraction Failure**: If Gemma fails to structure the data, it will be retried up to 3 times before failing the job.
-- **Missing Hero Flag**: If no image is flagged as the hero, the worker will default to the first image found in `originals/` for Pass 2.
+- **Failures**: Detailed error messages are kept in the `recipe_imports` table until the user either retries or clears the error.
+- **Manual Retry**: Re-triggering the import API will reset a `Failed` command to `Pending`.

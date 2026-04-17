@@ -3,6 +3,10 @@ using Serilog;
 using RecipeApi.Data;
 using RecipeApi.Middleware;
 using RecipeApi.Services;
+using RecipeApi.Services.Agents;
+using OpenAI;
+using Microsoft.Extensions.AI;
+using System.ClientModel;
 
 // Bootstrap logger for startup errors before full Serilog is configured.
 Log.Logger = new LoggerConfiguration()
@@ -34,6 +38,21 @@ try
     builder.Services.AddScoped<ValidationService>();
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<RecipeService>();
+    builder.Services.AddScoped<RecipeImportService>();
+    builder.Services.AddScoped<RecipeExtractionAgent>();
+    builder.Services.AddScoped<RecipeHeroAgent>();
+    builder.Services.AddHostedService<RecipeImportWorker>();
+
+    // ── AI / Agent Framework ─────────────────────────────────────────────────
+    var agentSettings = builder.Configuration.GetSection("AgentSettings");
+    var endpoint = agentSettings["Endpoint"] ?? "http://localhost:11434/v1";
+    var modelId = agentSettings["ModelId"] ?? "gemma4:e4b";
+
+    builder.Services.AddChatClient(new OpenAIClient(
+        new ApiKeyCredential("ollama"), // API key is required but ignored by Ollama
+        new OpenAIClientOptions { Endpoint = new Uri(endpoint) })
+        .GetChatClient(modelId)
+        .AsIChatClient());
 
     // ── Database ─────────────────────────────────────────────────────────────
     // Resolve the connection string lazily (at first DbContext creation) so that
@@ -73,8 +92,8 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        Log.Information("Ensuring database schema is up to date...");
-        await db.Database.EnsureCreatedAsync();
+        Log.Information("Applying database migrations...");
+        await db.Database.MigrateAsync();
         Log.Information("Database ready.");
     }
 

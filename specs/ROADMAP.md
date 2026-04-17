@@ -38,7 +38,7 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 
 ---
 
-## Phase 3 — Discovery: The Smart Pivot
+### Phase 3 — Discovery: The Smart Pivot
 
 **Goal**: Family discovers and votes on recipes via the "Express" high-utility hub.
 
@@ -46,6 +46,11 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 - **The Smart Pivot**: Card-swiping discovery module integrated directly into the Home/Command Center for 30-second "Express" planning.
 - **Swipe Discovery (Full)**: Full-screen card-based collaborative voting.
 - **SearchRecipesAgent**: Natural language search via Ollama + pgvector.
+
+### Implementation Checklist
+- [ ] **Smart Pivot Card**: Compact `ExpressCard.tsx` (~300px) with Framer Motion flick gestures.
+- [ ] **Home Integration**: Conditional display on `home/page.tsx` when `isPlannedForTonight` is false.
+- [ ] **Swipe Logic**: Right-swipe triggers immediate planning (`TODAY`) and UI swap (<300ms).
 
 ### Definition of Done
 - Home screen shows a horizontal carousel of "Express Suggestions."

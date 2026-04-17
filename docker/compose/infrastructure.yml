@@ -1,0 +1,58 @@
+services:
+  traefik:
+    container_name: whats-for-supper-traefik
+    image: traefik:v3.1
+    restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.endpoint=tcp://host.docker.internal:2375"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./traefik_dynamic.yml:/etc/traefik/dynamic.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - proxy
+      - internal
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 18
+  # ──────────────────────────────────────────────────────────────────────────
+  postgres:
+    container_name: whats-for-supper-postgres
+    image: postgres:18-alpine3.23
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recipe_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-recipe_app_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-recipe_app} -d $${POSTGRES_DB:-recipe_app_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - internal
+
+networks:
+  proxy:
+    name: wfs-proxy
+    driver: bridge
+  internal:
+    name: wfs-internal
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: whats-for-supper-postgres

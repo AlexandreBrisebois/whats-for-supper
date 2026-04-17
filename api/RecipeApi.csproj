@@ -12,11 +12,13 @@
 
   <ItemGroup>
     <!-- Entity Framework Core -->
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-rc1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.5.0" />
     <!-- Npgsql EF Core provider + pgvector support -->
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.*" />
     <PackageReference Include="Pgvector" Version="0.*" />
@@ -30,6 +32,8 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.*" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.*" />
+    <PackageReference Include="System.ClientModel" Version="1.10.0" />
+    <PackageReference Include="Google.GenAI" Version="1.0.0" />
   </ItemGroup>
 
   <!-- Exclude test project files from the main build -->

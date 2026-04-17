@@ -210,12 +210,12 @@ jobs:
           EOF
 
       - name: Build and start all services
-        run: docker compose up --build --detach
+        run: docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/ci-overrides.yml up --build --detach
 
       - name: Wait for Postgres health
         run: |
           for i in $(seq 1 30); do
-            STATUS=$(docker compose ps postgres --format json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('Health',''))" 2>/dev/null || echo "")
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' whats-for-supper-postgres 2>/dev/null || echo "")
             if [ "$STATUS" = "healthy" ]; then echo "postgres healthy"; break; fi
             sleep 2
           done
@@ -236,4 +236,4 @@ jobs:
 
       - name: Tear down
         if: always()
-        run: docker compose down --volumes
+        run: docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/ci-overrides.yml down --volumes
