@@ -14,7 +14,7 @@ vars:
   REGISTRY: '192.168.1.226:5050'
   PLATFORMS: 'linux/amd64,linux/arm64'
   TAG: 'v0.1' # Default — override with environment or CLI
-  COMPOSE_CMD: 'docker compose -p whats-for-supper -f docker/compose/infrastructure.yml -f docker/compose/apps.yml'
+  COMPOSE_CMD: 'docker compose -p whats-for-supper --env-file docker/.env -f docker/compose/infrastructure.yml -f docker/compose/apps.yml'
 
 tasks:
   default:
@@ -350,7 +350,7 @@ tasks:
       - |
         echo "Environment Variables:"
         echo ""
-        grep -E "^(POSTGRES|API|REDIS|OLLAMA)" .env.local 2>/dev/null || echo "  No service env vars in .env.local"
+        grep -E "^(POSTGRES|API|REDIS|OLLAMA)" docker/.env 2>/dev/null || echo "  No service env vars in docker/.env"
         echo ""
         echo "Service Ports:"
         echo "  API: {{.API_PORT}}"
@@ -406,14 +406,14 @@ tasks:
     desc: "Create .env.local from template"
     cmds:
       - |
-        if [ ! -f .env.local ]; then
-          cp .env.example .env.local
-          echo "✓ Created .env.local"
+        if [ ! -f docker/.env ]; then
+          cp docker/.env.example docker/.env
+          echo "✓ Created docker/.env"
         else
-          echo "✓ .env.local already exists"
+          echo "✓ docker/.env already exists"
         fi
     status:
-      - test -f .env.local
+      - test -f docker/.env
 
   init:dependencies:
     desc: "Install all dependencies"

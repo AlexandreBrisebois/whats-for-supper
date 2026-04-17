@@ -38,8 +38,9 @@ cp .env.local.example .env.local
 
 | Variable                  | Default                 | Description          |
 | ------------------------- | ----------------------- | -------------------- |
-| `NEXT_PUBLIC_API_URL`     | `http://localhost:5000` | Backend API base URL |
-| `NEXT_PUBLIC_ENVIRONMENT` | `development`           | Runtime environment  |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:5000` | Frontend API base URL |
+| `API_INTERNAL_URL`        | `http://api:5000`       | Internal Backend URL  |
+| `NEXT_PUBLIC_ENVIRONMENT`   | `development`           | Runtime environment   |
 
 ### Build
 
@@ -77,7 +78,7 @@ Build and run the production image:
 
 ```bash
 docker build -t recipe-pwa .
-docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=http://api:5000 recipe-pwa
+docker run -p 3000:3000 -e NEXT_PUBLIC_API_BASE_URL=http://api:5000 recipe-pwa
 ```
 
 The image exposes port 3000 and includes a health check at `/health`.

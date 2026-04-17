@@ -85,3 +85,28 @@ The repository is now "Agent-Optimized." The root is clean, the tech stack is co
 ### Technical Context for Next Agent
 - **Verification**: Run `task health` to verify container health. 
 - **Setup**: Users must provide a `GEMINI_API_KEY` in their local `.env` for `RecipeHeroAgent` to function. If missing, the agent will throw an `InvalidOperationException` upon invocation.
+
+## [2026-04-17] Workspace Hygiene & Env Relocation
+### Status: COMPLETED ✅
+**Agent**: Antigravity (Gemini 3 Flash)
+
+### Executed Changes
+- **Configuration Relocation**:
+    - [x] Moved `.env` and `.env.example` to the `docker/` directory to declutter the project root.
+    - [x] Updated `Taskfile.yml` (`COMPOSE_CMD`) to explicitly use `--env-file docker/.env`.
+- **Deep Clean & Alignment**:
+    - [x] Synchronized database user/name defaults in templates (`recipe_app`, `recipe_app_db`) with reality.
+    - [x] Pruned legacy/redundant sections (Redis, Old Ollama, Docker Registry/Prod URLs) from templates.
+    - [x] Unified PWA environment variable naming on `NEXT_PUBLIC_API_BASE_URL` and `API_INTERNAL_URL`.
+- **Documentation Synchronization**:
+    - [x] Updated `README.md`, `PROJECT_STRUCTURE.md`, and `LOCAL_DEV_LOOP.md` to reflect new paths and modern `task` workflows.
+
+### Technical Details & Decisions
+- **None of the docker stuff happens at root**: Adhered to this philosophy by moving all orchestration configs into `docker/`, while maintaining the root `Taskfile.yml` as the single entry point.
+- **Variable Consolidation**: Removed `CONFIG.API_URL` from PWA's `config.ts` because it was inconsistent with the `client.ts` uses of `BASE_URL`.
+- **Documentation Migration**: Purged `docker-compose up` references from the README in favor of `task init` and `task up` to ensure users benefit from the Traefik/Docker hybrid architecture.
+
+### Technical Context for Next Agent
+- **Setup**: New users should run `task init` (which handles `cp docker/.env.example docker/.env` automatically now).
+- **Environment**: If you need to add an environment variable for Docker, add it to `docker/.env.example` and `docker/.env`.
+- **PWA Context**: `pwa/.env.local` is still used for local PWA dev outside of Docker, but `NEXT_PUBLIC_API_BASE_URL` is the authoritative key now.

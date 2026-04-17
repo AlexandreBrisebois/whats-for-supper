@@ -175,16 +175,13 @@ task dev:pwa
 - 🐛 Better IDE integration (breakpoints, debugging)
 - 🎯 Exact error messages (not buried in docker logs)
 
-**Environment setup (`.env.local`):**
-```bash
-# API
-POSTGRES_CONNECTION_STRING=postgres://postgres:password@localhost:5432/recipes
+**# API Logic (docker/.env)
+POSTGRES_CONNECTION_STRING=postgres://recipe_app:secure_dev_password@localhost:5432/recipe_app_db
 RECIPES_ROOT=/tmp/recipes
 API_BASE_URL=http://localhost:5000
 
-# PWA
-NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost
-```
+# PWA Logic (pwa/.env.local)
+NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost**
 
 **When to use:** Daily development, debugging, feature work.
 
@@ -268,14 +265,14 @@ task dev:pwa
 ```
 
 ### 4. **Environment Variables**
-Keep `.env.local` (gitignored) with your local settings:
+Keep `docker/.env` (gitignored) with your orchestration settings:
 ```bash
 # Initialize from template
-cp .env.example .env.local
+task init:env
 
 # Then edit with your settings
-# .env.local (never commit!)
-POSTGRES_CONNECTION_STRING=postgres://postgres:password@localhost:5432/recipes
+# docker/.env (never commit!)
+POSTGRES_CONNECTION_STRING=postgres://recipe_app:secure_dev_password@localhost:5432/recipe_app_db
 RECIPES_ROOT=/tmp/recipes
 API_BASE_URL=http://api.wfs.localhost
 NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost

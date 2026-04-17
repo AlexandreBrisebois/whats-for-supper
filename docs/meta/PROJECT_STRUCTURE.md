@@ -10,14 +10,14 @@ whats-for-supper/
 ├── AGENT.md                          # Universal Agent Protocol (Master reference)
 ├── HANDOVER.md                       # Tactical execution journal (Baton pass)
 ├── README.md                         # Human-centric project overview
-├── Taskfile.yml                      # Automation center (task health, task up)
-├── .env                              # Local overrides (git-ignored)
-├── .env.example                      # Template for all available variables
+├── Taskfile.yml                      # Automation center (task health, task up, task build)
 │
 ├── docker/                           # Orchestration Center
+│   ├── .env.example                  # Template for all infrastructure variables
+│   ├── .env                          # Local orchestration overrides (git-ignored)
 │   └── compose/
-│       ├── infrastructure.yml        # Traefik, PostgreSQL, Redis, etc.
-│       ├── apps.yml                  # PWA, API, Ollama, etc.
+│       ├── infrastructure.yml        # Traefik, PostgreSQL (pgvector), etc.
+│       ├── apps.yml                  # PWA, API, Ollama (Agent endpoints), etc.
 │       ├── production.yml            # Production/NAS configuration
 │       ├── ci-overrides.yml          # GitHub Actions overrides
 │       └── traefik_dynamic.yml       # Static routing overrides
@@ -26,11 +26,16 @@ whats-for-supper/
 │   ├── Migrations/                   # EF Core source of truth (Authored via API)
 │   ├── src/
 │   │   ├── RecipeApi/                # Web API source
+│   │   │   ├── Services/Agents/      # AI Intelligence (RecipeExtraction, RecipeHero)
+│   │   │   └── ...
 │   │   └── RecipeApi.Tests/          # xUnit tests
 │   └── Dockerfile
 │
 ├── pwa/                              # Frontend PWA (Next.js 15)
+│   ├── .env.local.example            # PWA-specific env template
 │   ├── src/                          # App Router, Components, Hooks
+│   │   ├── lib/api/                  # API Clients (client, server-client)
+│   │   └── ...
 │   ├── e2e/                          # Playwright E2E tests
 │   └── Dockerfile
 │
@@ -39,18 +44,18 @@ whats-for-supper/
 │   │   ├── PROJECT_STRUCTURE.md      # (This file)
 │   │   ├── LOCAL_DEV_LOOP.md         # Detailed dev guide
 │   │   └── CONTRIBUTING.md           # PR & Coding standards
-│   └── DEVELOPER_GUIDE.md            # Primary onboarding guide 
+│   └── ...
 │
 ├── specs/                            # Feature specifications & ADRs
 │   ├── ROADMAP.md                    # Long-term product vision
 │   ├── decisions/                    # Permanent Architectural Decision Records
-│   └── [feature].spec.md             # Vertical slice specifications
+│   └── [feature].spec.md             # Vertical slice specifications (Phase 0-6)
 │
 ├── build-prompts/                    # Executable session slices
-│   └── phase-[X]/                    # Phase-specific execution prompts
+│   └── phase-[X]/                    # Phase-specific execution prompts for agents
 │
-├── scripts/                          # Root-level utility scripts
-│   └── agent/                        # AI-only discovery tools
+├── scripts/                          # Project utility scripts
+│   └── agent/                        # AI-only discovery & mapping tools
 │
 ├── experiments/                      # Research & Reference (Ignore for production)
 └── .github/                          # GitHub configuration (CI/CD)
@@ -63,7 +68,7 @@ whats-for-supper/
 ┌─────────────────────────────────┐
 │         User (Browser)          │
 └────────────────┬────────────────┘
-                 │ HTTP :80
+                 │ HTTP :80 (Traefik)
 ┌────────────────▼────────────────┐
 │      Traefik (Reverse Proxy)     │
 └──────┬──────────────────┬───────┘
@@ -75,10 +80,12 @@ whats-for-supper/
        └─────────┬────────┘
         ┌────────▼────────┐
         │   PostgreSQL    │
+        │   (pgvector)    │
         └─────────────────┘
 ```
 
 ## Discovery Rules
 - **Agents**: Always use `task health` to verify the ecosystem and `task agent:summary` to map the workspace.
+- **Environment**: Infrastructure variables live in `docker/.env`. PWA-specific overrides live in `pwa/.env.local`.
 - **Migrations**: `api/Migrations/` is the authoritative source for schema changes.
-- **Paths**: All Docker commands MUST be run from the project root.
+- **Paths**: All infrastructure commands (Task, Docker) MUST be run from the project root.

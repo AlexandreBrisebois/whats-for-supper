@@ -9,9 +9,7 @@ A mobile-first recipe capture app for families. Phase 0 delivers the core captur
 ```bash
 git clone https://github.com/AlexandreBrisebois/whats-for-supper.git
 cd whats-for-supper
-cp .env.example .env
-docker-compose up --build
-open http://localhost:3000
+task init
 ```
 
 All services start in order. The first run takes ~2 minutes while Docker pulls base images and builds the containers. Subsequent starts are ~10 seconds.
@@ -70,16 +68,17 @@ Health endpoints:
 
 ```bash
 # Start all services
-docker-compose up
+task up
 
 # Rebuild after source changes
-docker-compose up --build
+task build
+task up
 
 # Watch API logs
-docker-compose logs -f api
+task logs:api
 
 # Run API unit tests
-docker-compose exec api dotnet test
+task test:api
 
 # Run Playwright E2E tests (from pwa/)
 npm run test:e2e
