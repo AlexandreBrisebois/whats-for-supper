@@ -32,7 +32,7 @@ public class RecipeControllerTests : IAsyncLifetime
     public async Task CreateRecipe_Without_Images_Returns_BadRequest()
     {
         var form    = BuildRecipeForm(rating: 2, cookedIndex: -1, includeImage: false);
-        var request = BuildPostRequest(form, familyMemberId: Guid.NewGuid());
+        var request = BuildPostRequest(form, familyMemberId: _factory.DefaultFamilyMemberId);
 
         var response = await _client.SendAsync(request);
 
@@ -44,7 +44,7 @@ public class RecipeControllerTests : IAsyncLifetime
     {
         // Rating=99 is outside [0,3] — fails [Range] model validation before reaching service.
         var form    = BuildRecipeForm(rating: 99, cookedIndex: -1, includeImage: true);
-        var request = BuildPostRequest(form, familyMemberId: Guid.NewGuid());
+        var request = BuildPostRequest(form, familyMemberId: _factory.DefaultFamilyMemberId);
 
         var response = await _client.SendAsync(request);
 
@@ -68,7 +68,7 @@ public class RecipeControllerTests : IAsyncLifetime
     public async Task CreateRecipe_With_Valid_Data_Returns_Ok_With_RecipeId()
     {
         var form    = BuildRecipeForm(rating: 2, cookedIndex: 0, includeImage: true);
-        var request = BuildPostRequest(form, familyMemberId: Guid.NewGuid());
+        var request = BuildPostRequest(form, familyMemberId: _factory.DefaultFamilyMemberId);
 
         var response = await _client.SendAsync(request);
 
@@ -106,7 +106,7 @@ public class RecipeControllerTests : IAsyncLifetime
     {
         // Arrange: create a recipe
         var form    = BuildRecipeForm(rating: 3, cookedIndex: 0, includeImage: true);
-        var create  = BuildPostRequest(form, familyMemberId: Guid.NewGuid());
+        var create  = BuildPostRequest(form, familyMemberId: _factory.DefaultFamilyMemberId);
         var created = await _client.SendAsync(create);
         Assert.Equal(HttpStatusCode.OK, created.StatusCode);
 

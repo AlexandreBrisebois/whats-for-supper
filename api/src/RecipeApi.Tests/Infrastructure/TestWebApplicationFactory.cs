@@ -26,6 +26,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     public string TempRecipesRoot { get; } =
         Path.Combine(Path.GetTempPath(), $"recipes_test_{Guid.NewGuid():N}");
 
+    public Guid DefaultFamilyMemberId { get; private set; }
+
     private WebApplication? _app;
     private readonly string _dbName = $"TestDb_{Guid.NewGuid():N}";
 
@@ -77,6 +79,15 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         {
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             await db.Database.EnsureCreatedAsync();
+
+            // Seed a default family member for tests that need a valid identity
+            var member = new RecipeApi.Models.FamilyMember
+            {
+                Name = "CI Test User"
+            };
+            db.FamilyMembers.Add(member);
+            await db.SaveChangesAsync();
+            DefaultFamilyMemberId = member.Id;
         }
 
         // ── Middleware & routing (mirrors Program.cs) ─────────────────────────
