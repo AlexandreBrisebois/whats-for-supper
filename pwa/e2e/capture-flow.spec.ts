@@ -16,35 +16,6 @@ import { test, expect, type Page } from '@playwright/test';
 // Path to a small fixture image bundled with the E2E suite
 const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 
-test.beforeEach(async ({ page }) => {
-  // Mock family members
-  await page.route('**/api/family', async (route) => {
-    if (route.request().method() === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: [{ id: '1', name: 'Alex' }],
-        }),
-      });
-    } else {
-      await route.continue();
-    }
-  });
-
-  // Mock recipe submission
-  await page.route('**/api/recipes', async (route) => {
-    if (route.request().method() === 'POST') {
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({ recipeId: 'rec-1', message: 'Success' }),
-      });
-    } else {
-      await route.continue();
-    }
-  });
-});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers

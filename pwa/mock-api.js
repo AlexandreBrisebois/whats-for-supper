@@ -52,11 +52,14 @@ const server = http.createServer((req, res) => {
     }));
   }
   else if (url.pathname === '/api/recipes' && req.method === 'POST') {
-    res.writeHead(201);
-    res.end(JSON.stringify({
-      recipeId: 'rec-1',
-      message: 'Success'
-    }));
+    req.on('data', () => {}); // Consume stream
+    req.on('end', () => {
+      res.writeHead(201);
+      res.end(JSON.stringify({
+        recipeId: 'rec-1',
+        message: 'Success'
+      }));
+    });
   }
   else {
     res.writeHead(404);

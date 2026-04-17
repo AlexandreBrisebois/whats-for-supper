@@ -4,6 +4,8 @@ import { serverFetch } from '@/lib/api/server-client';
 import type { FamilyMember } from '@/types/domain';
 import type { ApiResponse } from '@/types/api';
 
+export const dynamic = 'force-dynamic';
+
 import { TonightMenuCard, PrepChecklist } from '@/components/home/HomeSections';
 
 /**

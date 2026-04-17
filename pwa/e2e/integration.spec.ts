@@ -56,44 +56,6 @@ async function getRecipeCountViaApi(request: APIRequestContext, memberId: string
   }
 }
 
-test.beforeEach(async ({ page }) => {
-  // Mock family members
-  await page.route('**/api/family', async (route) => {
-    const method = route.request().method();
-    if (method === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: [{ id: '1', name: 'Alex' }] }),
-      });
-    } else if (method === 'POST') {
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { id: '3', name: 'E2E-New' } }),
-      });
-    } else {
-      await route.continue();
-    }
-  });
-
-  // Mock health check
-  await page.route('**/health', async (route) => {
-    await route.fulfill({ status: 200, body: 'OK' });
-  });
-
-  // Mock recipe submission
-  await page.route('**/api/recipes', async (route) => {
-    const method = route.request().method();
-    if (method === 'POST') {
-      await route.fulfill({ status: 201, body: JSON.stringify({ recipeId: 'rec-1', message: 'Success' }) });
-    } else if (method === 'GET') {
-      await route.fulfill({ status: 200, body: JSON.stringify({ total: 1, data: [{ id: 'rec-1' }] }) });
-    } else {
-      await route.continue();
-    }
-  });
-});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Full E2E journey

@@ -8,7 +8,9 @@ const nextConfig = {
   },
   typedRoutes: true,
   experimental: {
-    allowedDevOrigins: ['127.0.0.1', 'localhost'],
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
 
   // Proxy /backend/* → API container so the browser only ever calls the PWA's
