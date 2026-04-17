@@ -7,11 +7,11 @@ const IDENTITY_COOKIE = 'x-family-member-id';
 
 /** Paths accessible without a selected family member ID. */
 const PUBLIC_PATHS: string[] = [
-  ROUTES.LANDING, 
-  ROUTES.ONBOARDING, 
+  ROUTES.LANDING,
+  ROUTES.ONBOARDING,
   '/api/health',
   '/manifest.json',
-  '/favicon.ico'
+  '/favicon.ico',
 ];
 
 /**
@@ -37,7 +37,7 @@ export default function middleware(request: NextRequest) {
 
   // 3. Identity check
   const hasIdentity = request.cookies.has(IDENTITY_COOKIE);
-  const isPublicPath = PUBLIC_PATHS.some(path => pathname === path);
+  const isPublicPath = PUBLIC_PATHS.some((path) => pathname === path);
 
   // If on a protected path without identity, redirect to onboarding
   if (!isPublicPath && !hasIdentity) {

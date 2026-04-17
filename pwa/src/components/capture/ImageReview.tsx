@@ -10,7 +10,12 @@ interface ImageReviewProps {
   onSetFinishedDish?: (index: number) => void;
 }
 
-export function ImageReview({ images, onDelete, finishedDishIndex = null, onSetFinishedDish }: ImageReviewProps) {
+export function ImageReview({
+  images,
+  onDelete,
+  finishedDishIndex = null,
+  onSetFinishedDish,
+}: ImageReviewProps) {
   const [objectUrls, setObjectUrls] = useState<string[]>([]);
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -18,6 +23,7 @@ export function ImageReview({ images, onDelete, finishedDishIndex = null, onSetF
   // Create object URLs whenever the images array changes
   useEffect(() => {
     const urls = images.map((f) => URL.createObjectURL(f));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setObjectUrls(urls);
     return () => {
       urls.forEach((u) => URL.revokeObjectURL(u));
@@ -45,7 +51,9 @@ export function ImageReview({ images, onDelete, finishedDishIndex = null, onSetF
               {/* Thumbnail Container */}
               <div
                 className={`relative h-full w-full overflow-hidden rounded-[1.5rem] border transition-all duration-300 ${
-                  isHero ? 'border-terracotta ring-4 ring-terracotta/10 shadow-lg shadow-terracotta/10' : 'border-terracotta/10'
+                  isHero
+                    ? 'border-terracotta ring-4 ring-terracotta/10 shadow-lg shadow-terracotta/10'
+                    : 'border-terracotta/10'
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -79,7 +87,11 @@ export function ImageReview({ images, onDelete, finishedDishIndex = null, onSetF
                     : 'bg-white/90 text-charcoal/20 hover:bg-white hover:text-terracotta backdrop-blur-md'
                 }`}
               >
-                <Star size={14} fill={isHero ? 'currentColor' : 'none'} strokeWidth={isHero ? 0 : 2} />
+                <Star
+                  size={14}
+                  fill={isHero ? 'currentColor' : 'none'}
+                  strokeWidth={isHero ? 0 : 2}
+                />
               </button>
 
               {/* Delete button: Only visible on hover or mobile always for accessibility */}
@@ -112,19 +124,23 @@ export function ImageReview({ images, onDelete, finishedDishIndex = null, onSetF
               className="max-h-[85dvh] max-w-full rounded-[2.5rem] object-contain shadow-2xl border-4 border-white/10"
               onClick={(e) => e.stopPropagation()}
             />
-            
+
             {/* Quick Actions in Lightbox */}
             <div className="absolute top-4 right-4 flex gap-2">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onDelete(fullscreenIndex); setFullscreenIndex(null); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(fullscreenIndex);
+                  setFullscreenIndex(null);
+                }}
                 className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pink/20 text-pink hover:bg-pink hover:text-white backdrop-blur-md transition-all shadow-lg border border-pink/30"
               >
                 <X size={20} strokeWidth={2.5} />
               </button>
             </div>
           </div>
-          
+
           <button
             type="button"
             onClick={() => setFullscreenIndex(null)}

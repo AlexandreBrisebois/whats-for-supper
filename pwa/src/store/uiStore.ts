@@ -18,6 +18,5 @@ export const useUiStore = create<UiState>((set) => ({
     set((state) => ({
       toasts: [...state.toasts, { ...toast, id: crypto.randomUUID() }],
     })),
-  removeToast: (id) =>
-    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
+  removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 }));

@@ -44,9 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${outfit.variable} ${inter.variable}`}>
       <body className="min-h-dvh bg-cream text-charcoal antialiased">
         <LocaleProvider>
-          <IdentityValidator>
-            {children}
-          </IdentityValidator>
+          <IdentityValidator>{children}</IdentityValidator>
         </LocaleProvider>
       </body>
     </html>

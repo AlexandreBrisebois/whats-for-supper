@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --color-terracotta: #CD5D45;
-  --color-ochre: #E1AD01;
-  --color-sage: #8A9A5B;
-  --color-cream: #FDFCF0;
-  --color-charcoal: #1F2937; /* Soft Charcoal for Option 3 */
+  --color-terracotta: #cd5d45;
+  --color-ochre: #e1ad01;
+  --color-sage: #8a9a5b;
+  --color-cream: #fdfcf0;
+  --color-charcoal: #1f2937; /* Soft Charcoal for Option 3 */
 
   --background: var(--color-cream);
   --foreground: var(--color-charcoal);
@@ -66,20 +66,26 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 2px solid rgba(225, 173, 1, 0.3);
-    box-shadow: 
+    box-shadow:
       0 8px 32px rgba(225, 173, 1, 0.1),
       0 0 0 1px rgba(225, 173, 1, 0.05);
   }
 
   .vibrant-discovery-bg {
-    background: radial-gradient(circle at center, #FDFCF0 0%, #F9F3D9 100%);
+    background: radial-gradient(circle at center, #fdfcf0 0%, #f9f3d9 100%);
     min-height: 100vh;
   }
 
   @keyframes pulse-ochre {
-    0% { box-shadow: 0 0 0 0 rgba(225, 173, 1, 0.4); }
-    70% { box-shadow: 0 0 0 20px rgba(225, 173, 1, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(225, 173, 1, 0); }
+    0% {
+      box-shadow: 0 0 0 0 rgba(225, 173, 1, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 20px rgba(225, 173, 1, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(225, 173, 1, 0);
+    }
   }
 
   .animate-pulse-ochre {
@@ -93,7 +99,7 @@
 
   .solar-earth-bg {
     background-color: var(--color-cream);
-    background-image: 
+    background-image:
       radial-gradient(circle at 15% 50%, rgba(205, 93, 69, 0.03) 0%, transparent 50%),
       radial-gradient(circle at 85% 30%, rgba(225, 173, 1, 0.03) 0%, transparent 50%),
       radial-gradient(circle at 50% 80%, rgba(138, 154, 91, 0.02) 0%, transparent 50%);

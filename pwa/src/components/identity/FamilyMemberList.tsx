@@ -42,7 +42,12 @@ export function FamilyMemberList({ members, selectedId, onSelect }: FamilyMember
   };
 
   return (
-    <ul className="flex flex-col gap-2" role="listbox" aria-label="Family members" data-hint="family-list">
+    <ul
+      className="flex flex-col gap-2"
+      role="listbox"
+      aria-label="Family members"
+      data-hint="family-list"
+    >
       {members.map((member) => {
         const selected = member.id === selectedId;
         const isEditing = editingId === member.id;
@@ -99,7 +104,7 @@ export function FamilyMemberList({ members, selectedId, onSelect }: FamilyMember
                     </span>
                   )}
                 </button>
-                
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -108,12 +113,14 @@ export function FamilyMemberList({ members, selectedId, onSelect }: FamilyMember
                   className={[
                     'absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2.5 transition-all',
                     // On mobile, show it always for selected, otherwise group-hover
-                    selected 
-                      ? 'opacity-100 text-lavender hover:bg-white/20' 
+                    selected
+                      ? 'opacity-100 text-lavender hover:bg-white/20'
                       : 'opacity-0 group-hover:opacity-100 text-indigo hover:bg-indigo/10',
                     // For touch devices, ensure it's at least visible if active or selected
                   ].join(' ')}
-                  aria-label={tWithVars('family.editMember', 'Edit {{name}}', { name: member.name })}
+                  aria-label={tWithVars('family.editMember', 'Edit {{name}}', {
+                    name: member.name,
+                  })}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>

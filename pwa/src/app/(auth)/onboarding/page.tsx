@@ -13,12 +13,11 @@ export default function OnboardingPage() {
   const { isLoading, error, selectedFamilyMemberId, loadFamily, selectFamilyMember } = useFamily();
   const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
 
-  const [isSwitching, setIsSwitching] = useState(false);
-  
+  const isSwitching = !!selectedFamilyMemberId;
+
   useEffect(() => {
-    setIsSwitching(!!selectedFamilyMemberId);
     void loadFamily();
-  }, [loadFamily, selectedFamilyMemberId]);
+  }, [loadFamily]);
 
   function handleFamilyMemberSelected(familyMemberId: string) {
     selectFamilyMember(familyMemberId);
@@ -33,8 +32,8 @@ export default function OnboardingPage() {
           {isSwitching ? 'Switch Member' : 'Who Are You?'}
         </h1>
         <p className="mt-2 text-sm font-medium text-charcoal-300">
-          {isSwitching 
-            ? 'Select a different name to change perspective' 
+          {isSwitching
+            ? 'Select a different name to change perspective'
             : 'Select your name or add a new family member'}
         </p>
       </div>

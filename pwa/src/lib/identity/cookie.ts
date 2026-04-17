@@ -11,7 +11,7 @@ const COOKIE_NAME = 'x-family-member-id';
  */
 export function getFamilyMemberIdCookie(): string | undefined {
   if (typeof document === 'undefined') return undefined;
-  
+
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${COOKIE_NAME}=`);
   if (parts.length === 2) return parts.pop()?.split(';').shift();
@@ -29,7 +29,7 @@ export function setFamilyMemberIdCookie(id: string, days = 365) {
   let expires = '';
   if (days) {
     const date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
     expires = `; expires=${date.toUTCString()}`;
   }
 

@@ -36,23 +36,20 @@ async function createFamilyMemberViaApi(
       data: { name },
     });
     if (!res.ok()) return null;
-    const body = await res.json() as { id?: string };
+    const body = (await res.json()) as { id?: string };
     return body.id ?? null;
   } catch {
     return null;
   }
 }
 
-async function getRecipeCountViaApi(
-  request: APIRequestContext,
-  memberId: string
-): Promise<number> {
+async function getRecipeCountViaApi(request: APIRequestContext, memberId: string): Promise<number> {
   try {
     const res = await request.get('http://localhost:5000/api/recipes', {
       headers: { 'X-Family-Member-Id': memberId },
     });
     if (!res.ok()) return -1;
-    const body = await res.json() as { total?: number; data?: unknown[] };
+    const body = (await res.json()) as { total?: number; data?: unknown[] };
     return body.total ?? body.data?.length ?? 0;
   } catch {
     return -1;
@@ -107,14 +104,14 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
       const addButton = page.getByRole('button', {
         name: /don't see your name|add.*member|add new/i,
       });
-      if (await addButton.count() > 0) {
+      if ((await addButton.count()) > 0) {
         await addButton.click();
         await page.getByRole('textbox').fill(memberName);
         await page.getByRole('button', { name: /add|save|submit|create/i }).click();
         await page.waitForLoadState('networkidle');
 
         const newEntry = page.getByText(memberName);
-        if (await newEntry.count() > 0) {
+        if ((await newEntry.count()) > 0) {
           await newEntry.click();
         }
       }
@@ -134,18 +131,23 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   await page.context().grantPermissions(['camera']);
 
   const fileInput = page.locator('input[type="file"]').first();
-  if (await fileInput.count() > 0) {
+  if ((await fileInput.count()) > 0) {
     await fileInput.setInputFiles(FIXTURE_IMAGE);
   } else {
     const [fc] = await Promise.all([
       page.waitForEvent('filechooser'),
-      page.getByRole('button', { name: /gallery/i }).first().click(),
+      page
+        .getByRole('button', { name: /gallery/i })
+        .first()
+        .click(),
     ]);
     await fc.setFiles(FIXTURE_IMAGE);
   }
 
   // Verify photo added
-  await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({
+    timeout: 10_000,
+  });
 
   // Rate
   const ratingBtn = page.getByRole('button', { name: /loved it/i });
@@ -157,14 +159,11 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   await saveBtn.click();
 
   // ── Step 6: Success confirmation ──────────────────────────────────────
-  await expect(
-    page.getByText(/captured/i)
-  ).toBeVisible({ timeout: 15_000 });
-
+  await expect(page.getByText(/captured/i)).toBeVisible({ timeout: 15_000 });
 
   // ── Step 7: Return to /home ───────────────────────────────────────────────
   const homeLink = page.getByRole('link', { name: /home|back/i }).first();
-  if (await homeLink.count() > 0) {
+  if ((await homeLink.count()) > 0) {
     await homeLink.click();
   } else {
     await page.goto('/home');

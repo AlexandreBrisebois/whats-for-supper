@@ -32,7 +32,7 @@ export function Layout({
   hideHeader = false,
   isFluid = false,
   mainClassName = '',
-  className = ''
+  className = '',
 }: LayoutProps) {
   return (
     <div className={`relative flex min-h-dvh flex-col bg-cream overflow-x-hidden ${className}`}>
@@ -42,18 +42,12 @@ export function Layout({
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,rgba(138,154,91,0.03),transparent_60%)] pointer-events-none" />
 
       {/* Header */}
-      {!hideHeader && (
-        <Header
-          title={title}
-          leftAction={leftAction}
-          rightAction={rightAction}
-        />
-      )}
+      {!hideHeader && <Header title={title} leftAction={leftAction} rightAction={rightAction} />}
 
-      <main className={`relative flex flex-col flex-1 ${hideHeader ? 'safe-top' : ''} ${isFluid ? '' : 'px-4 py-8 md:px-6'} ${hideNavigation ? 'safe-bottom' : 'pb-[calc(6rem+env(safe-area-inset-bottom))]'} ${mainClassName}`}>
-        <div className={isFluid ? 'flex-1 flex flex-col' : 'mx-auto max-w-7xl'}>
-          {children}
-        </div>
+      <main
+        className={`relative flex flex-col flex-1 ${hideHeader ? 'safe-top' : ''} ${isFluid ? '' : 'px-4 py-8 md:px-6'} ${hideNavigation ? 'safe-bottom' : 'pb-[calc(6rem+env(safe-area-inset-bottom))]'} ${mainClassName}`}
+      >
+        <div className={isFluid ? 'flex-1 flex flex-col' : 'mx-auto max-w-7xl'}>{children}</div>
       </main>
 
       {/* Mobile & Tablet Navigation */}

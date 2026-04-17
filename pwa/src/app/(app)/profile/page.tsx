@@ -17,12 +17,11 @@ export default function ProfilePage() {
   const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
   const { locale, setCurrentLocale } = useLocale();
 
-  const [isSwitching, setIsSwitching] = useState(false);
-  
+  const isSwitching = !!selectedFamilyMemberId;
+
   useEffect(() => {
-    setIsSwitching(!!selectedFamilyMemberId);
     void loadFamily();
-  }, [loadFamily, selectedFamilyMemberId]);
+  }, [loadFamily]);
 
   function handleFamilyMemberSelected(familyMemberId: string) {
     selectFamilyMember(familyMemberId);
@@ -45,7 +44,7 @@ export default function ProfilePage() {
         <h3 className="mb-6 text-xs font-bold uppercase tracking-widest text-indigo/60">
           {t('profile.activeMember', 'Active Member')}
         </h3>
-        
+
         {/* Status messages */}
         {isLoading && (
           <p className="text-center text-sm text-charcoal-400 py-8">
@@ -77,7 +76,7 @@ export default function ProfilePage() {
               'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
               locale === 'en'
                 ? 'bg-indigo text-lavender shadow-card'
-                : 'bg-white/60 text-charcoal hover:bg-indigo/5 border border-transparent'
+                : 'bg-white/60 text-charcoal hover:bg-indigo/5 border border-transparent',
             ].join(' ')}
           >
             {t('profile.english', 'English')}
@@ -88,7 +87,7 @@ export default function ProfilePage() {
               'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
               locale === 'fr'
                 ? 'bg-indigo text-lavender shadow-card'
-                : 'bg-white/60 text-charcoal hover:bg-indigo/5 border border-transparent'
+                : 'bg-white/60 text-charcoal hover:bg-indigo/5 border border-transparent',
             ].join(' ')}
           >
             {t('profile.french', 'French')}

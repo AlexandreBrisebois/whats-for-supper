@@ -25,7 +25,9 @@ export function SubmitConfirmation({ onAddAnother }: SubmitConfirmationProps) {
     <div className="flex flex-col items-center gap-8 px-6 py-12 text-center">
       {/* Success mark */}
       <div className="flex h-24 w-24 items-center justify-center rounded-full bg-indigo/15 ring-4 ring-indigo">
-        <span className="text-5xl" aria-hidden>✓</span>
+        <span className="text-5xl" aria-hidden>
+          ✓
+        </span>
       </div>
 
       <div className="flex flex-col gap-2">

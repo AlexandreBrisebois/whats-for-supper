@@ -107,7 +107,10 @@ export function useCapture(): UseCaptureReturn {
 
     // Validate dish photo index
     const finishedDishImageIndex = selectedDishPhotoIndex ?? -1;
-    if (finishedDishImageIndex !== -1 && (finishedDishImageIndex < 0 || finishedDishImageIndex >= images.length)) {
+    if (
+      finishedDishImageIndex !== -1 &&
+      (finishedDishImageIndex < 0 || finishedDishImageIndex >= images.length)
+    ) {
       setError('Invalid dish photo selection. Please try again.');
       return null;
     }
@@ -132,7 +135,7 @@ export function useCapture(): UseCaptureReturn {
     } finally {
       setIsSubmitting(false);
     }
-  }, [images, rating, selectedDishPhotoIndex]);
+  }, [images, rating, selectedDishPhotoIndex, notes]);
 
   const reset = useCallback(() => {
     setImages([]);

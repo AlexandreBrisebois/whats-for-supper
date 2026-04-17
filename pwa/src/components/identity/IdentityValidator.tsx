@@ -13,7 +13,7 @@ interface IdentityValidatorProps {
 /**
  * IdentityValidator acts as a client-side safety net.
  * While middleware handles redirection if the cookie is missing,
- * this component checks once per mount if the selected member 
+ * this component checks once per mount if the selected member
  * actually exists in the database.
  */
 export function IdentityValidator({ children }: IdentityValidatorProps) {
@@ -28,7 +28,7 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
       if (!_hasHydrated) return;
 
       const isPublicPage = pathname === ROUTES.LANDING || pathname === ROUTES.ONBOARDING;
-      
+
       // 2. If we're on a public page, we're always "verified"
       if (isPublicPage) {
         setIsReady(true);
@@ -37,9 +37,9 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
       // 3. Identify selected member from store (Cookie)
       if (!selectedFamilyMemberId) {
-        // Redirection should have been handled by middleware. 
+        // Redirection should have been handled by middleware.
         // We only redirect here as a fallback if client state is out of sync.
-        setIsReady(true); 
+        setIsReady(true);
         return;
       }
 
@@ -47,10 +47,10 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
       if (familyMembers.length === 0) {
         await loadFamily();
       }
-      
+
       const latestMembers = useFamilyStore.getState().familyMembers;
       const exists = latestMembers.some((m) => m.id === selectedFamilyMemberId);
-      
+
       // Only clear and redirect if we HAVE members but the ID is missing (e.g. deleted on another device)
       if (!exists && latestMembers.length > 0) {
         console.warn('Selected member no longer exists. Clearing identity.');
@@ -68,7 +68,7 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
   // Prevent flicker on protected pages by only rendering when verified
   const isPublicPage = pathname === ROUTES.LANDING || pathname === ROUTES.ONBOARDING;
-  
+
   if (!isReady && !isPublicPage) {
     return null; // Or show a minimalist loader
   }

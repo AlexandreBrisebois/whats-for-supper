@@ -34,8 +34,10 @@ async function loginAsMember(page: Page) {
 
   if (count === 0) {
     // No members yet — create one
-    const addButton = page.getByRole('button', { name: /don't see your name|add.*member|add new/i });
-    if (await addButton.count() > 0) {
+    const addButton = page.getByRole('button', {
+      name: /don't see your name|add.*member|add new/i,
+    });
+    if ((await addButton.count()) > 0) {
       await addButton.click();
       const input = page.getByRole('textbox');
       await input.fill(`E2EUser-${Date.now()}`);
@@ -46,7 +48,7 @@ async function loginAsMember(page: Page) {
 
   // Find and click the first family member
   const firstMember = page.getByRole('button').filter({ hasText: /.+/ }).first();
-  if (await firstMember.count() > 0) {
+  if ((await firstMember.count()) > 0) {
     await firstMember.click();
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
   }
@@ -83,7 +85,7 @@ test('user can complete the capture flow and see a success message', async ({ pa
   // Look for a file input or a "choose from gallery" affordance
   const fileInput = page.locator('input[type="file"]').first();
 
-  if (await fileInput.count() > 0) {
+  if ((await fileInput.count()) > 0) {
     // Direct file input available (headless behavior)
     await fileInput.setInputFiles(FIXTURE_IMAGE);
   } else {
@@ -96,7 +98,9 @@ test('user can complete the capture flow and see a success message', async ({ pa
   }
 
   // Wait for the photo to be added (a count or thumbnail should appear)
-  await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({
+    timeout: 10_000,
+  });
 
   // ── Step 2: Rating ───────────────────────────────────────────────────────
   // Pick the "Loved it!" rating emoji button
@@ -115,9 +119,7 @@ test('user can complete the capture flow and see a success message', async ({ pa
 
   // ── Done ─────────────────────────────────────────────────────────────────
   // A success confirmation message should appear
-  await expect(
-    page.getByText(/captured/i)
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/captured/i)).toBeVisible({ timeout: 15_000 });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -131,4 +133,3 @@ test('after successful capture, user can return to home', async ({ page }) => {
   await page.goto('/home');
   await expect(page.getByRole('heading', { name: /welcome|home/i })).toBeVisible();
 });
-

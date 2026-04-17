@@ -5,10 +5,7 @@ interface ErrorFallbackProps {
   onRetry?: () => void;
 }
 
-export function ErrorFallback({
-  message = 'Something went wrong.',
-  onRetry,
-}: ErrorFallbackProps) {
+export function ErrorFallback({ message = 'Something went wrong.', onRetry }: ErrorFallbackProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
       <p className="text-charcoal-400">{message}</p>

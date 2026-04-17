@@ -8,9 +8,7 @@ export function Card({ glass = false, className = '', children, ...props }: Card
   return (
     <div
       {...props}
-      className={['rounded-2xl p-6 shadow-card', glass ? 'glass' : 'bg-white', className].join(
-        ' '
-      )}
+      className={['rounded-2xl p-6 shadow-card', glass ? 'glass' : 'bg-white', className].join(' ')}
     >
       {children}
     </div>

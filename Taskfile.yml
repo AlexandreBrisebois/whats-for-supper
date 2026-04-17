@@ -282,7 +282,7 @@ tasks:
     desc: "Format JavaScript/TypeScript code"
     dir: pwa
     cmds:
-      - npx prettier --write "src/**/*.{ts,tsx,json,css}"
+      - npm run format
 
   lint:
     desc: "🔍 Lint code (API + PWA)"

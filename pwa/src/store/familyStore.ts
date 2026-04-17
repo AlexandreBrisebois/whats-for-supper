@@ -1,8 +1,17 @@
 'use client';
 
 import { create } from 'zustand';
-import { getFamilyMembers, createFamilyMember, updateFamilyMember, deleteFamilyMember } from '@/lib/api/family';
-import { getFamilyMemberIdCookie, setFamilyMemberIdCookie, removeFamilyMemberIdCookie } from '@/lib/identity/cookie';
+import {
+  getFamilyMembers,
+  createFamilyMember,
+  updateFamilyMember,
+  deleteFamilyMember,
+} from '@/lib/api/family';
+import {
+  getFamilyMemberIdCookie,
+  setFamilyMemberIdCookie,
+  removeFamilyMemberIdCookie,
+} from '@/lib/identity/cookie';
 import type { FamilyMember } from '@/types/domain';
 
 interface FamilyState {
@@ -23,7 +32,8 @@ interface FamilyState {
 export const useFamilyStore = create<FamilyState>((set, get) => ({
   familyMembers: [],
   // Initialize from cookie if on client
-  selectedFamilyMemberId: typeof window !== 'undefined' ? getFamilyMemberIdCookie() ?? null : null,
+  selectedFamilyMemberId:
+    typeof window !== 'undefined' ? (getFamilyMemberIdCookie() ?? null) : null,
   isLoading: false,
   error: null,
   _hasHydrated: typeof window !== 'undefined',

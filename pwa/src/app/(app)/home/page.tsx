@@ -8,7 +8,7 @@ import { TonightMenuCard, PrepChecklist } from '@/components/home/HomeSections';
 
 /**
  * HomePage is now a Server Component.
- * It fetches the family data on the server to prevent FOUC 
+ * It fetches the family data on the server to prevent FOUC
  * and hydrates the client-side store via StoreInitializer.
  */
 export default async function HomePage() {
@@ -30,17 +30,14 @@ export default async function HomePage() {
     { id: '5', label: 'Layer and bake', time: '5:15 PM', completed: false },
   ];
 
-
   return (
     <>
-      <StoreInitializer 
-        familyMembers={familyMembers} 
-      />
+      <StoreInitializer familyMembers={familyMembers} />
 
       <div className="flex flex-col gap-6 pt-4 pb-8 max-w-md mx-auto">
         <HomeGreeting />
 
-        <TonightMenuCard 
+        <TonightMenuCard
           recipeName="Homemade Lasagna"
           description="A cozy Italian classic, made from scratch."
           imageUrl="https://images.unsplash.com/photo-1574894709920-11b28e7367e3?auto=format&fit=crop&q=80&w=800"

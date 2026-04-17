@@ -19,16 +19,16 @@ interface HeaderProps {
   showLogo?: boolean;
 }
 
-export function Header({ 
-  title, 
-  leftAction, 
-  rightAction, 
+export function Header({
+  title,
+  leftAction,
+  rightAction,
   nav,
-  showLogo = true // Enabled for Option 2 alignment
+  showLogo = true, // Enabled for Option 2 alignment
 }: HeaderProps) {
   const { familyMembers, selectedFamilyMemberId } = useFamilyStore();
-  
-  const selectedMember = familyMembers.find(m => m.id === selectedFamilyMemberId);
+
+  const selectedMember = familyMembers.find((m) => m.id === selectedFamilyMemberId);
   const firstName = selectedMember?.name.split(' ')[0] || '';
 
   const getGreeting = () => {
@@ -38,19 +38,14 @@ export function Header({
     return 'Good Evening';
   };
 
-  const dynamicTitle = title === 'Home' || !title 
-    ? `${getGreeting()}${firstName ? `, ${firstName}` : ''}!`
-    : title;
-
+  const dynamicTitle =
+    title === 'Home' || !title ? `${getGreeting()}${firstName ? `, ${firstName}` : ''}!` : title;
 
   return (
     <header className="sticky top-0 z-30 w-full bg-cream/90 backdrop-blur-xl safe-top border-b border-terracotta/5">
-      
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-1.5 md:py-2">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-1.5 md:py-2">
         {/* Left Side: Back Button or Spacer */}
-        <div className="flex min-w-[2.5rem] items-center">
-          {leftAction}
-        </div>
+        <div className="flex min-w-[2.5rem] items-center">{leftAction}</div>
 
         {/* Center: Dynamic Greeting or Page Title */}
         <div className="flex-1 text-center">
@@ -78,7 +73,6 @@ export function Header({
           {rightAction && <div className="flex items-center">{rightAction}</div>}
         </div>
       </div>
-
     </header>
   );
 }

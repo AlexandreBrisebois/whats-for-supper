@@ -28,7 +28,11 @@ export default defineConfig({
 
   // Reporters
   reporter: isCI
-    ? [['html', { open: 'never' }], ['json', { outputFile: 'playwright-report/results.json' }], ['github']]
+    ? [
+        ['html', { open: 'never' }],
+        ['json', { outputFile: 'playwright-report/results.json' }],
+        ['github'],
+      ]
     : [['html', { open: 'on-failure' }], ['list']],
 
   use: {

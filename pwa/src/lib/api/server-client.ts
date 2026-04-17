@@ -4,7 +4,7 @@ const IDENTITY_COOKIE = 'x-family-member-id';
 
 /**
  * serverFetch is a lightweight wrapper around the native fetch API
- * for use in Server Components. It automatically routes to the internal 
+ * for use in Server Components. It automatically routes to the internal
  * Docker API URL and forwards the identity cookie.
  */
 export async function serverFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -13,7 +13,7 @@ export async function serverFetch<T>(endpoint: string, options: RequestInit = {}
   const url = `${baseUrl}${endpoint.replace(/^\/backend/, '')}`;
 
   const headers = new Headers(options.headers);
-  
+
   // Forward the identity cookie if present
   const cookieStore = await cookies();
   const identity = cookieStore.get(IDENTITY_COOKIE);

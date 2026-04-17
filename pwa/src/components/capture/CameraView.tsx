@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
-import { Camera, Image } from 'lucide-react';
+import { Camera, Image as ImageIcon } from 'lucide-react';
 
 import { validateImage } from '@/lib/imageUtils';
 
@@ -29,7 +29,7 @@ export function CameraView({ onPhotoCapture }: CameraViewProps) {
       // Reset so the same file can be re-selected
       e.target.value = '';
     },
-    [onPhotoCapture],
+    [onPhotoCapture]
   );
 
   return (
@@ -49,16 +49,22 @@ export function CameraView({ onPhotoCapture }: CameraViewProps) {
             onClick={() => galleryInputRef.current?.click()}
             className="group flex h-14 w-14 items-center justify-center rounded-2xl bg-white/40 text-indigo shadow-glass ring-1 ring-indigo/10 backdrop-blur-xl transition-all hover:bg-white/60 active:scale-90"
           >
-            <Image size={24} strokeWidth={1.5} className="transition-transform group-hover:scale-110" />
+            <ImageIcon
+              size={24}
+              strokeWidth={1.5}
+              className="transition-transform group-hover:scale-110"
+            />
           </button>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-charcoal-300 opacity-60">Library</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-charcoal-300 opacity-60">
+            Library
+          </span>
         </div>
 
         {/* Shutter: Main Action */}
         <div className="relative flex items-center justify-center">
           {/* Shutter Ring */}
           <div className="absolute h-24 w-24 rounded-full border-2 border-indigo/20 animate-pulse" />
-          
+
           <button
             type="button"
             aria-label="Take photo"

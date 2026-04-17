@@ -28,7 +28,7 @@ export function RatingSelector({ selectedRating, onSelect }: RatingSelectorProps
         <p className="text-lg font-bold text-charcoal tracking-tight">Family Verdict</p>
         <p className="text-xs text-charcoal-300 font-medium">Did everyone enjoy this meal?</p>
       </div>
-      
+
       <div className="flex justify-between items-center px-2">
         {RATING_OPTIONS.map(({ value, emoji, label }) => {
           const isSelected = selectedRating === value;
@@ -46,14 +46,18 @@ export function RatingSelector({ selectedRating, onSelect }: RatingSelectorProps
                   : 'hover:bg-white/40 opacity-40 hover:opacity-100',
               ].join(' ')}
             >
-              <span className="text-4xl filter saturate-[0.8]" aria-hidden>{emoji}</span>
-              <span className={[
-                'text-[10px] font-bold uppercase tracking-wider transition-all',
-                isSelected ? 'text-indigo opacity-100' : 'text-charcoal-400 opacity-60'
-              ].join(' ')}>
+              <span className="text-4xl filter saturate-[0.8]" aria-hidden>
+                {emoji}
+              </span>
+              <span
+                className={[
+                  'text-[10px] font-bold uppercase tracking-wider transition-all',
+                  isSelected ? 'text-indigo opacity-100' : 'text-charcoal-400 opacity-60',
+                ].join(' ')}
+              >
                 {label}
               </span>
-              
+
               {isSelected && (
                 <div className="absolute -bottom-1 left-1/2 h-1 w-4 -translate-x-1/2 rounded-full bg-indigo animate-in fade-in zoom-in" />
               )}

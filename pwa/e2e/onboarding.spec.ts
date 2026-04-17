@@ -94,8 +94,7 @@ test('adding a new family member saves it and redirects to /home', async ({ page
   await page.waitForLoadState('networkidle');
 
   // Open the "Don't see your name?" / add-member flow
-  const addButton = page
-    .getByRole('button', { name: /don't see your name|add.*member|add new/i });
+  const addButton = page.getByRole('button', { name: /don't see your name|add.*member|add new/i });
 
   await expect(addButton).toBeVisible({ timeout: 10_000 });
   await addButton.click();

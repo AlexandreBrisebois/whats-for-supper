@@ -66,11 +66,13 @@ pwa/
 ## Key Principles
 
 ### 1. **Feature-First Organization**
+
 - Group related components, hooks, and utils by feature (`capture/`, `identity/`, `hints/`)
 - Easy to find all code related to a feature
 - Simple to enable/disable features by phase
 
 ### 2. **Separation of Concerns**
+
 - **Components**: UI only, no business logic
 - **Hooks**: Component-level logic + state
 - **Store**: Global state (Zustand)
@@ -78,16 +80,19 @@ pwa/
 - **Types**: Shared type definitions
 
 ### 3. **Localization-First**
+
 - `src/locales/` is a first-class directory
 - Easy to add new languages (copy `en/` to `{lang}/` and translate)
 - `lib/i18n/` provides utilities for translations
 
 ### 4. **API Client Pattern**
+
 - `lib/api/` is the single source for API calls
 - All API errors go through `lib/errors/errorHandler`
 - Easy to mock for testing
 
 ### 5. **Scalability**
+
 - Structure supports Phase 0 through Phase 5+
 - New phases add components in existing folders (no reorganization needed)
 - Barrel exports (`index.ts`) make imports clean
@@ -95,6 +100,7 @@ pwa/
 ## Phase 0 (MVP) - Minimal Footprint
 
 For Phase 0, you only need:
+
 ```
 src/
 ├── app/
@@ -139,6 +145,7 @@ Other directories are added in later phases as needed.
 ## Import Organization
 
 Keep imports organized in groups (separated by blank lines):
+
 ```typescript
 // 1. React/Next
 import React, { useState } from 'react';

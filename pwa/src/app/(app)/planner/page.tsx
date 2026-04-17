@@ -20,11 +20,11 @@ export default function PlannerPage() {
           <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
       </div>
-      
+
       <p className="max-w-xs text-sm font-medium text-charcoal-300 leading-relaxed">
         Phase 2 will allow you to view and adjust your family&apos;s weekly dinner plan with ease.
       </p>
-      
+
       <div className="mt-10 rounded-2xl bg-pink/5 px-6 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] text-pink border border-pink/10">
         On the Roadmap
       </div>

@@ -9,7 +9,21 @@ import { ROUTES } from '@/lib/constants/routes';
 
 export default function MinimalCapture() {
   const router = useRouter();
-  const { images, addImage, removeImage, isSubmitting, submitRecipe, clearError, error, rating, setRating, notes, setNotes, selectedDishPhotoIndex, setSelectedDishPhotoIndex } = useCapture();
+  const {
+    images,
+    addImage,
+    removeImage,
+    isSubmitting,
+    submitRecipe,
+    clearError,
+    error,
+    rating,
+    setRating,
+    notes,
+    setNotes,
+    selectedDishPhotoIndex,
+    setSelectedDishPhotoIndex,
+  } = useCapture();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,7 +48,7 @@ export default function MinimalCapture() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    files.forEach(file => addImage(file));
+    files.forEach((file) => addImage(file));
     e.target.value = ''; // Reset
   };
 
@@ -52,7 +66,9 @@ export default function MinimalCapture() {
           <CheckCircle2 size={48} />
         </div>
         <div className="flex flex-col gap-2">
-          <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">Captured!</h2>
+          <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
+            Captured!
+          </h2>
           <p className="text-charcoal/60">Your recipe is safe in the library.</p>
         </div>
         <Button
@@ -120,23 +136,31 @@ export default function MinimalCapture() {
       {images.length > 0 && (
         <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center justify-between px-2">
-            <h3 className="font-heading text-lg font-bold text-charcoal">Photos ({images.length})</h3>
-            <button onClick={() => images.forEach((_, i) => removeImage(0))} className="text-[10px] font-bold uppercase tracking-widest text-pink/60">Clear All</button>
+            <h3 className="font-heading text-lg font-bold text-charcoal">
+              Photos ({images.length})
+            </h3>
+            <button
+              onClick={() => images.forEach((_, i) => removeImage(0))}
+              className="text-[10px] font-bold uppercase tracking-widest text-pink/60"
+            >
+              Clear All
+            </button>
           </div>
 
           <div className="flex flex-wrap gap-4">
             {images.map((file, idx) => (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 onClick={() => setSelectedDishPhotoIndex(idx)}
                 className={`group relative h-28 w-28 flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl shadow-sm ring-2 transition-all active:scale-95 ${idx === selectedDishPhotoIndex ? 'ring-terracotta scale-105 z-10 shadow-lg' : 'ring-terracotta/5'}`}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={URL.createObjectURL(file)}
                   alt="Capture preview"
                   className="h-full w-full object-cover"
                 />
-                
+
                 {/* Delete Button - use stopPropagation to avoid triggering selection when deleting */}
                 <button
                   onClick={(e) => {
@@ -152,12 +176,18 @@ export default function MinimalCapture() {
                 <div
                   className={`absolute left-1 top-1 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-all ${idx === selectedDishPhotoIndex ? 'bg-terracotta text-white shadow-lg scale-110' : 'bg-white/60 text-charcoal/20 group-hover:text-terracotta/40'}`}
                 >
-                  <Star size={16} fill={idx === selectedDishPhotoIndex ? "currentColor" : "none"} strokeWidth={idx === selectedDishPhotoIndex ? 0 : 2} />
+                  <Star
+                    size={16}
+                    fill={idx === selectedDishPhotoIndex ? 'currentColor' : 'none'}
+                    strokeWidth={idx === selectedDishPhotoIndex ? 0 : 2}
+                  />
                 </div>
 
                 {idx === selectedDishPhotoIndex && (
                   <div className="absolute bottom-0 left-0 right-0 bg-terracotta/90 py-1 text-center">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-white">Main Dish</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white">
+                      Main Dish
+                    </span>
                   </div>
                 )}
               </div>
@@ -171,15 +201,17 @@ export default function MinimalCapture() {
                 {[
                   { value: 1, label: 'Not for me', icon: '👎' },
                   { value: 2, label: 'It was OK', icon: '👍' },
-                  { value: 3, label: 'Loved it!', icon: '💚' }
-                ].map(opt => (
+                  { value: 3, label: 'Loved it!', icon: '💚' },
+                ].map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => setRating(opt.value as any)}
                     className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta transform scale-100 shadow-sm border-opacity-100' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 transform scale-[0.98]'}`}
                   >
                     <span className="text-2xl leading-none">{opt.icon}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider">{opt.label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">
+                      {opt.label}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -189,7 +221,7 @@ export default function MinimalCapture() {
               <label className="text-sm font-bold text-charcoal/80">Notes (Optional)</label>
               <textarea
                 value={notes}
-                onChange={e => setNotes(e.target.value)}
+                onChange={(e) => setNotes(e.target.value)}
                 placeholder="Any tweaks for next time?"
                 className="w-full rounded-3xl border-2 border-charcoal/10 bg-white p-5 text-sm text-charcoal placeholder:text-charcoal/30 focus:border-terracotta focus:outline-none focus:ring-4 focus:ring-terracotta/10 min-h-[120px] resize-none transition-all"
               />
@@ -210,7 +242,9 @@ export default function MinimalCapture() {
       )}
 
       {error && (
-        <p className="px-4 text-center text-sm font-medium text-pink animate-in shake duration-300">{error}</p>
+        <p className="px-4 text-center text-sm font-medium text-pink animate-in shake duration-300">
+          {error}
+        </p>
       )}
     </div>
   );
