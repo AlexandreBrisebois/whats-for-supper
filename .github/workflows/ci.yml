@@ -42,7 +42,7 @@ jobs:
         with:
           dotnet-version: '10.x'
           cache: true
-          cache-dependency-path: '**/Packages.lock.json' # Or omit to use default .csproj search
+          cache-dependency-path: '**/*.csproj'
 
       - name: Restore dependencies
         run: dotnet restore src/RecipeApi.Tests/RecipeApi.Tests.csproj
@@ -112,6 +112,7 @@ jobs:
         with:
           dotnet-version: '10.x'
           cache: true
+          cache-dependency-path: '**/*.csproj'
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
