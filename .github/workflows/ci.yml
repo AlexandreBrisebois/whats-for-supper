@@ -41,9 +41,15 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.x'
+          cache: true
+          cache-dependency-path: '**/Packages.lock.json' # Or omit to use default .csproj search
 
       - name: Restore dependencies
         run: dotnet restore src/RecipeApi.Tests/RecipeApi.Tests.csproj
+        working-directory: api
+
+      - name: Lint (C#)
+        run: dotnet format --verify-no-changes --verbosity diagnostic
         working-directory: api
 
       - name: Build
@@ -105,6 +111,15 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.x'
+          cache: true
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pwa/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
 
       - name: Install PWA dependencies
         run: npm ci
@@ -125,7 +140,7 @@ jobs:
       - name: Start API in background
         run: |
           dotnet run --project api/RecipeApi.csproj \
-            --configuration Release &
+            --configuration Release > api.log 2>&1 &
           echo "API_PID=$!" >> $GITHUB_ENV
         env:
           POSTGRES_CONNECTION_STRING: postgres://recipe_app:ci_password@localhost:5432/recipe_app_db
@@ -152,7 +167,8 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:5000
 
       - name: Start PWA in background
-        run: npm run start &
+        run: |
+          npm run start > pwa.log 2>&1 &
         working-directory: pwa
         env:
           PORT: 3000
@@ -182,6 +198,16 @@ jobs:
         with:
           name: playwright-report
           path: pwa/playwright-report/
+          if-no-files-found: ignore
+
+      - name: Upload service logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-logs
+          path: |
+            api.log
+            pwa/pwa.log
 
   # ────────────────────────────────────────────────────────────────────────────
   # Docker Compose smoke test — verify all services start and pass health checks
@@ -189,8 +215,8 @@ jobs:
   docker-smoke:
     name: Docker Compose — smoke test
     runs-on: ubuntu-latest
-    # Only run on push to main to keep PR feedback fast
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Run on push to main or PRs that touch relevant code
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
 
     steps:
       - uses: actions/checkout@v4

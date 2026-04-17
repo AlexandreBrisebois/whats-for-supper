@@ -171,7 +171,7 @@ export default function MinimalCapture() {
                 {[
                   { value: 1, label: 'Not for me', icon: '👎' },
                   { value: 2, label: 'It was OK', icon: '👍' },
-                  { value: 3, label: 'Loved it!', icon: '🌟' }
+                  { value: 3, label: 'Loved it!', icon: '💚' }
                 ].map(opt => (
                   <button
                     key={opt.value}

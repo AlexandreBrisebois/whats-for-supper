@@ -42,7 +42,7 @@ export function FamilyMemberList({ members, selectedId, onSelect }: FamilyMember
   };
 
   return (
-    <ul className="flex flex-col gap-2" role="listbox" aria-label="Family members">
+    <ul className="flex flex-col gap-2" role="listbox" aria-label="Family members" data-hint="family-list">
       {members.map((member) => {
         const selected = member.id === selectedId;
         const isEditing = editingId === member.id;

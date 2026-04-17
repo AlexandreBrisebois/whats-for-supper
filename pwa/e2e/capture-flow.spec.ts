@@ -59,13 +59,13 @@ async function loginAsMember(page: Page) {
 test('authenticated user can navigate to the capture page', async ({ page }) => {
   await loginAsMember(page);
 
-  // Click the capture card / "Add Recipe" link on the home page
-  await page.getByRole('link', { name: /capture a meal|add recipe/i }).click();
+  // Click the "Capture" link in the navigation
+  await page.getByRole('link', { name: /^capture$/i }).click();
 
   await expect(page).toHaveURL(/\/capture/);
 
-  // Capture page shows step 1 heading
-  await expect(page.getByRole('heading', { name: /add your first recipe|step 1/i })).toBeVisible();
+  // Capture page shows "New Capture" heading
+  await expect(page.getByRole('heading', { name: /new capture/i })).toBeVisible();
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -81,56 +81,34 @@ test('user can complete the capture flow and see a success message', async ({ pa
   await page.context().grantPermissions(['camera']);
 
   // Look for a file input or a "choose from gallery" affordance
-  const fileInput = page.locator('input[type="file"]');
+  const fileInput = page.locator('input[type="file"]').first();
 
   if (await fileInput.count() > 0) {
-    // Direct file input available
+    // Direct file input available (headless behavior)
     await fileInput.setInputFiles(FIXTURE_IMAGE);
   } else {
-    // Trigger file chooser via a visible button
+    // Trigger file chooser via the "Pick from Gallery" button
     const [fileChooser] = await Promise.all([
       page.waitForEvent('filechooser'),
-      page.getByRole('button', { name: /gallery|photo|upload|add/i }).first().click(),
+      page.getByRole('button', { name: /gallery/i }).click(),
     ]);
     await fileChooser.setFiles(FIXTURE_IMAGE);
   }
 
   // Wait for the photo to be added (a count or thumbnail should appear)
-  await expect(page.getByText(/1 photo/i)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({ timeout: 10_000 });
 
-  // Advance to the review step
-  const reviewBtn = page.getByRole('button', { name: /review photo/i });
-  await expect(reviewBtn).toBeEnabled();
-  await reviewBtn.click();
+  // ── Step 2: Rating ───────────────────────────────────────────────────────
+  // Pick the "Loved it!" rating emoji button
+  const ratingButton = page.getByRole('button', { name: /loved it/i });
+  await expect(ratingButton).toBeVisible();
+  await ratingButton.click();
 
-  // ── Step 2: Review ──────────────────────────────────────────────────────
-  await expect(page.getByRole('heading', { name: /review photo/i })).toBeVisible();
+  // ── Step 3: Notes (Optional) ─────────────────────────────────────────────
+  const notesInput = page.getByPlaceholder(/any tweaks/i);
+  await notesInput.fill('Test recipe notes');
 
-  const mealSelectBtn = page.getByRole('button', { name: /select meal photo/i });
-  await expect(mealSelectBtn).toBeEnabled();
-  await mealSelectBtn.click();
-
-  // ── Step 3: Meal selection ───────────────────────────────────────────────
-  await expect(page.getByRole('heading', { name: /select meal photo/i })).toBeVisible();
-
-  // Select the first image thumbnail (or skip if none rendered)
-  const thumbnail = page.locator('img, button[aria-label*="select"]').first();
-  if (await thumbnail.count() > 0) {
-    await thumbnail.click();
-  }
-
-  const rateBtn = page.getByRole('button', { name: /rate|skip.*rate/i });
-  await expect(rateBtn).toBeEnabled();
-  await rateBtn.click();
-
-  // ── Step 4: Rating ───────────────────────────────────────────────────────
-  await expect(page.getByRole('heading', { name: /rate.*save/i })).toBeVisible();
-
-  // Pick any rating emoji button
-  const ratingButtons = page.getByRole('button').filter({ hasText: /[⚪🔴🟡💚]/ });
-  await ratingButtons.first().click();
-
-  // Submit
+  // ── Step 4: Save ─────────────────────────────────────────────────────────
   const saveBtn = page.getByRole('button', { name: /save recipe/i });
   await expect(saveBtn).toBeEnabled();
   await saveBtn.click();
@@ -138,7 +116,7 @@ test('user can complete the capture flow and see a success message', async ({ pa
   // ── Done ─────────────────────────────────────────────────────────────────
   // A success confirmation message should appear
   await expect(
-    page.getByText(/saved|success|recipe added|all done/i)
+    page.getByText(/captured/i)
   ).toBeVisible({ timeout: 15_000 });
 });
 
@@ -149,8 +127,8 @@ test('user can complete the capture flow and see a success message', async ({ pa
 test('after successful capture, user can return to home', async ({ page }) => {
   await loginAsMember(page);
 
-  // Navigate directly to done state by completing the flow
-  // (Re-uses the same setup — kept short by going straight to /home via the link)
+  // Navigate directly to home
   await page.goto('/home');
-  await expect(page.getByRole('heading', { name: /welcome/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /welcome|home/i })).toBeVisible();
 });
+

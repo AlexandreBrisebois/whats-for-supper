@@ -126,54 +126,41 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   await expect(page.getByRole('heading', { name: /welcome/i })).toBeVisible();
 
   // ── Step 4: Navigate to capture ──────────────────────────────────────────
-  await page.getByRole('link', { name: /capture a meal|add recipe/i }).click();
+  await page.getByRole('link', { name: /^capture$/i }).click();
   await expect(page).toHaveURL(/\/capture/);
-  await expect(page.getByRole('heading', { name: /add your first recipe|step 1/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /new capture/i })).toBeVisible();
 
   // ── Step 5: Submit a recipe (with mock image) ─────────────────────────────
   await page.context().grantPermissions(['camera']);
 
-  const fileInput = page.locator('input[type="file"]');
+  const fileInput = page.locator('input[type="file"]').first();
   if (await fileInput.count() > 0) {
     await fileInput.setInputFiles(FIXTURE_IMAGE);
   } else {
     const [fc] = await Promise.all([
       page.waitForEvent('filechooser'),
-      page.getByRole('button', { name: /gallery|photo|upload|add/i }).first().click(),
+      page.getByRole('button', { name: /gallery/i }).first().click(),
     ]);
     await fc.setFiles(FIXTURE_IMAGE);
   }
 
-  // Advance through each step
-  const reviewBtn = page.getByRole('button', { name: /review photo/i });
-  if (await reviewBtn.count() > 0) {
-    await expect(reviewBtn).toBeEnabled({ timeout: 8_000 });
-    await reviewBtn.click();
+  // Verify photo added
+  await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({ timeout: 10_000 });
 
-    // Step 2 → 3
-    const mealSelectBtn = page.getByRole('button', { name: /select meal photo/i });
-    await expect(mealSelectBtn).toBeEnabled();
-    await mealSelectBtn.click();
+  // Rate
+  const ratingBtn = page.getByRole('button', { name: /loved it/i });
+  await ratingBtn.click();
 
-    // Step 3 → 4
-    const rateBtn = page.getByRole('button', { name: /rate|skip.*rate/i });
-    await expect(rateBtn).toBeEnabled();
-    await rateBtn.click();
+  // Save
+  const saveBtn = page.getByRole('button', { name: /save recipe/i });
+  await expect(saveBtn).toBeEnabled();
+  await saveBtn.click();
 
-    // Pick a rating
-    const ratingButtons = page.getByRole('button').filter({ hasText: /[⚪🔴🟡💚]/ });
-    await ratingButtons.first().click();
+  // ── Step 6: Success confirmation ──────────────────────────────────────
+  await expect(
+    page.getByText(/captured/i)
+  ).toBeVisible({ timeout: 15_000 });
 
-    // Save
-    const saveBtn = page.getByRole('button', { name: /save recipe/i });
-    await expect(saveBtn).toBeEnabled();
-    await saveBtn.click();
-
-    // ── Step 6: Success confirmation ──────────────────────────────────────
-    await expect(
-      page.getByText(/saved|success|recipe added|all done/i)
-    ).toBeVisible({ timeout: 15_000 });
-  }
 
   // ── Step 7: Return to /home ───────────────────────────────────────────────
   const homeLink = page.getByRole('link', { name: /home|back/i }).first();
