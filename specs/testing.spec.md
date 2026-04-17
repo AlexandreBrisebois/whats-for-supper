@@ -13,6 +13,13 @@ This document defines the testing strategy for "What's For Supper" across all se
 
 ### 2.1 Recipe API (.NET 10)
 
+| Toolbox Reference | command | Purpose |
+|------|---------|---------|
+| API Map | `python3 scripts/agent/map_api.py` | Generates endpoint table |
+| Summary | `ls -R docs/meta/` | Check reorganized docs |
+| **PWA Tests (Mock)** | `task review` | Standard pre-commit check (Stable) |
+| **PWA Tests (Live)** | `task test:pwa:live` | Integration check against real API |
+
 | Type | Tool | Scope |
 |---|---|---|
 | Unit | xUnit | Validation logic, ID generation, rating mapping |
@@ -48,10 +55,16 @@ Key test cases:
 |---|---|---|
 | Unit | Vitest | Utility functions (identity cookie, API wrappers, store logic) |
 | Component | React Testing Library | Individual component rendering and interaction |
-| E2E | Playwright | Golden path flows across all phases |
+| E2E | Playwright | Golden path flows against **Stateful Mock API** (Baseline) |
+
+#### E2E Strategy:
+- **Mock API Baseline**: `npm run test:e2e` automatically starts `mock-api.js`. This ensures deterministic, stateless tests for CI and pre-commit checks.
+- **Environment Parity**: The `mock-api.js` is stateful (in-memory) to handle POST-then-GET flows like new member onboarding.
+- **Live Integration**: `task test:pwa:live` bypasses mocks to test against the real local .NET backend.
 
 Key E2E flows:
-- First launch: "Who are you?" overlay shown, profile selected, cookie set.
+- First launch: IdentityValidator redirects to `/onboarding`.
+- Onboarding: Add/Select family member -> Redirect to `/home`.
 - Recipe capture: Camera opened, photo taken, rating selected, recipe submitted.
 - Planner: Meal added to slot, appears in weekly list.
 - Discovery: Card stack loads, swipe right adds to inspiration pool.

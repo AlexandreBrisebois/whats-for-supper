@@ -36,3 +36,32 @@ The repository is now "Agent-Optimized." The root is clean, the tech stack is co
 |------|---------|---------|
 | API Map | `python3 scripts/agent/map_api.py` | Generates endpoint table |
 | Summary | `ls -R docs/meta/` | Check reorganized docs |
+| **PWA Tests (Mock)** | `task review` | Standard pre-commit check (Stable) |
+| **PWA Tests (Live)** | `task test:pwa:live` | Integration check against real API |
+
+## [2026-04-17] E2E Stabilization & Identity Architecture
+
+### Status: COMPLETED ✅
+**Agent**: Antigravity (Gemini 1.5 Pro)
+
+### Executed Changes
+- **Identity Migration**:
+    - [x] Removed `middleware.ts`.
+    - [x] Implemented `IdentityValidator.tsx` (Client-side gatekeeper) to future-proof against Next.js middleware deprecations/instability.
+    - [x] Centralized all public/protected route redirections in `IdentityValidator`.
+- **E2E Stabilization**:
+    - [x] Switched CI (`ci.yml`) to use `mock-api.js` instead of the full .NET backend for PWA tests.
+    - [x] Implemented **Stateful Mock API** (in-memory persistence) to support onboarding flows.
+    - [x] Unified local/CI configurations in `playwright.config.ts`.
+- **Developer Experience**:
+    - [x] Added `task test:pwa:ci` and `task test:pwa:live` to `Taskfile.yml`.
+    - [x] Playwright now auto-manages the Mock API lifecycle locally.
+
+### Technical Details & Decisions
+- **Router Collisions**: Removed redundant `router.replace` calls from the Validator on the onboarding page to allow the page's own success handler to "win" without race conditions.
+- **Port Strategy**: Standardized Mock API on port `5001` and Live API on port `5000`.
+
+### Technical Context for Next Agent
+- **Identity Flow**: The `IdentityValidator` wraps the entire app in `layout.tsx`. It handles the Landing page (`/`) redirect based on cookie presence.
+- **Mocks**: When updating PWA data fetching, ensure the `mock-api.js` is updated to reflect the new schema/endpoint to keep CI green.
+- **Trust**: If `task review` passes locally, it WILL pass in CI. If not, check if `MOCK_API_PORT` changed.
