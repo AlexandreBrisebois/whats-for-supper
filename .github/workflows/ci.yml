@@ -43,11 +43,11 @@ jobs:
           dotnet-version: '10.x'
 
       - name: Restore dependencies
-        run: dotnet restore RecipeApi.csproj
+        run: dotnet restore src/RecipeApi.Tests/RecipeApi.Tests.csproj
         working-directory: api
 
       - name: Build
-        run: dotnet build RecipeApi.csproj --no-restore --configuration Release
+        run: dotnet build src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --configuration Release
         working-directory: api
 
       - name: Test
