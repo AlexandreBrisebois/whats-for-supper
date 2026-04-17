@@ -11,10 +11,10 @@ interface IdentityValidatorProps {
 }
 
 /**
- * IdentityValidator acts as a client-side safety net.
- * While middleware handles redirection if the cookie is missing,
- * this component checks once per mount if the selected member
- * actually exists in the database.
+ * IdentityValidator acts as the primary safety net and router.
+ * It enforces identity presence on protected routes and handles
+ * public redirects (e.g. landing page logic).
+ * It also checks if the selected member actually exists in the database.
  */
 export function IdentityValidator({ children }: IdentityValidatorProps) {
   const router = useRouter();
@@ -27,23 +27,34 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
       // 1. Wait for store hydration (now from cookies)
       if (!_hasHydrated) return;
 
-      const isPublicPage = pathname === ROUTES.LANDING || pathname === ROUTES.ONBOARDING;
+      // 2. Landing page redirects to Home (if authenticated) or Onboarding (if fresh user)
+      if (pathname === ROUTES.LANDING) {
+        if (selectedFamilyMemberId) {
+          router.replace(ROUTES.HOME);
+        } else {
+          router.replace(ROUTES.ONBOARDING);
+        }
+        return;
+      }
 
-      // 2. If we're on a public page, we're always "verified"
-      if (isPublicPage) {
+      // 3. Onboarding page redirects to Home if already authenticated
+      if (pathname === ROUTES.ONBOARDING) {
+        if (selectedFamilyMemberId) {
+          router.replace(ROUTES.HOME);
+          return;
+        }
         setIsReady(true);
         return;
       }
 
-      // 3. Identify selected member from store (Cookie)
+      // 4. Protected routes: if no identity, redirect to onboarding
       if (!selectedFamilyMemberId) {
-        // Redirection should have been handled by middleware.
-        // We only redirect here as a fallback if client state is out of sync.
-        setIsReady(true);
+        console.warn('[IdentityValidator] No identity found. Redirecting to onboarding.');
+        router.replace(ROUTES.ONBOARDING);
         return;
       }
 
-      // 4. Validate if the stored ID actually exists in the family
+      // 5. Validate if the stored ID actually exists in the family
       if (familyMembers.length === 0) {
         await loadFamily();
       }
@@ -66,11 +77,8 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, selectedFamilyMemberId, _hasHydrated, familyMembers.length]);
 
-  // Prevent flicker on protected pages by only rendering when verified
-  const isPublicPage = pathname === ROUTES.LANDING || pathname === ROUTES.ONBOARDING;
-
-  if (!isReady && !isPublicPage) {
-    return null; // Or show a minimalist loader
+  if (!isReady) {
+    return null; // Prevent flicker while checking identity or performing client-side redirects
   }
 
   return <>{children}</>;

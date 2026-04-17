@@ -82,21 +82,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-api
 
-    services:
-      postgres:
-        image: postgres:18-alpine3.23
-        env:
-          POSTGRES_USER: recipe_app
-          POSTGRES_PASSWORD: ci_password
-          POSTGRES_DB: recipe_app_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U recipe_app -d recipe_app_db"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
     steps:
       - uses: actions/checkout@v4
 
@@ -106,13 +91,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: pwa/package-lock.json
-
-      - name: Set up .NET 10 (for API)
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.x'
-          cache: true
-          cache-dependency-path: '**/*.csproj'
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -138,34 +116,29 @@ jobs:
         run: npx playwright install chromium --with-deps
         working-directory: pwa
 
-      - name: Start API in background
+      - name: Start Mock API in background
         run: |
-          dotnet run --project api/RecipeApi.csproj \
-            --configuration Release > api.log 2>&1 &
-          echo "API_PID=$!" >> $GITHUB_ENV
-        env:
-          POSTGRES_CONNECTION_STRING: postgres://recipe_app:ci_password@localhost:5432/recipe_app_db
-          ASPNETCORE_ENVIRONMENT: Development
-          ASPNETCORE_URLS: http://+:5000
-          CORS_ALLOWED_ORIGINS: http://localhost:3000
-          RECIPES_ROOT: /tmp/recipes
+          node mock-api.js > mock-api.log 2>&1 &
+          echo "MOCK_API_PID=$!" >> $GITHUB_ENV
+        working-directory: pwa
 
-      - name: Wait for API to be ready
+      - name: Wait for Mock API to be ready
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:5000/health; then
-              echo "API is ready"
+            if curl -sf http://localhost:5001/health; then
+              echo "Mock API is ready"
               exit 0
             fi
             sleep 2
           done
-          echo "API did not start in time" && exit 1
+          echo "Mock API did not start in time" && exit 1
 
       - name: Build PWA
         run: npm run build
         working-directory: pwa
         env:
-          NEXT_PUBLIC_API_BASE_URL: http://localhost:5000
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
+          API_INTERNAL_URL: http://localhost:5001
 
       - name: Start PWA in background
         run: |
@@ -173,7 +146,8 @@ jobs:
         working-directory: pwa
         env:
           PORT: 3000
-          NEXT_PUBLIC_API_BASE_URL: http://localhost:5000
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
+          API_INTERNAL_URL: http://localhost:5001
 
       - name: Wait for PWA to be ready
         run: |
@@ -207,7 +181,7 @@ jobs:
         with:
           name: service-logs
           path: |
-            api.log
+            pwa/mock-api.log
             pwa/pwa.log
 
   # ────────────────────────────────────────────────────────────────────────────
