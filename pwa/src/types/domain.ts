@@ -1,10 +1,8 @@
-export type RecipeRating = 1 | 2 | 3 | 4;
+export type RecipeRating = 0 | 1 | 2 | 3; // 0=Unknown, 1=Dislike, 2=Like, 3=Love
 
 export interface FamilyMember {
   id: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface RecipeImage {
@@ -14,13 +12,12 @@ export interface RecipeImage {
 
 export interface Recipe {
   id: string;
-  label?: string;
-  notes?: string;
-  images: RecipeImage[];
   rating: RecipeRating;
-  capturedBy: string;
-  capturedAt: string;
-  familyId: string;
+  addedBy: string;
+  images: number[]; // Indices available for /recipe/{id}/original/{index}
+  createdAt: string;
+  notes?: string;
+  label?: string;
 }
 
 export interface RecipeImport {

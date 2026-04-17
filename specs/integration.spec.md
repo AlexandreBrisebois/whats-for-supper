@@ -10,10 +10,10 @@ This document defines how "What's For Supper" integrates with external services 
 [Recipe API (.NET 10)]
     ├── Writes → [NAS Filesystem] (recipe images, recipe.info)
     ├── Writes → [PostgreSQL] (recipe metadata, family data, schedule)
-    └── Publishes → [Redis Stream: recipe:import:queue]
+    └── Inserts → [PostgreSQL: recipe_imports]
 
 [Import Worker (.NET 10)]
-    ├── Consumes ← [Redis Stream]
+    ├── Polls ← [PostgreSQL: recipe_imports]
     ├── Reads ← [NAS Filesystem] (originals/)
     ├── Calls → [Ollama/Gemma] (Pass 1: OCR + Schema.org)
     ├── Calls → [Google GenAI: models/gemini-2.0-flash-preview-image-generation] (Pass 2: hero.jpg)
@@ -54,16 +54,16 @@ This document defines how "What's For Supper" integrates with external services 
 - **Auth**: Azure AD app registration (client credentials flow).
 - **Polling interval**: 5 minutes.
 
-## 3. Redis Streams
+## 3. Command Tables (recipe_imports)
 
-| Stream | Producer | Consumer | Purpose |
-|---|---|---|---|
-| `recipe:import:queue` | Recipe API | Import Worker | Trigger import pipeline |
-| `recipe:import:error` | Import Worker | (monitoring) | Dead-letter for failed jobs |
+| Column | Purpose |
+|---|---|
+| `status` | State of the job: `Pending`, `Processing`, `Failed` |
+| `recipe_id` | Foreign key to the `recipes` table |
+| `error_message` | Captured logs for failed imports |
 
-- Consumer group: `import-worker-group`.
-- Messages acknowledged (`XACK`) only after successful Pass 1 + Pass 2.
-- Failed messages retried up to 3 times before moving to dead-letter stream.
+- **Polling**: The Import Worker polls every 5-10 seconds for `Pending` items.
+- **Cleanup**: Successful imports results in the record being **deleted** from `recipe_imports` once metadata is synchronized back to the main `recipes` table.
 
 ## 4. PostgreSQL Connectivity
 
@@ -77,10 +77,8 @@ All services connect to the same PostgreSQL instance:
 | Variable | Used By | Description |
 |---|---|---|
 | `POSTGRES_CONNECTION_STRING` | API, Worker, Agents | PostgreSQL connection |
-| `REDIS_CONNECTION_STRING` | API, Worker | Redis connection |
-| `REDIS_STREAM_NAME` | API, Worker | Stream name (default: `recipe:import:queue`) |
 | `RECIPES_ROOT` | API, Worker | NAS filesystem mount path |
-| `API_BASE_URL` | API | Self-reference for imageUrls in Redis messages |
+| `API_BASE_URL` | API | Base URL for the API |
 | `OLLAMA_BASE_URL` | Worker, Agents | Ollama endpoint |
 | `GEMINI_API_KEY` | Worker, Agents | Google GenAI key |
 | `NEXT_PUBLIC_API_BASE_URL` | PWA | Recipe API base URL |

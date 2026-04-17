@@ -23,28 +23,27 @@ This document defines the testing strategy for "What's For Supper" across all se
 | Type | Tool | Scope |
 |---|---|---|
 | Unit | xUnit | Validation logic, ID generation, rating mapping |
-| Integration | xUnit + Testcontainers | Full API request → filesystem write → Redis publish |
+| Integration | xUnit + Testcontainers | Full API request → filesystem write → recipe_imports insert |
 | Contract | Manual / OpenAPI diff | Ensure API responses match spec |
 
 Key test cases:
-- `POST /api/recipes` with valid multipart → 200, `recipeId` returned, files on disk, Redis message published.
+- `POST /api/recipes` with valid multipart → 200, `recipeId` returned, files on disk, `recipe_imports` record created.
 - `POST /api/recipes` with no images → 400.
 - `POST /api/recipes` with invalid rating → 400.
 - `GET /recipe/{recipeId}/original/0` → 200, correct Content-Type.
 - `GET /recipe/{id}/original/99` (missing) → 404.
 - `POST /api/family` with duplicate name → 400.
-- Redis unavailable → `POST /api/recipes` fails with 503.
 
 ### 2.2 Import Worker (.NET 10)
 
 | Type | Tool | Scope |
 |---|---|---|
 | Unit | xUnit | Base64 encoding, hero selection fallback, retry logic |
-| Integration | xUnit + Testcontainers | Redis consume → Ollama mock → Gemini mock → file output |
+| Integration | xUnit + Testcontainers | Poll command → Ollama mock → Gemini mock → file output |
 
 Key test cases:
-- Message consumed, Pass 1 called, `recipe.json` written.
-- Pass 1 fails 3 times → message moved to dead-letter stream.
+- Pending command polled, Pass 1 called, `recipe.json` written.
+- Pass 1 fails 3 times → command status set to `Failed`.
 - No images in `originals/` → job moved to dead-letter stream.
 - No hero flag from Gemma → defaults to first image for Pass 2.
 - Pass 2 called with base64 image → `hero.jpg` written.
@@ -79,7 +78,7 @@ Key E2E flows:
 
 | Environment | Purpose | Database |
 |---|---|---|
-| Local | Developer testing | Docker Compose (`docker-compose.override.yml`) |
+| Local | Developer testing | Modular Docker Compose (`docker/compose/*.yml`) |
 | CI | Automated on PR | Testcontainers (ephemeral) |
 | NAS (Production) | Live environment | Persistent Docker volume |
 

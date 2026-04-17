@@ -1,11 +1,8 @@
 import axios from 'axios';
-
-// /backend is the Next.js rewrite proxy → API container (works on any device/IP).
-// Override NEXT_PUBLIC_API_BASE_URL only when running the PWA outside Docker.
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/backend';
+import { API_BASE_URL } from '@/lib/constants/config';
 
 export const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   timeout: 30_000,
 });
 

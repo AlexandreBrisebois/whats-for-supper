@@ -36,11 +36,11 @@ Copy the example env file and adjust as needed:
 cp .env.local.example .env.local
 ```
 
-| Variable                  | Default                 | Description          |
-| ------------------------- | ----------------------- | -------------------- |
+| Variable                   | Default                 | Description           |
+| -------------------------- | ----------------------- | --------------------- |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:5000` | Frontend API base URL |
-| `API_INTERNAL_URL`        | `http://api:5000`       | Internal Backend URL  |
-| `NEXT_PUBLIC_ENVIRONMENT`   | `development`           | Runtime environment   |
+| `API_INTERNAL_URL`         | `http://api:5000`       | Internal Backend URL  |
+| `NEXT_PUBLIC_ENVIRONMENT`  | `development`           | Runtime environment   |
 
 ### Build
 

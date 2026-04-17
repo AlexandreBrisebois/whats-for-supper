@@ -52,7 +52,7 @@ tasks:
     desc: "API development (hot reload)"
     dir: api
     cmds:
-      - dotnet watch run --project src/RecipeApi/RecipeApi.csproj
+      - dotnet watch run --project RecipeApi.csproj
 
   dev:pwa:
     desc: "PWA development (hot reload)"
@@ -367,7 +367,6 @@ tasks:
       - '{{.COMPOSE_CMD}} down -v'
       - rm -rf api/bin api/obj
       - rm -rf pwa/node_modules pwa/.next
-      - rm -rf tools/tests/node_modules
       - echo "✓ Cleaned up"
     interactive: true
 
@@ -461,11 +460,11 @@ tasks:
     cmds:
       - |
         if command -v open &> /dev/null; then
-          open src/specs/phase0-mvp.spec.md
+          open specs/phase0-mvp.spec.md
         elif command -v xdg-open &> /dev/null; then
-          xdg-open src/specs/phase0-mvp.spec.md
+          xdg-open specs/phase0-mvp.spec.md
         else
-          cat src/specs/phase0-mvp.spec.md
+          cat specs/phase0-mvp.spec.md
         fi
 
   # ============================================================================

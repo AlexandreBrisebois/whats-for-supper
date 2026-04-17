@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { API_INTERNAL_URL } from '@/lib/constants/config';
 
 const IDENTITY_COOKIE = 'x-family-member-id';
 
@@ -9,8 +10,7 @@ const IDENTITY_COOKIE = 'x-family-member-id';
  */
 export async function serverFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   // Use the internal URL to talk to the API container directly
-  const baseUrl = process.env.API_INTERNAL_URL ?? 'http://api:5000';
-  const url = `${baseUrl}${endpoint.replace(/^\/backend/, '')}`;
+  const url = `${API_INTERNAL_URL}${endpoint.replace(/^\/backend/, '')}`;
 
   const headers = new Headers(options.headers);
 

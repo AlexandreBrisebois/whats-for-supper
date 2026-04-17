@@ -23,7 +23,8 @@ whats-for-supper/
 │       └── traefik_dynamic.yml       # Static routing overrides
 │
 ├── api/                              # Backend API (.NET 10)
-│   ├── Migrations/                   # EF Core source of truth (Authored via API)
+│   ├── RecipeApi.csproj              # Main project file
+│   ├── Migrations/                   # EF Core source of truth
 │   ├── src/
 │   │   ├── RecipeApi/                # Web API source
 │   │   │   ├── Services/Agents/      # AI Intelligence (RecipeExtraction, RecipeHero)

@@ -87,7 +87,7 @@ See [recipe-pwa.spec.md §1](recipe-pwa.spec.md) for color palettes (Earth Tones
 | Phase | Purpose | Features | Status |
 |---|---|---|---|
 | 0 | Foundation | Onboarding, Identity, Basic Capture | **Implemented** |
-| 1 | AI Logic | Smart extraction, Hero images, Redis | **Next Focus** |
+| 1 | AI Logic | Smart extraction, Hero images, Hybrid Worker | **Active** |
 | 2 | Planning | Weekly dashboard, day scrubber | Planned |
 | 3 | Discovery | Swipe interaction, Consensus logic | Planned |
 | 4 | Management | Profile settings, recipe history | Planned |

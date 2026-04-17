@@ -7,15 +7,16 @@ The application uses a modern, vibrant, and approachable design language. Users 
 - **Option B (Vibrant Tones)**: [vibrant_light_mockup.png](file:///Users/alex/Code/whats-for-supper/src/specs/mockups/vibrant_light_mockup.png)
 - **Dark Mode Reference**: [demo_mockup.png](file:///Users/alex/Code/whats-for-supper/src/specs/mockups/demo_mockup.png)
 
-### 1.1 Design System: Discovery Spark
-Curated to feel energetic, clean, and tech-forward. This is the primary design language for the application.
+### 1.1 Design System: Solar Earth
+Curated to feel warm, approachable, and family-centric. This is the primary design language for the application.
 
 #### Light Mode
-- **Background**: `#F5F3FF` (Lavender)
-- **Surface**: `#FFFFFF` (White)
-- **Primary**: `#4F46E5` (Indigo)
-- **Secondary**: `#DB2777` (Pink)
-- **Text (Primary)**: `#2D312E` (Charcoal)
+- **Background**: `#FDFCF0` (Cream)
+- **Surface**: `#FDFCF0` (Cream)
+- **Primary**: `#CD5D45` (Terracotta)
+- **Secondary**: `#E1AD01` (Ochre)
+- **Accent**: `#8A9A5B` (Sage)
+- **Text (Primary)**: `#1F2937` (Charcoal)
 
 #### Dark Mode (Phase 5+)
 - **Background**: `#0F172A` (Slate 950)
@@ -30,7 +31,7 @@ Curated to feel energetic, clean, and tech-forward. This is the primary design l
 - **Glassmorphism**: Use subtle translucency (backdrop-blur) and soft shadows (`0 8px 30px rgba(0,0,0,0.04)`).
 
 ### 1.3 Aesthetic Principles
-- **Family-Oriented**: Friendly, rounded corners (8px - 12px), and legible typography.
+- **Family-Oriented**: Friendly, rounded corners (8px - 12px), and legible typography centered on warmth and harmony.
 - **Engagement**: Use smooth micro-animations and transitions for feedback.
 - **Frictionless**: Minimize required fields and prioritize visual inputs (photos/icons).
 
@@ -61,8 +62,8 @@ As a "Home-First" self-hosted application, the PWA must provide a native-like ex
 - **Web App Manifest**:
   - `display`: `standalone` (to hide browser chrome).
   - `orientation`: `portrait` (optimized for mobile use).
-  - `theme_color`: `#6366F1`.
-  - `background_color`: `#F5F3FF`.
+  - `theme_color`: `#CD5D45`
+  - `background_color`: `#FDFCF0`
 
 ## 3. Recipe Acquisition Module
 
@@ -195,7 +196,7 @@ To support planning and the "Light Bulb" mode:
 
 ### Phase 1: Intelligent Acquisition (Current Focus)
 **Goal**: Add intelligence to the capture process using AI.
-- **Features**: AI-driven metadata extraction (ingredients, instructions), automated "Hero" image generation, and background processing via Redis.
+- **Features**: AI-driven metadata extraction (ingredients, instructions), automated "Hero" image generation, and background processing via the `recipe_imports` command table.
 - **Value**: Transforms raw photos into searchable, structured data.
 
 ### Phase 2: Weekly Dashboard

@@ -6,7 +6,7 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 
 **Goal**: A family can add recipes and view them. No AI, no Redis.
 
-- **Status**: Backend ready. PWA Phase 0 implementation in progress.
+- **Status**: Backend ready. PWA Phase 0 (Identity, Capture, Rating) **COMPLETED ✅**.
 
 ---
 
@@ -18,7 +18,8 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 - **Designer Agent Identity**: Established (Mère-Designer persona).
 - **Solar Earth Branding**: Implementation of warm, family-centric UI tokens and layout.
 - **The Smart Pivot (Planning)**: Design of the express discovery hub on the Home screen.
-- **Redis & Import Worker**: Processing pipeline (Ollama/Gemma integration).
+- **Identity Architecture Pivot**: Implementation of cookie-based `IdentityValidator` for reliable cross-service auth.
+- **Modular Worker (DB Polling)**: Optimized processing pipeline (Hybrid Gemma4/Gemini) avoiding high-maintenance Redis infra.
 
 ---
 

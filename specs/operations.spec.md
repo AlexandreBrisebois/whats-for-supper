@@ -13,53 +13,53 @@ All services run as Docker containers orchestrated by Docker Compose on the NAS.
 | `calendar-sync-worker` | .NET 10 Native AOT + Chiseled | < 50MB | Google/Outlook calendar polling | 4+ |
 | `pwa` | Node.js (Next.js) | < 150MB | Frontend PWA | 0+ |
 | `postgres` | `pgvector/pgvector:pg17` | ~256MB | Primary data store | 0+ |
-| `redis` | `redis:7-alpine` | ~20MB | Stream queue | 1+ |
 | `ollama` | `ollama/ollama` | ~2GB+ | Local LLM (GPU optional) | 1+ |
 
-## 2. Docker Compose Structure
+## 2. Docker Compose Structure (Modular)
 
-```
-docker-compose.yml        # All services
-docker-compose.override.yml  # Local dev overrides (hot reload, debug ports)
-.env                      # Environment variables (not committed)
-```
+Orchestration is split into modular layers for stability and maintainability, located in `docker/compose/`:
+
+- `infrastructure.yml`: Persistent services (PostgreSQL, Traefik).
+- `apps.yml`: The core WFS application services (API, PWA, Worker).
+- `production.yml`: Production-specific overrides (Synology paths, TLS).
+- `.env`: Global environment variables (not committed).
 
 Volumes:
 - `postgres_data` → `/data/postgres` on NAS
 - `recipes_data` → `/data/recipes` on NAS (images + recipe.info)
 - `ollama_models` → `/data/ollama` on NAS
 
-## 3. Startup Order
+## 3. Startup Order & Network
 
-1. `postgres` (healthcheck: `pg_isready`)
-2. `redis` (healthcheck: `redis-cli ping`) — Phase 1+; skipped in Phase 0
-3. `api` (depends on postgres, redis)
-4. `import-worker` (depends on postgres, redis) — Phase 1+
+1. `traefik` (Edge proxy, depends on Docker socket)
+2. `postgres` (healthcheck: `pg_isready`)
+3. `api` (depends on postgres, on `wfs-internal` network)
+4. `import-worker` (depends on postgres) — Phase 1+
 5. `calendar-sync-worker` (depends on postgres) — Phase 4+
-6. `pwa` (depends on api)
-7. `ollama` (independent; pulls models on first start) — Phase 1+
+6. `pwa` (depends on api, on `wfs-proxy` network)
+7. `ollama` (independent) — Phase 1+
 
-**Phase 0 (MVP):** Only `postgres`, `api`, `pwa`. Redis, import-worker, calendar-sync-worker, and ollama are not deployed.
+**Phase 0 (MVP):** Only `postgres`, `api`, `pwa`. Import-worker, calendar-sync-worker, and ollama are not deployed.
 
 ## 4. Deployment
 
 ### 4.1 Build
 ```bash
-docker compose build
+task build
 ```
 - API and Import Worker use multi-stage builds (SDK → Chiseled runtime).
-- PWA uses `node:22-alpine` for build, `node:22-alpine` for runtime.
 
 ### 4.2 Deploy
 ```bash
-docker compose up -d
+task up
 ```
+Enforces the correct file order (`-f infrastructure.yml -f apps.yml`) as defined in the `Taskfile`.
 
 ### 4.3 Update
 ```bash
-docker compose pull
-docker compose up -d --no-deps <service>
+task update
 ```
+Pulls new images and restarts containers without dropping volumes.
 
 ## 5. Database Migrations
 
@@ -77,16 +77,16 @@ docker compose up -d --no-deps <service>
 
 - Each service exposes a `/health` endpoint.
 - Docker Compose `healthcheck` monitors liveness.
-- Dead-letter stream `recipe:import:error` is the primary alert signal for import failures.
-- Check `recipe:import:error` length via `redis-cli XLEN recipe:import:error`.
+- Failed imports are tracked in the `recipe_imports` table with an `error_message`.
+- Status dashboard uses `GET /api/recipes/import-status` for health summary.
 
 ## 8. Troubleshooting
 
 | Symptom | Check |
 |---|---|
-| Upload fails with 500 | `docker logs api` — check Redis connectivity |
-| Import job stuck | `docker logs import-worker` — check Ollama connectivity |
-| Hero image not generated | Check `GEMINI_API_KEY` is set; check `recipe:import:error` stream |
+| Upload fails with 500 | `docker logs api` — check database connectivity |
+| Import job stuck | `docker logs import-worker` — check database and Ollama connectivity |
+| Hero image not generated | Check `GEMINI_API_KEY` is set; check `recipe_imports` for errors |
 | Planner not updating | Check `docker logs pwa` for API connectivity errors |
 
 ## 9. NAS Architecture (Synology DS723+)

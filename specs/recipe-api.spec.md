@@ -1,13 +1,13 @@
 # Recipe API Specification
 
-The Recipe API is responsible for receiving recipe uploads, storing images and metadata, and notifying downstream services via Redis. It is designed to run within a Docker container.
+The Recipe API is responsible for receiving recipe uploads, storing images and metadata, and managing the import command lifecycle via the `recipe_imports` table. It is designed to run within a Docker container.
 
 ## Core Concepts
 
 - **Recipe ID**: A unique identifier (GUID) generated upon upload.
 - **Rating**: A numerical value representing user preference (0-3).
 - **Storage**: A structured directory on disk for images and metadata.
-- **Redis Notification**: An external notification triggered after a successful save by sending a message to a Redis Stream.
+- **Import Queueing**: Instead of Redis, the API uses a `recipe_imports` table to track the lifecycle of its agentic processing pipeline (Pending -> Processing -> Completed/Failed).
 
 ## API Endpoints
 
@@ -116,23 +116,13 @@ Contains details about the upload:
     - `contentType`: MIME type.
     - `size`: File size in bytes.
 
-## External Notifications
+## Import Lifecycle (Internal Command Table)
 
-Upon successful storage, the API triggers a notification by sending a message to a Redis Stream (e.g., `recipe:import:queue`).
+Instead of a transient Redis stream, the API manages imports via the `recipe_imports` table. This allows for manual retries and persistent status tracking across service restarts.
 
-- **Target**: Redis Stream
-- **Payload**:
-  ```json
-  {
-    "recipeId": "{recipeId}",
-    "imageUrls": [
-      "{API_BASE_URL}/recipe/{recipeId}/original/0",
-      "{API_BASE_URL}/recipe/{recipeId}/original/1"
-    ]
-  }
-  ```
-
-This message triggers the downstream Recipe Import Worker.
+- **Trigger**: `POST /api/recipes/{id}/import` inserts a record into `recipe_imports`.
+- **Worker**: The `RecipeImportWorker` (Background Service) polls this table for `Pending` items.
+- **Cleanup**: Successful imports results in the record being deleted from `recipe_imports` once metadata is synchronized back to the main `recipes` table.
 
 ## Configuration
 
@@ -141,6 +131,5 @@ The API is configured via environment variables, typically provided through Dock
 | Variable | Description | Default |
 | :--- | :--- | :--- |
 | `RECIPES_ROOT` | Base path for storing recipe data. | `./recipes` |
-| `REDIS_CONNECTION_STRING` | Connection string for the Redis instance. | `localhost:6379` |
-| `REDIS_STREAM_NAME` | The name of the Redis Stream to send messages to. | `recipe:import:queue` |
-| `API_BASE_URL` | Base URL used to construct `imageUrls` in the message. | (Required) |
+| `DATABASE_URL` | PostgreSQL connection string. | (Required) |
+| `API_BASE_URL` | Base URL used to construct image URLs. | (Required) |
