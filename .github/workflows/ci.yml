@@ -43,16 +43,16 @@ jobs:
           dotnet-version: '10.x'
 
       - name: Restore dependencies
-        run: dotnet restore api/RecipeApi.csproj
+        run: dotnet restore RecipeApi.csproj
         working-directory: api
 
       - name: Build
-        run: dotnet build api/RecipeApi.csproj --no-restore --configuration Release
+        run: dotnet build RecipeApi.csproj --no-restore --configuration Release
         working-directory: api
 
       - name: Test
         run: >
-          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --no-build
           --configuration Release
           --logger "trx;LogFileName=test-results.trx"
@@ -124,7 +124,7 @@ jobs:
 
       - name: Start API in background
         run: |
-          dotnet run --project api/src/RecipeApi/RecipeApi.csproj \
+          dotnet run --project api/RecipeApi.csproj \
             --configuration Release &
           echo "API_PID=$!" >> $GITHUB_ENV
         env:
