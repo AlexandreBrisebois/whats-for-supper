@@ -19,7 +19,7 @@ public class ImageService(IConfiguration configuration, ILogger<ImageService> lo
     private static readonly Dictionary<string, string> MimeToExtension = new()
     {
         ["image/jpeg"] = ".jpg",
-        ["image/png"]  = ".png",
+        ["image/png"] = ".png",
         ["image/webp"] = ".webp"
     };
 
@@ -31,11 +31,11 @@ public class ImageService(IConfiguration configuration, ILogger<ImageService> lo
     {
         var root = RecipesRoot;
         var dir = Path.Combine(root, recipeId.ToString(), "original");
-        
-        logger.LogInformation("Saving {Count} images for recipe {RecipeId} to {Directory}. Root: {RecipesRoot}", 
+
+        logger.LogInformation("Saving {Count} images for recipe {RecipeId} to {Directory}. Root: {RecipesRoot}",
             files.Count, recipeId, dir, root);
 
-        try 
+        try
         {
             if (!Directory.Exists(dir))
             {
@@ -51,13 +51,13 @@ public class ImageService(IConfiguration configuration, ILogger<ImageService> lo
                 var path = Path.Combine(dir, $"{i}{ext}");
 
                 logger.LogDebug("Writing image {Index} (size: {Size} bytes) to {Path}", i, file.Length, path);
-                
+
                 await using var dest = File.Create(path);
                 await file.CopyToAsync(dest);
-                
+
                 // Flush to ensure it's written to disk before logging success
                 await dest.FlushAsync();
-                
+
                 logger.LogInformation("Successfully saved image {Index} for recipe {RecipeId}", i, recipeId);
             }
         }

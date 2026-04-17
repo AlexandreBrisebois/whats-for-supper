@@ -6,7 +6,7 @@ using RecipeApi.Models;
 namespace RecipeApi.Services.Agents;
 
 public class RecipeExtractionAgent(
-    IChatClient chatClient, 
+    IChatClient chatClient,
     IConfiguration configuration,
     ILogger<RecipeExtractionAgent> logger)
 {
@@ -75,8 +75,8 @@ Role: You are a specialized High-Precision Data Extraction Agent. Your task is t
         }
 
         var imageFiles = Directory.GetFiles(originalDir)
-            .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || 
-                        f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || 
+            .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                        f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
                         f.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
             .OrderBy(f => f)
             .ToList();
@@ -111,13 +111,14 @@ Role: You are a specialized High-Precision Data Extraction Agent. Your task is t
             // Note: Microsoft.Agents.AI 1.0.0-rc1 ChatClientAgent's RunAsync 
             // takes IEnumerable<ChatMessage>.
             var response = await agent.RunAsync(
-                new[] { message }, 
-                options: new ChatClientAgentRunOptions { 
-                    ChatOptions = new ChatOptions { Temperature = 0.0f } 
+                new[] { message },
+                options: new ChatClientAgentRunOptions
+                {
+                    ChatOptions = new ChatOptions { Temperature = 0.0f }
                 });
 
             var json = response.Text;
-            
+
             // Clean up possible markdown wrappers if the LLM ignored the instructions
             if (json.StartsWith("```json"))
             {

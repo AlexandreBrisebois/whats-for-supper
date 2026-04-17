@@ -52,10 +52,10 @@ public class RecipeHeroAgent(
         }
 
         // 2. Load available images
-        var imageFiles = Directory.Exists(originalDir) 
+        var imageFiles = Directory.Exists(originalDir)
             ? Directory.GetFiles(originalDir)
-                .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || 
-                            f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || 
+                .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                            f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
                             f.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(f => f)
                 .ToList()
@@ -66,9 +66,9 @@ public class RecipeHeroAgent(
         var content = new Content { Role = "user", Parts = new List<Part>() };
 
         string taskPrompt = "Generate 400x400 JPG thumbnail of the finished dish from these images. Focus on the plated meal.";
-        
+
         bool hasImages = imageFiles.Count > 0;
-        
+
         if (hasImages)
         {
             content.Parts.Add(new Part { Text = taskPrompt });
@@ -78,7 +78,7 @@ public class RecipeHeroAgent(
             // Actually, if an index is specified, let's just send THAT one if we want high precision, 
             // OR send all and let Gemini decide if it sees something better. 
             // The requirement says "Identify the 'dish' photo", so let's send all images.
-            
+
             foreach (var imagePath in imageFiles)
             {
                 var bytes = await System.IO.File.ReadAllBytesAsync(imagePath);
@@ -96,7 +96,7 @@ public class RecipeHeroAgent(
         {
             // Fallback: Generate image from recipe description
             logger.LogInformation("No images found for recipe {RecipeId}. Attempting to generate from description.", recipeId);
-            
+
             var recipeJsonPath = Path.Combine(recipeDir, "recipe.json");
             if (System.IO.File.Exists(recipeJsonPath))
             {

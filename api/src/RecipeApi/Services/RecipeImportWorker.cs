@@ -91,7 +91,7 @@ public class RecipeImportWorker(
                 import.Status = RecipeImportStatus.Failed;
                 import.ErrorMessage = ex.Message;
                 import.UpdatedAt = DateTimeOffset.UtcNow;
-                
+
                 try
                 {
                     await db.SaveChangesAsync(stoppingToken);
@@ -113,7 +113,7 @@ public class RecipeImportWorker(
         }
 
         var recipeJsonContent = await File.ReadAllTextAsync(recipeJsonPath, stoppingToken);
-        
+
         // Deserializing to extract specific parts (like ingredients)
         var recipeData = JsonSerializer.Deserialize<SchemaOrgRecipe>(recipeJsonContent, new JsonSerializerOptions
         {
