@@ -7,6 +7,10 @@ using RecipeApi.Services.Agents;
 using OpenAI;
 using Microsoft.Extensions.AI;
 using System.ClientModel;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 // Bootstrap logger for startup errors before full Serilog is configured.
 Log.Logger = new LoggerConfiguration()
@@ -21,7 +25,35 @@ try
     builder.Host.UseSerilog((ctx, services, config) =>
         config.ReadFrom.Configuration(ctx.Configuration)
               .ReadFrom.Services(services)
-              .Enrich.FromLogContext());
+              .Enrich.FromLogContext()
+              .WriteTo.OpenTelemetry(options =>
+              {
+                  options.Endpoint = ctx.Configuration["OpenTelemetry:Endpoint"] ?? "http://localhost:4317";
+                  options.ResourceAttributes = new Dictionary<string, object>
+                  {
+                      ["service.name"] = "RecipeApi"
+                  };
+              }));
+
+    // ── OpenTelemetry ────────────────────────────────────────────────────────
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource.AddService("RecipeApi"))
+        .WithLogging(logging =>
+        {
+            logging.AddConsoleExporter();
+        })
+        .WithTracing(tracing =>
+        {
+            tracing.AddAspNetCoreInstrumentation()
+                   .AddHttpClientInstrumentation();
+            // tracing.AddConsoleExporter(); // Too noisy for production stdout
+        })
+        .WithMetrics(metrics =>
+        {
+            metrics.AddAspNetCoreInstrumentation()
+                   .AddHttpClientInstrumentation();
+            // metrics.AddConsoleExporter(); // Too noisy for production stdout
+        });
 
     // ── Controllers / JSON ───────────────────────────────────────────────────
     builder.Services.AddControllers()

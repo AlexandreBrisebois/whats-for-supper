@@ -32,11 +32,11 @@ RUN dotnet publish RecipeApi.csproj \
     /p:UseAppHost=false
 
 # =============================================================================
-# Stage 4 — Production (Ubuntu Chiseled)
+# Stage 4 — Production (Full Ubuntu Noble)
 #
-# ADR 006: High-Efficiency Containerization
+# ADR 006: High-Efficiency Containerization - Standard Image for compatibility
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS production
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS production
 WORKDIR /app
 COPY --from=build /app/publish .
 USER $APP_UID

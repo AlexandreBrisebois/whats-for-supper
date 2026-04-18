@@ -2,8 +2,8 @@
 
 @baseUrl = http://192.168.1.226:9101
 
-@familyMemberId = 43cda4d2-9f07-44e5-9979-1c0d23635214
-@recipeId = e9a135f6-da6b-47ec-98a3-69eb20d4a51e
+@familyMemberId = 4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7
+@recipeId = 5df6b7da-4537-4b06-bae6-e8278ce2d1a9
 @image1 = /Users/alex/WhatsForSupper/recipes/54533403-3951-4bf0-b159-a940c7e5e99e/original-0.jpg
 @image2 = /Users/alex/WhatsForSupper/recipes/54533403-3951-4bf0-b159-a940c7e5e99e/original-1.jpg
 
@@ -49,7 +49,7 @@ GET {{baseUrl}}/api/recipes/{{recipeId}}
 Accept: application/json
 
 ### Get original uploaded image
-GET {{baseUrl}}/recipe/{{recipeId}}/original/1
+GET {{baseUrl}}/recipe/{{recipeId}}/original/0
 Accept: image/*
 
 ### Get hero image placeholder response
@@ -58,4 +58,16 @@ Accept: application/json
 
 ### Delete a recipe
 DELETE {{baseUrl}}/api/recipes/{{recipeId}}
+Accept: application/json
+
+### Trigger recipe import
+POST {{baseUrl}}/api/recipes/{{recipeId}}/import
+Accept: application/json
+
+### Get recipe import status
+GET {{baseUrl}}/api/recipes/{{recipeId}}/import
+Accept: application/json
+
+### Get global import summary
+GET {{baseUrl}}/api/recipes/import-status
 Accept: application/json

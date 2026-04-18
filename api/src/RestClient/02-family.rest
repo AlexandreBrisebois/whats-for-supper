@@ -2,7 +2,7 @@
 
 @baseUrl = http://192.168.1.226:9101
 
-@familyMemberId = e6ba4d3f-e257-44b0-8d29-d541c394f4cf
+@familyMemberId = 4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7
 
 ### List family members
 GET {{baseUrl}}/api/family

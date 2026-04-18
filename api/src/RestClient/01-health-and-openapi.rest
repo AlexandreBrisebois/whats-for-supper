@@ -6,7 +6,9 @@
 GET {{baseUrl}}/health
 Accept: application/json
 
+@openApiUrl = http://192.168.1.150:11434
+
 ### OpenAPI document
 # Available in Development because the API maps OpenAPI, but not Swagger UI.
-GET {{baseUrl}}/openapi/v1.json
+GET {{openApiUrl}}/
 Accept: application/json
