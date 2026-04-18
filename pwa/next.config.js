@@ -4,7 +4,13 @@ const nextConfig = {
   compress: true,
   output: 'standalone',
   images: {
-    remotePatterns: [],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+    ],
   },
   typedRoutes: true,
   experimental: {

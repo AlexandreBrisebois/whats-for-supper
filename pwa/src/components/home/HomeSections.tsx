@@ -21,11 +21,11 @@ export function TonightMenuCard({ recipeName, description, imageUrl }: MenuCardP
 
       {imageUrl && (
         <div className="relative w-full aspect-[4/3] rounded-[1.5rem] overflow-hidden shadow-sm">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={imageUrl}
             alt={recipeName}
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            className="object-cover"
           />
         </div>
       )}
