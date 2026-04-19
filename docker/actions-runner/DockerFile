@@ -1,0 +1,15 @@
+# Start from the official GitHub image
+FROM ghcr.io/actions/actions-runner:latest
+
+# Switch to root to install the Docker CLI
+USER root
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    gettext \
+    libicu-dev \
+    && curl -fsSL https://get.docker.com | sh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Switch back to the runner user (or stay root if preferred for Synology socket access)
+USER runner
