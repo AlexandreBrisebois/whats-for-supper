@@ -459,9 +459,24 @@ For production deployments on a Synology NAS, a self-hosted runner executes the 
 
 If you encounter `i/o timeout` errors when pushing to the local registry (e.g., `192.168.1.226:5050`), it is likely a loopback networking issue where the builder container cannot reach the host IP.
 
-**Current Fix:**
+If you encounter `server gave HTTP response to HTTPS client`, your registry is not using TLS and you must explicitly allow insecure connections.
+
+**Current CI Fix:**
 - The Runner container uses `network_mode: host` in `docker/actions-runner/compose.yml`.
 - The Buildx instance uses `driver-opts: network=host` in `.github/workflows/publish.yml`.
+- The Buildx instance also has `buildkitd-config-inline` to allow the HTTP registry.
+
+**Developer Machine Fix:**
+If you run `task publish` from your own machine, you must add the registry to your Docker Engine settings:
+1. Open **Docker Desktop Settings**.
+2. Go to **Docker Engine**.
+3. Add the registry to `insecure-registries`:
+   ```json
+   {
+     "insecure-registries": ["192.168.1.226:5050"]
+   }
+   ```
+4. **Apply & Restart**.
 
 **Future-Proofing & Overrides:**
 If you change your runner environment or networking stack and `network: host` is no longer viable, you can override the registry target without changing code by setting the `WFS_REGISTRY` environment variable on the runner:
