@@ -21,7 +21,7 @@
     "axios": "^1.7.9",
     "canvas-confetti": "^1.9.3",
     "framer-motion": "^12.4.7",
-    "lucide-react": "^0.468.0",
+    "lucide-react": "^1.8.0",
     "next": "^16.2.4",
     "next-intl": "^4.9.1",
     "react": "^19.0.0",
