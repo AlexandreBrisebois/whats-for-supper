@@ -12,7 +12,7 @@ jobs:
     if: >
       github.repository == 'AlexandreBrisebois/whats-for-supper' &&
       github.actor == 'AlexandreBrisebois'
-    runs-on: [self-hosted, local-runner]
+    runs-on: [self-hosted, linux]
 
     steps:
       - name: Checkout Code
