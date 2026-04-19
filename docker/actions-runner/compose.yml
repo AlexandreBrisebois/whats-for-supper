@@ -1,0 +1,22 @@
+services:
+  github-runner:
+    image: 192.168.1.226:5050/whats-for-supper-actions-runner:v1
+    container_name: actions-runner
+    user: root
+    restart: unless-stopped
+    environment:
+      RUNNER_NAME: local-runner
+      RUNNER_REPO: https://github.com/AlexandreBrisebois/whats-for-supper
+      RUNNER_TOKEN: [ TOKEN ] # <--- GET A FRESH ONE
+      RUNNER_LABELS: linux,self-hosted
+      RUNNER_ALLOW_RUNASROOT: "true"
+    command: >
+      bash -c "if [ ! -f .runner ]; then
+        ./config.sh --url $$RUNNER_REPO --token $$RUNNER_TOKEN --name $$RUNNER_NAME --labels $$RUNNER_LABELS --unattended --replace;
+      fi; ./run.sh"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Map the runner config to a local hidden folder to persist registration
+      - ./:/actions-runner
+      # Map the work directory
+      - ./_work:/actions-runner/_work

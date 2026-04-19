@@ -35,12 +35,12 @@
     <PackageReference Include="System.ClientModel" Version="1.10.0" />
     <PackageReference Include="Google.GenAI" Version="1.0.0" />
     <!-- OpenTelemetry -->
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.11.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.11.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.11.0" />
-    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.11.0" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.11.0" />
-    <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="1.6.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.11.2" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.11.2" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.11.2" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.11.2" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.11.2" />
+    <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.1.1" />
   </ItemGroup>
 
   <!-- Exclude test project files from the main build -->
