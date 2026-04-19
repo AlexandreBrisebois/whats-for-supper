@@ -19,9 +19,11 @@ ENTRYPOINT ["npm", "run", "dev"]
 # =============================================================================
 FROM base AS build
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 COPY . .
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # =============================================================================
 # Stage 4 — Production (Next.js Standalone)

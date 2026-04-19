@@ -23,9 +23,11 @@ ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls",
 FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 WORKDIR /src
 COPY RecipeApi.csproj ./
-RUN dotnet restore RecipeApi.csproj
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore RecipeApi.csproj
 COPY . .
-RUN dotnet publish RecipeApi.csproj \
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet publish RecipeApi.csproj \
     --configuration Release \
     --no-restore \
     --output /app/publish \

@@ -78,3 +78,4 @@ jobs:
         run: task publish TAG=${{ github.ref_name }}
         env:
           TAG: ${{ github.ref_name }}
+          GITHUB_ACTIONS: "true"

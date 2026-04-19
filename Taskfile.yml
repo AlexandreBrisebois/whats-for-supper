@@ -128,21 +128,49 @@ tasks:
       - echo "✓ All local images built"
 
   publish:
-    desc: "🚀 Build and Push multi-arch images (NASA-ready)"
+    desc: "🚀 Build and Push multi-arch images (Parallel & Cached)"
+    deps: [publish:api, publish:pwa]
+    cmds:
+      - echo "✓ Version {{.TAG}} pushed to {{.REGISTRY}}"
+
+  publish:api:
+    desc: "Build and Push API image"
     vars:
       TAG: '{{default .TAG .CLI_ARGS}}'
+      CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
     cmds:
-      - echo "Publishing version {{.TAG}} to {{.REGISTRY}}..."
-      - 'docker buildx build --platform {{.PLATFORMS}} -t {{.REGISTRY}}/whats-for-supper-api:{{.TAG}} ./api --push --target production'
-      - 'docker buildx build --platform {{.PLATFORMS}} -t {{.REGISTRY}}/whats-for-supper-pwa:{{.TAG}} ./pwa --push --target production'
-      - echo "✓ Version {{.TAG}} pushed to {{.REGISTRY}}"
+      - echo "Building API {{.TAG}} to {{.REGISTRY}}..."
+      - >
+        docker buildx build 
+        --platform {{.PLATFORMS}} 
+        -t {{.REGISTRY}}/whats-for-supper-api:{{.TAG}} 
+        ./api 
+        {{.CACHE_FLAGS}}
+        --push 
+        --target production
+
+  publish:pwa:
+    desc: "Build and Push PWA image"
+    vars:
+      TAG: '{{default .TAG .CLI_ARGS}}'
+      CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
+    cmds:
+      - echo "Building PWA {{.TAG}} to {{.REGISTRY}}..."
+      - >
+        docker buildx build 
+        --platform {{.PLATFORMS}} 
+        -t {{.REGISTRY}}/whats-for-supper-pwa:{{.TAG}} 
+        ./pwa 
+        {{.CACHE_FLAGS}}
+        --push 
+        --target production
 
   # ============================================================================
   # RELEASE
   # ============================================================================
 
   tag:
-    desc: "🏷️ Tag the repository and push (triggers CI image publication)"
+    desc: "🏷️ Tag the repository and push. Usage: task tag -- [version] [runner]"
     cmds:
       - |
         # Parse arguments from CLI_ARGS
@@ -151,8 +179,8 @@ tasks:
         # 1. Handle Version
         if [ -z "$VERSION" ]; then
           echo "❌ Error: Version required."
-          echo "Usage: task tag [version] [runner]"
-          echo "Example: task tag v1.0.0 fast"
+          echo "Usage: task tag -- [version] [runner]"
+          echo "Example: task tag -- v1.0.0 fast"
           exit 1
         fi
         

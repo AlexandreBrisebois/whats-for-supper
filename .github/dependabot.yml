@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # .NET (api)
+  - package-ecosystem: "nuget"
+    directory: "/api/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+
+  # Node.js (pwa)
+  - package-ecosystem: "npm"
+    directory: "/pwa/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
