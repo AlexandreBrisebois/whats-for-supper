@@ -23,7 +23,7 @@ interface FamilyState {
 
   setFamilyMembers: (members: FamilyMember[]) => void;
   selectFamilyMember: (id: string | null) => void;
-  addMember: (name: string) => Promise<void>;
+  addMember: (name: string) => Promise<FamilyMember | null>;
   updateMember: (id: string, name: string) => Promise<void>;
   removeMember: (id: string) => Promise<void>;
   loadFamilyMembers: () => Promise<void>;
@@ -51,7 +51,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
 
   addMember: async (name: string) => {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed) return null;
     set({ isLoading: true, error: null });
     try {
       const member = await createFamilyMember({ name: trimmed });
@@ -59,9 +59,11 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
         familyMembers: [...state.familyMembers, member],
         isLoading: false,
       }));
+      return member;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add member';
       set({ isLoading: false, error: message });
+      return null;
     }
   },
 

@@ -21,12 +21,9 @@ export function FamilySelector({ onFamilyMemberSelected, isLoading = false }: Fa
   const isBusy = isLoading || storeLoading;
 
   async function handleAddAndSelect(name: string) {
-    await addMember(name);
-    // Grab the freshly-added member directly from store state (avoids stale closure)
-    const members = useFamilyStore.getState().familyMembers;
-    const newest = members[members.length - 1];
-    if (newest) {
-      onFamilyMemberSelected(newest.id);
+    const member = await addMember(name);
+    if (member) {
+      onFamilyMemberSelected(member.id);
     }
   }
 

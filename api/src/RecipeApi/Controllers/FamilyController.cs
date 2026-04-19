@@ -33,7 +33,7 @@ public class FamilyController(FamilyService familyService) : ControllerBase
             CreatedAt = member.CreatedAt,
             UpdatedAt = member.UpdatedAt
         };
-        return CreatedAtAction(nameof(GetAll), new { data = result });
+        return CreatedAtAction(nameof(GetAll), null, new { data = result });
     }
 
     [HttpPut("{id:guid}")]

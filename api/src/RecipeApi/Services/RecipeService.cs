@@ -75,19 +75,20 @@ public class RecipeService(
 
         var total = await db.Recipes.CountAsync();
 
-        var recipes = await db.Recipes
+        var entities = await db.Recipes
             .OrderByDescending(r => r.CreatedAt)
             .Skip((page - 1) * limit)
             .Take(limit)
-            .Select(r => new RecipeDto
-            {
-                Id = r.Id,
-                Rating = (int)r.Rating,
-                AddedBy = r.AddedBy,
-                Images = Enumerable.Range(0, r.ImageCount).ToList(),
-                CreatedAt = r.CreatedAt
-            })
             .ToListAsync();
+
+        var recipes = entities.Select(r => new RecipeDto
+        {
+            Id = r.Id,
+            Rating = (int)r.Rating,
+            AddedBy = r.AddedBy,
+            Images = Enumerable.Range(0, r.ImageCount).ToList(),
+            CreatedAt = r.CreatedAt
+        }).ToList();
 
         return new RecipeListResponseDto
         {

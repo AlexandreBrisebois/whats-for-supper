@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using RecipeApi.Models;
 
 namespace RecipeApi.Services;
@@ -8,7 +9,8 @@ public class ImageService(IConfiguration configuration, ILogger<ImageService> lo
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = true
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
     private string RecipesRoot =>

@@ -65,7 +65,7 @@ public class RecipeRepository(IStorageProvider storage)
     public async Task SetRecipeAsync(string recipeId, Recipe recipe)
     {
         var recipeInfo = await LoadInfoAsync(recipeId);
-        recipeInfo.Name = recipe.Name;
+        recipeInfo.Name = recipe.Name ?? string.Empty;
 
         if (!string.IsNullOrEmpty(recipe.Description))
             recipeInfo.Description = recipe.Description;

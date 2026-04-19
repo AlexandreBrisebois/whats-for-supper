@@ -12,7 +12,7 @@ public class LocalStorage(IConfiguration configuration) : IStorageProvider
      
         var filePath = Path.Combine(folderPath, key);
         
-        Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath) ?? _path);
         
         await File.WriteAllTextAsync(filePath, value);
     }
@@ -23,7 +23,7 @@ public class LocalStorage(IConfiguration configuration) : IStorageProvider
         
         var filePath = Path.Combine(folderPath, key);
         
-        Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath) ?? _path);
         
         await File.WriteAllBytesAsync(filePath, value);
     }
@@ -49,7 +49,7 @@ public class LocalStorage(IConfiguration configuration) : IStorageProvider
         var folderPath = Path.Combine(_path, partition);
         if (Directory.Exists(folderPath))
         {
-            var directories = Directory.GetDirectories(folderPath).Select(Path.GetFileName).ToList();
+            var directories = Directory.GetDirectories(folderPath).Select(Path.GetFileName).OfType<string>().ToList();
             return directories;
         }
 

@@ -76,8 +76,8 @@ public class GenerativeWorkflow
 
 internal class SourceResult
 {
-    internal string RecipeId { get; set; }
-    internal List<byte[]> Images { get; set; }
+    internal required string RecipeId { get; set; }
+    internal required List<byte[]> Images { get; set; }
 }
 
 internal sealed partial class RecipeSourceExecutor() : Executor("RecipeSource")
@@ -103,7 +103,7 @@ internal sealed partial class RecipeSourceExecutor() : Executor("RecipeSource")
 
 internal class RecipeResult
 {
-    internal string RecipeId { get; set; }
+    internal required string RecipeId { get; set; }
     internal string RecipeJson { get; set; } = string.Empty;
     internal byte[]? Thumbnail { get; set; } = null;
     internal int Iterations { get; set; } = 1;
@@ -133,7 +133,7 @@ internal sealed partial class RecipeExtractorExecutor() : Executor("RecipeExtrac
 
 internal class RecipeFeedbackResult
 {
-    internal string RecipeId { get; set; }
+    internal required string RecipeId { get; set; }
     internal string Feedback { get; set; } = string.Empty;
     internal int Iterations { get; set; } = 0;
     internal string RecipeJson { get; set; } = string.Empty;
@@ -141,7 +141,7 @@ internal class RecipeFeedbackResult
 
 internal class RecipeAnalysisFeedback
 {
-    internal string Feedback { get; set; } = string.Empty;
+    internal required string Feedback { get; set; } = string.Empty;
     internal bool IsMissingInformation { get; set; } = false;
 }
 
@@ -149,7 +149,7 @@ internal sealed partial class RecipeEditorExecutor() : Executor("RecipeEditor")
 {
     protected override RouteBuilder ConfigureRoutes(RouteBuilder routeBuilder)
     {
-        routeBuilder.AddHandler<RecipeResult, ValueTask>(HandleAsync);
+        routeBuilder.AddHandler<List<RecipeResult>, ValueTask>(HandleAsync);
         return routeBuilder;
     }
     
