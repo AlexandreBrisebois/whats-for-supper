@@ -127,19 +127,74 @@ public class ManagementService(
         foreach (var dir in recipeDirs)
         {
             if (ct.IsCancellationRequested) break;
-            var recipePath = Path.Combine(dir, "recipe.json");
-            if (!File.Exists(recipePath)) continue;
+
+            var infoPath = Path.Combine(dir, "recipe.info");
+            var jsonPath = Path.Combine(dir, "recipe.json");
+
+            bool hasInfo = File.Exists(infoPath);
+            bool hasJson = File.Exists(jsonPath);
+
+            if (!hasInfo && !hasJson) continue;
 
             try
             {
-                var json = await File.ReadAllTextAsync(recipePath, ct);
-                var recipe = JsonSerializer.Deserialize<Recipe>(json, JsonOptions);
+                Recipe? recipe = null;
+
+                // Load primary metadata from recipe.info if available
+                if (hasInfo)
+                {
+                    var json = await File.ReadAllTextAsync(infoPath, ct);
+                    var info = JsonSerializer.Deserialize<RecipeInfo>(json, JsonOptions);
+                    if (info != null)
+                    {
+                        recipe = new Recipe
+                        {
+                            Id = info.Id,
+                            AddedBy = info.AddedBy,
+                            Notes = info.Notes,
+                            Rating = info.Rating,
+                            ImageCount = info.ImageCount,
+                            CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
+                            UpdatedAt = DateTimeOffset.UtcNow
+                        };
+                    }
+                }
+
+                // Augment or Load from recipe.json
+                if (hasJson)
+                {
+                    var json = await File.ReadAllTextAsync(jsonPath, ct);
+                    var extracted = JsonSerializer.Deserialize<Recipe>(json, JsonOptions);
+                    if (extracted != null)
+                    {
+                        if (recipe == null)
+                        {
+                            recipe = extracted;
+                        }
+                        else
+                        {
+                            // Augment with AI extracted data
+                            recipe.RawMetadata = extracted.RawMetadata;
+                            recipe.Ingredients = extracted.Ingredients;
+
+                            // If info was missing image count but json has it, use it
+                            if (recipe.ImageCount == 0 && extracted.ImageCount > 0)
+                            {
+                                recipe.ImageCount = extracted.ImageCount;
+                            }
+                        }
+                    }
+                }
+
                 if (recipe == null) continue;
 
-                // Verify Images
+                // Verify Images (case-insensitive check)
                 var originalDir = Path.Combine(dir, "original");
+                var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+
                 bool hasImages = Directory.Exists(originalDir) &&
-                    Directory.GetFiles(originalDir).Any(f => f.EndsWith(".jpg") || f.EndsWith(".png") || f.EndsWith(".webp"));
+                                 Directory.GetFiles(originalDir).Any(f =>
+                                     validExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()));
 
                 if (!hasImages)
                 {
@@ -153,6 +208,7 @@ public class ManagementService(
                 {
                     db.Recipes.Add(recipe);
                     result.RecipesAdded++;
+                    logger.LogInformation("Restored recipe {Id} from {Source}", recipe.Id, hasInfo ? "recipe.info" : "recipe.json");
                 }
                 else
                 {
@@ -164,11 +220,12 @@ public class ManagementService(
                     existing.ImageCount = recipe.ImageCount;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
+                    logger.LogInformation("Updated metadata for recipe {Id}", recipe.Id);
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error restoring recipe from {Path}", recipePath);
+                logger.LogError(ex, "Error restoring recipe from {Dir}", dir);
                 result.Errors++;
             }
         }
