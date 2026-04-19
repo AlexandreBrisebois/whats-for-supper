@@ -1,4 +1,4 @@
-name: Phase 0 CI
+name: CI
 
 on:
   push:

@@ -151,6 +151,33 @@ tasks:
       - 'docker buildx build --platform {{.PLATFORMS}} -t {{.REGISTRY}}/whats-for-supper-pwa:{{.TAG}} ./pwa --push --target production'
       - echo "✓ Version {{.TAG}} pushed to {{.REGISTRY}}"
 
+  # ============================================================================
+  # RELEASE
+  # ============================================================================
+
+  tag:
+    desc: "🏷️ Tag the repository and push (triggers CI image publication)"
+    vars:
+      VERSION: '{{default "" .CLI_ARGS}}'
+    cmds:
+      - |
+        if [ -z "{{.VERSION}}" ]; then
+          echo "❌ Error: Version required. Usage: task tag -- v0.1"
+          exit 1
+        fi
+        
+        CURRENT_BRANCH=$(git branch --show-current)
+        if [ "$CURRENT_BRANCH" != "main" ]; then
+          echo "❌ Error: Tags must be pushed from the 'main' branch."
+          echo "Current branch is: $CURRENT_BRANCH"
+          exit 1
+        fi
+
+        echo "Tagging repository with {{.VERSION}}..."
+        git tag -a {{.VERSION}} -m "Release {{.VERSION}}"
+        git push origin {{.VERSION}}
+        echo "✓ Tag {{.VERSION}} created and pushed."
+
   infra:prod:
     desc: "📄 Generate flat production manifest for NAS"
     cmds:
