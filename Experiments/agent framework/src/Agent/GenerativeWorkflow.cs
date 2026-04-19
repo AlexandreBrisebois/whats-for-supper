@@ -169,10 +169,10 @@ internal sealed partial class RecipeEditorExecutor() : Executor("RecipeEditor")
         var r = new RecipeResult
         {
             RecipeId = message.First().RecipeId,
-            RecipeJson = message.First().RecipeJson,
+            RecipeJson = recipe,
             Thumbnail = thumbnail,
             Iterations = message.Max(m=>m.Iterations) + 1
-        }
+        };
         
         var analysisFeedback = new RecipeAnalysisFeedback
         {
@@ -184,10 +184,10 @@ internal sealed partial class RecipeEditorExecutor() : Executor("RecipeEditor")
         {
             var recipeFeedbackResult = new RecipeFeedbackResult
             {
-                RecipeId = message.RecipeId,
-                RecipeJson = message.RecipeJson,
+                RecipeId = r.RecipeId,
+                RecipeJson = r.RecipeJson,
                 Feedback = analysisFeedback.Feedback,
-                Iterations = message.Iterations
+                Iterations = r.Iterations
             };
             await context.SendMessageAsync(recipeFeedbackResult, cancellationToken);
         }
@@ -195,9 +195,9 @@ internal sealed partial class RecipeEditorExecutor() : Executor("RecipeEditor")
         {
             var recipeResult = new RecipeResult
             {
-                RecipeId = message.RecipeId,
-                RecipeJson = message.RecipeJson,
-                Iterations = message.Iterations
+                RecipeId = r.RecipeId,
+                RecipeJson = r.RecipeJson,
+                Iterations = r.Iterations
             };
             await context.SendMessageAsync(recipeResult, cancellationToken);
         }
