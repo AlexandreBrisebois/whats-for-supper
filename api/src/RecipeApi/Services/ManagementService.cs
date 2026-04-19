@@ -5,10 +5,10 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class SeedService(
+public class ManagementService(
     RecipeDbContext db,
     IConfiguration configuration,
-    ILogger<SeedService> logger)
+    ILogger<ManagementService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -26,27 +26,64 @@ public class SeedService(
         var root = RecipesRoot;
         if (!Directory.Exists(root)) Directory.CreateDirectory(root);
 
-        // 1. Backup Family Members
-        var members = await db.FamilyMembers.ToListAsync();
-        var membersPath = Path.Combine(root, "family-members.json");
-        var membersJson = JsonSerializer.Serialize(members, JsonOptions);
-        await File.WriteAllTextAsync(membersPath, membersJson);
-        logger.LogInformation("Backed up {Count} family members to {Path}", members.Count, membersPath);
+        // 1. Merge Family Members (Append only)
+        var dbMembers = await db.FamilyMembers.ToListAsync();
+        await MergeFamilyMembersAsync(dbMembers);
 
-        // 2. Backup Recipes
+        // 2. Backup Recipes (Update notes/rating or create missing)
         var recipes = await db.Recipes.ToListAsync();
         int backedUpCount = 0;
         foreach (var recipe in recipes)
         {
+            // Skip if no payload (not yet imported or having notes)
+            if (string.IsNullOrEmpty(recipe.RawMetadata) && string.IsNullOrEmpty(recipe.Notes))
+            {
+                continue;
+            }
+
             var recipeDir = Path.Combine(root, recipe.Id.ToString());
             if (!Directory.Exists(recipeDir)) Directory.CreateDirectory(recipeDir);
 
-            var recipePath = Path.Combine(recipeDir, "recipe.json");
-            var recipeJson = JsonSerializer.Serialize(recipe, JsonOptions);
-            await File.WriteAllTextAsync(recipePath, recipeJson);
-            backedUpCount++;
+            var recipeJsonPath = Path.Combine(recipeDir, "recipe.json");
+            var recipeInfoPath = Path.Combine(recipeDir, "recipe.info");
+
+            if (File.Exists(recipeJsonPath))
+            {
+                // Update only Notes/Rating
+                var json = await File.ReadAllTextAsync(recipeJsonPath);
+                var existing = JsonSerializer.Deserialize<Recipe>(json, JsonOptions);
+                if (existing != null)
+                {
+                    existing.Notes = recipe.Notes;
+                    existing.Rating = recipe.Rating;
+                    var updatedJson = JsonSerializer.Serialize(existing, JsonOptions);
+                    await File.WriteAllTextAsync(recipeJsonPath, updatedJson);
+                    backedUpCount++;
+                }
+            }
+            else if (File.Exists(recipeInfoPath))
+            {
+                // Update Notes/Rating in legacy .info
+                var json = await File.ReadAllTextAsync(recipeInfoPath);
+                var existing = JsonSerializer.Deserialize<RecipeInfo>(json, JsonOptions);
+                if (existing != null)
+                {
+                    existing.Notes = recipe.Notes;
+                    existing.Rating = recipe.Rating;
+                    var updatedJson = JsonSerializer.Serialize(existing, JsonOptions);
+                    await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
+                    backedUpCount++;
+                }
+            }
+            else
+            {
+                // Create new recipe.json
+                var recipeJson = JsonSerializer.Serialize(recipe, JsonOptions);
+                await File.WriteAllTextAsync(recipeJsonPath, recipeJson);
+                backedUpCount++;
+            }
         }
-        logger.LogInformation("Backed up {Count} recipes to their respective folders in {Root}", backedUpCount, root);
+        logger.LogInformation("Updated/Created {Count} metadata files in {Root}", backedUpCount, root);
     }
 
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)
@@ -148,19 +185,18 @@ public class SeedService(
         if (!Directory.Exists(root)) return result;
 
         var membersPath = Path.Combine(root, "family-members.json");
-        List<FamilyMember> members = [];
+        List<FamilyMember> existingMembers = [];
         if (File.Exists(membersPath))
         {
             var json = await File.ReadAllTextAsync(membersPath);
-            members = JsonSerializer.Deserialize<List<FamilyMember>>(json, JsonOptions) ?? [];
+            existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json, JsonOptions) ?? [];
         }
 
         var recipeDirs = Directory.GetDirectories(root);
-        var addedBySet = new HashSet<Guid>();
+        var missingIds = new HashSet<Guid>();
 
         foreach (var dir in recipeDirs)
         {
-            // Try recipe.json first, then fallback to recipe.info
             var recipeJsonPath = Path.Combine(dir, "recipe.json");
             var recipeInfoPath = Path.Combine(dir, "recipe.info");
 
@@ -179,32 +215,55 @@ public class SeedService(
                 addedBy = info?.AddedBy;
             }
 
-            if (addedBy.HasValue && !members.Any(m => m.Id == addedBy.Value))
+            if (addedBy.HasValue && !existingMembers.Any(m => m.Id == addedBy.Value))
             {
-                addedBySet.Add(addedBy.Value);
+                missingIds.Add(addedBy.Value);
             }
         }
 
-        foreach (var id in addedBySet)
+        var placeholders = missingIds.Select(id => new FamilyMember
         {
-            members.Add(new FamilyMember 
-            { 
-                Id = id, 
-                Name = $"Recovered Member {id.ToString()[..4]}",
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
-            });
-            result.MembersAdded++;
-        }
+            Id = id,
+            Name = $"Recovered Member {id.ToString()[..4]}",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        }).ToList();
 
-        if (result.MembersAdded > 0)
-        {
-            var membersJson = JsonSerializer.Serialize(members, JsonOptions);
-            await File.WriteAllTextAsync(membersPath, membersJson);
-            logger.LogInformation("Disaster Recovery: Generated/Updated family-members.json with {Count} placeholders.", result.MembersAdded);
-        }
-
+        result.MembersAdded = await MergeFamilyMembersAsync(placeholders);
         return result;
+    }
+
+    private async Task<int> MergeFamilyMembersAsync(List<FamilyMember> sourceMembers)
+    {
+        var root = RecipesRoot;
+        if (!Directory.Exists(root)) Directory.CreateDirectory(root);
+
+        var membersPath = Path.Combine(root, "family-members.json");
+        List<FamilyMember> existingMembers = [];
+        if (File.Exists(membersPath))
+        {
+            var json = await File.ReadAllTextAsync(membersPath);
+            existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json, JsonOptions) ?? [];
+        }
+
+        int addedCount = 0;
+        foreach (var member in sourceMembers)
+        {
+            if (!existingMembers.Any(m => m.Id == member.Id))
+            {
+                existingMembers.Add(member);
+                addedCount++;
+            }
+        }
+
+        if (addedCount > 0)
+        {
+            var updatedJson = JsonSerializer.Serialize(existingMembers, JsonOptions);
+            await File.WriteAllTextAsync(membersPath, updatedJson);
+            logger.LogInformation("Merged {Count} family members into {Path}", addedCount, membersPath);
+        }
+
+        return addedCount;
     }
 }
 

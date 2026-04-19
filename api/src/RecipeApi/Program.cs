@@ -69,7 +69,7 @@ try
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<ValidationService>();
     builder.Services.AddScoped<ImageService>();
-    builder.Services.AddScoped<SeedService>();
+    builder.Services.AddScoped<ManagementService>();
     builder.Services.AddSingleton<ManagementTaskStore>();
     builder.Services.AddHostedService<ManagementWorker>();
     builder.Services.AddScoped<RecipeExtractionAgent>();

@@ -19,20 +19,20 @@ public class ManagementWorker(
                 logger.LogInformation("Processing management task {Type} ({Id})", task.Type, task.Id);
 
                 using var scope = scopeFactory.CreateScope();
-                var seedService = scope.ServiceProvider.GetRequiredService<SeedService>();
+                var managementService = scope.ServiceProvider.GetRequiredService<ManagementService>();
 
                 switch (task.Type)
                 {
                     case ManagementTaskType.Backup:
-                        await seedService.BackupAsync();
+                        await managementService.BackupAsync();
                         taskStore.UpdateTask(ManagementTaskStatus.Completed);
                         break;
                     case ManagementTaskType.Restore:
-                        var restoreResult = await seedService.RestoreAsync(stoppingToken);
+                        var restoreResult = await managementService.RestoreAsync(stoppingToken);
                         taskStore.UpdateTask(ManagementTaskStatus.Completed, restoreResult);
                         break;
                     case ManagementTaskType.DisasterRecovery:
-                        var drResult = await seedService.DisasterRecoveryAsync();
+                        var drResult = await managementService.DisasterRecoveryAsync();
                         taskStore.UpdateTask(ManagementTaskStatus.Completed, drResult);
                         break;
                 }

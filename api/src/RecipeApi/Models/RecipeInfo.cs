@@ -10,5 +10,7 @@ public class RecipeInfo
     public int FinishedDishImageIndex { get; set; } = -1;
     public int ImageCount { get; set; }
     public Guid? AddedBy { get; set; }
+    public string? Notes { get; set; }
+    public RecipeRating Rating { get; set; } = RecipeRating.Unknown;
     public DateTimeOffset CreatedAt { get; set; }
 }
