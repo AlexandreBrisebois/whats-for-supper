@@ -12,7 +12,7 @@ vars:
   PWA_PORT: '3000'
   DB_PORT: '5432'
   REGISTRY: '{{.WFS_REGISTRY | default "192.168.1.226:5050"}}'
-  PLATFORMS: 'linux/amd64,linux/arm64'
+  PLATFORMS: '{{.PLATFORMS | default "linux/amd64"}}'
   TAG: 'v0.1' # Default — override with environment or CLI
   COMPOSE_CMD: 'docker compose -p whats-for-supper --env-file docker/.env -f docker/compose/infrastructure.yml -f docker/compose/apps.yml'
 
@@ -170,26 +170,29 @@ tasks:
   # ============================================================================
 
   tag:
-    desc: "🏷️ Tag the repository and push. Usage: task tag -- [version] [runner]"
+    desc: "🏷️ Tag the repository and push. Usage: task tag -- [version] [hints...]"
     cmds:
       - |
         # Parse arguments from CLI_ARGS
-        read -r VERSION RUNNER_HINT <<< "{{.CLI_ARGS}}"
+        # First word is VERSION, subsequent words are HINTS
+        ARGS=({{.CLI_ARGS}})
+        VERSION=${ARGS[0]}
         
         # 1. Handle Version
         if [ -z "$VERSION" ]; then
           echo "❌ Error: Version required."
-          echo "Usage: task tag -- [version] [runner]"
-          echo "Example: task tag -- v1.0.0 fast"
+          echo "Usage: task tag -- [version] [hints...]"
+          echo "Example: task tag -- v1.0.0 fast multi"
           exit 1
         fi
         
-        # 2. Handle Runner Hint
+        # 2. Handle Hints (e.g., fast, slow, multi)
         MSG="Release $VERSION"
-        if [ "$RUNNER_HINT" = "fast" ] || [ "$RUNNER_HINT" = "slow" ]; then
-          MSG="Release $VERSION [$RUNNER_HINT]"
-          echo "🚀 Explicitly requesting [$RUNNER_HINT] runner via tag message."
-        fi
+        # Skip the first element (version) and loop through the rest
+        for HINT in "${ARGS[@]:1}"; do
+          MSG="$MSG [$HINT]"
+          echo "🚀 Adding hint: [$HINT] to tag message."
+        done
 
         # 3. Branch Verification
         CURRENT_BRANCH=$(git branch --show-current)

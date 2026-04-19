@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       labels: ${{ steps.select.outputs.labels }}
+      platforms: ${{ steps.select.outputs.platforms }}
 
     steps:
       - name: Checkout Code
@@ -18,26 +19,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Determine Runner
+      - name: Determine Runner and Platforms
         id: select
         run: |
           # 1. Ensure we have the actual annotated tag metadata
           git fetch --tags --force
           
-          # 2. Check Tag Message for hints ([fast] or [slow])
-          # Using %(subject) to get the first line of the tag message reliably
+          # 2. Check Tag Message for hints ([fast], [slow], [multi])
           TAG_MSG=$(git tag -l --format='%(subject)' "${{ github.ref_name }}")
           echo "DEBUG: Raw Tag Subject: '$TAG_MSG'"
           
+          # 3. Determine Runner Label
           if echo "$TAG_MSG" | grep -Fq "[fast]"; then
-            echo "🚀 Direct hint: fast"
+            echo "🚀 Direct hint: fast runner"
             echo "labels=[\"self-hosted\", \"linux\", \"fast\"]" >> $GITHUB_OUTPUT
           elif echo "$TAG_MSG" | grep -Fq "[slow]"; then
-            echo "🐢 Direct hint: slow"
+            echo "🐢 Direct hint: slow runner"
             echo "labels=[\"self-hosted\", \"linux\", \"slow\"]" >> $GITHUB_OUTPUT
           else
-            echo "ℹ️ No hint: using first available self-hosted runner"
+            echo "ℹ️ No runner hint: using first available"
             echo "labels=[\"self-hosted\", \"linux\"]" >> $GITHUB_OUTPUT
+          fi
+
+          # 4. Determine Platforms
+          if echo "$TAG_MSG" | grep -Fq "[multi]"; then
+            echo "🌎 Multi-arch requested: linux/amd64,linux/arm64"
+            echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
+          else
+            echo "⚡ Single-arch default: linux/amd64"
+            echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
           fi
 
   publish:
@@ -81,7 +91,7 @@ jobs:
           echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
       - name: Publish Images
-        run: task publish TAG=${{ github.ref_name }}
+        run: task publish TAG=${{ github.ref_name }} PLATFORMS=${{ needs.determine-runner.outputs.platforms }}
         env:
           TAG: ${{ github.ref_name }}
           GITHUB_ACTIONS: "true"
