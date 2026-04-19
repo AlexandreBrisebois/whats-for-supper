@@ -40,13 +40,6 @@ tasks:
         echo ""
         echo "Stop all: task down"
 
-  dev:
-    desc: "🚀 Start all services (Traefik-based orchestration)"
-    cmds:
-      - '{{.COMPOSE_CMD}} up -d'
-      - task: health
-      - |
-        echo "NOTE: Use 'task up' for the new Traefik-based modular environment."
 
   dev:api:
     desc: "API development (hot reload)"
@@ -112,7 +105,7 @@ tasks:
     cmds:
       - npm run test:e2e:ci
 
-  test:pwa:live:
+  test:pwa:e2e:
     desc: "Test PWA against live local backend (port 5000)"
     dir: pwa
     envs:
@@ -122,13 +115,6 @@ tasks:
     cmds:
       - npm run test:e2e
 
-  test:e2e:
-    desc: "Run E2E tests (Phase 2+)"
-    dir: tools/tests/e2e-testing
-    cmds:
-      - npm test
-    status:
-      - test -f package.json
 
   # ============================================================================
   # BUILDING
@@ -158,11 +144,17 @@ tasks:
   tag:
     desc: "🏷️ Tag the repository and push (triggers CI image publication)"
     vars:
-      VERSION: '{{default "" .CLI_ARGS}}'
+      V: '{{default .VERSION .CLI_ARGS}}'
     cmds:
       - |
-        if [ -z "{{.VERSION}}" ]; then
-          echo "❌ Error: Version required. Usage: task tag -- v0.1"
+        TAG="{{.V}}"
+        if [ -z "$TAG" ]; then
+          printf "🏷️  Enter version tag (e.g. v0.8): "
+          read TAG
+        fi
+        
+        if [ -z "$TAG" ]; then
+          echo "❌ Error: Version required."
           exit 1
         fi
         
@@ -173,10 +165,10 @@ tasks:
           exit 1
         fi
 
-        echo "Tagging repository with {{.VERSION}}..."
-        git tag -a {{.VERSION}} -m "Release {{.VERSION}}"
-        git push origin {{.VERSION}}
-        echo "✓ Tag {{.VERSION}} created and pushed."
+        echo "Tagging repository with $TAG..."
+        git tag -a "$TAG" -m "Release $TAG"
+        git push origin "$TAG"
+        echo "✓ Tag $TAG created and pushed."
 
   infra:prod:
     desc: "📄 Generate flat production manifest for NAS"
@@ -207,11 +199,6 @@ tasks:
       - '{{.COMPOSE_CMD}} down'
       - echo "✓ Modular services stopped"
 
-  stop:
-    desc: "⛔ Stop all services"
-    cmds:
-      - '{{.COMPOSE_CMD}} stop'
-      - echo "✓ Legacy containers stopped"
 
   ps:
     desc: "Show running containers"
@@ -397,11 +384,6 @@ tasks:
       - echo "✓ Cleaned up"
     interactive: true
 
-  clean:soft:
-    desc: "Stop containers (keep volumes for quick restart)"
-    cmds:
-      - '{{.COMPOSE_CMD}} down'
-      - echo "✓ Containers stopped (data preserved)"
 
   # ============================================================================
   # SETUP & INITIALIZATION
@@ -415,7 +397,7 @@ tasks:
         echo ""
       - task: init:env
       - task: init:dependencies
-      - task: dev
+      - task: up
       - task: migrate
       - task: seed
       - |
@@ -528,7 +510,7 @@ tasks:
     cmds:
       - task: review
       - task: build
-      - task: dev
+      - task: up
       - task: health
       - echo ""
       - echo "✓ Everything looks good! Ready to push."

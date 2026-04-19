@@ -3,15 +3,15 @@ name: Publish Release Images
 on:
   push:
     tags:
-      - 'v*.*'
+      - 'v*'
 
 jobs:
   publish:
     name: Build & Push Images
-    # Only run if pushed by AlexandreBrisebois and the commit is verified
+    # Only run if pushed by AlexandreBrisebois in the main repository
     if: >
-      github.actor == 'AlexandreBrisebois' &&
-      github.event.head_commit.verification.status == 'verified'
+      github.repository == 'AlexandreBrisebois/whats-for-supper' &&
+      github.actor == 'AlexandreBrisebois'
     runs-on: [self-hosted, local-runner]
 
     steps:
