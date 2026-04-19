@@ -138,7 +138,7 @@ public class ManagementService(
 
                 // Verify Images
                 var originalDir = Path.Combine(dir, "original");
-                bool hasImages = Directory.Exists(originalDir) && 
+                bool hasImages = Directory.Exists(originalDir) &&
                                  Directory.GetFiles(originalDir).Any(f => f.EndsWith(".jpg") || f.EndsWith(".png") || f.EndsWith(".webp"));
 
                 if (!hasImages)
