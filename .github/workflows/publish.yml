@@ -8,6 +8,7 @@ on:
 jobs:
   determine-runner:
     name: Determine Best Runner
+    runs-on: ubuntu-latest
     outputs:
       labels: ${{ steps.select.outputs.labels }}
 
