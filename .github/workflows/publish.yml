@@ -6,13 +6,43 @@ on:
       - 'v*'
 
 jobs:
+  determine-runner:
+    name: Determine Best Runner
+    outputs:
+      labels: ${{ steps.select.outputs.labels }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine Runner
+        id: select
+        run: |
+          # 1. Check Tag Message for hints ([fast] or [slow])
+          TAG_MSG=$(git tag -l --format='%(contents)' ${{ github.ref_name }})
+          echo "Tag message: $TAG_MSG"
+          
+          if [[ "$TAG_MSG" == *"[fast]"* ]]; then
+            echo "Direct hint: fast"
+            echo "labels=[\"self-hosted\", \"linux\", \"fast\"]" >> $GITHUB_OUTPUT
+          elif [[ "$TAG_MSG" == *"[slow]"* ]]; then
+            echo "Direct hint: slow"
+            echo "labels=[\"self-hosted\", \"linux\", \"slow\"]" >> $GITHUB_OUTPUT
+          else
+            echo "No hint: using first available self-hosted runner"
+            echo "labels=[\"self-hosted\", \"linux\"]" >> $GITHUB_OUTPUT
+          fi
+
   publish:
     name: Build & Push Images
+    needs: determine-runner
     # Only run if pushed by AlexandreBrisebois in the main repository
     if: >
       github.repository == 'AlexandreBrisebois/whats-for-supper' &&
       github.actor == 'AlexandreBrisebois'
-    runs-on: [self-hosted, linux]
+    runs-on: ${{ fromJSON(needs.determine-runner.outputs.labels) }}
 
     steps:
       - name: Checkout Code

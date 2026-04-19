@@ -6,10 +6,10 @@ services:
     restart: unless-stopped
     network_mode: host
     environment:
-      RUNNER_NAME: local-runner
+      RUNNER_NAME: local-runner-slow
       RUNNER_REPO: https://github.com/AlexandreBrisebois/whats-for-supper
-      RUNNER_TOKEN: [ TOKEN ] # <--- GET A FRESH ONE
-      RUNNER_LABELS: linux,self-hosted
+      RUNNER_TOKEN: TOKEN # <--- GET A FRESH ONE
+      RUNNER_LABELS: linux,self-hosted,slow # Use fast on the faster host and slow on the fallback host.
       RUNNER_ALLOW_RUNASROOT: "true"
     command: >
       bash -c "if [ ! -f .runner ]; then

@@ -143,32 +143,39 @@ tasks:
 
   tag:
     desc: "🏷️ Tag the repository and push (triggers CI image publication)"
-    vars:
-      V: '{{default .VERSION .CLI_ARGS}}'
     cmds:
       - |
-        TAG="{{.V}}"
-        if [ -z "$TAG" ]; then
-          printf "🏷️  Enter version tag (e.g. v0.8): "
-          read TAG
-        fi
+        # Parse arguments from CLI_ARGS
+        read -r VERSION RUNNER_HINT <<< "{{.CLI_ARGS}}"
         
-        if [ -z "$TAG" ]; then
+        # 1. Handle Version
+        if [ -z "$VERSION" ]; then
           echo "❌ Error: Version required."
+          echo "Usage: task tag [version] [runner]"
+          echo "Example: task tag v1.0.0 fast"
           exit 1
         fi
         
+        # 2. Handle Runner Hint
+        MSG="Release $VERSION"
+        if [ "$RUNNER_HINT" = "fast" ] || [ "$RUNNER_HINT" = "slow" ]; then
+          MSG="Release $VERSION [$RUNNER_HINT]"
+          echo "🚀 Explicitly requesting [$RUNNER_HINT] runner via tag message."
+        fi
+
+        # 3. Branch Verification
         CURRENT_BRANCH=$(git branch --show-current)
-        if [ "$CURRENT_BRANCH" != "main" ]; then
-          echo "❌ Error: Tags must be pushed from the 'main' branch."
+        if [ "$CURRENT_BRANCH" != "main" ] && [ "$CURRENT_BRANCH" != "master" ]; then
+          echo "❌ Error: Tags should be pushed from the 'main' branch."
           echo "Current branch is: $CURRENT_BRANCH"
           exit 1
         fi
 
-        echo "Tagging repository with $TAG..."
-        git tag -a "$TAG" -m "Release $TAG"
-        git push origin "$TAG"
-        echo "✓ Tag $TAG created and pushed."
+        echo "Tagging repository with $VERSION..."
+        git tag -a "$VERSION" -m "$MSG"
+        git push origin "$VERSION"
+        echo "✓ Tag $VERSION created and pushed."
+        echo "  Message: $MSG"
 
   infra:prod:
     desc: "📄 Generate flat production manifest for NAS"
