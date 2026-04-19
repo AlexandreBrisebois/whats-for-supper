@@ -39,6 +39,6 @@ jobs:
           echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
       - name: Publish Images
-        run: task publish ${{ github.ref_name }}
+        run: task publish TAG=${{ github.ref_name }}
         env:
           TAG: ${{ github.ref_name }}
