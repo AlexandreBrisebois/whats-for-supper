@@ -21,10 +21,13 @@ jobs:
       - name: Determine Runner
         id: select
         run: |
-          # 1. Check Tag Message for hints ([fast] or [slow])
-          # Using for-each-ref for more consistent results and grep for robust pattern matching
-          TAG_MSG=$(git for-each-ref --format='%(contents)' "refs/tags/${{ github.ref_name }}")
-          echo "DEBUG: Raw Tag Message: '$TAG_MSG'"
+          # 1. Ensure we have the actual annotated tag metadata
+          git fetch --tags --force
+          
+          # 2. Check Tag Message for hints ([fast] or [slow])
+          # Using %(subject) to get the first line of the tag message reliably
+          TAG_MSG=$(git tag -l --format='%(subject)' "${{ github.ref_name }}")
+          echo "DEBUG: Raw Tag Subject: '$TAG_MSG'"
           
           if echo "$TAG_MSG" | grep -Fq "[fast]"; then
             echo "🚀 Direct hint: fast"
