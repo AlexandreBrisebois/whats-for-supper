@@ -10,6 +10,9 @@ whats-for-supper/
 ├── AGENT.md                          # Universal Agent Protocol (Master reference)
 ├── HANDOVER.md                       # Tactical execution journal (Baton pass)
 ├── README.md                         # Human-centric project overview
+├── PROJECT_STRUCTURE.md              # (This file) Architecture & Tree
+├── PLAN.md                           # Active prioritization & Roadmap
+├── LOCAL_DEV_LOOP.md                 # Detailed development guide
 ├── Taskfile.yml                      # Automation center (task health, task up, task build)
 │
 ├── docker/                           # Orchestration Center
@@ -40,12 +43,9 @@ whats-for-supper/
 │   ├── e2e/                          # Playwright E2E tests
 │   └── Dockerfile
 │
-├── docs/                             # Documentation & Metadata
-│   ├── meta/                         # Project meta-docs
-│   │   ├── PROJECT_STRUCTURE.md      # (This file)
-│   │   ├── LOCAL_DEV_LOOP.md         # Detailed dev guide
-│   │   └── CONTRIBUTING.md           # PR & Coding standards
-│   └── ...
+├── docs/                             # Documentation & Reference
+│   └── [feature]_walkthrough.md      # Feature-specific guides
+│
 │
 ├── specs/                            # Feature specifications & ADRs
 │   ├── ROADMAP.md                    # Long-term product vision

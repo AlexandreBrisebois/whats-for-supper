@@ -1,0 +1,23 @@
+@baseUrl = http://localhost:5001
+
+### 1. Trigger Disaster Recovery
+# Scans RECIPES_ROOT/original to harvest unique AddedBy IDs 
+# and generates placeholders in family-members.json.
+POST {{baseUrl}}/api/management/disaster-recovery
+Accept: application/json
+
+### 2. Trigger Full Backup
+# Exports current DB (FamilyMembers and Recipes) to JSON files in RECIPES_ROOT.
+POST {{baseUrl}}/api/management/backup
+Accept: application/json
+
+### 3. Trigger Full Seed (Restore)
+# Imports/Syncs database from JSON files in RECIPES_ROOT.
+# Idempotent: safe to run multiple times.
+POST {{baseUrl}}/api/management/seed
+Accept: application/json
+
+### 4. Check Task Status
+# Returns the status of the current or most recent management task.
+GET {{baseUrl}}/api/management/status
+Accept: application/json

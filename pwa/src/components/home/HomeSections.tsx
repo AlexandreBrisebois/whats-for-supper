@@ -21,12 +21,7 @@ export function TonightMenuCard({ recipeName, description, imageUrl }: MenuCardP
 
       {imageUrl && (
         <div className="relative w-full aspect-[4/3] rounded-[1.5rem] overflow-hidden shadow-sm">
-          <Image
-            src={imageUrl}
-            alt={recipeName}
-            fill
-            className="object-cover"
-          />
+          <Image src={imageUrl} alt={recipeName} fill className="object-cover" />
         </div>
       )}
 

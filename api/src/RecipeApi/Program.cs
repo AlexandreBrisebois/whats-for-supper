@@ -69,8 +69,9 @@ try
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<ValidationService>();
     builder.Services.AddScoped<ImageService>();
-    builder.Services.AddScoped<RecipeService>();
-    builder.Services.AddScoped<RecipeImportService>();
+    builder.Services.AddScoped<SeedService>();
+    builder.Services.AddSingleton<ManagementTaskStore>();
+    builder.Services.AddHostedService<ManagementWorker>();
     builder.Services.AddScoped<RecipeExtractionAgent>();
     builder.Services.AddScoped<RecipeHeroAgent>();
     builder.Services.AddHostedService<RecipeImportWorker>();

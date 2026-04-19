@@ -17,11 +17,11 @@ This document is the **Source of Truth** for all AI Coding Agents (GitHub Copilo
 
 ## 2. Project Knowledge Map (Entry Points)
 - **Long-term Vision**: [specs/ROADMAP.md](specs/ROADMAP.md) (Future phases).
-- **Active Prioritization**: [docs/meta/PLAN.md](docs/meta/PLAN.md) (What's being worked on now).
+- **Active Prioritization**: [PLAN.md](PLAN.md) (What's being worked on now).
 - **Feature Specs**: [specs/](specs/) directory.
 - **Architecture Decisions**: [specs/decisions/](specs/decisions/) (Permanent ADRs).
-- **Project Structure**: [docs/meta/PROJECT_STRUCTURE.md](docs/meta/PROJECT_STRUCTURE.md).
-- **Dev Workflow**: [docs/meta/LOCAL_DEV_LOOP.md](docs/meta/LOCAL_DEV_LOOP.md).
+- **Project Structure**: [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
+- **Dev Workflow**: [LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md).
 
 ## 2. Token Efficiency Rules (Lean Session)
 - **Focused entry**: Always start a session by reading [AGENT.md](AGENT.md) and [HANDOVER.md](HANDOVER.md).
