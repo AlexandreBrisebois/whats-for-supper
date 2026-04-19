@@ -22,17 +22,18 @@ jobs:
         id: select
         run: |
           # 1. Check Tag Message for hints ([fast] or [slow])
-          TAG_MSG=$(git tag -l --format='%(contents)' ${{ github.ref_name }})
-          echo "Tag message: $TAG_MSG"
+          # Using for-each-ref for more consistent results and grep for robust pattern matching
+          TAG_MSG=$(git for-each-ref --format='%(contents)' "refs/tags/${{ github.ref_name }}")
+          echo "DEBUG: Raw Tag Message: '$TAG_MSG'"
           
-          if [[ "$TAG_MSG" == *"[fast]"* ]]; then
-            echo "Direct hint: fast"
+          if echo "$TAG_MSG" | grep -Fq "[fast]"; then
+            echo "🚀 Direct hint: fast"
             echo "labels=[\"self-hosted\", \"linux\", \"fast\"]" >> $GITHUB_OUTPUT
-          elif [[ "$TAG_MSG" == *"[slow]"* ]]; then
-            echo "Direct hint: slow"
+          elif echo "$TAG_MSG" | grep -Fq "[slow]"; then
+            echo "🐢 Direct hint: slow"
             echo "labels=[\"self-hosted\", \"linux\", \"slow\"]" >> $GITHUB_OUTPUT
           else
-            echo "No hint: using first available self-hosted runner"
+            echo "ℹ️ No hint: using first available self-hosted runner"
             echo "labels=[\"self-hosted\", \"linux\"]" >> $GITHUB_OUTPUT
           fi
 
@@ -44,6 +45,8 @@ jobs:
       github.repository == 'AlexandreBrisebois/whats-for-supper' &&
       github.actor == 'AlexandreBrisebois'
     runs-on: ${{ fromJSON(needs.determine-runner.outputs.labels) }}
+    env:
+      DOCKER_API_VERSION: "1.43" # Required for Synology NAS (Slow Runner) compatibility
 
     steps:
       - name: Checkout Code
