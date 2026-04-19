@@ -4,6 +4,7 @@ services:
     container_name: actions-runner
     user: root
     restart: unless-stopped
+    network_mode: host
     environment:
       RUNNER_NAME: local-runner
       RUNNER_REPO: https://github.com/AlexandreBrisebois/whats-for-supper

@@ -451,6 +451,31 @@ jobs:
 
 ---
 
+### Workflow 4: Self-Hosted NAS Runner
+
+For production deployments on a Synology NAS, a self-hosted runner executes the `publish.yml` workflow to build and push images to a local registry.
+
+#### Connectivity & Troubleshooting
+
+If you encounter `i/o timeout` errors when pushing to the local registry (e.g., `192.168.1.226:5050`), it is likely a loopback networking issue where the builder container cannot reach the host IP.
+
+**Current Fix:**
+- The Runner container uses `network_mode: host` in `docker/actions-runner/compose.yml`.
+- The Buildx instance uses `driver-opts: network=host` in `.github/workflows/publish.yml`.
+
+**Future-Proofing & Overrides:**
+If you change your runner environment or networking stack and `network: host` is no longer viable, you can override the registry target without changing code by setting the `WFS_REGISTRY` environment variable on the runner:
+
+| Override Strategy | Value | Use Case |
+|-------------------|-------|----------|
+| **Localhost** | `WFS_REGISTRY=localhost:5050` | Registry and Runner share the same network stack. |
+| **Docker Bridge** | `WFS_REGISTRY=172.17.0.1:5050` | Registry bound to the bridge gateway. |
+| **Custom IP** | `WFS_REGISTRY=192.168.1.x:5050` | Moving the registry to a different machine. |
+
+This variable is supported by the `publish` task in `Taskfile.yml`.
+
+---
+
 ## Sync Between Local & Cloud
 
 ### Local → Cloud (Push to GitHub)
