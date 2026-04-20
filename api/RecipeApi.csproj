@@ -34,7 +34,7 @@
     <!-- Logging -->
     <PackageReference Include="Serilog.AspNetCore" Version="9.*" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.*" />
-    <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.*" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.*" />
     <PackageReference Include="System.ClientModel" Version="1.10.0" />
     <PackageReference Include="Google.GenAI" Version="1.6.1" />
