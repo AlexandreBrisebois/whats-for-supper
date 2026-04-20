@@ -1,0 +1,12 @@
+services:
+  api:
+    image: ${WFS_REGISTRY}/whats-for-supper-api:${TAG}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    ports:
+      - "9101:5000"
+
+  pwa:
+    image: ${WFS_REGISTRY}/whats-for-supper-pwa:${TAG}
+    ports:
+      - "9102:3000"

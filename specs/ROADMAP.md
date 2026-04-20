@@ -20,6 +20,7 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 - **The Smart Pivot (Planning)**: Design of the express discovery hub on the Home screen.
 - **Identity Architecture Pivot**: Implementation of cookie-based `IdentityValidator` for reliable cross-service auth.
 - **Modular Worker (DB Polling)**: Optimized processing pipeline (Hybrid Gemma4/Gemini) avoiding high-maintenance Redis infra.
+- **Recipe Scrapers**: Support for scraping recipes from various websites (integrated with Import Worker).
 
 ---
 
@@ -97,6 +98,20 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 
 ---
 
+## Phase 7 — Operations & Infrastructure
+
+**Goal**: Production-ready stability, visibility, and secure access.
+
+### Additions
+- **Secure External Access (Cloudflare Tunnel)**: Implement a secure "punch-through" connection to access NAS services without port forwarding.
+- **Dashboard & Monitoring**: Traefik Dashboard and Prometheus/Grafana monitoring for service health.
+
+### Definition of Done
+- NAS services are accessible via a Cloudflare-protected domain.
+- Real-time service health is visible in a centralized dashboard.
+
+---
+
 ## Spec Coverage
 
 | Spec | Phase |
@@ -111,4 +126,5 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 | [meal-planning.spec.md](meal-planning.spec.md) | 4 |
 | [cooks-mode.spec.md](cooks-mode.spec.md) | 4 |
 | [ai-agents.spec.md](ai-agents.spec.md) | 5 |
+| [cloudflare-tunnel.spec.md](cloudflare-tunnel.spec.md) | 7 |
 

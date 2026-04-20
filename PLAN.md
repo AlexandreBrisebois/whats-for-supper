@@ -1,7 +1,7 @@
 # What's for Supper - Complete Specifications Build
 
 ## Context
-The user has a specs framework on the main branch (`src/specs/`) with:
+The user has a specs framework on the main branch (`specs/`) with:
 - `recipe-api.spec.md` - API endpoints
 - `recipe-data.spec.md` - PostgreSQL architecture with pgvector, family management, preferences
 - `recipe-import.spec.md` - AI extraction pipeline (Gemma local + Gemini API)
@@ -58,7 +58,7 @@ Three stateless query services implemented in .NET 10 (same ecosystem as Recipe 
 **Vector store:** PostgreSQL + pgvector
 **Abstraction:** Built on standard HTTP + SQL libraries (not LangChain); allows swapping to Semantic Kernel or cloud embeddings later
 
-See [ADR-009](src/specs/decisions/009-agent-framework-and-implementation.md) for implementation strategy and Phase 5 readiness.
+See [ADR-009](specs/decisions/009-agent-framework-and-implementation.md) for implementation strategy and Phase 5 readiness.
 
 ### Data Architecture
 - **Database:** PostgreSQL with pgvector
@@ -125,5 +125,5 @@ See [ADR-009](src/specs/decisions/009-agent-framework-and-implementation.md) for
    - Deliverables: Ingredient → nutrient mapping, dietary goal tracking
 
 ### Per-Phase Implementation Order
-See [ROADMAP.md](src/specs/ROADMAP.md) for detailed phase breakdown and spec coverage.
+See [ROADMAP.md](specs/ROADMAP.md) for detailed phase breakdown and spec coverage.
 Each phase is independently deployable and adds value without blocking later phases.

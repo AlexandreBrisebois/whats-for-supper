@@ -74,6 +74,10 @@ task up
 task build
 task up
 
+# Generate production compose (for NAS)
+task prod:config
+# Output: docker/docker-compose.prod.yml
+
 # Watch API logs
 task logs:api
 

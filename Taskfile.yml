@@ -19,7 +19,7 @@ vars:
   # Database Target (localhost or NAS IP)
   TARGET_DB_HOST: '{{.TARGET_DB_HOST | default "localhost"}}'
   # CLI helper for docker compose
-  COMPOSE_CMD: 'docker compose -p whats-for-supper --env-file docker/.env -f docker/compose/infrastructure.yml -f docker/compose/apps.yml'
+  COMPOSE_CMD: 'docker compose -p whats-for-supper --env-file docker/.env $([ -f docker/.env.local ] && echo "--env-file docker/.env.local") -f docker/compose/infrastructure.yml -f docker/compose/apps.yml'
 
 tasks:
   default:
@@ -217,6 +217,23 @@ tasks:
         git push origin "$VERSION"
         echo "✓ Tag $VERSION created and pushed."
         echo "  Message: $MSG"
+
+
+  prod:compose:
+    desc: "🔨 Generate unified production docker-compose.prod.yml"
+    summary: |
+      Combines modular compose files and production overrides into a single file for NAS deployment.
+      Usage: task prod:compose TAG=v0.6
+    cmds:
+      - WFS_REGISTRY="{{.WFS_REGISTRY}}" TAG="{{.TAG}}" docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/production.yml config > docker-compose.prod.yml
+      - echo "Generated docker-compose.prod.yml Version {{.TAG}}"
+
+
+  prod:config:
+    desc: "🏷️ Generate the production docker-compose file"
+    cmds:
+      - TAG={{.TAG}} WFS_REGISTRY={{.WFS_REGISTRY}} docker compose --env-file docker/.env -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/production-overrides.yml config > docker/docker-compose.prod.yml
+      - echo "Production config generated for docker/docker-compose.prod.yml"
 
 
   # ============================================================================

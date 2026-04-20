@@ -87,7 +87,11 @@ node_modules/
 playwright-report/
 test-results/
 docker-compose.prod.yml
+docker/docker-compose.prod.yml
 
 # Agents
 .agents/
 .scratch/
+
+# Local data mounts
+recipes/

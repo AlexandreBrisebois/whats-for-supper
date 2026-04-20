@@ -21,14 +21,14 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - recipes_data:/data/recipes
+      - ${RECIPES_VOLUME_SOURCE:-recipes_data}:/data/recipes
     networks:
       - proxy
       - internal
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.api.rule=Host(`api.wfs.localhost`)"
+      - "traefik.http.routers.api.rule=Host(`${API_HOST:-api.wfs.localhost}`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.services.api.loadbalancer.server.port=5000"
 
@@ -51,7 +51,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.pwa.rule=Host(`pwa.wfs.localhost`)"
+      - "traefik.http.routers.pwa.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`)"
       - "traefik.http.routers.pwa.entrypoints=web"
       - "traefik.http.services.pwa.loadbalancer.server.port=3000"
 

@@ -1,119 +1,45 @@
-name: compose
 services:
+  # ──────────────────────────────────────────────────────────────────────────
+  # API Production Overrides
+  # ──────────────────────────────────────────────────────────────────────────
   api:
-    build:
-      context: /Users/alex/Code/whats-for-supper/api
-      dockerfile: Dockerfile
-    container_name: whats-for-supper-api
-    depends_on:
-      postgres:
-        condition: service_healthy
-        required: true
+    image: ${WFS_REGISTRY:-whats-for-supper}/whats-for-supper-api:${TAG:-latest}
+    build: null # Disable local build in production
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:5000
-      CORS_ALLOWED_ORIGINS: http://pwa.wfs.localhost,http://localhost:3000
-      POSTGRES_CONNECTION_STRING: postgres://recipe_app:secure_dev_password@postgres:5432/recipe_app_db
-      RECIPES_ROOT: /data/recipes
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.api.entrypoints: web
-      traefik.http.routers.api.rule: Host(`api.wfs.localhost`)
-      traefik.http.services.api.loadbalancer.server.port: "5000"
-    networks:
-      internal: null
-      proxy: null
-    restart: unless-stopped
+      ASPNETCORE_ENVIRONMENT: Production
+      POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
-      - type: volume
-        source: recipes_data
-        target: /data/recipes
-        volume: {}
-  postgres:
-    container_name: whats-for-supper-postgres
-    environment:
-      POSTGRES_DB: recipe_app_db
-      POSTGRES_PASSWORD: secure_dev_password
-      POSTGRES_USER: recipe_app
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - pg_isready -U $${POSTGRES_USER:-recipe_app} -d $${POSTGRES_DB:-recipe_app_db}
-      timeout: 5s
-      interval: 5s
-      retries: 10
-      start_period: 10s
-    image: postgres:18-alpine3.23
-    networks:
-      internal: null
-    ports:
-      - mode: ingress
-        target: 5432
-        published: "5432"
-        protocol: tcp
-    restart: unless-stopped
-    volumes:
-      - type: volume
-        source: postgres_data
-        target: /var/lib/postgresql/data
-        volume: {}
+      - ./recipes:/data/recipes
+    # We remove the local ports if Traefik is handling 80
+    ports: !reset []
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PWA Production Overrides
+  # ──────────────────────────────────────────────────────────────────────────
   pwa:
-    build:
-      context: /Users/alex/Code/whats-for-supper/pwa
-      dockerfile: Dockerfile
-    container_name: whats-for-supper-pwa
-    depends_on:
-      api:
-        condition: service_started
-        required: true
+    image: ${WFS_REGISTRY:-whats-for-supper}/whats-for-supper-pwa:${TAG:-latest}
+    build: null # Disable local build in production
     environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       API_INTERNAL_URL: http://api:5000
-      NEXT_PUBLIC_API_BASE_URL: http://api.wfs.localhost
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.pwa.entrypoints: web
-      traefik.http.routers.pwa.rule: Host(`pwa.wfs.localhost`)
-      traefik.http.services.pwa.loadbalancer.server.port: "3000"
-    networks:
-      proxy: null
-    restart: unless-stopped
-  traefik:
-    command:
-      - --api.insecure=true
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:80
-    container_name: whats-for-supper-traefik
-    image: traefik:v3.1
-    networks:
-      proxy: null
-    ports:
-      - mode: ingress
-        target: 80
-        published: "80"
-        protocol: tcp
-      - mode: ingress
-        target: 8080
-        published: "8080"
-        protocol: tcp
-    restart: unless-stopped
+    # We remove the local ports if Traefik is handling 80
+    ports: !reset []
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PostgreSQL Production Overrides
+  # ──────────────────────────────────────────────────────────────────────────
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - type: bind
-        source: /var/run/docker.sock
-        target: /var/run/docker.sock
-        read_only: true
-        bind: {}
-networks:
-  internal:
-    name: wfs-internal
-    driver: bridge
-    external: true
-  proxy:
-    name: wfs-proxy
-    driver: bridge
-    external: true
-volumes:
-  postgres_data:
-    name: whats-for-supper-postgres
-  recipes_data:
-    name: whats-for-supper-recipes
+      - ./postgres-data:/var/lib/postgresql/data
+    ports: !reset []
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Traefik Production Overrides
+  # ──────────────────────────────────────────────────────────────────────────
+  traefik:
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_ADMIN_PORT:-8080}:8080"

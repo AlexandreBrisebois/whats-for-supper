@@ -6,17 +6,16 @@ services:
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
-      - "--providers.docker.endpoint=tcp://host.docker.internal:2375"
+      - "--providers.docker.endpoint=${DOCKER_ENDPOINT:-unix:///var/run/docker.sock}"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.file.filename=/etc/traefik/dynamic.yml"
       - "--entrypoints.web.address=:80"
     ports:
-      - "80:80"
-      - "8080:8080"
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_ADMIN_PORT:-8080}:8080"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik_dynamic.yml:/etc/traefik/dynamic.yml:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - proxy
       - internal

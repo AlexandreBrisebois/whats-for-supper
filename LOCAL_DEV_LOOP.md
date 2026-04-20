@@ -118,6 +118,7 @@ task clean:soft        # Stop containers (keep data)
 task work              # Start dev workflow (shows next steps)
 task review            # Pre-commit review (format + lint + test)
 task ship              # Final ship checklist
+task prod:config       # Generate unified production compose file 🏷️
 ```
 
 ---
@@ -265,17 +266,24 @@ task dev:pwa
 ```
 
 ### 4. **Environment Variables**
-Keep `docker/.env` (gitignored) with your orchestration settings:
-```bash
-# Initialize from template
-task init:env
 
-# Then edit with your settings
-# docker/.env (never commit!)
-POSTGRES_CONNECTION_STRING=postgres://recipe_app:secure_dev_password@localhost:5432/recipe_app_db
-RECIPES_ROOT=/tmp/recipes
-API_BASE_URL=http://api.wfs.localhost
-NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost
+This project uses a **Dual-Config Strategy** to separate your NAS settings from your local development overrides.
+
+- **[docker/.env](file:///Users/alex/Code/whats-for-supper/docker/.env)** (Gitignored): Stays as your primary source for NAS/Production settings (ports 9001/9002, NAS IPs, Production Secrets).
+- **[docker/.env.local](file:///Users/alex/Code/whats-for-supper/docker/.env.local)** (Gitignored): Used for your local machine overrides (standard ports 3000/5000, local internal URLs).
+
+The `Taskfile.yml` automatically stacks these files when running locally.
+
+**Initialize local overrides:**
+```bash
+# Create local override file
+cat <<EOF > docker/.env.local
+API_PORT=5000
+PWA_PORT=3000
+API_INTERNAL_URL=http://api:5000
+CORS_ALLOWED_ORIGINS=http://pwa.wfs.localhost,http://localhost:3000
+ASPNETCORE_ENVIRONMENT=Development
+EOF
 ```
 
 ### 5. **Know Your Workflows**
