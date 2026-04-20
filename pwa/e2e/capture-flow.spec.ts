@@ -27,7 +27,10 @@ const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 async function loginAsMember(page: Page) {
   await page.context().clearCookies();
   await page.goto('/onboarding');
-  await page.waitForLoadState('networkidle');
+
+  // Wait for family list to be present
+  const familyList = page.locator('[data-hint="family-list"]');
+  await expect(familyList).toBeVisible({ timeout: 10_000 });
 
   const buttons = page.getByRole('button').filter({ hasText: /.+/ });
   const count = await buttons.count();
@@ -42,15 +45,18 @@ async function loginAsMember(page: Page) {
       const input = page.getByRole('textbox');
       await input.fill(`E2EUser-${Date.now()}`);
       await page.getByRole('button', { name: 'Add Member', exact: true }).click();
-      await page.waitForLoadState('networkidle');
+
+      // Wait for redirect to home after creation
+      await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+      return;
     }
   }
 
   // Find and click the first family member
-  const firstMember = page.getByRole('button').filter({ hasText: /.+/ }).first();
+  const firstMember = buttons.first();
   if ((await firstMember.count()) > 0) {
     await firstMember.click();
-    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
   }
 }
 

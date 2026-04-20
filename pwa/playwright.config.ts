@@ -15,8 +15,8 @@ export default defineConfig({
   // Retry failed tests once on CI, none locally
   retries: isCI ? 1 : 0,
 
-  // Parallelise across workers (reduce on CI to stay within resource limits)
-  workers: isCI ? 2 : undefined,
+  // Parallelise across workers (reduce on CI/Local to stay within resource limits)
+  workers: isCI ? 2 : 1,
 
   // Per-test timeout
   timeout: 30_000,
@@ -37,7 +37,7 @@ export default defineConfig({
 
   use: {
     // All tests hit the local Next.js dev server
-    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
+    baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:3000',
 
     // Collect traces on first retry
     trace: 'on-first-retry',
@@ -45,8 +45,8 @@ export default defineConfig({
     // Screenshot on failure
     screenshot: 'only-on-failure',
 
-    // Run headless on CI, headed locally for easy debugging
-    headless: isCI,
+    // Run headless to avoid profile interference
+    headless: true,
   },
 
   projects: [
@@ -65,15 +65,15 @@ export default defineConfig({
           ? [
               {
                 command: 'node mock-api.js',
-                url: 'http://localhost:5001/health',
+                url: 'http://127.0.0.1:5001/health',
                 reuseExistingServer: true,
-                timeout: 10_000,
+                timeout: 15_000,
               },
             ]
           : []),
         {
           command: 'npm run dev',
-          url: 'http://localhost:3000',
+          url: 'http://127.0.0.1:3000',
           reuseExistingServer: true,
           timeout: 60_000,
         },

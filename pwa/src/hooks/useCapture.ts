@@ -115,6 +115,12 @@ export function useCapture(): UseCaptureReturn {
       return null;
     }
 
+    // Validate rating (0-3: Unknown, Dislike, Like, Love)
+    if (rating < 0 || rating > 3) {
+      setError('Invalid rating. Please select a value between 0 and 3.');
+      return null;
+    }
+
     setIsSubmitting(true);
     try {
       const formData = new FormData();

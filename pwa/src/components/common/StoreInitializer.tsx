@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFamilyStore } from '@/store/familyStore';
 import type { FamilyMember } from '@/types/domain';
 
@@ -14,11 +14,16 @@ interface StoreInitializerProps {
  * This ensures the client-side state is ready immediately on load.
  */
 export function StoreInitializer({ familyMembers }: StoreInitializerProps) {
-  useState(() => {
-    useFamilyStore.setState({
-      familyMembers,
-    });
-  });
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!initialized.current) {
+      useFamilyStore.setState({
+        familyMembers,
+      });
+      initialized.current = true;
+    }
+  }, [familyMembers]);
 
   return null;
 }

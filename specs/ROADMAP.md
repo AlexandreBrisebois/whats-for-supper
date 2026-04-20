@@ -49,6 +49,11 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 - **Swipe Discovery (Full)**: Full-screen card-based collaborative voting.
 - **SearchRecipesAgent**: Natural language search via Ollama + pgvector.
 
+### PWA Integrations (API-Sync)
+- [ ] **Recipe Details**: Implement detailed recipe view with inline `PATCH` editing for notes and ratings.
+- [ ] **AI Hero Visualization**: Use the AI-generated hero images (`/api/recipes/{id}/hero`) in Discovery and Home views.
+- [ ] **Processing Feedback**: Add visual indicators for recipes currently in the AI import pipeline.
+
 ### Implementation Checklist
 - [ ] **Smart Pivot Card**: Compact `ExpressCard.tsx` (~300px) with Framer Motion flick gestures.
 - [ ] **Home Integration**: Conditional display on `home/page.tsx` when `isPlannedForTonight` is false.

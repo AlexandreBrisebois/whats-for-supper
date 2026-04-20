@@ -14,7 +14,7 @@ export interface Recipe {
   id: string;
   rating: RecipeRating;
   addedBy: string;
-  images: number[]; // Indices available for /recipe/{id}/original/{index}
+  images: number[]; // Indices available for /api/recipes/{id}/original/{index}
   createdAt: string;
   notes?: string;
   label?: string;

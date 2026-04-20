@@ -56,7 +56,7 @@ test('selecting a family member redirects to /home with a welcome message', asyn
   await page.goto('/onboarding');
 
   // Wait for the family list to finish loading
-  await page.waitForLoadState('networkidle');
+  await expect(page.locator('[data-hint="family-list"]')).toBeVisible({ timeout: 10_000 });
 
   // Find the first clickable family member button
   const firstMember = page.getByRole('button').filter({ hasText: /.+/ }).first();
@@ -91,7 +91,7 @@ test('adding a new family member saves it and redirects to /home', async ({ page
   const newName = `TestUser-${Date.now()}`;
 
   await page.goto('/onboarding');
-  await page.waitForLoadState('networkidle');
+  await expect(page.locator('[data-hint="family-list"]')).toBeVisible({ timeout: 10_000 });
 
   // Open the "Don't see your name?" / add-member flow
   const addButton = page.getByRole('button', { name: /Don't see your name/i });
@@ -106,10 +106,8 @@ test('adding a new family member saves it and redirects to /home', async ({ page
 
   // Submit the form
   const submitButton = page.getByRole('button', { name: 'Add Member', exact: true });
+  // Select and log it — app should automatically redirect
   await submitButton.click();
-
-  // The new member should appear in the list (or the user is immediately logged in)
-  await page.waitForLoadState('networkidle');
 
   // The app will automatically select the new member and redirect to /home.
   // Validation for the home page content is covered by integration tests.

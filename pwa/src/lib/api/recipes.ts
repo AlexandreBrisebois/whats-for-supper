@@ -10,6 +10,16 @@ export async function getRecipes(page = 1, pageSize = 20): Promise<PaginatedResp
   return data;
 }
 
+export interface UpdateRecipePayload {
+  notes?: string;
+  rating?: number;
+}
+
+export async function updateRecipe(id: string, payload: UpdateRecipePayload): Promise<Recipe> {
+  const { data } = await apiClient.patch<Recipe>(`/api/recipes/${id}`, payload);
+  return data;
+}
+
 export interface CreateRecipeResponse {
   recipeId: string;
   message: string;

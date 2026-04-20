@@ -19,6 +19,7 @@
       }
     ],
     "ignoreDeprecations": "6.0",
+    "types": ["node", "react", "react-dom", "canvas-confetti"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

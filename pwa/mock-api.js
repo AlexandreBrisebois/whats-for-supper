@@ -25,24 +25,27 @@ const server = http.createServer((req, res) => {
 
   res.setHeader('Content-Type', 'application/json');
 
-  // Route matches
-  if (url.pathname === '/health') {
+  // Route matches (handling optional trailing slashes)
+  const path = url.pathname.replace(/\/$/, '');
+
+  if (path === '/health') {
     res.writeHead(200);
     res.end(JSON.stringify({ status: 'Healthy' }));
-  } else if (url.pathname === '/api/family' && req.method === 'GET') {
+  } else if (path === '/api/family' && req.method === 'GET') {
     res.writeHead(200);
     res.end(
       JSON.stringify({
         data: familyMembers,
       })
     );
-  } else if (url.pathname === '/api/family' && req.method === 'POST') {
+  } else if (path === '/api/family' && req.method === 'POST') {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk;
     });
     req.on('end', () => {
       const payload = JSON.parse(body || '{}');
+      console.log('[Mock API] Family POST payload:', payload);
       const newMember = {
         id: (familyMembers.length + 1).toString(),
         name: payload.name || 'E2E-New',
@@ -56,7 +59,7 @@ const server = http.createServer((req, res) => {
         })
       );
     });
-  } else if (url.pathname === '/api/recipes' && req.method === 'GET') {
+  } else if (path === '/api/recipes' && req.method === 'GET') {
     res.writeHead(200);
     res.end(
       JSON.stringify({
@@ -64,7 +67,7 @@ const server = http.createServer((req, res) => {
         total: 0,
       })
     );
-  } else if (url.pathname === '/api/recipes' && req.method === 'POST') {
+  } else if (path === '/api/recipes' && req.method === 'POST') {
     req.on('data', () => {}); // Consume stream
     req.on('end', () => {
       res.writeHead(201);
