@@ -91,7 +91,7 @@ jobs:
           echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
       - name: Publish Images
-        run: task publish TAG=${{ github.ref_name }} PLATFORMS=${{ needs.determine-runner.outputs.platforms }}
+        run: task publish PUSH=true TAG=${{ github.ref_name }} PLATFORMS=${{ needs.determine-runner.outputs.platforms }}
         env:
           TAG: ${{ github.ref_name }}
           GITHUB_ACTIONS: "true"

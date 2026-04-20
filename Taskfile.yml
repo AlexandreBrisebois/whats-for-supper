@@ -11,9 +11,14 @@ vars:
   API_PORT: '5000'
   PWA_PORT: '3000'
   DB_PORT: '5432'
-  REGISTRY: '{{.WFS_REGISTRY | default "192.168.1.226:5050"}}'
+  # Registry for image distribution
+  WFS_REGISTRY: '{{.WFS_REGISTRY | default "192.168.1.226:5050"}}'
+  # Default platform for local builds (auto-detected)
   PLATFORMS: '{{.PLATFORMS | default "linux/amd64"}}'
-  TAG: 'v0.1' # Default — override with environment or CLI
+  TAG: 'v0.1' 
+  # Database Target (localhost or NAS IP)
+  TARGET_DB_HOST: '{{.TARGET_DB_HOST | default "localhost"}}'
+  # CLI helper for docker compose
   COMPOSE_CMD: 'docker compose -p whats-for-supper --env-file docker/.env -f docker/compose/infrastructure.yml -f docker/compose/apps.yml'
 
 tasks:
@@ -121,48 +126,53 @@ tasks:
   # ============================================================================
 
   build:
-    desc: "📦 Build all Docker images (Local arch)"
+    desc: "📦 Build all images locally"
     cmds:
-      - task: build:api
-      - task: build:pwa
-      - echo "✓ All local images built"
+      - task: publish
 
   publish:
-    desc: "🚀 Build and Push multi-arch images (Parallel & Cached)"
+    desc: "🚀 Build images (local by default, set PUSH=true to push)"
     deps: [publish:api, publish:pwa]
     cmds:
-      - echo "✓ Version {{.TAG}} pushed to {{.REGISTRY}}"
+      - |
+        if [ "{{.PUSH}}" == "true" ]; then
+          echo "✓ Version {{.TAG}} pushed to {{.WFS_REGISTRY}}"
+        else
+          echo "✓ Version {{.TAG}} built locally"
+        fi
 
   publish:api:
-    desc: "Build and Push API image"
+    desc: "Build API image"
     vars:
       TAG: '{{default .TAG .CLI_ARGS}}'
+      PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
       CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
     cmds:
-      - echo "Building API {{.TAG}} to {{.REGISTRY}}..."
+      - echo "Building API {{.TAG}} (Push={{.PUSH | default "false"}})..."
       - >
         docker buildx build 
         --platform {{.PLATFORMS}} 
-        -t {{.REGISTRY}}/whats-for-supper-api:{{.TAG}} 
+        -t {{.WFS_REGISTRY}}/whats-for-supper-api:{{.TAG}} 
         ./api 
         {{.CACHE_FLAGS}}
-        --push 
+        {{.PUSH_FLAG}} 
         --target production
 
   publish:pwa:
-    desc: "Build and Push PWA image"
+    desc: "Build PWA image"
     vars:
       TAG: '{{default .TAG .CLI_ARGS}}'
+      PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
       CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
     cmds:
-      - echo "Building PWA {{.TAG}} to {{.REGISTRY}}..."
+      - echo "Building PWA {{.TAG}} (Push={{.PUSH | default "false"}})..."
       - >
         docker buildx build 
         --platform {{.PLATFORMS}} 
-        -t {{.REGISTRY}}/whats-for-supper-pwa:{{.TAG}} 
+        -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:{{.TAG}} 
         ./pwa 
         {{.CACHE_FLAGS}}
-        --push 
+        {{.PUSH_FLAG}} 
         --target production
 
   # ============================================================================
@@ -208,24 +218,6 @@ tasks:
         echo "✓ Tag $VERSION created and pushed."
         echo "  Message: $MSG"
 
-  infra:prod:
-    desc: "📄 Generate flat production manifest for NAS"
-    cmds:
-      - '{{.COMPOSE_CMD}} config > docker-compose.prod.yml'
-      - 'echo "✓ Production manifest generated in docker-compose.prod.yml"'
-      - 'echo "  Copy this file to your Synology DS723+ Container Manager."'
-
-  build:api:
-    desc: "Build API Docker image"
-    cmds:
-      - 'docker build -t whats-for-supper/api:latest ./api'
-      - 'echo "✓ API image built: whats-for-supper/api:latest"'
-
-  build:pwa:
-    desc: "Build PWA Docker image"
-    cmds:
-      - 'docker build -t whats-for-supper/pwa:latest ./pwa'
-      - 'echo "✓ PWA image built: whats-for-supper/pwa:latest"'
 
   # ============================================================================
   # CONTAINER MANAGEMENT
@@ -297,17 +289,40 @@ tasks:
       - echo "✓ Test data seeded"
 
   db:backup:
-    desc: "Backup database"
-    cmds:
-      - 'docker exec whats-for-supper-postgres pg_dump -U postgres recipes > backup_$(date +%s).sql'
-      - echo "✓ Database backed up"
-
-  db:restore:
-    desc: "Restore database from backup"
+    desc: "Backup database (Local or Remote)"
+    vars:
+      FILENAME: 'backup_{{now | date "20060102_150405"}}.sql'
     cmds:
       - |
-        read -p "Enter backup file path: " backup_file
-        docker exec -i whats-for-supper-postgres psql -U postgres recipes < "$backup_file"
+        if [ "{{.TARGET_DB_HOST}}" == "localhost" ] || [ "{{.TARGET_DB_HOST}}" == "postgres" ]; then
+          docker exec whats-for-supper-postgres pg_dump -U postgres recipes > {{.FILENAME}}
+        else
+          pg_dump -h {{.TARGET_DB_HOST}} -U postgres recipes > {{.FILENAME}}
+        fi
+      - echo "✓ Database backed up to {{.FILENAME}}"
+
+  db:restore:
+    desc: "Restore database from backup (Usage: task db:restore -- [file])"
+    interactive: true
+    cmds:
+      - |
+        FILE="{{.CLI_ARGS}}"
+        if [ -z "$FILE" ]; then
+          echo "❌ Error: Backup file path required."
+          echo "Usage: task db:restore -- ./backup.sql"
+          exit 1
+        fi
+        if [ ! -f "$FILE" ]; then
+          echo "❌ Error: File $FILE not found."
+          exit 1
+        fi
+        
+        echo "Restoring $FILE to {{.TARGET_DB_HOST}}..."
+        if [ "{{.TARGET_DB_HOST}}" == "localhost" ] || [ "{{.TARGET_DB_HOST}}" == "postgres" ]; then
+          docker exec -i whats-for-supper-postgres psql -U postgres recipes < "$FILE"
+        else
+          psql -h {{.TARGET_DB_HOST}} -U postgres recipes < "$FILE"
+        fi
         echo "✓ Database restored"
 
   # ============================================================================
@@ -480,11 +495,13 @@ tasks:
   hooks:install:
     desc: "Install git pre-commit hook"
     cmds:
+      - mkdir -p .git/hooks
       - cp tools/hooks/pre-commit .git/hooks/pre-commit
       - chmod +x .git/hooks/pre-commit
-      - echo "✓ Pre-commit hook installed"
+      - echo "✓ Pre-commit hook installed and executable"
     status:
-      - test -f tools/hooks/pre-commit
+      - test -f .git/hooks/pre-commit
+      - diff tools/hooks/pre-commit .git/hooks/pre-commit
 
   # ============================================================================
   # DOCUMENTATION
@@ -514,25 +531,6 @@ tasks:
           cat specs/phase0-mvp.spec.md
         fi
 
-  # ============================================================================
-  # SHORTCUTS FOR COMMON WORKFLOWS
-  # ============================================================================
-
-  work:
-    desc: "Developer workflow: dev + api logs + pwa logs"
-    cmds:
-      - |
-        echo "Starting development workflow..."
-        echo ""
-        echo "Running: task up"
-        task up
-        echo ""
-        echo "Services starting. Open new terminal windows for:"
-        echo "  Terminal 1: task logs:api"
-        echo "  Terminal 2: task logs:pwa"
-        echo "  Terminal 3: task dev:api (or cd api && dotnet watch run)"
-        echo ""
-        echo "Then open http://localhost:{{.PWA_PORT}} in your browser"
 
   review:
     desc: "Pre-commit review: format + lint + test"
