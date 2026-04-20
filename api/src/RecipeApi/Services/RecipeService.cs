@@ -7,7 +7,7 @@ namespace RecipeApi.Services;
 
 public class RecipeService(
     RecipeDbContext db,
-    ValidationService validation,
+    IValidationService validation,
     ImageService images)
 {
     /// <summary>
@@ -36,7 +36,9 @@ public class RecipeService(
         var recipeId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
 
-        // Save images to disk first — fail fast before writing to DB
+        // Save images to disk first — fail fast before writing to DB.
+        // NOTE: If the DB save below fails, orphaned image files are left on disk.
+        // The DisasterRecovery service is the intended cleanup path for this scenario.
         await images.SaveImages(recipeId, files);
 
         // Write recipe.info metadata file
@@ -125,6 +127,47 @@ public class RecipeService(
         };
     }
 
+    /// <summary>
+    /// Applies a partial update to a recipe's Notes and/or Rating.
+    /// Persists changes to both the database and the recipe.info file on disk.
+    /// </summary>
+    public async Task<RecipeDetailResponseDto> UpdateRecipe(Guid id, UpdateRecipeDto dto)
+    {
+        var recipe = await db.Recipes.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        if (dto.Rating.HasValue)
+        {
+            validation.ValidateRating(dto.Rating.Value);
+            recipe.Rating = (RecipeRating)dto.Rating.Value;
+        }
+
+        if (dto.Notes is not null)
+            recipe.Notes = dto.Notes;
+
+        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        // Keep recipe.info on disk in sync with the DB
+        await images.UpdateRecipeInfo(
+            id,
+            dto.Notes is not null ? recipe.Notes : null,
+            dto.Rating.HasValue ? recipe.Rating : null);
+
+        return new RecipeDetailResponseDto
+        {
+            UpdatedAt = recipe.UpdatedAt,
+            Recipe = new RecipeDto
+            {
+                Id = recipe.Id,
+                Rating = (int)recipe.Rating,
+                AddedBy = recipe.AddedBy,
+                Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
+                CreatedAt = recipe.CreatedAt
+            }
+        };
+    }
+
     /// <summary>Deletes a recipe from disk and database.</summary>
     public async Task DeleteRecipe(Guid id)
     {
@@ -134,7 +177,7 @@ public class RecipeService(
         // 1. Delete physical files
         images.DeleteRecipeFiles(id);
 
-        // 2. Remove from DB
+        // 2. Remove from DB (cascades to recipe_imports)
         db.Recipes.Remove(recipe);
         await db.SaveChangesAsync();
     }

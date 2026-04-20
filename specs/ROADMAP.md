@@ -105,6 +105,7 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 ### Additions
 - **Secure External Access (Cloudflare Tunnel)**: Implement a secure "punch-through" connection to access NAS services without port forwarding.
 - **Dashboard & Monitoring**: Traefik Dashboard and Prometheus/Grafana monitoring for service health.
+- **Orphaned File Cleanup** *(known gap)*: `RecipeService.CreateRecipe` writes image files before the DB save. If the DB write fails the files remain on disk. The `DisasterRecovery` service is the intended cleanup path — Phase 7 should add an active scan that removes recipe directories with no corresponding DB record.
 
 ### Definition of Done
 - NAS services are accessible via a Cloudflare-protected domain.

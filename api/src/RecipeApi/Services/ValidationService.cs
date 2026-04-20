@@ -1,6 +1,6 @@
 namespace RecipeApi.Services;
 
-public class ValidationService
+public class ValidationService : IValidationService
 {
     private const long MaxImageSizeBytes = 20 * 1024 * 1024; // 20 MB
     private const int MaxImageCount = 20;

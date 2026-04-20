@@ -5,6 +5,7 @@ using RecipeApi.Services;
 namespace RecipeApi.Controllers;
 
 [ApiController]
+[Route("api/recipes")]
 public class RecipeImportController(RecipeImportService importService) : ControllerBase
 {
     /// <summary>
@@ -12,7 +13,7 @@ public class RecipeImportController(RecipeImportService importService) : Control
     /// </summary>
     /// <param name="id">The recipe ID to import.</param>
     /// <returns>202 Accepted with the newly created ImportId.</returns>
-    [HttpPost("api/recipes/{id:guid}/import")]
+    [HttpPost("{id:guid}/import")]
     public async Task<IActionResult> TriggerImport(Guid id)
     {
         try
@@ -31,7 +32,7 @@ public class RecipeImportController(RecipeImportService importService) : Control
     /// </summary>
     /// <param name="id">The recipe ID.</param>
     /// <returns>200 OK with the import status.</returns>
-    [HttpGet("api/recipes/{id:guid}/import")]
+    [HttpGet("{id:guid}/import")]
     public async Task<IActionResult> GetImportStatus(Guid id)
     {
         var result = await importService.GetImportStatus(id);
@@ -48,7 +49,7 @@ public class RecipeImportController(RecipeImportService importService) : Control
     /// GET /api/recipes/import-status — get a summary of the import pipeline's health.
     /// </summary>
     /// <returns>200 OK with the consolidated summary counts.</returns>
-    [HttpGet("api/recipes/import-status")]
+    [HttpGet("import-status")]
     public async Task<IActionResult> GetImportSummary()
     {
         var summary = await importService.GetImportSummary();

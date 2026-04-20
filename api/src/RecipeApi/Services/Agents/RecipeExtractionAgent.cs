@@ -1,19 +1,17 @@
 using System.Text.Json;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
 namespace RecipeApi.Services.Agents;
 
 public class RecipeExtractionAgent(
     IChatClient chatClient,
-    IConfiguration configuration,
+    RecipesRootResolver recipesRoot,
     ILogger<RecipeExtractionAgent> logger)
 {
-    private string RecipesRoot =>
-        Environment.GetEnvironmentVariable("RECIPES_ROOT")
-        ?? configuration["RecipesRoot"]
-        ?? "/data/recipes";
+    private string RecipesRoot => recipesRoot.Root;
 
     private const string SystemPrompt = @"
 Role: You are a specialized High-Precision Data Extraction Agent. Your task is to process multiple images of a recipe card and synthesize them into a single, valid schema.org/Recipe JSON object.
@@ -135,10 +133,7 @@ Role: You are a specialized High-Precision Data Extraction Agent. Your task is t
             await File.WriteAllTextAsync(outputPath, json);
             logger.LogInformation("Saved extracted recipe to {Path}", outputPath);
 
-            return JsonSerializer.Deserialize<SchemaOrgRecipe>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            return JsonSerializer.Deserialize<SchemaOrgRecipe>(json, JsonDefaults.CaseInsensitive);
         }
         catch (Exception ex)
         {

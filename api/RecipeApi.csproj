@@ -6,12 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>RecipeApi</RootNamespace>
     <AssemblyName>RecipeApi</AssemblyName>
-    <Optimize>false</Optimize>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <!-- Disable optimizer in Debug so hot-reload / edit-and-continue work reliably. -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
   <ItemGroup>
-    <!-- Entity Framework Core -->
+    <!-- AI / Agents -->
     <PackageReference Include="Microsoft.Agents.AI" Version="1.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.*">
@@ -36,8 +40,8 @@
     <PackageReference Include="Google.GenAI" Version="1.6.1" />
     <!-- OpenTelemetry -->
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.2" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.11.2" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.11.2" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.15.2" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.2" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.1.1" />

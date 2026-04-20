@@ -2,23 +2,24 @@ using System.Text.Json;
 using Google.GenAI;
 using Google.GenAI.Types;
 using Microsoft.Extensions.AI;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
 namespace RecipeApi.Services.Agents;
 
 public class RecipeHeroAgent(
+    RecipesRootResolver recipesRoot,
     IConfiguration configuration,
     ILogger<RecipeHeroAgent> logger)
 {
-    private string RecipesRoot =>
-        System.Environment.GetEnvironmentVariable("RECIPES_ROOT")
-        ?? configuration["RecipesRoot"]
-        ?? "/data/recipes";
+    private string RecipesRoot => recipesRoot.Root;
 
-    private string GeminiApiKey =>
+    // Resolved once; if missing the app will fail on agent use rather than silently on every property access.
+    private readonly string _geminiApiKey =
         System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
         ?? configuration["GEMINI_API_KEY"]
-        ?? throw new InvalidOperationException("GEMINI_API_KEY not configured.");
+        ?? throw new InvalidOperationException(
+            "GEMINI_API_KEY is not configured. Set it via environment variable or appsettings.");
 
     private const string ModelId = "models/gemini-3-pro-image-preview";
 
@@ -42,7 +43,7 @@ public class RecipeHeroAgent(
             try
             {
                 var infoJson = await System.IO.File.ReadAllTextAsync(infoPath);
-                var info = JsonSerializer.Deserialize<RecipeInfo>(infoJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var info = JsonSerializer.Deserialize<RecipeInfo>(infoJson, JsonDefaults.CaseInsensitive);
                 finishedDishIndex = info?.FinishedDishImageIndex ?? -1;
             }
             catch (Exception ex)
@@ -62,7 +63,7 @@ public class RecipeHeroAgent(
             : new List<string>();
 
         // 3. Prepare the Prompt and Content
-        var client = new Client(apiKey: GeminiApiKey);
+        var client = new Client(apiKey: _geminiApiKey);
         var content = new Content { Role = "user", Parts = new List<Part>() };
 
         string taskPrompt = "Generate 400x400 JPG thumbnail of the finished dish from these images. Focus on the plated meal.";
@@ -115,7 +116,7 @@ public class RecipeHeroAgent(
         try
         {
             var response = await client.Models.GenerateContentAsync(ModelId, content);
-            var candidate = response.Candidates.FirstOrDefault();
+            var candidate = response.Candidates?.FirstOrDefault();
             var part = candidate?.Content?.Parts?.FirstOrDefault(p => p.InlineData != null);
 
             if (part?.InlineData?.Data != null)

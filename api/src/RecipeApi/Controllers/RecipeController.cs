@@ -5,10 +5,11 @@ using RecipeApi.Services;
 namespace RecipeApi.Controllers;
 
 [ApiController]
+[Route("api/recipes")]
 public class RecipeController(RecipeService recipeService, ImageService imageService) : ControllerBase
 {
     /// <summary>POST /api/recipes — upload images and create a new recipe.</summary>
-    [HttpPost("api/recipes")]
+    [HttpPost]
     [RequestSizeLimit(500 * 1024 * 1024)] // 500 MB outer limit (20 images × 20 MB)
     public async Task<IActionResult> Create(
         [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId,
@@ -23,7 +24,7 @@ public class RecipeController(RecipeService recipeService, ImageService imageSer
     }
 
     /// <summary>GET /api/recipes — paginated list, newest first.</summary>
-    [HttpGet("api/recipes")]
+    [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
@@ -33,30 +34,46 @@ public class RecipeController(RecipeService recipeService, ImageService imageSer
     }
 
     /// <summary>GET /api/recipes/{id} — full detail for a single recipe.</summary>
-    [HttpGet("api/recipes/{id:guid}")]
+    [HttpGet("{id:guid}")]
     public async Task<IActionResult> Detail(Guid id)
     {
         var result = await recipeService.GetRecipeDetail(id);
         return Ok(result);
     }
 
-    /// <summary>GET /recipe/{recipeId}/original/{photoIndex} — raw image binary.</summary>
-    [HttpGet("recipe/{recipeId:guid}/original/{photoIndex:int}")]
+    /// <summary>
+    /// PATCH /api/recipes/{id} — partial update for notes and/or rating.
+    /// Changes are persisted to both the database and the recipe.info file on disk.
+    /// Only fields included in the request body are applied; null fields are ignored.
+    /// </summary>
+    [HttpPatch("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRecipeDto dto)
+    {
+        var result = await recipeService.UpdateRecipe(id, dto);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/recipes/{id}/original/{photoIndex} — raw image binary.</summary>
+    [HttpGet("{recipeId:guid}/original/{photoIndex:int}")]
     public IActionResult GetImage(Guid recipeId, int photoIndex)
     {
         var (stream, contentType) = imageService.GetImage(recipeId, photoIndex);
         return File(stream, contentType);
     }
 
-    /// <summary>GET /recipe/{recipeId}/hero — hero image (Phase 1). Returns 404 in Phase 0.</summary>
-    [HttpGet("recipe/{recipeId:guid}/hero")]
+    /// <summary>
+    /// GET /api/recipes/{id}/hero — AI-generated hero thumbnail (JPEG).
+    /// Returns 404 until a recipe import has been completed.
+    /// </summary>
+    [HttpGet("{recipeId:guid}/hero")]
     public IActionResult GetHero(Guid recipeId)
     {
-        return NotFound(new { message = "Hero images are generated in Phase 1." });
+        var (stream, contentType) = imageService.GetHeroImage(recipeId);
+        return File(stream, contentType);
     }
 
     /// <summary>DELETE /api/recipes/{id} — delete a recipe and its associated files.</summary>
-    [HttpDelete("api/recipes/{id:guid}")]
+    [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         await recipeService.DeleteRecipe(id);

@@ -2,26 +2,17 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
 public class ManagementService(
     RecipeDbContext db,
-    IConfiguration configuration,
+    RecipesRootResolver recipesRoot,
     ILogger<ManagementService> logger)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-    };
-
-    private string RecipesRoot =>
-        Environment.GetEnvironmentVariable("RECIPES_ROOT")
-        ?? configuration["RecipesRoot"]
-        ?? "/data/recipes";
+    private string RecipesRoot => recipesRoot.Root;
 
     public async Task BackupAsync()
     {
@@ -55,12 +46,12 @@ public class ManagementService(
             if (File.Exists(recipeInfoPath))
             {
                 var json = await File.ReadAllTextAsync(recipeInfoPath);
-                var existing = JsonSerializer.Deserialize<RecipeInfo>(json, JsonOptions);
+                var existing = JsonSerializer.Deserialize<RecipeInfo>(json, JsonDefaults.CamelCase);
                 if (existing != null)
                 {
                     existing.Notes = recipe.Notes;
                     existing.Rating = recipe.Rating;
-                    var updatedJson = JsonSerializer.Serialize(existing, JsonOptions);
+                    var updatedJson = JsonSerializer.Serialize(existing, JsonDefaults.CamelCase);
                     await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
                 }
             }
@@ -76,8 +67,8 @@ public class ManagementService(
                     ImageCount = recipe.ImageCount,
                     CreatedAt = recipe.CreatedAt
                 };
-                var json = JsonSerializer.Serialize(info, JsonOptions);
-                await File.WriteAllTextAsync(recipeInfoPath, json);
+                var json2 = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
+                await File.WriteAllTextAsync(recipeInfoPath, json2);
             }
 
             // 2. Actual recipe content goes to recipe.json (AI metadata, ingredients)
@@ -89,8 +80,8 @@ public class ManagementService(
             }
             else if (!string.IsNullOrEmpty(recipe.RawMetadata) || !string.IsNullOrEmpty(recipe.Ingredients))
             {
-                var recipeJson = JsonSerializer.Serialize(recipe, JsonOptions);
-                await File.WriteAllTextAsync(recipeJsonPath, recipeJson);
+                var recipeJson2 = JsonSerializer.Serialize(recipe, JsonDefaults.CamelCase);
+                await File.WriteAllTextAsync(recipeJsonPath, recipeJson2);
             }
 
             backedUpCount++;
@@ -113,8 +104,8 @@ public class ManagementService(
         var membersPath = Path.Combine(root, "family-members.json");
         if (File.Exists(membersPath))
         {
-            var json = await File.ReadAllTextAsync(membersPath, ct);
-            var members = JsonSerializer.Deserialize<List<FamilyMember>>(json, JsonOptions) ?? [];
+            var json3 = await File.ReadAllTextAsync(membersPath, ct);
+            var members = JsonSerializer.Deserialize<List<FamilyMember>>(json3, JsonDefaults.CamelCase) ?? [];
             foreach (var member in members)
             {
                 if (ct.IsCancellationRequested) break;
@@ -155,8 +146,8 @@ public class ManagementService(
                 // Load primary metadata from recipe.info if available
                 if (hasInfo)
                 {
-                    var json = await File.ReadAllTextAsync(infoPath, ct);
-                    var info = JsonSerializer.Deserialize<RecipeInfo>(json, JsonOptions);
+                    var json4 = await File.ReadAllTextAsync(infoPath, ct);
+                    var info = JsonSerializer.Deserialize<RecipeInfo>(json4, JsonDefaults.CamelCase);
                     if (info != null)
                     {
                         recipe = new Recipe
@@ -175,8 +166,8 @@ public class ManagementService(
                 // Augment from recipe.json if available
                 if (hasJson)
                 {
-                    var json = await File.ReadAllTextAsync(jsonPath, ct);
-                    var extracted = JsonSerializer.Deserialize<Recipe>(json, JsonOptions);
+                    var json5 = await File.ReadAllTextAsync(jsonPath, ct);
+                    var extracted = JsonSerializer.Deserialize<Recipe>(json5, JsonDefaults.CamelCase);
                     if (extracted != null)
                     {
                         if (recipe == null)
@@ -257,8 +248,8 @@ public class ManagementService(
         List<FamilyMember> existingMembers = [];
         if (File.Exists(membersPath))
         {
-            var json = await File.ReadAllTextAsync(membersPath);
-            existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json, JsonOptions) ?? [];
+            var json6 = await File.ReadAllTextAsync(membersPath);
+            existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json6, JsonDefaults.CamelCase) ?? [];
         }
 
         var recipeDirs = Directory.GetDirectories(root);
@@ -273,14 +264,14 @@ public class ManagementService(
 
             if (File.Exists(recipeJsonPath))
             {
-                var json = await File.ReadAllTextAsync(recipeJsonPath);
-                var recipe = JsonSerializer.Deserialize<Recipe>(json, JsonOptions);
+                var json7 = await File.ReadAllTextAsync(recipeJsonPath);
+                var recipe = JsonSerializer.Deserialize<Recipe>(json7, JsonDefaults.CamelCase);
                 addedBy = recipe?.AddedBy;
             }
             else if (File.Exists(recipeInfoPath))
             {
-                var json = await File.ReadAllTextAsync(recipeInfoPath);
-                var info = JsonSerializer.Deserialize<RecipeInfo>(json, JsonOptions);
+                var json8 = await File.ReadAllTextAsync(recipeInfoPath);
+                var info = JsonSerializer.Deserialize<RecipeInfo>(json8, JsonDefaults.CamelCase);
                 addedBy = info?.AddedBy;
             }
 
@@ -311,8 +302,8 @@ public class ManagementService(
         List<FamilyMember> existingMembers = [];
         if (File.Exists(membersPath))
         {
-            var json = await File.ReadAllTextAsync(membersPath);
-            existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json, JsonOptions) ?? [];
+            var json9 = await File.ReadAllTextAsync(membersPath);
+            existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json9, JsonDefaults.CamelCase) ?? [];
         }
 
         int addedCount = 0;
@@ -327,21 +318,10 @@ public class ManagementService(
 
         if (addedCount > 0)
         {
-            var updatedJson = JsonSerializer.Serialize(existingMembers, JsonOptions);
-            await File.WriteAllTextAsync(membersPath, updatedJson);
+            var updatedJson2 = JsonSerializer.Serialize(existingMembers, JsonDefaults.CamelCase);
+            await File.WriteAllTextAsync(membersPath, updatedJson2);
             logger.LogInformation("Merged {Count} family members into {Path}", addedCount, membersPath);
         }
-
         return addedCount;
     }
-}
-
-public class SeedResult
-{
-    public int MembersAdded { get; set; }
-    public int MembersUpdated { get; set; }
-    public int RecipesAdded { get; set; }
-    public int RecipesUpdated { get; set; }
-    public int RecipesSkipped { get; set; }
-    public int Errors { get; set; }
 }

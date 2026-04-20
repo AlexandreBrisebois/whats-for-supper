@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services.Agents;
 
@@ -8,32 +9,23 @@ namespace RecipeApi.Services;
 
 public class RecipeImportWorker(
     IServiceScopeFactory scopeFactory,
-    IConfiguration configuration,
+    RecipesRootResolver recipesRoot,
     ILogger<RecipeImportWorker> logger) : BackgroundService
 {
-    private string RecipesRoot =>
-        Environment.GetEnvironmentVariable("RECIPES_ROOT")
-        ?? configuration["RecipesRoot"]
-        ?? "/data/recipes";
-
-    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+    // 30-second poll: long enough not to hammer the DB, tight enough to feel responsive.
+    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(30);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("RecipeImportWorker is starting.");
+        logger.LogInformation("RecipeImportWorker is starting. Poll interval: {Interval}s.", _pollingInterval.TotalSeconds);
 
         using var timer = new PeriodicTimer(_pollingInterval);
 
+        // ProcessPendingImports has its own per-import try/catch and handles all errors internally.
+        // We let OperationCanceledException propagate naturally to stop the timer loop on shutdown.
         while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
         {
-            try
-            {
-                await ProcessPendingImports(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error occurred while processing recipe imports.");
-            }
+            await ProcessPendingImports(stoppingToken);
         }
 
         logger.LogInformation("RecipeImportWorker is stopping.");
@@ -106,7 +98,7 @@ public class RecipeImportWorker(
 
     private async Task SyncDiskToDb(Guid recipeId, RecipeDbContext db, CancellationToken stoppingToken)
     {
-        var recipeJsonPath = Path.Combine(RecipesRoot, recipeId.ToString(), "recipe.json");
+        var recipeJsonPath = Path.Combine(recipesRoot.Root, recipeId.ToString(), "recipe.json");
         if (!File.Exists(recipeJsonPath))
         {
             throw new FileNotFoundException($"Recipe JSON not found for sync: {recipeJsonPath}");

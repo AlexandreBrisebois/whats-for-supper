@@ -126,7 +126,7 @@ public class RecipeControllerTests : IAsyncLifetime
         Assert.Equal(recipeId, recipe.GetProperty("id").GetGuid());
     }
 
-    // ── GET /recipe/{id}/original/{index} ─────────────────────────────────────
+    // ── GET /api/recipes/{id}/original/{index} ────────────────────────────────
 
     [Fact]
     public async Task GetImage_Returns_Image_Binary()
@@ -137,14 +137,44 @@ public class RecipeControllerTests : IAsyncLifetime
         Directory.CreateDirectory(dir);
         await File.WriteAllBytesAsync(Path.Combine(dir, "0.jpg"), MinimalJpeg);
 
-        // Act
-        var response = await _client.GetAsync($"/recipe/{recipeId}/original/0");
+        // Act — URL is now under /api/recipes/ (unified route convention)
+        var response = await _client.GetAsync($"/api/recipes/{recipeId}/original/0");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/jpeg", response.Content.Headers.ContentType?.MediaType);
         var bytes = await response.Content.ReadAsByteArrayAsync();
         Assert.True(bytes.Length > 0);
+    }
+
+    // ── GET /api/recipes/{id}/hero ────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetHero_Returns_Hero_Image_When_Present()
+    {
+        // Arrange: write a fake hero image into the factory's temp recipes root
+        var recipeId = Guid.NewGuid();
+        var dir = Path.Combine(_factory.TempRecipesRoot, recipeId.ToString());
+        Directory.CreateDirectory(dir);
+        await File.WriteAllBytesAsync(Path.Combine(dir, "hero.jpg"), MinimalJpeg);
+
+        // Act
+        var response = await _client.GetAsync($"/api/recipes/{recipeId}/hero");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/jpeg", response.Content.Headers.ContentType?.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.True(bytes.Length > 0);
+    }
+
+    [Fact]
+    public async Task GetHero_Returns_NotFound_Before_Import_Completes()
+    {
+        // A new recipe with no hero.jpg should return 404
+        var recipeId = Guid.NewGuid();
+        var response = await _client.GetAsync($"/api/recipes/{recipeId}/hero");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

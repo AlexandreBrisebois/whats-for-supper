@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Middleware;
 using RecipeApi.Services;
 using RecipeApi.Services.Agents;
@@ -66,14 +67,17 @@ try
     builder.Services.AddOpenApi();
 
     // ── Application services ─────────────────────────────────────────────────
+    builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddScoped<FamilyService>();
-    builder.Services.AddScoped<ValidationService>();
+    builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<ManagementService>();
     builder.Services.AddSingleton<ManagementTaskStore>();
     builder.Services.AddHostedService<ManagementWorker>();
     builder.Services.AddScoped<RecipeExtractionAgent>();
     builder.Services.AddScoped<RecipeHeroAgent>();
+    builder.Services.AddScoped<RecipeService>();
+    builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddHostedService<RecipeImportWorker>();
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────
@@ -93,18 +97,26 @@ try
     builder.Services.AddDbContext<RecipeDbContext>((serviceProvider, options) =>
     {
         var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        var raw =
-            Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING")
-            ?? configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException(
+        var postgresEnv = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING");
+        var defaultConn = configuration.GetConnectionString("DefaultConnection");
+
+        var raw = !string.IsNullOrWhiteSpace(postgresEnv) ? postgresEnv
+                : !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn
+                : null;
+
+        if (raw == null)
+        {
+            throw new InvalidOperationException(
                 "Database connection string not configured. " +
-                "Set POSTGRES_CONNECTION_STRING env var or ConnectionStrings:DefaultConnection in appsettings.");
+                "Please set the 'POSTGRES_CONNECTION_STRING' environment variable " +
+                "or define 'ConnectionStrings:DefaultConnection' in appsettings.json.");
+        }
+
+        var masked = ConnectionStringHelper.MaskPassword(raw);
+        Log.Information("Using database connection: {ConnectionString}", masked);
 
         // Npgsql requires ADO.NET keyword=value format; convert postgres:// URI if needed.
-        var connectionString = raw.StartsWith("postgres://") || raw.StartsWith("postgresql://")
-            ? NpgsqlConnectionStringFromUri(raw)
-            : raw;
-
+        var connectionString = ConnectionStringHelper.NormalizeForNpgsql(raw);
         options.UseNpgsql(connectionString);
     });
 
@@ -160,17 +172,6 @@ finally
 }
 
 return 0;
-
-static string NpgsqlConnectionStringFromUri(string uri)
-{
-    var u = new Uri(uri);
-    var userInfo = u.UserInfo.Split(':', 2);
-    var user = Uri.UnescapeDataString(userInfo[0]);
-    var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty;
-    var db = u.AbsolutePath.TrimStart('/');
-    var port = u.Port > 0 ? u.Port : 5432;
-    return $"Host={u.Host};Port={port};Database={db};Username={user};Password={password}";
-}
 
 // Exposes the compiler-generated Program class to the test assembly.
 public partial class Program { }

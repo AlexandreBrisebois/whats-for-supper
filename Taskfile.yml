@@ -8,7 +8,7 @@ set: [pipefail]
 shopt: [globstar]
 
 vars:
-  API_PORT: '5000'
+  API_PORT: '5050'
   PWA_PORT: '3000'
   DB_PORT: '5432'
   # Registry for image distribution
@@ -49,6 +49,11 @@ tasks:
   dev:api:
     desc: "API development (hot reload)"
     dir: api
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      RECIPES_ROOT: "../recipes"
+      ASPNETCORE_URLS: http://localhost:5050
+      POSTGRES_CONNECTION_STRING: "Host=localhost;Port=5432;Database=recipe_app_db;Username=recipe_app;Password=secure_dev_password"
     cmds:
       - dotnet watch run --project RecipeApi.csproj
 
@@ -65,7 +70,7 @@ tasks:
       - echo "✓ Database started on localhost:{{.DB_PORT}}"
       - echo ""
       - echo "Set these env vars:"
-      - echo "  POSTGRES_CONNECTION_STRING=postgres://postgres:password@localhost:{{.DB_PORT}}/recipes"
+      - echo "  POSTGRES_CONNECTION_STRING=postgres://recipe_app:secure_dev_password@localhost:{{.DB_PORT}}/recipe_app_db"
       - echo "  RECIPES_ROOT=/tmp/recipes"
 
   # ============================================================================
@@ -113,10 +118,10 @@ tasks:
   test:pwa:e2e:
     desc: "Test PWA against live local backend (port 5000)"
     dir: pwa
-    envs:
+    env:
       USE_LIVE_API: "true"
-      API_INTERNAL_URL: "http://localhost:5000"
-      NEXT_PUBLIC_API_BASE_URL: "http://localhost:5000"
+      API_INTERNAL_URL: "http://localhost:5050"
+      NEXT_PUBLIC_API_BASE_URL: "http://localhost:5050"
     cmds:
       - npm run test:e2e
 

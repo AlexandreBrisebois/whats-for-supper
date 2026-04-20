@@ -4,6 +4,11 @@
 @image1 = /absolute/path/to/recipe-photo-1.jpg
 @image2 = /absolute/path/to/recipe-photo-2.jpg
 
+# URL conventions:
+#   All API endpoints live under /api/* (no bare /recipe/ prefix).
+#   Image endpoints: GET /api/recipes/{id}/original/{index}
+#   Hero endpoint:   GET /api/recipes/{id}/hero
+
 ###
 # Docker currently exposes the API on port 5001.
 # Update baseUrl only if you publish the API on another host or port.
