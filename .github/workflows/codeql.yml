@@ -31,7 +31,19 @@ jobs:
       with:
         languages: ${{ matrix.language }}
 
-    - name: Autobuild
+    - name: Set up .NET (C# only)
+      if: matrix.language == 'csharp'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.x'
+
+    - name: Build C# (api only)
+      if: matrix.language == 'csharp'
+      run: dotnet build RecipeApi.csproj --configuration Release
+      working-directory: api
+
+    - name: Autobuild (non-C# languages)
+      if: matrix.language != 'csharp'
       uses: github/codeql-action/autobuild@v3
 
     - name: Perform CodeQL Analysis
