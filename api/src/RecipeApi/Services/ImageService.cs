@@ -127,8 +127,8 @@ public class ImageService(RecipesRootResolver recipesRoot, ILogger<ImageService>
             info = new RecipeInfo { Id = recipeId };
         }
 
-        if (notes is not null)  info.Notes  = notes;
-        if (rating.HasValue)    info.Rating = rating.Value;
+        if (notes is not null) info.Notes = notes;
+        if (rating.HasValue) info.Rating = rating.Value;
 
         await File.WriteAllTextAsync(path, JsonSerializer.Serialize(info, JsonDefaults.CamelCase));
         logger.LogDebug("Updated recipe.info for {RecipeId}", recipeId);
