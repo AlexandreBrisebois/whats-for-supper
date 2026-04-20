@@ -95,3 +95,4 @@ docker/docker-compose.prod.yml
 
 # Local data mounts
 recipes/
+api/appsettings.Development.json

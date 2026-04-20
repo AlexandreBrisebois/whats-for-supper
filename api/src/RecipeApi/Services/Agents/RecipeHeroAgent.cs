@@ -14,12 +14,10 @@ public class RecipeHeroAgent(
 {
     private string RecipesRoot => recipesRoot.Root;
 
-    // Resolved once; if missing the app will fail on agent use rather than silently on every property access.
-    private readonly string _geminiApiKey =
+    // Resolved on demand; if missing the agent will fail with a warning when called.
+    private string GetApiKey() =>
         System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
-        ?? configuration["GEMINI_API_KEY"]
-        ?? throw new InvalidOperationException(
-            "GEMINI_API_KEY is not configured. Set it via environment variable or appsettings.");
+        ?? configuration["GEMINI_API_KEY"];
 
     private const string ModelId = "models/gemini-3-pro-image-preview";
 
@@ -63,7 +61,14 @@ public class RecipeHeroAgent(
             : new List<string>();
 
         // 3. Prepare the Prompt and Content
-        var client = new Client(apiKey: _geminiApiKey);
+        var apiKey = GetApiKey();
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            logger.LogWarning("GEMINI_API_KEY is not configured. Hero image generation for recipe {RecipeId} will be skipped.", recipeId);
+            return;
+        }
+
+        var client = new Client(apiKey: apiKey);
         var content = new Content { Role = "user", Parts = new List<Part>() };
 
         string taskPrompt = "Generate 400x400 JPG thumbnail of the finished dish from these images. Focus on the plated meal.";
