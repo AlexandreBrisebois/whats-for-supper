@@ -4,7 +4,7 @@ namespace RecipeApi.Models;
 
 /// <summary>
 /// Represents a Schema.org/Recipe object.
-/// Note: This structure may be handled/stored as a raw JSON string in the future 
+/// Note: This structure may be handled/stored as a raw JSON string in the future
 /// (e.g., if migrated from disk-based files to database JSONB columns).
 /// </summary>
 public class SchemaOrgRecipe

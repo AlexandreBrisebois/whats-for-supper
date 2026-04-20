@@ -38,8 +38,8 @@ public class ManagementService(
         foreach (var recipe in recipes)
         {
             // Skip if no payload (not yet imported, no notes, and no rating)
-            if (string.IsNullOrEmpty(recipe.RawMetadata) && 
-                string.IsNullOrEmpty(recipe.Notes) && 
+            if (string.IsNullOrEmpty(recipe.RawMetadata) &&
+                string.IsNullOrEmpty(recipe.Notes) &&
                 recipe.Rating == RecipeRating.Unknown)
             {
                 continue;
@@ -92,7 +92,7 @@ public class ManagementService(
                 var recipeJson = JsonSerializer.Serialize(recipe, JsonOptions);
                 await File.WriteAllTextAsync(recipeJsonPath, recipeJson);
             }
-            
+
             backedUpCount++;
         }
         logger.LogInformation("Updated/Created {Count} metadata files in {Root}", backedUpCount, root);

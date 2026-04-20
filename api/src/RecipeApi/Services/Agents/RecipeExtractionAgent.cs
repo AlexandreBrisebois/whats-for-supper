@@ -108,7 +108,7 @@ Role: You are a specialized High-Precision Data Extraction Agent. Your task is t
         try
         {
             // Execute the agent call with low temperature for precision
-            // Note: Microsoft.Agents.AI 1.0.0-rc1 ChatClientAgent's RunAsync 
+            // Note: Microsoft.Agents.AI 1.0.0-rc1 ChatClientAgent's RunAsync
             // takes IEnumerable<ChatMessage>.
             var response = await agent.RunAsync(
                 new[] { message },

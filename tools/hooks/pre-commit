@@ -1,0 +1,12 @@
+#!/bin/bash
+# Pre-commit hook to ensure code quality before every commit.
+# Runs formatting, linting, and tests.
+
+set -e
+
+echo "🔍 Running pre-commit review (task review)..."
+
+# Run the review task
+task review
+
+echo "✅ Pre-commit checks passed!"

@@ -75,8 +75,8 @@ public class RecipeHeroAgent(
 
             // If we have a specific image designated as the finished dish, prioritize it by adding it first or ONLY adding it.
             // But the prompt says "from these images", so maybe we send all but note the favorite?
-            // Actually, if an index is specified, let's just send THAT one if we want high precision, 
-            // OR send all and let Gemini decide if it sees something better. 
+            // Actually, if an index is specified, let's just send THAT one if we want high precision,
+            // OR send all and let Gemini decide if it sees something better.
             // The requirement says "Identify the 'dish' photo", so let's send all images.
 
             foreach (var imagePath in imageFiles)
