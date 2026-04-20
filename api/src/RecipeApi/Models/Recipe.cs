@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace RecipeApi.Models;
 
@@ -20,6 +21,7 @@ public class Recipe
     public Guid Id { get; set; } = Guid.NewGuid();
 
     [Column("rating")]
+    [JsonIgnore]
     public RecipeRating Rating { get; set; } = RecipeRating.Unknown;
 
     /// <summary>NULL when the capturing family member has since been deleted.</summary>
@@ -27,6 +29,7 @@ public class Recipe
     public Guid? AddedBy { get; set; }
 
     [Column("notes")]
+    [JsonIgnore]
     public string? Notes { get; set; }
 
     /// <summary>Number of images saved for this recipe. Cached to avoid filesystem reads on listing.</summary>

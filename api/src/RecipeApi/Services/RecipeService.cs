@@ -45,6 +45,8 @@ public class RecipeService(
             Id = recipeId,
             FinishedDishImageIndex = request.FinishedDishImageIndex,
             ImageCount = files.Count,
+            Rating = (RecipeRating)request.Rating,
+            Notes = request.Notes,
             AddedBy = familyMemberId,
             CreatedAt = now
         });

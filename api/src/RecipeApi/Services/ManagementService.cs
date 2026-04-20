@@ -37,8 +37,10 @@ public class ManagementService(
         int backedUpCount = 0;
         foreach (var recipe in recipes)
         {
-            // Skip if no payload (not yet imported or having notes)
-            if (string.IsNullOrEmpty(recipe.RawMetadata) && string.IsNullOrEmpty(recipe.Notes))
+            // Skip if no payload (not yet imported, no notes, and no rating)
+            if (string.IsNullOrEmpty(recipe.RawMetadata) && 
+                string.IsNullOrEmpty(recipe.Notes) && 
+                recipe.Rating == RecipeRating.Unknown)
             {
                 continue;
             }
@@ -49,23 +51,9 @@ public class ManagementService(
             var recipeJsonPath = Path.Combine(recipeDir, "recipe.json");
             var recipeInfoPath = Path.Combine(recipeDir, "recipe.info");
 
-            if (File.Exists(recipeJsonPath))
+            // 1. Metadata always goes to recipe.info
+            if (File.Exists(recipeInfoPath))
             {
-                // Update only Notes/Rating
-                var json = await File.ReadAllTextAsync(recipeJsonPath);
-                var existing = JsonSerializer.Deserialize<Recipe>(json, JsonOptions);
-                if (existing != null)
-                {
-                    existing.Notes = recipe.Notes;
-                    existing.Rating = recipe.Rating;
-                    var updatedJson = JsonSerializer.Serialize(existing, JsonOptions);
-                    await File.WriteAllTextAsync(recipeJsonPath, updatedJson);
-                    backedUpCount++;
-                }
-            }
-            else if (File.Exists(recipeInfoPath))
-            {
-                // Update Notes/Rating in legacy .info
                 var json = await File.ReadAllTextAsync(recipeInfoPath);
                 var existing = JsonSerializer.Deserialize<RecipeInfo>(json, JsonOptions);
                 if (existing != null)
@@ -74,16 +62,38 @@ public class ManagementService(
                     existing.Rating = recipe.Rating;
                     var updatedJson = JsonSerializer.Serialize(existing, JsonOptions);
                     await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
-                    backedUpCount++;
                 }
             }
             else
             {
-                // Create new recipe.json
+                // Create missing recipe.info
+                var info = new RecipeInfo
+                {
+                    Id = recipe.Id,
+                    Notes = recipe.Notes,
+                    Rating = recipe.Rating,
+                    AddedBy = recipe.AddedBy,
+                    ImageCount = recipe.ImageCount,
+                    CreatedAt = recipe.CreatedAt
+                };
+                var json = JsonSerializer.Serialize(info, JsonOptions);
+                await File.WriteAllTextAsync(recipeInfoPath, json);
+            }
+
+            // 2. Actual recipe content goes to recipe.json (AI metadata, ingredients)
+            if (File.Exists(recipeJsonPath))
+            {
+                // We don't overwrite recipe.json if it exists, as it contains AI extracted data.
+                // Since Notes/Rating are [JsonIgnore] in Recipe model, they won't be written here
+                // if we were to serialize, but we just leave it alone during backup unless it's missing.
+            }
+            else if (!string.IsNullOrEmpty(recipe.RawMetadata) || !string.IsNullOrEmpty(recipe.Ingredients))
+            {
                 var recipeJson = JsonSerializer.Serialize(recipe, JsonOptions);
                 await File.WriteAllTextAsync(recipeJsonPath, recipeJson);
-                backedUpCount++;
             }
+            
+            backedUpCount++;
         }
         logger.LogInformation("Updated/Created {Count} metadata files in {Root}", backedUpCount, root);
     }
@@ -162,7 +172,7 @@ public class ManagementService(
                     }
                 }
 
-                // Augment or Load from recipe.json
+                // Augment from recipe.json if available
                 if (hasJson)
                 {
                     var json = await File.ReadAllTextAsync(jsonPath, ct);
