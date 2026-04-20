@@ -89,7 +89,8 @@ internal sealed partial class RecipeSourceExecutor() : Executor("RecipeSource")
     {
         var sourceResult = new SourceResult
         {
-            RecipeId = message
+            RecipeId = message,
+            Images = []
         };
         return ValueTask.FromResult(sourceResult);
     }
