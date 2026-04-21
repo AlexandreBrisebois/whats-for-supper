@@ -123,7 +123,7 @@ public class RecipeImportWorker(
         // Update database record
         recipe.RawMetadata = recipeJsonContent;
         recipe.Ingredients = JsonSerializer.Serialize(recipeData.RecipeIngredient ?? new List<string>());
-        
+
         // Synchronize description from recipe.info if present
         var recipeInfoPath = Path.Combine(recipesRoot.Root, recipeId.ToString(), "recipe.info");
         if (File.Exists(recipeInfoPath))

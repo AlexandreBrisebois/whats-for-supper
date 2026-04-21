@@ -35,7 +35,7 @@ public static class JsonUtils
 
         int firstBrace = sanitized.IndexOf('{');
         int firstBracket = sanitized.IndexOf('[');
-        
+
         int start = -1;
         char endChar = ' ';
 

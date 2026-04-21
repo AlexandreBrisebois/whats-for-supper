@@ -165,8 +165,8 @@ RULES:
                 new[] { message },
                 options: new ChatClientAgentRunOptions
                 {
-                    ChatOptions = new ChatOptions 
-                    { 
+                    ChatOptions = new ChatOptions
+                    {
                         Temperature = 0.0f,
                         MaxOutputTokens = configuration.GetValue<int?>("AgentSettings:ContextWindow") / 4 ?? 4096,
                         ResponseFormat = ChatResponseFormat.Json,
@@ -181,11 +181,11 @@ RULES:
 
             extractionJson = response.Text;
             var sanitizedExtraction = JsonUtils.SanitizeJson(extractionJson);
-            
+
             // VALIDATION: Check if initial extraction is good enough to ship
             var initialRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(sanitizedExtraction, JsonDefaults.CaseInsensitive);
-            bool isInitialValid = !string.IsNullOrWhiteSpace(initialRecipe?.Name) && 
-                                   initialRecipe?.RecipeIngredient != null && 
+            bool isInitialValid = !string.IsNullOrWhiteSpace(initialRecipe?.Name) &&
+                                   initialRecipe?.RecipeIngredient != null &&
                                    initialRecipe.RecipeIngredient.Count > 0;
 
             if (isInitialValid)
@@ -256,7 +256,7 @@ RULES:
                 await File.WriteAllTextAsync(Path.Combine(recipeDir, "recipe.refinement.json"), refinementJson);
                 logger.LogInformation("Diagnostic: Saved refinement.json for {RecipeId}", recipeId);
             }
-            
+
             logger.LogError(ex, "Failed to extract recipe {RecipeId}.", recipeId);
             throw;
         }

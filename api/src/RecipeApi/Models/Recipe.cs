@@ -31,7 +31,7 @@ public class Recipe
     [Column("notes")]
     [JsonIgnore]
     public string? Notes { get; set; }
-    
+
     [Column("description")]
     public string? Description { get; set; }
 

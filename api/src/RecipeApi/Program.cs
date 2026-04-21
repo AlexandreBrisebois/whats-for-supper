@@ -88,7 +88,8 @@ try
 
     builder.Services.AddChatClient(new OpenAIClient(
         new ApiKeyCredential("ollama"), // API key is required but ignored by Ollama
-        new OpenAIClientOptions { 
+        new OpenAIClientOptions
+        {
             Endpoint = new Uri(endpoint),
             NetworkTimeout = TimeSpan.FromMinutes(5),
             RetryPolicy = new ClientRetryPolicy(maxRetries: 0)
