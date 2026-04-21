@@ -107,10 +107,7 @@ public class RecipeImportWorker(
         var recipeJsonContent = await File.ReadAllTextAsync(recipeJsonPath, stoppingToken);
 
         // Deserializing to extract specific parts (like ingredients)
-        var recipeData = JsonSerializer.Deserialize<SchemaOrgRecipe>(recipeJsonContent, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        var recipeData = JsonSerializer.Deserialize<SchemaOrgRecipe>(recipeJsonContent, JsonDefaults.CaseInsensitive);
 
         if (recipeData == null)
         {
@@ -126,6 +123,26 @@ public class RecipeImportWorker(
         // Update database record
         recipe.RawMetadata = recipeJsonContent;
         recipe.Ingredients = JsonSerializer.Serialize(recipeData.RecipeIngredient ?? new List<string>());
+        
+        // Synchronize description from recipe.info if present
+        var recipeInfoPath = Path.Combine(recipesRoot.Root, recipeId.ToString(), "recipe.info");
+        if (File.Exists(recipeInfoPath))
+        {
+            try
+            {
+                var recipeInfoJson = await File.ReadAllTextAsync(recipeInfoPath, stoppingToken);
+                var recipeInfo = JsonSerializer.Deserialize<RecipeInfo>(recipeInfoJson, JsonDefaults.CamelCase);
+                if (recipeInfo?.Description != null)
+                {
+                    recipe.Description = recipeInfo.Description;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to read recipe.info during sync for recipe {RecipeId}. Description sync skipped.", recipeId);
+            }
+        }
+
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(stoppingToken);

@@ -8,6 +8,7 @@ using RecipeApi.Services.Agents;
 using OpenAI;
 using Microsoft.Extensions.AI;
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -87,7 +88,11 @@ try
 
     builder.Services.AddChatClient(new OpenAIClient(
         new ApiKeyCredential("ollama"), // API key is required but ignored by Ollama
-        new OpenAIClientOptions { Endpoint = new Uri(endpoint) })
+        new OpenAIClientOptions { 
+            Endpoint = new Uri(endpoint),
+            NetworkTimeout = TimeSpan.FromMinutes(5),
+            RetryPolicy = new ClientRetryPolicy(maxRetries: 0)
+        })
         .GetChatClient(modelId)
         .AsIChatClient());
 

@@ -1,4 +1,6 @@
-@baseUrl = http://localhost:5001
+@baseUrl = http://localhost:5050
+
+### @baseUrl = http://192.168.1.226:9101
 @familyMemberId = 00000000-0000-0000-0000-000000000000
 @recipeId = 00000000-0000-0000-0000-000000000000
 @image1 = /absolute/path/to/recipe-photo-1.jpg
@@ -10,7 +12,7 @@
 #   Hero endpoint:   GET /api/recipes/{id}/hero
 
 ###
-# Docker currently exposes the API on port 5001.
+# Docker currently exposes the API on port 5050.
 # Update baseUrl only if you publish the API on another host or port.
 GET {{baseUrl}}/health
 Accept: application/json

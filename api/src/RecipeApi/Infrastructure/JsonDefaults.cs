@@ -24,6 +24,7 @@ public static class JsonDefaults
     /// </summary>
     public static readonly JsonSerializerOptions CaseInsensitive = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 }

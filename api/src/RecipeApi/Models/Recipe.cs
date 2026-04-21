@@ -31,6 +31,9 @@ public class Recipe
     [Column("notes")]
     [JsonIgnore]
     public string? Notes { get; set; }
+    
+    [Column("description")]
+    public string? Description { get; set; }
 
     /// <summary>Number of images saved for this recipe. Cached to avoid filesystem reads on listing.</summary>
     [Column("image_count")]

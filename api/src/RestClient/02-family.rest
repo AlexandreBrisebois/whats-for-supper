@@ -1,6 +1,6 @@
-### @baseUrl = http://localhost:5001
+@baseUrl = http://localhost:5050
 
-@baseUrl = http://192.168.1.226:9101
+### @baseUrl = http://192.168.1.226:9101
 
 @familyMemberId = 4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7
 

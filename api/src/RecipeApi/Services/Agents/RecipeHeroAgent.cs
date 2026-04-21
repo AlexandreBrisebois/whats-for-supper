@@ -17,7 +17,8 @@ public class RecipeHeroAgent(
     // Resolved on demand; if missing the agent will fail with a warning when called.
     private string GetApiKey() =>
         System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
-        ?? configuration["GEMINI_API_KEY"];
+        ?? configuration["GEMINI_API_KEY"]
+        ?? string.Empty;
 
     private const string ModelId = "models/gemini-3-pro-image-preview";
 
@@ -30,6 +31,13 @@ public class RecipeHeroAgent(
         if (!Directory.Exists(recipeDir))
         {
             throw new DirectoryNotFoundException($"Recipe directory not found: {recipeDir}");
+        }
+
+        var heroPath = Path.Combine(recipeDir, "hero.jpg");
+        if (System.IO.File.Exists(heroPath))
+        {
+            logger.LogInformation("Hero image already exists for recipe {RecipeId}. Skipping.", recipeId);
+            return;
         }
 
         logger.LogInformation("Creating hero image for recipe {RecipeId}", recipeId);
@@ -71,44 +79,37 @@ public class RecipeHeroAgent(
         var client = new Client(apiKey: apiKey);
         var content = new Content { Role = "user", Parts = new List<Part>() };
 
-        string taskPrompt = "Generate 400x400 JPG thumbnail of the finished dish from these images. Focus on the plated meal.";
+        string taskPrompt;
+        bool useFinishedDish = finishedDishIndex >= 0 && finishedDishIndex < imageFiles.Count;
 
-        bool hasImages = imageFiles.Count > 0;
-
-        if (hasImages)
+        if (useFinishedDish)
         {
+            var imagePath = imageFiles[finishedDishIndex];
+            taskPrompt = "Generate a high-quality 400x400 JPG hero image based on the provided finished dish image. Focus on a beautiful, plated presentation.";
+
             content.Parts.Add(new Part { Text = taskPrompt });
-
-            // If we have a specific image designated as the finished dish, prioritize it by adding it first or ONLY adding it.
-            // But the prompt says "from these images", so maybe we send all but note the favorite?
-            // Actually, if an index is specified, let's just send THAT one if we want high precision,
-            // OR send all and let Gemini decide if it sees something better.
-            // The requirement says "Identify the 'dish' photo", so let's send all images.
-
-            foreach (var imagePath in imageFiles)
+            var bytes = await System.IO.File.ReadAllBytesAsync(imagePath);
+            content.Parts.Add(new Part
             {
-                var bytes = await System.IO.File.ReadAllBytesAsync(imagePath);
-                content.Parts.Add(new Part
+                InlineData = new Blob
                 {
-                    InlineData = new Blob
-                    {
-                        Data = bytes,
-                        MimeType = GetMimeType(imagePath)
-                    }
-                });
-            }
+                    Data = bytes,
+                    MimeType = GetMimeType(imagePath)
+                }
+            });
+
+            logger.LogInformation("Generating hero image using designated finished dish image at index {Index}", finishedDishIndex);
         }
         else
         {
-            // Fallback: Generate image from recipe description
-            logger.LogInformation("No images found for recipe {RecipeId}. Attempting to generate from description.", recipeId);
+            // Fallback: Generate image from raw recipe metadata
+            logger.LogInformation("No designated finished dish image found for recipe {RecipeId}. Attempting to generate from raw metadata.", recipeId);
 
             var recipeJsonPath = Path.Combine(recipeDir, "recipe.json");
             if (System.IO.File.Exists(recipeJsonPath))
             {
                 var recipeJson = await System.IO.File.ReadAllTextAsync(recipeJsonPath);
-                // We don't necessarily need to deserialize the whole thing, Gemini can handle JSON in prompt
-                taskPrompt = $"Generate a high-quality 400x400 JPG hero image of the finished dish for this recipe: \n\n{recipeJson}\n\nFocus on a beautiful, plated presentation.";
+                taskPrompt = $"Generate a high-quality 400x400 JPG hero image of the finished dish for this recipe based on its raw metadata. Focus on a beautiful, plated presentation.\n\nRaw Metadata: \n{recipeJson}";
                 content.Parts.Add(new Part { Text = taskPrompt });
             }
             else
@@ -126,7 +127,6 @@ public class RecipeHeroAgent(
 
             if (part?.InlineData?.Data != null)
             {
-                var heroPath = Path.Combine(recipeDir, "hero.jpg");
                 await System.IO.File.WriteAllBytesAsync(heroPath, part.InlineData.Data);
                 logger.LogInformation("Successfully saved hero.jpg to {Path}", heroPath);
             }
