@@ -86,6 +86,7 @@ try
     var agentSettings = builder.Configuration.GetSection("AgentSettings");
     var endpoint = agentSettings["Endpoint"] ?? "http://localhost:11434/v1";
     var modelId = agentSettings["ModelId"] ?? "gemma4:e4b";
+    Log.Information("AI Agent configured at {Endpoint} with model {ModelId}", endpoint, modelId);
 
     builder.Services.AddChatClient(new OpenAIClient(
         new ApiKeyCredential("ollama"), // API key is required but ignored by Ollama
