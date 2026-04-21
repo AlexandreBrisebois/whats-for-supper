@@ -1,47 +1,63 @@
-# Multi-Provider AI Architecture Redesign Prompt
+# Build Prompt: Future-Proof Custom Model Router for .NET 10
 
-This prompt is designed to be handed to an AI assistant (like Antigravity or Claude) to complete the architectural refactoring of the Recipe API.
+This document defines the requirements and phased implementation plan for a production-ready custom model router in the Recipe API.
 
----
+## Core Objective
+Build a reusable **model routing subsystem** that:
+- Uses `Microsoft.Extensions.AI` as the application-facing abstraction layer.
+- Routes each request to the best target model/provider (Azure, Ollama, Gemini, OpenAI, Anthropic).
+- Supports policy-driven routing, fallback, health-aware failover, and structured observability.
 
-## Context
-The current `.NET 10` Recipe API uses `Microsoft.Extensions.AI` (`IChatClient`) for agent logic. However, the registration in `Program.cs` is hardcoded to use an `OpenAIClient` pointing to a local Ollama instance. This has caused two major issues:
-1. **Stability**: Ollama's non-standard `finish_reason` values (like "load") cause the strict OpenAI SDK to crash with an `ArgumentOutOfRangeException`.
-2. **Inflexibility**: There is no easy way to switch between local Ollama, cloud OpenAI, or Gemini.
+## Architectural Principles
+- **App-facing abstraction:** Use `IChatClient` as the primary interface.
+- **Provider isolation:** Isolation behind stable internal adapters.
+- **Policy over conditionals:** Use configuration- and policy-driven routing.
+- **Observability:** OpenTelemetry-friendly logging and metrics.
 
-## The Task
-Refactor the AI infrastructure to a "Multi-Provider" setup.
+## Implementation Phases
 
-### 1. Configuration Setup
-Update `appsettings.Development.json` to support multiple providers:
-```json
-"AgentSettings": {
-  "Provider": "Ollama", 
-  "ModelId": "gemma4:e4b",
-  "Ollama": { "Endpoint": "http://localhost:11434/v1" },
-  "OpenAI": { "ApiKey": "...", "ModelId": "gpt-4o" },
-  "Gemini": { "ApiKey": "...", "ModelId": "gemini-1.5-flash" }
-}
-```
+The implementation is divided into several chunks, each with its own execution prompt located in:
+`/Users/alex/Code/whats-for-supper/build-prompts/phase-1-5-model-routing/`
 
-### 2. Infrastructure (Program.cs)
-Implement a `OllamaCompatibilityPolicy` (PipelinePolicy) to sanitize the `finish_reason` in raw JSON responses from Ollama by replacing unknown values with `"stop"`.
+### Phase 1: Foundation & Abstractions
+- **Goal**: Define domain models and core interfaces.
+- **Key Types**: `ModelDescriptor`, `ProviderDescriptor`, `RoutingRequestContext`, `RoutingDecision`.
+- **TDD**: Validate descriptors and context resolution.
 
-Use a `switch` statement in `Program.cs` to register the `IChatClient` based on the configuration:
-- **Ollama**: Use `OpenAIClient` + local endpoint + `OllamaCompatibilityPolicy`.
-- **OpenAI**: Use `OpenAIClient` + official endpoint + ApiKey.
-- **Gemini**: Use `OpenAIClient` + Gemini's OpenAI-compatible endpoint + ApiKey.
+### Phase 2: Model Catalog & Filtering
+- **Goal**: Registry of providers/models with capability profiling.
+- **Key Types**: `IModelCatalog`, `ModelCapabilityProfile`.
+- **TDD**: Test hard filters (context window, JSON mode, etc.).
 
-### 3. Agent Stability
-Ensure the `RecipeHeroAgent` is optimized:
-- Check for `.jpg`, `.png`, `.webp`, `.jpeg` before calling Gemini.
-- Implement a **Soft Fail**: If Gemini is under high demand (Gemini 500), log a warning and let the import finish (syncing metadata) instead of throwing an exception.
+### Phase 3: Scoring & Strategy Engine
+- **Goal**: Weighted scoring and policy resolution.
+- **Key Types**: `IRouteScorer`, `IRouteStrategy`.
+- **TDD**: Verify weighted selection logic.
+
+### Phase 4: Provider adapters
+- **Goal**: Implement `IChatClient` wrappers for diverse providers.
+- **Providers**: Azure, Ollama, Gemini, OpenAI, Anthropic.
+- **TDD**: Test normalization of response types (e.g., finish reasons).
+
+### Phase 5: Resilience & Observability
+- **Goal**: Health monitoring, circuit breakers, and OpenTelemetry.
+- **Key Types**: `IProviderHealthMonitor`, `ModelRouter`.
+- **TDD**: Simulate failover and test trace propagation.
+
+### Phase 6: API Integration
+- **Goal**: Expose router via Web API and configure via `appsettings.json`.
+- **Endpoints**: `/api/chat`, `/api/router/evaluate`.
+- **TDD**: E2E verification of routing requests.
+
+### Phase 7: Migration & Agent Refactoring
+- **Goal**: Transition existing agents to use the new router.
+- **Tasks**: Update DI consumption, handle router-specific errors.
+- **TDD**: Regression verification of existing recipe pipelines.
 
 ---
 
 ## Technical Reference
-Root Path: `/Users/alex/Code/whats-for-supper/api`
-Key Files:
-- `Program.cs` (Registration)
-- `RecipeHeroAgent.cs` (Stability & Checks)
-- `appsettings.Development.json` (Config)
+- **Root Path**: `/Users/alex/Code/whats-for-supper/api/src/RecipeApi`
+- **Abstraction**: `Microsoft.Extensions.AI.IChatClient`
+- **Registry**: `IModelCatalog`
+
