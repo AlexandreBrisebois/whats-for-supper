@@ -1,0 +1,340 @@
+# E2E Testing & Mock API Design
+
+**Status**: ACTIVE  
+**Last Updated**: 2026-04-21  
+**Owner**: Alexandre Brisebois  
+
+This document covers E2E testing strategy, mock API behavior, and infrastructure decisions made in commit `fa73608`.
+
+---
+
+## 1. Mock API Purpose & Scope
+
+### Why We Have a Mock API
+
+The mock API (`pwa/mock-api.js`) exists to:
+- **Decouple PWA tests from .NET backend availability** — Tests can run without Docker.
+- **Enable CI/CD** — GitHub Actions runs tests on commits without requiring a full API service.
+- **Fast feedback loop** — Local E2E runs in seconds, not minutes.
+- **Deterministic state** — In-memory data resets between test runs.
+
+### When to Use Each
+
+| Context | API | Reason |
+|---------|-----|--------|
+| **Local development** | Mock (default) | Fast, isolated, no Docker required |
+| **Pre-commit checks** | Mock (`task test:pwa`) | Catch regressions before pushing |
+| **CI/CD** | Mock (always) | No Docker daemon in GitHub Actions |
+| **Integration testing** | Live (`USE_LIVE_API=true`) | Verify end-to-end after merging |
+
+---
+
+## 2. Mock API Design Decisions
+
+### 2.1 In-Memory Persistence (Recipe & Member State)
+
+**Decision**: Mock API maintains in-memory state for family members and recipes across requests.
+
+**Why**:
+- Tests create family members and then post recipes; state must persist.
+- `integration.spec.ts` runs a full Phase 0 journey: onboarding → capture → home.
+- Without persistence, the second request (capture) would fail because the member created in onboarding would be lost.
+
+**Implementation** ([pwa/mock-api.js:6-12](../pwa/mock-api.js#L6-L12)):
+```javascript
+let familyMembers = [
+  { id: '1', name: 'Alex' },
+  { id: '2', name: 'Jordan' },
+];
+let recipes = {};  // Keyed by member ID
+```
+
+**Testing Implication**:
+- Tests are **order-independent** within a run but **rely on in-memory isolation**.
+- Each test process gets a fresh mock API instance (Playwright spins up a new one per test session).
+- **No test pollution** across runs.
+
+---
+
+### 2.2 FormData / Multipart Handling
+
+**Decision**: Mock API does NOT parse multipart form data. It accepts the request but stores mock recipe metadata.
+
+**Why**:
+- Parsing multipart in Node.js requires external libraries (`busboy`, `formidable`).
+- For testing purposes, we only need to verify the client **sends** the request and **receives** a response.
+- The `.NET backend` handles actual multipart parsing and file storage.
+- Mock API serves E2E tests, not integration tests — it validates UI flow, not data integrity.
+
+**Implementation** ([pwa/mock-api.js:122-153](../pwa/mock-api.js#L122-L153)):
+```javascript
+// Recipe POST endpoint
+} else if (path === '/api/recipes' && req.method === 'POST') {
+    const memberId = req.headers['x-family-member-id'];
+    let bodySize = 0;
+    req.on('data', (chunk) => {
+      bodySize += chunk.length;
+    });
+    req.on('end', () => {
+      // Don't parse multipart; just track that a request arrived
+      const recipeId = `rec-${Date.now()}`;
+      recipes[memberId]?.push({ id: recipeId, createdAt: new Date().toISOString() });
+      res.writeHead(201);
+      res.end(JSON.stringify({ data: { recipeId } }));
+    });
+}
+```
+
+**Testing Implication**:
+- **E2E tests verify the UI flow**, not backend parsing.
+- When switching to live API, the test doesn't change — it still expects the same response shape.
+- **Integration tests** (if needed) should hit the real .NET backend to verify multipart parsing.
+
+---
+
+### 2.3 Response Wrapping (data Field)
+
+All mock API responses wrap data in a `{ data: ... }` object to match the `SuccessWrappingFilter` behavior on the .NET backend.
+
+See [specs/API_DESIGN.md](API_DESIGN.md#4-client-integration-pwatest) for details.
+
+---
+
+## 3. E2E Test Strategy
+
+### 3.1 Playwright Configuration
+
+**Decision**: Use environment-based API routing instead of hardcoded endpoints.
+
+**Configuration** ([pwa/playwright.config.ts](../pwa/playwright.config.ts)):
+```typescript
+const MOCK_API_PORT = process.env.MOCK_API_PORT || '5001';
+
+// Locally: Start mock API automatically
+webServer: isCI
+  ? undefined
+  : [
+      ...(process.env.USE_LIVE_API !== 'true'
+        ? [{ command: `MOCK_API_PORT=${MOCK_API_PORT} node mock-api.js` }]
+        : []),
+    ];
+```
+
+**Why**:
+- Tests don't care whether they hit mock or live API.
+- Environment variable switches the behavior without code changes.
+- CI always uses mock; developers can opt-in to live API testing with `USE_LIVE_API=true npm run test:e2e`.
+
+---
+
+### 3.2 Cookie & Port Strategy (127.0.0.1 vs localhost)
+
+**Decision**: Use `127.0.0.1` instead of `localhost` for all APIs.
+
+**Why**:
+- `localhost` can resolve to IPv6 (`::1`) on some systems, causing cookie/CORS issues.
+- `127.0.0.1` is always IPv4 and consistent across environments.
+- Cookies set on `127.0.0.1:3000` work when requests go to `127.0.0.1:5001`.
+
+**Implementation**:
+- PWA base URL: `http://127.0.0.1:3000`
+- Mock API: `http://127.0.0.1:5001`
+- Live API: `http://127.0.0.1:5000`
+- Cookie domain: `127.0.0.1`
+
+**Example** ([pwa/e2e/integration.spec.ts:92-99](../pwa/e2e/integration.spec.ts#L92-L99)):
+```typescript
+await page.context().addCookies([
+  {
+    name: 'x-family-member-id',
+    value: memberId,
+    domain: '127.0.0.1',  // Not 'localhost'
+    path: '/',
+  },
+]);
+```
+
+---
+
+### 3.3 App Router Compatibility
+
+**Decision**: Remove `__NEXT_DATA__.props.pageProps` checks from tests; use Playwright query APIs instead.
+
+**Why**:
+- **Pages Router** (Next.js 12): Exported `__NEXT_DATA__` for testing.
+- **App Router** (Next.js 13+, used here): Does NOT export `__NEXT_DATA__`.
+- Playwright's `page.getByRole()`, `page.goto()`, and `expect()` APIs are framework-agnostic.
+
+**Removed** (old Pages Router pattern):
+```typescript
+// ❌ DELETED
+const isIdentified = await page.evaluate(
+  () => window.__NEXT_DATA__.props.pageProps.memberId
+);
+```
+
+**Correct approach** (App Router):
+```typescript
+// ✅ USE THIS
+await expect(page).toHaveURL(/\/home/);
+await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
+```
+
+**Testing Implication**:
+- Tests are less coupled to Next.js internals.
+- Tests now reflect **real user behavior** (navigation, visibility) instead of internal state.
+
+---
+
+## 4. Endpoint Design & Response Format
+
+### 4.1 Required Headers
+
+| Header | Purpose | Example |
+|--------|---------|---------|
+| `x-family-member-id` | Identifies the current user (PWA sets via cookie + converts to header) | `550e8400-e29b-41d4-a716-446655440000` |
+| `Content-Type` | Request/response format | `application/json` (forms use `multipart/form-data`) |
+
+**Implementation** ([pwa/mock-api.js:18](../pwa/mock-api.js#L18)):
+```javascript
+res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-family-member-id');
+```
+
+### 4.2 Recipe POST Endpoint Signature
+
+**Request**:
+```
+POST /api/recipes
+Header: x-family-member-id: <uuid>
+Content-Type: multipart/form-data
+Body: FormData { imageFile, ... }
+```
+
+**Response**:
+```json
+{
+  "data": {
+    "recipeId": "550e8400-e29b-41d4-a716-446655440000",
+    "message": "Success"
+  }
+}
+```
+
+---
+
+## 5. Test Isolation & State Management
+
+### 5.1 No Cross-Test Pollution
+
+Each Playwright session gets its own mock API instance:
+
+```typescript
+// playwright.config.ts
+webServer: [
+  {
+    command: `node mock-api.js`,
+    reuseExistingServer: true,  // Within a run, reuse state
+  },
+];
+```
+
+**Implication**:
+- `integration.spec.ts` can create members, post recipes, and they persist within that test.
+- When Playwright starts a **new test run**, the mock API is spawned fresh (no stale state).
+- Tests don't interfere with each other.
+
+### 5.2 Manual Test Cleanup
+
+If you're running tests multiple times locally and want to reset state:
+```bash
+# Kill any lingering mock API
+pkill -f "node mock-api.js"
+
+# Run tests (spawns fresh mock API)
+npm run test:e2e
+```
+
+---
+
+## 6. Debugging E2E Tests
+
+### 6.1 Debug Mode
+
+```bash
+npm run test:e2e:debug
+# Launches Playwright inspector, pauses on each action
+```
+
+### 6.2 UI Mode (Recommended)
+
+```bash
+npm run test:e2e:ui
+# Interactive test browser — step through, inspect state, replay
+```
+
+### 6.3 Mock API Logs
+
+The mock API logs all requests to stdout:
+```
+[Mock API] GET /api/family
+[Mock API] POST /api/recipes
+```
+
+Check the console output to verify requests are reaching the mock server.
+
+### 6.4 Trace on Failure
+
+When a test fails locally, Playwright generates a trace:
+```
+Test failed. Trace saved to: ...
+Open: npx playwright show-trace <file>
+```
+
+---
+
+## 7. Checklist: Adding New Endpoints
+
+When adding a new API endpoint:
+
+1. **Mock API** (`pwa/mock-api.js`):
+   - [ ] Add route handler
+   - [ ] Wrap response in `{ data: ... }`
+   - [ ] Handle CORS headers
+
+2. **Test** (`pwa/e2e/*.spec.ts`):
+   - [ ] Use `127.0.0.1` for all URLs
+   - [ ] Use Playwright query APIs (`getByRole`, `getByText`)
+   - [ ] Don't rely on `__NEXT_DATA__`
+
+3. **Live API** (`api/src/RecipeApi/`):
+   - [ ] Implement controller endpoint
+   - [ ] Return plain DTOs (let `SuccessWrappingFilter` wrap)
+   - [ ] Register in `Program.cs`
+
+4. **Backend Test** (if applicable):
+   - [ ] Add xUnit test using `TestWebApplicationFactory`
+   - [ ] Verify response wrapping in integration test
+
+---
+
+## 8. Future: When to Graduate to Live API
+
+If mock API becomes a bottleneck:
+
+1. **Retire mock API** — Delete `pwa/mock-api.js`.
+2. **Update `playwright.config.ts`** — Remove mock API startup.
+3. **Run Docker Compose** — Start .NET backend for local E2E.
+4. **Update CI** — Either start services or use containerized test environment.
+
+**Today's decision**: Mock API is sufficient and keeps the developer loop fast.
+
+---
+
+## 9. Changelog
+
+| Date | Author | Change |
+|------|--------|--------|
+| 2026-04-21 | Alexandre Brisebois | Initial E2E & mock API design doc. App Router migration, multipart FormData handling, 127.0.0.1 strategy. |
+
+---
+

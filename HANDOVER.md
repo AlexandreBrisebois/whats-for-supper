@@ -2,6 +2,78 @@
 
 This file tracks the real-time execution state across AI sessions to ensure zero context loss.
 
+## [2026-04-21] Design Documentation: API, E2E Testing, & Recipe Processing
+
+### Status: COMPLETED ✅
+**Agent**: Claude (Human-directed Documentation)
+
+### Executed Changes
+- [x] Created `specs/API_DESIGN.md` — Frozen API response wrapping specification.
+- [x] Created `specs/TESTING_AND_E2E.md` — Mock API design, Playwright strategy, 127.0.0.1 port handling.
+- [x] Created `specs/RECIPE_PROCESSING.md` — Recipe import pipeline, difficulty inference, discovery service.
+- [x] Updated `AGENT.md` — Added mandatory reference to design specs.
+- [x] Updated `README.md` — Added API design reference for agents.
+
+### Technical Details & Decisions
+
+**1. API Response Wrapping** (Anti-regression pattern)
+- **Rule**: All 2xx responses wrapped in `{ data: ... }` by `SuccessWrappingFilter`.
+- **Implementation**: Controllers return plain DTOs; filter applies wrapping at exit.
+- **Why**: Prior agent re-wrapped all responses (`Ok(new { data = ... })`), breaking the contract.
+- **Reference**: [specs/API_DESIGN.md](specs/API_DESIGN.md)
+
+**2. E2E Testing & Mock API** (Decoupled development)
+- **Mock API** (`pwa/mock-api.js`):
+  - In-memory persistence for family members + recipes (test isolation).
+  - Does NOT parse multipart FormData; accepts request, tracks size, responds with mock recipe ID.
+  - All responses wrap in `{ data: ... }` to match production.
+- **Playwright Config**:
+  - Auto-starts mock API locally; CI always uses mock.
+  - Environment-based switching: `USE_LIVE_API=true` for live backend testing.
+  - 30-second polling: mock API starts on demand, reuses within a test run.
+- **Network Strategy**:
+  - Use `127.0.0.1` instead of `localhost` (IPv6 causes cookie/CORS issues).
+  - PWA: 3000, Mock API: 5001, Live API: 5000.
+- **App Router Compatibility**:
+  - Removed `__NEXT_DATA__.props.pageProps` checks (Pages Router pattern, not available in App Router).
+  - Use Playwright query APIs (`getByRole`, `toHaveURL`) — framework-agnostic, matches real user behavior.
+- **Reference**: [specs/TESTING_AND_E2E.md](specs/TESTING_AND_E2E.md)
+
+**3. Recipe Processing Pipeline** (Phase 1 architecture)
+- **Polling**: 30-second interval (responsive, not database-hammering).
+- **Error Handling**: Per-import try/catch; failures marked as `Failed`, never auto-retried.
+- **Metadata Precedence**:
+  1. `recipe.info` (user/admin corrections) — overrides extraction
+  2. `recipe.json` (AI extraction, Schema.org format)
+  3. Database defaults
+- **Difficulty Inference** (DiscoveryService):
+  - Easy: < 5 ingredients AND < 20 minutes
+  - Hard: > 12 ingredients OR > 45 minutes
+  - Medium: Everything else
+  - Uses ISO 8601 duration parsing (`PT30M`, `PT1H10M`).
+- **Voting**: Upsert pattern (update existing vote, insert if new).
+- **Discovery Filtering**: Only `IsDiscoverable=true` recipes, exclude already-voted.
+- **Reference**: [specs/RECIPE_PROCESSING.md](specs/RECIPE_PROCESSING.md)
+
+### What Happened (Context)
+Commit `fa73608` ("fix: repair E2E tests after App Router migration") implemented the recipe discovery system and locked several critical design decisions:
+1. App Router compatibility required dropping Next.js internal APIs.
+2. Mock API needed persistence (not just stub responses) for integration tests.
+3. Multipart file uploads (FormData) required special handling in both frontend and mock.
+4. Recipe processing needed automated difficulty inference to avoid manual curation.
+
+### Technical Context for Next Agent
+- **MANDATORY**: Read [specs/API_DESIGN.md](specs/API_DESIGN.md), [specs/TESTING_AND_E2E.md](specs/TESTING_AND_E2E.md), and [specs/RECIPE_PROCESSING.md](specs/RECIPE_PROCESSING.md) before modifying API endpoints, tests, or recipe processing.
+- **Anti-patterns to avoid**:
+  - Manual wrapping in controllers (`Ok(new { data = ... })`)
+  - Using `localhost` for test APIs (use `127.0.0.1`)
+  - Parsing multipart in mock API (too much scope creep; E2E tests UI, not parsing)
+  - Auto-retrying failed recipe imports (manual inspection first)
+- **Enforcement**: Code reviews should check these specs; updates require updating the docs.
+- **Future changes**: Document deviations in this file before implementing.
+
+---
+
 ## [2026-04-17] Universal Agent Protocol & Repo Reorganization
 
 ### Status: COMPLETED ✅

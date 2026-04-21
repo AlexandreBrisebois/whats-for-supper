@@ -46,6 +46,10 @@ If a command (e.g., `task build`) fails due to environment issues (missing tool,
 ## 5. Knowledge Map (Entry Points)
 - **Active Prioritization**: [PLAN.md](PLAN.md) (Current Work).
 - **Handover History**: [HANDOVER.md](HANDOVER.md).
+- **Design & Architecture — MANDATORY READ**: 
+  - [specs/API_DESIGN.md](specs/API_DESIGN.md) — API response wrapping & controller patterns.
+  - [specs/TESTING_AND_E2E.md](specs/TESTING_AND_E2E.md) — Mock API, Playwright, 127.0.0.1 strategy.
+  - [specs/RECIPE_PROCESSING.md](specs/RECIPE_PROCESSING.md) — Recipe pipeline, difficulty inference, discovery.
 - **Skills Library** (Procedural Logic):
   - [Database & Migrations](.agents/SKILL_DATABASE.md)
   - [API Discovery & Mapping](.agents/SKILL_API_DISCOVERY.md)

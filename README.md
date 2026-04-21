@@ -60,7 +60,7 @@ Health endpoints:
 
 ## Development
 
-**AI-Optimized Entry**: If you are an AI agent (Copilot, Gemini, Claude), start with **[AGENT.md](AGENT.md)**.
+**AI-Optimized Entry**: If you are an AI agent (Copilot, Gemini, Claude), start with **[AGENT.md](AGENT.md)**. Then read **[specs/API_DESIGN.md](specs/API_DESIGN.md)** before modifying any API endpoints.
 
 **Human Developer Guide**: For detailed setup instructions, local dev without Docker, troubleshooting, and environment variable reference, see **[LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md)**.
 
