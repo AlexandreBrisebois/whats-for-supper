@@ -4,6 +4,10 @@
 
 **Goal:** Implement the Discovery service, voting endpoints, and difficulty inference logic.
 
+**Design Decision: Hybrid Discovery Architecture**
+- **Discovery Stack (API):** We use direct EF Core queries on the `Recipes` table instead of a Database View. This allows for dynamic, user-specific filtering (e.g., "exclude recipes already voted on by the current family member") which is difficult to implement efficiently in static Postgres views.
+- **Matchmaking (View):** We use a Database View (`vw_recipe_matches`) for consensus logic. Aggregating votes across the entire family to check the 50% threshold is a complex computation best handled by the database engine.
+
 **Instructions:**
 
 1. **Test First (TDD):**

@@ -66,6 +66,10 @@ public class DiscoveryServiceTests
         ctx.Recipes.Add(new Recipe { Id = recipeId, IsDiscoverable = true });
 
         ctx.RecipeVotes.Add(new RecipeVote { RecipeId = recipeId, FamilyMemberId = member1.Id, Vote = VoteType.Like });
+        
+        // Seed the view-backed DbSet since In-Memory DB doesn't support views
+        ctx.RecipeMatches.Add(new RecipeMatch { RecipeId = recipeId, LikeCount = 1 });
+        
         await ctx.SaveChangesAsync();
 
         // Act
@@ -90,6 +94,10 @@ public class DiscoveryServiceTests
         ctx.Recipes.Add(new Recipe { Id = recipeId, IsDiscoverable = true });
 
         ctx.RecipeVotes.Add(new RecipeVote { RecipeId = recipeId, FamilyMemberId = member1.Id, Vote = VoteType.Like });
+        
+        // Ensure RecipeMatches is empty for this recipe (which is the default, but being explicit here if needed)
+        // In-Memory DB won't have it unless we add it.
+
         await ctx.SaveChangesAsync();
 
         // Act

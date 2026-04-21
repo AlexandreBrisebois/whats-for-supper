@@ -91,14 +91,5 @@ public class DiscoveryService(RecipeDbContext dbContext)
     }
 
     public async Task<bool> IsMatchAsync(Guid recipeId)
-    {
-        var totalMembers = await _dbContext.FamilyMembers.CountAsync();
-        if (totalMembers == 0) return false;
-
-        var likeVotes = await _dbContext.RecipeVotes
-            .Where(v => v.RecipeId == recipeId && v.Vote == VoteType.Like)
-            .CountAsync();
-
-        return (double)likeVotes / totalMembers >= 0.5;
-    }
+        => await _dbContext.RecipeMatches.AnyAsync(m => m.RecipeId == recipeId);
 }

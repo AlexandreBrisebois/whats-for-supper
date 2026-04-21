@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RecipeApi.Data;
@@ -11,9 +12,11 @@ using RecipeApi.Data;
 namespace RecipeApi.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    partial class RecipeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421174140_AddRecipeMatchView")]
+    partial class AddRecipeMatchView
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -119,13 +122,15 @@ namespace RecipeApi.Migrations
                         .HasDatabaseName("idx_recipes_added_by")
                         .HasFilter("added_by IS NOT NULL");
 
+                    b.HasIndex("Category")
+                        .HasDatabaseName("idx_recipes_category");
+
                     b.HasIndex("CreatedAt")
                         .IsDescending()
                         .HasDatabaseName("idx_recipes_created_at_desc");
 
-                    b.HasIndex("Category", "Id")
-                        .HasDatabaseName("idx_recipes_discovery_lookup")
-                        .HasFilter("is_discoverable = TRUE");
+                    b.HasIndex("IsDiscoverable")
+                        .HasDatabaseName("idx_recipes_is_discoverable");
 
                     b.ToTable("recipes", null, t =>
                         {
@@ -173,23 +178,6 @@ namespace RecipeApi.Migrations
                         .HasDatabaseName("idx_recipe_imports_status");
 
                     b.ToTable("recipe_imports");
-                });
-
-            modelBuilder.Entity("RecipeApi.Models.RecipeMatch", b =>
-                {
-                    b.Property<Guid>("RecipeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("recipe_id");
-
-                    b.Property<int>("LikeCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("like_count");
-
-                    b.HasKey("RecipeId");
-
-                    b.ToTable((string)null);
-
-                    b.ToView("vw_recipe_matches", (string)null);
                 });
 
             modelBuilder.Entity("RecipeApi.Models.RecipeVote", b =>

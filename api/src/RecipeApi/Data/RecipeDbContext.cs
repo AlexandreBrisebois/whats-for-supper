@@ -10,6 +10,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<Recipe> Recipes => Set<Recipe>();
     public DbSet<RecipeImport> RecipeImports => Set<RecipeImport>();
     public DbSet<RecipeVote> RecipeVotes => Set<RecipeVote>();
+    public DbSet<RecipeMatch> RecipeMatches => Set<RecipeMatch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,11 +55,9 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                   .HasDatabaseName("idx_recipes_added_by")
                   .HasFilter("added_by IS NOT NULL");
 
-            entity.HasIndex(e => e.IsDiscoverable)
-                  .HasDatabaseName("idx_recipes_is_discoverable");
-
-            entity.HasIndex(e => e.Category)
-                  .HasDatabaseName("idx_recipes_category");
+            entity.HasIndex(e => new { e.Category, e.Id })
+                  .HasFilter("is_discoverable = TRUE")
+                  .HasDatabaseName("idx_recipes_discovery_lookup");
         });
 
         modelBuilder.Entity<RecipeVote>(entity =>
@@ -108,6 +107,14 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                   .HasDatabaseName("idx_recipe_imports_recipe_id");
             entity.HasIndex(e => e.Status)
                   .HasDatabaseName("idx_recipe_imports_status");
+        });
+
+        modelBuilder.Entity<RecipeMatch>(entity =>
+        {
+            entity.HasKey(v => v.RecipeId);
+            entity.ToView("vw_recipe_matches");
+            entity.Property(v => v.RecipeId).HasColumnName("recipe_id");
+            entity.Property(v => v.LikeCount).HasColumnName("like_count");
         });
     }
 }

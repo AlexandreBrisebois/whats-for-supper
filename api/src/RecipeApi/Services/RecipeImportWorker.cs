@@ -106,13 +106,8 @@ public class RecipeImportWorker(
 
         var recipeJsonContent = await File.ReadAllTextAsync(recipeJsonPath, stoppingToken);
 
-        // Deserializing to extract specific parts (like ingredients)
-        var recipeData = JsonSerializer.Deserialize<SchemaOrgRecipe>(recipeJsonContent, JsonDefaults.CaseInsensitive);
-
-        if (recipeData == null)
-        {
-            throw new InvalidOperationException($"Failed to deserialize recipe JSON for recipe {recipeId}.");
-        }
+        using var doc = JsonDocument.Parse(recipeJsonContent);
+        var root = doc.RootElement;
 
         var recipe = await db.Recipes.FirstOrDefaultAsync(r => r.Id == recipeId, stoppingToken);
         if (recipe == null)
@@ -122,7 +117,23 @@ public class RecipeImportWorker(
 
         // Update database record
         recipe.RawMetadata = recipeJsonContent;
-        recipe.Ingredients = JsonSerializer.Serialize(recipeData.RecipeIngredient ?? new List<string>());
+
+        // Try to get ingredients from multiple possible locations (Schema.org vs legacy)
+        if (root.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+        {
+            recipe.Ingredients = ingProp.GetRawText();
+        }
+        else if (root.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
+        {
+            recipe.Ingredients = legacyIngProp.GetRawText();
+        }
+        else
+        {
+            recipe.Ingredients = "[]";
+        }
+
+        // We still deserialize to SchemaOrgRecipe to use for Difficulty inference, but we fall back gracefully
+        var recipeData = JsonSerializer.Deserialize<SchemaOrgRecipe>(recipeJsonContent, JsonDefaults.CaseInsensitive) ?? new();
 
         // Synchronize description from recipe.info if present
         var recipeInfoPath = Path.Combine(recipesRoot.Root, recipeId.ToString(), "recipe.info");

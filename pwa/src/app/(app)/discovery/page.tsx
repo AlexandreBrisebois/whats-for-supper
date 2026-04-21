@@ -1,18 +1,88 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { DiscoveryCard } from '@/components/discovery/DiscoveryCard';
-import { RefreshCcw, Sparkles } from 'lucide-react';
-import { DISCOVERY_RECIPES } from '@/lib/mock/discoveryData';
+import { RefreshCcw, Loader2 } from 'lucide-react';
+import { getCategories, getDiscoveryStack, submitVote, DiscoveryRecipe } from '@/lib/api/discovery';
 
 export default function DiscoveryPage() {
-  const [recipes, setRecipes] = useState(DISCOVERY_RECIPES);
-  const [history, setHistory] = useState<string[]>([]);
-  const [matches, setMatches] = useState<string[]>([]);
+  const [recipes, setRecipes] = useState<DiscoveryRecipe[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEureka, setIsEureka] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
+
+  const performFetch = useCallback(async () => {
+    const cats = await getCategories();
+    let stack: DiscoveryRecipe[] = [];
+    if (cats.length > 0) {
+      const rawStack = await getDiscoveryStack(cats[0]);
+      stack = rawStack.map((r) => ({
+        ...r,
+        imageUrl: `/api/recipes/${r.id}/hero`,
+      }));
+    }
+    return { cats, stack };
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await performFetch();
+      setCategories(data.cats);
+      setRecipes(data.stack);
+      setCurrentCategoryIndex(0);
+    } catch (error) {
+      console.error('Failed to fetch discovery data', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [performFetch]);
+
+  useEffect(() => {
+    let ignore = false;
+    const initialize = async () => {
+      try {
+        const data = await performFetch();
+        if (!ignore) {
+          setCategories(data.cats);
+          setRecipes(data.stack);
+          setCurrentCategoryIndex(0);
+        }
+      } catch (error) {
+        console.error('Initial discovery fetch failed', error);
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
+    };
+
+    initialize();
+    return () => {
+      ignore = true;
+    };
+  }, [performFetch]);
+
+  const loadNextCategory = useCallback(async () => {
+    const nextIndex = currentCategoryIndex + 1;
+    if (nextIndex < categories.length) {
+      setIsLoading(true);
+      try {
+        const stack = await getDiscoveryStack(categories[nextIndex]);
+        const mappedStack = stack.map((r) => ({
+          ...r,
+          imageUrl: `/api/recipes/${r.id}/hero`,
+        }));
+        setRecipes(mappedStack);
+        setCurrentCategoryIndex(nextIndex);
+      } catch (error) {
+        console.error('Failed to fetch next category stack', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [categories, currentCategoryIndex]);
 
   const triggerEureka = useCallback(() => {
     const duration = 3 * 1000;
@@ -29,7 +99,6 @@ export default function DiscoveryPage() {
       }
 
       const particleCount = 50 * (timeLeft / duration);
-      // Solar Earth palette: Terracotta (#CD5D45) and Golden Ochre (#E1AD01)
       confetti({
         ...defaults,
         particleCount,
@@ -45,33 +114,51 @@ export default function DiscoveryPage() {
     }, 250);
   }, []);
 
-  const handleSwipeRight = (recipeId: string) => {
-    setHasInteracted(true);
-    setMatches((prev) => [...prev, recipeId]);
-    setRecipes((prev) => prev.filter((r) => r.id !== recipeId));
+  const handleSwipeRight = async (recipeId: string) => {
+    try {
+      await submitVote(recipeId, 'Like');
+      const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
+      setRecipes(updatedRecipes);
 
-    // Eureka Effect!
-    setIsEureka(true);
-    triggerEureka();
-    setTimeout(() => setIsEureka(false), 2000);
+      // Eureka Effect!
+      setIsEureka(true);
+      triggerEureka();
+      setTimeout(() => setIsEureka(false), 2000);
+
+      if (updatedRecipes.length === 0) {
+        await loadNextCategory();
+      }
+    } catch (error) {
+      console.error('Failed to submit like vote', error);
+    }
   };
 
-  const handleSwipeLeft = (recipeId: string) => {
-    setHasInteracted(true);
-    setHistory((prev) => [...prev, recipeId]);
-    setRecipes((prev) => prev.filter((r) => r.id !== recipeId));
-  };
+  const handleSwipeLeft = async (recipeId: string) => {
+    try {
+      await submitVote(recipeId, 'Dislike');
+      const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
+      setRecipes(updatedRecipes);
 
-  const reset = () => {
-    setRecipes(DISCOVERY_RECIPES);
-    setHistory([]);
-    setMatches([]);
+      if (updatedRecipes.length === 0) {
+        await loadNextCategory();
+      }
+    } catch (error) {
+      console.error('Failed to submit dislike vote', error);
+    }
   };
 
   // Only render the top 4 cards for performance and visual clarity
   const visibleRecipes = useMemo(() => {
     return recipes.slice(-4);
   }, [recipes]);
+
+  if (isLoading && recipes.length === 0) {
+    return (
+      <div className="flex h-[calc(100dvh-6rem)] w-full items-center justify-center">
+        <Loader2 className="animate-spin text-ochre" size={48} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center px-6 pt-2 pb-12 h-content min-h-[calc(100dvh-6rem)] relative overflow-hidden">
@@ -85,7 +172,7 @@ export default function DiscoveryPage() {
                 const globalIndex = recipes.findIndex((r) => r.id === recipe.id);
                 const stackIndex = recipes.length - 1 - globalIndex;
 
-                if (stackIndex > 3) return null; // Defensive check
+                if (stackIndex > 3) return null;
 
                 return (
                   <DiscoveryCard
@@ -107,14 +194,15 @@ export default function DiscoveryPage() {
                 <div className="mb-4 rounded-full bg-ochre/10 p-4 text-ochre">
                   <RefreshCcw size={32} />
                 </div>
-                <p className="px-10 text-center font-medium text-charcoal/60">
-                  You&apos;ve seen all the inspirations for today!
+                <p className="px-10 text-center font-medium text-charcoal/60 leading-relaxed">
+                  You&apos;ve seen all the inspirations for today! Come back soon to vote on new
+                  recipes.
                 </p>
                 <button
-                  onClick={reset}
-                  className="mt-6 rounded-full bg-ochre px-8 py-3 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-transform"
+                  onClick={fetchCategories}
+                  className="mt-8 rounded-full bg-ochre px-8 py-3.5 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-all hover:bg-ochre-dark"
                 >
-                  Refresh Stack
+                  Refresh Feed
                 </button>
               </motion.div>
             )}
@@ -123,24 +211,26 @@ export default function DiscoveryPage() {
       </div>
 
       {/* Control Buttons (Thumb Zone) */}
-      <div className="mt-8 flex w-full max-w-sm shrink-0 items-center justify-between px-8 pb-4">
+      <div className="mt-10 flex w-full max-w-sm shrink-0 items-center justify-between px-8 pb-4">
         <button
+          disabled={recipes.length === 0}
           onClick={() => recipes.length > 0 && handleSwipeLeft(recipes[recipes.length - 1].id)}
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_rgba(205,93,69,0.15)] border border-terracotta/5 active:scale-90 transition-transform"
+          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_rgba(205,93,69,0.15)] border border-terracotta/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-2xl">✕</div>
         </button>
 
         <button
-          onClick={reset}
+          onClick={fetchCategories}
           className="flex h-12 w-12 items-center justify-center rounded-full bg-white/50 text-charcoal/30 shadow-sm border border-charcoal/5 active:rotate-180 transition-transform duration-500"
         >
           <RefreshCcw size={18} />
         </button>
 
         <button
+          disabled={recipes.length === 0}
           onClick={() => recipes.length > 0 && handleSwipeRight(recipes[recipes.length - 1].id)}
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-sage shadow-[0_10px_25px_rgba(138,154,91,0.15)] border border-sage/5 active:scale-90 transition-transform"
+          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-sage shadow-[0_10px_25px_rgba(138,154,91,0.15)] border border-sage/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-3xl">♥</div>
         </button>

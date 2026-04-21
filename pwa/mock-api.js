@@ -59,6 +59,47 @@ const server = http.createServer((req, res) => {
         })
       );
     });
+  } else if (path === '/api/discovery/categories' && req.method === 'GET') {
+    res.writeHead(200);
+    res.end(
+      JSON.stringify({
+        data: ['Gourmet Discovery', 'Coastal Kitchen', 'Organic Vitality'],
+      })
+    );
+  } else if (path === '/api/discovery' && req.method === 'GET') {
+    const category = url.searchParams.get('category');
+    res.writeHead(200);
+    res.end(
+      JSON.stringify({
+        data: [
+          {
+            id: 'mock-1',
+            title: `Mock ${category} 1`,
+            description: 'Delicious mock recipe 1',
+            imageUrl: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856',
+            prepTime: '20 Min',
+            difficulty: 'Easy',
+            category: category,
+          },
+          {
+            id: 'mock-2',
+            title: `Mock ${category} 2`,
+            description: 'Delicious mock recipe 2',
+            imageUrl: 'https://images.unsplash.com/photo-1485921325833-c519f76c4927',
+            prepTime: '25 Min',
+            difficulty: 'Medium',
+            category: category,
+          },
+        ],
+      })
+    );
+  } else if (
+    path.startsWith('/api/discovery/') &&
+    path.endsWith('/vote') &&
+    req.method === 'POST'
+  ) {
+    res.writeHead(200);
+    res.end(JSON.stringify({ success: true }));
   } else if (path === '/api/recipes' && req.method === 'GET') {
     res.writeHead(200);
     res.end(

@@ -150,6 +150,12 @@ public class ManagementService(
                     var info = JsonSerializer.Deserialize<RecipeInfo>(json4, JsonDefaults.CamelCase);
                     if (info != null)
                     {
+                        // Validate/Clamp Rating to prevent CK_recipes_rating violation
+                        if (!Enum.IsDefined(typeof(RecipeRating), info.Rating))
+                        {
+                            info.Rating = RecipeRating.Unknown;
+                        }
+
                         recipe = new Recipe
                         {
                             Id = info.Id,
@@ -167,25 +173,44 @@ public class ManagementService(
                 if (hasJson)
                 {
                     var json5 = await File.ReadAllTextAsync(jsonPath, ct);
-                    var extracted = JsonSerializer.Deserialize<Recipe>(json5, JsonDefaults.CamelCase);
-                    if (extracted != null)
-                    {
-                        if (recipe == null)
-                        {
-                            recipe = extracted;
-                        }
-                        else
-                        {
-                            // Augment with AI extracted data
-                            recipe.RawMetadata = extracted.RawMetadata;
-                            recipe.Ingredients = extracted.Ingredients;
 
-                            // If info was missing image count but json has it, use it
-                            if (recipe.ImageCount == 0 && extracted.ImageCount > 0)
-                            {
-                                recipe.ImageCount = extracted.ImageCount;
-                            }
-                        }
+                    // We avoid deserializing directly into the 'Recipe' model because properties like 'Ingredients' 
+                    // in local files are often arrays/objects, whereas in the EF model they are raw JSON strings (mapped to JSONB).
+                    // This mismatch causes JsonException.
+
+                    using var doc = JsonDocument.Parse(json5);
+                    var rootElement = doc.RootElement;
+
+                    if (recipe == null)
+                    {
+                        recipe = new Recipe { Id = Guid.Parse(Path.GetFileName(dir)) };
+                    }
+
+                    // Map AI data (RawMetadata is the entire file for fidelity)
+                    recipe.RawMetadata = json5;
+
+                    // Extract ingredients from various possible keys (Schema.org vs older custom formats)
+                    if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+                    {
+                        recipe.Ingredients = ingProp.GetRawText();
+                    }
+                    else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
+                    {
+                        recipe.Ingredients = legacyIngProp.GetRawText();
+                    }
+
+                    // Map Category and Difficulty if present
+                    if (string.IsNullOrEmpty(recipe.Category) && rootElement.TryGetProperty("category", out var catProp))
+                    {
+                        recipe.Category = catProp.GetString();
+                    }
+                    if (string.IsNullOrEmpty(recipe.Difficulty) && rootElement.TryGetProperty("difficulty", out var diffProp))
+                    {
+                        recipe.Difficulty = diffProp.GetString();
+                    }
+                    if (recipe.ImageCount == 0 && rootElement.TryGetProperty("image_count", out var imgProp))
+                    {
+                        recipe.ImageCount = imgProp.GetInt32();
                     }
                 }
 

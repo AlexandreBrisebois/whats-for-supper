@@ -147,7 +147,7 @@ The repository is now "Agent-Optimized." The root is clean, the tech stack is co
 
 ### Executed Changes
 - **Core Logic**:
-    - [x] Created `DiscoveryService.cs`: Implemented recipe filtering (unvoted), category listing, match calculation ($\ge 50\%$ threshold), and difficulty inference.
+    - [x] Created `DiscoveryService.cs`: Implemented recipe filtering (unvoted), category listing, match calculation (≥ 50% threshold), and difficulty inference.
     - [x] Integrated `DiscoveryService` into `RecipeImportWorker.cs`: Automated difficulty classification during sync.
 - **API Surface**:
     - [x] Created `DiscoveryController.cs`: Exposed `GET /categories`, `GET /discovery`, and `POST /vote`.
@@ -158,10 +158,59 @@ The repository is now "Agent-Optimized." The root is clean, the tech stack is co
 
 ### Technical Details & Decisions
 - **Difficulty Inference**: Uses `XmlConvert` for ISO 8601 `totalTime` parsing. Easy: <5 ingred + <20m; Hard: >12 ingred or >45m.
-- **Match Strategy**: Recipes are marked as matches if $\ge 50\%$ of family members like them. Logic is centralized to prevent PWA/Worker drift.
+- **Match Strategy**: Recipes are marked as matches if ≥ 50% of family members like them. Logic is centralized to prevent PWA/Worker drift.
 - **Persistence Hooks**: Difficulty is calculated and persisted during the `RecipeImportWorker` synchronization phase, ensuring it's available for standard `GET` requests immediately.
 
 ### Technical Context for Next Agent
 - **Verification**: Run `dotnet test api/src/RecipeApi.Tests --filter FullyQualifiedName~DiscoveryServiceTests`.
 - **Header**: Ensure all frontend discovery requests include the `X-Family-Member-Id` header.
 - **Next Step**: Implement the "Express Discovery Hub" (Smart Pivot) in the PWA using these new endpoints.
+
+## [2026-04-21] PWA Discovery UI Integration (TDD)
+### Status: COMPLETED ✅
+**Agent**: Antigravity (Gemini 3 Flash)
+
+### Executed Changes
+- **Core Integration**:
+    - [x] Connected `DiscoveryPage.tsx` to real API endpoints via `DiscoveryService`.
+    - [x] Implemented **Category Rotation**: The UI now fetches all categories first, then fetches recipe stacks sequentially as the previous stack is exhausted.
+    - [x] Updated image handling to use the standardized `/api/recipes/{id}/hero` endpoint.
+- **API Surface**:
+    - [x] Created `pwa/src/lib/api/discovery.ts`: Standardized Axios-based client for discovery operations.
+- **Testing (TDD)**:
+    - [x] Updated `pwa/mock-api.js`: Added support for `/api/discovery/categories`, `/api/discovery`, and `/api/discovery/:id/vote`.
+    - [x] Created `pwa/e2e/discovery.spec.ts`: Implemented Playwright tests for category flow, empty states, and voting persistence.
+    - [x] Fixed `IdentityValidator` redirection in E2E by correctly setting the `x-family-member-id` cookie.
+
+### Technical Details & Decisions
+- **Identity Key**: Confirmed `x-family-member-id` as the authoritative identity key (both in cookies and headers). Fixed legacy references to `member_id` in E2E scripts.
+- **Stateful Navigation**: Managed `currentCategoryIndex` in local component state to drive the rotation logic without excessive API calls.
+- **Empty State UX**: Polished the empty state to match the "Solar Earth" aesthetic, including a "Refresh Feed" button that re-triggers the category discovery loop.
+
+### Technical Context for Next Agent
+- **Verification**: Run `export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/share/dotnet:$PATH" && cd pwa && npx playwright test e2e/discovery.spec.ts`.
+- **Environment**: Ensure `PATH` includes `/opt/homebrew/bin` for Node/NPM/Task access on this Mac environment.
+- **Next Step**: Implement the **Weekly Planner** UI integration to utilize the "Match" logic (recipes with ≥ 50% likes).
+
+
+## [2026-04-21] API Restoration & Hardening
+### Status: COMPLETED ✅
+**Agent**: Antigravity (Gemini 3 Flash)
+
+### Executed Changes
+- **Data Repair**:
+    - [x] Fixed `recipes/5df6b7da-4537-4b06-bae6-e8278ce2d1a9/recipe.info`: Corrected invalid `rating: -1` to `rating: "unknown"`.
+- **Backend Hardening**:
+    - [x] Refactored `ManagementService.RestoreAsync`:
+        - Replaced model-based `JsonSerializer.Deserialize<Recipe>` with `JsonDocument` parsing to avoid `JsonException` on `Ingredients` (mismatch between `string` property and JSON `array`).
+        - Added `Rating` validation using `Enum.IsDefined` to clamp invalid values to `Unknown` (0) and satisfy database check constraints.
+        - Simplified mapping to support both `recipeIngredient` (Schema.org) and `ingredients` (Legacy) keys.
+    - [x] Hardened `RecipeImportWorker.SyncDiskToDb`: Synchronized robust JSON parsing logic to ensure consistent behavior across automated imports and manual restorations.
+
+### Technical Details & Decisions
+- **JSON Compatibility Strategy**: Adoped a "Parse-then-Extract" pattern rather than direct deserialization for the `Recipe` EF model. Because the `Ingredients` column in Postgres is `jsonb` but the C# property is a `string` (storing the raw JSON content), `JsonSerializer` fails when meeting an actual JSON array in a file. Using `JsonDocument` to get `GetRawText()` for the array solves this concisely.
+- **Constraint Safety**: Added an explicit guard against invalid enum values in the `ManagementService`. This prevents a single corrupt metadata file from failing a multi-record `SaveChangesAsync` call.
+
+### Technical Context for Next Agent
+- **Verification**: Run `task restore` (if mapped) or trigger the `/api/management/seed` endpoint. The process is now resilient to corrupted `rating` fields and inconsistent `ingredients` naming.
+- **Next Step**: Proceed with PWA Discovery Hub implementation. The database is now stable and restored.
