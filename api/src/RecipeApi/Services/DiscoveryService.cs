@@ -1,0 +1,104 @@
+using Microsoft.EntityFrameworkCore;
+using RecipeApi.Data;
+using RecipeApi.Models;
+
+namespace RecipeApi.Services;
+
+public class DiscoveryService(RecipeDbContext dbContext)
+{
+    private readonly RecipeDbContext _dbContext = dbContext;
+
+    public async Task<List<Recipe>> GetRecipesForDiscoveryAsync(Guid familyMemberId, string? category = null)
+    {
+        var query = _dbContext.Recipes
+            .Where(r => r.IsDiscoverable)
+            .Where(r => !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id && v.FamilyMemberId == familyMemberId));
+
+        if (!string.IsNullOrEmpty(category))
+        {
+            query = query.Where(r => r.Category == category);
+        }
+
+        return await query.ToListAsync();
+    }
+
+    public async Task<List<string>> GetAvailableCategoriesAsync(Guid familyMemberId)
+    {
+        return await _dbContext.Recipes
+            .Where(r => r.IsDiscoverable)
+            .Where(r => !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id && v.FamilyMemberId == familyMemberId))
+            .Where(r => r.Category != null)
+            .Select(r => r.Category!)
+            .Distinct()
+            .ToListAsync();
+    }
+
+    public async Task SubmitVoteAsync(Guid recipeId, Guid familyMemberId, VoteType vote)
+    {
+        var existingVote = await _dbContext.RecipeVotes
+            .FirstOrDefaultAsync(v => v.RecipeId == recipeId && v.FamilyMemberId == familyMemberId);
+
+        if (existingVote != null)
+        {
+            existingVote.Vote = vote;
+            existingVote.VotedAt = DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            _dbContext.RecipeVotes.Add(new RecipeVote
+            {
+                RecipeId = recipeId,
+                FamilyMemberId = familyMemberId,
+                Vote = vote
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public string InferDifficulty(SchemaOrgRecipe recipe)
+    {
+        int ingredientCount = recipe.RecipeIngredient?.Count ?? 0;
+        int prepTimeMinutes = ParseIso8601Duration(recipe.TotalTime);
+
+        return InferDifficulty(ingredientCount, prepTimeMinutes);
+    }
+
+    public string InferDifficulty(int ingredientCount, int prepTimeMinutes)
+    {
+        if (ingredientCount < 5 && prepTimeMinutes < 20)
+            return "Easy";
+        if (ingredientCount > 12 || prepTimeMinutes > 45)
+            return "Hard";
+        return "Medium";
+    }
+
+    private int ParseIso8601Duration(string? duration)
+    {
+        if (string.IsNullOrEmpty(duration)) return 0;
+
+        try
+        {
+            // Simple ISO 8601 duration parser for "PTxxM", "PTxxHxxM", etc.
+            // Example: PT30M -> 30, PT1H10M -> 70
+            var timeSpan = System.Xml.XmlConvert.ToTimeSpan(duration);
+            return (int)timeSpan.TotalMinutes;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    public async Task<bool> IsMatchAsync(Guid recipeId)
+    {
+        var totalMembers = await _dbContext.FamilyMembers.CountAsync();
+        if (totalMembers == 0) return false;
+
+        var likeVotes = await _dbContext.RecipeVotes
+            .Where(v => v.RecipeId == recipeId && v.Vote == VoteType.Like)
+            .CountAsync();
+
+        return (double)likeVotes / totalMembers >= 0.5;
+    }
+}

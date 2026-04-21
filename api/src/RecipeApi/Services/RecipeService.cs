@@ -90,6 +90,9 @@ public class RecipeService(
             Id = r.Id,
             Rating = (int)r.Rating,
             AddedBy = r.AddedBy,
+            Description = r.Description,
+            Category = r.Category,
+            Difficulty = r.Difficulty,
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
             CreatedAt = r.CreatedAt
         }).ToList();
@@ -121,6 +124,9 @@ public class RecipeService(
                 Id = recipe.Id,
                 Rating = (int)recipe.Rating,
                 AddedBy = recipe.AddedBy,
+                Description = recipe.Description,
+                Category = recipe.Category,
+                Difficulty = recipe.Difficulty,
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 CreatedAt = recipe.CreatedAt
             }
@@ -162,6 +168,9 @@ public class RecipeService(
                 Id = recipe.Id,
                 Rating = (int)recipe.Rating,
                 AddedBy = recipe.AddedBy,
+                Description = recipe.Description,
+                Category = recipe.Category,
+                Difficulty = recipe.Difficulty,
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 CreatedAt = recipe.CreatedAt
             }

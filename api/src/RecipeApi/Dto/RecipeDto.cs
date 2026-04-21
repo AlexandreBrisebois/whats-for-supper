@@ -9,5 +9,9 @@ public class RecipeDto
     /// <summary>Zero-based photo indices available for this recipe.</summary>
     public List<int> Images { get; set; } = [];
 
+    public string? Description { get; set; }
+    public string? Category { get; set; }
+    public string? Difficulty { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }

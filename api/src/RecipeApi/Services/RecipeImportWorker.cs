@@ -67,7 +67,7 @@ public class RecipeImportWorker(
                 await heroAgent.CreateHeroImageAsync(import.RecipeId);
 
                 // Phase 2 Sync: Sync from Disk to DB
-                await SyncDiskToDb(import.RecipeId, db, stoppingToken);
+                await SyncDiskToDb(import.RecipeId, db, scope, stoppingToken);
 
                 // Cleanup: Delete the import record on success
                 db.RecipeImports.Remove(import);
@@ -96,7 +96,7 @@ public class RecipeImportWorker(
         }
     }
 
-    private async Task SyncDiskToDb(Guid recipeId, RecipeDbContext db, CancellationToken stoppingToken)
+    private async Task SyncDiskToDb(Guid recipeId, RecipeDbContext db, IServiceScope scope, CancellationToken stoppingToken)
     {
         var recipeJsonPath = Path.Combine(recipesRoot.Root, recipeId.ToString(), "recipe.json");
         if (!File.Exists(recipeJsonPath))
@@ -142,6 +142,9 @@ public class RecipeImportWorker(
                 logger.LogWarning(ex, "Failed to read recipe.info during sync for recipe {RecipeId}. Description sync skipped.", recipeId);
             }
         }
+
+        var discoveryService = scope.ServiceProvider.GetRequiredService<DiscoveryService>();
+        recipe.Difficulty = discoveryService.InferDifficulty(recipeData);
 
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 

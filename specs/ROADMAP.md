@@ -32,7 +32,7 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 - **The Family Pulse**: Collaborative activity feed on the Home screen.
 - **Recipe Approvals**: Ability to quickly approve/veto new captures from other members.
 - **PWA Settings**: Add/remove family members.
-- `X-Family-Member-Id` enforcement.
+- [x] `X-Family-Member-Id` enforcement.
 
 ### Definition of Done
 - New captures by "Dad" appear in "Mom's" Pulse feed.
@@ -40,7 +40,7 @@ Each phase ships a working, useful product. Later phases build on earlier ones w
 
 ---
 
-### Phase 3 — Discovery: The Smart Pivot
+### Phase 3 — Discovery: The Smart Pivot [ACTIVE]
 
 **Goal**: Family discovers and votes on recipes via the "Express" high-utility hub.
 

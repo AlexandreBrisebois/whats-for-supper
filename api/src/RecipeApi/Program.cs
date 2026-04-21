@@ -79,6 +79,7 @@ try
     builder.Services.AddScoped<RecipeHeroAgent>();
     builder.Services.AddScoped<RecipeService>();
     builder.Services.AddScoped<RecipeImportService>();
+    builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddHostedService<RecipeImportWorker>();
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────

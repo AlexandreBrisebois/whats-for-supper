@@ -139,3 +139,29 @@ The repository is now "Agent-Optimized." The root is clean, the tech stack is co
 - **Environment**: ALWAYS run `export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/share/dotnet:/Users/alex/.dotnet/tools:$PATH"` at the start of the session (see `AGENT_ENV.md`).
 - **Migrations**: The migration is generated but NOT applied to the local database yet because Docker was down. Run `task migrate` once Docker is up.
 - **Testing**: New model tests are in `api/src/RecipeApi.Tests/Models/RecipeDiscoveryTests.cs`.
+- **Match Logic**: Logic moved to `DiscoveryService` for centralized management.
+
+## [2026-04-21] API Discovery Services & Match Logic (TDD)
+### Status: COMPLETED ✅
+**Agent**: Antigravity (Gemini 3 Flash)
+
+### Executed Changes
+- **Core Logic**:
+    - [x] Created `DiscoveryService.cs`: Implemented recipe filtering (unvoted), category listing, match calculation ($\ge 50\%$ threshold), and difficulty inference.
+    - [x] Integrated `DiscoveryService` into `RecipeImportWorker.cs`: Automated difficulty classification during sync.
+- **API Surface**:
+    - [x] Created `DiscoveryController.cs`: Exposed `GET /categories`, `GET /discovery`, and `POST /vote`.
+    - [x] Updated `RecipeDto.cs` and `RecipeService.cs`: Included `Description`, `Category`, and `Difficulty` in standard API responses.
+- **Testing (TDD)**:
+    - [x] Created `DiscoveryServiceTests.cs`: Verified all business rules (matching, difficulty boundaries, category filtering).
+    - [x] Achieved 100% pass rate on 78 total API tests.
+
+### Technical Details & Decisions
+- **Difficulty Inference**: Uses `XmlConvert` for ISO 8601 `totalTime` parsing. Easy: <5 ingred + <20m; Hard: >12 ingred or >45m.
+- **Match Strategy**: Recipes are marked as matches if $\ge 50\%$ of family members like them. Logic is centralized to prevent PWA/Worker drift.
+- **Persistence Hooks**: Difficulty is calculated and persisted during the `RecipeImportWorker` synchronization phase, ensuring it's available for standard `GET` requests immediately.
+
+### Technical Context for Next Agent
+- **Verification**: Run `dotnet test api/src/RecipeApi.Tests --filter FullyQualifiedName~DiscoveryServiceTests`.
+- **Header**: Ensure all frontend discovery requests include the `X-Family-Member-Id` header.
+- **Next Step**: Implement the "Express Discovery Hub" (Smart Pivot) in the PWA using these new endpoints.
