@@ -9,6 +9,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
     public DbSet<RecipeImport> RecipeImports => Set<RecipeImport>();
+    public DbSet<RecipeVote> RecipeVotes => Set<RecipeVote>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +53,41 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.HasIndex(e => e.AddedBy)
                   .HasDatabaseName("idx_recipes_added_by")
                   .HasFilter("added_by IS NOT NULL");
+
+            entity.HasIndex(e => e.IsDiscoverable)
+                  .HasDatabaseName("idx_recipes_is_discoverable");
+
+            entity.HasIndex(e => e.Category)
+                  .HasDatabaseName("idx_recipes_category");
+        });
+
+        modelBuilder.Entity<RecipeVote>(entity =>
+        {
+            entity.HasKey(e => new { e.RecipeId, e.FamilyMemberId });
+
+            entity.Property(e => e.Vote)
+                  .HasConversion<short>();
+
+            entity.ToTable("recipe_votes", t =>
+                t.HasCheckConstraint("CK_recipe_votes_vote", "vote >= 1 AND vote <= 2"));
+
+            entity.HasOne(e => e.Recipe)
+                  .WithMany()
+                  .HasForeignKey(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.FamilyMember)
+                  .WithMany()
+                  .HasForeignKey(e => e.FamilyMemberId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.VotedAt)
+                  .HasDefaultValueSql("NOW()");
+
+            entity.HasIndex(e => e.RecipeId)
+                  .HasDatabaseName("idx_recipe_votes_recipe_id");
+            entity.HasIndex(e => e.FamilyMemberId)
+                  .HasDatabaseName("idx_recipe_votes_family_member_id");
         });
 
         modelBuilder.Entity<RecipeImport>(entity =>

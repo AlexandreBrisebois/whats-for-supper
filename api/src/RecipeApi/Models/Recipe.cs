@@ -39,6 +39,15 @@ public class Recipe
     [Column("image_count")]
     public int ImageCount { get; set; } = 0;
 
+    [Column("is_discoverable")]
+    public bool IsDiscoverable { get; set; } = false;
+
+    [Column("category")]
+    public string? Category { get; set; }
+
+    [Column("difficulty")]
+    public string? Difficulty { get; set; }
+
     // Phase 1+ fields — populated by import worker / AI pipeline
     /// <summary>Raw metadata extracted by AI from recipe images (Phase 1).</summary>
     [Column("raw_metadata", TypeName = "jsonb")]

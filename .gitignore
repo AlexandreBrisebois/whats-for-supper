@@ -91,7 +91,7 @@ docker-compose.prod.yml
 docker/docker-compose.prod.yml
 
 # Agents
-.agents/
+.agents/mcp.json
 .scratch/
 
 # Local data mounts

@@ -110,3 +110,32 @@ The repository is now "Agent-Optimized." The root is clean, the tech stack is co
 - **Setup**: New users should run `task init` (which handles `cp docker/.env.example docker/.env` automatically now).
 - **Environment**: If you need to add an environment variable for Docker, add it to `docker/.env.example` and `docker/.env`.
 - **PWA Context**: `pwa/.env.local` is still used for local PWA dev outside of Docker, but `NEXT_PUBLIC_API_BASE_URL` is the authoritative key now.
+
+## [2026-04-21] Discovery Schema & Voting Implementation
+### Status: COMPLETED ✅
+**Agent**: Antigravity (Gemini 3 Flash)
+
+### Executed Changes
+- **New Models**:
+    - [x] Updated `Recipe` model with `IsDiscoverable`, `Category`, and `Difficulty`.
+    - [x] Created `RecipeVote` model and `VoteType` enum for consensus-based planning.
+- **Database Architecture**:
+    - [x] Configured `RecipeVote` with a composite key (`RecipeId`, `FamilyMemberId`).
+    - [x] Added `DbSet<RecipeVote>` to `RecipeDbContext`.
+    - [x] Added performance indexes for `IsDiscoverable` and `Category`.
+    - [x] Implemented check constraints for `RecipeVote.Vote` (1-2).
+- **Persistence**:
+    - [x] Generated EF Core migration `AddDiscoveryAndVoting` (`20260421153613`).
+- **Developer Experience**:
+    - [x] Created `AGENT_ENV.md` to standardize `PATH` and tool locations for future sessions.
+    - [x] Installed `dotnet-ef` in the agent environment.
+
+### Technical Details & Decisions
+- **Composite Key**: `RecipeVote` uses a composite key to ensure a family member can only vote once per recipe.
+- **Vote Enum**: Used a `short` conversion for the `VoteType` enum to match existing pattern in `RecipeRating`.
+- **Index Strategy**: Added indexes to `IsDiscoverable` and `Category` to support high-performance filtering during the "Discovery" swiping flow.
+
+### Technical Context for Next Agent
+- **Environment**: ALWAYS run `export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/share/dotnet:/Users/alex/.dotnet/tools:$PATH"` at the start of the session (see `AGENT_ENV.md`).
+- **Migrations**: The migration is generated but NOT applied to the local database yet because Docker was down. Run `task migrate` once Docker is up.
+- **Testing**: New model tests are in `api/src/RecipeApi.Tests/Models/RecipeDiscoveryTests.cs`.

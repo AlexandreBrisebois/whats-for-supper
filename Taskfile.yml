@@ -13,8 +13,8 @@ vars:
   DB_PORT: '5432'
   # Registry for image distribution
   WFS_REGISTRY: '{{.WFS_REGISTRY | default "192.168.1.226:5050"}}'
-  # Default platform for local builds (auto-detected)
-  PLATFORMS: '{{.PLATFORMS | default "linux/amd64"}}'
+  # Default platform (GitHub Actions: amd64, Local: arm64)
+  PLATFORMS: '{{if .PLATFORMS}}{{.PLATFORMS}}{{else if .GITHUB_ACTIONS}}linux/amd64{{else}}linux/arm64{{end}}'
   TAG: 'v0.1' 
   # Database Target (localhost or NAS IP)
   TARGET_DB_HOST: '{{.TARGET_DB_HOST | default "localhost"}}'
@@ -586,6 +586,9 @@ tasks:
         echo ""
         echo "Directory Tree (Depth 2):"
         find . -maxdepth 2 -not -path '*/.*'
+        echo ""
+        echo "Agent Skills Library:"
+        ls .agents/*.md
         echo ""
         echo "Service Health:"
         task health

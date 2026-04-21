@@ -1,27 +1,48 @@
 # =============================================================================
-# Stage 1 — Base
+# Stage 1 — Base (Chiseled for Production Runtime)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS base
 WORKDIR /app
 EXPOSE 5000
 ENV ASPNETCORE_URLS=http://+:5000
 
 # =============================================================================
-# Stage 2 — Development (Hot Reload)
+# Stage 2 — Dependency Extractor (Ubuntu Noble)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS development
+FROM ubuntu:noble AS extractor
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Robust architecture-agnostic library extraction for GSSAPI
+RUN LIB_PATH=$(find /usr/lib -name "libgssapi_krb5.so.2" | head -n 1 | xargs dirname) && \
+    mkdir -p /rootfs${LIB_PATH} && \
+    cp -P ${LIB_PATH}/libgssapi_krb5.so* /rootfs${LIB_PATH}/ && \
+    cp -P ${LIB_PATH}/libkrb5.so* /rootfs${LIB_PATH}/ && \
+    cp -P ${LIB_PATH}/libk5crypto.so* /rootfs${LIB_PATH}/ && \
+    cp -P ${LIB_PATH}/libcom_err.so* /rootfs${LIB_PATH}/ && \
+    cp -P ${LIB_PATH}/libkrb5support.so* /rootfs${LIB_PATH}/ && \
+    cp -P ${LIB_PATH}/libkeyutils.so* /rootfs${LIB_PATH}/
+
+# =============================================================================
+# Stage 3 — Development (Hot Reload)
+# =============================================================================
+FROM mcr.microsoft.com/dotnet/sdk:10.0.102-noble AS development
 WORKDIR /src
+# Workaround for .NET 10 JIT crashes under QEMU emulation (Mac ARM64 -> Linux AMD64)
+ENV DOTNET_EnableWriteXorExecute=0
 COPY RecipeApi.csproj ./
 RUN dotnet restore RecipeApi.csproj
 COPY . .
-# dotnet watch run uses the source code mounted via volume
 ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls", "http://+:5000"]
 
 # =============================================================================
-# Stage 3 — Build
+# Stage 4 — Build (Pinned SDK + QEMU Workaround)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.102-noble AS build
 WORKDIR /src
+# Workaround for .NET 10 JIT crashes under QEMU emulation (Mac ARM64 -> Linux AMD64)
+ENV DOTNET_EnableWriteXorExecute=0
 COPY RecipeApi.csproj ./
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet restore RecipeApi.csproj
@@ -34,15 +55,10 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
     /p:UseAppHost=false
 
 # =============================================================================
-# Stage 4 — Production (Full Ubuntu Noble)
-#
-# ADR 006: High-Efficiency Containerization - Standard Image for compatibility
+# Stage 5 — Production (Chiseled + Minimal Dependencies)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS production
+FROM base AS production
 WORKDIR /app
-# Install Kerberos libraries required by Npgsql
-USER root
-RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
-USER $APP_UID
+COPY --from=extractor /rootfs /
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "RecipeApi.dll"]

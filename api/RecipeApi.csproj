@@ -2,11 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworkVersion>v10.0</TargetFrameworkVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>RecipeApi</RootNamespace>
     <AssemblyName>RecipeApi</AssemblyName>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <SuppressTfmSupportCheck>true</SuppressTfmSupportCheck>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <!-- Disable optimizer in Debug so hot-reload / edit-and-continue work reliably. -->
