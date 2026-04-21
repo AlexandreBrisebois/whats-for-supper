@@ -32,7 +32,7 @@ FROM base AS production
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 # Allow runtime override of API_INTERNAL_URL
-ENV API_INTERNAL_URL=http://api:5000
+ENV API_INTERNAL_URL=http://api:9001
 
 COPY --from=build /app/public ./public
 COPY --from=build /app/.next/standalone ./

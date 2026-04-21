@@ -23,7 +23,7 @@ const nextConfig = {
   // own origin. Works on any device on the LAN without CORS or IP config.
   // Override API_INTERNAL_URL for local dev outside Docker (e.g. http://localhost:5001).
   async rewrites() {
-    const apiUrl = process.env.API_INTERNAL_URL ?? 'http://api:5000';
+    const apiUrl = process.env.API_INTERNAL_URL ?? 'http://api:9001';
     return [
       {
         source: '/backend/:path*',

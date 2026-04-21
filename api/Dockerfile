@@ -3,8 +3,8 @@
 # =============================================================================
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS base
 WORKDIR /app
-EXPOSE 5000
-ENV ASPNETCORE_URLS=http://+:5000
+EXPOSE 9001
+ENV ASPNETCORE_URLS=http://+:9001
 
 # =============================================================================
 # Stage 2 — Dependency Extractor (Ubuntu Noble)
@@ -34,7 +34,7 @@ ENV DOTNET_EnableWriteXorExecute=0
 COPY RecipeApi.csproj ./
 RUN dotnet restore RecipeApi.csproj
 COPY . .
-ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls", "http://+:5000"]
+ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls", "http://+:9001"]
 
 # =============================================================================
 # Stage 4 — Build (Pinned SDK + QEMU Workaround)

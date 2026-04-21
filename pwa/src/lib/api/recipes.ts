@@ -1,13 +1,13 @@
 import { apiClient } from './client';
 
 import type { Recipe } from '@/types/domain';
-import type { ApiResponse, PaginatedResponse } from '@/types/api';
+import type { PaginatedResponse } from '@/types/api';
 
 export async function getRecipes(page = 1, pageSize = 20): Promise<PaginatedResponse<Recipe>> {
-  const { data } = await apiClient.get<PaginatedResponse<Recipe>>('/api/recipes', {
+  const { data } = await apiClient.get<{ data: PaginatedResponse<Recipe> }>('/api/recipes', {
     params: { page, pageSize },
   });
-  return data;
+  return data.data;
 }
 
 export interface UpdateRecipePayload {
@@ -16,8 +16,8 @@ export interface UpdateRecipePayload {
 }
 
 export async function updateRecipe(id: string, payload: UpdateRecipePayload): Promise<Recipe> {
-  const { data } = await apiClient.patch<Recipe>(`/api/recipes/${id}`, payload);
-  return data;
+  const { data } = await apiClient.patch<{ data: Recipe }>(`/api/recipes/${id}`, payload);
+  return data.data;
 }
 
 export interface CreateRecipeResponse {
@@ -26,8 +26,8 @@ export interface CreateRecipeResponse {
 }
 
 export async function createRecipe(formData: FormData): Promise<CreateRecipeResponse> {
-  const { data } = await apiClient.post<CreateRecipeResponse>('/api/recipes', formData);
-  return data;
+  const { data } = await apiClient.post<{ data: CreateRecipeResponse }>('/api/recipes', formData);
+  return data.data;
 }
 
 /**

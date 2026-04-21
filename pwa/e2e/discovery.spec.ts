@@ -38,7 +38,7 @@ test.describe('Discovery Flow', () => {
             data: [
               {
                 id: 'recipe-1',
-                title: 'Tuscan Pasta',
+                name: 'Tuscan Pasta',
                 description: 'Delicious pasta',
                 imageUrl: '/api/recipes/recipe-1/hero',
                 prepTime: '20 Min',
@@ -55,7 +55,6 @@ test.describe('Discovery Flow', () => {
 
     // Verify it loads the recipe from the first category
     await expect(page.getByText('Tuscan Pasta')).toBeVisible();
-    await expect(page.getByText('Gourmet Discovery')).toBeVisible();
   });
 
   test('should show empty state when no categories are available', async ({ page }) => {
@@ -101,7 +100,7 @@ test.describe('Discovery Flow', () => {
             data: [
               {
                 id: 'recipe-1',
-                title: 'Tuscan Pasta',
+                name: 'Tuscan Pasta',
                 description: 'desc',
                 imageUrl: '',
                 prepTime: '20 Min',
@@ -118,7 +117,7 @@ test.describe('Discovery Flow', () => {
       (url) => url.pathname.includes('/api/discovery/recipe-1/vote'),
       async (route) => {
         const postData = route.request().postDataJSON();
-        if (postData.vote === 'Like') {
+        if (postData.vote === 1) {
           voteSent = true;
         }
         await route.fulfill({

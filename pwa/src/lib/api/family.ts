@@ -1,17 +1,16 @@
 import { apiClient } from './client';
 
 import type { FamilyMember } from '@/types/domain';
-import type { ApiResponse } from '@/types/api';
 
 export async function getFamilyMembers(): Promise<FamilyMember[]> {
-  const { data } = await apiClient.get<ApiResponse<FamilyMember[]>>('/api/family');
+  const { data } = await apiClient.get<{ data: FamilyMember[] }>('/api/family');
   return data.data;
 }
 
 export async function createFamilyMember(
   payload: Pick<FamilyMember, 'name'>
 ): Promise<FamilyMember> {
-  const { data } = await apiClient.post<ApiResponse<FamilyMember>>('/api/family', payload);
+  const { data } = await apiClient.post<{ data: FamilyMember }>('/api/family', payload);
   return data.data;
 }
 
@@ -19,7 +18,7 @@ export async function updateFamilyMember(
   id: string,
   payload: Pick<FamilyMember, 'name'>
 ): Promise<FamilyMember> {
-  const { data } = await apiClient.put<ApiResponse<FamilyMember>>(`/api/family/${id}`, payload);
+  const { data } = await apiClient.put<{ data: FamilyMember }>(`/api/family/${id}`, payload);
   return data.data;
 }
 

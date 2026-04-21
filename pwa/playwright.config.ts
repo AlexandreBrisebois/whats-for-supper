@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const isCI = !!process.env.CI;
+const MOCK_API_PORT = process.env.MOCK_API_PORT || '5001';
 
 export default defineConfig({
   // Directory containing E2E test files
@@ -64,15 +65,15 @@ export default defineConfig({
         ...(process.env.USE_LIVE_API !== 'true'
           ? [
               {
-                command: 'node mock-api.js',
-                url: 'http://127.0.0.1:5001/health',
+                command: `MOCK_API_PORT=${MOCK_API_PORT} node mock-api.js`,
+                url: `http://127.0.0.1:${MOCK_API_PORT}/health`,
                 reuseExistingServer: true,
                 timeout: 15_000,
               },
             ]
           : []),
         {
-          command: 'npm run dev',
+          command: 'NODE_ENV=test npm run dev',
           url: 'http://127.0.0.1:3000',
           reuseExistingServer: true,
           timeout: 60_000,

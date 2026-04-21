@@ -35,6 +35,12 @@ public class Recipe
     [Column("description")]
     public string? Description { get; set; }
 
+    [Column("name")]
+    public string? Name { get; set; }
+
+    [Column("total_time")]
+    public string? TotalTime { get; set; }
+
     /// <summary>Number of images saved for this recipe. Cached to avoid filesystem reads on listing.</summary>
     [Column("image_count")]
     public int ImageCount { get; set; } = 0;

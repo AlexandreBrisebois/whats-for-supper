@@ -17,8 +17,7 @@ export default async function HomePage() {
   let familyMembers: FamilyMember[] = [];
 
   try {
-    const response = await serverFetch<ApiResponse<FamilyMember[]>>('/api/family');
-    familyMembers = response.data;
+    familyMembers = await serverFetch<FamilyMember[]>('/api/family');
   } catch (error) {
     console.error('Failed to fetch family members on server:', error);
   }

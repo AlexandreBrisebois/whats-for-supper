@@ -135,7 +135,17 @@ public class RecipeImportWorker(
         // We still deserialize to SchemaOrgRecipe to use for Difficulty inference, but we fall back gracefully
         var recipeData = JsonSerializer.Deserialize<SchemaOrgRecipe>(recipeJsonContent, JsonDefaults.CaseInsensitive) ?? new();
 
-        // Synchronize description from recipe.info if present
+        // Synchronize from recipe.json (AI metadata)
+        if (!string.IsNullOrWhiteSpace(recipeData.Name))
+        {
+            recipe.Name = recipeData.Name;
+        }
+        if (!string.IsNullOrWhiteSpace(recipeData.TotalTime))
+        {
+            recipe.TotalTime = recipeData.TotalTime;
+        }
+
+        // Synchronize from recipe.info (Manual edits or AI-generated description) if present
         var recipeInfoPath = Path.Combine(recipesRoot.Root, recipeId.ToString(), "recipe.info");
         if (File.Exists(recipeInfoPath))
         {
@@ -143,14 +153,21 @@ public class RecipeImportWorker(
             {
                 var recipeInfoJson = await File.ReadAllTextAsync(recipeInfoPath, stoppingToken);
                 var recipeInfo = JsonSerializer.Deserialize<RecipeInfo>(recipeInfoJson, JsonDefaults.CamelCase);
-                if (recipeInfo?.Description != null)
+
+                if (!string.IsNullOrWhiteSpace(recipeInfo?.Description))
                 {
                     recipe.Description = recipeInfo.Description;
+                }
+
+                // Name in recipe.info takes precedence if present
+                if (!string.IsNullOrWhiteSpace(recipeInfo?.Name))
+                {
+                    recipe.Name = recipeInfo.Name;
                 }
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to read recipe.info during sync for recipe {RecipeId}. Description sync skipped.", recipeId);
+                logger.LogWarning(ex, "Failed to read recipe.info during sync for recipe {RecipeId}. Metadata sync from info file skipped.", recipeId);
             }
         }
 

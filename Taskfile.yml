@@ -11,6 +11,7 @@ vars:
   API_PORT: '5050'
   PWA_PORT: '3000'
   DB_PORT: '5432'
+  DB_NAME: 'recipe_app_db'
   # Registry for image distribution
   WFS_REGISTRY: '{{.WFS_REGISTRY | default "192.168.1.226:5050"}}'
   # Default platform (GitHub Actions: amd64, Local: arm64)
@@ -51,8 +52,8 @@ tasks:
     dir: api
     env:
       ASPNETCORE_ENVIRONMENT: Development
-      RECIPES_ROOT: "../recipes"
-      ASPNETCORE_URLS: http://localhost:5050
+      RECIPES_ROOT: "/Users/alex/Code/whats-for-supper/recipes"
+      ASPNETCORE_URLS: http://localhost:9001
       POSTGRES_CONNECTION_STRING: "Host=localhost;Port=5432;Database=recipe_app_db;Username=recipe_app;Password=secure_dev_password"
     cmds:
       - dotnet watch run --project RecipeApi.csproj
@@ -317,9 +318,9 @@ tasks:
     cmds:
       - |
         if [ "{{.TARGET_DB_HOST}}" == "localhost" ] || [ "{{.TARGET_DB_HOST}}" == "postgres" ]; then
-          docker exec whats-for-supper-postgres pg_dump -U postgres recipes > {{.FILENAME}}
+          docker exec whats-for-supper-postgres pg_dump -U recipe_app {{.DB_NAME}} > {{.FILENAME}}
         else
-          pg_dump -h {{.TARGET_DB_HOST}} -U postgres recipes > {{.FILENAME}}
+          pg_dump -h {{.TARGET_DB_HOST}} -U recipe_app {{.DB_NAME}} > {{.FILENAME}}
         fi
       - echo "✓ Database backed up to {{.FILENAME}}"
 
@@ -341,9 +342,9 @@ tasks:
         
         echo "Restoring $FILE to {{.TARGET_DB_HOST}}..."
         if [ "{{.TARGET_DB_HOST}}" == "localhost" ] || [ "{{.TARGET_DB_HOST}}" == "postgres" ]; then
-          docker exec -i whats-for-supper-postgres psql -U postgres recipes < "$FILE"
+          docker exec -i whats-for-supper-postgres psql -U recipe_app {{.DB_NAME}} < "$FILE"
         else
-          psql -h {{.TARGET_DB_HOST}} -U postgres recipes < "$FILE"
+          psql -h {{.TARGET_DB_HOST}} -U recipe_app {{.DB_NAME}} < "$FILE"
         fi
         echo "✓ Database restored"
 
@@ -364,7 +365,7 @@ tasks:
   shell:db:
     desc: "Open psql shell in database"
     cmds:
-      - 'docker exec -it whats-for-supper-postgres psql -U postgres -d recipes'
+      - 'docker exec -it whats-for-supper-postgres psql -U recipe_app -d {{.DB_NAME}}'
 
   # ============================================================================
   # CODE QUALITY

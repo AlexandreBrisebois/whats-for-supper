@@ -1,12 +1,15 @@
 const http = require('http');
 
-const PORT = 5001;
+const PORT = process.env.MOCK_API_PORT || 5001;
 
 // In-memory state for family members
 let familyMembers = [
   { id: '1', name: 'Alex' },
   { id: '2', name: 'Jordan' },
 ];
+
+// In-memory state for recipes (keyed by family member id)
+let recipes = {};
 
 const server = http.createServer((req, res) => {
   // Set CORS headers
@@ -20,7 +23,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
   console.log(`[Mock API] ${req.method} ${url.pathname}`);
 
   res.setHeader('Content-Type', 'application/json');
@@ -74,19 +77,19 @@ const server = http.createServer((req, res) => {
         data: [
           {
             id: 'mock-1',
-            title: `Mock ${category} 1`,
+            name: `Mock ${category} 1`,
             description: 'Delicious mock recipe 1',
             imageUrl: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856',
-            prepTime: '20 Min',
+            totalTime: '20 Min',
             difficulty: 'Easy',
             category: category,
           },
           {
             id: 'mock-2',
-            title: `Mock ${category} 2`,
+            name: `Mock ${category} 2`,
             description: 'Delicious mock recipe 2',
             imageUrl: 'https://images.unsplash.com/photo-1485921325833-c519f76c4927',
-            prepTime: '25 Min',
+            totalTime: '25 Min',
             difficulty: 'Medium',
             category: category,
           },
@@ -99,23 +102,52 @@ const server = http.createServer((req, res) => {
     req.method === 'POST'
   ) {
     res.writeHead(200);
-    res.end(JSON.stringify({ success: true }));
+    res.end(JSON.stringify({ data: { success: true } }));
   } else if (path === '/api/recipes' && req.method === 'GET') {
+    const memberId = req.headers['x-family-member-id'];
+    const memberRecipes = memberId && recipes[memberId] ? recipes[memberId] : [];
     res.writeHead(200);
     res.end(
       JSON.stringify({
-        data: [],
-        total: 0,
+        data: {
+          recipes: memberRecipes,
+          pagination: {
+            page: 1,
+            limit: 20,
+            total: memberRecipes.length,
+          },
+        },
       })
     );
   } else if (path === '/api/recipes' && req.method === 'POST') {
-    req.on('data', () => {}); // Consume stream
+    const memberId = req.headers['x-family-member-id'];
+    let bodySize = 0;
+    req.on('data', (chunk) => {
+      bodySize += chunk.length;
+    });
     req.on('end', () => {
+      console.log(`[Mock API] Recipe POST received from member ${memberId} (${bodySize} bytes)`);
+
+      // Initialize recipes array for this member if needed
+      if (!recipes[memberId]) {
+        recipes[memberId] = [];
+      }
+
+      // Store a recipe record (mock data, since we can't parse multipart)
+      const recipeId = `rec-${Date.now()}`;
+      const recipe = {
+        id: recipeId,
+        createdAt: new Date().toISOString(),
+      };
+      recipes[memberId].push(recipe);
+
       res.writeHead(201);
       res.end(
         JSON.stringify({
-          recipeId: 'rec-1',
-          message: 'Success',
+          data: {
+            recipeId: recipeId,
+            message: 'Success',
+          },
         })
       );
     });

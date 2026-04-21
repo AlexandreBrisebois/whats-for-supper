@@ -231,6 +231,22 @@ RULES:
 
             var recipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(finalJson, JsonDefaults.CaseInsensitive);
 
+            // Update recipe.info with the name immediately after extraction
+            if (!string.IsNullOrWhiteSpace(recipe?.Name))
+            {
+                var infoPath = Path.Combine(RecipesRoot, recipeId.ToString(), "recipe.info");
+                RecipeInfo? info = null;
+                if (File.Exists(infoPath))
+                {
+                    var infoJson = await File.ReadAllTextAsync(infoPath);
+                    info = JsonSerializer.Deserialize<RecipeInfo>(infoJson, JsonDefaults.CamelCase);
+                }
+                if (info == null) info = new RecipeInfo { Id = recipeId };
+                info.Name = recipe.Name;
+                await File.WriteAllTextAsync(infoPath, JsonSerializer.Serialize(info, JsonDefaults.CamelCase));
+                logger.LogInformation("Saved recipe name to recipe.info for {RecipeId}", recipeId);
+            }
+
             // Final Fail-fast validation
             if (string.IsNullOrWhiteSpace(recipe?.Name) || recipe?.RecipeIngredient == null || recipe.RecipeIngredient.Count == 0)
             {

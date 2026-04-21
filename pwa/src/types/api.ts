@@ -10,8 +10,11 @@ export interface ApiError {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
+  recipes: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+  updatedAt?: string;
 }

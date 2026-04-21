@@ -6,4 +6,4 @@ export const CONFIG = {
 } as const;
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/backend';
-export const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? 'http://api:5000';
+export const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? 'http://api:9001';

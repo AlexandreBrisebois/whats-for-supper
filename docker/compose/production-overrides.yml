@@ -4,7 +4,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
     ports:
-      - "9101:5000"
+      - "9101:9001"
 
   pwa:
     image: ${WFS_REGISTRY}/whats-for-supper-pwa:${TAG}

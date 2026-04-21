@@ -22,7 +22,7 @@ services:
     build: null # Disable local build in production
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
-      API_INTERNAL_URL: http://api:5000
+      API_INTERNAL_URL: http://api:9001
     # We remove the local ports if Traefik is handling 80
     ports: !reset []
 

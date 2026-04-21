@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { DiscoveryCard } from '@/components/discovery/DiscoveryCard';
 import { RefreshCcw, Loader2 } from 'lucide-react';
 import { getCategories, getDiscoveryStack, submitVote, DiscoveryRecipe } from '@/lib/api/discovery';
+import { API_BASE_URL } from '@/lib/constants/config';
 
 export default function DiscoveryPage() {
   const [recipes, setRecipes] = useState<DiscoveryRecipe[]>([]);
@@ -21,7 +22,7 @@ export default function DiscoveryPage() {
       const rawStack = await getDiscoveryStack(cats[0]);
       stack = rawStack.map((r) => ({
         ...r,
-        imageUrl: `/api/recipes/${r.id}/hero`,
+        imageUrl: `${API_BASE_URL}/api/recipes/${r.id}/hero`,
       }));
     }
     return { cats, stack };
@@ -72,7 +73,7 @@ export default function DiscoveryPage() {
         const stack = await getDiscoveryStack(categories[nextIndex]);
         const mappedStack = stack.map((r) => ({
           ...r,
-          imageUrl: `/api/recipes/${r.id}/hero`,
+          imageUrl: `${API_BASE_URL}/api/recipes/${r.id}/hero`,
         }));
         setRecipes(mappedStack);
         setCurrentCategoryIndex(nextIndex);
@@ -116,7 +117,7 @@ export default function DiscoveryPage() {
 
   const handleSwipeRight = async (recipeId: string) => {
     try {
-      await submitVote(recipeId, 'Like');
+      await submitVote(recipeId, 1); // 1 = Like
       const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
       setRecipes(updatedRecipes);
 
@@ -128,22 +129,25 @@ export default function DiscoveryPage() {
       if (updatedRecipes.length === 0) {
         await loadNextCategory();
       }
-    } catch (error) {
-      console.error('Failed to submit like vote', error);
+    } catch (error: any) {
+      console.error('Failed to submit like vote', error.response?.data || error.message || error);
     }
   };
 
   const handleSwipeLeft = async (recipeId: string) => {
     try {
-      await submitVote(recipeId, 'Dislike');
+      await submitVote(recipeId, 2); // 2 = Dislike
       const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
       setRecipes(updatedRecipes);
 
       if (updatedRecipes.length === 0) {
         await loadNextCategory();
       }
-    } catch (error) {
-      console.error('Failed to submit dislike vote', error);
+    } catch (error: any) {
+      console.error(
+        'Failed to submit dislike vote',
+        error.response?.data || error.message || error
+      );
     }
   };
 
@@ -166,7 +170,7 @@ export default function DiscoveryPage() {
       <div className="flex-1 flex flex-col items-center justify-center w-full">
         {/* Card Arena */}
         <div className="relative z-10 w-full max-w-sm aspect-[3/4] md:aspect-auto md:h-[60vh] min-h-[400px]">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {recipes.length > 0 ? (
               visibleRecipes.map((recipe, index) => {
                 const globalIndex = recipes.findIndex((r) => r.id === recipe.id);

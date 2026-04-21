@@ -1,0 +1,40 @@
+@baseUrl = http://localhost:9001
+
+## @baseUrl = http://api.wfs.localhost
+@familyMemberId = 4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7
+@recipeId = 5df6b7da-4537-4b06-bae6-e8278ce2d1a9
+
+### Get discovery categories
+# Returns categories that have recipes available for discovery for this member.
+GET {{baseUrl}}/api/discovery/categories
+X-Family-Member-Id: {{familyMemberId}}
+Accept: application/json
+
+### Get discovery stack
+# Returns the list of discoverable recipes the member hasn't voted on yet.
+GET {{baseUrl}}/api/discovery
+X-Family-Member-Id: {{familyMemberId}}
+Accept: application/json
+
+### Get discovery stack by category
+GET {{baseUrl}}/api/discovery?category=Chicken
+X-Family-Member-Id: {{familyMemberId}}
+Accept: application/json
+
+### Vote on a recipe (Like - Value 1)
+POST {{baseUrl}}/api/discovery/{{recipeId}}/vote
+X-Family-Member-Id: {{familyMemberId}}
+Content-Type: application/json
+
+{
+    "vote": 1
+}
+
+### Vote on a recipe (Skip - Value 2)
+POST {{baseUrl}}/api/discovery/{{recipeId}}/vote
+X-Family-Member-Id: {{familyMemberId}}
+Content-Type: application/json
+
+{
+    "vote": 2
+}

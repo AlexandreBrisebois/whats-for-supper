@@ -19,7 +19,7 @@ public class FamilyController(FamilyService familyService) : ControllerBase
             CreatedAt = m.CreatedAt,
             UpdatedAt = m.UpdatedAt
         }).ToList();
-        return Ok(new { data = dtos });
+        return Ok(dtos);
     }
 
     [HttpPost]
@@ -33,7 +33,7 @@ public class FamilyController(FamilyService familyService) : ControllerBase
             CreatedAt = member.CreatedAt,
             UpdatedAt = member.UpdatedAt
         };
-        return CreatedAtAction(nameof(GetAll), null, new { data = result });
+        return CreatedAtAction(nameof(GetAll), null, result);
     }
 
     [HttpPut("{id:guid}")]
@@ -47,7 +47,7 @@ public class FamilyController(FamilyService familyService) : ControllerBase
             CreatedAt = member.CreatedAt,
             UpdatedAt = member.UpdatedAt
         };
-        return Ok(new { data = result });
+        return Ok(result);
     }
 
     [HttpDelete("{id:guid}")]

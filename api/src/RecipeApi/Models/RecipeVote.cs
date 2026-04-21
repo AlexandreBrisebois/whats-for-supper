@@ -5,7 +5,7 @@ namespace RecipeApi.Models;
 public enum VoteType : short
 {
     Like = 1,
-    Skip = 2
+    Dislike = 2
 }
 
 [Table("recipe_votes")]

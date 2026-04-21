@@ -51,6 +51,8 @@ public class ManagementService(
                 {
                     existing.Notes = recipe.Notes;
                     existing.Rating = recipe.Rating;
+                    existing.Description = recipe.Description;
+                    existing.Name = recipe.Name;
                     var updatedJson = JsonSerializer.Serialize(existing, JsonDefaults.CamelCase);
                     await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
                 }
@@ -63,6 +65,8 @@ public class ManagementService(
                     Id = recipe.Id,
                     Notes = recipe.Notes,
                     Rating = recipe.Rating,
+                    Description = recipe.Description,
+                    Name = recipe.Name,
                     AddedBy = recipe.AddedBy,
                     ImageCount = recipe.ImageCount,
                     CreatedAt = recipe.CreatedAt
@@ -162,6 +166,8 @@ public class ManagementService(
                             AddedBy = info.AddedBy,
                             Notes = info.Notes,
                             Rating = info.Rating,
+                            Description = info.Description,
+                            Name = info.Name,
                             ImageCount = info.ImageCount,
                             CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
                             UpdatedAt = DateTimeOffset.UtcNow
@@ -208,6 +214,14 @@ public class ManagementService(
                     {
                         recipe.Difficulty = diffProp.GetString();
                     }
+                    if (string.IsNullOrEmpty(recipe.Name) && rootElement.TryGetProperty("name", out var nameProp))
+                    {
+                        recipe.Name = nameProp.GetString();
+                    }
+                    if (string.IsNullOrEmpty(recipe.TotalTime) && rootElement.TryGetProperty("totalTime", out var timeProp))
+                    {
+                        recipe.TotalTime = timeProp.GetString();
+                    }
                     if (recipe.ImageCount == 0 && rootElement.TryGetProperty("image_count", out var imgProp))
                     {
                         recipe.ImageCount = imgProp.GetInt32();
@@ -243,6 +257,9 @@ public class ManagementService(
                     // Update metadata
                     existing.Rating = recipe.Rating;
                     existing.Notes = recipe.Notes;
+                    existing.Description = recipe.Description;
+                    existing.Name = recipe.Name;
+                    existing.TotalTime = recipe.TotalTime;
                     existing.Ingredients = recipe.Ingredients;
                     existing.RawMetadata = recipe.RawMetadata;
                     existing.ImageCount = recipe.ImageCount;

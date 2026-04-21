@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:5050
-
+@baseUrl = http://api.wfs.localhost
 ### @baseUrl = http://192.168.1.226:9101
 
 @familyMemberId = 4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7
@@ -167,8 +167,4 @@ Accept: application/json
 
 ### Get recipe import status
 GET {{baseUrl}}/api/recipes/{{recipeId}}/import
-Accept: application/json
-
-### Get global import pipeline summary
-GET {{baseUrl}}/api/recipes/import-status
 Accept: application/json

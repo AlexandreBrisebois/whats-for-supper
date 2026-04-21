@@ -11,7 +11,7 @@ services:
     environment:
       POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING:-postgres://recipe_app:secure_dev_password@postgres:5432/recipe_app_db}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ASPNETCORE_URLS: http://+:5000
+      ASPNETCORE_URLS: http://+:9001
       CORS__ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost,http://localhost:3000}
       RECIPES_ROOT: /data/recipes
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -28,9 +28,9 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.api.rule=Host(`${API_HOST:-api.wfs.localhost}`)"
-      - "traefik.http.routers.api.entrypoints=web"
-      - "traefik.http.services.api.loadbalancer.server.port=5000"
+      - "traefik.http.routers.api-container.rule=Host(`${API_HOST:-api.wfs.localhost}`)"
+      - "traefik.http.routers.api-container.entrypoints=web"
+      - "traefik.http.services.api-container.loadbalancer.server.port=9001"
 
   # ──────────────────────────────────────────────────────────────────────────
   # Next.js 15 PWA
@@ -43,7 +43,7 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://api.wfs.localhost}
-      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:5000}
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:9001}
     depends_on:
       - api
     networks:
@@ -51,9 +51,9 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.pwa.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`)"
-      - "traefik.http.routers.pwa.entrypoints=web"
-      - "traefik.http.services.pwa.loadbalancer.server.port=3000"
+      - "traefik.http.routers.pwa-container.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`)"
+      - "traefik.http.routers.pwa-container.entrypoints=web"
+      - "traefik.http.services.pwa-container.loadbalancer.server.port=3000"
 
 networks:
   proxy:
@@ -63,4 +63,3 @@ networks:
 
 volumes:
   recipes_data:
-    name: whats-for-supper-recipes

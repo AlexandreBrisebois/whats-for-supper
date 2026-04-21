@@ -7,29 +7,48 @@ import { Heart, X } from 'lucide-react';
 
 interface DiscoveryCardProps {
   id: string;
-  title: string;
+  name: string;
   description: string;
   imageUrl: string;
   onSwipeRight: () => void;
   onSwipeLeft: () => void;
   isFront: boolean;
   stackIndex: number;
-  prepTime: string;
+  totalTime: string;
   difficulty: string;
   category: string;
 }
 
+const formatDuration = (duration: string) => {
+  if (!duration) return 'N/A';
+  if (!duration.startsWith('PT')) return duration;
+
+  try {
+    const hoursMatch = duration.match(/(\d+)H/);
+    const minutesMatch = duration.match(/(\d+)M/);
+
+    const hours = hoursMatch ? parseInt(hoursMatch[1]) : 0;
+    const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
+
+    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h`;
+    if (minutes > 0) return `${minutes}m`;
+    return '0m';
+  } catch {
+    return duration;
+  }
+};
+
 export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
-  title,
+  name,
   description,
   imageUrl,
   onSwipeRight,
   onSwipeLeft,
   isFront,
   stackIndex,
-  prepTime,
+  totalTime,
   difficulty,
-  category,
 }) => {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
@@ -70,15 +89,32 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   const handleDragEnd = (_: any, info: PanInfo) => {
     if (!isFront) return;
 
-    if (info.offset.x > 120) {
-      controls.start({ x: 600, rotate: 30, opacity: 0 }).then(onSwipeRight);
-    } else if (info.offset.x < -120) {
-      controls.start({ x: -600, rotate: -30, opacity: 0 }).then(onSwipeLeft);
+    const threshold = 100;
+    const velocityThreshold = 500;
+
+    if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
+      controls
+        .start({
+          x: 500,
+          rotate: 20,
+          opacity: 0,
+          transition: { duration: 0.3, ease: 'easeOut' },
+        })
+        .then(onSwipeRight);
+    } else if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
+      controls
+        .start({
+          x: -500,
+          rotate: -20,
+          opacity: 0,
+          transition: { duration: 0.3, ease: 'easeOut' },
+        })
+        .then(onSwipeLeft);
     } else {
       controls.start({
         x: 0,
         rotate: 0,
-        transition: { type: 'spring', stiffness: 200, damping: 15 },
+        transition: { type: 'spring', stiffness: 300, damping: 20 },
       });
     }
   };
@@ -94,17 +130,20 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       }}
       drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={1}
+      dragMomentum={false}
       animate={controls}
       onDragEnd={handleDragEnd}
       className="absolute inset-x-0 top-0 bottom-12 cursor-grab active:cursor-grabbing"
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
       <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_20px_50px_rgba(31,41,55,0.1)] border border-terracotta/5 flex flex-col">
-        <div className="relative h-[60%] w-full overflow-hidden">
+        <div className="relative h-[70%] w-full overflow-hidden">
           <Image
             src={imageUrl}
-            alt={title}
+            alt={name}
             fill
+            priority={isFront}
             className="object-cover select-none pointer-events-none"
           />
 
@@ -129,29 +168,17 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
             </>
           )}
 
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/30 to-transparent" />
-
-          <div className="absolute bottom-6 left-8 right-8">
-            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/90 drop-shadow-md">
-              {category}
-            </span>
-          </div>
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         </div>
 
         <div className="flex-1 p-8 flex flex-col justify-between">
-          <div>
-            <h3 className="mb-3 text-2xl font-bold tracking-tight text-charcoal font-heading leading-[1.1]">
-              {title}
-            </h3>
-            <p className="text-sm leading-[1.6] text-charcoal/60 line-clamp-3">{description}</p>
-          </div>
-
-          <div className="flex items-center gap-4 text-[9px] font-bold uppercase tracking-[0.15em] text-charcoal/30 border-t border-charcoal/5 pt-6">
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-charcoal/5">
-              Prep: {prepTime}
+          <h2 className="text-2xl font-bold tracking-tight font-heading mb-4">{name}</h2>
+          <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] text-charcoal/40 border-t border-charcoal/5 pt-6">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-charcoal/5">
+              Prep: {formatDuration(totalTime)}
             </span>
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-charcoal/5">
-              Diff: {difficulty}
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-charcoal/5">
+              Diff: {difficulty || 'Medium'}
             </span>
           </div>
         </div>

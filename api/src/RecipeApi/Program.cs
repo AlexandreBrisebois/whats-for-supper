@@ -58,11 +58,16 @@ try
         });
 
     // ── Controllers / JSON ───────────────────────────────────────────────────
-    builder.Services.AddControllers()
+    builder.Services.AddControllers(options =>
+        {
+            options.Filters.Add<SuccessWrappingFilter>();
+        })
         .AddNewtonsoftJson(options =>
         {
             options.SerializerSettings.ReferenceLoopHandling =
                 Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+            options.SerializerSettings.ContractResolver =
+                new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
         });
 
     builder.Services.AddOpenApi();

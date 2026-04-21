@@ -33,5 +33,12 @@ export async function serverFetch<T>(endpoint: string, options: RequestInit = {}
     throw new Error(errorData.message || `API Error: ${response.status}`);
   }
 
-  return response.json() as Promise<T>;
+  const body = await response.json();
+  // Standardized wrapping: If the response has a top-level 'data' property,
+  // we assume it's the wrapped result.
+  if (body && typeof body === 'object' && 'data' in body) {
+    return body.data as T;
+  }
+
+  return body as T;
 }

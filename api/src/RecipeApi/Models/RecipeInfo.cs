@@ -12,6 +12,7 @@ public class RecipeInfo
     public Guid? AddedBy { get; set; }
     public string? Notes { get; set; }
     public string? Description { get; set; }
+    public string? Name { get; set; }
     public RecipeRating Rating { get; set; } = RecipeRating.Unknown;
     public string? Language { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

@@ -54,4 +54,3 @@ networks:
 
 volumes:
   postgres_data:
-    name: whats-for-supper-postgres

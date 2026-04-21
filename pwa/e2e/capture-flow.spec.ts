@@ -32,7 +32,8 @@ async function loginAsMember(page: Page) {
   const familyList = page.locator('[data-hint="family-list"]');
   await expect(familyList).toBeVisible({ timeout: 10_000 });
 
-  const buttons = page.getByRole('button').filter({ hasText: /.+/ });
+  // Scope button query to family list to exclude "Don't see your name?" button
+  const buttons = familyList.getByRole('button').filter({ hasText: /.+/ });
   const count = await buttons.count();
 
   if (count === 0) {
@@ -48,15 +49,25 @@ async function loginAsMember(page: Page) {
 
       // Wait for redirect to home after creation
       await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+      // Wait for identity cookie and greeting
+      await page.waitForFunction(() => document.cookie.includes('x-family-member-id='), null, {
+        timeout: 5000,
+      });
+      await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible({ timeout: 10_000 });
       return;
     }
   }
 
   // Find and click the first family member
-  const firstMember = buttons.first();
+  const firstMember = familyList.getByRole('button').filter({ hasText: /.+/ }).first();
   if ((await firstMember.count()) > 0) {
     await firstMember.click();
+    // Wait for identity cookie to be set before checking URL
+    await page.waitForFunction(() => document.cookie.includes('x-family-member-id='), null, {
+      timeout: 5000,
+    });
     await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible({ timeout: 10_000 });
   }
 }
 

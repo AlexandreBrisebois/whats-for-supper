@@ -42,6 +42,9 @@ public class DiscoveryController(DiscoveryService discoveryService) : Controller
         if (familyMemberId is null)
             return BadRequest(new { message = "X-Family-Member-Id header is required." });
 
+        if (dto == null)
+            return BadRequest(new { message = "Vote body is required." });
+
         await _discoveryService.SubmitVoteAsync(id, familyMemberId.Value, dto.Vote);
         return Ok(new { message = "Vote recorded." });
     }

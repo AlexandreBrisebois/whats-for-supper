@@ -16,7 +16,7 @@ import { test, expect, type Page } from '@playwright/test';
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-/** Clear the member_id cookie so every test starts as a fresh user. */
+/** Clear the x-family-member-id cookie so every test starts as a fresh user. */
 async function clearIdentity(page: Page) {
   await page.context().clearCookies();
 }
@@ -56,10 +56,11 @@ test('selecting a family member redirects to /home with a welcome message', asyn
   await page.goto('/onboarding');
 
   // Wait for the family list to finish loading
-  await expect(page.locator('[data-hint="family-list"]')).toBeVisible({ timeout: 10_000 });
+  const familyList = page.locator('[data-hint="family-list"]');
+  await expect(familyList).toBeVisible({ timeout: 10_000 });
 
-  // Find the first clickable family member button
-  const firstMember = page.getByRole('button').filter({ hasText: /.+/ }).first();
+  // Find the first clickable family member button (scoped to family list to exclude add-member button)
+  const firstMember = familyList.getByRole('button').filter({ hasText: /.+/ }).first();
 
   // If no members exist yet we skip — the integration test creates one first
   const count = await firstMember.count();
@@ -73,6 +74,14 @@ test('selecting a family member redirects to /home with a welcome message', asyn
 
   // Should land on /home
   await expect(page).toHaveURL(/\/home/);
+
+  // Debug: log cookies
+  const cookieValue = await page.evaluate(() => document.cookie);
+  // eslint-disable-next-line no-console
+  console.log('Cookies after navigation:', cookieValue);
+
+  // Wait for greeting to appear (hydration)
+  await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible({ timeout: 10_000 });
 
   // Welcome heading includes the member's name
   if (memberName) {

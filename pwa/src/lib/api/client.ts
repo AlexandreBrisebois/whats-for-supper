@@ -22,7 +22,13 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status ?? 0;
-    const message = error.response?.data?.message ?? error.message ?? 'Unknown error';
-    return Promise.reject({ status, message, code: error.response?.data?.code });
+    const data = error.response?.data;
+    const message = data?.message ?? data?.title ?? error.message ?? 'Unknown error';
+
+    if (status === 400 && data?.errors) {
+      console.error('Validation errors:', data.errors);
+    }
+
+    return Promise.reject({ status, message, code: data?.code, data });
   }
 );

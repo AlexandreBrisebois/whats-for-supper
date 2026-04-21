@@ -2,10 +2,10 @@ import { apiClient } from './client';
 
 export interface DiscoveryRecipe {
   id: string;
-  title: string;
+  name: string;
   description: string;
   imageUrl: string;
-  prepTime: string;
+  totalTime: string;
   difficulty: string;
   category: string;
 }
@@ -22,6 +22,6 @@ export async function getDiscoveryStack(category: string): Promise<DiscoveryReci
   return data.data || [];
 }
 
-export async function submitVote(recipeId: string, vote: 'Like' | 'Dislike'): Promise<void> {
+export async function submitVote(recipeId: string, vote: 1 | 2): Promise<void> {
   await apiClient.post(`/api/discovery/${recipeId}/vote`, { vote });
 }

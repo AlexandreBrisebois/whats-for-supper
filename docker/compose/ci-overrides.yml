@@ -2,7 +2,7 @@ services:
   # Expose ports directly for stable CI health checks
   api:
     ports:
-      - "5000:5000"
+      - "9001:9001"
 
   pwa:
     ports:
