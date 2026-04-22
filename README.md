@@ -27,13 +27,13 @@ All services start in order. The first run takes ~2 minutes while Docker pulls b
 │               PWA — Next.js 15 (TypeScript)          │
 │  /onboarding  /home  /capture  /api/health           │
 └────────────────────────┬─────────────────────────────┘
-                         │ HTTP  :5000
+                         │ HTTP  :3000
 ┌────────────────────────▼─────────────────────────────┐
 │           API — ASP.NET Core 10 (.NET 10)            │
 │  /api/family  /api/recipes  /health                  │
 │  Auto-migrates DB on startup                         │
 └────────────────────────┬─────────────────────────────┘
-                         │ TCP   :5432
+                         │ TCP   :9001
 ┌────────────────────────▼─────────────────────────────┐
 │                PostgreSQL 17 (Alpine)                 │
 │  family_members  recipes  (EF Core migrations)       │
@@ -49,11 +49,11 @@ All three services run in Docker on a shared bridge network (`app-network`). Rec
 | Service | Port | Image / Build |
 |---------|------|---------------|
 | PostgreSQL | 5432 | `postgres:17-alpine` |
-| API | 5000 | `./api` (Ubuntu Chiseled, .NET 10) |
+| API | 9001 | `./api` (Ubuntu Chiseled, .NET 10) |
 | PWA | 3000 | `./pwa` (Node 22 Alpine, Next.js 15) |
 
 Health endpoints:
-- `GET http://localhost:5000/health` — API + database check
+- `GET http://localhost:9001/health` — API + database check
 - `GET http://localhost:3000/api/health` — PWA liveness
 
 ---
