@@ -1,4 +1,5 @@
 import { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 import { LocaleProvider } from '@/components/common/LocaleProvider';
@@ -22,11 +23,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: "What's for Supper",
   },
   icons: {
-    icon: '/favicon.png',
+    icon: '/favicon-32x32.png',
     apple: '/apple-touch-icon.png',
   },
 };
@@ -42,6 +43,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${outfit.variable} ${inter.variable}`}>
+      <head>
+        <Script id="sw-register" strategy="afterInteractive">{`
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+          }
+        `}</Script>
+      </head>
       <body className="min-h-dvh bg-cream text-charcoal antialiased">
         <LocaleProvider>
           <IdentityValidator>{children}</IdentityValidator>
