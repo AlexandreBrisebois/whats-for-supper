@@ -91,8 +91,7 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
       {
         name: 'x-family-member-id',
         value: memberId,
-        domain: '127.0.0.1',
-        path: '/',
+        url: 'http://127.0.0.1:3000/',
       },
     ]);
     // Debug: Ensure cookie is present before navigation

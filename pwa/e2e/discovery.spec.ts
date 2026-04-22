@@ -13,9 +13,9 @@ test.describe('Discovery Flow', () => {
   });
 
   test('should fetch categories and then fetch the first category stack', async ({ page }) => {
-    // Intercept category call
+    // Intercept category call - use /backend prefix since API_BASE_URL defaults to /backend
     await page.route(
-      (url) => url.pathname.includes('/api/discovery/categories'),
+      (url) => url.pathname.includes('/backend/api/discovery/categories'),
       async (route) => {
         await route.fulfill({
           status: 200,
@@ -28,7 +28,7 @@ test.describe('Discovery Flow', () => {
     // Intercept stack call for the first category
     await page.route(
       (url) =>
-        url.pathname.includes('/api/discovery') &&
+        url.pathname.includes('/backend/api/discovery') &&
         url.searchParams.get('category') === 'Gourmet Discovery',
       async (route) => {
         await route.fulfill({
@@ -41,7 +41,7 @@ test.describe('Discovery Flow', () => {
                 name: 'Tuscan Pasta',
                 description: 'Delicious pasta',
                 imageUrl: '/api/recipes/recipe-1/hero',
-                prepTime: '20 Min',
+                totalTime: '20 Min',
                 difficulty: 'Easy',
                 category: 'Gourmet Discovery',
               },
@@ -59,7 +59,7 @@ test.describe('Discovery Flow', () => {
 
   test('should show empty state when no categories are available', async ({ page }) => {
     await page.route(
-      (url) => url.pathname.includes('/api/discovery/categories'),
+      (url) => url.pathname.includes('/backend/api/discovery/categories'),
       async (route) => {
         await route.fulfill({
           status: 200,
@@ -78,7 +78,7 @@ test.describe('Discovery Flow', () => {
     let voteSent = false;
 
     await page.route(
-      (url) => url.pathname.includes('/api/discovery/categories'),
+      (url) => url.pathname.includes('/backend/api/discovery/categories'),
       async (route) => {
         await route.fulfill({
           status: 200,
@@ -90,7 +90,7 @@ test.describe('Discovery Flow', () => {
 
     await page.route(
       (url) =>
-        url.pathname.includes('/api/discovery') &&
+        url.pathname.includes('/backend/api/discovery') &&
         url.searchParams.get('category') === 'Gourmet Discovery',
       async (route) => {
         await route.fulfill({
@@ -103,7 +103,7 @@ test.describe('Discovery Flow', () => {
                 name: 'Tuscan Pasta',
                 description: 'desc',
                 imageUrl: '',
-                prepTime: '20 Min',
+                totalTime: '20 Min',
                 difficulty: 'Easy',
                 category: 'Gourmet Discovery',
               },
@@ -114,7 +114,7 @@ test.describe('Discovery Flow', () => {
     );
 
     await page.route(
-      (url) => url.pathname.includes('/api/discovery/recipe-1/vote'),
+      (url) => url.pathname.includes('/backend/api/discovery/recipe-1/vote'),
       async (route) => {
         const postData = route.request().postDataJSON();
         if (postData.vote === 1) {
