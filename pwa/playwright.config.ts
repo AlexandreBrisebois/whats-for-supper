@@ -38,7 +38,7 @@ export default defineConfig({
 
   use: {
     // All tests hit the local Next.js dev server
-    baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:3001',
+    baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:3000',
 
     // Collect traces on first retry
     trace: 'on-first-retry',
@@ -73,8 +73,8 @@ export default defineConfig({
             ]
           : []),
         {
-          command: 'NODE_ENV=test npm run dev -- -p 3001',
-          url: 'http://127.0.0.1:3001',
+          command: 'NODE_ENV=test npm run dev',
+          url: 'http://127.0.0.1:3000',
           reuseExistingServer: true,
           timeout: 60_000,
         },
