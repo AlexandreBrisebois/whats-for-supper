@@ -14,6 +14,7 @@ export default function DiscoveryPage() {
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEureka, setIsEureka] = useState(false);
+  const [matchCount, setMatchCount] = useState(0);
 
   const performFetch = useCallback(async () => {
     const cats = await getCategories();
@@ -115,39 +116,44 @@ export default function DiscoveryPage() {
     }, 250);
   }, []);
 
-  const handleSwipeRight = async (recipeId: string) => {
-    try {
-      await submitVote(recipeId, 1); // 1 = Like
-      const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
-      setRecipes(updatedRecipes);
+  const handleSwipeRight = (recipeId: string) => {
+    // Optimistic Update
+    const recipe = recipes.find((r) => r.id === recipeId);
+    const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
+    setRecipes(updatedRecipes);
 
-      // Eureka Effect!
-      setIsEureka(true);
-      triggerEureka();
-      setTimeout(() => setIsEureka(false), 2000);
+    if (recipe?.hasFamilyInterest) {
+      setMatchCount((prev) => prev + 1);
+    }
 
-      if (updatedRecipes.length === 0) {
-        await loadNextCategory();
-      }
-    } catch (error: any) {
-      console.error('Failed to submit like vote', error.response?.data || error.message || error);
+    // Background Vote
+    submitVote(recipeId, 1).catch((error) => {
+      console.error('Failed to submit like vote', error);
+      // Optional: Re-insert or show toast
+    });
+
+    // Eureka Effect!
+    setIsEureka(true);
+    triggerEureka();
+    setTimeout(() => setIsEureka(false), 2000);
+
+    if (updatedRecipes.length === 0) {
+      loadNextCategory();
     }
   };
 
-  const handleSwipeLeft = async (recipeId: string) => {
-    try {
-      await submitVote(recipeId, 2); // 2 = Dislike
-      const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
-      setRecipes(updatedRecipes);
+  const handleSwipeLeft = (recipeId: string) => {
+    // Optimistic Update
+    const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
+    setRecipes(updatedRecipes);
 
-      if (updatedRecipes.length === 0) {
-        await loadNextCategory();
-      }
-    } catch (error: any) {
-      console.error(
-        'Failed to submit dislike vote',
-        error.response?.data || error.message || error
-      );
+    // Background Vote
+    submitVote(recipeId, 2).catch((error) => {
+      console.error('Failed to submit dislike vote', error);
+    });
+
+    if (updatedRecipes.length === 0) {
+      loadNextCategory();
     }
   };
 
@@ -193,21 +199,37 @@ export default function DiscoveryPage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex h-full w-full flex-col items-center justify-center rounded-[2.5rem] bg-white/50 border-2 border-dashed border-charcoal/10 glass-solar"
+                className="flex h-full w-full flex-col items-center justify-center rounded-[2.5rem] bg-white/50 border-2 border-dashed border-charcoal/10 glass-solar px-6 text-center"
               >
                 <div className="mb-4 rounded-full bg-ochre/10 p-4 text-ochre">
                   <RefreshCcw size={32} />
                 </div>
-                <p className="px-10 text-center font-medium text-charcoal/60 leading-relaxed">
-                  You&apos;ve seen all the inspirations for today! Come back soon to vote on new
-                  recipes.
+                <h3 className="text-xl font-bold font-heading text-charcoal mb-2">
+                  That&apos;s a wrap!
+                </h3>
+                <p className="px-6 text-sm font-medium text-charcoal/60 leading-relaxed mb-8">
+                  {matchCount > 0
+                    ? `You found ${matchCount} matches with your family! Ready to get cooking?`
+                    : "You've seen everything for now. Why not add some fresh ideas?"}
                 </p>
-                <button
-                  onClick={fetchCategories}
-                  className="mt-8 rounded-full bg-ochre px-8 py-3.5 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-all hover:bg-ochre-dark"
-                >
-                  Refresh Feed
-                </button>
+
+                <div className="flex flex-col w-full gap-3">
+                  <button
+                    onClick={() =>
+                      (window.location.href = matchCount > 0 ? '/planner' : '/capture')
+                    }
+                    className="w-full rounded-full bg-ochre px-8 py-3.5 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-all hover:bg-ochre-dark"
+                  >
+                    {matchCount > 0 ? 'Go to Planner' : 'Capture New Idea'}
+                  </button>
+
+                  <button
+                    onClick={fetchCategories}
+                    className="w-full rounded-full bg-white/50 px-8 py-3.5 font-bold text-charcoal/60 border border-charcoal/10 active:scale-95 transition-all hover:bg-white"
+                  >
+                    Refresh Feed
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

@@ -1,38 +1,43 @@
+---
+name: session-review
+description: Mandatory end-of-session audit to update HANDOVER.md, capture technical decisions (ADRs), and optimize token usage.
+---
+
 # Skill: Session Review & Audit
 
 Procedural guidance for performing the mandatory end-of-session review and technical alignment.
 
 ## 1. Objective
-Ensure the repository remains high-integrity, technical decisions are captured, and token usage is continuously optimized.
+Ensure the repository remains high-integrity, technical decisions are captured, and context bloat is minimized.
 
 ## 2. Review Checklist
 At the end of every work session, perform the following:
 
 ### A. Summarize the Work & Update Handover
-- **MANDATORY**: Update [HANDOVER.md](HANDOVER.md) with absolute technical detail (DO NOT COMPRESS).
-- List logical and technical progress.
+- **MANDATORY**: Update [HANDOVER.md](HANDOVER.md) with absolute technical detail for **active tasks only**.
+- Move historical session details to the "Archive" section or summarize them.
 - Link to specific modified files and tests.
 
 ### B. Capture Technical Decisions (ADRs)
-- Identify any "on-the-fly" design decisions made.
-- Update relevant files in `specs/decisions/` or create new ADRs if required.
-- Update `specs/` if the implementation deviated from the original plan.
+- **ADR Trigger**: Create a new ADR in `specs/decisions/` only if a decision:
+  1. Breaks/Changes a Contract (API, Schema, Env Vars).
+  2. Shifts Architecture (Libraries, Patterns).
+  3. Deviates from Brand/Aesthetic Identity.
+- Update relevant `.spec.md` files for implementation-level changes.
 
-### C. Token Optimization Review
-- Analyze the session's token usage.
-- **Alternative Approaches**: Propose leaner methods the user could have used.
-- **Pattern Identification**: Identify repeated sequences that could be automated.
+### C. Tooling & Token Audit
+- **Efficiency Leaks**: Identify where tokens were wasted (redundant reading, trial-and-error).
+- **Registry Update**: If a new script was created, move it to `scripts/agent/` and register it in [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md).
+- Offer to build missing tools that would benefit future autonomy.
 
-### D. Tooling & Sandbox Audit
-- **Identify Missing Tools**: What tool or script would have optimized this session?
-- **Reuse Recognition**: Did you create a useful script? Propose moving it to `scripts/agent/` or the toolbox.
-- **Tool Creation**: Offer to build the missing tool if it benefits future autonomy.
+### D. Proactive Documentation Sync
+Perform a **Surface Area Scan** to ensure documentation hasn't drifted:
+- **Environment**: Check `.env.example` against new `process.env` or `config` additions.
+- **Tasks**: Cross-reference `package.json` or `Taskfile.yml` with [LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md).
+- **Strategy**: Update [specs/ROADMAP.md](specs/ROADMAP.md) if a phase or milestone was reached.
 
-### E. Documentation Sync
-- Check if `README.md`, `LOCAL_DEV_LOOP.md`, or other guides need updates based on new infrastructure or patterns.
-
-### F. Next Steps Plan
+### E. Next Steps Plan
 - Build a concise plan for the NEXT session to ensure immediate continuity.
 
-## 3. Communication
-Present the review clearly to the user, highlighting the coaching feedback on token usage and tool suggestions.
+## 3. Enforcement
+The Session Review is a **non-negotiable prerequisite** for the final response of every session. If the user indicates the session is ending, trigger this audit automatically.

@@ -1,3 +1,8 @@
+---
+name: e2e-testing
+description: Procedural guidance for Playwright E2E testing, Mock API management, and integration verification.
+---
+
 # Skill: E2E & Integration Testing
 
 Procedural guidance for Playwright and Mock API testing.

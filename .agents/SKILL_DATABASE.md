@@ -1,3 +1,8 @@
+---
+name: database-migrations
+description: Procedural guidance for managing PostgreSQL database schema and migrations using Entity Framework Core.
+---
+
 # Skill: Database & EF Core Migrations
 
 Procedural guidance for managing the PostgreSQL database schema using Entity Framework Core.

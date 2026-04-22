@@ -1,8 +1,27 @@
-# Local Development Loop & CI/CD Strategy
+# Local Development Loop & Infrastructure
 
-Fast local feedback loop for development + comprehensive GitHub Actions for validation.
+Comprehensive guide for local development, service orchestration, and discovery.
 
-## Setup: Install Task
+## Service Dependencies (Internal Network)
+
+```mermaid
+graph TD
+    User["User (Browser)"] -- "HTTP :80 (Traefik)" --> Traefik["Traefik (Reverse Proxy)"]
+    Traefik -- "Host: pwa..." --> PWA["PWA (Next.js)"]
+    Traefik -- "Host: api..." --> API["API (.NET 10)"]
+    PWA --> DB[("PostgreSQL (pgvector)")]
+    API --> DB
+```
+
+## Discovery Rules
+- **Tooling**: Always check [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md) for custom scripts.
+- **Environment**: Infrastructure variables live in `docker/.env`. PWA-specific overrides live in `pwa/.env.local`.
+- **Migrations**: `api/Migrations/` is the authoritative source for schema changes.
+- **Paths**: All infrastructure commands (Task, Docker) MUST be run from the project root.
+
+---
+
+## 1. Setup: Install Task
 
 First, install [Task](https://taskfile.dev/installation/):
 
@@ -670,15 +689,56 @@ This repository is optimized for **Universal Agent Protocol (UAP)**.
 - **Session Log**: See [HANDOVER.md](../../HANDOVER.md) for transient execution state.
 - **Discovery**: Use `task agent:summary` to rapidly map the workspace.
 
-## Quick Start Checklist
+## 7. Troubleshooting
 
-- [ ] Install Task: `brew install go-task`
-- [ ] Verify Task: `task --version`
-- [ ] View all tasks: `task -l`
-- [ ] First run: `task init` (does everything automatically)
-- [ ] Check if services are healthy: `task health`
-- [ ] Open http://localhost:3000 in browser
-- [ ] Use AI? Read **AGENT.md** first.
+<details>
+<summary>Port already in use (bind: address already in use)</summary>
+
+Another process is using port 5432, 80, or 8080. Since we use Traefik as a reverse proxy, port 80 must be available.
+If you need to change the host ports, edit `docker/compose/infrastructure.yml`.
+</details>
+
+<details>
+<summary>API not responding</summary>
+
+Check logs with `task logs:api`. Ensure Postgres is healthy first with `task health`.
+</details>
+
+<details>
+<summary>PWA shows "Network Error" when making API calls</summary>
+
+The browser makes requests to `NEXT_PUBLIC_API_BASE_URL`. In Docker mode this is `http://api.wfs.localhost`.
+Check `docker/.env` has `NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost`.
+</details>
+
+<details>
+<summary>Camera not working in browser</summary>
+
+- Requires a secure context (`https`) or `localhost`.
+- On headless CI or non-camera machines, use the **Gallery** option.
+</details>
+
+---
+
+## 8. Environment Variables Reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `POSTGRES_USER` | `recipe_app` | PG superuser / app user |
+| `POSTGRES_PASSWORD` | `secure_dev_password` | PG password |
+| `POSTGRES_DB` | `recipe_app_db` | PG database name |
+| `API_PORT` | `9001` | Host-side API port |
+| `PWA_PORT` | `3000` | Host-side PWA port |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://api.wfs.localhost` | API base URL visible to the browser |
+
+See `docker/.env.example` for the full list.
+
+## 9. Quick Start Checklist
+- [x] Install Task: `brew install go-task`
+- [x] Verify Task: `task --version`
+- [x] View all tasks: `task -l`
+- [x] First run: `task init`
+- [x] Check if services are healthy: `task health`
+- [ ] Open http://pwa.wfs.localhost in browser
 - [ ] Before pushing: `task review`
-- [ ] Done! 🎉
 

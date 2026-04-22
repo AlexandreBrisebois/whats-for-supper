@@ -44,7 +44,7 @@ If a command (e.g., `task build`) fails due to environment issues (missing tool,
 - **Lazy Context**: Only load Skills from `.agents/` when explicitly performing those tasks.
 
 ## 5. Knowledge Map (Entry Points)
-- **Active Prioritization**: [PLAN.md](PLAN.md) (Current Work).
+- **Active Prioritization**: [specs/ROADMAP.md](specs/ROADMAP.md) (Master Roadmap).
 - **Handover History**: [HANDOVER.md](HANDOVER.md).
 - **Design & Architecture — MANDATORY READ**: 
   - [specs/API_DESIGN.md](specs/API_DESIGN.md) — API response wrapping & controller patterns.
@@ -56,7 +56,9 @@ If a command (e.g., `task build`) fails due to environment issues (missing tool,
   - [E2E & Integration Testing](.agents/SKILL_TESTING.md)
   - [Build Prompt Creation](.agents/SKILL_CREATE_PROMPT.md)
   - [Session Review & Audit](.agents/SKILL_SESSION_REVIEW.md)
-- **Architecture**: [specs/](specs/) and [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
+  - [Designer Agent (The Mère-Designer)](.agents/SKILL_DESIGNER.md)
+  - [Shared Understanding (Grill Me)](.agents/SKILL_SHARED_UNDERSTANDING.md)
+- **Architecture**: [specs/](specs/) and [LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md).
 
 ## 6. MANDATORY: The Handover Protocol
 Failure to perform a session audit is a protocol violation.

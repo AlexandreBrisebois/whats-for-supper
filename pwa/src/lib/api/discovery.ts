@@ -8,6 +8,7 @@ export interface DiscoveryRecipe {
   totalTime: string;
   difficulty: string;
   category: string;
+  hasFamilyInterest?: boolean;
 }
 
 export async function getCategories(): Promise<string[]> {

@@ -1,6 +1,6 @@
 # Meal Planning Specification
 
-This document defines the Weekly Planner feature for "What's For Supper". The planner is Phase 2 of the roadmap and serves as the family's home-base dashboard.
+This document defines the Weekly Planner feature for "What's For Supper". The planner is Phase 4 of the roadmap and serves as the family's home-base dashboard.
 
 ## 1. Overview
 

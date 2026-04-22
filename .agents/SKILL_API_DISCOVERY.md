@@ -1,3 +1,8 @@
+---
+name: api-discovery
+description: Procedural guidance for maintaining the API endpoint map and service discovery using the map_api.py tool.
+---
+
 # Skill: API Discovery & Mapping
 
 Procedural guidance for maintaining the API endpoint map and service discovery.

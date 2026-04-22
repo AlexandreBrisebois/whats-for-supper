@@ -1,11 +1,22 @@
+---
+name: build-prompt-creation
+description: Decompose implementation plans into self-contained, parallelizable, and TDD-driven "Build Prompts."
+---
+
 # Skill: Build Prompt Creation
 
 Procedural guidance for decomposing implementation plans into self-contained, parallelizable, and TDD-driven "Build Prompts."
 
 ## 1. Objective
-Break down complex features into atomic tasks that can be executed in separate, lean context windows.
+Break down complex features into atomic tasks that can be executed in separate, lean context windows, ensuring that the intent is fully crystallized through a shared understanding with the user.
 
-## 2. Naming & Sequencing
+## 2. Crystallize Intent via Shared Understanding
+Before generating any prompts, you **MUST** leverage [SKILL_SHARED_UNDERSTANDING.md](SKILL_SHARED_UNDERSTANDING.md):
+1. **Stress-Test the Plan**: Relentlessly interview the user about the implementation details until all ambiguities are resolved.
+2. **Resolve Dependencies**: Walk down each branch of the design tree to ensure the sequence of prompts is logical and robust.
+3. **Draft Choice**: Present the refined intent to the user for final validation.
+
+## 3. Naming & Sequencing
 - **Sequential**: `##-{descriptive-slug}.md` (e.g., `01-api_discovery_schema.md`).
 - **Parallel Workstreams**: `##-{workstream}-##-{descriptive-slug}.md` (e.g., `01-pwa-01-discovery_ui.md`).
 
