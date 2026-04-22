@@ -35,10 +35,10 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.x'
           cache: true
@@ -83,10 +83,10 @@ jobs:
     needs: build-api
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -118,14 +118,14 @@ jobs:
 
       - name: Start Mock API in background
         run: |
-          node mock-api.js > mock-api.log 2>&1 &
+          MOCK_API_PORT=5001 node mock-api.js > mock-api.log 2>&1 &
           echo "MOCK_API_PID=$!" >> $GITHUB_ENV
         working-directory: pwa
 
       - name: Wait for Mock API to be ready
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:5001/health; then
+            if curl -sf http://127.0.0.1:5001/health; then
               echo "Mock API is ready"
               exit 0
             fi
@@ -137,8 +137,8 @@ jobs:
         run: npm run build
         working-directory: pwa
         env:
-          NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
-          API_INTERNAL_URL: http://localhost:5001
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5001
+          API_INTERNAL_URL: http://127.0.0.1:5001
 
       - name: Start PWA in background
         run: |
@@ -146,13 +146,13 @@ jobs:
         working-directory: pwa
         env:
           PORT: 3000
-          NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
-          API_INTERNAL_URL: http://localhost:5001
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5001
+          API_INTERNAL_URL: http://127.0.0.1:5001
 
       - name: Wait for PWA to be ready
         run: |
           for i in $(seq 1 20); do
-            if curl -sf http://localhost:3000/api/health; then
+            if curl -sf http://127.0.0.1:3000/api/health; then
               echo "PWA is ready"
               exit 0
             fi
@@ -165,7 +165,8 @@ jobs:
         working-directory: pwa
         env:
           CI: true
-          BASE_URL: http://localhost:3000
+          BASE_URL: http://127.0.0.1:3000
+          MOCK_API_PORT: 5001
 
       - name: Upload Playwright report
         if: always()
@@ -194,7 +195,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create .env for CI
         run: |
@@ -224,7 +225,7 @@ jobs:
       - name: Wait for PWA health
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:3000/api/health; then echo "PWA healthy"; break; fi
+            if curl -sf http://127.0.0.1:3000/api/health; then echo "PWA healthy"; break; fi
             sleep 3
           done
 
