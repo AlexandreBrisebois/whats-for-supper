@@ -100,20 +100,28 @@
 
 @layer utilities {
   .glass {
-    background: rgba(253, 252, 240, 0.7);
+    background: rgba(253, 252, 240, 0.4);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(205, 93, 69, 0.1);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(253, 252, 240, 0.2);
+    box-shadow: 0 8px 32px rgba(74, 55, 40, 0.08);
+  }
+
+  .glass-sage {
+    background: rgba(138, 154, 91, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(138, 154, 91, 0.1);
+    box-shadow: 0 8px 32px rgba(138, 154, 91, 0.05);
   }
 
   .glass-solar {
-    background: rgba(253, 252, 240, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 2px solid rgba(225, 173, 1, 0.3);
+    background: rgba(225, 173, 1, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(225, 173, 1, 0.2);
     box-shadow:
-      0 8px 32px rgba(225, 173, 1, 0.1),
+      0 12px 40px rgba(225, 173, 1, 0.15),
       0 0 0 1px rgba(225, 173, 1, 0.05);
   }
 
@@ -143,13 +151,36 @@
     border-color: rgba(221, 173, 1, 0.4);
   }
 
+  .blob {
+    position: fixed;
+    filter: blur(60px);
+    z-index: -1;
+    opacity: 0.15;
+    pointer-events: none;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  }
+
+  .blob-terracotta {
+    background-color: var(--color-terracotta);
+    width: 300px;
+    height: 300px;
+  }
+
+  .blob-sage {
+    background-color: var(--color-sage);
+    width: 400px;
+    height: 400px;
+  }
+
+  .blob-ochre {
+    background-color: var(--color-ochre);
+    width: 250px;
+    height: 250px;
+  }
+
   .solar-earth-bg {
     background-color: var(--color-cream);
-    background-image:
-      radial-gradient(circle at 15% 50%, rgba(205, 93, 69, 0.03) 0%, transparent 50%),
-      radial-gradient(circle at 85% 30%, rgba(225, 173, 1, 0.03) 0%, transparent 50%),
-      radial-gradient(circle at 50% 80%, rgba(138, 154, 91, 0.02) 0%, transparent 50%);
-    min-height: 100vh;
+    overflow: hidden;
   }
 
   .safe-bottom {

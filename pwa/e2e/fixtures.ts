@@ -1,4 +1,6 @@
-import { test as base } from '@playwright/test';
+import { test as base, type Page, type APIRequestContext } from '@playwright/test';
+
+export type { Page, APIRequestContext };
 
 export const test = base.extend({
   // Extend the page fixture to clear cookies before each test

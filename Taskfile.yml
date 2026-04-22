@@ -90,7 +90,7 @@ tasks:
     desc: "Test API (unit + integration)"
     dir: api
     cmds:
-      - dotnet test
+      - dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj
 
   test:api:watch:
     desc: "Test API in watch mode"

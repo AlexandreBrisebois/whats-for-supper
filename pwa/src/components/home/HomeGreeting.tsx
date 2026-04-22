@@ -15,8 +15,13 @@ export function HomeGreeting() {
   const firstName = selectedMember?.name?.split(' ')[0] || 'There';
 
   return (
-    <h1 className="font-heading text-3xl font-medium tracking-tight text-[#4A3728] px-2 mb-2">
-      {getGreeting()}, {firstName}!
-    </h1>
+    <div className="flex flex-col px-1 mb-2">
+      <h1 className="font-heading text-4xl font-semibold tracking-tight text-charcoal">
+        {getGreeting()},
+      </h1>
+      <span className="font-heading text-4xl font-semibold tracking-tight text-terracotta">
+        {firstName}!
+      </span>
+    </div>
   );
 }

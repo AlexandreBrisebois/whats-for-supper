@@ -28,27 +28,24 @@
 - **Text**: `#1F2937` (Charcoal)
 
 ### 2.2 Aesthetic Standards
-- **Glassmorphism**: Subtle backdrop-blur and soft shadows (`0 8px 30px rgba(0,0,0,0.04)`).
-- **Typography**: *Outfit* or *Inter* (Sans); *Playfair Display* (Serif headings).
-- **Corners**: Rounded (8px - 12px).
+- **Organic Shapes**: Large, flowing background "blobs" in Terracotta, Ochre, and Sage to create a "sanctuary" feel.
+- **Glassmorphism**: Subtle backdrop-blur (12px) and soft shadows (`0 8px 32px rgba(0,0,0,0.06)`).
+- **Typography**: *Outfit* for editorial headings; *Inter* for high-legibility UI data.
+- **Corners**: Large rounded corners (16px - 32px) for a soft, friendly feel.
+
+### 2.3 Navigation Hierarchy
+- **Primary Action**: **Discovery** (Center button, Compass Icon, Ochre/Solar style).
+- **Ordering**: 1. Home (House), 2. Capture (Camera), 3. Discovery (Compass), 4. Planner (Calendar), 5. Profile (User).
 
 ---
 
-## 3. Core UX: The Matchmaking Discovery (Phase 3)
+## 4. Home Page: The Command Center
+The Home page is designed to answer "What's for Supper?" in 2 seconds and manage prep in 10.
 
-The heart of social engagement—a card-based collaborative voting system.
-
-### 3.1 The Card Stack
-- **Hero Focus**: Single large card (75% image area) to minimize cognitive load.
-- **Interactions**: 
-    - **Swipe Right**: Like/Plan.
-    - **Swipe Left**: Dislike/Veto.
-- **Consensus**: When 2+ members "Like" a recipe, it's flagged as a **Family Match**.
-- **Veto Dominance**: A single "Dislike" removes the recipe from the deck for all members.
-
-### 3.2 UI Design Tokens
-- **Palette**: Terracotta for Veto, Sage Green for Like.
-- **Animation**: Spring-based snap-back for uncommitted swipes.
+### 4.1 UX Components
+- **Tonight's Menu Hero**: A large, editorial card with a 4:3 image ratio and glassmorphism.
+- **Quick Capture Trigger**: A high-affordance Terracotta button with a Camera icon for "Zero-Friction" recipe acquisition.
+- **Progressive Prep Disclosure**: A "Next Prep Step" card that shows only the immediate next task to reduce domestic anxiety.
 
 ---
 

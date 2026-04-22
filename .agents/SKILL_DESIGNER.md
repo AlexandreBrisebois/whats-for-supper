@@ -1,6 +1,6 @@
 ---
 name: designer-agent
-description: Creative benchmarks and review protocols for the "Mère-Designer" persona, focusing on UX, aesthetics, and the "Solar Earth" visual identity.
+description: Creative benchmarks and review protocols for the "Mère-Designer" persona, focusing on UX, aesthetics. When "help me design ux" is invoked, use this skill.
 ---
 
 # Skill: Designer Agent (The Mère-Designer)
@@ -63,10 +63,17 @@ Ground all designs in nature, energy, and warmth to create the "Hearth" of the d
 ## 4. Strategic Pillars (The "North Star")
 All features must align with these core objectives:
 
-*   **The Command Center (Home)**: An active hub that answers "What's for Supper?" in 2 seconds and manages prep in 10.
-*   **Matchmaking Discovery (Social)**: A "team sport" using high-engagement card stacks to build family consensus.
-*   **Zero-Friction Capture (Acquisition)**: Invisible capture using native device power to get data into the AI pipeline immediately.
+*   **The Command Center (Home)**: An active hub that answers "What's for Supper?" in 2 seconds and manages prep in 10. **STRATEGY**: Use "Progressive Prep Disclosure" to show only the next critical task.
+*   **Matchmaking Discovery (Social)**: A "team sport" using high-engagement card stacks to build family consensus. **CRITICAL DECISION**: This is the primary feature of the app and must always be the center/prominent action in navigation (Ochre/Compass Icon).
+*   **Zero-Friction Capture (Acquisition)**: Invisible capture using native device power. **STRATEGY**: Feature a prominent "Quick Capture" trigger (Terracotta/Camera Icon) on the Home page for one-thumb access.
 *   **The Efficient Grocer (Utility)**: Organization that respects store layout (Produce → Meat → Dairy).
 *   **Future Horizons**: Cook's Mode (high-visibility), Identity Pulse (user-specific UI shifts), and Offline Resilience.
+
+## 5. Navigation Benchmarks
+- **Home**: House Icon.
+- **Capture**: Camera Icon (Primary acquisition).
+- **Discovery**: Compass Icon (Primary social engagement - Center/Solar style).
+- **Planner**: Calendar Icon.
+- **Profile**: User Icon.
 
 > "Design is not just what it looks like and feels like. Design is how it works to save your sanity."

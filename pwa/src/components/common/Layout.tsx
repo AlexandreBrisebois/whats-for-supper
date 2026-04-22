@@ -37,9 +37,9 @@ export function Layout({
   return (
     <div className={`relative flex min-h-dvh flex-col bg-cream overflow-x-hidden ${className}`}>
       {/* Organic Background Elements */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_top_right,rgba(225,173,1,0.05),transparent_40%)] pointer-events-none" />
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(205,93,69,0.05),transparent_40%)] pointer-events-none" />
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,rgba(138,154,91,0.03),transparent_60%)] pointer-events-none" />
+      <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
+      <div className="blob blob-ochre top-1/4 -right-10 animate-[pulse_10s_infinite]" />
+      <div className="blob blob-sage -bottom-20 left-1/4 animate-[pulse_12s_infinite]" />
 
       {/* Header */}
       {!hideHeader && <Header title={title} leftAction={leftAction} rightAction={rightAction} />}
