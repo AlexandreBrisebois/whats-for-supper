@@ -45,9 +45,7 @@ export function TonightMenuCard({ recipeName, description, imageUrl, prepTime }:
           {recipeName}
         </h3>
         {description && (
-          <p className="text-charcoal/70 text-base font-medium leading-relaxed">
-            {description}
-          </p>
+          <p className="text-charcoal/70 text-base font-medium leading-relaxed">{description}</p>
         )}
       </div>
     </div>
@@ -69,7 +67,10 @@ export function QuickCaptureTrigger() {
           <span className="text-white/80 text-sm font-medium">Add a recipe in seconds</span>
         </div>
       </div>
-      <ChevronRight size={24} className="text-white/60 group-hover:translate-x-1 transition-transform" />
+      <ChevronRight
+        size={24}
+        className="text-white/60 group-hover:translate-x-1 transition-transform"
+      />
     </Link>
   );
 }
@@ -94,19 +95,24 @@ export function NextPrepStepCard({
         )}
       </div>
 
-      <div className="flex items-center gap-4 group cursor-pointer" onClick={() => onComplete?.(task.id)}>
+      <div
+        className="flex items-center gap-4 group cursor-pointer"
+        onClick={() => onComplete?.(task.id)}
+      >
         <div
           className={`h-8 w-8 rounded-xl flex items-center justify-center border-2 transition-all duration-300 ${
-            task.completed 
-              ? 'bg-sage border-sage text-white scale-110' 
+            task.completed
+              ? 'bg-sage border-sage text-white scale-110'
               : 'border-sage/40 bg-white/50 hover:border-sage'
           }`}
         >
           {task.completed && <Check strokeWidth={3} size={18} />}
         </div>
-        <span className={`flex-1 text-charcoal text-xl font-bold tracking-tight transition-all ${
-          task.completed ? 'opacity-50 line-through' : ''
-        }`}>
+        <span
+          className={`flex-1 text-charcoal text-xl font-bold tracking-tight transition-all ${
+            task.completed ? 'opacity-50 line-through' : ''
+          }`}
+        >
           {task.label}
         </span>
       </div>

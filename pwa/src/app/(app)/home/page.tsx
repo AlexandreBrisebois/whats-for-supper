@@ -6,7 +6,11 @@ import type { ApiResponse } from '@/types/api';
 
 export const dynamic = 'force-dynamic';
 
-import { TonightMenuCard, QuickCaptureTrigger, NextPrepStepCard } from '@/components/home/HomeSections';
+import {
+  TonightMenuCard,
+  QuickCaptureTrigger,
+  NextPrepStepCard,
+} from '@/components/home/HomeSections';
 
 /**
  * HomePage is now a Server Component.

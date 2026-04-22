@@ -65,9 +65,7 @@ export function Navigation({ className = '' }: NavigationProps) {
             href={item.href}
             className={[
               'flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-bold transition-all z-40 uppercase tracking-tighter',
-              active
-                ? 'text-terracotta'
-                : 'text-charcoal-400 hover:text-terracotta/70',
+              active ? 'text-terracotta' : 'text-charcoal-400 hover:text-terracotta/70',
             ].join(' ')}
             aria-current={active ? 'page' : undefined}
           >
