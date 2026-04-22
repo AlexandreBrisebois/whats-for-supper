@@ -4,6 +4,7 @@ import { Layout } from '@/components/common/Layout';
 import { usePathname } from 'next/navigation';
 import { ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
+import { X } from 'lucide-react';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -25,9 +26,9 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
           <Link
             href={ROUTES.HOME}
             aria-label="Cancel capture"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-charcoal-300 hover:bg-indigo/5 active:scale-95 transition-all"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-charcoal/60 hover:bg-terracotta/5 active:scale-95 transition-all"
           >
-            ✕
+            <X size={20} />
           </Link>
         ),
       };

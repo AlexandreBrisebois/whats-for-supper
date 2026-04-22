@@ -87,8 +87,8 @@ test('authenticated user can navigate to the capture page from home', async ({ p
 
   await expect(page).toHaveURL(/\/capture/);
 
-  // Capture page shows "New Capture" heading
-  await expect(page.getByRole('heading', { name: /new capture/i })).toBeVisible();
+  // Capture page shows camera button (accessible by aria-label)
+  await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
 });
 
 // ──────────────────────────────────────────────────────────────────────────────

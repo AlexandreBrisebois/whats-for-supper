@@ -114,7 +114,9 @@ export default function RecipesPage() {
                         <ChefHat size={10} /> {topPick.difficulty}
                       </span>
                     </div>
-                    <h3 className="text-3xl font-black tracking-tighter leading-none">{topPick.name}</h3>
+                    <h3 className="text-3xl font-black tracking-tighter leading-none">
+                      {topPick.name}
+                    </h3>
                     <p className="text-white/70 text-sm font-medium line-clamp-2 max-w-[90%] leading-snug">
                       {topPick.description}
                     </p>

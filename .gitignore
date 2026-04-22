@@ -55,7 +55,7 @@ TestResult.xml
 nunit-*.xml
 
 # Docker Compose environment-specific files
-docker-compose.synology.yml
+docker/docker-compose.prod.yml
 
 # Local environment overrides (never commit real credentials)
 .env
@@ -87,8 +87,7 @@ node_modules/
 # Playwright output
 playwright-report/
 test-results/
-docker-compose.prod.yml
-docker/docker-compose.prod.yml
+pwa/e2e-screenshots
 
 # Agents
 .agents/mcp.json

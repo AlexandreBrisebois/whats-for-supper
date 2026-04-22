@@ -26,8 +26,18 @@ export default function MinimalCapture() {
   } = useCapture();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const saveAreaRef = useRef<HTMLDivElement>(null);
 
   const [onSuccess, setOnSuccess] = useState(false);
+
+  useEffect(() => {
+    if (images.length > 0) {
+      const timer = setTimeout(() => {
+        saveAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [images.length]);
 
   useEffect(() => {
     if (onSuccess) {
@@ -85,33 +95,24 @@ export default function MinimalCapture() {
   return (
     <div className="flex flex-col gap-10">
       {/* Capture Area */}
-      <div className="flex flex-col gap-8 rounded-[3rem] bg-terracotta/[0.03] border-2 border-dashed border-terracotta/10 p-12 text-center transition-colors hover:bg-terracotta/[0.05]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-terracotta text-white shadow-xl shadow-terracotta/20 ring-4 ring-white">
-            <Camera size={32} strokeWidth={2.5} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <h2 className="font-heading text-xl font-bold text-charcoal">New Capture</h2>
-            <p className="text-sm text-charcoal/50">Snap a photo of your recipe</p>
-          </div>
-        </div>
+      <div className="flex flex-col items-center gap-6 rounded-[3rem] bg-terracotta/[0.03] border-2 border-dashed border-terracotta/10 p-12 text-center transition-colors hover:bg-terracotta/[0.05]">
+        <button
+          type="button"
+          onClick={handleCapture}
+          aria-label="Take a photo"
+          className="flex h-28 w-28 items-center justify-center rounded-full bg-terracotta text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
+        >
+          <Camera size={40} strokeWidth={2} />
+        </button>
 
-        <div className="flex flex-col gap-4">
-          <Button
-            size="lg"
-            className="rounded-2xl py-6 font-bold shadow-lg shadow-terracotta/20"
-            onClick={handleCapture}
-          >
-            Open Camera
-          </Button>
-          <button
-            onClick={handleGallery}
-            className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
-          >
-            <ImageIcon size={16} />
-            Pick from Gallery
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleGallery}
+          className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
+        >
+          <ImageIcon size={16} />
+          Pick from Gallery
+        </button>
 
         {/* Hidden Inputs */}
         <input
@@ -141,7 +142,7 @@ export default function MinimalCapture() {
             </h3>
             <button
               onClick={() => images.forEach((_, i) => removeImage(0))}
-              className="text-[10px] font-bold uppercase tracking-widest text-pink/60"
+              className="text-[10px] font-bold uppercase tracking-widest text-terracotta/40"
             >
               Clear All
             </button>
@@ -174,7 +175,7 @@ export default function MinimalCapture() {
 
                 {/* Star Selection Icon - now just an indicator since the whole card is clickable */}
                 <div
-                  className={`absolute left-1 top-1 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-all ${idx === selectedDishPhotoIndex ? 'bg-terracotta text-white shadow-lg scale-110' : 'bg-white/60 text-charcoal/20 group-hover:text-terracotta/40'}`}
+                  className={`absolute left-1 top-1 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-all ${idx === selectedDishPhotoIndex ? 'bg-terracotta text-white shadow-lg scale-110 opacity-100' : 'opacity-0 bg-white/60 text-charcoal/20'}`}
                 >
                   <Star
                     size={16}
@@ -206,7 +207,7 @@ export default function MinimalCapture() {
                   <button
                     key={opt.value}
                     onClick={() => setRating(opt.value as any)}
-                    className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta transform scale-100 shadow-sm border-opacity-100' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 transform scale-[0.98]'}`}
+                    className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
                   >
                     <span className="text-2xl leading-none">{opt.icon}</span>
                     <span className="text-[10px] font-bold uppercase tracking-wider">
@@ -228,16 +229,18 @@ export default function MinimalCapture() {
             </div>
           </div>
 
-          <Button
-            variant="primary"
-            fullWidth
-            size="lg"
-            isLoading={isSubmitting}
-            onClick={handleSave}
-            className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
-          >
-            Save Recipe
-          </Button>
+          <div ref={saveAreaRef}>
+            <Button
+              variant="primary"
+              fullWidth
+              size="lg"
+              isLoading={isSubmitting}
+              onClick={handleSave}
+              className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
+            >
+              Save Recipe
+            </Button>
+          </div>
         </div>
       )}
 

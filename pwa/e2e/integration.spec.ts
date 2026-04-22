@@ -139,7 +139,7 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   // ── Step 4: Navigate to capture ──────────────────────────────────────────
   await page.getByRole('link', { name: /quick capture/i }).click();
   await expect(page).toHaveURL(/\/capture/);
-  await expect(page.getByRole('heading', { name: /new capture/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
 
   // ── Step 5: Submit a recipe (with mock image) ─────────────────────────────
   await page.context().grantPermissions(['camera']);
