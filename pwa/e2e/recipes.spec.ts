@@ -20,7 +20,9 @@ test.describe('Recipes Search Page', () => {
     await page.waitForLoadState('networkidle');
 
     // Wait for search input to be visible (indicates data has loaded and component has rendered)
-    await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible({
+      timeout: 10_000,
+    });
 
     // 2. Verify Agent's Recommendations section
     await expect(page.getByText(/Agent's Recommendations/i)).toBeVisible();
