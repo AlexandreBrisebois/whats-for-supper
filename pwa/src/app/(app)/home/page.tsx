@@ -1,8 +1,6 @@
 import { StoreInitializer } from '@/components/common/StoreInitializer';
-import { HomeGreeting } from '@/components/home/HomeGreeting';
 import { serverFetch } from '@/lib/api/server-client';
 import type { FamilyMember } from '@/types/domain';
-import type { ApiResponse } from '@/types/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +8,7 @@ import {
   TonightMenuCard,
   QuickCaptureTrigger,
   NextPrepStepCard,
+  SmartPivotCard,
 } from '@/components/home/HomeSections';
 
 /**
@@ -28,13 +27,17 @@ export default async function HomePage() {
 
   // Next Prep Step data (Mocked for now)
   const nextTask = { id: '1', label: 'Defrost ground beef', time: '3:00 PM', completed: false };
+  const isMealPlanned = true; // Toggle this to test SmartPivot
+  const isPrepActive = true;
 
   return (
     <>
       <StoreInitializer familyMembers={familyMembers} />
 
       <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto">
-        <HomeGreeting />
+        {!isMealPlanned && <SmartPivotCard />}
+
+        {isPrepActive && <NextPrepStepCard task={nextTask} />}
 
         <TonightMenuCard
           recipeName="Homemade Lasagna"
@@ -44,8 +47,6 @@ export default async function HomePage() {
         />
 
         <QuickCaptureTrigger />
-
-        <NextPrepStepCard task={nextTask} />
       </div>
     </>
   );

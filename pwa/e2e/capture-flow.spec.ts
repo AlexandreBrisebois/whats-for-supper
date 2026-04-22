@@ -49,11 +49,13 @@ async function loginAsMember(page: Page) {
 
       // Wait for redirect to home after creation
       await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
-      // Wait for identity cookie and greeting
+      // Wait for identity cookie and Tonight's Menu
       await page.waitForFunction(() => document.cookie.includes('x-family-member-id='), null, {
         timeout: 5000,
       });
-      await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible({
+        timeout: 10_000,
+      });
       return;
     }
   }
@@ -67,7 +69,9 @@ async function loginAsMember(page: Page) {
       timeout: 5000,
     });
     await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible({
+      timeout: 10_000,
+    });
   }
 }
 
@@ -75,11 +79,11 @@ async function loginAsMember(page: Page) {
 // Scenario 1 — Navigate from home to /capture
 // ──────────────────────────────────────────────────────────────────────────────
 
-test('authenticated user can navigate to the capture page', async ({ page }) => {
+test('authenticated user can navigate to the capture page from home', async ({ page }) => {
   await loginAsMember(page);
 
-  // Click the "Capture" link in the navigation
-  await page.getByRole('link', { name: /^capture$/i }).click();
+  // Click the "Quick Capture" trigger on the Home page
+  await page.getByRole('link', { name: /quick capture/i }).click();
 
   await expect(page).toHaveURL(/\/capture/);
 
@@ -148,5 +152,15 @@ test('after successful capture, user can return to home', async ({ page }) => {
 
   // Navigate directly to home
   await page.goto('/home');
-  await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible();
+});
+
+test('user can navigate to the search page from the navigation bar', async ({ page }) => {
+  await loginAsMember(page);
+
+  // Click the "Search" link in the navigation bar
+  await page.getByRole('link', { name: /^search$/i }).click();
+
+  await expect(page).toHaveURL(/\/recipes/);
+  await expect(page.getByRole('heading', { name: /find a recipe/i })).toBeVisible();
 });

@@ -60,9 +60,11 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 **Goal**: Family discovers and votes on recipes via the "Express" high-utility hub.
 
 ### Additions
-- **The Smart Pivot**: Card-swiping discovery module integrated directly into the Home/Command Center for 30-second "Express" planning.
-- **Swipe Discovery (Full)**: Full-screen card-based collaborative voting.
-- **SearchRecipesAgent**: Natural language search via Ollama + pgvector.
+- [x] **Solar Earth UX Refinement**: Editorial header, refined navigation, and 85% glassmorphism.
+- [x] **The Smart Pivot (Visuals)**: High-contrast pivot card on Home for unplanned meals.
+- [ ] **Swipe Discovery (Full)**: Full-screen card-based collaborative voting.
+- [ ] **SearchRecipesAgent**: Natural language search via Ollama + pgvector.
+- [ ] **One-Tap Pivot Execution**: Connect "Quick Fix" chips to the Schedule API.
 
 ### PWA Integrations (API-Sync)
 - [ ] **Recipe Details**: Implement detailed recipe view with inline `PATCH` editing.
@@ -70,8 +72,9 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 - [ ] **Processing Feedback**: Add visual indicators for recipes in the AI pipeline.
 
 ### Implementation Checklist
-- [ ] **Smart Pivot Card**: Compact `ExpressCard.tsx` (~300px) with Framer Motion flick gestures.
-- [ ] **Home Integration**: Conditional display on `home/page.tsx`.
+- [x] **Smart Pivot Card**: Compact `ExpressCard.tsx` (implemented as `SmartPivotCard`).
+- [x] **Home Integration**: Conditional display on `home/page.tsx`.
+- [ ] **Vector Search API**: Backend support for agentic natural language queries.
 - [ ] **Swipe Logic**: Right-swipe triggers immediate planning (`TODAY`).
 
 ---

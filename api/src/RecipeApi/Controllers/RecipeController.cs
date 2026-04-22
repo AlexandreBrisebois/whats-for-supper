@@ -53,6 +53,42 @@ public class RecipeController(RecipeService recipeService, ImageService imageSer
         return Ok(result);
     }
 
+    /// <summary>GET /api/recipes/recommendations — mock recommendations (100% mocked data for development).</summary>
+    [HttpGet("recommendations")]
+    public IActionResult GetRecommendations()
+    {
+        var response = new RecommendationsDto
+        {
+            TopPick = new TopPickDto
+            {
+                Id = "lasagna",
+                Name = "Homemade Lasagna",
+                Description = "The ultimate comfort food, layered with rich meat sauce and creamy béchamel.",
+                ImageUrl = "https://images.unsplash.com/photo-1574894709920-11b28e7367e3",
+                PrepTime = "45 mins",
+                Difficulty = "Medium",
+            },
+            Results = new List<RecommendationResultDto>
+            {
+                new RecommendationResultDto
+                {
+                    Id = "1",
+                    Name = "Zesty Lemon Chicken",
+                    Time = "30m",
+                    Image = "https://images.unsplash.com/photo-1532550907401-a500c9a57435",
+                },
+                new RecommendationResultDto
+                {
+                    Id = "2",
+                    Name = "Creamy Pesto Pasta",
+                    Time = "15m",
+                    Image = "https://images.unsplash.com/photo-1473093226795-af9932fe5856",
+                },
+            },
+        };
+        return Ok(response);
+    }
+
     /// <summary>GET /api/recipes/{id}/original/{photoIndex} — raw image binary.</summary>
     [HttpGet("{recipeId:guid}/original/{photoIndex:int}")]
     public IActionResult GetImage(Guid recipeId, int photoIndex)

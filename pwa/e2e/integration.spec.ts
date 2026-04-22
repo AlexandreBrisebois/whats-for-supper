@@ -90,7 +90,7 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
       {
         name: 'x-family-member-id',
         value: memberId,
-        url: 'http://127.0.0.1:3000/',
+        url: 'http://127.0.0.1:3001/',
       },
     ]);
     // Debug: Ensure cookie is present before navigation
@@ -130,10 +130,13 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   const cookieValue = await page.evaluate(() => document.cookie);
   console.log('Cookies after navigation:', cookieValue);
 
-  await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible({ timeout: 10_000 });
+  // Home page shows the Tonight's Menu card
+  await expect(page.getByText(/tonight's menu/i)).toBeVisible({
+    timeout: 15_000,
+  });
 
   // ── Step 4: Navigate to capture ──────────────────────────────────────────
-  await page.getByRole('link', { name: /^capture$/i }).click();
+  await page.getByRole('link', { name: /quick capture/i }).click();
   await expect(page).toHaveURL(/\/capture/);
   await expect(page.getByRole('heading', { name: /new capture/i })).toBeVisible();
 
@@ -181,6 +184,6 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
 
   await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
 
-  // Home page still shows greeting — no regressions
-  await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
+  // Home page still shows content — no regressions
+  await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible();
 });

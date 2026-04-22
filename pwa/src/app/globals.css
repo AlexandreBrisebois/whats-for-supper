@@ -107,6 +107,14 @@
     box-shadow: 0 8px 32px rgba(74, 55, 40, 0.08);
   }
 
+  .glass-nav {
+    background: rgba(253, 252, 240, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 -4px 20px rgba(74, 55, 40, 0.05);
+  }
+
   .glass-sage {
     background: rgba(138, 154, 91, 0.1);
     backdrop-filter: blur(12px);
@@ -149,6 +157,13 @@
   .glow-ochre {
     box-shadow: 0 0 20px rgba(221, 173, 1, 0.2);
     border-color: rgba(221, 173, 1, 0.4);
+  }
+
+  .shadow-ochre-floating {
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 12px 24px -1px rgba(225, 173, 1, 0.4),
+      0 0 0 1px rgba(225, 173, 1, 0.1);
   }
 
   .blob {

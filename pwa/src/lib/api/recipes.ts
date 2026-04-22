@@ -30,6 +30,32 @@ export async function createRecipe(formData: FormData): Promise<CreateRecipeResp
   return data.data;
 }
 
+export interface RecommendationResult {
+  id: string;
+  name: string;
+  time: string;
+  image: string;
+}
+
+export interface RecommendationsResponse {
+  topPick: {
+    id: string;
+    name: string;
+    description: string;
+    imageUrl: string;
+    prepTime: string;
+    difficulty: string;
+  };
+  results: RecommendationResult[];
+}
+
+export async function getRecommendations(): Promise<RecommendationsResponse> {
+  const { data } = await apiClient.get<{ data: RecommendationsResponse }>(
+    '/api/recipes/recommendations'
+  );
+  return data.data;
+}
+
 /**
  * Fetches a recipe image by recipe ID and index.
  * Returns the image as a blob URL for use in <img> tags.

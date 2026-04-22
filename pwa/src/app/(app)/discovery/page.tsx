@@ -7,8 +7,12 @@ import { DiscoveryCard } from '@/components/discovery/DiscoveryCard';
 import { RefreshCcw, Loader2 } from 'lucide-react';
 import { getCategories, getDiscoveryStack, submitVote, DiscoveryRecipe } from '@/lib/api/discovery';
 import { API_BASE_URL } from '@/lib/constants/config';
+import { useDiscoveryStore } from '@/store/discoveryStore';
+import { useFamily } from '@/hooks/useFamily';
 
 export default function DiscoveryPage() {
+  const { setHasPendingCards } = useDiscoveryStore();
+  const { selectedFamilyMemberId, _hasHydrated } = useFamily();
   const [recipes, setRecipes] = useState<DiscoveryRecipe[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
@@ -21,10 +25,12 @@ export default function DiscoveryPage() {
     let stack: DiscoveryRecipe[] = [];
     if (cats.length > 0) {
       const rawStack = await getDiscoveryStack(cats[0]);
+      console.log('rawStack from API first item:', JSON.stringify(rawStack[0]));
       stack = rawStack.map((r) => ({
         ...r,
         imageUrl: `${API_BASE_URL}/api/recipes/${r.id}/hero`,
       }));
+      console.log('mapped stack first item:', JSON.stringify(stack[0]));
     }
     return { cats, stack };
   }, []);
@@ -44,6 +50,8 @@ export default function DiscoveryPage() {
   }, [performFetch]);
 
   useEffect(() => {
+    if (!_hasHydrated || !selectedFamilyMemberId) return;
+
     let ignore = false;
     const initialize = async () => {
       try {
@@ -64,7 +72,13 @@ export default function DiscoveryPage() {
     return () => {
       ignore = true;
     };
-  }, [performFetch]);
+  }, [performFetch, _hasHydrated, selectedFamilyMemberId]);
+
+  // Sync pending cards status to store
+  useEffect(() => {
+    setHasPendingCards(recipes.length > 0);
+    return () => setHasPendingCards(false);
+  }, [recipes.length, setHasPendingCards]);
 
   const loadNextCategory = useCallback(async () => {
     const nextIndex = currentCategoryIndex + 1;
@@ -72,10 +86,12 @@ export default function DiscoveryPage() {
       setIsLoading(true);
       try {
         const stack = await getDiscoveryStack(categories[nextIndex]);
+        console.log('loadNextCategory rawStack first:', JSON.stringify(stack[0]));
         const mappedStack = stack.map((r) => ({
           ...r,
           imageUrl: `${API_BASE_URL}/api/recipes/${r.id}/hero`,
         }));
+        console.log('loadNextCategory mappedStack first:', JSON.stringify(mappedStack[0]));
         setRecipes(mappedStack);
         setCurrentCategoryIndex(nextIndex);
       } catch (error) {
@@ -119,10 +135,17 @@ export default function DiscoveryPage() {
   const handleSwipeRight = (recipeId: string) => {
     // Optimistic Update
     const recipe = recipes.find((r) => r.id === recipeId);
+    console.log('handleSwipeRight:', {
+      recipeId,
+      recipeKeys: recipe ? Object.keys(recipe) : 'no recipe',
+      hasFamilyInterest: recipe?.hasFamilyInterest,
+      recipe,
+    });
     const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
     setRecipes(updatedRecipes);
 
     if (recipe?.hasFamilyInterest) {
+      console.log('Match found! Incrementing matchCount');
       setMatchCount((prev) => prev + 1);
     }
 

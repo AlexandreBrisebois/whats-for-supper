@@ -25,52 +25,71 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
   useEffect(() => {
     async function verifyIdentity() {
       try {
-        if (!_hasHydrated) return;
+        console.log('[IdentityValidator] Verifying identity...', {
+          pathname,
+          selectedFamilyMemberId,
+          _hasHydrated,
+          membersCount: familyMembers?.length,
+        });
+
+        if (!_hasHydrated) {
+          console.log('[IdentityValidator] Not hydrated yet.');
+          return;
+        }
 
         const isLanding = pathname === ROUTES.LANDING;
         const isOnboarding = pathname === ROUTES.ONBOARDING;
 
         // 1. Landing page: Instant redirect based on identity
         if (isLanding) {
-          router.replace(selectedFamilyMemberId ? ROUTES.HOME : ROUTES.ONBOARDING);
+          const target = selectedFamilyMemberId ? ROUTES.HOME : ROUTES.ONBOARDING;
+          console.log('[IdentityValidator] Landing page redirect to:', target);
+          router.replace(target);
           return;
         }
 
         // 2. Onboarding page: Always allow (Ready).
-        // If the user is already authenticated, the page component can choose to redirect,
-        // but we don't force a router.replace here to avoid collisions during the 'add member' flow.
         if (isOnboarding) {
+          console.log('[IdentityValidator] On onboarding page. Ready.');
           setIsReady(true);
           return;
         }
 
         // 3. Protected routes: If no identity, redirect to onboarding
         if (!selectedFamilyMemberId) {
-          console.warn('[IdentityValidator] No identity found. Redirecting to onboarding.');
+          console.warn(
+            '[IdentityValidator] No identity found for protected route. Redirecting to onboarding.'
+          );
           router.replace(ROUTES.ONBOARDING);
           return;
         }
 
         // 4. Validate if the stored ID actually exists in the family
         if (familyMembers?.length === 0) {
+          console.log('[IdentityValidator] Loading family members...');
           await loadFamily();
         }
 
         const latestMembers = useFamilyStore.getState().familyMembers ?? [];
         const exists = latestMembers.some((m) => m.id === selectedFamilyMemberId);
 
+        console.log('[IdentityValidator] Member exists check:', {
+          exists,
+          count: latestMembers.length,
+        });
+
         // Only clear and redirect if we HAVE members but the ID is missing (e.g. deleted on another device)
         if (!exists && latestMembers.length > 0) {
-          console.warn('Selected member no longer exists. Clearing identity.');
+          console.warn('[IdentityValidator] Selected member no longer exists. Clearing identity.');
           useFamilyStore.getState().selectFamilyMember(null);
           router.replace(ROUTES.ONBOARDING);
           return;
         }
 
+        console.log('[IdentityValidator] Identity verified. Setting isReady=true');
         setIsReady(true);
       } catch (error) {
         console.error('[IdentityValidator] Error during verification:', error);
-        // Fallback to onboarding if something critical fails
         router.replace(ROUTES.ONBOARDING);
       }
     }

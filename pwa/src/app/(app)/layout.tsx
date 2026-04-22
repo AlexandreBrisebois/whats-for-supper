@@ -14,6 +14,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   // Map pathnames to titles
   const getHeaderProps = (path: string) => {
     if (path === ROUTES.HOME) return { title: 'Home' };
+    if (path === '/recipes') return { title: 'Search' };
     if (path === ROUTES.PLANNER) return { title: 'Weekly Planner' };
     if (path === ROUTES.DISCOVERY) return { title: 'Discovery' };
     if (path === ROUTES.PROFILE) return { title: 'Profile' };
@@ -37,7 +38,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   const headerProps = getHeaderProps(pathname);
 
   // Hide header for main app routes, keep for Capture (modal)
-  const mainAppRoutes = [ROUTES.HOME, ROUTES.PLANNER, ROUTES.DISCOVERY, ROUTES.PROFILE];
+  const mainAppRoutes = [ROUTES.HOME, '/recipes', ROUTES.PLANNER, ROUTES.DISCOVERY, ROUTES.PROFILE];
   const hideHeader = mainAppRoutes.includes(pathname as any);
 
   const isDiscovery = pathname === ROUTES.DISCOVERY;

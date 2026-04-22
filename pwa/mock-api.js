@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
   }
 
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
-  console.log(`[Mock API] ${req.method} ${url.pathname}`);
+  console.log(`[Mock API] ${req.method} ${url.pathname}${url.search}`);
 
   res.setHeader('Content-Type', 'application/json');
 
@@ -70,32 +70,34 @@ const server = http.createServer((req, res) => {
       })
     );
   } else if (path === '/api/discovery' && req.method === 'GET') {
-    const category = url.searchParams.get('category');
+    const category = url.searchParams.get('category') || 'General';
+    const response = {
+      data: [
+        {
+          id: 'mock-1',
+          name: `Mock ${category} 1`,
+          description: `Delicious mock recipe from ${category}`,
+          imageUrl: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856',
+          totalTime: '20 Min',
+          difficulty: 'Easy',
+          category: category,
+          hasFamilyInterest: false,
+        },
+        {
+          id: 'mock-2',
+          name: `Mock ${category} 2`,
+          description: `Another great mock recipe from ${category}`,
+          imageUrl: 'https://images.unsplash.com/photo-1485921325833-c519f76c4927',
+          totalTime: '25 Min',
+          difficulty: 'Medium',
+          category: category,
+          hasFamilyInterest: true,
+        },
+      ],
+    };
+    console.log('[Mock API] /api/discovery response:', JSON.stringify(response.data[0]));
     res.writeHead(200);
-    res.end(
-      JSON.stringify({
-        data: [
-          {
-            id: 'mock-1',
-            name: `Mock ${category} 1`,
-            description: 'Delicious mock recipe 1',
-            imageUrl: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856',
-            totalTime: '20 Min',
-            difficulty: 'Easy',
-            category: category,
-          },
-          {
-            id: 'mock-2',
-            name: `Mock ${category} 2`,
-            description: 'Delicious mock recipe 2',
-            imageUrl: 'https://images.unsplash.com/photo-1485921325833-c519f76c4927',
-            totalTime: '25 Min',
-            difficulty: 'Medium',
-            category: category,
-          },
-        ],
-      })
-    );
+    res.end(JSON.stringify(response));
   } else if (
     path.startsWith('/api/discovery/') &&
     path.endsWith('/vote') &&
@@ -151,6 +153,46 @@ const server = http.createServer((req, res) => {
         })
       );
     });
+  } else if (path === '/api/recipes/recommendations' && req.method === 'GET') {
+    res.writeHead(200);
+    res.end(
+      JSON.stringify({
+        data: {
+          topPick: {
+            id: 'lasagna',
+            name: 'Homemade Lasagna',
+            description:
+              'The ultimate comfort food, layered with rich meat sauce and creamy béchamel.',
+            imageUrl: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
+            prepTime: '45 mins',
+            difficulty: 'Medium',
+          },
+          results: [
+            {
+              id: '1',
+              name: 'Zesty Lemon Chicken',
+              time: '30m',
+              image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435',
+            },
+            {
+              id: '2',
+              name: 'Creamy Pesto Pasta',
+              time: '15m',
+              image: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856',
+            },
+          ],
+        },
+      })
+    );
+  } else if (path.startsWith('/api/recipes/') && path.endsWith('/hero')) {
+    // Return a transparent 1x1 pixel image or a placeholder
+    res.setHeader('Content-Type', 'image/png');
+    const pixel = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+      'base64'
+    );
+    res.writeHead(200);
+    res.end(pixel);
   } else {
     res.writeHead(404);
     res.end(JSON.stringify({ message: 'Not Found' }));

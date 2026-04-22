@@ -64,14 +64,13 @@ test('selecting a family member redirects to /home with a welcome message', asyn
   const cookieValue = await page.evaluate(() => document.cookie);
   console.log('Cookies after navigation:', cookieValue);
 
-  // Wait for greeting to appear (hydration)
-  await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible({ timeout: 10_000 });
+  // Wait for Tonight's Menu to appear (hydration)
+  await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible({
+    timeout: 10_000,
+  });
 
-  // Welcome heading includes the member's name
-  if (memberName) {
-    const cleanName = memberName.trim();
-    await expect(page.getByRole('heading', { name: new RegExp(cleanName, 'i') })).toBeVisible();
-  }
+  // Welcome heading is no longer present, so we verify we are on the Home page
+  await expect(page).toHaveURL(/\/home/);
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
