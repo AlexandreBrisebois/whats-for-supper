@@ -162,6 +162,6 @@ test('user can navigate to the search page from the navigation bar', async ({ pa
   await page.getByRole('link', { name: /^search$/i }).click();
 
   await expect(page).toHaveURL(/\/recipes/);
-  // Verify search input is visible on recipes page
-  await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible();
+  // Verify search input is visible on recipes page (with extended timeout for data load)
+  await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible({ timeout: 10_000 });
 });

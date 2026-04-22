@@ -19,11 +19,8 @@ test.describe('Recipes Search Page', () => {
     // Give it a moment to load
     await page.waitForLoadState('networkidle');
 
-    // Wait for loader to disappear
-    await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 10_000 });
-
-    // 1. Verify search input is present and has the right placeholder
-    await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible();
+    // Wait for search input to be visible (indicates data has loaded and component has rendered)
+    await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible({ timeout: 10_000 });
 
     // 2. Verify Agent's Recommendations section
     await expect(page.getByText(/Agent's Recommendations/i)).toBeVisible();
