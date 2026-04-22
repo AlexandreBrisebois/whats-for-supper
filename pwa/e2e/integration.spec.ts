@@ -86,11 +86,12 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
 
   if (memberId) {
     // Set the cookie directly — avoids click-targeting a dynamically ordered list
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
     await page.context().addCookies([
       {
         name: 'x-family-member-id',
         value: memberId,
-        url: 'http://127.0.0.1:3001/',
+        url: baseUrl,
       },
     ]);
     // Debug: Ensure cookie is present before navigation

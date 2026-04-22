@@ -3,11 +3,12 @@ import { test, expect } from './fixtures';
 test.describe('Discovery Flow', () => {
   test.beforeEach(async ({ page }) => {
     // Set x-family-member-id cookie to bypass onboarding
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
     await page.context().addCookies([
       {
         name: 'x-family-member-id',
         value: '1',
-        url: 'http://127.0.0.1:3001',
+        url: baseUrl,
       },
     ]);
   });

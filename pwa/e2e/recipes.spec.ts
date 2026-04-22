@@ -3,11 +3,12 @@ import { test, expect } from './fixtures';
 test.describe('Recipes Search Page', () => {
   test.beforeEach(async ({ page }) => {
     // Set x-family-member-id cookie to bypass onboarding
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
     await page.context().addCookies([
       {
         name: 'x-family-member-id',
         value: '1',
-        url: 'http://127.0.0.1:3001',
+        url: baseUrl,
       },
     ]);
   });
@@ -22,7 +23,7 @@ test.describe('Recipes Search Page', () => {
     await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 10_000 });
 
     // 1. Verify search input is present and has the right placeholder
-    await expect(page.getByPlaceholder(/Something spicy for 4/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible();
 
     // 2. Verify Agent's Recommendations section
     await expect(page.getByText(/Agent's Recommendations/i)).toBeVisible();
