@@ -10,7 +10,7 @@
  */
 
 import path from 'path';
-import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
+import { test, expect, type Page, type APIRequestContext } from './fixtures';
 
 const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 
@@ -67,7 +67,6 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   const apiAvailable = await isApiReachable(request);
 
   // ── Step 1: Fresh user lands on app ──────────────────────────────────────
-  await page.context().clearCookies();
   await page.goto('/');
 
   // Middleware redirects to /onboarding
@@ -129,7 +128,6 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
 
   // Debug: log cookies
   const cookieValue = await page.evaluate(() => document.cookie);
-  // eslint-disable-next-line no-console
   console.log('Cookies after navigation:', cookieValue);
 
   await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible({ timeout: 10_000 });

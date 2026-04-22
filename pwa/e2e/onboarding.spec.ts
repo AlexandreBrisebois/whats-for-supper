@@ -10,24 +10,13 @@
  * suffix to avoid collisions across runs.
  */
 
-import { test, expect, type Page } from '@playwright/test';
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────────────────────────────────────
-
-/** Clear the x-family-member-id cookie so every test starts as a fresh user. */
-async function clearIdentity(page: Page) {
-  await page.context().clearCookies();
-}
+import { test, expect } from './fixtures';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Scenario 1 — Fresh user is redirected to /onboarding
 // ──────────────────────────────────────────────────────────────────────────────
 
 test('fresh user visiting / is redirected to /onboarding', async ({ page }) => {
-  await clearIdentity(page);
-
   await page.goto('/');
 
   // The middleware redirects unauthenticated users to /onboarding
@@ -35,8 +24,6 @@ test('fresh user visiting / is redirected to /onboarding', async ({ page }) => {
 });
 
 test('onboarding page displays the family member list', async ({ page }) => {
-  await clearIdentity(page);
-
   await page.goto('/onboarding');
 
   // Page heading
@@ -51,8 +38,6 @@ test('onboarding page displays the family member list', async ({ page }) => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 test('selecting a family member redirects to /home with a welcome message', async ({ page }) => {
-  await clearIdentity(page);
-
   await page.goto('/onboarding');
 
   // Wait for the family list to finish loading
@@ -77,7 +62,6 @@ test('selecting a family member redirects to /home with a welcome message', asyn
 
   // Debug: log cookies
   const cookieValue = await page.evaluate(() => document.cookie);
-  // eslint-disable-next-line no-console
   console.log('Cookies after navigation:', cookieValue);
 
   // Wait for greeting to appear (hydration)
@@ -95,8 +79,6 @@ test('selecting a family member redirects to /home with a welcome message', asyn
 // ──────────────────────────────────────────────────────────────────────────────
 
 test('adding a new family member saves it and redirects to /home', async ({ page }) => {
-  await clearIdentity(page);
-
   const newName = `TestUser-${Date.now()}`;
 
   await page.goto('/onboarding');

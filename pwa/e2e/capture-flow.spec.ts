@@ -11,7 +11,8 @@
  */
 
 import path from 'path';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from './fixtures';
+import type { Page } from '@playwright/test';
 
 // Path to a small fixture image bundled with the E2E suite
 const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
@@ -25,7 +26,6 @@ const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
  * Creates a test member if none exist.
  */
 async function loginAsMember(page: Page) {
-  await page.context().clearCookies();
   await page.goto('/onboarding');
 
   // Wait for family list to be present

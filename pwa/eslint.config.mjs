@@ -6,10 +6,11 @@ const eslintConfig = [
   },
   ...nextConfig,
   {
-    files: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.test.ts', '**/*.test.tsx'],
+    files: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.test.ts', '**/*.test.tsx', 'e2e/**/*.ts'],
     rules: {
       'react/display-name': 'off',
       'react/prop-types': 'off',
+      'react-hooks/rules-of-hooks': 'off',
     },
   },
 ];

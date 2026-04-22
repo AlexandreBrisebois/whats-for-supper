@@ -1,8 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('Discovery Flow', () => {
   test.beforeEach(async ({ page }) => {
-    // Bypass onboarding by setting x-family-member-id cookie
+    // Set x-family-member-id cookie to bypass onboarding
     await page.context().addCookies([
       {
         name: 'x-family-member-id',
