@@ -76,7 +76,8 @@ public class RecipeControllerTests : IAsyncLifetime
 
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
-        Assert.True(doc.RootElement.TryGetProperty("recipeId", out var idProp));
+        var data = doc.RootElement.GetProperty("data");
+        Assert.True(data.TryGetProperty("recipeId", out var idProp));
         Assert.NotEqual(Guid.Empty, idProp.GetGuid());
     }
 
@@ -112,7 +113,7 @@ public class RecipeControllerTests : IAsyncLifetime
 
         var createJson = await created.Content.ReadAsStringAsync();
         using var createDoc = JsonDocument.Parse(createJson);
-        var recipeId = createDoc.RootElement.GetProperty("recipeId").GetGuid();
+        var recipeId = createDoc.RootElement.GetProperty("data").GetProperty("recipeId").GetGuid();
 
         // Act
         var detail = await _client.GetAsync($"/api/recipes/{recipeId}");

@@ -56,7 +56,10 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         // AddApplicationPart is required because WebApplication.CreateBuilder()
         // in the test assembly only scans RecipeApi.Tests.dll by default.
         builder.Services
-            .AddControllers()
+            .AddControllers(options =>
+            {
+                options.Filters.Add<SuccessWrappingFilter>();
+            })
             .AddApplicationPart(typeof(RecipeApi.Controllers.HealthController).Assembly)
             .AddNewtonsoftJson(opts =>
                 opts.SerializerSettings.ReferenceLoopHandling =

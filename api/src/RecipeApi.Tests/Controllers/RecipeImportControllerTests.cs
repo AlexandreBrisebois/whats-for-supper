@@ -33,9 +33,10 @@ public class RecipeImportControllerTests : IAsyncLifetime
 
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
-        
-        Assert.True(doc.RootElement.TryGetProperty("importedCount", out _), "Missing 'importedCount'");
-        Assert.True(doc.RootElement.TryGetProperty("queueCount",    out _), "Missing 'queueCount'");
-        Assert.True(doc.RootElement.TryGetProperty("failedCount",   out _), "Missing 'failedCount'");
+        var data = doc.RootElement.GetProperty("data");
+
+        Assert.True(data.TryGetProperty("importedCount", out _), "Missing 'importedCount'");
+        Assert.True(data.TryGetProperty("queueCount",    out _), "Missing 'queueCount'");
+        Assert.True(data.TryGetProperty("failedCount",   out _), "Missing 'failedCount'");
     }
 }

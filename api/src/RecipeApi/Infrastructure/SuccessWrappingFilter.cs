@@ -32,13 +32,14 @@ public class SuccessWrappingFilter : IAsyncResultFilter
     {
         var type = value.GetType();
 
-        // Don't wrap if it's already a wrapper type (e.g. HealthCheckResponseDto)
-        // or if it's an anonymous type that already has a 'data' property.
+        // Don't wrap ResponseDto types — they define their own structure
+        if (type.Name.EndsWith("ResponseDto"))
+            return true;
+
+        // Don't wrap if it's an anonymous type that already has a 'data' property.
         if (type.Name.Contains("AnonymousType") && type.GetProperty("data") != null)
             return true;
 
-        // Explicitly check for types we know are NOT meant to be wrapped further
-        // (This can be expanded as needed)
         return false;
     }
 }
