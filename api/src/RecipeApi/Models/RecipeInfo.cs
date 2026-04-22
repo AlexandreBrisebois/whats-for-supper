@@ -16,4 +16,7 @@ public class RecipeInfo
     public RecipeRating Rating { get; set; } = RecipeRating.Unknown;
     public string? Language { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    public string? Category { get; set; }
+    public bool IsDiscoverable { get; set; } = false;
+    public string? Difficulty { get; set; }
 }

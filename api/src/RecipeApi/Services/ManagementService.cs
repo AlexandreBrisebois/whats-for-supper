@@ -53,6 +53,9 @@ public class ManagementService(
                     existing.Rating = recipe.Rating;
                     existing.Description = recipe.Description;
                     existing.Name = recipe.Name;
+                    existing.Category = recipe.Category;
+                    existing.IsDiscoverable = recipe.IsDiscoverable;
+                    existing.Difficulty = recipe.Difficulty;
                     var updatedJson = JsonSerializer.Serialize(existing, JsonDefaults.CamelCase);
                     await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
                 }
@@ -69,7 +72,10 @@ public class ManagementService(
                     Name = recipe.Name,
                     AddedBy = recipe.AddedBy,
                     ImageCount = recipe.ImageCount,
-                    CreatedAt = recipe.CreatedAt
+                    CreatedAt = recipe.CreatedAt,
+                    Category = recipe.Category,
+                    IsDiscoverable = recipe.IsDiscoverable,
+                    Difficulty = recipe.Difficulty
                 };
                 var json2 = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
                 await File.WriteAllTextAsync(recipeInfoPath, json2);
@@ -170,7 +176,10 @@ public class ManagementService(
                             Name = info.Name,
                             ImageCount = info.ImageCount,
                             CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
-                            UpdatedAt = DateTimeOffset.UtcNow
+                            UpdatedAt = DateTimeOffset.UtcNow,
+                            Category = info.Category,
+                            IsDiscoverable = info.IsDiscoverable,
+                            Difficulty = info.Difficulty
                         };
                     }
                 }
@@ -263,6 +272,9 @@ public class ManagementService(
                     existing.Ingredients = recipe.Ingredients;
                     existing.RawMetadata = recipe.RawMetadata;
                     existing.ImageCount = recipe.ImageCount;
+                    existing.Category = recipe.Category;
+                    existing.IsDiscoverable = recipe.IsDiscoverable;
+                    existing.Difficulty = recipe.Difficulty;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
                     logger.LogInformation("Updated metadata for recipe {Id}", recipe.Id);
