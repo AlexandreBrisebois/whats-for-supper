@@ -173,11 +173,13 @@ public class DiscoveryServiceTests
         var service = new DiscoveryService(ctx);
         var memberId = Guid.NewGuid();
 
-        var now = DateTimeOffset.UtcNow;
+        var now = new DateTimeOffset(2026, 4, 23, 12, 0, 0, TimeSpan.Zero);
         var recipe1 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, LastCookedDate = now.AddDays(-1) }; // Less votes, older
         var recipe2 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, LastCookedDate = now };          // Less votes, newer
         var recipe3 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, LastCookedDate = now.AddDays(-2) }; // More votes
         var recipe4 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, LastCookedDate = null };        // Never cooked
+
+        ctx.Recipes.AddRange(recipe1, recipe2, recipe3, recipe4);
 
         ctx.DiscoveryRecipes.AddRange(
             new DiscoveryRecipe { Id = recipe1.Id, LastCookedDate = recipe1.LastCookedDate, VoteCount = 0 },

@@ -111,8 +111,8 @@
     background: rgba(253, 252, 240, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 -4px 20px rgba(74, 55, 40, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 -4px 20px rgba(74, 55, 40, 0.02);
   }
 
   .glass-sage {
@@ -168,9 +168,9 @@
 
   .blob {
     position: fixed;
-    filter: blur(60px);
+    filter: blur(100px);
     z-index: -1;
-    opacity: 0.15;
+    opacity: 0.08;
     pointer-events: none;
     border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
   }

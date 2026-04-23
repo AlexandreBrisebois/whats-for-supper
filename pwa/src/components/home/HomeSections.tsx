@@ -104,7 +104,7 @@ export function QuickCaptureTrigger() {
         </div>
         <div className="flex flex-col">
           <span className="font-heading text-xl font-black tracking-tighter leading-none">
-            Quick Capture
+            Capture a Recipe
           </span>
           <span className="text-charcoal/40 text-[10px] font-black uppercase tracking-widest mt-1">
             Photo or Link

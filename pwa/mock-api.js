@@ -11,6 +11,52 @@ let familyMembers = [
 // In-memory state for recipes (keyed by family member id)
 let recipes = {};
 
+// In-memory state for schedule
+let scheduleState = {
+  // weekOffset -> Array of 7 days
+  // 0 is current week
+  0: [
+    {
+      day: 'Mon',
+      date: '2026-04-20',
+      recipe: {
+        id: 'lasagna',
+        name: 'Homemade Lasagna',
+        image: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
+      },
+    },
+    { day: 'Tue', date: '2026-04-21', recipe: null },
+    {
+      day: 'Wed',
+      date: '2026-04-22',
+      recipe: {
+        id: '1',
+        name: 'Zesty Lemon Chicken',
+        image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435',
+      },
+    },
+    { day: 'Thu', date: '2026-04-23', recipe: null },
+    { day: 'Fri', date: '2026-04-24', recipe: null },
+    { day: 'Sat', date: '2026-04-25', recipe: null },
+    { day: 'Sun', date: '2026-04-26', recipe: null },
+  ],
+  1: Array.from({ length: 7 }, (_, i) => ({
+    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+    date: `2026-04-${27 + i}`,
+    recipe: null,
+  })),
+};
+
+let lockStatus = {
+  0: false,
+  1: false,
+};
+
+let votes = [
+  { id: 'v1', recipeId: 'lasagna', count: 3 },
+  { id: 'v2', recipeId: '1', count: 1 },
+];
+
 const server = http.createServer((req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -193,6 +239,104 @@ const server = http.createServer((req, res) => {
     );
     res.writeHead(200);
     res.end(pixel);
+  } else if (path === '/api/schedule' && req.method === 'GET') {
+    const weekOffset = url.searchParams.get('weekOffset') || '0';
+    const schedule = scheduleState[weekOffset] || [];
+    const locked = lockStatus[weekOffset] || false;
+    res.writeHead(200);
+    res.end(
+      JSON.stringify({
+        data: {
+          weekOffset: parseInt(weekOffset),
+          locked: locked,
+          days: schedule,
+        },
+      })
+    );
+  } else if (path === '/api/schedule/lock' && req.method === 'POST') {
+    const weekOffset = url.searchParams.get('weekOffset') || '0';
+    lockStatus[weekOffset] = true;
+    // Mock purging votes
+    votes = [];
+    console.log(`[Mock API] Schedule locked for week ${weekOffset}. Votes purged.`);
+    res.writeHead(200);
+    res.end(
+      JSON.stringify({ data: { success: true, message: 'Schedule locked and votes purged' } })
+    );
+  } else if (path === '/api/schedule/move' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      const { weekOffset, fromIndex, toIndex } = JSON.parse(body || '{}');
+      const offset = (weekOffset || '0').toString();
+      if (scheduleState[offset]) {
+        const week = scheduleState[offset];
+        const temp = week[fromIndex].recipe;
+        week[fromIndex].recipe = week[toIndex].recipe;
+        week[toIndex].recipe = temp;
+        console.log(
+          `[Mock API] Swapped recipe from index ${fromIndex} to ${toIndex} for week ${offset}`
+        );
+      }
+      res.writeHead(200);
+      res.end(JSON.stringify({ data: { success: true } }));
+    });
+  } else if (path === '/api/schedule/assign' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      const { weekOffset, dayIndex, recipeId, recipeName, recipeImage } = JSON.parse(body || '{}');
+      const offset = (weekOffset || '0').toString();
+
+      if (scheduleState[offset]) {
+        scheduleState[offset][dayIndex].recipe = {
+          id: recipeId,
+          name: recipeName,
+          image: recipeImage,
+        };
+        console.log(`[Mock API] Assigned recipe ${recipeId} to day ${dayIndex} for week ${offset}`);
+      }
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ data: { success: true } }));
+    });
+  } else if (path === '/api/schedule/fill-the-gap' && req.method === 'GET') {
+    res.writeHead(200);
+    res.end(
+      JSON.stringify({
+        data: [
+          {
+            id: 'g1',
+            name: 'Taco Tuesday Special',
+            image: 'https://images.unsplash.com/photo-1565299585062-3f836613ff23',
+          },
+          {
+            id: 'g2',
+            name: 'Mediterranean Salad',
+            image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe',
+          },
+          {
+            id: 'g3',
+            name: 'Mushroom Risotto',
+            image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371',
+          },
+          {
+            id: 'g4',
+            name: 'Steak & Frites',
+            image: 'https://images.unsplash.com/photo-1546241072-48010ad28c2c',
+          },
+          {
+            id: 'g5',
+            name: 'Vegetable Stir-fry',
+            image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd',
+          },
+        ],
+      })
+    );
   } else {
     res.writeHead(404);
     res.end(JSON.stringify({ message: 'Not Found' }));

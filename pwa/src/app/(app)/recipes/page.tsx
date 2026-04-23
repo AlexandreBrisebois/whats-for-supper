@@ -13,6 +13,9 @@ import {
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { getRecommendations, RecommendationsResponse } from '@/lib/api/recipes';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { assignRecipeToDay } from '@/lib/api/planner';
+import { cn } from '@/lib/utils';
 
 /**
  * RecipesPage / Search destination.
@@ -22,6 +25,12 @@ export default function RecipesPage() {
   const [query, setQuery] = useState('');
   const [data, setData] = useState<RecommendationsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const addToDay = searchParams.get('addToDay');
+  const weekOffset = searchParams.get('weekOffset');
 
   useEffect(() => {
     async function loadData() {
@@ -37,10 +46,52 @@ export default function RecipesPage() {
     loadData();
   }, []);
 
+  const handleSelectRecipe = async (recipe: any) => {
+    if (addToDay !== null && weekOffset !== null) {
+      setIsAssigning(true);
+      try {
+        await assignRecipeToDay(parseInt(weekOffset), parseInt(addToDay), {
+          id: recipe.id,
+          name: recipe.name || recipe.title,
+          image: recipe.image || recipe.imageUrl,
+        });
+        router.push(`/planner?success=1&dayIndex=${addToDay}`);
+      } catch (error) {
+        console.error('Failed to assign recipe:', error);
+        setIsAssigning(false);
+      }
+    } else {
+      // Normal recipe view logic
+      console.log('Viewing recipe:', recipe.id);
+    }
+  };
+
   const { topPick, results } = data ?? { topPick: null, results: [] };
 
   return (
     <div className="flex flex-col gap-8 pb-12">
+      {addToDay !== null && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-terracotta/10 border border-terracotta/20 rounded-2xl p-4 flex items-center justify-between"
+        >
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-terracotta/60 mb-1">
+              Planning Mode
+            </p>
+            <p className="text-sm font-bold text-charcoal">
+              Select a meal for Day {parseInt(addToDay) + 1}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/planner')}
+            className="text-xs font-bold text-terracotta hover:underline"
+          >
+            Cancel
+          </button>
+        </motion.div>
+      )}
       {/* Search zone — always rendered so tests can locate it immediately */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -89,7 +140,11 @@ export default function RecipesPage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="relative group cursor-pointer active:scale-[0.98] transition-all"
+                onClick={() => handleSelectRecipe(topPick)}
+                className={cn(
+                  'relative group cursor-pointer active:scale-[0.98] transition-all',
+                  isAssigning && 'opacity-50 pointer-events-none'
+                )}
               >
                 <div className="absolute top-5 left-5 z-20 bg-ochre text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg flex items-center gap-1.5">
                   <Star size={12} fill="currentColor" /> Top Pick
@@ -139,7 +194,11 @@ export default function RecipesPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + idx * 0.1 }}
-                  className="group flex flex-col gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-charcoal/5 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95"
+                  onClick={() => handleSelectRecipe(recipe)}
+                  className={cn(
+                    'group flex flex-col gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-charcoal/5 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95',
+                    isAssigning && 'opacity-50 pointer-events-none'
+                  )}
                 >
                   <div className="relative aspect-[4/3] rounded-[1.5rem] overflow-hidden">
                     <Image

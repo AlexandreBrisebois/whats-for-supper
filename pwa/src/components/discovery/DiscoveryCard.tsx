@@ -97,7 +97,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         scale: 1,
         y: 0,
         opacity: 1,
-        transition: { type: 'spring', stiffness: 300, damping: 20 },
+        transition: { type: 'spring', stiffness: 100, damping: 15 },
       });
     } else {
       controls.start({
@@ -139,7 +139,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       controls.start({
         x: 0,
         rotate: 0,
-        transition: { type: 'spring', stiffness: 300, damping: 20 },
+        transition: { type: 'spring', stiffness: 100, damping: 15 },
       });
     }
   };

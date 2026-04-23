@@ -137,7 +137,7 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   });
 
   // ── Step 4: Navigate to capture ──────────────────────────────────────────
-  await page.getByRole('link', { name: /quick capture/i }).click();
+  await page.getByRole('link', { name: /capture a recipe/i }).click();
   await expect(page).toHaveURL(/\/capture/);
   await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
 

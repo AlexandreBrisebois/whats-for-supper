@@ -44,9 +44,19 @@ Recipes balance structure with the flexibility required for AI-extracted data.
 
 ---
 
-## 3. API Response Standards
+## 3. API Endpoints (Scheduler & Planning)
 
-### 3.1 The Rule: ✅ WRAP ALL SUCCESSFUL RESPONSES
+### 3.1 Weekly Schedule
+- **GET** `/api/schedule?weekOffset=X`: Returns 7-day list for the specified week.
+- **POST** `/api/schedule/lock?weekOffset=X`: Finalizes the plan, purges votes, and updates `lastCookedDate`.
+- **POST** `/api/schedule/move`: Swaps two recipes within a week. Payload: `{ weekOffset, fromIndex, toIndex }`.
+- **GET** `/api/schedule/fill-the-gap`: Returns a curated "Quick Find" stack of 5 recipes.
+
+---
+
+## 4. API Response Standards
+
+### 4.1 The Rule: ✅ WRAP ALL SUCCESSFUL RESPONSES
 All successful (2xx) API responses **MUST be automatically wrapped** in a `{ data: ... }` object by the `SuccessWrappingFilter`.
 
 **Example:**
@@ -58,25 +68,25 @@ All successful (2xx) API responses **MUST be automatically wrapped** in a `{ dat
 }
 ```
 
-### 3.2 Implementation Logic
+### 4.2 Implementation Logic
 - **Controllers**: Return DTOs directly. Do NOT manually wrap.
 - **Filter**: `SuccessWrappingFilter` ([api/src/RecipeApi/Infrastructure/SuccessWrappingFilter.cs](../../api/src/RecipeApi/Infrastructure/SuccessWrappingFilter.cs)) intercepts `ObjectResult` and wraps it once.
 - **Mock API**: Must match production wrapping to ensure PWA consistency.
 
 ---
 
-## 4. Identity & Authentication
+## 5. Identity & Authentication
 
-### 4.1 X-Family-Member-Id Header
+### 5.1 X-Family-Member-Id Header
 - **Authoritative**: Required on all mutation requests.
 - **Validation**: (Phase 2+) Validated against the `family_members` table.
 - **Persistence**: Managed via browser cookies (30-day expiry).
 
 ---
 
-## 5. Synchronization Logic
+## 6. Synchronization Logic
 
-### 5.1 Calendar Sync (5-Minute Polling)
+### 6.1 Calendar Sync (5-Minute Polling)
 A dedicated **Calendar Sync Worker** runs every 5 minutes:
 1. **Pull**: Fetches "Busy/Free" status from external calendars.
 2. **Resolve**: Updates `calendar_events` with constraints.
@@ -84,7 +94,7 @@ A dedicated **Calendar Sync Worker** runs every 5 minutes:
 
 ---
 
-## 6. Security & Sovereignty
+## 7. Security & Sovereignty
 - **Passwordless**: Identity is device-bound (PWA) and matched to `family_members`.
 - **Local Sovereignty**: All DB data and images are stored in a dedicated `/data` volume on the NAS.
 - **Network Isolation**: DB is not exposed to the public internet; external traffic flows through the API.

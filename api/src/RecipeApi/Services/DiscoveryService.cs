@@ -21,6 +21,12 @@ public class DiscoveryService(RecipeDbContext dbContext)
         query = query.Where(r => !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id
                                                                 && v.FamilyMemberId == familyMemberId));
 
+        // Apply ordering: VoteCount DESC, LastCookedDate DESC (NULLS FIRST)
+        query = query
+            .OrderByDescending(r => r.VoteCount)
+            .ThenBy(r => r.LastCookedDate == null ? 0 : 1)
+            .ThenByDescending(r => r.LastCookedDate);
+
         var results = await query.ToListAsync();
 
         return results.Select(r => r.ToRecipe()).ToList();

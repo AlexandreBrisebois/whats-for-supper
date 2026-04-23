@@ -9,8 +9,8 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 | **0 — MVP** | Recipe capture end-to-end | Next.js + C# + PostgreSQL (no Redis, no AI) | ✅ Done |
 | **1 — Import** | AI processing pipeline | DB Polling + Gemma + Gemini + Branding | 🏃 Active |
 | **2 — Family** | Identity & Pulse | FamilyMembers, Activity Feed, Approvals | 📝 Planned |
-| **3 — Discovery** | Express Planning | Smart Pivot, Swipe Voting, Vector Search | 🏃 Active |
-| **4 — Planner** | Kitchen & Cook's Mode | Weekly list, Cook's Mode, Calendar Sync | 📝 Planned |
+| **3 — Discovery** | Express Planning | Smart Pivot, Swipe Voting, Vector Search | ✅ Done |
+| **4 — Planner** | Kitchen & Cook's Mode | Weekly list, Cook's Mode, Calendar Sync | 🏃 Active |
 | **5 — Agents** | Suggestion Engine | SuggestMealsAgent, Shopping Lists | 📝 Planned |
 | **6 — Polish** | Resilience | Offline-first, Performance, Final Aesthetics | 📝 Planned |
 | **7 — Ops** | Production Ready | Cloudflare Tunnel, Monitoring, Cleanup | 📝 Planned |
@@ -62,31 +62,34 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 ### Additions
 - [x] **Solar Earth UX Refinement**: Editorial header, refined navigation, and 85% glassmorphism.
 - [x] **The Smart Pivot (Visuals)**: High-contrast pivot card on Home for unplanned meals.
-- [ ] **Swipe Discovery (Full)**: Full-screen card-based collaborative voting.
+- [x] **Swipe Discovery (Full)**: Full-screen card-based collaborative voting.
 - [ ] **SearchRecipesAgent**: Natural language search via Ollama + pgvector.
-- [ ] **One-Tap Pivot Execution**: Connect "Quick Fix" chips to the Schedule API.
+- [x] **One-Tap Pivot Execution**: Connect "Quick Fix" chips to the Schedule API.
 
 ### PWA Integrations (API-Sync)
 - [ ] **Recipe Details**: Implement detailed recipe view with inline `PATCH` editing.
-- [ ] **AI Hero Visualization**: Use the AI-generated hero images (`/api/recipes/{id}/hero`).
+- [x] **AI Hero Visualization**: Use the AI-generated hero images (`/api/recipes/{id}/hero`).
 - [ ] **Processing Feedback**: Add visual indicators for recipes in the AI pipeline.
 
 ### Implementation Checklist
 - [x] **Smart Pivot Card**: Compact `ExpressCard.tsx` (implemented as `SmartPivotCard`).
 - [x] **Home Integration**: Conditional display on `home/page.tsx`.
 - [ ] **Vector Search API**: Backend support for agentic natural language queries.
-- [ ] **Swipe Logic**: Right-swipe triggers immediate planning (`TODAY`).
+- [x] **Swipe Logic**: Right-swipe triggers immediate planning (`TODAY`).
 
 ---
 
 ## Phase 4 — Planner: The Kitchen & Cook's Mode
 
-**Goal**: Family has a shared meal plan synced with real calendars.
+**Goal**: Family has a shared meal plan synced with real calendars. Focused on **Supper** (Family Dinner) as the primary coordination event, with support for other slots as future extensions.
 
 ### Additions
-- **Cook's Mode**: High-visibility, hands-free UI for step-by-step cooking.
-- **PWA Planner screen**: Weekly list with Google/Outlook calendar sync.
-- **Calendar Sync Worker**: 5-minute polling.
+- [x] **Weekly Planner Screen**: 7-day vertical list with "Solar Earth" aesthetics.
+- [x] **The Planning Pivot**: Bottom sheet with Quick Find (5-stack), Search, and Ask paths.
+- [x] **Drag-to-Swap**: Reorderable meal cards with API synchronization.
+- [x] **Lockdown Workflow**: Decisive "Finalize" action with vote purging and date updates.
+- [ ] **Cook's Mode**: High-visibility, hands-free UI for step-by-step cooking.
+- [ ] **Calendar Sync Worker**: 5-minute polling.
 
 ---
 

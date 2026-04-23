@@ -82,8 +82,8 @@ async function loginAsMember(page: Page) {
 test('authenticated user can navigate to the capture page from home', async ({ page }) => {
   await loginAsMember(page);
 
-  // Click the "Quick Capture" trigger on the Home page
-  await page.getByRole('link', { name: /quick capture/i }).click();
+  // Click the "Capture a Recipe" trigger on the Home page
+  await page.getByRole('link', { name: /capture a recipe/i }).click();
 
   await expect(page).toHaveURL(/\/capture/);
 

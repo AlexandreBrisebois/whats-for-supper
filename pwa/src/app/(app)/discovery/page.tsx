@@ -243,7 +243,7 @@ export default function DiscoveryPage() {
                     }
                     className="w-full rounded-full bg-ochre px-8 py-3.5 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-all hover:bg-ochre-dark"
                   >
-                    {matchCount > 0 ? 'Go to Planner' : 'Capture New Idea'}
+                    {matchCount > 0 ? 'Go to Planner' : 'Capture a New Recipe'}
                   </button>
 
                   <button

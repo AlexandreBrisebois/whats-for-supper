@@ -2,27 +2,45 @@
 
 This file tracks the real-time execution state across AI sessions to ensure zero context loss.
 
-## Active Mission: Session Review & Documentation Stabilization [COMPLETE]
+## Active Mission: Backend Implementation of Schedule API [ACTIVE]
 
-### Status: COMPLETED ✅
+### Status: IN PROGRESS 🏃
 **Agent**: Antigravity (Gemini 3 Flash)
 
 ### Objectives
-- [x] Create [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md) and register tools.
-- [x] Update [.agents/SKILL_SESSION_REVIEW.md](.agents/SKILL_SESSION_REVIEW.md) with audit protocol.
-- [x] Create [.agents/SKILL_DEATH_AUDIT.md](.agents/SKILL_DEATH_AUDIT.md) to manage context bloat.
-14. [x] Reorganize `specs/` into 6 authoritative "Lanes".
-15. [x] Repair and update [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
-16. [x] Final Verification & Audit.
+- [ ] Implement `GET /api/schedule` in `RecipeApi`.
+- [ ] Implement `POST /api/schedule/lock` with vote purging and date updates.
+- [ ] Implement `POST /api/schedule/move` (swap logic).
+- [ ] Implement `GET /api/schedule/fill-the-gap`.
 
-### Technical Details & Decisions
-1. **Lanes Organization**: Reorganized `specs/` into a directory-based hierarchy (Strategy, Frontend, Backend, AI Worker, Ops/Testing, Archive) to provide clear boundaries and "lanes" for future work.
-2. **Lossless Consolidation**: Merged 10+ redundant files into 4 high-fidelity "Law" files (Roadmap, Backend, AI Worker, Frontend) preserving all technical details.
-3. **Roadmap Consolidation**: `specs/00_STRATEGY/ROADMAP.md` remains the **Single Source of Truth** for phases and status.
+## Pending Mission: PWA Polish & Aesthetic Audit [PLANNED]
+
+### Status: QUEUED ⏳
+**Agent**: Antigravity (with Designer Skill)
+
+### Objectives
+- [ ] Perform "Mère-Designer" audit of the Planner UI.
+- [ ] Implement high-fidelity Framer Motion transitions and staggered entries.
+- [ ] Finalize Search-to-Planner round-trip integration.
+- [ ] Prototype "Cook's Mode" high-visibility transitions.
 
 ---
 
 ## Session History (Rolling Window)
+
+### [2026-04-23] Supper Planner PWA Implementation
+**Status**: COMPLETED ✅
+- **UI/UX**: Implemented the weekly dashboard with "Solar Earth" aesthetics, progress indicators, and reorderable daily cards.
+- **Planning Pivot**: Built the bottom sheet with Quick Find, Search, and Ask paths.
+- **Lockdown Flow**: Implemented the decisve "Finalize" workflow with success state transitions.
+- **Verification**: Passed 5/5 Playwright E2E tests (`planner.spec.ts`).
+- **Reference**: [pwa/src/app/(app)/planner/page.tsx](pwa/src/app/(app)/planner/page.tsx), [pwa/e2e/planner.spec.ts](pwa/e2e/planner.spec.ts).
+
+### [2026-04-22] Session Review & Documentation Stabilization
+**Status**: COMPLETED ✅
+- **Lanes Organization**: Reorganized `specs/` into a directory-based hierarchy.
+- **Lossless Consolidation**: Merged 10+ redundant files into 4 authoritative "Law" files.
+- **Reference**: [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
 
 ### [2026-04-21] PWA Discovery UI Integration (TDD)
 **Status**: COMPLETED ✅

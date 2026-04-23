@@ -21,7 +21,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     if (path === ROUTES.PROFILE) return { title: 'Profile' };
     if (path.startsWith(ROUTES.CAPTURE)) {
       return {
-        title: 'Add Recipe',
+        title: 'Add a Recipe',
         leftAction: (
           <Link
             href={ROUTES.HOME}
