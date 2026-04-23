@@ -7,27 +7,34 @@ description: Procedural guidance for Playwright E2E testing, Mock API management
 
 Procedural guidance for Playwright and Mock API testing.
 
-## 1. Testing Hierarchy
-1. **Mock API (Fast)**: Used for rapid PWA layout and flow verification.
+## 1. The TDD Mandate (Mandatory)
+All new features and fixes MUST follow the TDD workflow:
+1. **Plan & Spec**: Update specifications in `specs/`.
+2. **Write Tests**: Create or update tests (E2E for PWA, xUnit for API) before code.
+3. **Mock Contract**: Update `mock-api.js` to reflect the new API behavior.
+4. **Implement**: Write code to satisfy the tests.
+
+## 2. Testing Hierarchy
+1. **Mock API (Fast)**: Used for rapid PWA layout and flow verification. **Always run with `task review`**.
 2. **Live API (Slow)**: Used for final integration verification.
 
 ### Run PWA Tests (Mock)
 ```bash
 cd pwa
 task review
-# or
-npm run test:e2e
 ```
 
-### Run PWA Tests (Live)
+### Run API Tests (Unit/Integration)
 ```bash
-task test:pwa:live
+cd api
+dotnet test
 ```
 
-## 2. Mock API Management
-- The Stateful Mock API is located in `pwa/mock-api.js`.
-- Any schema changes in the .NET API must be manually synchronized to the Mock API to maintain CI integrity.
+## 3. Specialized Guidance
+- [Next.js Testing Best Practices](SKILL_NEXTJS_TESTING.md) — Mandatory `data-testid` and Playwright rules.
+- [Next.js Developer](SKILL_NEXTJS_DEVELOPER.md) — Frontend TDD and Next.js 15 patterns.
+- [Senior .NET Developer](SKILL_DOTNET_DEVELOPER.md) — Backend TDD and .NET 10 patterns.
 
-## 3. Playwright Best Practices
-- Use `IdentityValidator` logic for all authentication gates.
-- Standard ports: Mock API (5001), Live API (5000), PWA (3000).
+## 4. Mock API Management
+- The Stateful Mock API is located in `pwa/mock-api.js`.
+- **High-Fidelity**: It is a contract for frontend development. Update it *before* implementing the real backend.

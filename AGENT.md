@@ -38,6 +38,15 @@ If a command (e.g., `task build`) fails due to environment issues (missing tool,
 - `docker`: Container runtime (Requires local daemon).
 - `dotnet watch` / `npm run dev`: Hot-reload (Best run by human).
 
+## 4. MANDATORY: The TDD Workflow
+Every agent session MUST prioritize testing over implementation:
+1. **Specs Updated**: Any behavior change must first be documented in `specs/`.
+2. **Tests Updated**: Write Playwright or xUnit tests to capture the new/changed behavior.
+3. **Mock API Updated**: For PWA changes, the `pwa/mock-api.js` MUST be updated first as a high-fidelity contract.
+4. **Code Updated**: Only then implement the logic to satisfy the tests.
+   - Use `task review` to verify PWA tests against the mock API.
+   - Use `dotnet test` to verify API logic.
+
 ## 4. Token Efficiency Rules
 - **Session Kickoff**: Internalize this protocol first, then establish current technical state by reading `HANDOVER.md`.
 - **Discovery**: Use `task agent:summary` to rapidly map the workspace before massive `ls` or `grep`.
@@ -54,6 +63,9 @@ If a command (e.g., `task build`) fails due to environment issues (missing tool,
   - [Database & Migrations](.agents/SKILL_DATABASE.md)
   - [API Discovery & Mapping](.agents/SKILL_API_DISCOVERY.md)
   - [E2E & Integration Testing](.agents/SKILL_TESTING.md)
+  - [Next.js Testing Best Practices](.agents/SKILL_NEXTJS_TESTING.md)
+  - [Next.js Developer](.agents/SKILL_NEXTJS_DEVELOPER.md)
+  - [Senior .NET Developer](.agents/SKILL_DOTNET_DEVELOPER.md)
   - [Build Prompt Creation](.agents/SKILL_CREATE_PROMPT.md)
   - [Session Review & Audit](.agents/SKILL_SESSION_REVIEW.md)
   - [Designer Agent (The Mère-Designer)](.agents/SKILL_DESIGNER.md)
