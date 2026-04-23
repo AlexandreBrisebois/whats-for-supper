@@ -68,7 +68,9 @@ export function CooksMode({ recipe, onClose }: CooksModeProps) {
             <p className="text-[10px] font-black uppercase tracking-widest text-terracotta/60">
               Cook&apos;s mode
             </p>
-            <h2 className="text-xl font-heading font-black text-charcoal">{recipe.name || 'Untitled Recipe'}</h2>
+            <h2 className="text-xl font-heading font-black text-charcoal">
+              {recipe.name || 'Untitled Recipe'}
+            </h2>
           </div>
         </div>
         <button

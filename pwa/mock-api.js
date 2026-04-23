@@ -202,20 +202,6 @@ const server = http.createServer((req, res) => {
         })
       );
     });
-  } else if (path.match(/^\/api\/recipes\/[^\/]+$/) && req.method === 'GET') {
-    const id = path.split('/').pop();
-    res.writeHead(200);
-    res.end(JSON.stringify({ 
-      updatedAt: new Date().toISOString(),
-      recipe: {
-        id: id,
-        name: 'Mock Recipe Detail',
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-        totalTime: '45 mins',
-        difficulty: 'Medium',
-        createdAt: new Date().toISOString()
-      }
-    }));
   } else if (path === '/api/recipes/recommendations' && req.method === 'GET') {
     res.writeHead(200);
     res.end(
@@ -244,6 +230,22 @@ const server = http.createServer((req, res) => {
               image: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856',
             },
           ],
+        },
+      })
+    );
+  } else if (path.match(/^\/api\/recipes\/[^\/]+$/) && req.method === 'GET') {
+    const id = path.split('/').pop();
+    res.writeHead(200);
+    res.end(
+      JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        recipe: {
+          id: id,
+          name: 'Mock Recipe Detail',
+          image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
+          totalTime: '45 mins',
+          difficulty: 'Medium',
+          createdAt: new Date().toISOString(),
         },
       })
     );

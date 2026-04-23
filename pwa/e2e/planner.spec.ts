@@ -31,7 +31,9 @@ test.describe('Supper Planner', () => {
     await page.getByTestId('next-week').click();
 
     // Wait for the date range to change (indicates data has loaded)
-    await expect(page.getByTestId('week-range')).not.toHaveText(initialDateRange || '', { timeout: 10_000 });
+    await expect(page.getByTestId('week-range')).not.toHaveText(initialDateRange || '', {
+      timeout: 10_000,
+    });
 
     const nextDateRange = await page.getByTestId('week-range').textContent();
     expect(initialDateRange).not.toBe(nextDateRange);
@@ -77,7 +79,7 @@ test.describe('Supper Planner', () => {
   test('should trigger Cook Mode from a recipe card and navigate steps', async ({ page }) => {
     // Monday (index 0) has a recipe in mock data
     const mondayCard = page.getByTestId('day-card-0');
-    
+
     // Ensure the card has a recipe
     await expect(mondayCard.getByTestId('start-cook-mode')).toBeVisible();
 
@@ -109,9 +111,7 @@ test.describe('Supper Planner', () => {
     await expect(reorderGroup).toBeVisible();
   });
 
-  test('should assign pending smart default slots and lock when finalizing', async ({
-    page,
-  }) => {
+  test('should assign pending smart default slots and lock when finalizing', async ({ page }) => {
     const finalizeBtn = page.getByTestId('finalize-button');
     await finalizeBtn.scrollIntoViewIfNeeded();
     await finalizeBtn.click();
