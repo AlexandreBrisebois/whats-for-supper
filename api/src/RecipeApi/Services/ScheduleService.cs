@@ -212,6 +212,7 @@ public class ScheduleService(RecipeDbContext dbContext)
                 Name: recipe.Name,
                 HeroImageUrl: $"/api/recipes/{recipe.Id}/hero",
                 VoteCount: voteGroup.VoteCount,
+                FamilySize: familySize,
                 UnanimousVote: isUnanimous,
                 DayIndex: dayIndex,
                 IsLocked: isUnanimous

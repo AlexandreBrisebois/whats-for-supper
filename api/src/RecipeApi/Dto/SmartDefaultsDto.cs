@@ -5,6 +5,7 @@ public record PreSelectedRecipeDto(
     string? Name,
     string HeroImageUrl,
     int VoteCount,
+    int FamilySize,
     bool UnanimousVote,
     int DayIndex,
     bool IsLocked

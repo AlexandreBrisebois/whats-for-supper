@@ -57,7 +57,10 @@ export function SmartDefaults({ weekOffset = 0, onSlotClick, onRefresh }: SmartD
       try {
         setIsLoading(true);
         const response = await fetch(`/api/schedule/${weekOffset}/smart-defaults`);
-        if (!response.ok) throw new Error('Failed to fetch smart defaults');
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorData || response.statusText}`);
+        }
         const result = await response.json();
         setPrevData(data);
         setData(result.data || result);
@@ -115,7 +118,10 @@ export function SmartDefaults({ weekOffset = 0, onSlotClick, onRefresh }: SmartD
     setIsRefreshing(true);
     try {
       const response = await fetch(`/api/schedule/${weekOffset}/smart-defaults`);
-      if (!response.ok) throw new Error('Failed to refresh');
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorData || response.statusText}`);
+      }
       const result = await response.json();
       setPrevData(data);
       setData(result.data || result);
