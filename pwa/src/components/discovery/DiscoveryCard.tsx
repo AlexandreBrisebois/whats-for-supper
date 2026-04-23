@@ -65,22 +65,22 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   // Haptics
   const [hasVibrated, setHasVibrated] = React.useState(false);
   useMotionValueEvent(x, 'change', (latest) => {
-    if (Math.abs(latest) > 100 && !hasVibrated) {
+    if (Math.abs(latest) > 60 && !hasVibrated) {
       if ('vibrate' in navigator) {
         navigator.vibrate(10);
       }
       setHasVibrated(true);
-    } else if (Math.abs(latest) < 80 && hasVibrated) {
+    } else if (Math.abs(latest) < 50 && hasVibrated) {
       setHasVibrated(false);
     }
   });
 
   // Indicators opacity
-  const likeOpacity = useTransform(x, [40, 100], [0, 1]);
-  const passOpacity = useTransform(x, [-100, -40], [1, 0]);
+  const likeOpacity = useTransform(x, [20, 60], [0, 1]);
+  const passOpacity = useTransform(x, [-60, -20], [1, 0]);
 
-  const likeScale = useTransform(x, [0, 150], [0.5, 1.5]);
-  const passScale = useTransform(x, [0, -150], [0.5, 1.5]);
+  const likeScale = useTransform(x, [0, 100], [0.5, 1.5]);
+  const passScale = useTransform(x, [0, -100], [0.5, 1.5]);
 
   const controls = useAnimation();
 
@@ -114,7 +114,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   const handleDragEnd = (_: any, info: PanInfo) => {
     if (!isFront) return;
 
-    const threshold = 100;
+    const threshold = 80;
     const velocityThreshold = 500;
 
     if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
@@ -155,7 +155,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       }}
       drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.2}
+      dragElastic={1}
       dragMomentum={false}
       animate={controls}
       onDragEnd={handleDragEnd}

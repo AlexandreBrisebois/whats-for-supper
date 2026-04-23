@@ -79,7 +79,7 @@ test.describe('Supper Planner', () => {
 
     // 6. Verify success feedback (ring/pulse) on the card
     await expect(tuesdayCard.getByText('Homemade Lasagna')).toBeVisible();
-    await expect(tuesdayCard.locator('.glass')).toHaveClass(/ring-sage/);
+    await expect(tuesdayCard).toHaveClass(/ring-sage/);
   });
 
   test('should show Solar Loader when flipping weeks', async ({ page }) => {

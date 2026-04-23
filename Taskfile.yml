@@ -74,6 +74,20 @@ tasks:
       - echo "  POSTGRES_CONNECTION_STRING=postgres://recipe_app:secure_dev_password@localhost:{{.DB_PORT}}/recipe_app_db"
       - echo "  RECIPES_ROOT=/tmp/recipes"
 
+  dev:kill:
+    desc: "Kill lingering dev:api and dev:pwa instances blocking ports"
+    cmds:
+      - |
+        echo "Searching for processes on API (9001) and PWA ({{.PWA_PORT}}) ports..."
+        PIDS=$(lsof -ti:9001,{{.PWA_PORT}} 2>/dev/null)
+        if [ -n "$PIDS" ]; then
+          echo "Killing processes: $PIDS"
+          echo "$PIDS" | xargs kill -9
+          echo "✓ Lingering processes killed"
+        else
+          echo "✓ No lingering processes found"
+        fi
+
   # ============================================================================
   # TESTING
   # ============================================================================
