@@ -11,7 +11,6 @@ import {
   Search,
   Sparkles,
   Users,
-  UtensilsCrossed,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
 import { getSchedule, lockSchedule, moveRecipe, ScheduleDay } from '@/lib/api/planner';
@@ -26,6 +25,7 @@ import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
+import { SmartDefaults } from '@/components/planner/SmartDefaults';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -347,6 +347,20 @@ export default function PlannerPage() {
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
+              {/* Smart Defaults Section */}
+              {currentWeekOffset === 0 && (
+                <div className="mb-12 pb-8 border-b border-charcoal/5">
+                  <SmartDefaults
+                    weekOffset={currentWeekOffset}
+                    onSlotClick={(dayIndex) => setShowPivot({ dayIndex })}
+                    onRefresh={() => {
+                      setIsLoading(true);
+                      setTimeout(() => setIsLoading(false), 300);
+                    }}
+                  />
+                </div>
+              )}
+
               <Reorder.Group
                 axis="y"
                 values={schedule}
@@ -446,10 +460,9 @@ export default function PlannerPage() {
                                   e.stopPropagation();
                                   setActiveCookMode(day);
                                 }}
-                                className="mr-2 bg-sage text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-sage/20 flex items-center space-x-2"
+                                className="mr-2 text-2xl active:scale-90 transition-transform"
                               >
-                                <UtensilsCrossed size={12} />
-                                <span>Start cooking</span>
+                                👨‍🍳
                               </motion.button>
                             )}
                             <GripVertical className="text-charcoal/20 ml-2" size={18} />

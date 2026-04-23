@@ -85,6 +85,7 @@ try
     builder.Services.AddScoped<RecipeService>();
     builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddScoped<DiscoveryService>();
+    builder.Services.AddScoped<ScheduleService>();
     builder.Services.AddHostedService<RecipeImportWorker>();
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────

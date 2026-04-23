@@ -86,13 +86,25 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
                   transition={{ type: 'spring', damping: 20, stiffness: 150 }}
                   className="absolute inset-0 rounded-[2.5rem] overflow-hidden shadow-xl border border-white/20"
                 >
-                  <Image
-                    src={recipes[currentIndex].image}
-                    alt={recipes[currentIndex].name}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  {recipes[currentIndex].image && (
+                    <>
+                      <Image
+                        src={recipes[currentIndex].image}
+                        alt={recipes[currentIndex].name}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    </>
+                  )}
+                  {!recipes[currentIndex].image && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-charcoal to-charcoal/50 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-4xl mb-2">🍽️</div>
+                        <p className="text-white/40 text-sm">No image available</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="absolute bottom-0 left-0 right-0 p-8">
                     <h4 className="text-2xl font-heading font-extrabold text-white mb-2 leading-tight tracking-tight">
                       {recipes[currentIndex].name}

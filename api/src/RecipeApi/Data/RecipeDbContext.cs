@@ -12,6 +12,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<RecipeVote> RecipeVotes => Set<RecipeVote>();
     public DbSet<RecipeMatch> RecipeMatches => Set<RecipeMatch>();
     public DbSet<DiscoveryRecipe> DiscoveryRecipes => Set<DiscoveryRecipe>();
+    public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -121,6 +122,20 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         modelBuilder.Entity<DiscoveryRecipe>(entity =>
         {
             entity.ToView("vw_discovery_recipes");
+        });
+
+        modelBuilder.Entity<CalendarEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Status).HasColumnName("status").HasConversion<short>();
+            entity.ToTable("calendar_events", t =>
+                t.HasCheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 3"));
+            entity.HasOne(e => e.Recipe)
+                  .WithMany()
+                  .HasForeignKey(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.Date).HasDatabaseName("idx_calendar_events_date");
         });
     }
 }

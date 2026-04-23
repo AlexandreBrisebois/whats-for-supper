@@ -100,8 +100,11 @@ test.describe('Supper Planner', () => {
     await page.getByText('Quick find').click();
     await page.getByRole('button', { name: 'Select' }).click();
 
-    // Trigger Cook's Mode
-    const startCookingBtn = todayCard.getByRole('button', { name: /Start Cooking/i }).first();
+    // Wait for the card to update and render the cooking button
+    await todayCard.locator('button', { hasText: '👨‍🍳' }).waitFor({ state: 'visible' });
+
+    // Find and click the cooking emoji button
+    const startCookingBtn = todayCard.locator('button', { hasText: '👨‍🍳' });
     await startCookingBtn.click();
 
     // Verify overlay using the new data-testid
