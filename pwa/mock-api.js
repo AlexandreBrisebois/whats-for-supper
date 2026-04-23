@@ -240,21 +240,21 @@ const server = http.createServer((req, res) => {
     res.writeHead(200);
     res.end(pixel);
   } else if (path === '/api/schedule' && req.method === 'GET') {
-    const weekOffset = url.searchParams.get('weekOffset') || '0';
+    const weekOffset = parseInt(url.searchParams.get('weekOffset') || '0');
     const schedule = scheduleState[weekOffset] || [];
     const locked = lockStatus[weekOffset] || false;
     res.writeHead(200);
     res.end(
       JSON.stringify({
         data: {
-          weekOffset: parseInt(weekOffset),
+          weekOffset: weekOffset,
           locked: locked,
           days: schedule,
         },
       })
     );
   } else if (path === '/api/schedule/lock' && req.method === 'POST') {
-    const weekOffset = url.searchParams.get('weekOffset') || '0';
+    const weekOffset = parseInt(url.searchParams.get('weekOffset') || '0');
     lockStatus[weekOffset] = true;
     // Mock purging votes
     votes = [];
@@ -270,7 +270,7 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
       const { weekOffset, fromIndex, toIndex } = JSON.parse(body || '{}');
-      const offset = (weekOffset || '0').toString();
+      const offset = parseInt(weekOffset || '0');
       if (scheduleState[offset]) {
         const week = scheduleState[offset];
         const temp = week[fromIndex].recipe;
@@ -290,7 +290,7 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
       const { weekOffset, dayIndex, recipeId, recipeName, recipeImage } = JSON.parse(body || '{}');
-      const offset = (weekOffset || '0').toString();
+      const offset = parseInt(weekOffset || '0');
 
       if (scheduleState[offset]) {
         scheduleState[offset][dayIndex].recipe = {
@@ -337,6 +337,41 @@ const server = http.createServer((req, res) => {
         ],
       })
     );
+  } else if (path.match(/^\/api\/schedule\/\d+\/smart-defaults$/) && req.method === 'GET') {
+    const weekOffset = parseInt(path.split('/')[3]);
+    const response = {
+      data: {
+        weekOffset: weekOffset,
+        familySize: 2,
+        consensusThreshold: 2,
+        preSelectedRecipes: [
+          {
+            recipeId: '1',
+            name: 'Zesty Lemon Chicken',
+            heroImageUrl: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435',
+            voteCount: 2,
+            familySize: 2,
+            unanimousVote: true,
+            dayIndex: 1,
+            isLocked: false,
+          },
+          {
+            recipeId: 'g1',
+            name: 'Taco Tuesday Special',
+            heroImageUrl: 'https://images.unsplash.com/photo-1565299585062-3f836613ff23',
+            voteCount: 1,
+            familySize: 2,
+            unanimousVote: false,
+            dayIndex: 4,
+            isLocked: false,
+          },
+        ],
+        openSlots: [{ dayIndex: 2 }, { dayIndex: 5 }, { dayIndex: 6 }],
+        consensusRecipesCount: 2,
+      },
+    };
+    res.writeHead(200);
+    res.end(JSON.stringify(response));
   } else {
     res.writeHead(404);
     res.end(JSON.stringify({ message: 'Not Found' }));

@@ -29,7 +29,7 @@ public class ScheduleService(RecipeDbContext dbContext)
             var date = monday.AddDays(i);
             var @event = events.FirstOrDefault(e => e.Date == date);
             var recipe = @event?.Recipe != null
-                ? new ScheduleRecipeDto(@event.Recipe.Id, @event.Recipe.Name, $"/api/recipes/{@event.Recipe.Id}/hero")
+                ? new ScheduleRecipeDto(@event.Recipe.Id, @event.Recipe.Name, $"/api/recipes/{@event.Recipe.Id}/hero", @event.VoteCount)
                 : null;
 
             days.Add(new ScheduleDayDto(dayNames[i], date.ToString("yyyy-MM-dd"), recipe));
@@ -47,9 +47,22 @@ public class ScheduleService(RecipeDbContext dbContext)
             .Where(e => e.Date >= monday && e.Date <= sunday && e.Status == CalendarEventStatus.Planned)
             .ToListAsync();
 
+        // Get vote counts for recipes in this week and persist them before clearing votes
+        var voteCountsByRecipe = await _dbContext.RecipeVotes
+            .Where(v => v.Vote == VoteType.Like)
+            .GroupBy(v => v.RecipeId)
+            .Select(g => new { RecipeId = g.Key, VoteCount = g.Count() })
+            .ToListAsync();
+
+        var voteCountDict = voteCountsByRecipe.ToDictionary(x => x.RecipeId, x => x.VoteCount);
+
         foreach (var @event in events)
         {
             @event.Status = CalendarEventStatus.Locked;
+            if (voteCountDict.TryGetValue(@event.RecipeId, out var voteCount))
+            {
+                @event.VoteCount = voteCount;
+            }
             if (@event.Recipe != null)
             {
                 @event.Recipe.LastCookedDate = DateTimeOffset.UtcNow;

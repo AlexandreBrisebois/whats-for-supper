@@ -77,6 +77,9 @@ export default defineConfig({
           url: 'http://127.0.0.1:3000',
           reuseExistingServer: true,
           timeout: 60_000,
+          env: {
+            API_INTERNAL_URL: `http://127.0.0.1:${MOCK_API_PORT}`,
+          },
         },
       ],
 });

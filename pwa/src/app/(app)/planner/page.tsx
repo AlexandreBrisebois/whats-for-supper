@@ -13,19 +13,30 @@ import {
   Users,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
-import { getSchedule, lockSchedule, moveRecipe, ScheduleDay } from '@/lib/api/planner';
+import {
+  getSchedule,
+  lockSchedule,
+  moveRecipe,
+  getSmartDefaults,
+  assignRecipeToDay,
+  ScheduleDay,
+} from '@/lib/api/planner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 
-type UILocalScheduleDay = ScheduleDay & { _uiId: string };
+type UILocalScheduleDay = ScheduleDay & {
+  _uiId: string;
+  _isPending?: boolean;
+  _voteCount?: number | null;
+  _unanimousVote?: boolean;
+};
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
-import { SmartDefaults } from '@/components/planner/SmartDefaults';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -59,13 +70,46 @@ export default function PlannerPage() {
 
   useEffect(() => {
     let ignore = false;
+    let pollInterval: NodeJS.Timeout | null = null;
 
     const loadData = async () => {
       try {
-        const data = await getSchedule(currentWeekOffset);
+        const [scheduleData, defaultsData] = await Promise.all([
+          getSchedule(currentWeekOffset),
+          currentWeekOffset === 0 ? getSmartDefaults(currentWeekOffset) : Promise.resolve(null),
+        ]);
+
         if (!ignore) {
-          setSchedule(data.days?.map((d: any) => ({ ...d, _uiId: crypto.randomUUID() })) || []);
-          setIsLocked(data.locked || false);
+          const defaultsByDayIndex = new Map(
+            defaultsData?.preSelectedRecipes.map((r) => [r.dayIndex, r]) ?? []
+          );
+
+          const mergedDays = scheduleData.days.map((day: any, index: number) => {
+            if (day.recipe) {
+              return { ...day, _uiId: crypto.randomUUID() };
+            }
+
+            const smartDefault = defaultsByDayIndex.get(index);
+            if (smartDefault) {
+              return {
+                ...day,
+                recipe: {
+                  id: smartDefault.recipeId,
+                  name: smartDefault.name,
+                  image: smartDefault.heroImageUrl,
+                  voteCount: smartDefault.voteCount,
+                },
+                _uiId: crypto.randomUUID(),
+                _isPending: true,
+                _voteCount: smartDefault.voteCount,
+                _unanimousVote: smartDefault.unanimousVote,
+              };
+            }
+            return { ...day, _uiId: crypto.randomUUID() };
+          });
+
+          setSchedule(mergedDays);
+          setIsLocked(scheduleData.locked || false);
           setIsLoading(false);
         }
       } catch (error: any) {
@@ -112,11 +156,57 @@ export default function PlannerPage() {
       }
     };
 
+    const updateVoteCounts = async () => {
+      try {
+        const [scheduleData, defaultsData] = await Promise.all([
+          getSchedule(currentWeekOffset),
+          currentWeekOffset === 0 ? getSmartDefaults(currentWeekOffset) : Promise.resolve(null),
+        ]);
+
+        if (!ignore && scheduleData.days) {
+          const defaultsByDayIndex = new Map(
+            defaultsData?.preSelectedRecipes.map((r) => [r.dayIndex, r]) ?? []
+          );
+
+          setSchedule((prevSchedule) =>
+            prevSchedule.map((day, idx) => {
+              if (day._isPending) {
+                const sd = defaultsByDayIndex.get(idx);
+                if (!sd || !day.recipe) return day;
+                return {
+                  ...day,
+                  recipe: { ...day.recipe, voteCount: sd.voteCount },
+                  _voteCount: sd.voteCount,
+                  _unanimousVote: sd.unanimousVote,
+                };
+              }
+              // Persisted slot: update voteCount from CalendarEvent
+              const newDay = scheduleData.days[idx];
+              if (!day.recipe || !newDay?.recipe) return day;
+              return { ...day, recipe: { ...day.recipe, voteCount: newDay.recipe.voteCount } };
+            })
+          );
+          setIsLocked(scheduleData.locked || false);
+        }
+      } catch (error: any) {
+        // Silently fail polling to avoid console spam
+      }
+    };
+
     loadData();
+
+    // Poll every 30 seconds for vote count updates while voting is open
+    pollInterval = setInterval(() => {
+      if (!isLocked) {
+        updateVoteCounts();
+      }
+    }, 30000);
+
     return () => {
       ignore = true;
+      if (pollInterval) clearInterval(pollInterval);
     };
-  }, [currentWeekOffset]);
+  }, [currentWeekOffset, isLocked]);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -148,6 +238,14 @@ export default function PlannerPage() {
 
   const handleFinalize = async () => {
     try {
+      const pendingSlots = schedule
+        .map((day, index) => ({ day, index }))
+        .filter(({ day }) => day._isPending && day.recipe);
+
+      for (const { day, index } of pendingSlots) {
+        await assignRecipeToDay(currentWeekOffset, index, day.recipe!);
+      }
+
       await lockSchedule(currentWeekOffset);
       setIsLocked(true);
     } catch (error: any) {
@@ -347,25 +445,12 @@ export default function PlannerPage() {
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
-              {/* Smart Defaults Section */}
-              {currentWeekOffset === 0 && (
-                <div className="mb-12 pb-8 border-b border-charcoal/5">
-                  <SmartDefaults
-                    weekOffset={currentWeekOffset}
-                    onSlotClick={(dayIndex) => setShowPivot({ dayIndex })}
-                    onRefresh={() => {
-                      setIsLoading(true);
-                      setTimeout(() => setIsLoading(false), 300);
-                    }}
-                  />
-                </div>
-              )}
-
               <Reorder.Group
                 axis="y"
                 values={schedule}
                 onReorder={handleReorder}
                 className="space-y-4"
+                data-testid="reorder-group"
               >
                 {schedule.map((day, index) => (
                   <Reorder.Item
@@ -444,9 +529,28 @@ export default function PlannerPage() {
                               />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-charcoal truncate">
-                                {day.recipe.name}
-                              </h4>
+                              <div className="flex items-center gap-1">
+                                <h4 className="text-sm font-bold text-charcoal truncate">
+                                  {day.recipe.name}
+                                </h4>
+                                {(day._voteCount != null || day.recipe?.voteCount != null) &&
+                                  (() => {
+                                    const count = day._voteCount ?? day.recipe?.voteCount;
+                                    const isUnanimous = day._unanimousVote;
+                                    return (
+                                      <span
+                                        className={cn(
+                                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap',
+                                          isUnanimous
+                                            ? 'bg-sage/20 text-sage'
+                                            : 'bg-ochre/20 text-ochre'
+                                        )}
+                                      >
+                                        {count} voted
+                                      </span>
+                                    );
+                                  })()}
+                              </div>
                               <p className="text-[10px] text-charcoal/40 font-medium">
                                 Supper planned
                               </p>
@@ -461,6 +565,7 @@ export default function PlannerPage() {
                                   setActiveCookMode(day);
                                 }}
                                 className="mr-2 text-2xl active:scale-90 transition-transform"
+                                data-testid="start-cook-mode"
                               >
                                 👨‍🍳
                               </motion.button>
@@ -516,6 +621,7 @@ export default function PlannerPage() {
                       <Button
                         className="border-sage/20 text-sage hover:bg-sage/5"
                         onClick={() => setWeekOffset(currentWeekOffset + 1)}
+                        data-testid="plan-next-week"
                       >
                         Plan next week
                       </Button>

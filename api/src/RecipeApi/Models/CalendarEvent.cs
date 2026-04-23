@@ -7,6 +7,7 @@ public class CalendarEvent
     public DateOnly Date { get; set; }
     public CalendarEventStatus Status { get; set; }
     public Recipe? Recipe { get; set; }
+    public int? VoteCount { get; set; }
 }
 
 public enum CalendarEventStatus : short

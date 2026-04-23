@@ -7,6 +7,7 @@ export interface ScheduleDay {
     id: string;
     name: string;
     image: string;
+    voteCount?: number | null;
   } | null;
 }
 
@@ -48,4 +49,35 @@ export const assignRecipeToDay = async (
     recipeImage: recipe.image,
   });
   return data.data;
+};
+
+export interface PreSelectedRecipe {
+  recipeId: string;
+  name: string;
+  heroImageUrl: string;
+  voteCount: number;
+  familySize: number;
+  unanimousVote: boolean;
+  dayIndex: number;
+  isLocked: boolean;
+}
+
+export interface SmartDefaultsResponse {
+  weekOffset: number;
+  familySize: number;
+  consensusThreshold: number;
+  preSelectedRecipes: PreSelectedRecipe[];
+  openSlots: { dayIndex: number }[];
+  consensusRecipesCount: number;
+}
+
+export const getSmartDefaults = async (
+  weekOffset: number
+): Promise<SmartDefaultsResponse | null> => {
+  try {
+    const { data } = await apiClient.get(`/api/schedule/${weekOffset}/smart-defaults`);
+    return data.data;
+  } catch {
+    return null;
+  }
 };

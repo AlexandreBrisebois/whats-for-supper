@@ -203,4 +203,10 @@ public class DiscoveryServiceTests
         Assert.Equal(recipe2.Id, results[2].Id); // Next due to newer LastCookedDate
         Assert.Equal(recipe1.Id, results[3].Id); // Last
     }
+
+    // TODO: Test for filtering planned recipes from discovery
+    // When a recipe is already planned for a week, it should not appear in discovery during voting
+    // This requires enhancing GetRecipesForDiscoveryAsync to accept a weekOffset parameter
+    // Test name: GetRecipesForDiscoveryAsync_ExcludesPlannedRecipes_FromCurrentWeek
+    // Implementation: Pass weekOffset to GetRecipesForDiscoveryAsync, verify planned recipes are filtered out
 }

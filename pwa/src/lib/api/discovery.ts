@@ -12,17 +12,17 @@ export interface DiscoveryRecipe {
 }
 
 export async function getCategories(): Promise<string[]> {
-  const { data } = await apiClient.get<{ data: string[] }>('/api/discovery/categories');
+  const { data } = await apiClient.get<{ data: string[] }>('/discovery/categories');
   return data.data || [];
 }
 
 export async function getDiscoveryStack(category: string): Promise<DiscoveryRecipe[]> {
-  const { data } = await apiClient.get<{ data: DiscoveryRecipe[] }>(`/api/discovery`, {
+  const { data } = await apiClient.get<{ data: DiscoveryRecipe[] }>(`/discovery`, {
     params: { category },
   });
   return data.data || [];
 }
 
 export async function submitVote(recipeId: string, vote: 1 | 2): Promise<void> {
-  await apiClient.post(`/api/discovery/${recipeId}/vote`, { vote });
+  await apiClient.post(`/discovery/${recipeId}/vote`, { vote });
 }
