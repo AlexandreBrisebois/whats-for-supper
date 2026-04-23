@@ -88,6 +88,9 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 - [x] **The Planning Pivot**: Bottom sheet with Quick Find (5-stack), Search, and Ask paths.
 - [x] **Drag-to-Swap**: Reorderable meal cards with API synchronization.
 - [x] **Lockdown Workflow**: Decisive "Finalize" action with vote purging and date updates.
+- [x] **Schedule API Endpoints**: 5 core endpoints for planner backend (GET, POST lock/move/assign, GET fill-the-gap).
+- [x] **Smart Voting Defaults**: Consensus-based pre-selection (51%+ threshold) with visual vote badges and dynamic ordering.
+- [x] **Quick Find Modal**: Recipe carousel with hero images, skip/select actions, and fallback placeholders.
 - [ ] **Cook's Mode**: High-visibility, hands-free UI for step-by-step cooking.
 - [ ] **Calendar Sync Worker**: 5-minute polling.
 

@@ -297,7 +297,63 @@ Open: npx playwright show-trace <file>
 
 ---
 
-## 7. Checklist: Adding New Endpoints
+## 7. Backend Unit Tests
+
+### 7.1 Service Layer Testing (xUnit + In-Memory EF Core)
+
+**Philosophy**: Test service logic with the in-memory EF Core provider. Tests run fast and are deterministic.
+
+**Test Database Factory** ([api/src/RecipeApi.Tests/Infrastructure/TestDbContextFactory.cs](../../api/src/RecipeApi.Tests/Infrastructure/TestDbContextFactory.cs)):
+```csharp
+public static RecipeDbContext Create()
+{
+    var options = new DbContextOptionsBuilder<RecipeDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString())
+        .Options;
+    return new RecipeDbContext(options);
+}
+```
+
+**Example: ScheduleService Tests** ([api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs](../../api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs)):
+
+| Test | Scenario | Assertions |
+|------|----------|-----------|
+| `GetScheduleAsync_ReturnsEmptyDays_WhenNoEvents` | No recipes planned for week | 7 days with `recipe=null` |
+| `GetScheduleAsync_PopulatesRecipe_WhenEventExists` | One recipe assigned to Wednesday | Wed has recipe data; others null |
+| `LockScheduleAsync_SetsStatusLocked_AndPurgesVotes` | Week has planned events + votes | Status changes to Locked; votes deleted; `last_cooked_date` updated |
+| `MoveScheduleEventAsync_SwapsRecipes` | Two recipes in Mon & Tue | IDs swap; `recipe_id` values exchanged |
+| `AssignRecipeAsync_Upserts` | Assign same recipe twice to same day | First call creates; second call updates (idempotent) |
+
+**Coverage**: 5 tests, all passing (84 total in suite).
+
+### 7.2 Running Backend Tests
+
+```bash
+# From api/ directory
+dotnet test
+
+# Specific test file
+dotnet test src/RecipeApi.Tests/Services/ScheduleServiceTests.cs
+
+# Verbose output
+dotnet test --verbosity detailed
+```
+
+### 7.3 Database Migration Testing
+
+Migrations are tested implicitly when the application starts:
+
+```bash
+task dev:api  # Applies all unapplied migrations at startup
+```
+
+**Migration Verification**: [api/Migrations/20260423151137_AddCalendarEvents.cs](../../api/Migrations/20260423151137_AddCalendarEvents.cs)
+- Creates `calendar_events` table with UUID, foreign key to recipes, and check constraint on `status` column.
+- Column naming: `status` (lowercase) matches check constraint convention.
+
+---
+
+## 9. Checklist: Adding New Endpoints
 
 When adding a new API endpoint:
 
@@ -322,7 +378,7 @@ When adding a new API endpoint:
 
 ---
 
-## 8. Future: When to Graduate to Live API
+## 10. Future: When to Graduate to Live API
 
 If mock API becomes a bottleneck:
 
@@ -335,10 +391,49 @@ If mock API becomes a bottleneck:
 
 ---
 
-## 9. Changelog
+## 10. Smart Defaults E2E Testing
+
+### 10.1 Testing Dynamic UI Components (Consensus-Based)
+
+**Scenario**: SmartDefaults component displays recipes based on family voting consensus (51%+). Recipes move in/out as page refreshes show updated vote counts.
+
+**Test Strategy**:
+- Component renders consensus recipes with vote badges ("3 of 4 voted")
+- Unanimous recipes (100% consensus) highlighted with Ochre or Sage Green
+- Open slots show placeholder "Vote to fill" text
+- Refresh button triggers page reload showing latest vote state
+
+**Key Challenge**: Button text may change dynamically (emoji vs text). Use `locator()` with `hasText` option instead of `getByRole()` with name matching.
+
+**Example** ([pwa/e2e/planner.spec.ts:103-108](../../pwa/e2e/planner.spec.ts#L103)):
+
+```typescript
+// ❌ WRONG: Looks for button with name "Start Cooking"
+const startCookingBtn = todayCard.getByRole('button', { name: /Start Cooking/i }).first();
+
+// ✅ CORRECT: Finds button containing emoji
+await todayCard.locator('button', { hasText: '👨‍🍳' }).waitFor({ state: 'visible' });
+const startCookingBtn = todayCard.locator('button', { hasText: '👨‍🍳' });
+await startCookingBtn.click();
+```
+
+**Race Condition Fix**: Always `waitFor({ state: 'visible' })` after user actions that trigger re-renders (recipe assignment, votes). Prevents timeout when the DOM hasn't updated yet.
+
+### 10.2 Best Practices for Consensus UI Testing
+
+1. **Don't rely on text labels** — Vote badges and status may change; use data attributes or emoji content.
+2. **Test vote progression** — Verify recipes move in/out of consensus list as votes change (manually refresh page between assertions).
+3. **Use data-testid for stability** — For critical interactive elements, add `data-testid` rather than relying on text matching.
+4. **Mock voting state** — If needed, mock the API response in `mock-api.js` to simulate various consensus scenarios.
+
+---
+
+## 11. Changelog
 
 | Date | Author | Change |
 |------|--------|--------|
+| 2026-04-23 | Claude Code (Haiku 4.5) | Added Smart Defaults E2E testing guide. Documented race condition fix (waitFor + emoji button), best practices for consensus UI, and test pattern for dynamic components. |
+| 2026-04-23 | Claude Code (Haiku 4.5) | Added Schedule API (CalendarEvents) unit test documentation. Documented TestDbContextFactory pattern, 5 ScheduleService tests, migration testing strategy. |
 | 2026-04-21 | Alexandre Brisebois | Initial E2E & mock API design doc. App Router migration, multipart FormData handling, 127.0.0.1 strategy. |
 
 ---
