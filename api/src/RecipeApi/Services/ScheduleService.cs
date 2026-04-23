@@ -163,7 +163,6 @@ public class ScheduleService(RecipeDbContext dbContext)
         // Get all votes for recipes where vote = Like (1)
         var likeVotes = await _dbContext.RecipeVotes
             .Where(v => v.Vote == VoteType.Like)
-            .Include(v => v.Recipe)
             .GroupBy(v => v.RecipeId)
             .Select(g => new
             {
@@ -171,10 +170,13 @@ public class ScheduleService(RecipeDbContext dbContext)
                 Recipe = g.First().Recipe,
                 VoteCount = g.Count()
             })
+            .ToListAsync();
+
+        var filteredVotes = likeVotes
             .Where(x => x.VoteCount >= consensusThreshold)
             .OrderByDescending(x => x.VoteCount == familySize) // Unanimous first
             .ThenByDescending(x => x.Recipe!.LastCookedDate)   // Then by freshness
-            .ToListAsync();
+            .ToList();
 
         // Get existing calendar events for the week
         var existingEvents = await _dbContext.CalendarEvents
@@ -190,7 +192,7 @@ public class ScheduleService(RecipeDbContext dbContext)
         var dayIndex = 0;
 
         // Assign consensus recipes to available day slots (0-6)
-        foreach (var voteGroup in likeVotes)
+        foreach (var voteGroup in filteredVotes)
         {
             if (preSelectedRecipes.Count >= 7)
                 break;
@@ -234,7 +236,7 @@ public class ScheduleService(RecipeDbContext dbContext)
             ConsensusThreshold: consensusThreshold,
             PreSelectedRecipes: preSelectedRecipes,
             OpenSlots: openSlots,
-            ConsensusRecipesCount: likeVotes.Count
+            ConsensusRecipesCount: filteredVotes.Count
         );
     }
 

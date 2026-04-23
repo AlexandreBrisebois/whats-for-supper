@@ -1,0 +1,59 @@
+### @baseUrl = http://localhost:5050
+
+@baseUrl = http://192.168.1.226:9101
+@weekOffset = 0
+@dayIndex = 0
+@recipeId = 5df6b7da-4537-4b06-bae6-e8278ce2d1a9
+
+### Get schedule for a week
+# Returns 7 days with planned recipes (or null if unplanned) for the specified weekOffset.
+# weekOffset=0 is this week, 1 is next week, -1 is last week.
+GET {{baseUrl}}/api/schedule?weekOffset={{weekOffset}}
+Accept: application/json
+
+### Lock the weekly schedule
+# Sets all calendar events for the week to 'Locked' status.
+# Side effects:
+#   - Purges all recipe votes for the week
+#   - Updates last_cooked_date on all planned recipes
+POST {{baseUrl}}/api/schedule/lock?weekOffset={{weekOffset}}
+Accept: application/json
+
+### Assign recipe to a day
+# Assigns (or updates) a recipe to a specific day in the week.
+# Creates a new CalendarEvent if none exists for that date.
+POST {{baseUrl}}/api/schedule/assign
+Content-Type: application/json
+
+{
+  "weekOffset": {{weekOffset}},
+  "dayIndex": {{dayIndex}},
+  "recipeId": "{{recipeId}}",
+  "recipeName": "Homemade Lasagna",
+  "recipeImage": "https://images.unsplash.com/photo-1574894709920-11b28e7367e3"
+}
+
+### Move recipe between days
+# Swaps recipes between two day slots within the same week.
+# fromIndex and toIndex are 0-6 (Mon-Sun).
+POST {{baseUrl}}/api/schedule/move
+Content-Type: application/json
+
+{
+  "weekOffset": {{weekOffset}},
+  "fromIndex": 0,
+  "toIndex": 2
+}
+
+### Get smart defaults for week
+# Returns consensus-voted recipes and open slots for planning.
+# Only shows recipes that hit the consensus threshold.
+# Locks are applied only for unanimous votes (all family members voted Like).
+GET {{baseUrl}}/api/schedule/{{weekOffset}}/smart-defaults
+Accept: application/json
+
+### Fill the gap
+# Returns 5 recipes with high family interest that haven't been cooked recently.
+# Used to populate quick-pick recommendations.
+GET {{baseUrl}}/api/schedule/fill-the-gap
+Accept: application/json
