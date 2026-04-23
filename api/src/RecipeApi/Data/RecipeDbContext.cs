@@ -11,6 +11,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<RecipeImport> RecipeImports => Set<RecipeImport>();
     public DbSet<RecipeVote> RecipeVotes => Set<RecipeVote>();
     public DbSet<RecipeMatch> RecipeMatches => Set<RecipeMatch>();
+    public DbSet<DiscoveryRecipe> DiscoveryRecipes => Set<DiscoveryRecipe>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -115,6 +116,11 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.ToView("vw_recipe_matches");
             entity.Property(v => v.RecipeId).HasColumnName("recipe_id");
             entity.Property(v => v.LikeCount).HasColumnName("like_count");
+        });
+
+        modelBuilder.Entity<DiscoveryRecipe>(entity =>
+        {
+            entity.ToView("vw_discovery_recipes");
         });
     }
 }

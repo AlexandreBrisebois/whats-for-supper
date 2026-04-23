@@ -72,6 +72,9 @@ public class Recipe
     [Column("updated_at")]
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    [Column("last_cooked_date")]
+    public DateTimeOffset? LastCookedDate { get; set; }
+
     [ForeignKey(nameof(AddedBy))]
     public FamilyMember? AddedByMember { get; set; }
 }

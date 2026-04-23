@@ -18,7 +18,11 @@ public class DiscoveryServiceTests
 
         var recipe1 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, Category = "Italian" };
         var recipe2 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, Category = "Italian" };
-        ctx.Recipes.AddRange(recipe1, recipe2);
+        
+        ctx.DiscoveryRecipes.AddRange(
+            new DiscoveryRecipe { Id = recipe1.Id, Category = "Italian" },
+            new DiscoveryRecipe { Id = recipe2.Id, Category = "Italian" }
+        );
 
         ctx.RecipeVotes.Add(new RecipeVote { RecipeId = recipe1.Id, FamilyMemberId = memberId, Vote = VoteType.Like });
         await ctx.SaveChangesAsync();
@@ -41,7 +45,10 @@ public class DiscoveryServiceTests
 
         var recipe1 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true };
         var recipe2 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = false };
-        ctx.Recipes.AddRange(recipe1, recipe2);
+        
+        ctx.DiscoveryRecipes.Add(new DiscoveryRecipe { Id = recipe1.Id });
+        // recipe2 is not discoverable, so it wouldn't be in the view anyway
+        
         await ctx.SaveChangesAsync();
 
         // Act
@@ -137,7 +144,12 @@ public class DiscoveryServiceTests
         var recipe1 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, Category = "Italian" };
         var recipe2 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, Category = "French" };
         var recipe3 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, Category = "Mexican" };
-        ctx.Recipes.AddRange(recipe1, recipe2, recipe3);
+        
+        ctx.DiscoveryRecipes.AddRange(
+            new DiscoveryRecipe { Id = recipe1.Id, Category = "Italian" },
+            new DiscoveryRecipe { Id = recipe2.Id, Category = "French" },
+            new DiscoveryRecipe { Id = recipe3.Id, Category = "Mexican" }
+        );
 
         // Member voted on Italian
         ctx.RecipeVotes.Add(new RecipeVote { RecipeId = recipe1.Id, FamilyMemberId = memberId, Vote = VoteType.Like });
@@ -151,5 +163,42 @@ public class DiscoveryServiceTests
         Assert.Contains("French", categories);
         Assert.Contains("Mexican", categories);
         Assert.DoesNotContain("Italian", categories);
+    }
+
+    [Fact]
+    public async Task GetRecipesForDiscoveryAsync_Orders_By_VoteCount_And_LastCookedDate()
+    {
+        // Arrange
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new DiscoveryService(ctx);
+        var memberId = Guid.NewGuid();
+
+        var now = DateTimeOffset.UtcNow;
+        var recipe1 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, LastCookedDate = now.AddDays(-1) }; // Less votes, older
+        var recipe2 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, LastCookedDate = now };          // Less votes, newer
+        var recipe3 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, LastCookedDate = now.AddDays(-2) }; // More votes
+        var recipe4 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, LastCookedDate = null };        // Never cooked
+
+        ctx.DiscoveryRecipes.AddRange(
+            new DiscoveryRecipe { Id = recipe1.Id, LastCookedDate = recipe1.LastCookedDate, VoteCount = 0 },
+            new DiscoveryRecipe { Id = recipe2.Id, LastCookedDate = recipe2.LastCookedDate, VoteCount = 0 },
+            new DiscoveryRecipe { Id = recipe3.Id, LastCookedDate = recipe3.LastCookedDate, VoteCount = 1 },
+            new DiscoveryRecipe { Id = recipe4.Id, LastCookedDate = recipe4.LastCookedDate, VoteCount = 0 }
+        );
+
+        // Add votes: recipe3 has 1 vote, others have 0
+        ctx.RecipeVotes.Add(new RecipeVote { RecipeId = recipe3.Id, FamilyMemberId = Guid.NewGuid(), Vote = VoteType.Like });
+
+        await ctx.SaveChangesAsync();
+
+        // Act
+        var results = await service.GetRecipesForDiscoveryAsync(memberId);
+
+        // Assert
+        Assert.Equal(4, results.Count);
+        Assert.Equal(recipe3.Id, results[0].Id); // Top due to vote count
+        Assert.Equal(recipe4.Id, results[1].Id); // Never cooked (NULL) comes first among same vote count
+        Assert.Equal(recipe2.Id, results[2].Id); // Next due to newer LastCookedDate
+        Assert.Equal(recipe1.Id, results[3].Id); // Last
     }
 }

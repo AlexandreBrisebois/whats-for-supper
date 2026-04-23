@@ -10,22 +10,25 @@ public class DiscoveryService(RecipeDbContext dbContext)
 
     public async Task<List<Recipe>> GetRecipesForDiscoveryAsync(Guid familyMemberId, string? category = null)
     {
-        var query = _dbContext.Recipes
-            .Where(r => r.IsDiscoverable)
-            .Where(r => !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id && v.FamilyMemberId == familyMemberId));
+        var query = _dbContext.DiscoveryRecipes.AsQueryable();
 
         if (!string.IsNullOrEmpty(category))
         {
             query = query.Where(r => r.Category == category);
         }
 
-        return await query.ToListAsync();
+        // Exclude recipes already voted on by this user
+        query = query.Where(r => !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id
+                                                                && v.FamilyMemberId == familyMemberId));
+
+        var results = await query.ToListAsync();
+
+        return results.Select(r => r.ToRecipe()).ToList();
     }
 
     public async Task<List<string>> GetAvailableCategoriesAsync(Guid familyMemberId)
     {
-        return await _dbContext.Recipes
-            .Where(r => r.IsDiscoverable)
+        return await _dbContext.DiscoveryRecipes
             .Where(r => !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id && v.FamilyMemberId == familyMemberId))
             .Where(r => r.Category != null)
             .Select(r => r.Category!)
