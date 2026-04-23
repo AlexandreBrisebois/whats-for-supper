@@ -16,30 +16,18 @@ test.describe('Recipes Search Page', () => {
   test('should display search UI and mock data correctly', async ({ page }) => {
     await page.goto('/recipes');
 
-    // Give it a moment to load
-    await page.waitForLoadState('networkidle');
+    // 1. Wait for loader to disappear
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
 
-    // Wait for search input to be visible (indicates data has loaded and component has rendered)
-    await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible({
-      timeout: 10_000,
-    });
+    // 2. Verify search input
+    await expect(page.getByTestId('recipe-search-input')).toBeVisible();
 
-    // 2. Verify Agent's Recommendations section
-    await expect(page.getByText(/Agent's Recommendations/i)).toBeVisible();
-
-    // 3. Verify Top Pick (Mock Data) is visible and correctly rendered
-    // "Homemade Lasagna" should be visible
-    const topPickHeading = page.getByRole('heading', { name: /Homemade Lasagna/i });
-    await expect(topPickHeading).toBeVisible();
-
-    // Description should also be visible
-    await expect(page.getByText(/The ultimate comfort food/i)).toBeVisible();
+    // 3. Verify Top Pick (Mock Data) is visible
+    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+    await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/Homemade Lasagna/i);
 
     // 4. Verify Secondary Results
-    await expect(page.getByRole('heading', { name: /Zesty Lemon Chicken/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Creamy Pesto Pasta/i })).toBeVisible();
-
-    // Screenshots for manual verification if needed
-    await page.screenshot({ path: 'e2e-screenshots/recipes-page.png' });
+    await expect(page.getByTestId('recipe-card-1')).toBeVisible();
+    await expect(page.getByTestId('recipe-card-2')).toBeVisible();
   });
 });

@@ -1,0 +1,481 @@
+openapi: 3.0.3
+info:
+  title: What's For Supper API
+  description: API for the What's For Supper PWA, including recipe discovery, planning, and management.
+  version: 0.1.0
+servers:
+  - url: http://api.wfs.localhost
+    description: Development server (Traefik)
+  - url: http://localhost:9001
+    description: Local direct API
+
+components:
+  securitySchemes:
+    FamilyMemberId:
+      type: apiKey
+      in: header
+      name: X-Family-Member-Id
+
+  schemas:
+    # --- Envelopes ---
+    SuccessWrapped:
+      type: object
+      properties:
+        data:
+          type: object
+
+    # --- Discovery ---
+    VoteDto:
+      type: object
+      properties:
+        vote:
+          type: integer
+          enum: [0, 1, 2] # Dislike, Like, Love
+      required: [vote]
+
+    # --- Recipes ---
+    RecipeDto:
+      type: object
+      required: [id, name, imageUrl, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        imageUrl: { type: string, nullable: true }
+        totalTime: { type: string, nullable: true }
+        category: { type: string, nullable: true }
+        difficulty: { type: string, nullable: true }
+        images:
+          type: array
+          items: { type: integer }
+        rating: { type: integer }
+        addedBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    RecipeListResponse:
+      type: object
+      required: [updatedAt, recipes, pagination]
+      properties:
+        updatedAt: { type: string, format: date-time }
+        recipes:
+          type: array
+          items: { $ref: '#/components/schemas/RecipeDto' }
+        pagination:
+          $ref: '#/components/schemas/PaginationDto'
+
+    RecipeDetailResponse:
+      type: object
+      required: [updatedAt, recipe]
+      properties:
+        updatedAt: { type: string, format: date-time }
+        recipe: { $ref: '#/components/schemas/RecipeDto' }
+
+    PaginationDto:
+      type: object
+      required: [page, limit, total]
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    RecommendationsResponse:
+      type: object
+      required: [topPick, results]
+      properties:
+        topPick: { $ref: '#/components/schemas/TopPickDto' }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/RecommendationResultDto' }
+
+    TopPickDto:
+      type: object
+      required: [id, name, description, imageUrl, prepTime, difficulty]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        imageUrl: { type: string }
+        prepTime: { type: string }
+        difficulty: { type: string }
+
+    RecommendationResultDto:
+      type: object
+      required: [id, name, time, image]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        time: { type: string }
+        image: { type: string }
+
+    # --- Schedule ---
+    ScheduleDays:
+      type: object
+      required: [weekOffset, locked, days]
+      properties:
+        weekOffset: { type: integer }
+        locked: { type: boolean }
+        days:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleDayDto' }
+
+    ScheduleDayDto:
+      type: object
+      required: [day, date]
+      properties:
+        day: { type: string }
+        date: { type: string }
+        recipe: { $ref: '#/components/schemas/ScheduleRecipeDto', nullable: true }
+
+    ScheduleRecipeDto:
+      type: object
+      required: [id, name, image]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, nullable: true }
+        image: { type: string }
+        voteCount: { type: integer, nullable: true }
+
+    MoveScheduleDto:
+      type: object
+      required: [weekOffset, fromIndex, toIndex]
+      properties:
+        weekOffset: { type: integer }
+        fromIndex: { type: integer }
+        toIndex: { type: integer }
+
+    AssignScheduleDto:
+      type: object
+      required: [weekOffset, dayIndex, recipeId]
+      properties:
+        weekOffset: { type: integer }
+        dayIndex: { type: integer }
+        recipeId: { type: string, format: uuid }
+
+    SmartDefaultsDto:
+      type: object
+      required: [weekOffset, familySize, consensusThreshold, preSelectedRecipes, openSlots, consensusRecipesCount]
+      properties:
+        weekOffset: { type: integer }
+        familySize: { type: integer }
+        consensusThreshold: { type: integer }
+        preSelectedRecipes:
+          type: array
+          items: { $ref: '#/components/schemas/PreSelectedRecipeDto' }
+        openSlots:
+          type: array
+          items: { type: object, required: [dayIndex], properties: { dayIndex: { type: integer } } }
+        consensusRecipesCount: { type: integer }
+
+    PreSelectedRecipeDto:
+      type: object
+      required: [recipeId, name, heroImageUrl, voteCount, familySize, unanimousVote, dayIndex, isLocked]
+      properties:
+        recipeId: { type: string, format: uuid }
+        name: { type: string, nullable: true }
+        heroImageUrl: { type: string }
+        voteCount: { type: integer }
+        familySize: { type: integer }
+        unanimousVote: { type: boolean }
+        dayIndex: { type: integer }
+        isLocked: { type: boolean }
+
+    # --- Health ---
+    HealthCheckResponse:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status: { type: string }
+        timestamp: { type: string, format: date-time }
+        checks: { type: object, additionalProperties: true }
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthCheckResponse' }
+
+  /api/discovery/categories:
+    get:
+      summary: Get recipe discovery categories
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { type: string }
+
+  /api/discovery:
+    get:
+      summary: Get recipes for discovery stack
+      security: [{ FamilyMemberId: [] }]
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/RecipeDto' }
+
+  /api/discovery/{id}/vote:
+    post:
+      summary: Submit a vote for a discovery recipe
+      security: [{ FamilyMemberId: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoteDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
+
+  /api/family:
+    get:
+      summary: Get all family members
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+    post:
+      summary: Create or update a family member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      name: { type: string }
+
+  /api/recipes:
+    get:
+      summary: List recipes
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: OK (Not wrapped in data envelope)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeListResponse' }
+    post:
+      summary: Create a recipe
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object }
+
+  /api/recipes/{id}:
+    get:
+      summary: Get recipe detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK (Not wrapped in data envelope)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+
+  /api/recipes/recommendations:
+    get:
+      summary: Get recipe recommendations
+      responses:
+        '200':
+          description: OK (Wrapped in data envelope because it doesn't end in ResponseDto)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/RecommendationsResponse' }
+
+  /api/schedule:
+    get:
+      summary: Get schedule for a week
+      parameters:
+        - name: weekOffset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ScheduleDays' }
+
+  /api/schedule/lock:
+    post:
+      summary: Lock schedule for a week
+      parameters:
+        - name: weekOffset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
+
+  /api/schedule/move:
+    post:
+      summary: Move a recipe in the schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MoveScheduleDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
+
+  /api/schedule/assign:
+    post:
+      summary: Assign a recipe to a schedule slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignScheduleDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
+
+  /api/schedule/fill-the-gap:
+    get:
+      summary: Get recipes to fill the gap
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ScheduleRecipeDto' }
+
+  /api/schedule/{weekOffset}/smart-defaults:
+    get:
+      summary: Get smart defaults for a week
+      parameters:
+        - name: weekOffset
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/SmartDefaultsDto' }

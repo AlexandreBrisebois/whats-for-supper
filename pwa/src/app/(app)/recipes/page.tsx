@@ -74,6 +74,7 @@ export default function RecipesPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
+          data-testid="planning-mode-banner"
           className="bg-terracotta/10 border border-terracotta/20 rounded-2xl p-4 flex items-center justify-between"
         >
           <div>
@@ -104,6 +105,7 @@ export default function RecipesPage() {
         <input
           type="text"
           value={query}
+          data-testid="recipe-search-input"
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Something spicy for 4..."
           className="w-full bg-white/70 backdrop-blur-md border-2 border-charcoal/5 rounded-[2rem] py-5 pl-16 pr-8 text-lg font-bold text-charcoal placeholder:text-charcoal/20 focus:outline-none focus:border-terracotta/20 transition-all shadow-card focus:shadow-xl focus:bg-white"
@@ -119,7 +121,7 @@ export default function RecipesPage() {
       <div className="flex flex-col gap-6">
         {isLoading ? (
           <div className="flex h-48 w-full items-center justify-center">
-            <Loader2 className="animate-spin text-ochre" size={48} />
+            <Loader2 className="animate-spin text-ochre" size={48} data-testid="recipe-loader" />
           </div>
         ) : !data ? null : (
           <>
@@ -141,6 +143,7 @@ export default function RecipesPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
                 onClick={() => handleSelectRecipe(topPick)}
+                data-testid="recipe-card-top-pick"
                 className={cn(
                   'relative group cursor-pointer active:scale-[0.98] transition-all',
                   isAssigning && 'opacity-50 pointer-events-none'
@@ -195,6 +198,7 @@ export default function RecipesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + idx * 0.1 }}
                   onClick={() => handleSelectRecipe(recipe)}
+                  data-testid={`recipe-card-${recipe.id}`}
                   className={cn(
                     'group flex flex-col gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-charcoal/5 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95',
                     isAssigning && 'opacity-50 pointer-events-none'

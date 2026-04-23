@@ -151,6 +151,9 @@ const server = http.createServer((req, res) => {
   ) {
     res.writeHead(200);
     res.end(JSON.stringify({ data: { success: true } }));
+  } else if (path.match(/^\/api\/discovery\/[^\/]+\/vote$/) && req.method === 'POST') {
+    res.writeHead(200);
+    res.end(JSON.stringify({ data: { message: 'Vote recorded' } }));
   } else if (path === '/api/recipes' && req.method === 'GET') {
     const memberId = req.headers['x-family-member-id'];
     const memberRecipes = memberId && recipes[memberId] ? recipes[memberId] : [];
@@ -199,6 +202,20 @@ const server = http.createServer((req, res) => {
         })
       );
     });
+  } else if (path.match(/^\/api\/recipes\/[^\/]+$/) && req.method === 'GET') {
+    const id = path.split('/').pop();
+    res.writeHead(200);
+    res.end(JSON.stringify({ 
+      updatedAt: new Date().toISOString(),
+      recipe: {
+        id: id,
+        name: 'Mock Recipe Detail',
+        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
+        totalTime: '45 mins',
+        difficulty: 'Medium',
+        createdAt: new Date().toISOString()
+      }
+    }));
   } else if (path === '/api/recipes/recommendations' && req.method === 'GET') {
     res.writeHead(200);
     res.end(
@@ -373,8 +390,16 @@ const server = http.createServer((req, res) => {
     res.writeHead(200);
     res.end(JSON.stringify(response));
   } else {
+    console.warn(`[Mock API] 404 Not Found: ${req.method} ${url.pathname}`);
     res.writeHead(404);
-    res.end(JSON.stringify({ message: 'Not Found' }));
+    res.end(
+      JSON.stringify({
+        message: 'Not Found',
+        method: req.method,
+        path: url.pathname,
+        suggestion: 'Check mock-api.js for route registration',
+      })
+    );
   }
 });
 

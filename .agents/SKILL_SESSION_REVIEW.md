@@ -26,7 +26,10 @@ At the end of every work session, perform the following:
 - Update relevant `.spec.md` files for implementation-level changes.
 
 ### C. Tooling & Token Audit
-- **Efficiency Leaks**: Identify where tokens were wasted (redundant reading, trial-and-error).
+- **Efficiency Leaks**: Identify where tokens were wasted:
+  - Did we read the same file multiple times?
+  - Did we load the entire backend for a frontend-only change?
+  - Did we use a full `ls -R` when a targeted `ls` would have worked?
 - **Registry Update**: If a new script was created, move it to `scripts/agent/` and register it in [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md).
 - Offer to build missing tools that would benefit future autonomy.
 
@@ -36,7 +39,14 @@ Perform a **Surface Area Scan** to ensure documentation hasn't drifted:
 - **Tasks**: Cross-reference `package.json` or `Taskfile.yml` with [LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md).
 - **Strategy**: Update [specs/ROADMAP.md](specs/ROADMAP.md) if a phase or milestone was reached.
 
-### E. Next Steps Plan
+### E. Session Compaction & Slimming (Mandatory)
+To maintain "Zero-Waste" context and prevent token bloat:
+1. **Journaling**: Move completed "Session History" from `HANDOVER.md` to `JOURNAL.md`.
+2. **Active Pruning**: Ensure `HANDOVER.md` ONLY contains the delta for the **current active task**.
+3. **Promotion to ADR**: If a technical decision (schema change, architectural shift) was finalized, create a new ADR in `specs/decisions/` and remove the detail from the Handover.
+4. **Zombies**: Run [Death Audit](SKILL_DEATH_AUDIT.md) on any temporary files (e.g., used build prompts).
+
+### F. Next Steps Plan
 - Build a concise plan for the NEXT session to ensure immediate continuity.
 
 ## 3. Enforcement

@@ -31,9 +31,21 @@ await page.getByRole('button', { name: 'Cook Now' }).click();
 await page.getByTestId('start-cook-mode').click();
 ```
 
-## 3. Testing Environment
-- **Always use `task review`**: This command ensures the PWA is tested against the `mock-api.js`, providing a deterministic environment.
-- **Port Strategy**: PWA runs on `3001` (test) or `3000` (dev). Mock API runs on `5001`.
+## 3. Testing Environment & Integrity Gates
+We use a two-tier verification strategy to ensure zero regressions:
+
+- **Tier 1: Local Development (`task review`)**:
+  - Runs formatting, linting, type-checking, and E2E tests.
+  - Relies on Playwright's automatic `webServer` management.
+  - **Best for**: Rapid iteration and pre-commit checks.
+
+- **Tier 2: The Integrity Gate (`scripts/run-e2e-ci.sh`)**:
+  - **High-Fidelity**: Kills lingering processes and waits for stable PWA hydration (5 consecutive health checks).
+  - **CI Parity**: Mimics the exact environment used in GitHub Actions.
+  - **MANDATORY**: This script MUST pass before a feature is considered "Integrated."
+
+### Assumption Validation
+If `scripts/run-e2e-ci.sh` passes, `task review` should also pass. If they diverge, it usually indicates a race condition or hydration issue that the CI script's "stable wait" logic is catching.
 
 ## 4. Test Maintenance & Pruning
 - **False Positives**: If a test fails because a behavior *intentionally* changed, the test must be updated or pruned immediately. Do not waste tokens or time trying to "fix" code to satisfy an obsolete test.

@@ -1,79 +1,38 @@
 # Universal Agent Protocol (UAP)
 
-This document is the **Source of Truth** for all AI Coding Agents (GitHub Copilot, Gemini, Claude Code, Codex/GPT). It defines the "Zero-Waste" environment rules for this repository.
+Source of Truth for the "What's For Supper" (WFS) project. This is a **Registry**; all procedural logic lives in `.agents/`.
 
-## 1. Project Identity & Stack
-- **Project**: "What's For Supper" (WFS)
-- **Architecture**: Vertical Slices (Phases 0-#).
-- **Backend**: .NET 10 (C#) Web API.
-- **Frontend**: Next.js 15 (TypeScript) PWA.
-- **Database**: PostgreSQL with `pgvector` extension.
-- **Orchestration**: Modular Docker Compose (`docker/compose/*.yml`) + `Taskfile.yml`.
-- **Infrastructure**: All orchestration lives in `docker/`. The root remains a clean entry point.
+## 1. Project Identity
+- **Stack**: .NET 10 (C#), Next.js 15 (TS), PostgreSQL (pgvector).
+- **Elite Model**: Parallel Workstreams governed by [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md).
 
-## 2. Mandatory Shell Environment
-Agents MUST ensure these paths are available or use absolute paths for tools:
-```bash
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/share/dotnet:/Users/alex/.dotnet/tools:$PATH"
-```
-| Tool | Absolute Path |
+## 2. Core Entry Points
+- **Roadmap**: [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md)
+- **Active Task**: [HANDOVER.md](HANDOVER.md) (Active only)
+- **History**: [JOURNAL.md](JOURNAL.md) (Archives)
+- **Execution**: [Taskfile.yml](Taskfile.yml)
+
+## 3. Mandatory Law
+1. **Orchestration**: Follow [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md) for all feature work.
+2. **Contract-First**: Update `pwa/mock-api.js` before UI changes ([Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md)).
+3. **TDD-First**: Write tests before implementation ([Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md)).
+4. **Cleanliness**: Perform [Death Audit](.agents/SKILL_DEATH_AUDIT.md) to remove zombie code/docs.
+5. **Session Review**: Mandatory audit and [Compaction](.agents/SKILL_SESSION_REVIEW.md) before turn end.
+
+## 4. Skills Library
+| Role | Skill File |
 | :--- | :--- |
-| `dotnet` | `/usr/local/share/dotnet/dotnet` |
-| `task` | `/opt/homebrew/bin/task` |
-| `docker` | `/usr/local/bin/docker` |
-| `dotnet-ef` | `/Users/alex/.dotnet/tools/dotnet-ef` |
+| **Lead / Lead Dev** | [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md) |
+| **Architect** | [Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md) |
+| **PWA Testing** | [Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md) |
+| **Backend Dev** | [Senior .NET Developer](.agents/SKILL_DOTNET_DEVELOPER.md) |
+| **Frontend Dev** | [Next.js Developer](.agents/SKILL_NEXTJS_DEVELOPER.md) |
+| **Planning** | [Build Prompt Creation](.agents/SKILL_CREATE_PROMPT.md) |
+| **Audit** | [Session Review & Compaction](.agents/SKILL_SESSION_REVIEW.md) |
+| **Cleanup** | [Death Audit (Kill Zombies)](.agents/SKILL_DEATH_AUDIT.md) |
+| **Designer** | [Designer Agent (The Mère-Designer)](.agents/SKILL_DESIGNER.md) |
+| **Stress-Test** | [Shared Understanding (Grill Me)](.agents/SKILL_SHARED_UNDERSTANDING.md) |
 
-## 3. MANDATORY: Interaction & Verification Rules
-If a command (e.g., `task build`) fails due to environment issues (missing tool, Docker daemon down):
-1. **DO NOT** search for brittle workarounds.
-2. **Explicitly ask the USER** to run the command or fix the environment.
-3. **Format the Request**:
-   - **WHY**: Explain the necessity of the command.
-   - **EXPECTED**: Describe the success criteria.
-   - **CODE**: Provide a clear copy-paste block.
-   - **STOP**: Wait for the user to provide the output.
-
-### Human-Run Tools (Sandbox Edges)
-- `task`: Primary orchestration.
-- `docker`: Container runtime (Requires local daemon).
-- `dotnet watch` / `npm run dev`: Hot-reload (Best run by human).
-
-## 4. MANDATORY: The TDD Workflow
-Every agent session MUST prioritize testing over implementation:
-1. **Specs Updated**: Any behavior change must first be documented in `specs/`.
-2. **Tests Updated**: Write Playwright or xUnit tests to capture the new/changed behavior.
-3. **Mock API Updated**: For PWA changes, the `pwa/mock-api.js` MUST be updated first as a high-fidelity contract.
-4. **Code Updated**: Only then implement the logic to satisfy the tests.
-   - Use `task review` to verify PWA tests against the mock API.
-   - Use `dotnet test` to verify API logic.
-
-## 4. Token Efficiency Rules
-- **Session Kickoff**: Internalize this protocol first, then establish current technical state by reading `HANDOVER.md`.
-- **Discovery**: Use `task agent:summary` to rapidly map the workspace before massive `ls` or `grep`.
-- **Lazy Context**: Only load Skills from `.agents/` when explicitly performing those tasks.
-
-## 5. Knowledge Map (Entry Points)
-- **Active Prioritization**: [specs/ROADMAP.md](specs/ROADMAP.md) (Master Roadmap).
-- **Handover History**: [HANDOVER.md](HANDOVER.md).
-- **Design & Architecture — MANDATORY READ**: 
-  - [specs/API_DESIGN.md](specs/API_DESIGN.md) — API response wrapping & controller patterns.
-  - [specs/TESTING_AND_E2E.md](specs/TESTING_AND_E2E.md) — Mock API, Playwright, 127.0.0.1 strategy.
-  - [specs/RECIPE_PROCESSING.md](specs/RECIPE_PROCESSING.md) — Recipe pipeline, difficulty inference, discovery.
-- **Skills Library** (Procedural Logic):
-  - [Database & Migrations](.agents/SKILL_DATABASE.md)
-  - [API Discovery & Mapping](.agents/SKILL_API_DISCOVERY.md)
-  - [E2E & Integration Testing](.agents/SKILL_TESTING.md)
-  - [Next.js Testing Best Practices](.agents/SKILL_NEXTJS_TESTING.md)
-  - [Next.js Developer](.agents/SKILL_NEXTJS_DEVELOPER.md)
-  - [Senior .NET Developer](.agents/SKILL_DOTNET_DEVELOPER.md)
-  - [Build Prompt Creation](.agents/SKILL_CREATE_PROMPT.md)
-  - [Session Review & Audit](.agents/SKILL_SESSION_REVIEW.md)
-  - [Designer Agent (The Mère-Designer)](.agents/SKILL_DESIGNER.md)
-  - [Shared Understanding (Grill Me)](.agents/SKILL_SHARED_UNDERSTANDING.md)
-- **Architecture**: [specs/](specs/) and [LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md).
-
-## 6. MANDATORY: The Handover Protocol
-Failure to perform a session audit is a protocol violation.
-1.At the end of every agent turn, you MUST ask the use if they want to review the session.
-2. When the user agrees, you MUST execute the **[Session Review & Audit](.agents/SKILL_SESSION_REVIEW.md)** protocol.
-3. Ensure [HANDOVER.md](HANDOVER.md) is updated with absolute technical detail.
+## 5. Environment
+- Use absolute paths for `dotnet`, `task`, `docker` if $PATH fails.
+- Entry point: `task -l`.

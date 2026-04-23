@@ -634,6 +634,22 @@ tasks:
       - echo "✓ Everything looks good! Ready to push."
 
   # ============================================================================
+  # API & CONTRACTS
+  # ============================================================================
+
+  types:sync:
+    desc: "🔄 Sync TypeScript types from OpenAPI spec"
+    dir: pwa
+    cmds:
+      - npx openapi-typescript ../specs/openapi.yaml -o src/lib/api/types.ts
+      - echo "✓ TypeScript types updated in pwa/src/lib/api/types.ts"
+
+  agent:reconcile:
+    desc: "🤖 Reconcile Spec vs Mock vs Real API"
+    cmds:
+      - python3 scripts/agent/reconcile_api.py
+
+  # ============================================================================
   # AGENT TOOLS (AI OPTIMIZED)
   # ============================================================================
 

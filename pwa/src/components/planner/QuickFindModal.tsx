@@ -55,6 +55,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        data-testid="quick-find-modal"
         className="relative w-full max-w-sm glass rounded-[3rem] overflow-hidden shadow-2xl border-white/20"
       >
         <div className="p-8">
@@ -83,6 +84,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
                   initial={{ x: 100, opacity: 0, rotate: 5, scale: 0.9 }}
                   animate={{ x: 0, opacity: 1, rotate: 0, scale: 1 }}
                   exit={{ x: -100, opacity: 0, rotate: -5, scale: 0.9 }}
+                  data-testid="quick-find-card"
                   transition={{ type: 'spring', damping: 20, stiffness: 150 }}
                   className="absolute inset-0 rounded-[2.5rem] overflow-hidden shadow-xl border border-white/20"
                 >
@@ -128,6 +130,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
               className="h-14 rounded-2xl border-charcoal/10 text-charcoal/60 font-bold active:scale-95 transition-all"
               onClick={handleNext}
               disabled={isLoading}
+              data-testid="quick-find-next"
             >
               Skip
             </Button>
@@ -135,6 +138,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
               className="h-14 rounded-2xl bg-ochre text-white font-bold shadow-lg shadow-ochre/20 active:scale-95 transition-all"
               onClick={() => onSelect(recipes[currentIndex])}
               disabled={isLoading}
+              data-testid="quick-find-select"
             >
               Select
             </Button>

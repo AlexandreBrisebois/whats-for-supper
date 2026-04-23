@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 interface CooksModeProps {
   recipe: {
     id: string;
-    name: string;
+    name: string | null;
     image: string;
   };
   onClose: () => void;
@@ -62,13 +62,13 @@ export function CooksMode({ recipe, onClose }: CooksModeProps) {
       <div className="p-8 flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md">
         <div className="flex items-center space-x-4">
           <div className="h-14 w-14 rounded-2xl overflow-hidden relative border-2 border-white shadow-md">
-            <Image src={recipe.image} alt={recipe.name} fill className="object-cover" />
+            <Image src={recipe.image} alt={recipe.name || 'Recipe'} fill className="object-cover" />
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-terracotta/60">
               Cook&apos;s mode
             </p>
-            <h2 className="text-xl font-heading font-black text-charcoal">{recipe.name}</h2>
+            <h2 className="text-xl font-heading font-black text-charcoal">{recipe.name || 'Untitled Recipe'}</h2>
           </div>
         </div>
         <button
@@ -104,7 +104,10 @@ export function CooksMode({ recipe, onClose }: CooksModeProps) {
             transition={{ type: 'spring', damping: 20, stiffness: 100 }}
             className="max-w-xl"
           >
-            <div className="mb-10 inline-flex items-center space-x-2 text-terracotta bg-terracotta/5 px-6 py-3 rounded-full">
+            <div
+              data-testid="cooks-mode-step-indicator"
+              className="mb-10 inline-flex items-center space-x-2 text-terracotta bg-terracotta/5 px-6 py-3 rounded-full"
+            >
               <UtensilsCrossed size={20} />
               <span className="text-sm font-black uppercase tracking-widest">
                 Step {currentStep + 1} of {steps.length}
@@ -128,6 +131,7 @@ export function CooksMode({ recipe, onClose }: CooksModeProps) {
           variant="secondary"
           disabled={currentStep === 0}
           onClick={prevStep}
+          data-testid="cooks-mode-step-prev"
           className="h-24 rounded-3xl border-charcoal/10 text-charcoal/40 text-xl font-bold flex items-center justify-center space-x-3 active:scale-95 transition-all"
         >
           <ChevronLeft size={32} />
@@ -135,6 +139,7 @@ export function CooksMode({ recipe, onClose }: CooksModeProps) {
         </Button>
         <Button
           onClick={nextStep}
+          data-testid="cooks-mode-step-next"
           className="h-24 rounded-3xl bg-terracotta text-white text-xl font-bold flex items-center justify-center space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
         >
           <span>{currentStep === steps.length - 1 ? 'Done' : 'Next'}</span>

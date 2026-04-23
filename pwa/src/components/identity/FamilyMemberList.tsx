@@ -34,7 +34,7 @@ export function FamilyMemberList({ members, selectedId, onSelect }: FamilyMember
   };
 
   return (
-    <div data-hint="family-list" className="w-full">
+    <div data-hint="family-list" data-testid="family-list" className="w-full">
       {!members || members.length === 0 ? (
         <p className="py-6 text-center text-sm text-charcoal-400">
           {t('family.noMembers', 'No family members yet. Add one below!')}
@@ -82,6 +82,7 @@ export function FamilyMemberList({ members, selectedId, onSelect }: FamilyMember
                     <button
                       type="button"
                       onClick={() => onSelect(member.id)}
+                      data-testid={`family-member-${member.id}`}
                       className={[
                         'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all',
                         'focus:outline-none focus:ring-2 focus:ring-indigo/40',

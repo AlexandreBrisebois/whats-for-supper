@@ -126,7 +126,7 @@ export default function PlannerPage() {
                 currentWeekOffset * 7
             );
 
-            let recipe = null;
+            let recipe = undefined;
             if (currentWeekOffset === 0 && i === 0) {
               recipe = {
                 id: 'lasagna',
@@ -338,6 +338,7 @@ export default function PlannerPage() {
         <div className="flex p-1 mb-8 bg-charcoal/5 rounded-2xl border border-charcoal/5">
           <button
             role="tab"
+            data-testid="planner-tab"
             aria-selected={activeTab === 'planner'}
             onClick={() => setActiveTab('planner')}
             className={cn(
@@ -351,6 +352,7 @@ export default function PlannerPage() {
           </button>
           <button
             role="tab"
+            data-testid="grocery-tab"
             aria-selected={activeTab === 'grocery'}
             onClick={() => setActiveTab('grocery')}
             className={cn(
@@ -523,7 +525,7 @@ export default function PlannerPage() {
                             <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5">
                               <Image
                                 src={day.recipe.image}
-                                alt={day.recipe.name}
+                                alt={day.recipe.name || 'Recipe'}
                                 fill
                                 className="object-cover"
                               />
@@ -555,7 +557,7 @@ export default function PlannerPage() {
                                 Supper planned
                               </p>
                             </div>
-                            {currentWeekOffset === 0 && index === 3 && (
+                            {currentWeekOffset === 0 && day.recipe && (
                               <motion.button
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -575,6 +577,7 @@ export default function PlannerPage() {
                         ) : (
                           <button
                             onClick={() => setShowPivot({ dayIndex: index })}
+                            data-testid="plan-meal-button"
                             className="flex items-center w-full text-left group"
                           >
                             <motion.div
@@ -630,6 +633,7 @@ export default function PlannerPage() {
                     <Button
                       className="w-full h-16 rounded-3xl bg-charcoal text-white font-bold text-lg shadow-xl shadow-charcoal/20 active:scale-[0.98] transition-all"
                       onClick={handleFinalize}
+                      data-testid="finalize-button"
                     >
                       Declare complete
                     </Button>
@@ -674,6 +678,7 @@ export default function PlannerPage() {
               <div className="grid grid-cols-1 gap-4">
                 <button
                   onClick={() => setShowQuickFind(true)}
+                  data-testid="pivot-quick-find"
                   className="flex items-center p-5 rounded-3xl bg-white border border-charcoal/5 shadow-sm active:scale-95 transition-all text-left"
                 >
                   <div className="h-12 w-12 rounded-2xl bg-ochre/10 text-ochre flex items-center justify-center mr-4">
@@ -690,6 +695,7 @@ export default function PlannerPage() {
 
                 <button
                   onClick={handleSearchPath}
+                  data-testid="pivot-search-library"
                   className="flex items-center p-5 rounded-3xl bg-white border border-charcoal/5 shadow-sm active:scale-95 transition-all text-left"
                 >
                   <div className="h-12 w-12 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center mr-4">
@@ -706,6 +712,7 @@ export default function PlannerPage() {
 
                 <button
                   onClick={handleAskFamily}
+                  data-testid="pivot-ask-family"
                   className="flex items-center p-5 rounded-3xl bg-white border border-charcoal/5 shadow-sm active:scale-95 transition-all text-left"
                 >
                   <div className="h-12 w-12 rounded-2xl bg-sage/10 text-sage flex items-center justify-center mr-4">

@@ -160,6 +160,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       animate={controls}
       onDragEnd={handleDragEnd}
       className="absolute inset-x-0 top-0 bottom-12 cursor-grab active:cursor-grabbing"
+      data-testid="discovery-card"
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
       <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">

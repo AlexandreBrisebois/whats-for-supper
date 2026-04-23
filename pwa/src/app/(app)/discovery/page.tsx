@@ -188,7 +188,7 @@ export default function DiscoveryPage() {
   if (isLoading && recipes.length === 0) {
     return (
       <div className="flex h-[calc(100dvh-6rem)] w-full items-center justify-center">
-        <Loader2 className="animate-spin text-ochre" size={48} />
+        <Loader2 className="animate-spin text-ochre" size={48} data-testid="discovery-loader" />
       </div>
     );
   }
@@ -222,6 +222,7 @@ export default function DiscoveryPage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
+                data-testid="discovery-empty-state"
                 className="flex h-full w-full flex-col items-center justify-center rounded-[2.5rem] bg-white/50 border-2 border-dashed border-charcoal/10 glass-solar px-6 text-center"
               >
                 <div className="mb-4 rounded-full bg-ochre/10 p-4 text-ochre">
@@ -264,6 +265,7 @@ export default function DiscoveryPage() {
         <button
           disabled={recipes.length === 0}
           onClick={() => recipes.length > 0 && handleSwipeLeft(recipes[recipes.length - 1].id)}
+          data-testid="dislike-button"
           className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_rgba(205,93,69,0.15)] border border-terracotta/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-2xl">✕</div>
@@ -271,6 +273,7 @@ export default function DiscoveryPage() {
 
         <button
           onClick={fetchCategories}
+          data-testid="refresh-button"
           className="flex h-12 w-12 items-center justify-center rounded-full bg-white/50 text-charcoal/30 shadow-sm border border-charcoal/5 active:rotate-180 transition-transform duration-500"
         >
           <RefreshCcw size={18} />
@@ -279,6 +282,7 @@ export default function DiscoveryPage() {
         <button
           disabled={recipes.length === 0}
           onClick={() => recipes.length > 0 && handleSwipeRight(recipes[recipes.length - 1].id)}
+          data-testid="like-button"
           className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-sage shadow-[0_10px_25px_rgba(138,154,91,0.15)] border border-sage/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-3xl">♥</div>

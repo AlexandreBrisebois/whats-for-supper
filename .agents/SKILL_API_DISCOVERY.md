@@ -1,27 +1,44 @@
----
-name: api-discovery
-description: Procedural guidance for maintaining the API endpoint map and service discovery using the map_api.py tool.
----
+# SKILL: Contract-First API Workflow
 
-# Skill: API Discovery & Mapping
+**Description:** This skill defines the mandatory workflow for modifying, discovering, or extending the What's For Supper API. It enforces a "Contract-First" approach to guarantee 100% parity between the frontend, mock backend, and C# backend, while dramatically reducing token consumption by relying on machine-readable specs and automated tooling instead of manual code inspection.
 
-Procedural guidance for maintaining the API endpoint map and service discovery.
+## ⚠️ Core Directive
+**NEVER** modify API controllers (`api/src/.../Controllers/*.cs`), frontend API clients (`pwa/src/lib/api/*.ts`), or the mock API (`pwa/mock-api.js`) to add or change an endpoint **without first updating the OpenAPI specification.**
 
-## 1. Tooling: map_api.py
-This script parses C# controllers to generate a markdown table of endpoints.
+## The Source of Truth
+The definitive source of truth for all API interactions is:
+👉 `specs/openapi.yaml`
 
-### Execute Discovery
+This file is a "Hard Spec". If an endpoint is not in this file, it does not exist for the PWA.
+
+## Workflow: Modifying the API
+
+When asked to add a new endpoint, change a payload, or update a route, follow this exact sequence:
+
+### Step 1: Update the Contract (OpenAPI)
+1. Open `specs/openapi.yaml`.
+2. Define the new path, HTTP method, request payload, and response payload.
+3. Ensure all schema properties are explicitly typed and marked as `required` where appropriate to ensure strict TypeScript generation.
+
+### Step 2: Sync Frontend Types
+Run the following command to automatically generate the TypeScript interfaces:
 ```bash
-# Via Taskfile
-task agent:api
-
-# Directly via Python
-python3 scripts/agent/map_api.py
+task types:sync
 ```
+*Token-Saving Note: You do NOT need to write TypeScript interfaces manually. `openapi-typescript` handles this instantly.*
 
-## 2. API Summary Management
-- Always check `api.wfs.localhost` for service availability.
-- When adding new controllers or endpoints, re-run the discovery tool and update the technical context in `HANDOVER.md`.
+### Step 3: Implement the Mock
+Update `pwa/mock-api.js` to implement the new route so the frontend can be developed and E2E tested immediately.
 
-## 3. Communication Rules
-- Backend/Frontend consensus: Ensure that changes to the API schema are reflected in the `mock-api.js` for PWA testing.
+### Step 4: Implement the Backend
+Update the C# Controllers and DTOs in `api/src/RecipeApi` to match the exact paths and schemas defined in the YAML.
+
+### Step 5: Verify Parity (The Reconciliation Engine)
+Run the reconciliation script to mechanically verify that the Spec, Mock, and Real API are in perfect alignment.
+```bash
+task agent:reconcile
+```
+**CRITICAL**: Do not consider the task complete until this script reports "Perfect Parity".
+
+## Why this saves tokens
+Instead of opening `mock-api.js` (400+ lines) and multiple C# controllers (1000+ lines) to "figure out" what the API looks like or verify your work, you use `task agent:reconcile`. The script acts as your "eyes" on the disk, returning a compact, high-signal table of deltas. You only spend tokens reading the differences, not the entire source tree.
