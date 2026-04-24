@@ -202,6 +202,9 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install Python dependencies
+        run: pip install pyyaml
+
       - name: Verify API ↔ Spec ↔ Mock parity
         run: python3 scripts/agent/reconcile_api.py
         env:

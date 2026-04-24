@@ -1,8 +1,13 @@
 import os
 import re
-import yaml
 import json
 import sys
+
+try:
+    import yaml
+except ImportError as e:
+    print(f"❌ Error: Failed to import yaml. Install with: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 
 # Paths
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
