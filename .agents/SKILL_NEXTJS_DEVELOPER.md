@@ -10,7 +10,7 @@ Procedural guidance for frontend development using Next.js 15 and modern React p
 ## 1. The TDD Workflow (Mandatory)
 1. **PWA Specs**: Update specs in `specs/01_FRONTEND/`.
 2. **E2E Tests**: Write/Update Playwright tests in `pwa/e2e/` using `data-testid`.
-3. **Mock API**: Update `pwa/mock-api.js` to provide the required data/behavior.
+3. **Mock API**: Update specs/openapi.yaml with schemas and rich examples. Prism will serve this data, providing a High-Fidelity Contract that allows frontend work to proceed independently of the backend.
 4. **Implementation**: Write the React code to satisfy the tests.
 5. **Verify**: Run `task review` to confirm everything passes.
 
