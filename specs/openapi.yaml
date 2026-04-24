@@ -41,7 +41,8 @@ components:
         id: { type: string, format: uuid }
         name: { type: string, nullable: true }
         description: { type: string, nullable: true }
-        imageUrl: { type: string, nullable: true }
+        imageUrl: { type: string, nullable: true, example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
+
         totalTime: { type: string, nullable: true }
         category: { type: string, nullable: true }
         difficulty: { type: string, nullable: true }
@@ -94,7 +95,8 @@ components:
         id: { type: string }
         name: { type: string }
         description: { type: string }
-        imageUrl: { type: string }
+        imageUrl: { type: string, example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
+
         prepTime: { type: string }
         difficulty: { type: string }
 
@@ -105,7 +107,8 @@ components:
         id: { type: string }
         name: { type: string }
         time: { type: string }
-        image: { type: string }
+        image: { type: string, example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
+
 
     # --- Schedule ---
     ScheduleDays:
@@ -116,7 +119,11 @@ components:
         locked: { type: boolean }
         days:
           type: array
+          minItems: 7
+          maxItems: 7
           items: { $ref: '#/components/schemas/ScheduleDayDto' }
+      items: { $ref: '#/components/schemas/ScheduleDayDto' }
+
 
     ScheduleDayDto:
       type: object
@@ -132,7 +139,8 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string, nullable: true }
-        image: { type: string }
+        image: { type: string, example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
+
         voteCount: { type: integer, nullable: true }
 
     MoveScheduleDto:
@@ -165,6 +173,12 @@ components:
           type: array
           items: { type: object, required: [dayIndex], properties: { dayIndex: { type: integer } } }
         consensusRecipesCount: { type: integer }
+
+    UpdateRecipeDto:
+      type: object
+      properties:
+        notes: { type: string, nullable: true }
+        rating: { type: integer, nullable: true, minimum: 0, maximum: 3 }
 
     PreSelectedRecipeDto:
       type: object
@@ -214,6 +228,8 @@ paths:
                   data:
                     type: array
                     items: { type: string }
+              example:
+                data: ['Gourmet Discovery', 'Coastal Kitchen', 'Organic Vitality']
 
   /api/discovery:
     get:
@@ -234,6 +250,16 @@ paths:
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/RecipeDto' }
+              example:
+                data:
+                  - id: '660e8400-e29b-41d4-a716-446655440001'
+                    name: 'Mock Gourmet Discovery 1'
+                    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'
+                    createdAt: '2026-04-23T20:00:00Z'
+                  - id: '660e8400-e29b-41d4-a716-446655440002'
+                    name: 'Mock Gourmet Discovery 2'
+                    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'
+                    createdAt: '2026-04-23T20:00:00Z'
 
   /api/discovery/{id}/vote:
     post:
@@ -261,6 +287,9 @@ paths:
                     type: object
                     properties:
                       message: { type: string }
+              example:
+                data:
+                  message: "Vote recorded"
 
   /api/family:
     get:
@@ -281,6 +310,15 @@ paths:
                       properties:
                         id: { type: string }
                         name: { type: string }
+              example:
+                data:
+                  - id: '1'
+                    name: 'Alex'
+                  - id: '2'
+                    name: 'Jordan'
+                  - id: '3'
+                    name: 'Test User'
+
     post:
       summary: Create or update a family member
       requestBody:
@@ -305,6 +343,47 @@ paths:
                     properties:
                       id: { type: string }
                       name: { type: string }
+              example:
+                data:
+                  id: '3'
+                  name: 'Test User'
+
+  /api/family/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Update a family member
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      name: { type: string }
+    delete:
+      summary: Delete a family member
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '204':
+          description: Deleted
 
   /api/recipes:
     get:
@@ -328,8 +407,58 @@ paths:
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                difficulty: { type: string }
+                totalTime: { type: string }
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+              example:
+                data:
+                  id: '550e8400-e29b-41d4-a716-446655440003'
+
+  /api/recipes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get recipe detail
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+    patch:
+      summary: Update a recipe
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
           application/json:
-            schema: { type: object }
+            schema: { $ref: '#/components/schemas/UpdateRecipeDto' }
       responses:
         '200':
           description: OK
@@ -339,21 +468,13 @@ paths:
                 type: object
                 properties:
                   data: { type: object }
-
-  /api/recipes/{id}:
-    get:
-      summary: Get recipe detail
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
+    delete:
+      summary: Delete a recipe
+      security: [{ FamilyMemberId: [] }]
       responses:
-        '200':
-          description: OK (Not wrapped in data envelope)
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+        '204':
+          description: Deleted
+
 
   /api/recipes/recommendations:
     get:
@@ -367,6 +488,24 @@ paths:
                 type: object
                 properties:
                   data: { $ref: '#/components/schemas/RecommendationsResponse' }
+                example:
+                  data:
+                    topPick:
+                      id: '550e8400-e29b-41d4-a716-446655440000'
+                      name: 'Homemade Lasagna'
+                      description: 'Classic comfort food with layered pasta, rich meat sauce, and melted cheese.'
+                      imageUrl: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3'
+                      prepTime: '45 mins'
+                      difficulty: 'Medium'
+                    results:
+                      - id: '550e8400-e29b-41d4-a716-446655440001'
+                        name: 'Zesty Lemon Chicken'
+                        time: '25 mins'
+                        image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435'
+                      - id: '550e8400-e29b-41d4-a716-446655440002'
+                        name: 'Gorgonzola Gnocchi'
+                        time: '20 mins'
+                        image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141'
 
   /api/schedule:
     get:
@@ -384,6 +523,29 @@ paths:
                 type: object
                 properties:
                   data: { $ref: '#/components/schemas/ScheduleDays' }
+                example:
+                  data:
+                    weekOffset: 0
+                    locked: false
+                    days:
+                      - day: Monday
+                        date: '2026-04-23'
+                        recipe:
+                          id: '550e8400-e29b-41d4-a716-446655440000'
+                          name: 'Zesty Lemon Chicken'
+                          image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435'
+                      - day: Tuesday
+                        date: '2026-04-24'
+                      - day: Wednesday
+                        date: '2026-04-25'
+                      - day: Thursday
+                        date: '2026-04-26'
+                      - day: Friday
+                        date: '2026-04-27'
+                      - day: Saturday
+                        date: '2026-04-28'
+                      - day: Sunday
+                        date: '2026-04-29'
 
   /api/schedule/lock:
     post:
@@ -461,6 +623,14 @@ paths:
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/ScheduleRecipeDto' }
+              example:
+                data:
+                  - id: '550e8400-e29b-41d4-a716-446655440001'
+                    name: 'Zesty Lemon Chicken'
+                    image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435'
+                  - id: '550e8400-e29b-41d4-a716-446655440002'
+                    name: 'Gorgonzola Gnocchi'
+                    image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141'
 
   /api/schedule/{weekOffset}/smart-defaults:
     get:
@@ -479,3 +649,21 @@ paths:
                 type: object
                 properties:
                   data: { $ref: '#/components/schemas/SmartDefaultsDto' }
+                example:
+                  data:
+                    weekOffset: 0
+                    familySize: 4
+                    consensusThreshold: 3
+                    preSelectedRecipes:
+                      - recipeId: '660e8400-e29b-41d4-a716-446655440001'
+                        name: 'Saturday Night Tacos'
+                        heroImageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47'
+                        voteCount: 4
+                        familySize: 4
+                        unanimousVote: true
+                        dayIndex: 5
+                        isLocked: false
+                    openSlots:
+                      - dayIndex: 1
+                      - dayIndex: 3
+                    consensusRecipesCount: 1

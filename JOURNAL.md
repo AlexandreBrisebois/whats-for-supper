@@ -15,6 +15,15 @@ This file contains the historical session logs and technical archives for the "W
 
 ## Session History
 
+### [2026-04-23] Automated API Contract Workflow (Kiota & Prism)
+**Status**: COMPLETED ✅
+- **Architectural Shift**: Replaced manual `openapi-typescript` and custom Node mock server with an automated generation and mocking pipeline.
+- **Kiota**: Implemented `@microsoft/kiota` to generate a strictly-typed client SDK (`ApiClient`) directly from `specs/openapi.yaml`.
+- **Prism Mocking**: Replaced `mock-api.js` with Stoplight Prism (`prism mock`), guaranteeing 100% contract parity during frontend development.
+- **Verification**: Updated `reconcile_api.py` to recognize Prism's absolute parity while preserving it as the safety check against the C# Backend.
+- **POC**: Refactored `pwa/src/lib/api/planner.ts` to consume the generated Kiota client, applying necessary type casting to maintain existing frontend constraints.
+- **Documentation**: Updated `SKILL_API_DISCOVERY.md` to reflect the new automated "Contract-First" workflow. Added ADR `015-automated-api-contract-workflow.md`.
+
 ### [2026-04-23] Merge SmartDefaults Into Planner Grid: Unified Grid Integration
 **Status**: COMPLETED ✅
 - **Feature**: Merged SmartDefaults component into the 7-day planner grid for a single unified view.

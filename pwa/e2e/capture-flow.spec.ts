@@ -1,167 +1,117 @@
-/**
- * E2E — Capture flow
- *
- * Covers the recipe capture multi-step flow:
- *   camera → review → dish-select → rate → done
- *
- * Because Playwright cannot control a real device camera, we inject a fixture
- * image at the "add photo" step using the file-chooser API. The camera view
- * falls back to a file-input when `getUserMedia` is unavailable (which it is
- * in headless Chromium).
- */
-
 import path from 'path';
 import { test, expect } from './fixtures';
-import type { Page } from '@playwright/test';
 
 // Path to a small fixture image bundled with the E2E suite
 const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────────────────────────────────────
-
-/**
- * Select the first available family member and return to a logged-in state.
- * Creates a test member if none exist.
- */
-async function loginAsMember(page: Page) {
-  await page.goto('/onboarding');
-
-  // Wait for family list to be present
-  const familyList = page.locator('[data-hint="family-list"]');
-  await expect(familyList).toBeVisible({ timeout: 10_000 });
-
-  // Scope button query to family list to exclude "Don't see your name?" button
-  const buttons = familyList.getByRole('button').filter({ hasText: /.+/ });
-  const count = await buttons.count();
-
-  if (count === 0) {
-    // No members yet — create one
-    const addButton = page.getByRole('button', {
-      name: /Don't see your name/i,
-    });
-    if ((await addButton.count()) > 0) {
-      await addButton.click();
-      const input = page.getByRole('textbox');
-      await input.fill(`E2EUser-${Date.now()}`);
-      await page.getByRole('button', { name: 'Add Member', exact: true }).click();
-
-      // Wait for redirect to home after creation
-      await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
-      // Wait for identity cookie and Tonight's Menu
-      await page.waitForFunction(() => document.cookie.includes('x-family-member-id='), null, {
-        timeout: 5000,
-      });
-      await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible({
-        timeout: 10_000,
-      });
-      return;
-    }
-  }
-
-  // Find and click the first family member
-  const firstMember = familyList.getByRole('button').filter({ hasText: /.+/ }).first();
-  if ((await firstMember.count()) > 0) {
-    await firstMember.click();
-    // Wait for identity cookie to be set before checking URL
-    await page.waitForFunction(() => document.cookie.includes('x-family-member-id='), null, {
-      timeout: 5000,
-    });
-    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible({
-      timeout: 10_000,
-    });
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Scenario 1 — Navigate from home to /capture
-// ──────────────────────────────────────────────────────────────────────────────
-
-test('authenticated user can navigate to the capture page from home', async ({ page }) => {
-  await loginAsMember(page);
-
-  // Click the "Capture a Recipe" trigger on the Home page
-  await page.getByRole('link', { name: /capture a recipe/i }).click();
-
-  await expect(page).toHaveURL(/\/capture/);
-
-  // Capture page shows camera button (accessible by aria-label)
-  await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
-});
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Scenario 2 — Full capture flow with a mock image
-// ──────────────────────────────────────────────────────────────────────────────
-
-test('user can complete the capture flow and see a success message', async ({ page }) => {
-  await loginAsMember(page);
-  await page.goto('/capture');
-
-  // ── Step 1: Camera — inject a file via the file chooser ──────────────────
-  // Grant camera permissions (or mock) so the CameraView renders
-  await page.context().grantPermissions(['camera']);
-
-  // Look for a file input or a "choose from gallery" affordance
-  const fileInput = page.locator('input[type="file"]').first();
-
-  if ((await fileInput.count()) > 0) {
-    // Direct file input available (headless behavior)
-    await fileInput.setInputFiles(FIXTURE_IMAGE);
-  } else {
-    // Trigger file chooser via the "Pick from Gallery" button
-    const [fileChooser] = await Promise.all([
-      page.waitForEvent('filechooser'),
-      page.getByRole('button', { name: /gallery/i }).click(),
+test.describe('Capture Flow', () => {
+  test.beforeEach(async ({ page }) => {
+    // Set x-family-member-id cookie to bypass onboarding
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: '1',
+        url: baseUrl,
+      },
     ]);
-    await fileChooser.setFiles(FIXTURE_IMAGE);
-  }
-
-  // Wait for the photo to be added (a count or thumbnail should appear)
-  await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({
-    timeout: 10_000,
+    // Also set in localStorage for store persistence
+    await page.goto('/');
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: '1' }, version: 0 })
+      )
+    );
   });
 
-  // ── Step 2: Rating ───────────────────────────────────────────────────────
-  // Pick the "Loved it!" rating emoji button
-  const ratingButton = page.getByRole('button', { name: /loved it/i });
-  await expect(ratingButton).toBeVisible();
-  await ratingButton.click();
+  // ──────────────────────────────────────────────────────────────────────────────
+  // Scenario 1 — Navigate from home to /capture
+  // ──────────────────────────────────────────────────────────────────────────────
 
-  // ── Step 3: Notes (Optional) ─────────────────────────────────────────────
-  const notesInput = page.getByPlaceholder(/any tweaks/i);
-  await notesInput.fill('Test recipe notes');
+  test('authenticated user can navigate to the capture page from home', async ({ page }) => {
+    await page.goto('/home');
 
-  // ── Step 4: Save ─────────────────────────────────────────────────────────
-  const saveBtn = page.getByRole('button', { name: /save recipe/i });
-  await expect(saveBtn).toBeEnabled();
-  await saveBtn.click();
+    // Click the "Capture a Recipe" trigger on the Home page
+    await page.getByRole('link', { name: /capture a recipe/i }).click();
 
-  // ── Done ─────────────────────────────────────────────────────────────────
-  // A success confirmation message should appear
-  await expect(page.getByText(/captured/i)).toBeVisible({ timeout: 15_000 });
-});
+    await expect(page).toHaveURL(/\/capture/);
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Scenario 3 — After submit, user can return to /home
-// ──────────────────────────────────────────────────────────────────────────────
+    // Capture page shows camera button (accessible by aria-label)
+    await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
+  });
 
-test('after successful capture, user can return to home', async ({ page }) => {
-  await loginAsMember(page);
+  // ──────────────────────────────────────────────────────────────────────────────
+  // Scenario 2 — Full capture flow with a mock image
+  // ──────────────────────────────────────────────────────────────────────────────
 
-  // Navigate directly to home
-  await page.goto('/home');
-  await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible();
-});
+  test('user can complete the capture flow and see a success message', async ({ page }) => {
+    await page.goto('/capture');
 
-test('user can navigate to the search page from the navigation bar', async ({ page }) => {
-  await loginAsMember(page);
+    // ── Step 1: Camera — inject a file via the file chooser ──────────────────
+    // Grant camera permissions (or mock) so the CameraView renders
+    await page.context().grantPermissions(['camera']);
 
-  // Click the "Search" link in the navigation bar
-  await page.getByRole('link', { name: /^search$/i }).click();
+    // Look for a file input or a "choose from gallery" affordance
+    const fileInput = page.locator('input[type="file"]').first();
 
-  await expect(page).toHaveURL(/\/recipes/);
-  // Verify search input is visible on recipes page (with extended timeout for data load)
-  await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible({ timeout: 10_000 });
+    if ((await fileInput.count()) > 0) {
+      // Direct file input available (headless behavior)
+      await fileInput.setInputFiles(FIXTURE_IMAGE);
+    } else {
+      // Trigger file chooser via the "Pick from Gallery" button
+      const [fileChooser] = await Promise.all([
+        page.waitForEvent('filechooser'),
+        page.getByRole('button', { name: /gallery/i }).click(),
+      ]);
+      await fileChooser.setFiles(FIXTURE_IMAGE);
+    }
+
+    // Wait for the photo to be added (a count or thumbnail should appear)
+    await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // ── Step 2: Rating ───────────────────────────────────────────────────────
+    // Pick the "Loved it!" rating emoji button
+    const ratingButton = page.getByRole('button', { name: /loved it/i });
+    await expect(ratingButton).toBeVisible();
+    await ratingButton.click();
+
+    // ── Step 3: Notes (Optional) ─────────────────────────────────────────────
+    const notesInput = page.getByPlaceholder(/any tweaks/i);
+    await notesInput.fill('Test recipe notes');
+
+    // ── Step 4: Save ─────────────────────────────────────────────────────────
+    const saveBtn = page.getByRole('button', { name: /save recipe/i });
+    await expect(saveBtn).toBeEnabled();
+    await saveBtn.click();
+
+    // ── Done ─────────────────────────────────────────────────────────────────
+    // A success confirmation message should appear
+    await expect(page.getByText(/captured/i)).toBeVisible({ timeout: 15_000 });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────────
+  // Scenario 3 — After submit, user can return to /home
+  // ──────────────────────────────────────────────────────────────────────────────
+
+  test('after successful capture, user can return to home', async ({ page }) => {
+    // Navigate directly to home
+    await page.goto('/home');
+    await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible();
+  });
+
+  test('user can navigate to the search page from the navigation bar', async ({ page }) => {
+    await page.goto('/home');
+
+    // Click the "Search" link in the navigation bar
+    await page.getByRole('link', { name: /^search$/i }).click();
+
+    await expect(page).toHaveURL(/\/recipes/);
+    // Verify search input is visible on recipes page (with extended timeout for data load)
+    await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible({
+      timeout: 10_000,
+    });
+  });
 });

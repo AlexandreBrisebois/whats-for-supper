@@ -61,12 +61,12 @@ export default defineConfig({
   webServer: isCI
     ? undefined
     : [
-        // Only start mock API if we're not explicitly pointing at a live local backend
+        // Use Prism for the mock API (port 5001)
         ...(process.env.USE_LIVE_API !== 'true'
           ? [
               {
-                command: `MOCK_API_PORT=${MOCK_API_PORT} node mock-api.js`,
-                url: `http://127.0.0.1:${MOCK_API_PORT}/health`,
+                command: 'npm run mock-api',
+                url: 'http://127.0.0.1:5001/health',
                 reuseExistingServer: true,
                 timeout: 15_000,
               },
@@ -78,7 +78,8 @@ export default defineConfig({
           reuseExistingServer: true,
           timeout: 60_000,
           env: {
-            API_INTERNAL_URL: `http://127.0.0.1:${MOCK_API_PORT}`,
+            API_INTERNAL_URL: 'http://127.0.0.1:5001',
+            NEXT_PUBLIC_API_URL: 'http://127.0.0.1:5001',
           },
         },
       ],

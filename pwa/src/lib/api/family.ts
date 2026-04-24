@@ -1,27 +1,41 @@
-import { apiClient } from './client';
+import { apiClient } from './api-client';
+import type { FamilyGetResponse_data, FamilyPostRequestBody } from './generated/api/family/index';
 
-import type { FamilyMember } from '@/types/domain';
+export type FamilyMember = {
+  id: string;
+  name: string;
+};
 
 export async function getFamilyMembers(): Promise<FamilyMember[]> {
-  const { data } = await apiClient.get<{ data: FamilyMember[] }>('/family');
-  return data.data;
+  const result = await apiClient.api.family.get();
+  // Map generated model to local FamilyMember type
+  return (
+    result?.data?.map((m: FamilyGetResponse_data) => ({
+      id: m.id || '',
+      name: m.name || '',
+    })) || []
+  );
 }
 
-export async function createFamilyMember(
-  payload: Pick<FamilyMember, 'name'>
-): Promise<FamilyMember> {
-  const { data } = await apiClient.post<{ data: FamilyMember }>('/family', payload);
-  return data.data;
+export async function createFamilyMember(payload: FamilyPostRequestBody): Promise<FamilyMember> {
+  const result = await apiClient.api.family.post(payload);
+  return {
+    id: result?.data?.id || '',
+    name: result?.data?.name || '',
+  };
 }
 
 export async function updateFamilyMember(
   id: string,
-  payload: Pick<FamilyMember, 'name'>
+  payload: { name: string }
 ): Promise<FamilyMember> {
-  const { data } = await apiClient.put<{ data: FamilyMember }>(`/family/${id}`, payload);
-  return data.data;
+  const result = await apiClient.api.family.byId(id).put(payload);
+  return {
+    id: result?.data?.id || '',
+    name: result?.data?.name || '',
+  };
 }
 
 export async function deleteFamilyMember(id: string): Promise<void> {
-  await apiClient.delete(`/family/${id}`);
+  await apiClient.api.family.byId(id).delete();
 }

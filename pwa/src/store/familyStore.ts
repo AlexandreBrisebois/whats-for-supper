@@ -20,6 +20,7 @@ interface FamilyState {
   isLoading: boolean;
   error: string | null;
   _hasHydrated: boolean;
+  hasLoaded: boolean;
 
   setFamilyMembers: (members: FamilyMember[]) => void;
   selectFamilyMember: (id: string | null) => void;
@@ -37,6 +38,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   isLoading: false,
   error: null,
   _hasHydrated: typeof window !== 'undefined',
+  hasLoaded: false,
 
   setFamilyMembers: (members) => set({ familyMembers: members }),
 
@@ -107,10 +109,10 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const members = await getFamilyMembers();
-      set({ familyMembers: members ?? [], isLoading: false });
+      set({ familyMembers: members ?? [], isLoading: false, hasLoaded: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load family members';
-      set({ isLoading: false, error: message });
+      set({ isLoading: false, error: message, hasLoaded: true });
     }
   },
 }));

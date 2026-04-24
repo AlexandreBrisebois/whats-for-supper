@@ -14,31 +14,31 @@ This file is a "Hard Spec". If an endpoint is not in this file, it does not exis
 ## Workflow: Modifying the API
 
 When asked to add a new endpoint, change a payload, or update a route, follow this exact sequence:
+## The "Contract-First" Workflow (MANDATORY)
 
-### Step 1: Update the Contract (OpenAPI)
-1. Open `specs/openapi.yaml`.
-2. Define the new path, HTTP method, request payload, and response payload.
-3. Ensure all schema properties are explicitly typed and marked as `required` where appropriate to ensure strict TypeScript generation.
+Whenever you add, modify, or remove an API endpoint, you MUST follow this exact sequence:
 
-### Step 2: Sync Frontend Types
-Run the following command to automatically generate the TypeScript interfaces:
-```bash
-task types:sync
-```
-*Token-Saving Note: You do NOT need to write TypeScript interfaces manually. `openapi-typescript` handles this instantly.*
+1. **Update the Contract (`specs/openapi.yaml`)**
+   - This is the source of truth. Make your changes here first.
+   - Ensure you define the request body, response body, and status codes.
 
-### Step 3: Implement the Mock
-Update `pwa/mock-api.js` to implement the new route so the frontend can be developed and E2E tested immediately.
+2. **Sync Types (Automated)**
+   - Run `cd pwa && npm run api:generate` to regenerate the Kiota TypeScript SDK.
+   - Do NOT manually edit types or the Kiota generated client.
+   - The PWA components now use the strictly-typed Kiota `apiClient`.
 
-### Step 4: Implement the Backend
-Update the C# Controllers and DTOs in `api/src/RecipeApi` to match the exact paths and schemas defined in the YAML.
+3. **Implement Mock (Automated)**
+   - The mock API is automatically driven by Prism.
+   - Run `cd pwa && npm run mock-api` to start the Prism server on port 5001.
+   - You do NOT need to write any mock logic. Prism handles it via the OpenAPI contract.
 
-### Step 5: Verify Parity (The Reconciliation Engine)
-Run the reconciliation script to mechanically verify that the Spec, Mock, and Real API are in perfect alignment.
-```bash
-task agent:reconcile
-```
-**CRITICAL**: Do not consider the task complete until this script reports "Perfect Parity".
+4. **Implement Backend (`api/src/RecipeApi/...`)**
+   - Update the C# Controllers and Services to match the contract.
+
+5. **Reconcile (Safety Verification)**
+   - Run `python scripts/agent/reconcile_api.py`.
+   - This script verifies that the **C# Backend** perfectly matches the **OpenAPI Contract**.
+   - Do not consider your API task complete until this script reports `Perfect Parity for core endpoints!`.
 
 ## Why this saves tokens
 Instead of opening `mock-api.js` (400+ lines) and multiple C# controllers (1000+ lines) to "figure out" what the API looks like or verify your work, you use `task agent:reconcile`. The script acts as your "eyes" on the disk, returning a compact, high-signal table of deltas. You only spend tokens reading the differences, not the entire source tree.

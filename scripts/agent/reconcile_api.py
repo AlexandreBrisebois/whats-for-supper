@@ -25,7 +25,14 @@ def get_spec_endpoints(spec):
                 })
     return endpoints
 
-def get_mock_endpoints():
+def get_mock_endpoints(spec=None):
+    with open(os.path.join(ROOT, "pwa/package.json"), "r") as f:
+        pkg = json.load(f)
+    
+    if "prism mock" in pkg.get("scripts", {}).get("mock-api", "") and spec:
+        # Prism reads directly from the spec, so mock parity is guaranteed 100%
+        return get_spec_endpoints(spec)
+
     endpoints = []
     with open(MOCK_API_PATH, 'r') as f:
         content = f.read()
@@ -96,7 +103,7 @@ def reconcile():
     print("🔍 Starting API Reconciliation...")
     spec = load_spec()
     spec_endpoints = get_spec_endpoints(spec)
-    mock_endpoints = get_mock_endpoints()
+    mock_endpoints = get_mock_endpoints(spec)
     real_endpoints = get_real_endpoints()
 
     # Core filter: only care about things in SPEC or MOCK, or core /api/ routes

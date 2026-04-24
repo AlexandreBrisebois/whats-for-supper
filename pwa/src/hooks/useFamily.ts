@@ -18,6 +18,7 @@ export function useFamily() {
     removeMember,
     loadFamilyMembers,
     _hasHydrated,
+    hasLoaded,
   } = useFamilyStore();
 
   const selectedMember = familyMembers?.find((m) => m.id === selectedFamilyMemberId) ?? null;
@@ -29,6 +30,7 @@ export function useFamily() {
     isLoading,
     error,
     _hasHydrated,
+    hasLoaded,
     selectFamilyMember,
     addMember,
     updateMember,

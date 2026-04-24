@@ -23,7 +23,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
     const fetchRecipes = async () => {
       try {
         const data = await getFillTheGap();
-        setRecipes(data);
+        setRecipes(data || []);
       } catch (error) {
         console.error('Failed to fetch fill-the-gap recipes:', error);
       } finally {

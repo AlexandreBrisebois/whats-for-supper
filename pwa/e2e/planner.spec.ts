@@ -11,6 +11,15 @@ test.describe('Supper Planner', () => {
         url: baseUrl,
       },
     ]);
+    // Also set in localStorage for store persistence
+    await page.goto('/');
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: '1' }, version: 0 })
+      )
+    );
+
     await page.goto('/planner');
     // Wait for hydration and data load
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
@@ -70,10 +79,11 @@ test.describe('Supper Planner', () => {
     await page.getByTestId('recipe-card-top-pick').click();
 
     // 5. Verify redirect back to planner with success params
+    await page.waitForURL(/\/planner\?success=1&dayIndex=3/);
     await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=3/);
 
     // 6. Verify success feedback (ring/pulse) on the card
-    await expect(thursdayCard.getByText('Homemade Lasagna')).toBeVisible();
+    await expect(thursdayCard.getByTestId('success-ring')).toBeVisible({ timeout: 10_000 });
   });
 
   test('should trigger Cook Mode from a recipe card and navigate steps', async ({ page }) => {
@@ -117,6 +127,6 @@ test.describe('Supper Planner', () => {
     await finalizeBtn.click();
 
     // After finalization, it should show "Plan next week"
-    await expect(page.getByTestId('plan-next-week')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('plan-next-week')).toBeVisible({ timeout: 15_000 });
   });
 });

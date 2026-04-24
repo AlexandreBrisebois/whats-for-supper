@@ -11,6 +11,14 @@ test.describe('Recipes Search Page', () => {
         url: baseUrl,
       },
     ]);
+    // Also set in localStorage for store persistence
+    await page.goto('/');
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: '1' }, version: 0 })
+      )
+    );
   });
 
   test('should display search UI and mock data correctly', async ({ page }) => {
@@ -26,8 +34,12 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
     await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/Homemade Lasagna/i);
 
-    // 4. Verify Secondary Results
-    await expect(page.getByTestId('recipe-card-1')).toBeVisible();
-    await expect(page.getByTestId('recipe-card-2')).toBeVisible();
+    // 4. Verify Secondary Results (using UUIDs from openapi.yaml examples)
+    await expect(
+      page.getByTestId('recipe-card-550e8400-e29b-41d4-a716-446655440001')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('recipe-card-550e8400-e29b-41d4-a716-446655440002')
+    ).toBeVisible();
   });
 });

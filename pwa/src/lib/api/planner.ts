@@ -1,29 +1,38 @@
-import { apiClient } from './client';
-import { components } from './types';
+import { apiClient } from './api-client';
+import type {
+  ScheduleDays,
+  ScheduleDayDto,
+  PreSelectedRecipeDto,
+  SmartDefaultsDto,
+} from './generated/models';
 
-export type ScheduleDay = components['schemas']['ScheduleDayDto'];
-export type ScheduleResponse = components['schemas']['ScheduleDays'];
-export type PreSelectedRecipe = components['schemas']['PreSelectedRecipeDto'];
-export type SmartDefaultsResponse = components['schemas']['SmartDefaultsDto'];
+export type ScheduleDay = ScheduleDayDto;
+export type ScheduleResponse = ScheduleDays;
+export type PreSelectedRecipe = PreSelectedRecipeDto;
+export type SmartDefaultsResponse = SmartDefaultsDto;
 
-export const getSchedule = async (weekOffset: number): Promise<ScheduleResponse> => {
-  const { data } = await apiClient.get(`/schedule?weekOffset=${weekOffset}`);
-  return data.data;
+export const getSchedule = async (weekOffset: number): Promise<ScheduleResponse | undefined> => {
+  const result = await apiClient.api.schedule.get({
+    queryParameters: { weekOffset },
+  });
+  return result?.data || undefined;
 };
 
 export const lockSchedule = async (weekOffset: number) => {
-  const { data } = await apiClient.post(`/schedule/lock?weekOffset=${weekOffset}`);
-  return data.data;
+  const result = await apiClient.api.schedule.lock.post({
+    queryParameters: { weekOffset },
+  });
+  return result?.data;
 };
 
 export const moveRecipe = async (weekOffset: number, fromIndex: number, toIndex: number) => {
-  const { data } = await apiClient.post(`/schedule/move`, { weekOffset, fromIndex, toIndex });
-  return data.data;
+  const result = await apiClient.api.schedule.move.post({ weekOffset, fromIndex, toIndex });
+  return result; // Move usually returns 204 or empty data
 };
 
 export const getFillTheGap = async () => {
-  const { data } = await apiClient.get(`/schedule/fill-the-gap`);
-  return data.data;
+  const result = await apiClient.api.schedule.fillTheGap.get();
+  return result?.data || [];
 };
 
 export const assignRecipeToDay = async (
@@ -31,22 +40,19 @@ export const assignRecipeToDay = async (
   dayIndex: number,
   recipe: { id: string; name: string | null; image: string }
 ) => {
-  const { data } = await apiClient.post(`/schedule/assign`, {
+  return await apiClient.api.schedule.assign.post({
     weekOffset,
     dayIndex,
     recipeId: recipe.id,
-    recipeName: recipe.name,
-    recipeImage: recipe.image,
   });
-  return data.data;
 };
 
 export const getSmartDefaults = async (
   weekOffset: number
 ): Promise<SmartDefaultsResponse | null> => {
   try {
-    const { data } = await apiClient.get(`/schedule/${weekOffset}/smart-defaults`);
-    return data.data;
+    const result = await apiClient.api.schedule.byWeekOffset(weekOffset).smartDefaults.get();
+    return result?.data || null;
   } catch {
     return null;
   }

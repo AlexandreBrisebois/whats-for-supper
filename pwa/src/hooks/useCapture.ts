@@ -132,7 +132,7 @@ export function useCapture(): UseCaptureReturn {
       }
 
       const result = await createRecipe(formData);
-      return result.recipeId;
+      return result.id;
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to save recipe. Please try again.';

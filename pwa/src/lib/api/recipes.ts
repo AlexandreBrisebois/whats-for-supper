@@ -1,43 +1,32 @@
-import { apiClient } from './client';
+import { apiClient, requestAdapter } from './api-client';
+import { useFamilyStore } from '@/store/familyStore';
+import type {
+  RecipeDto,
+  RecommendationsResponse as GeneratedRecommendationsResponse,
+  RecommendationResultDto,
+  TopPickDto,
+} from './generated/models/index';
+import { type Guid } from '@microsoft/kiota-abstractions';
 
-import type { Recipe } from '@/types/domain';
-import type { PaginatedResponse } from '@/types/api';
-
-export async function getRecipes(page = 1, pageSize = 20): Promise<PaginatedResponse<Recipe>> {
-  const { data } = await apiClient.get<{ data: PaginatedResponse<Recipe> }>('/recipes', {
-    params: { page, pageSize },
-  });
-  return data.data;
+export interface Recipe {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  totalTime: string;
+  difficulty: string;
+  category: string;
+  rating: number;
 }
 
-export interface UpdateRecipePayload {
-  notes?: string;
-  rating?: number;
-}
-
-export async function updateRecipe(id: string, payload: UpdateRecipePayload): Promise<Recipe> {
-  const { data } = await apiClient.patch<{ data: Recipe }>(`/recipes/${id}`, payload);
-  return data.data;
-}
-
-export interface CreateRecipeResponse {
-  recipeId: string;
-  message: string;
-}
-
-export async function createRecipe(formData: FormData): Promise<CreateRecipeResponse> {
-  const { data } = await apiClient.post<{ data: CreateRecipeResponse }>('/recipes', formData);
-  return data.data;
-}
-
-export interface RecommendationResult {
+export type RecommendationResult = {
   id: string;
   name: string;
   time: string;
   image: string;
-}
+};
 
-export interface RecommendationsResponse {
+export type RecommendationsResponse = {
   topPick: {
     id: string;
     name: string;
@@ -45,15 +34,100 @@ export interface RecommendationsResponse {
     imageUrl: string;
     prepTime: string;
     difficulty: string;
-  };
+  } | null;
   results: RecommendationResult[];
+};
+
+function mapToRecipe(dto: RecipeDto): Recipe {
+  return {
+    id: dto.id || '',
+    name: dto.name || '',
+    description: dto.description || '',
+    imageUrl: dto.imageUrl || '',
+    totalTime: dto.totalTime || '',
+    difficulty: dto.difficulty || '',
+    category: dto.category || '',
+    rating: dto.rating || 0,
+  };
+}
+
+export async function getRecipes(
+  page = 1,
+  limit = 20
+): Promise<{ recipes: Recipe[]; total: number }> {
+  const result = await apiClient.api.recipes.get({
+    queryParameters: { page, limit },
+  });
+  return {
+    recipes: result?.recipes?.map(mapToRecipe) || [],
+    total: result?.pagination?.total || 0,
+  };
+}
+
+export async function getRecipe(id: string): Promise<Recipe> {
+  const result = await apiClient.api.recipes.byId(id as unknown as Guid).get();
+  if (!result?.recipe) throw new Error('Recipe not found');
+  return mapToRecipe(result.recipe);
+}
+
+export async function createRecipe(formData: FormData): Promise<{ id: string }> {
+  // Use native fetch for multipart FormData to avoid Kiota serialization issues
+  const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5001';
+
+  const response = await fetch(`${baseUrl}/api/recipes`, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-Family-Member-Id': familyMemberId || '',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create recipe: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  return {
+    id: (result?.data as any)?.id || '',
+  };
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  await apiClient.api.recipes.byId(id as unknown as Guid).delete();
+}
+
+export async function updateRecipe(
+  id: string,
+  updates: { notes?: string; rating?: number }
+): Promise<void> {
+  await apiClient.api.recipes.byId(id as unknown as Guid).patch({
+    notes: updates.notes,
+    rating: updates.rating,
+  });
 }
 
 export async function getRecommendations(): Promise<RecommendationsResponse> {
-  const { data } = await apiClient.get<{ data: RecommendationsResponse }>(
-    '/recipes/recommendations'
-  );
-  return data.data;
+  const result = await apiClient.api.recipes.recommendations.get();
+  const data = result?.data;
+  return {
+    topPick: data?.topPick
+      ? {
+          id: data.topPick.id || '',
+          name: data.topPick.name || '',
+          description: data.topPick.description || '',
+          imageUrl: data.topPick.imageUrl || '',
+          prepTime: data.topPick.prepTime || '',
+          difficulty: data.topPick.difficulty || '',
+        }
+      : null,
+    results: (data?.results || []).map((r: RecommendationResultDto) => ({
+      id: r.id || '',
+      name: r.name || '',
+      time: r.time || '',
+      image: r.image || '',
+    })),
+  };
 }
 
 /**
@@ -61,8 +135,9 @@ export async function getRecommendations(): Promise<RecommendationsResponse> {
  * Returns the image as a blob URL for use in <img> tags.
  */
 export async function getRecipeImage(recipeId: string, index: number): Promise<string> {
-  const response = await apiClient.get(`/recipes/${recipeId}/original/${index}`, {
-    responseType: 'blob',
-  });
-  return URL.createObjectURL(response.data as Blob);
+  const response = await fetch(
+    `${requestAdapter.baseUrl}/api/recipes/${recipeId}/original/${index}`
+  );
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }

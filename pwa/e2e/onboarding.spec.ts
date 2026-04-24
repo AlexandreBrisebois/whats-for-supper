@@ -44,12 +44,8 @@ test('selecting a family member redirects to /home with a welcome message', asyn
   // In the mock API, 'Alex' (id: 1) and 'Jordan' (id: 2) exist.
   const alexMember = page.getByTestId('family-member-1');
 
-  // If no members exist yet we skip
-  if (!(await alexMember.isVisible())) {
-    test.skip();
-    return;
-  }
-
+  // Wait for the member to be visible (with extended timeout for loading)
+  await expect(alexMember).toBeVisible({ timeout: 10_000 });
   await alexMember.click();
 
   // Should land on /home

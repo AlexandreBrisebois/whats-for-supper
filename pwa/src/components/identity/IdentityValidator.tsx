@@ -19,7 +19,8 @@ interface IdentityValidatorProps {
 export function IdentityValidator({ children }: IdentityValidatorProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { familyMembers, selectedFamilyMemberId, _hasHydrated, loadFamily } = useFamily();
+  const { familyMembers, selectedFamilyMemberId, _hasHydrated, hasLoaded, isLoading, loadFamily } =
+    useFamily();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -65,7 +66,8 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
         }
 
         // 4. Validate if the stored ID actually exists in the family
-        if (familyMembers?.length === 0) {
+        // Only load if not already loaded AND not currently loading
+        if (!hasLoaded && !isLoading && familyMembers?.length === 0) {
           console.log('[IdentityValidator] Loading family members...');
           await loadFamily();
         }

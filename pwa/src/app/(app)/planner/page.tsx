@@ -29,7 +29,7 @@ type UILocalScheduleDay = ScheduleDay & {
   _uiId: string;
   _isPending?: boolean;
   _voteCount?: number | null;
-  _unanimousVote?: boolean;
+  _unanimousVote?: boolean | null;
 };
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -79,14 +79,19 @@ export default function PlannerPage() {
           currentWeekOffset === 0 ? getSmartDefaults(currentWeekOffset) : Promise.resolve(null),
         ]);
 
-        if (!ignore) {
+        if (!ignore && scheduleData && scheduleData.days) {
           const defaultsByDayIndex = new Map(
-            defaultsData?.preSelectedRecipes.map((r) => [r.dayIndex, r]) ?? []
+            defaultsData?.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
           );
 
           const mergedDays = scheduleData.days.map((day: any, index: number) => {
+            const generateUiId = () =>
+              typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : Math.random().toString(36).substring(7);
+
             if (day.recipe) {
-              return { ...day, _uiId: crypto.randomUUID() };
+              return { ...day, _uiId: generateUiId() };
             }
 
             const smartDefault = defaultsByDayIndex.get(index);
@@ -94,22 +99,26 @@ export default function PlannerPage() {
               return {
                 ...day,
                 recipe: {
-                  id: smartDefault.recipeId,
-                  name: smartDefault.name,
-                  image: smartDefault.heroImageUrl,
+                  id: smartDefault.recipeId || '',
+                  name: smartDefault.name || '',
+                  image: smartDefault.heroImageUrl || '',
                   voteCount: smartDefault.voteCount,
                 },
-                _uiId: crypto.randomUUID(),
+                _uiId: generateUiId(),
                 _isPending: true,
                 _voteCount: smartDefault.voteCount,
                 _unanimousVote: smartDefault.unanimousVote,
               };
             }
-            return { ...day, _uiId: crypto.randomUUID() };
+
+            return { ...day, _uiId: generateUiId() };
           });
 
           setSchedule(mergedDays);
-          setIsLocked(scheduleData.locked || false);
+          // Only update locked state if we aren't in the middle of a local finalize
+          if (scheduleData.locked || !isLocked) {
+            setIsLocked(scheduleData.locked || false);
+          }
           setIsLoading(false);
         }
       } catch (error: any) {
@@ -163,9 +172,9 @@ export default function PlannerPage() {
           currentWeekOffset === 0 ? getSmartDefaults(currentWeekOffset) : Promise.resolve(null),
         ]);
 
-        if (!ignore && scheduleData.days) {
+        if (!ignore && scheduleData && scheduleData.days) {
           const defaultsByDayIndex = new Map(
-            defaultsData?.preSelectedRecipes.map((r) => [r.dayIndex, r]) ?? []
+            defaultsData?.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
           );
 
           setSchedule((prevSchedule) =>
@@ -181,7 +190,7 @@ export default function PlannerPage() {
                 };
               }
               // Persisted slot: update voteCount from CalendarEvent
-              const newDay = scheduleData.days[idx];
+              const newDay = scheduleData.days?.[idx];
               if (!day.recipe || !newDay?.recipe) return day;
               return { ...day, recipe: { ...day.recipe, voteCount: newDay.recipe.voteCount } };
             })
@@ -206,7 +215,7 @@ export default function PlannerPage() {
       ignore = true;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [currentWeekOffset, isLocked]);
+  }, [currentWeekOffset, isLocked, searchParams.get('success')]); // Refetch when coming back from search
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -243,7 +252,13 @@ export default function PlannerPage() {
         .filter(({ day }) => day._isPending && day.recipe);
 
       for (const { day, index } of pendingSlots) {
-        await assignRecipeToDay(currentWeekOffset, index, day.recipe!);
+        if (day.recipe && day.recipe.id && day.recipe.image) {
+          await assignRecipeToDay(currentWeekOffset, index, {
+            id: day.recipe.id,
+            name: day.recipe.name || null,
+            image: day.recipe.image,
+          });
+        }
       }
 
       await lockSchedule(currentWeekOffset);
@@ -385,7 +400,7 @@ export default function PlannerPage() {
                   : `Week ${currentWeekOffset}`}
             </span>
             <h2 className="text-lg font-heading font-bold text-charcoal">
-              {schedule.length > 0 ? `${schedule[0].date} — ${schedule[6].date}` : 'Loading...'}
+              {schedule.length >= 7 ? `${schedule[0].date} — ${schedule[6].date}` : 'Loading...'}
             </h2>
             <div className="flex items-center justify-center mt-2">
               <div className="flex items-center space-x-1 text-sage font-bold text-[9px] bg-sage/5 px-2 py-1 rounded-full border border-sage/10 uppercase tracking-widest">
@@ -500,6 +515,7 @@ export default function PlannerPage() {
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 0.1, scale: 1.5 }}
                           exit={{ opacity: 0 }}
+                          data-testid="success-ring"
                           className="absolute inset-0 bg-sage rounded-full pointer-events-none"
                           transition={{ duration: 1, repeat: Infinity }}
                         />
@@ -515,7 +531,7 @@ export default function PlannerPage() {
                           {day.day}
                         </span>
                         <span className="text-lg font-heading font-extrabold text-charcoal leading-none">
-                          {day.date.split('-').pop()}
+                          {day.date?.split('-').pop() || ''}
                         </span>
                       </div>
 
@@ -524,7 +540,7 @@ export default function PlannerPage() {
                           <div className="flex items-center">
                             <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5">
                               <Image
-                                src={day.recipe.image}
+                                src={day.recipe.image || ''}
                                 alt={day.recipe.name || 'Recipe'}
                                 fill
                                 className="object-cover"
@@ -740,9 +756,19 @@ export default function PlannerPage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {activeCookMode && activeCookMode.recipe && (
-          <CooksMode recipe={activeCookMode.recipe} onClose={() => setActiveCookMode(null)} />
-        )}
+        {activeCookMode &&
+          activeCookMode.recipe &&
+          activeCookMode.recipe.id &&
+          activeCookMode.recipe.image && (
+            <CooksMode
+              recipe={{
+                id: activeCookMode.recipe.id,
+                name: activeCookMode.recipe.name || null,
+                image: activeCookMode.recipe.image,
+              }}
+              onClose={() => setActiveCookMode(null)}
+            />
+          )}
       </AnimatePresence>
     </div>
   );
