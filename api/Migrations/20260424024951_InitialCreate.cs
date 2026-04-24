@@ -183,9 +183,9 @@ SELECT
     recipe_id,
     COUNT(*) as like_count
 FROM recipe_votes
-WHERE vote = 1 -- Like
+WHERE vote = CAST(1 AS smallint)
 GROUP BY recipe_id
-HAVING COUNT(*) >= (SELECT COUNT(*) * 0.5 FROM family_members);
+HAVING COUNT(*) >= CEIL((SELECT (COUNT(*) + 1.0) / 2.0 FROM family_members));
             ");
 
             migrationBuilder.Sql(@"

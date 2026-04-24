@@ -2,6 +2,44 @@
 
 This file tracks the real-time execution state for **Active Tasks only**. Refer to [JOURNAL.md](JOURNAL.md) for historical archives.
 
+## Completed Mission: Smart Defaults Auto-Population [✅ COMPLETE]
+
+### Status: COMPLETED
+**Session**: Smart Defaults Feature - Consensus Recipe Auto-Loading
+
+### Accomplishment Summary
+Fixed matched recipes (51%+ consensus votes) to automatically populate empty planner slots with smart defaults:
+
+1. **Consensus Threshold Formula Mismatch (Backend)**
+   - **Issue**: `vw_recipe_matches` view used `CEIL(familyCount * 0.5)` (threshold: 1 vote for 2 members)
+   - **Fix**: Updated to `CEIL((familyCount + 1) / 2)` to match backend logic (threshold: 2 votes for 2 members)
+   - **Files**: [api/Migrations/20260424024951_InitialCreate.cs](api/Migrations/20260424024951_InitialCreate.cs) + [api/Migrations/20260424034958_FixRecipeMatchesViewFormula.cs](api/Migrations/20260424034958_FixRecipeMatchesViewFormula.cs)
+
+2. **FillTheGapAsync Vote Count Loss**
+   - **Issue**: View returns `like_count` but code only selected recipe columns, losing vote count data
+   - **Fix**: Updated join to extract and include `LikeCount` from RecipeMatch model
+   - **File**: [api/src/RecipeApi/Services/ScheduleService.cs](api/src/RecipeApi/Services/ScheduleService.cs) lines 133-164
+
+3. **API Response Handling (Frontend)**
+   - **Issue**: Kiota client response wrapping inconsistency
+   - **Fix**: Updated `getSchedule()` and `getSmartDefaults()` to handle both wrapped and unwrapped responses
+   - **File**: [pwa/src/lib/api/planner.ts](pwa/src/lib/api/planner.ts)
+
+4. **Empty Recipe Object Bug (Frontend - Root Cause)**
+   - **Issue**: Backend returns `recipe: {}` (empty object) instead of `recipe: null`. JavaScript treats `{}` as truthy, so planner skipped smart defaults merge
+   - **Fix**: Changed condition from `if (day.recipe)` to `if (day.recipe && Object.keys(day.recipe).length > 0)`
+   - **File**: [pwa/src/app/(app)/planner/page.tsx](pwa/src/app/(app)/planner/page.tsx) line 103
+
+### Result
+✅ Smart defaults now correctly populate empty planner slots with matched recipes (3 family members, 2+ votes = consensus)
+
+### Technical Notes
+- Database has 3 family members (not 2 as initially thought) — consensus threshold = 2 votes
+- 7 recipes meet consensus and automatically fill Mon-Sun planner slots
+- Image loading returns 400 (separate Next.js optimization proxy issue, not core feature)
+
+---
+
 ## Completed Mission: E2E Test Restoration [✅ COMPLETE]
 
 ### Status: COMPLETED

@@ -1,9 +1,6 @@
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
-import type {
-  RecipeDto,
-  RecommendationResultDto,
-} from './generated/models/index';
+import type { RecipeDto, RecommendationResultDto } from './generated/models/index';
 
 export interface Recipe {
   id: string;
@@ -132,7 +129,9 @@ export async function getRecommendations(): Promise<RecommendationsResponse> {
  * Returns the image as a blob URL for use in <img> tags.
  */
 export async function getRecipeImage(recipeId: string, index: number): Promise<string> {
-  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/${recipeId}/original/${index}`);
+  const response = await fetch(
+    `${requestAdapter.baseUrl}/api/recipes/${recipeId}/original/${index}`
+  );
   const blob = await response.blob();
   return URL.createObjectURL(blob);
 }

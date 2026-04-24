@@ -12,8 +12,8 @@ using RecipeApi.Data;
 namespace RecipeApi.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    [Migration("20260423151137_AddCalendarEvents")]
-    partial class AddCalendarEvents
+    [Migration("20260424024951_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -45,13 +45,16 @@ namespace RecipeApi.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("status");
 
+                    b.Property<int?>("VoteCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("vote_count");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Date")
                         .HasDatabaseName("idx_calendar_events_date");
 
-                    b.HasIndex("RecipeId")
-                        .HasDatabaseName("IX_calendar_events_recipe_id");
+                    b.HasIndex("RecipeId");
 
                     b.ToTable("calendar_events", null, t =>
                         {
@@ -276,6 +279,7 @@ namespace RecipeApi.Migrations
             modelBuilder.Entity("RecipeApi.Models.RecipeMatch", b =>
                 {
                     b.Property<Guid>("RecipeId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("recipe_id");
 
@@ -285,7 +289,7 @@ namespace RecipeApi.Migrations
 
                     b.HasKey("RecipeId");
 
-                    b.ToTable((string)null);
+                    b.ToTable("vw_recipe_matches");
 
                     b.ToView("vw_recipe_matches", (string)null);
                 });

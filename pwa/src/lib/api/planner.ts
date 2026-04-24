@@ -15,14 +15,16 @@ export const getSchedule = async (weekOffset: number): Promise<ScheduleResponse 
   const result = await apiClient.api.schedule.get({
     queryParameters: { weekOffset },
   });
-  return result?.data || undefined;
+  // Handle both wrapped and unwrapped responses
+  const data = result?.data || result;
+  return data?.weekOffset !== undefined ? data : undefined;
 };
 
 export const lockSchedule = async (weekOffset: number) => {
   const result = await apiClient.api.schedule.lock.post({
     queryParameters: { weekOffset },
   });
-  return result?.data;
+  return result?.data || result;
 };
 
 export const moveRecipe = async (weekOffset: number, fromIndex: number, toIndex: number) => {
@@ -32,7 +34,8 @@ export const moveRecipe = async (weekOffset: number, fromIndex: number, toIndex:
 
 export const getFillTheGap = async () => {
   const result = await apiClient.api.schedule.fillTheGap.get();
-  return result?.data || [];
+  const data = result?.data || result;
+  return Array.isArray(data) ? data : [];
 };
 
 export const assignRecipeToDay = async (
@@ -52,7 +55,9 @@ export const getSmartDefaults = async (
 ): Promise<SmartDefaultsResponse | null> => {
   try {
     const result = await apiClient.api.schedule.byWeekOffset(weekOffset).smartDefaults.get();
-    return result?.data || null;
+    // Handle both wrapped and unwrapped responses
+    const data = result?.data || result;
+    return data?.weekOffset !== undefined ? data : null;
   } catch {
     return null;
   }

@@ -1,6 +1,9 @@
 ### @baseUrl = http://localhost:5050
 
-@baseUrl = http://192.168.1.226:9101
+## @baseUrl = http://192.168.1.226:9101
+
+@baseUrl = http://localhost:9001
+
 @weekOffset = 0
 @dayIndex = 0
 @recipeId = 5df6b7da-4537-4b06-bae6-e8278ce2d1a9

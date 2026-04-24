@@ -12,8 +12,8 @@ using RecipeApi.Data;
 namespace RecipeApi.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    [Migration("20260423114306_OptimizeDiscoveryView")]
-    partial class OptimizeDiscoveryView
+    [Migration("20260424034958_FixRecipeMatchesViewFormula")]
+    partial class FixRecipeMatchesViewFormula
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,8 +25,49 @@ namespace RecipeApi.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("RecipeApi.Models.CalendarEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipe_id");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<int?>("VoteCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("vote_count");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date")
+                        .HasDatabaseName("idx_calendar_events_date");
+
+                    b.HasIndex("RecipeId");
+
+                    b.ToTable("calendar_events", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 3");
+                        });
+                });
+
             modelBuilder.Entity("RecipeApi.Models.DiscoveryRecipe", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
                     b.Property<string>("Category")
                         .HasColumnType("text")
                         .HasColumnName("category");
@@ -42,10 +83,6 @@ namespace RecipeApi.Migrations
                     b.Property<string>("Difficulty")
                         .HasColumnType("text")
                         .HasColumnName("difficulty");
-
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
 
                     b.Property<int>("ImageCount")
                         .HasColumnType("integer")
@@ -66,6 +103,8 @@ namespace RecipeApi.Migrations
                     b.Property<int>("VoteCount")
                         .HasColumnType("integer")
                         .HasColumnName("vote_count");
+
+                    b.HasKey("Id");
 
                     b.ToTable((string)null);
 
@@ -240,6 +279,7 @@ namespace RecipeApi.Migrations
             modelBuilder.Entity("RecipeApi.Models.RecipeMatch", b =>
                 {
                     b.Property<Guid>("RecipeId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("recipe_id");
 
@@ -249,7 +289,7 @@ namespace RecipeApi.Migrations
 
                     b.HasKey("RecipeId");
 
-                    b.ToTable((string)null);
+                    b.ToTable("vw_recipe_matches");
 
                     b.ToView("vw_recipe_matches", (string)null);
                 });
@@ -286,6 +326,17 @@ namespace RecipeApi.Migrations
                         {
                             t.HasCheckConstraint("CK_recipe_votes_vote", "vote >= 1 AND vote <= 2");
                         });
+                });
+
+            modelBuilder.Entity("RecipeApi.Models.CalendarEvent", b =>
+                {
+                    b.HasOne("RecipeApi.Models.Recipe", "Recipe")
+                        .WithMany()
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
                 });
 
             modelBuilder.Entity("RecipeApi.Models.Recipe", b =>

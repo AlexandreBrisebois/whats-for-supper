@@ -90,20 +90,23 @@ export default function PlannerPage() {
                 ? crypto.randomUUID()
                 : Math.random().toString(36).substring(7);
 
-            if (day.recipe) {
+            // Check if recipe exists and has content (not just empty object)
+            const hasRecipe = day.recipe && Object.keys(day.recipe).length > 0;
+            if (hasRecipe) {
               return { ...day, _uiId: generateUiId() };
             }
 
             const smartDefault = defaultsByDayIndex.get(index);
             if (smartDefault) {
+              const recipe = {
+                id: smartDefault.recipeId || '',
+                name: smartDefault.name || '',
+                image: smartDefault.heroImageUrl || '',
+                voteCount: smartDefault.voteCount,
+              };
               return {
                 ...day,
-                recipe: {
-                  id: smartDefault.recipeId || '',
-                  name: smartDefault.name || '',
-                  image: smartDefault.heroImageUrl || '',
-                  voteCount: smartDefault.voteCount,
-                },
+                recipe,
                 _uiId: generateUiId(),
                 _isPending: true,
                 _voteCount: smartDefault.voteCount,
@@ -177,8 +180,8 @@ export default function PlannerPage() {
             defaultsData?.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
           );
 
-          setSchedule((prevSchedule) =>
-            prevSchedule.map((day, idx) => {
+          setSchedule((prevSchedule) => {
+            const updated = prevSchedule.map((day, idx) => {
               if (day._isPending) {
                 const sd = defaultsByDayIndex.get(idx);
                 if (!sd || !day.recipe) return day;
@@ -193,8 +196,48 @@ export default function PlannerPage() {
               const newDay = scheduleData.days?.[idx];
               if (!day.recipe || !newDay?.recipe) return day;
               return { ...day, recipe: { ...day.recipe, voteCount: newDay.recipe.voteCount } };
-            })
-          );
+            });
+
+            // Add newly-reached consensus recipes to open slots
+            if (defaultsData?.preSelectedRecipes) {
+              const occupiedIndices = new Set(
+                updated.map((day, idx) => (day.recipe ? idx : null)).filter((idx) => idx !== null)
+              );
+
+              for (const recipe of defaultsData.preSelectedRecipes) {
+                const alreadyPlaced = updated.some((day) => day.recipe?.id === recipe.recipeId);
+                if (!alreadyPlaced) {
+                  // Find first open slot
+                  const openSlot = updated.findIndex(
+                    (day, idx) => !day.recipe && !occupiedIndices.has(idx)
+                  );
+                  if (openSlot !== -1) {
+                    const generateUiId = () =>
+                      typeof crypto !== 'undefined' && crypto.randomUUID
+                        ? crypto.randomUUID()
+                        : Math.random().toString(36).substring(7);
+
+                    updated[openSlot] = {
+                      ...updated[openSlot],
+                      recipe: {
+                        id: recipe.recipeId,
+                        name: recipe.name || '',
+                        image: recipe.heroImageUrl || '',
+                        voteCount: recipe.voteCount,
+                      },
+                      _isPending: true,
+                      _voteCount: recipe.voteCount,
+                      _unanimousVote: recipe.unanimousVote,
+                      _uiId: generateUiId(),
+                    };
+                    occupiedIndices.add(openSlot);
+                  }
+                }
+              }
+            }
+
+            return updated;
+          });
           setIsLocked(scheduleData.locked || false);
         }
       } catch (error: any) {
@@ -536,19 +579,36 @@ export default function PlannerPage() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        {day.recipe ? (
+                        {day.recipe?.id ? (
                           <div className="flex items-center">
-                            <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5">
-                              <Image
-                                src={day.recipe.image || ''}
-                                alt={day.recipe.name || 'Recipe'}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1">
-                                <h4 className="text-sm font-bold text-charcoal truncate">
+                            {day.recipe.image && (
+                              <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5 flex-shrink-0">
+                                <Image
+                                  src={
+                                    day.recipe.image.startsWith('/api/')
+                                      ? `/backend${day.recipe.image}`
+                                      : day.recipe.image
+                                  }
+                                  alt={day.recipe.name || 'Recipe'}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowPivot({ dayIndex: index });
+                              }}
+                              className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                              data-testid="edit-recipe-button"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-bold text-charcoal line-clamp-2">
                                   {day.recipe.name}
                                 </h4>
                                 {(day._voteCount != null || day.recipe?.voteCount != null) &&
@@ -558,7 +618,7 @@ export default function PlannerPage() {
                                     return (
                                       <span
                                         className={cn(
-                                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap',
+                                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block mt-1',
                                           isUnanimous
                                             ? 'bg-sage/20 text-sage'
                                             : 'bg-ochre/20 text-ochre'
@@ -572,7 +632,7 @@ export default function PlannerPage() {
                               <p className="text-[10px] text-charcoal/40 font-medium">
                                 Supper planned
                               </p>
-                            </div>
+                            </button>
                             {currentWeekOffset === 0 && day.recipe && (
                               <motion.button
                                 initial={{ opacity: 0, scale: 0.8 }}

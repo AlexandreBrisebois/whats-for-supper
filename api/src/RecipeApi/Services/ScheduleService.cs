@@ -133,20 +133,20 @@ public class ScheduleService(RecipeDbContext dbContext)
     public async Task<List<ScheduleRecipeDto>> FillTheGapAsync()
     {
         var results = await _dbContext.RecipeMatches
-            .Join(_dbContext.Recipes, m => m.RecipeId, r => r.Id, (m, r) => r)
-            .OrderBy(r => r.LastCookedDate == null ? 0 : 1)
-            .ThenBy(r => r.LastCookedDate)
+            .Join(_dbContext.Recipes, m => m.RecipeId, r => r.Id, (m, r) => new { Match = m, Recipe = r })
+            .OrderBy(x => x.Recipe.LastCookedDate == null ? 0 : 1)
+            .ThenBy(x => x.Recipe.LastCookedDate)
             .Take(5)
             .ToListAsync();
 
         var dtos = results
-            .Select(r => new ScheduleRecipeDto(r.Id, r.Name, $"/api/recipes/{r.Id}/hero"))
+            .Select(x => new ScheduleRecipeDto(x.Recipe.Id, x.Recipe.Name, $"/api/recipes/{x.Recipe.Id}/hero", x.Match.LikeCount))
             .ToList();
 
         if (dtos.Count < 5)
         {
             var remaining = 5 - dtos.Count;
-            var usedIds = results.Select(r => r.Id).ToHashSet();
+            var usedIds = results.Select(x => x.Recipe.Id).ToHashSet();
 
             var fallback = await _dbContext.DiscoveryRecipes
                 .Where(r => !usedIds.Contains(r.Id))
@@ -180,15 +180,32 @@ public class ScheduleService(RecipeDbContext dbContext)
             .Select(g => new
             {
                 RecipeId = g.Key,
-                Recipe = g.First().Recipe,
                 VoteCount = g.Count()
             })
             .ToListAsync();
 
-        var filteredVotes = likeVotes
+        // Filter by consensus threshold, then load recipes
+        var recipeIds = likeVotes
             .Where(x => x.VoteCount >= consensusThreshold)
+            .Select(x => x.RecipeId)
+            .ToList();
+
+        var recipes = await _dbContext.Recipes
+            .Where(r => recipeIds.Contains(r.Id))
+            .ToListAsync();
+
+        var recipeDict = recipes.ToDictionary(r => r.Id);
+
+        var filteredVotes = likeVotes
+            .Where(x => x.VoteCount >= consensusThreshold && recipeDict.ContainsKey(x.RecipeId))
+            .Select(x => new
+            {
+                RecipeId = x.RecipeId,
+                Recipe = recipeDict[x.RecipeId],
+                VoteCount = x.VoteCount
+            })
             .OrderByDescending(x => x.VoteCount == familySize) // Unanimous first
-            .ThenByDescending(x => x.Recipe!.LastCookedDate)   // Then by freshness
+            .ThenByDescending(x => x.Recipe.LastCookedDate)   // Then by freshness
             .ToList();
 
         // Get existing calendar events for the week

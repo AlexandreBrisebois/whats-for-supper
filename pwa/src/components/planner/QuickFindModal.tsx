@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Check, ChevronRight } from 'lucide-react';
 import { getFillTheGap } from '@/lib/api/planner';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SolarLoader } from '@/components/ui/SolarLoader';
@@ -90,11 +89,10 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
                 >
                   {recipes[currentIndex].image && (
                     <>
-                      <Image
-                        src={recipes[currentIndex].image}
+                      <img
+                        src={`/backend${recipes[currentIndex].image}`}
                         alt={recipes[currentIndex].name}
-                        fill
-                        className="object-cover"
+                        className="absolute inset-0 w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     </>

@@ -27,20 +27,24 @@ namespace RecipeApi.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
+                        .HasColumnType("date")
+                        .HasColumnName("date");
 
                     b.Property<Guid>("RecipeId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipe_id");
 
                     b.Property<short>("Status")
                         .HasColumnType("smallint")
                         .HasColumnName("status");
 
                     b.Property<int?>("VoteCount")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("vote_count");
 
                     b.HasKey("Id");
 
@@ -272,6 +276,7 @@ namespace RecipeApi.Migrations
             modelBuilder.Entity("RecipeApi.Models.RecipeMatch", b =>
                 {
                     b.Property<Guid>("RecipeId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("recipe_id");
 
@@ -281,7 +286,7 @@ namespace RecipeApi.Migrations
 
                     b.HasKey("RecipeId");
 
-                    b.ToTable((string)null);
+                    b.ToTable("vw_recipe_matches");
 
                     b.ToView("vw_recipe_matches", (string)null);
                 });

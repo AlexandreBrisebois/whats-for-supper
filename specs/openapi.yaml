@@ -95,7 +95,7 @@ components:
         id: { type: string }
         name: { type: string }
         description: { type: string }
-        imageUrl: { type: string, example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
+        imageUrl: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440000/hero' }
 
         prepTime: { type: string }
         difficulty: { type: string }
@@ -107,7 +107,7 @@ components:
         id: { type: string }
         name: { type: string }
         time: { type: string }
-        image: { type: string, example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
+        image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
 
 
     # --- Schedule ---
@@ -139,7 +139,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string, nullable: true }
-        image: { type: string, example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
+        image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
 
         voteCount: { type: integer, nullable: true }
 
@@ -475,6 +475,26 @@ paths:
         '204':
           description: Deleted
 
+  /api/recipes/{id}/hero:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get recipe hero image
+      responses:
+        '200':
+          description: Image binary data
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
 
   /api/recipes/recommendations:
     get:
@@ -494,18 +514,18 @@ paths:
                       id: '550e8400-e29b-41d4-a716-446655440000'
                       name: 'Homemade Lasagna'
                       description: 'Classic comfort food with layered pasta, rich meat sauce, and melted cheese.'
-                      imageUrl: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3'
+                      imageUrl: '/api/recipes/550e8400-e29b-41d4-a716-446655440000/hero'
                       prepTime: '45 mins'
                       difficulty: 'Medium'
                     results:
                       - id: '550e8400-e29b-41d4-a716-446655440001'
                         name: 'Zesty Lemon Chicken'
                         time: '25 mins'
-                        image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435'
+                        image: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero'
                       - id: '550e8400-e29b-41d4-a716-446655440002'
                         name: 'Gorgonzola Gnocchi'
                         time: '20 mins'
-                        image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141'
+                        image: '/api/recipes/550e8400-e29b-41d4-a716-446655440002/hero'
 
   /api/schedule:
     get:
@@ -627,10 +647,10 @@ paths:
                 data:
                   - id: '550e8400-e29b-41d4-a716-446655440001'
                     name: 'Zesty Lemon Chicken'
-                    image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435'
+                    image: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero'
                   - id: '550e8400-e29b-41d4-a716-446655440002'
                     name: 'Gorgonzola Gnocchi'
-                    image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141'
+                    image: '/api/recipes/550e8400-e29b-41d4-a716-446655440002/hero'
 
   /api/schedule/{weekOffset}/smart-defaults:
     get:

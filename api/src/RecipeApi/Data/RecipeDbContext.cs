@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using RecipeApi.Models;
 
 namespace RecipeApi.Data;
@@ -115,8 +116,6 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         {
             entity.HasKey(v => v.RecipeId);
             entity.ToView("vw_recipe_matches");
-            entity.Property(v => v.RecipeId).HasColumnName("recipe_id");
-            entity.Property(v => v.LikeCount).HasColumnName("like_count");
         });
 
         modelBuilder.Entity<DiscoveryRecipe>(entity =>
@@ -127,11 +126,8 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         modelBuilder.Entity<CalendarEvent>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Date).HasColumnName("date");
-            entity.Property(e => e.RecipeId).HasColumnName("recipe_id");
-            entity.Property(e => e.Status).HasColumnName("status").HasConversion<short>();
-            entity.Property(e => e.VoteCount).HasColumnName("vote_count");
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Status).HasConversion<short>();
             entity.ToTable("calendar_events", t =>
                 t.HasCheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 3"));
             entity.HasOne(e => e.Recipe)
@@ -146,6 +142,6 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     {
         base.OnConfiguring(optionsBuilder);
         optionsBuilder.ConfigureWarnings(w =>
-            w.Log(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+            w.Log(RelationalEventId.PendingModelChangesWarning));
     }
 }
