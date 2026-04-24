@@ -15,7 +15,7 @@ All new features and fixes MUST follow the TDD workflow:
 4. **Implement**: Write code to satisfy the tests.
 
 ## 2. Testing Hierarchy
-1. **Mock API (Fast)**: Used for rapid PWA layout and flow verification. **Always run with `task review`**.
+1. **Mock API**: Update specs/openapi.yaml with schemas and rich examples. Prism will serve this data, providing a High-Fidelity Contract that allows frontend work to proceed independently of the backend. Used for rapid PWA layout and flow verification. **Always run with `task review`**.
 2. **Live API (Slow)**: Used for final integration verification.
 
 ### Run PWA Tests (Mock)
