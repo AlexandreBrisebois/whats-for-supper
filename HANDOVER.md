@@ -38,6 +38,37 @@ Successfully restored **100% E2E test pass rate (21/21 tests)** by:
 - **Kiota MultipartBody Issue**: Serialization incompatible with Prism → switched to native fetch for form data
 - **Mock Data Parity**: Added mock members (IDs 1, 2, 3) to family list to support onboarding flow
 
+---
+
+## Completed Mission: E2E Contract Validation via Prism [✅ COMPLETE]
+
+### Status: COMPLETED
+**Session**: E2E CI Contract Validation Migration
+
+### Accomplishment Summary
+Successfully migrated E2E testing from custom mock-api.js to **Prism** for contract-first validation:
+
+1. **Contract-First Testing**: Replaced Node.js custom mock with Stoplight Prism
+   - Updated [.github/workflows/ci.yml](.github/workflows/ci.yml) line 119 to use `npm run mock-api`
+   - Updated [scripts/run-e2e-ci.sh](scripts/run-e2e-ci.sh) to invoke Prism instead of `node mock-api.js`
+   - Removed deprecated [pwa/mock-api.js](pwa/mock-api.js) to eliminate dual-mock confusion
+
+2. **Validation**: All 21 E2E tests pass with Prism-generated responses
+   - Prism generates mocks directly from [specs/openapi.yaml](specs/openapi.yaml)
+   - Responses match OpenAPI schema exactly (e.g., `POST /api/recipes` returns `{data: {id: ...}}`)
+   - No more manual mock drift — spec is single source of truth
+
+3. **CI/Local Parity**: Both environments now use identical contract validation
+   - CI: `npm run mock-api` (Prism) via GitHub Actions
+   - Local: `scripts/run-e2e-ci.sh` uses Prism for consistency
+
+### Key Technical Details
+- **npm script**: `mock-api: "prism mock ../specs/openapi.yaml -p 5001"` (already in package.json)
+- **Commits**: 
+  - `01ee070` - refactor: migrate E2E tests to use Prism
+  - `7678344` - chore: remove deprecated custom mock-api.js
+- **Result**: Zero test failures, 100% contract alignment
+
 ### Next Active Mission: Phase 4 — Cook's Mode & Calendar Sync [READY TO START]
 
 ### Objectives

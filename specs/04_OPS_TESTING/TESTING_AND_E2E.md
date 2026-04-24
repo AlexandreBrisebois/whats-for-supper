@@ -3,7 +3,7 @@
 - **Test behavior, not implementation**: Focus on user outcomes.
 - **Prefer integration over unit**: Especially for data-layer and API logic.
 - **Zero Mock Database**: Always use real PostgreSQL (via Testcontainers) for backend tests to ensure migration integrity.
-- **Stateful Mocks for UI**: Use `mock-api.js` for fast, deterministic PWA flows.
+- **Stateful Mocks for UI**: Use Prism (`npm run mock-api`) for fast, deterministic PWA flows with contract validation.
 
 ---
 
@@ -17,11 +17,12 @@
 
 ### Why We Have a Mock API
 
-The mock API (`pwa/mock-api.js`) exists to:
+The mock API (Prism, via `npm run mock-api`) exists to:
+- **Contract-First Testing** — Prism generates mocks directly from [specs/openapi.yaml](../../specs/openapi.yaml), guaranteeing 100% parity with the API contract.
 - **Decouple PWA tests from .NET backend availability** — Tests can run without Docker.
 - **Enable CI/CD** — GitHub Actions runs tests on commits without requiring a full API service.
 - **Fast feedback loop** — Local E2E runs in seconds, not minutes.
-- **Deterministic state** — In-memory data resets between test runs.
+- **Zero manual drift** — No custom mock file means schema and implementation stay in sync automatically.
 
 ### When to Use Each
 
@@ -34,74 +35,39 @@ The mock API (`pwa/mock-api.js`) exists to:
 
 ---
 
-## 2. Mock API Design Decisions
+## 2. Mock API Design (Prism-Based)
 
-### 2.1 In-Memory Persistence (Recipe & Member State)
+### How Prism Works
 
-**Decision**: Mock API maintains in-memory state for family members and recipes across requests.
+Prism generates all mock responses automatically from [specs/openapi.yaml](../../specs/openapi.yaml):
 
-**Why**:
-- Tests create family members and then post recipes; state must persist.
-- `integration.spec.ts` runs a full Phase 0 journey: onboarding → capture → home.
-- Without persistence, the second request (capture) would fail because the member created in onboarding would be lost.
+**Why Prism**:
+- **No manual implementation** — Mocks are generated directly from the OpenAPI spec.
+- **Contract-first testing** — Tests always validate against the schema, never against outdated mock code.
+- **Zero drift** — When the spec changes, mocks auto-update.
+- **Response wrapping** — All responses automatically match `{ data: ... }` structure per the spec.
 
-**Implementation** ([pwa/mock-api.js:6-12](../pwa/mock-api.js#L6-L12)):
-```javascript
-let familyMembers = [
-  { id: '1', name: 'Alex' },
-  { id: '2', name: 'Jordan' },
-];
-let recipes = {};  // Keyed by member ID
+**Startup**:
+```bash
+# Local development
+npm run mock-api  # Starts Prism on port 5001
+
+# CI/CD (automatic)
+# Scripts and workflows invoke: npm run mock-api
 ```
 
-**Testing Implication**:
-- Tests are **order-independent** within a run but **rely on in-memory isolation**.
-- Each test process gets a fresh mock API instance (Playwright spins up a new one per test session).
-- **No test pollution** across runs.
+### Example: POST /api/recipes Response
 
----
-
-### 2.2 FormData / Multipart Handling
-
-**Decision**: Mock API does NOT parse multipart form data. It accepts the request but stores mock recipe metadata.
-
-**Why**:
-- Parsing multipart in Node.js requires external libraries (`busboy`, `formidable`).
-- For testing purposes, we only need to verify the client **sends** the request and **receives** a response.
-- The `.NET backend` handles actual multipart parsing and file storage.
-- Mock API serves E2E tests, not integration tests — it validates UI flow, not data integrity.
-
-**Implementation** ([pwa/mock-api.js:122-153](../pwa/mock-api.js#L122-L153)):
-```javascript
-// Recipe POST endpoint
-} else if (path === '/api/recipes' && req.method === 'POST') {
-    const memberId = req.headers['x-family-member-id'];
-    let bodySize = 0;
-    req.on('data', (chunk) => {
-      bodySize += chunk.length;
-    });
-    req.on('end', () => {
-      // Don't parse multipart; just track that a request arrived
-      const recipeId = `rec-${Date.now()}`;
-      recipes[memberId]?.push({ id: recipeId, createdAt: new Date().toISOString() });
-      res.writeHead(201);
-      res.end(JSON.stringify({ data: { recipeId } }));
-    });
+The mock API automatically returns:
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440003"
+  }
 }
 ```
 
-**Testing Implication**:
-- **E2E tests verify the UI flow**, not backend parsing.
-- When switching to live API, the test doesn't change — it still expects the same response shape.
-- **Integration tests** (if needed) should hit the real .NET backend to verify multipart parsing.
-
----
-
-### 2.3 Response Wrapping (data Field)
-
-All mock API responses wrap data in a `{ data: ... }` object to match the `SuccessWrappingFilter` behavior on the .NET backend.
-
-See [specs/API_DESIGN.md](API_DESIGN.md#4-client-integration-pwatest) for details.
+This matches the OpenAPI schema exactly. No hardcoded mock values; Prism generates example data based on the schema definition.
 
 ---
 
@@ -109,26 +75,26 @@ See [specs/API_DESIGN.md](API_DESIGN.md#4-client-integration-pwatest) for detail
 
 ### 3.1 Playwright Configuration
 
-**Decision**: Use environment-based API routing instead of hardcoded endpoints.
+**Decision**: Use environment-based API routing instead of hardcoded endpoints. Mock API (Prism) starts automatically.
 
 **Configuration** ([pwa/playwright.config.ts](../pwa/playwright.config.ts)):
 ```typescript
 const MOCK_API_PORT = process.env.MOCK_API_PORT || '5001';
 
-// Locally: Start mock API automatically
+// Locally: Start Prism mock API automatically
 webServer: isCI
   ? undefined
   : [
       ...(process.env.USE_LIVE_API !== 'true'
-        ? [{ command: `MOCK_API_PORT=${MOCK_API_PORT} node mock-api.js` }]
+        ? [{ command: `npm run mock-api` }]
         : []),
     ];
 ```
 
 **Why**:
-- Tests don't care whether they hit mock or live API.
+- Tests don't care whether they hit mock (Prism) or live API.
 - Environment variable switches the behavior without code changes.
-- CI always uses mock; developers can opt-in to live API testing with `USE_LIVE_API=true npm run test:e2e`.
+- CI always uses Prism; developers can opt-in to live API testing with `USE_LIVE_API=true npm run test:e2e`.
 
 ---
 
@@ -237,7 +203,7 @@ Each Playwright session gets its own mock API instance:
 // playwright.config.ts
 webServer: [
   {
-    command: `node mock-api.js`,
+    command: `npm run mock-api`,
     reuseExistingServer: true,  // Within a run, reuse state
   },
 ];
@@ -252,10 +218,10 @@ webServer: [
 
 If you're running tests multiple times locally and want to reset state:
 ```bash
-# Kill any lingering mock API
-pkill -f "node mock-api.js"
+# Kill any lingering Prism instance
+pkill -f "prism mock"
 
-# Run tests (spawns fresh mock API)
+# Run tests (spawns fresh Prism)
 npm run test:e2e
 ```
 
