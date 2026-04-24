@@ -10,6 +10,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type Guid,
   type KeysToExcludeForNavigationMetadata,
   type NavigationMetadata,
   type Parsable,
@@ -104,7 +105,7 @@ export function deserializeIntoFamilyGetResponse_data(
 ): Record<string, (node: ParseNode) => void> {
   return {
     id: (n) => {
-      familyGetResponse_data.id = n.getStringValue();
+      familyGetResponse_data.id = n.getGuidValue();
     },
     name: (n) => {
       familyGetResponse_data.name = n.getStringValue();
@@ -154,7 +155,7 @@ export function deserializeIntoFamilyPostResponse_data(
 ): Record<string, (node: ParseNode) => void> {
   return {
     id: (n) => {
-      familyPostResponse_data.id = n.getStringValue();
+      familyPostResponse_data.id = n.getGuidValue();
     },
     name: (n) => {
       familyPostResponse_data.name = n.getStringValue();
@@ -171,7 +172,7 @@ export interface FamilyGetResponse_data extends AdditionalDataHolder, Parsable {
   /**
    * The id property
    */
-  id?: string | null;
+  id?: Guid | null;
   /**
    * The name property
    */
@@ -193,7 +194,7 @@ export interface FamilyPostResponse_data extends AdditionalDataHolder, Parsable 
   /**
    * The id property
    */
-  id?: string | null;
+  id?: Guid | null;
   /**
    * The name property
    */
@@ -208,7 +209,7 @@ export interface FamilyRequestBuilder extends BaseRequestBuilder<FamilyRequestBu
    * @param id Unique identifier of the item
    * @returns {FamilyItemRequestBuilder}
    */
-  byId(id: string): FamilyItemRequestBuilder;
+  byId(id: Guid): FamilyItemRequestBuilder;
   /**
    * Get all family members
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -283,7 +284,7 @@ export function serializeFamilyGetResponse_data(
   if (!familyGetResponse_data || isSerializingDerivedType) {
     return;
   }
-  writer.writeStringValue('id', familyGetResponse_data.id);
+  writer.writeGuidValue('id', familyGetResponse_data.id);
   writer.writeStringValue('name', familyGetResponse_data.name);
   writer.writeAdditionalData(familyGetResponse_data.additionalData);
 }
@@ -342,7 +343,7 @@ export function serializeFamilyPostResponse_data(
   if (!familyPostResponse_data || isSerializingDerivedType) {
     return;
   }
-  writer.writeStringValue('id', familyPostResponse_data.id);
+  writer.writeGuidValue('id', familyPostResponse_data.id);
   writer.writeStringValue('name', familyPostResponse_data.name);
   writer.writeAdditionalData(familyPostResponse_data.additionalData);
 }

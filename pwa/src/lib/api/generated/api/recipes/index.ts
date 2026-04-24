@@ -8,6 +8,7 @@ import {
 } from '../../models/index';
 // @ts-ignore
 import {
+  RecipesItemRequestBuilderNavigationMetadata,
   RecipesItemRequestBuilderRequestsMetadata,
   type RecipesItemRequestBuilder,
 } from './item/index';
@@ -82,7 +83,11 @@ export function deserializeIntoRecipesPostResponse(
 export function deserializeIntoRecipesPostResponse_data(
   recipesPostResponse_data: Partial<RecipesPostResponse_data> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
-  return {};
+  return {
+    id: (n) => {
+      recipesPostResponse_data.id = n.getGuidValue();
+    },
+  };
 }
 export interface RecipesPostResponse extends AdditionalDataHolder, Parsable {
   /**
@@ -90,7 +95,12 @@ export interface RecipesPostResponse extends AdditionalDataHolder, Parsable {
    */
   data?: RecipesPostResponse_data | null;
 }
-export interface RecipesPostResponse_data extends AdditionalDataHolder, Parsable {}
+export interface RecipesPostResponse_data extends AdditionalDataHolder, Parsable {
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+}
 /**
  * Builds and executes requests for operations under /api/recipes
  */
@@ -186,6 +196,7 @@ export function serializeRecipesPostResponse_data(
   if (!recipesPostResponse_data || isSerializingDerivedType) {
     return;
   }
+  writer.writeGuidValue('id', recipesPostResponse_data.id);
   writer.writeAdditionalData(recipesPostResponse_data.additionalData);
 }
 /**
@@ -201,6 +212,7 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
 > = {
   byId: {
     requestsMetadata: RecipesItemRequestBuilderRequestsMetadata,
+    navigationMetadata: RecipesItemRequestBuilderNavigationMetadata,
     pathParametersMappings: ['id'],
   },
   recommendations: {

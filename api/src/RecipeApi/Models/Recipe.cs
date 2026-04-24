@@ -54,6 +54,12 @@ public class Recipe
     [Column("difficulty")]
     public string? Difficulty { get; set; }
 
+    [Column("is_vegetarian")]
+    public bool IsVegetarian { get; set; } = false;
+
+    [Column("is_healthy_choice")]
+    public bool IsHealthyChoice { get; set; } = false;
+
     // Phase 1+ fields — populated by import worker / AI pipeline
     /// <summary>Raw metadata extracted by AI from recipe images (Phase 1).</summary>
     [Column("raw_metadata", TypeName = "jsonb")]

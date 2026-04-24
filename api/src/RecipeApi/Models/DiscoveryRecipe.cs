@@ -18,6 +18,9 @@ public class DiscoveryRecipe
     [Column("description")]
     public string? Description { get; set; }
 
+    [Column("ingredients", TypeName = "jsonb")]
+    public string? Ingredients { get; set; }
+
     [Column("image_count")]
     public int ImageCount { get; set; }
 

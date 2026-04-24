@@ -26,15 +26,7 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
   useEffect(() => {
     async function verifyIdentity() {
       try {
-        console.log('[IdentityValidator] Verifying identity...', {
-          pathname,
-          selectedFamilyMemberId,
-          _hasHydrated,
-          membersCount: familyMembers?.length,
-        });
-
         if (!_hasHydrated) {
-          console.log('[IdentityValidator] Not hydrated yet.');
           return;
         }
 
@@ -73,7 +65,9 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
         }
 
         const latestMembers = useFamilyStore.getState().familyMembers ?? [];
-        const exists = latestMembers.some((m) => m.id === selectedFamilyMemberId);
+        const exists = latestMembers.some(
+          (m) => String(m.id).toLowerCase() === String(selectedFamilyMemberId).toLowerCase()
+        );
 
         console.log('[IdentityValidator] Member exists check:', {
           exists,

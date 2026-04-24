@@ -7,7 +7,7 @@ test.describe('Supper Planner', () => {
     await page.context().addCookies([
       {
         name: 'x-family-member-id',
-        value: '1',
+        value: '550e8400-e29b-41d4-a716-446655440001',
         url: baseUrl,
       },
     ]);
@@ -16,7 +16,10 @@ test.describe('Supper Planner', () => {
     await page.evaluate(() =>
       localStorage.setItem(
         'family-storage',
-        JSON.stringify({ state: { selectedFamilyMemberId: '1' }, version: 0 })
+        JSON.stringify({
+          state: { selectedFamilyMemberId: '550e8400-e29b-41d4-a716-446655440001' },
+          version: 0,
+        })
       )
     );
 
@@ -99,11 +102,12 @@ test.describe('Supper Planner', () => {
     // Verify overlay
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 1 of 4/i);
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 1 of \d+/i);
+    await expect(page.getByRole('heading', { name: /check & prep/i })).toBeVisible();
 
     // Navigate steps
     await page.getByTestId('cooks-mode-step-next').click();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 2 of 4/i);
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 2 of \d+/i);
 
     // Close overlay
     await page.getByTestId('close-cooks-mode').click();
@@ -123,6 +127,8 @@ test.describe('Supper Planner', () => {
 
   test('should assign pending smart default slots and lock when finalizing', async ({ page }) => {
     const finalizeBtn = page.getByTestId('finalize-button');
+    await expect(finalizeBtn).toBeVisible();
+    await expect(finalizeBtn).toHaveText(/menu's in!/i);
     await finalizeBtn.scrollIntoViewIfNeeded();
     await finalizeBtn.click();
 

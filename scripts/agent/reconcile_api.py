@@ -7,7 +7,6 @@ import sys
 # Paths
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 SPEC_PATH = os.path.join(ROOT, "specs/openapi.yaml")
-MOCK_API_PATH = os.path.join(ROOT, "pwa/mock-api.js")
 CONTROLLERS_DIR = os.path.join(ROOT, "api/src/RecipeApi/Controllers")
 
 def load_spec():
@@ -33,31 +32,7 @@ def get_mock_endpoints(spec=None):
         # Prism reads directly from the spec, so mock parity is guaranteed 100%
         return get_spec_endpoints(spec)
 
-    endpoints = []
-    with open(MOCK_API_PATH, 'r') as f:
-        content = f.read()
-    
-    # Existing equality matches
-    pattern_eq = r"if\s*\(\s*path\s*===\s*['\"]([^'\"]+)['\"]\s*&&\s*req\.method\s*===\s*['\"]([^'\"]+)['\"]\s*\)"
-    matches_eq = re.findall(pattern_eq, content)
-    for path, method in matches_eq:
-        endpoints.append({'path': path, 'method': method.upper()})
-    
-    # Regex matches: path.match(/^\/api\/schedule\/\d+\/smart-defaults$/)
-    pattern_match = r"path\.match\(\/\^([^$]+)\$\/\)\s*&&\s*req\.method\s*===\s*['\"]([^'\"]+)['\"]"
-    matches_regex = re.findall(pattern_match, content)
-    for path_regex, method in matches_regex:
-        # Simple normalization: replace \d+ or [^/]+ with {param}
-        normalized_path = path_regex.replace(r'\/', '/')
-        normalized_path = re.sub(r'\\d\+', '{id}', normalized_path)
-        normalized_path = re.sub(r'\[\^/\]\+', '{id}', normalized_path)
-        endpoints.append({'path': normalized_path, 'method': method.upper()})
-
-    # Specific check for health
-    if "path === '/health'" in content:
-        endpoints.append({'path': '/health', 'method': 'GET'})
-        
-    return endpoints
+    return []
 
 def get_real_endpoints():
     endpoints = []

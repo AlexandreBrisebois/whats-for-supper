@@ -15,17 +15,15 @@ When a feature request is received, follow this 5-phase lifecycle:
 - **Workstream Mapping**: Use [SKILL_CREATE_PROMPT.md](SKILL_CREATE_PROMPT.md) to draft the execution plan.
 
 ### Phase 2: Building the Seams (The Contract)
-- **MANDATORY**: Before any implementation, use [SKILL_CONTRACT_ENGINEER.md](SKILL_CONTRACT_ENGINEER.md) to define:
-  - **Mock API**: Update `pwa/mock-api.js` to reflect the new behavior.
-  - **Shared Types**: Define the TypeScript interfaces that both Backend and Frontend will use.
-  - **DDL**: Define the database schema changes.
+- **MANDATORY**: Before any implementation, use [SKILL_OPENAPI_SPECIALIST.md](SKILL_OPENAPI_SPECIALIST.md) to define the API contract and generate clients.
+- **Contract Engineer**: Use [SKILL_CONTRACT_ENGINEER.md](SKILL_CONTRACT_ENGINEER.md) for database and other cross-layer boundaries.
 
 ### Phase 3: Parallel Execution (Delegation)
 - **Launch Sub-Agents**: Provide the "Build Prompts" to the user for execution.
 - **Micro-Handovers**: Each workstream MUST return a "Micro-Handover" (summary of changes + test results).
 
 ### Phase 4: Reintegration & Merge
-- **Verify Seams**: Ensure the real Backend implementation matches the Mock API contract.
+- **Verify Seams**: Ensure the real Backend implementation matches the OpenAPI contract via `task agent:reconcile`.
 - **Cross-Layer Audit**: Check that no modifications were missed (e.g., did the DB migration happen? Is the UI using the new API fields?).
 - **The Integrity Gate**: Run `scripts/run-e2e-ci.sh` to ensure high-fidelity full-stack pass.
 
@@ -40,13 +38,13 @@ When a feature request is received, follow this 5-phase lifecycle:
 ## 3. Conflict Resolution
 If workstreams drift or contracts break during implementation:
 1. **Stop**: Halt sub-agent execution.
-2. **Re-Contract**: Update the "Seams" (Mock API / Types).
+2. **Re-Contract**: Update the OpenAPI spec and regenerate clients.
 3. **Resync**: Update the remaining Build Prompts to reflect the new contract.
 
 ## 4. Integrity Gate Checklist
 Before declaring a feature "Done", verify:
 - [ ] **Database**: Migrations applied and `pgvector` indexed if needed.
-- [ ] **Mocks**: `pwa/mock-api.js` reflects the real API behavior.
+- [ ] **API**: `specs/openapi.yaml` matches implementation and clients are generated.
 - [ ] **Backend**: Unit tests pass and API wrapping logic is consistent.
 - [ ] **Frontend**: UI matches design tokens and Playwright tests pass.
 - [ ] **Tests**: E2E suite passes via `task review` AND high-fidelity `scripts/run-e2e-ci.sh`.

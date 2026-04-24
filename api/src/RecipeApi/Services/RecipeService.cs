@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
@@ -96,6 +97,7 @@ public class RecipeService(
             Category = r.Category,
             Difficulty = r.Difficulty,
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
+            Ingredients = string.IsNullOrEmpty(r.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(r.Ingredients),
             CreatedAt = r.CreatedAt
         }).ToList();
 
@@ -132,6 +134,7 @@ public class RecipeService(
                 Category = recipe.Category,
                 Difficulty = recipe.Difficulty,
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
+                Ingredients = string.IsNullOrEmpty(recipe.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(recipe.Ingredients),
                 CreatedAt = recipe.CreatedAt
             }
         };
@@ -178,6 +181,7 @@ public class RecipeService(
                 Category = recipe.Category,
                 Difficulty = recipe.Difficulty,
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
+                Ingredients = string.IsNullOrEmpty(recipe.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(recipe.Ingredients),
                 CreatedAt = recipe.CreatedAt
             }
         };

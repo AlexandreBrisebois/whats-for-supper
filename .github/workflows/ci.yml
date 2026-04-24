@@ -186,6 +186,28 @@ jobs:
             pwa/pwa.log
 
   # ────────────────────────────────────────────────────────────────────────────
+  # Contract Integrity Gate — verify Spec ↔ Mock ↔ API parity
+  # (Phase 4 of Team Orchestrator: Reintegration & Merge)
+  # ────────────────────────────────────────────────────────────────────────────
+  contract-integrity-gate:
+    name: Integrity Gate — Contract Parity
+    runs-on: ubuntu-latest
+    needs: test-pwa
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Verify API ↔ Spec ↔ Mock parity
+        run: python3 scripts/agent/reconcile_api.py
+        env:
+          SPEC_PATH: specs/openapi.yaml
+
+  # ────────────────────────────────────────────────────────────────────────────
   # Docker Compose smoke test — verify all services start and pass health checks
   # ────────────────────────────────────────────────────────────────────────────
   docker-smoke:

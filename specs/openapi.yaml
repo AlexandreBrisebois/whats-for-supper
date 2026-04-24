@@ -50,7 +50,13 @@ components:
           type: array
           items: { type: integer }
         rating: { type: integer }
+        isVegetarian: { type: boolean }
+        isHealthyChoice: { type: boolean }
         addedBy: { type: string, format: uuid, nullable: true }
+        ingredients:
+          type: array
+          items: { type: string }
+          nullable: true
         createdAt: { type: string, format: date-time }
 
     RecipeListResponse:
@@ -92,7 +98,7 @@ components:
       type: object
       required: [id, name, description, imageUrl, prepTime, difficulty]
       properties:
-        id: { type: string }
+        id: { type: string, format: uuid }
         name: { type: string }
         description: { type: string }
         imageUrl: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440000/hero' }
@@ -104,7 +110,7 @@ components:
       type: object
       required: [id, name, time, image]
       properties:
-        id: { type: string }
+        id: { type: string, format: uuid }
         name: { type: string }
         time: { type: string }
         image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
@@ -122,7 +128,6 @@ components:
           minItems: 7
           maxItems: 7
           items: { $ref: '#/components/schemas/ScheduleDayDto' }
-      items: { $ref: '#/components/schemas/ScheduleDayDto' }
 
 
     ScheduleDayDto:
@@ -140,7 +145,11 @@ components:
         id: { type: string, format: uuid }
         name: { type: string, nullable: true }
         image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
-
+        description: { type: string, nullable: true }
+        ingredients:
+          type: array
+          items: { type: string }
+          nullable: true
         voteCount: { type: integer, nullable: true }
 
     MoveScheduleDto:
@@ -308,16 +317,18 @@ paths:
                       type: object
                       required: [id, name]
                       properties:
-                        id: { type: string }
+                        id: { type: string, format: uuid }
                         name: { type: string }
-              example:
-                data:
-                  - id: '1'
-                    name: 'Alex'
-                  - id: '2'
-                    name: 'Jordan'
-                  - id: '3'
-                    name: 'Test User'
+              examples:
+                default:
+                  value:
+                    data:
+                      - id: '550e8400-e29b-41d4-a716-446655440001'
+                        name: 'Alex'
+                      - id: '550e8400-e29b-41d4-a716-446655440002'
+                        name: 'Jordan'
+                      - id: '550e8400-e29b-41d4-a716-446655440003'
+                        name: 'Test User'
 
     post:
       summary: Create or update a family member
@@ -341,11 +352,11 @@ paths:
                   data:
                     type: object
                     properties:
-                      id: { type: string }
+                      id: { type: string, format: uuid }
                       name: { type: string }
               example:
                 data:
-                  id: '3'
+                  id: '550e8400-e29b-41d4-a716-446655440003'
                   name: 'Test User'
 
   /api/family/{id}:
@@ -353,7 +364,7 @@ paths:
       - name: id
         in: path
         required: true
-        schema: { type: string }
+        schema: { type: string, format: uuid }
     put:
       summary: Update a family member
       security: [{ FamilyMemberId: [] }]
@@ -648,9 +659,13 @@ paths:
                   - id: '550e8400-e29b-41d4-a716-446655440001'
                     name: 'Zesty Lemon Chicken'
                     image: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero'
+                    description: 'A bright and citrusy Mediterranean classic that comes together in minutes.'
+                    ingredients: ['Chicken breast', 'Lemon juice', 'Garlic', 'Oregano', 'Olive oil']
                   - id: '550e8400-e29b-41d4-a716-446655440002'
                     name: 'Gorgonzola Gnocchi'
                     image: '/api/recipes/550e8400-e29b-41d4-a716-446655440002/hero'
+                    description: 'Rich, creamy, and sophisticated—perfect for a quick gourmet weeknight dinner.'
+                    ingredients: ['Potato gnocchi', 'Gorgonzola cheese', 'Heavy cream', 'Walnuts', 'Sage']
 
   /api/schedule/{weekOffset}/smart-defaults:
     get:

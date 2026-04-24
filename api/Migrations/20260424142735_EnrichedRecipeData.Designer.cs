@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RecipeApi.Data;
@@ -11,9 +12,11 @@ using RecipeApi.Data;
 namespace RecipeApi.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    partial class RecipeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260424142735_EnrichedRecipeData")]
+    partial class EnrichedRecipeData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

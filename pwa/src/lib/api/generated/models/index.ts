@@ -420,6 +420,15 @@ export function deserializeIntoRecipeDto(
     imageUrl: (n) => {
       recipeDto.imageUrl = n.getStringValue();
     },
+    ingredients: (n) => {
+      recipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
+    },
+    isHealthyChoice: (n) => {
+      recipeDto.isHealthyChoice = n.getBooleanValue();
+    },
+    isVegetarian: (n) => {
+      recipeDto.isVegetarian = n.getBooleanValue();
+    },
     name: (n) => {
       recipeDto.name = n.getStringValue();
     },
@@ -467,7 +476,7 @@ export function deserializeIntoRecommendationResultDto(
 ): Record<string, (node: ParseNode) => void> {
   return {
     id: (n) => {
-      recommendationResultDto.id = n.getStringValue();
+      recommendationResultDto.id = n.getGuidValue();
     },
     image: (n) => {
       recommendationResultDto.image = n.getStringValue();
@@ -558,11 +567,17 @@ export function deserializeIntoScheduleRecipeDto(
   scheduleRecipeDto: Partial<ScheduleRecipeDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    description: (n) => {
+      scheduleRecipeDto.description = n.getStringValue();
+    },
     id: (n) => {
       scheduleRecipeDto.id = n.getGuidValue();
     },
     image: (n) => {
       scheduleRecipeDto.image = n.getStringValue();
+    },
+    ingredients: (n) => {
+      scheduleRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
     },
     name: (n) => {
       scheduleRecipeDto.name = n.getStringValue();
@@ -638,7 +653,7 @@ export function deserializeIntoTopPickDto(
       topPickDto.difficulty = n.getStringValue();
     },
     id: (n) => {
-      topPickDto.id = n.getStringValue();
+      topPickDto.id = n.getGuidValue();
     },
     imageUrl: (n) => {
       topPickDto.imageUrl = n.getStringValue();
@@ -805,6 +820,18 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   imageUrl?: string | null;
   /**
+   * The ingredients property
+   */
+  ingredients?: string[] | null;
+  /**
+   * The isHealthyChoice property
+   */
+  isHealthyChoice?: boolean | null;
+  /**
+   * The isVegetarian property
+   */
+  isVegetarian?: boolean | null;
+  /**
    * The name property
    */
   name?: string | null;
@@ -835,9 +862,9 @@ export interface RecommendationResultDto extends AdditionalDataHolder, Parsable 
   /**
    * The id property
    */
-  id?: string | null;
+  id?: Guid | null;
   /**
-   * The image property
+   * Relative path proxied through /backend
    */
   image?: string | null;
   /**
@@ -889,13 +916,21 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
 }
 export interface ScheduleRecipeDto extends AdditionalDataHolder, Parsable {
   /**
+   * The description property
+   */
+  description?: string | null;
+  /**
    * The id property
    */
   id?: Guid | null;
   /**
-   * The image property
+   * Relative path proxied through /backend
    */
   image?: string | null;
+  /**
+   * The ingredients property
+   */
+  ingredients?: string[] | null;
   /**
    * The name property
    */
@@ -1073,6 +1108,9 @@ export function serializeRecipeDto(
   writer.writeGuidValue('id', recipeDto.id);
   writer.writeCollectionOfPrimitiveValues<number>('images', recipeDto.images);
   writer.writeStringValue('imageUrl', recipeDto.imageUrl);
+  writer.writeCollectionOfPrimitiveValues<string>('ingredients', recipeDto.ingredients);
+  writer.writeBooleanValue('isHealthyChoice', recipeDto.isHealthyChoice);
+  writer.writeBooleanValue('isVegetarian', recipeDto.isVegetarian);
   writer.writeStringValue('name', recipeDto.name);
   writer.writeNumberValue('rating', recipeDto.rating);
   writer.writeStringValue('totalTime', recipeDto.totalTime);
@@ -1121,7 +1159,7 @@ export function serializeRecommendationResultDto(
   if (!recommendationResultDto || isSerializingDerivedType) {
     return;
   }
-  writer.writeStringValue('id', recommendationResultDto.id);
+  writer.writeGuidValue('id', recommendationResultDto.id);
   writer.writeStringValue('image', recommendationResultDto.image);
   writer.writeStringValue('name', recommendationResultDto.name);
   writer.writeStringValue('time', recommendationResultDto.time);
@@ -1217,8 +1255,10 @@ export function serializeScheduleRecipeDto(
   if (!scheduleRecipeDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeStringValue('description', scheduleRecipeDto.description);
   writer.writeGuidValue('id', scheduleRecipeDto.id);
   writer.writeStringValue('image', scheduleRecipeDto.image);
+  writer.writeCollectionOfPrimitiveValues<string>('ingredients', scheduleRecipeDto.ingredients);
   writer.writeStringValue('name', scheduleRecipeDto.name);
   writer.writeNumberValue('voteCount', scheduleRecipeDto.voteCount);
   writer.writeAdditionalData(scheduleRecipeDto.additionalData);
@@ -1289,7 +1329,7 @@ export function serializeTopPickDto(
   }
   writer.writeStringValue('description', topPickDto.description);
   writer.writeStringValue('difficulty', topPickDto.difficulty);
-  writer.writeStringValue('id', topPickDto.id);
+  writer.writeGuidValue('id', topPickDto.id);
   writer.writeStringValue('imageUrl', topPickDto.imageUrl);
   writer.writeStringValue('name', topPickDto.name);
   writer.writeStringValue('prepTime', topPickDto.prepTime);
@@ -1376,9 +1416,9 @@ export interface TopPickDto extends AdditionalDataHolder, Parsable {
   /**
    * The id property
    */
-  id?: string | null;
+  id?: Guid | null;
   /**
-   * The imageUrl property
+   * Relative path proxied through /backend
    */
   imageUrl?: string | null;
   /**

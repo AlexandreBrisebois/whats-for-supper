@@ -107,20 +107,56 @@ Successfully migrated E2E testing from custom mock-api.js to **Prism** for contr
   - `7678344` - chore: remove deprecated custom mock-api.js
 - **Result**: Zero test failures, 100% contract alignment
 
-### Next Active Mission: Phase 4 — Cook's Mode & Calendar Sync [READY TO START]
+#---
+
+## Completed Mission: PWA Planner Redesign & Cook's Mode Polish [✅ COMPLETE]
+
+### Status: COMPLETED
+**Session**: PWA Planner UX/UI Overhaul - Busy Mom Lens
+
+### Accomplishment Summary
+Successfully redesigned the PWA Planner and Cook's Mode to be more intuitive, empathetic, and visually consistent:
+
+1. **Planner Redesign**:
+   - Updated date formatting to human-readable "Month Day" (e.g., "Apr 20").
+   - Fixed `plannedCount` logic and rebranded finalize button to **"Menu's In!"**.
+   - Fixed "Ask the Family" pivot action to properly unlock the week.
+   - Reduced excessive vertical dead space for better action visibility.
+
+2. **SolarLoader Refresh**:
+   - Replaced static rings with a "diffused glow" and organic wobble for a more premium feel.
+
+3. **Cook's Mode Polish**:
+   - Added a **"Check & Prep"** initial step for better meal organization.
+   - Implemented a **"Dietary High-Five"** (Plant-Powered badge) to celebrate healthy choices.
+   - Added dynamic cooking method UI (Hot/Cold) and clarified stove levels (Level 6).
+   - Connected the "Done" button to home navigation.
+
+4. **Quick Find Vibrancy**:
+   - Implemented an **interactive card flip** to show ingredients and descriptions.
+   - Enhanced modal vibrancy with golden glows and unified 'X' button placement on the right.
+
+5. **Backend Extension**:
+   - Added `IsVegetarian` and `IsHealthyChoice` fields to `Recipe` model and DTO.
+   - Updated `openapi.yaml` to include new dietary metadata.
+
+### Result
+✅ The app now feels like a high-end kitchen partner rather than a data entry tool.
+
+---
+
+## Next Active Mission: Phase 5 — Diet Agent & AI Inference [READY TO START]
 
 ### Objectives
-- [ ] Implement Cook's Mode high-visibility UI with step-by-step guidance
-- [ ] Build Calendar Sync Worker (5-minute polling)
-- [ ] Finalize Search-to-Planner round-trip integration
-- [ ] Final aesthetic audit with Mère-Designer lens
-- [ ] Refactor remaining PWA API calls to strictly type-safe Kiota definitions
+- [ ] **Diet Agent**: Implement an agent that audits the recipe library to infer `isVegetarian` and `isHealthyChoice`.
+- [ ] **Import Pipeline**: Integrate dietary inference into the background recipe import worker.
+- [ ] **Cook's Mode Persistence**: Move recipe instructions from mocked frontend state to backend `Recipe` entity.
+- [ ] **Grocery List Skeleton**: Design the "Grocery" tab in the planner as a shopping list companion.
 
 ### Technical Foundation Ready
-- ✅ E2E test suite at 100% pass rate provides regression safety
-- ✅ API contract fully aligned between spec, mock, and real backends
-- ✅ Direct Identity Injection pattern established and working
-- ✅ Kiota SDK generation integrated (ref: ADR 015)
+- ✅ Backend fields `IsVegetarian` and `IsHealthyChoice` are implemented and exposed via API.
+- ✅ PWA UI supports dynamic display of these flags in Cook's Mode.
+- ✅ E2E test suite remains stable at 100% pass rate.
 
 ### References
 - [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md)

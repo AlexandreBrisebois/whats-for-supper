@@ -22,7 +22,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     if (path.startsWith(ROUTES.CAPTURE)) {
       return {
         title: 'Add a Recipe',
-        leftAction: (
+        rightAction: (
           <Link
             href={ROUTES.HOME}
             aria-label="Cancel capture"

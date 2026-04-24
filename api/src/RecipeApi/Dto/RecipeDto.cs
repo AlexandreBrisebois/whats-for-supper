@@ -14,6 +14,9 @@ public class RecipeDto
     public string? TotalTime { get; set; }
     public string? Category { get; set; }
     public string? Difficulty { get; set; }
+    public bool IsVegetarian { get; set; }
+    public bool IsHealthyChoice { get; set; }
 
+    public List<string>? Ingredients { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }

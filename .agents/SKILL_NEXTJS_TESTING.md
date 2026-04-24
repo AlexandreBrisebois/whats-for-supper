@@ -11,7 +11,7 @@ Procedural guidance for creating robust, maintainable E2E tests for the Next.js 
 Every feature or bug fix must follow this sequence:
 1. **Specs**: Update/Create specifications in `specs/`.
 2. **Tests**: Update/Create Playwright tests in `pwa/e2e/`.
-3. **Mock API**: Update `pwa/mock-api.js` to support the new feature. This is a **High-Fidelity Contract** that allows frontend work to proceed independently of the backend.
+3. **Mock API**: Update `specs/openapi.yaml` with schemas and rich examples. Prism will serve this data, providing a **High-Fidelity Contract** that allows frontend work to proceed independently of the backend.
 4. **Implementation**: Write the code to satisfy the tests.
 
 ## 2. Robust Locators (Zero Brittle Policy)

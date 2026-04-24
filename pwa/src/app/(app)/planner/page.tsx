@@ -332,7 +332,8 @@ export default function PlannerPage() {
   };
 
   const handleAskFamily = () => {
-    alert('Week opened for family voting!');
+    // Unlock the week to allow voting/changes
+    setIsLocked(false);
     setShowPivot(null);
   };
 
@@ -372,10 +373,10 @@ export default function PlannerPage() {
     }
   };
 
-  const plannedCount = schedule.filter((d) => d.recipe).length;
+  const plannedCount = schedule.filter((d) => d.recipe && d.recipe.id).length;
 
   return (
-    <div className="flex flex-col min-h-screen pb-32 solar-earth-bg">
+    <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
       {/* Animated Blobs */}
       <div
         className="blob blob-terracotta -top-20 -left-20 animate-pulse"
@@ -443,7 +444,17 @@ export default function PlannerPage() {
                   : `Week ${currentWeekOffset}`}
             </span>
             <h2 className="text-lg font-heading font-bold text-charcoal">
-              {schedule.length >= 7 ? `${schedule[0].date} — ${schedule[6].date}` : 'Loading...'}
+              {schedule.length >= 7
+                ? (() => {
+                    const start = new Date(schedule[0].date ?? '');
+                    const end = new Date(schedule[6].date ?? '');
+                    const fmt = new Intl.DateTimeFormat('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    });
+                    return `${fmt.format(start)} — ${fmt.format(end)}`;
+                  })()
+                : 'Loading...'}
             </h2>
             <div className="flex items-center justify-center mt-2">
               <div className="flex items-center space-x-1 text-sage font-bold text-[9px] bg-sage/5 px-2 py-1 rounded-full border border-sage/10 uppercase tracking-widest">
@@ -574,7 +585,18 @@ export default function PlannerPage() {
                           {day.day}
                         </span>
                         <span className="text-lg font-heading font-extrabold text-charcoal leading-none">
-                          {day.date?.split('-').pop() || ''}
+                          {(() => {
+                            if (!day.date) return '';
+                            const d = new Date(day.date);
+                            return d.getDate();
+                          })()}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-tighter text-charcoal/40 leading-none mt-1">
+                          {(() => {
+                            if (!day.date) return '';
+                            const d = new Date(day.date);
+                            return d.toLocaleDateString('en-US', { month: 'short' });
+                          })()}
                         </span>
                       </div>
 
@@ -687,7 +709,7 @@ export default function PlannerPage() {
 
               {/* Finalize Button */}
               {currentWeekOffset >= 0 && (
-                <div className="mt-12 mb-8">
+                <div className="mt-8 mb-6">
                   {isLocked ? (
                     <div className="flex flex-col items-center py-6 bg-sage/5 rounded-3xl border border-sage/10 text-center">
                       <CheckCircle2 size={32} className="text-sage mb-3" />
@@ -711,7 +733,7 @@ export default function PlannerPage() {
                       onClick={handleFinalize}
                       data-testid="finalize-button"
                     >
-                      Declare complete
+                      Menu&apos;s In!
                     </Button>
                   )}
                 </div>

@@ -11,6 +11,7 @@ export interface Recipe {
   difficulty: string;
   category: string;
   rating: number;
+  ingredients?: string[];
 }
 
 export type RecommendationResult = {
@@ -42,6 +43,7 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     difficulty: dto.difficulty || '',
     category: dto.category || '',
     rating: dto.rating || 0,
+    ingredients: dto.ingredients ?? [],
   };
 }
 

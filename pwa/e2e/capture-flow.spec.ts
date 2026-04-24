@@ -11,7 +11,7 @@ test.describe('Capture Flow', () => {
     await page.context().addCookies([
       {
         name: 'x-family-member-id',
-        value: '1',
+        value: '550e8400-e29b-41d4-a716-446655440001',
         url: baseUrl,
       },
     ]);
@@ -20,7 +20,10 @@ test.describe('Capture Flow', () => {
     await page.evaluate(() =>
       localStorage.setItem(
         'family-storage',
-        JSON.stringify({ state: { selectedFamilyMemberId: '1' }, version: 0 })
+        JSON.stringify({
+          state: { selectedFamilyMemberId: '550e8400-e29b-41d4-a716-446655440001' },
+          version: 0,
+        })
       )
     );
   });

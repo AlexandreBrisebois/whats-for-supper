@@ -10,8 +10,8 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 | **1 — Import** | AI processing pipeline | DB Polling + Gemma + Gemini + Branding | 🏃 Active |
 | **2 — Family** | Identity & Pulse | FamilyMembers, Activity Feed, Approvals | 📝 Planned |
 | **3 — Discovery** | Express Planning | Smart Pivot, Swipe Voting, Vector Search | ✅ Done |
-| **4 — Planner** | Kitchen & Cook's Mode | Weekly list, Cook's Mode, Calendar Sync | 🏃 Active |
-| **5 — Agents** | Suggestion Engine | SuggestMealsAgent, Shopping Lists | 📝 Planned |
+| **4 — Planner** | Kitchen & Cook's Mode | Weekly list, Cook's Mode, Calendar Sync | ✅ Done |
+| **5 — Agents** | Suggestion Engine | Diet Agent, Shopping Lists | 🏃 Active |
 | **6 — Polish** | Resilience | Offline-first, Performance, Final Aesthetics | 📝 Planned |
 | **7 — Ops** | Production Ready | Cloudflare Tunnel, Monitoring, Cleanup | 📝 Planned |
 
@@ -91,14 +91,18 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 - [x] **Schedule API Endpoints**: 5 core endpoints for planner backend (GET, POST lock/move/assign, GET fill-the-gap).
 - [x] **Smart Voting Defaults**: Consensus-based pre-selection (51%+ threshold) with visual vote badges and dynamic ordering.
 - [x] **Quick Find Modal**: Recipe carousel with hero images, skip/select actions, and fallback placeholders.
-- [ ] **Cook's Mode**: High-visibility, hands-free UI for step-by-step cooking.
+- [x] **Cook's Mode**: High-visibility, hands-free UI for step-by-step cooking.
 - [ ] **Calendar Sync Worker**: 5-minute polling.
 
 ---
 
-## Phase 5 — Agents: Intelligent Meal Planning
+## Phase 5 — Agents: Intelligent Meal Planning [ACTIVE]
 
-**Goal**: AI suggests meals and generates section-categorized shopping lists.
+**Goal**: AI suggests meals, infers dietary metadata, and generates section-categorized shopping lists.
+
+### Additions
+- [ ] **DietAgent**: Specialized agent to infer `isVegetarian` and `isHealthyChoice` from recipe data.
+- [ ] **Shopping Lists**: Automatic generation of grocery lists from the weekly plan.
 
 ---
 

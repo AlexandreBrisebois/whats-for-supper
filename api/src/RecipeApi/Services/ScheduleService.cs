@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
@@ -140,7 +141,13 @@ public class ScheduleService(RecipeDbContext dbContext)
             .ToListAsync();
 
         var dtos = results
-            .Select(x => new ScheduleRecipeDto(x.Recipe.Id, x.Recipe.Name, $"/api/recipes/{x.Recipe.Id}/hero", x.Match.LikeCount))
+            .Select(x => new ScheduleRecipeDto(
+                x.Recipe.Id,
+                x.Recipe.Name,
+                $"/api/recipes/{x.Recipe.Id}/hero",
+                x.Match.LikeCount,
+                x.Recipe.Ingredients != null ? JsonSerializer.Deserialize<List<string>>(x.Recipe.Ingredients) : null,
+                x.Recipe.Description))
             .ToList();
 
         if (dtos.Count < 5)
@@ -157,7 +164,13 @@ public class ScheduleService(RecipeDbContext dbContext)
                 .ToListAsync();
 
             dtos.AddRange(fallback
-                .Select(dr => new ScheduleRecipeDto(dr.Id, dr.Name, $"/api/recipes/{dr.Id}/hero")));
+                .Select(dr => new ScheduleRecipeDto(
+                    dr.Id,
+                    dr.Name,
+                    $"/api/recipes/{dr.Id}/hero",
+                    null,
+                    dr.Ingredients != null ? JsonSerializer.Deserialize<List<string>>(dr.Ingredients) : null,
+                    dr.Description)));
         }
 
         return dtos;

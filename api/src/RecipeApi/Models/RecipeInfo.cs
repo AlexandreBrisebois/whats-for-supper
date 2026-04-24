@@ -18,5 +18,7 @@ public class RecipeInfo
     public DateTimeOffset CreatedAt { get; set; }
     public string? Category { get; set; }
     public bool IsDiscoverable { get; set; } = false;
+    public bool IsHealthyChoice { get; set; } = false;
+    public bool IsVegetarian { get; set; } = false;
     public string? Difficulty { get; set; }
 }

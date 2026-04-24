@@ -41,8 +41,8 @@ test('selecting a family member redirects to /home with a welcome message', asyn
   await expect(familyList).toBeVisible({ timeout: 10_000 });
 
   // Find the first clickable family member button
-  // In the mock API, 'Alex' (id: 1) and 'Jordan' (id: 2) exist.
-  const alexMember = page.getByTestId('family-member-1');
+  // In the mock API, 'Alex' (id: 550e8400-e29b-41d4-a716-446655440001) exists.
+  const alexMember = page.getByTestId('family-member-550e8400-e29b-41d4-a716-446655440001');
 
   // Wait for the member to be visible (with extended timeout for loading)
   await expect(alexMember).toBeVisible({ timeout: 10_000 });

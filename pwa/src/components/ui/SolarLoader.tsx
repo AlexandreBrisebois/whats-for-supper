@@ -64,10 +64,21 @@ export function SolarLoader({ className, size = 'md', label }: SolarLoaderProps)
           className="absolute inset-0 rounded-full bg-terracotta/20 blur-2xl"
         />
 
-        {/* Inner Content (optional icon or just the glow) */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-1/2 w-1/2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30" />
-        </div>
+        {/* Subtle Wobble Core */}
+        <motion.div
+          animate={{
+            rotate: [0, 90, 180, 270, 360],
+            scale: [0.95, 1.05, 0.95],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          <div className="h-2/3 w-2/3 rounded-full bg-white/10 blur-xl" />
+        </motion.div>
       </div>
 
       {label && (

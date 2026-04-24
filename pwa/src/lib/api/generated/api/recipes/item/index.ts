@@ -9,9 +9,13 @@ import {
   type UpdateRecipeDto,
 } from '../../../models/index';
 // @ts-ignore
+import { HeroRequestBuilderRequestsMetadata, type HeroRequestBuilder } from './hero/index';
+// @ts-ignore
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type KeysToExcludeForNavigationMetadata,
+  type NavigationMetadata,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -75,6 +79,10 @@ export function deserializeIntoRecipesPatchResponse_data(
  * Builds and executes requests for operations under /api/recipes/{id}
  */
 export interface RecipesItemRequestBuilder extends BaseRequestBuilder<RecipesItemRequestBuilder> {
+  /**
+   * The hero property
+   */
+  get hero(): HeroRequestBuilder;
   /**
    * Delete a recipe
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -175,6 +183,17 @@ export function serializeRecipesPatchResponse_data(
  * Uri template for the request builder.
  */
 export const RecipesItemRequestBuilderUriTemplate = '{+baseurl}/api/recipes/{id}';
+/**
+ * Metadata for all the navigation properties in the request builder.
+ */
+export const RecipesItemRequestBuilderNavigationMetadata: Record<
+  Exclude<keyof RecipesItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
+  NavigationMetadata
+> = {
+  hero: {
+    requestsMetadata: HeroRequestBuilderRequestsMetadata,
+  },
+};
 /**
  * Metadata for all the requests in the request builder.
  */

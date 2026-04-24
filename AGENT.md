@@ -15,9 +15,10 @@ Source of Truth for the "What's For Supper" (WFS) project. This is a **Registry*
 ## 3. Mandatory Law
 1. **Orchestration**: Follow [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md) for all feature work.
 2. **Contract-First**: Update [specs/openapi.yaml](specs/openapi.yaml) before API changes. Mock responses auto-generate via Prism ([Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md)).
-3. **TDD-First**: Write tests before implementation ([Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md)).
-4. **Cleanliness**: Perform [Death Audit](.agents/SKILL_DEATH_AUDIT.md) to remove zombie code/docs.
-5. **Session Review**: Mandatory audit and [Compaction](.agents/SKILL_SESSION_REVIEW.md) before turn end.
+3. **Integrity Gate**: CI validates Spec ↔ Mock ↔ API parity via [Team Orchestrator Phase 4](.agents/SKILL_TEAM_ORCHESTRATOR.md#phase-4-reintegration--merge). Reconciliation check is **required** before merge.
+4. **TDD-First**: Write tests before implementation ([Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md)).
+5. **Cleanliness**: Perform [Death Audit](.agents/SKILL_DEATH_AUDIT.md) to remove zombie code/docs.
+6. **Session Review**: Mandatory audit and [Compaction](.agents/SKILL_SESSION_REVIEW.md) before turn end.
 
 ## 4. Skills Library
 | Role | Skill File |

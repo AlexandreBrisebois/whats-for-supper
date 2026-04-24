@@ -55,6 +55,8 @@ public class ManagementService(
                     existing.Name = recipe.Name;
                     existing.Category = recipe.Category;
                     existing.IsDiscoverable = recipe.IsDiscoverable;
+                    existing.IsHealthyChoice = recipe.IsHealthyChoice;
+                    existing.IsVegetarian = recipe.IsVegetarian;
                     existing.Difficulty = recipe.Difficulty;
                     var updatedJson = JsonSerializer.Serialize(existing, JsonDefaults.CamelCase);
                     await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
@@ -75,6 +77,8 @@ public class ManagementService(
                     CreatedAt = recipe.CreatedAt,
                     Category = recipe.Category,
                     IsDiscoverable = recipe.IsDiscoverable,
+                    IsHealthyChoice = recipe.IsHealthyChoice,
+                    IsVegetarian = recipe.IsVegetarian,
                     Difficulty = recipe.Difficulty
                 };
                 var json2 = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
@@ -135,8 +139,11 @@ public class ManagementService(
             await db.SaveChangesAsync(ct);
         }
 
-        // 2. Restore Recipes
+        // 2. Scan Recipes for missing family members and restore recipes
         var recipeDirs = Directory.GetDirectories(root);
+        var missingMemberIds = new HashSet<Guid>();
+        var recipesToRestore = new List<Recipe>();
+
         foreach (var dir in recipeDirs)
         {
             if (ct.IsCancellationRequested) break;
@@ -179,6 +186,8 @@ public class ManagementService(
                             UpdatedAt = DateTimeOffset.UtcNow,
                             Category = info.Category,
                             IsDiscoverable = info.IsDiscoverable,
+                            IsHealthyChoice = info.IsHealthyChoice,
+                            IsVegetarian = info.IsVegetarian,
                             Difficulty = info.Difficulty
                         };
                     }
@@ -239,8 +248,50 @@ public class ManagementService(
 
                 if (recipe == null) continue;
 
+                if (recipe.AddedBy.HasValue)
+                {
+                    var memberExists = await db.FamilyMembers.AnyAsync(m => m.Id == recipe.AddedBy.Value, ct);
+                    if (!memberExists)
+                    {
+                        missingMemberIds.Add(recipe.AddedBy.Value);
+                    }
+                }
+
+                recipesToRestore.Add(recipe);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error loading recipe from {Dir}", dir);
+                result.Errors++;
+            }
+        }
+
+        // 3. Create placeholder family members for referential integrity
+        if (missingMemberIds.Count > 0)
+        {
+            logger.LogInformation("Creating {Count} placeholder family members for referential integrity.", missingMemberIds.Count);
+            foreach (var memberId in missingMemberIds)
+            {
+                db.FamilyMembers.Add(new FamilyMember
+                {
+                    Id = memberId,
+                    Name = $"Recovered Member {memberId.ToString()[..4]}",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                });
+                result.MembersAdded++;
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
+        // 4. Save Recipes
+        foreach (var recipe in recipesToRestore)
+        {
+            try
+            {
                 // Verify Images (case-insensitive check)
-                var originalDir = Path.Combine(dir, "original");
+                var recipeDir = Path.Combine(root, recipe.Id.ToString());
+                var originalDir = Path.Combine(recipeDir, "original");
                 var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
 
                 bool hasImages = Directory.Exists(originalDir) &&
@@ -259,7 +310,6 @@ public class ManagementService(
                 {
                     db.Recipes.Add(recipe);
                     result.RecipesAdded++;
-                    logger.LogInformation("Restored recipe {Id} from {Source}", recipe.Id, hasInfo ? "recipe.info" : "recipe.json");
                 }
                 else
                 {
@@ -274,15 +324,16 @@ public class ManagementService(
                     existing.ImageCount = recipe.ImageCount;
                     existing.Category = recipe.Category;
                     existing.IsDiscoverable = recipe.IsDiscoverable;
+                    existing.IsHealthyChoice = recipe.IsHealthyChoice;
+                    existing.IsVegetarian = recipe.IsVegetarian;
                     existing.Difficulty = recipe.Difficulty;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
-                    logger.LogInformation("Updated metadata for recipe {Id}", recipe.Id);
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error restoring recipe from {Dir}", dir);
+                logger.LogError(ex, "Error saving recipe {Id}", recipe.Id);
                 result.Errors++;
             }
         }
