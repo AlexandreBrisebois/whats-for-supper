@@ -313,7 +313,7 @@ export default function PlannerPage() {
     }
   };
 
-  const handleQuickFindSelect = (recipe: any) => {
+  const handleQuickFindSelect = async (recipe: any) => {
     if (showPivot === null) return;
     const newSchedule = [...schedule];
     newSchedule[showPivot.dayIndex].recipe = {
@@ -322,6 +322,17 @@ export default function PlannerPage() {
       image: recipe.image,
     };
     setSchedule(newSchedule);
+
+    try {
+      await assignRecipeToDay(currentWeekOffset, showPivot.dayIndex, {
+        id: recipe.id,
+        name: recipe.name,
+        image: recipe.image,
+      });
+    } catch (error: any) {
+      console.warn('Failed to save recipe:', error?.message || error);
+    }
+
     setShowQuickFind(false);
     setShowPivot(null);
   };

@@ -244,43 +244,66 @@ tasks:
   # ============================================================================
 
   tag:
-    desc: "🏷️ Tag the repository and push. Usage: task tag -- [version] [hints...]"
+    desc: "🏷️ Tag and push. Usage: task tag [patch|minor|major] [hints...] or task tag -- v1.2.3"
     cmds:
       - |
-        # Parse arguments from CLI_ARGS
-        # First word is VERSION, subsequent words are HINTS
-        ARGS=({{.CLI_ARGS}})
-        VERSION=${ARGS[0]}
-        
-        # 1. Handle Version
-        if [ -z "$VERSION" ]; then
-          echo "❌ Error: Version required."
-          echo "Usage: task tag -- [version] [hints...]"
-          echo "Example: task tag -- v1.0.0 fast multi"
-          exit 1
+        # 1. Fetch all tags from origin
+        git fetch --tags --quiet
+
+        # 2. Find the latest semver tag
+        LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
+        if [ -z "$LATEST" ]; then
+          LATEST="v0.0.0"
         fi
-        
-        # 2. Handle Hints (e.g., fast, slow, multi)
+
+        # 3. Parse args — first arg is bump type OR explicit version
+        ARGS=({{.CLI_ARGS}})
+        FIRST=${ARGS[0]:-patch}
+
+        if [[ "$FIRST" == v* ]]; then
+          # Explicit override
+          VERSION="$FIRST"
+          HINT_START=1
+        else
+          # Auto-bump from latest tag
+          BUMP="${FIRST:-patch}"
+          HINT_START=1
+
+          # Strip leading 'v', split semver (handles v0.1 and v1.2.3)
+          SEMVER="${LATEST#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$SEMVER"
+          MAJOR=${MAJOR:-0}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch|*) PATCH=$((PATCH+1)) ;;
+          esac
+
+          VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+        fi
+
+        # 4. Build message with hints
         MSG="Release $VERSION"
-        # Skip the first element (version) and loop through the rest
-        for HINT in "${ARGS[@]:1}"; do
+        for HINT in "${ARGS[@]:$HINT_START}"; do
           MSG="$MSG [$HINT]"
-          echo "🚀 Adding hint: [$HINT] to tag message."
         done
 
-        # 3. Branch Verification
+        # 5. Branch check
         CURRENT_BRANCH=$(git branch --show-current)
         if [ "$CURRENT_BRANCH" != "main" ] && [ "$CURRENT_BRANCH" != "master" ]; then
-          echo "❌ Error: Tags should be pushed from the 'main' branch."
-          echo "Current branch is: $CURRENT_BRANCH"
+          echo "❌ Error: Tags must be pushed from the 'main' branch (current: $CURRENT_BRANCH)"
           exit 1
         fi
 
-        echo "Tagging repository with $VERSION..."
+        echo "Latest tag: $LATEST"
+        echo "New tag:    $VERSION"
+        echo "Message:    $MSG"
         git tag -a "$VERSION" -m "$MSG"
         git push origin "$VERSION"
         echo "✓ Tag $VERSION created and pushed."
-        echo "  Message: $MSG"
 
 
   prod:compose:

@@ -162,9 +162,9 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
-              initial={{ opacity: 0, y: 40, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -40, scale: 0.9 }}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -40 }}
               transition={{ type: 'spring', damping: 20, stiffness: 100 }}
               className="w-full max-w-2xl py-12"
             >
