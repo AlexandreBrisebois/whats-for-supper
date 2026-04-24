@@ -51,8 +51,6 @@ test.describe('Discovery Flow', () => {
 
     // After swiping through all cards, the empty state should appear
     await expect(page.getByTestId('discovery-empty-state')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('discovery-empty-state')).toContainText(
-      /That's a wrap/i
-    );
+    await expect(page.getByTestId('discovery-empty-state')).toContainText(/That's a wrap/i);
   });
 });
