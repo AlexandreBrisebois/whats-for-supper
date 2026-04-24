@@ -2,11 +2,8 @@ import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 import type {
   RecipeDto,
-  RecommendationsResponse as GeneratedRecommendationsResponse,
   RecommendationResultDto,
-  TopPickDto,
 } from './generated/models/index';
-import { type Guid } from '@microsoft/kiota-abstractions';
 
 export interface Recipe {
   id: string;
@@ -65,7 +62,7 @@ export async function getRecipes(
 }
 
 export async function getRecipe(id: string): Promise<Recipe> {
-  const result = await apiClient.api.recipes.byId(id as unknown as Guid).get();
+  const result = await apiClient.api.recipes.byId(id as any).get();
   if (!result?.recipe) throw new Error('Recipe not found');
   return mapToRecipe(result.recipe);
 }
@@ -73,7 +70,7 @@ export async function getRecipe(id: string): Promise<Recipe> {
 export async function createRecipe(formData: FormData): Promise<{ id: string }> {
   // Use native fetch for multipart FormData to avoid Kiota serialization issues
   const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5001';
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '/backend';
 
   const response = await fetch(`${baseUrl}/api/recipes`, {
     method: 'POST',
@@ -94,14 +91,14 @@ export async function createRecipe(formData: FormData): Promise<{ id: string }> 
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
-  await apiClient.api.recipes.byId(id as unknown as Guid).delete();
+  await apiClient.api.recipes.byId(id as any).delete();
 }
 
 export async function updateRecipe(
   id: string,
   updates: { notes?: string; rating?: number }
 ): Promise<void> {
-  await apiClient.api.recipes.byId(id as unknown as Guid).patch({
+  await apiClient.api.recipes.byId(id as any).patch({
     notes: updates.notes,
     rating: updates.rating,
   });
@@ -135,9 +132,7 @@ export async function getRecommendations(): Promise<RecommendationsResponse> {
  * Returns the image as a blob URL for use in <img> tags.
  */
 export async function getRecipeImage(recipeId: string, index: number): Promise<string> {
-  const response = await fetch(
-    `${requestAdapter.baseUrl}/api/recipes/${recipeId}/original/${index}`
-  );
+  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/${recipeId}/original/${index}`);
   const blob = await response.blob();
   return URL.createObjectURL(blob);
 }

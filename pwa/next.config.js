@@ -21,13 +21,13 @@ const nextConfig = {
 
   // Proxy /backend/* → API container so the browser only ever calls the PWA's
   // own origin. Works on any device on the LAN without CORS or IP config.
-  // Override API_INTERNAL_URL for local dev outside Docker (e.g. http://localhost:5001).
+  // Kiota SDK paths already include /api/, so don't add it again.
   async rewrites() {
     const apiUrl = process.env.API_INTERNAL_URL ?? 'http://api:9001';
     return [
       {
         source: '/backend/:path*',
-        destination: `${apiUrl}/api/:path*`,
+        destination: `${apiUrl}/:path*`,
       },
     ];
   },
