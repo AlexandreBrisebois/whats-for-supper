@@ -15,8 +15,7 @@ export const getSchedule = async (weekOffset: number): Promise<ScheduleResponse 
   const result = await apiClient.api.schedule.get({
     queryParameters: { weekOffset },
   });
-  // Handle both wrapped and unwrapped responses
-  const data = result?.data || result;
+  const data = result?.data;
   return data?.weekOffset !== undefined ? data : undefined;
 };
 
@@ -55,8 +54,7 @@ export const getSmartDefaults = async (
 ): Promise<SmartDefaultsResponse | null> => {
   try {
     const result = await apiClient.api.schedule.byWeekOffset(weekOffset).smartDefaults.get();
-    // Handle both wrapped and unwrapped responses
-    const data = result?.data || result;
+    const data = result?.data;
     return data?.weekOffset !== undefined ? data : null;
   } catch {
     return null;
