@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -24,17 +24,6 @@ namespace RecipeApi.Migrations
                 {
                     table.PrimaryKey("PK_family_members", x => x.id);
                 });
-
-            migrationBuilder.Sql(@"
-CREATE VIEW vw_recipe_matches AS
-SELECT
-    recipe_id,
-    COUNT(*) as like_count
-FROM recipe_votes
-WHERE vote = 1 -- Like
-GROUP BY recipe_id
-HAVING COUNT(*) >= (SELECT COUNT(*) * 0.5 FROM family_members);
-            ");
 
             migrationBuilder.CreateTable(
                 name: "recipes",
@@ -187,6 +176,17 @@ HAVING COUNT(*) >= (SELECT COUNT(*) * 0.5 FROM family_members);
                 table: "recipes",
                 columns: new[] { "category", "id" },
                 filter: "is_discoverable = TRUE");
+
+            migrationBuilder.Sql(@"
+CREATE VIEW vw_recipe_matches AS
+SELECT
+    recipe_id,
+    COUNT(*) as like_count
+FROM recipe_votes
+WHERE vote = 1 -- Like
+GROUP BY recipe_id
+HAVING COUNT(*) >= (SELECT COUNT(*) * 0.5 FROM family_members);
+            ");
 
             migrationBuilder.Sql(@"
 CREATE VIEW vw_discovery_recipes AS
