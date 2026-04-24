@@ -58,6 +58,7 @@ public class ManagementService(
                     existing.IsHealthyChoice = recipe.IsHealthyChoice;
                     existing.IsVegetarian = recipe.IsVegetarian;
                     existing.Difficulty = recipe.Difficulty;
+                    existing.LastCookedDate = recipe.LastCookedDate;
                     var updatedJson = JsonSerializer.Serialize(existing, JsonDefaults.CamelCase);
                     await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
                 }
@@ -79,7 +80,8 @@ public class ManagementService(
                     IsDiscoverable = recipe.IsDiscoverable,
                     IsHealthyChoice = recipe.IsHealthyChoice,
                     IsVegetarian = recipe.IsVegetarian,
-                    Difficulty = recipe.Difficulty
+                    Difficulty = recipe.Difficulty,
+                    LastCookedDate = recipe.LastCookedDate
                 };
                 var json2 = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
                 await File.WriteAllTextAsync(recipeInfoPath, json2);
@@ -188,7 +190,8 @@ public class ManagementService(
                             IsDiscoverable = info.IsDiscoverable,
                             IsHealthyChoice = info.IsHealthyChoice,
                             IsVegetarian = info.IsVegetarian,
-                            Difficulty = info.Difficulty
+                            Difficulty = info.Difficulty,
+                            LastCookedDate = info.LastCookedDate
                         };
                     }
                 }
@@ -327,6 +330,7 @@ public class ManagementService(
                     existing.IsHealthyChoice = recipe.IsHealthyChoice;
                     existing.IsVegetarian = recipe.IsVegetarian;
                     existing.Difficulty = recipe.Difficulty;
+                    existing.LastCookedDate = recipe.LastCookedDate;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
                 }

@@ -21,4 +21,5 @@ public class RecipeInfo
     public bool IsHealthyChoice { get; set; } = false;
     public bool IsVegetarian { get; set; } = false;
     public string? Difficulty { get; set; }
+    public DateTimeOffset? LastCookedDate { get; set; }
 }
