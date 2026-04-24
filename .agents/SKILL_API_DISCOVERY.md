@@ -3,7 +3,7 @@
 **Description:** This skill defines the mandatory workflow for modifying, discovering, or extending the What's For Supper API. It enforces a "Contract-First" approach to guarantee 100% parity between the frontend, mock backend, and C# backend, while dramatically reducing token consumption by relying on machine-readable specs and automated tooling instead of manual code inspection.
 
 ## ⚠️ Core Directive
-**NEVER** modify API controllers (`api/src/.../Controllers/*.cs`), frontend API clients (`pwa/src/lib/api/*.ts`), or the mock API (`pwa/mock-api.js`) to add or change an endpoint **without first updating the OpenAPI specification.**
+**NEVER** modify API controllers (`api/src/.../Controllers/*.cs`), frontend API clients (`pwa/src/lib/api/*.ts`) to add or change an endpoint **without first updating the OpenAPI specification.**
 
 ## The Source of Truth
 The definitive source of truth for all API interactions is:
