@@ -116,9 +116,9 @@ jobs:
         run: npx playwright install chromium --with-deps
         working-directory: pwa
 
-      - name: Start Mock API in background
+      - name: Start Prism Mock API in background
         run: |
-          MOCK_API_PORT=5001 node mock-api.js > mock-api.log 2>&1 &
+          npm run mock-api > mock-api.log 2>&1 &
           echo "MOCK_API_PID=$!" >> $GITHUB_ENV
         working-directory: pwa
 
@@ -220,6 +220,13 @@ jobs:
             STATUS=$(docker inspect --format='{{.State.Health.Status}}' whats-for-supper-postgres 2>/dev/null || echo "")
             if [ "$STATUS" = "healthy" ]; then echo "postgres healthy"; break; fi
             sleep 2
+          done
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9001/health; then echo "API healthy"; break; fi
+            sleep 3
           done
 
       - name: Wait for PWA health

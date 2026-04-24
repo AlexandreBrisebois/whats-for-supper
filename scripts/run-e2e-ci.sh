@@ -12,8 +12,8 @@ cleanup() {
 
 trap "cleanup" EXIT
 
-echo "🚀 Starting Mock API on port 5001..."
-MOCK_API_PORT=5001 node mock-api.js > /tmp/mock-api.log 2>&1 &
+echo "🚀 Starting Prism Mock API on port 5001..."
+npm run mock-api > /tmp/mock-api.log 2>&1 &
 MOCK_API_PID=$!
 echo "Mock API PID: $MOCK_API_PID"
 
