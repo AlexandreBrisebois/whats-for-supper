@@ -14,18 +14,18 @@ namespace RecipeApi.Migrations
                 name: "calendar_events",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    RecipeId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    recipe_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    date = table.Column<DateOnly>(type: "date", nullable: false),
                     status = table.Column<short>(type: "smallint", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_calendar_events", x => x.Id);
+                    table.PrimaryKey("PK_calendar_events", x => x.id);
                     table.CheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 3");
                     table.ForeignKey(
-                        name: "FK_calendar_events_recipes_RecipeId",
-                        column: x => x.RecipeId,
+                        name: "FK_calendar_events_recipes_recipe_id",
+                        column: x => x.recipe_id,
                         principalTable: "recipes",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -34,12 +34,12 @@ namespace RecipeApi.Migrations
             migrationBuilder.CreateIndex(
                 name: "idx_calendar_events_date",
                 table: "calendar_events",
-                column: "Date");
+                column: "date");
 
             migrationBuilder.CreateIndex(
-                name: "IX_calendar_events_RecipeId",
+                name: "IX_calendar_events_recipe_id",
                 table: "calendar_events",
-                column: "RecipeId");
+                column: "recipe_id");
         }
 
         /// <inheritdoc />

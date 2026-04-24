@@ -127,8 +127,11 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         modelBuilder.Entity<CalendarEvent>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Date).HasColumnName("date");
+            entity.Property(e => e.RecipeId).HasColumnName("recipe_id");
             entity.Property(e => e.Status).HasColumnName("status").HasConversion<short>();
+            entity.Property(e => e.VoteCount).HasColumnName("vote_count");
             entity.ToTable("calendar_events", t =>
                 t.HasCheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 3"));
             entity.HasOne(e => e.Recipe)
@@ -137,5 +140,12 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => e.Date).HasDatabaseName("idx_calendar_events_date");
         });
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        optionsBuilder.ConfigureWarnings(w =>
+            w.Log(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
     }
 }

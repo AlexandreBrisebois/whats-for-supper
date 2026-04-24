@@ -30,13 +30,16 @@ namespace RecipeApi.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
+                        .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
+                        .HasColumnType("date")
+                        .HasColumnName("date");
 
                     b.Property<Guid>("RecipeId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipe_id");
 
                     b.Property<short>("Status")
                         .HasColumnType("smallint")
@@ -47,7 +50,8 @@ namespace RecipeApi.Migrations
                     b.HasIndex("Date")
                         .HasDatabaseName("idx_calendar_events_date");
 
-                    b.HasIndex("RecipeId");
+                    b.HasIndex("RecipeId")
+                        .HasDatabaseName("IX_calendar_events_recipe_id");
 
                     b.ToTable("calendar_events", null, t =>
                         {

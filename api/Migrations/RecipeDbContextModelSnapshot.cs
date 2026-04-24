@@ -40,8 +40,7 @@ namespace RecipeApi.Migrations
                         .HasColumnName("status");
 
                     b.Property<int?>("VoteCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("vote_count");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -49,9 +48,6 @@ namespace RecipeApi.Migrations
                         .HasDatabaseName("idx_calendar_events_date");
 
                     b.HasIndex("RecipeId");
-
-                    b.HasIndex("VoteCount")
-                        .HasDatabaseName("idx_calendar_events_vote_count");
 
                     b.ToTable("calendar_events", null, t =>
                         {
