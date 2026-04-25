@@ -10,13 +10,13 @@ Procedural guidance for adding or modifying API endpoints to ensure full-stack i
 ## 1. The Core Lifecycle
 When adding a new API or modifying an existing one, follow this sequence:
 
-1. **Spec First**: Update `specs/openapi.yaml`.
-2. **Rich Examples**: Add high-fidelity `example` blocks to the YAML for Prism.
-3. **Generate Client**: Run `npm run api:generate` in the PWA.
-4. **Wire Client**: Integrate the generated client into the UI components.
-5. **Verify Mock**: Run `npm run mock-api` and verify the UI displays the example data.
-6. **E2E Integrity**: Run `scripts/run-e2e-ci.sh` to ensure no regressions.
-7. **Parity Check**: Run `task agent:reconcile` to verify alignment with the C# backend.
+1. **Spec First**: Update `specs/openapi.yaml`. Ensure high-fidelity examples.
+2. **Sync SDK**: Run `npm run api:generate` in the PWA.
+3. **Verify Mock**: Run `npm run mock-api` and verify the UI displays the example data correctly.
+4. **Wire Client**: Integrate the generated client into the UI components/services.
+5. **Verify Implementation**: As the Backend is built, use `task agent:api` to discover new routes.
+6. **Parity Check**: Run `task agent:reconcile` (via `api_tools.py`) to verify alignment.
+7. **E2E Integrity**: Run `scripts/run-e2e-ci.sh` to ensure no regressions.
 
 ## 2. High-Fidelity Mocking (Prism)
 Prism uses the `example` field in `openapi.yaml`. If your UI is empty or breaking, it's likely because the mock data is missing or low-quality.
@@ -41,7 +41,7 @@ Before declaring an API task "Done", verify:
 - [ ] `npm run api:generate` has been executed.
 - [ ] UI displays mock data correctly when Prism is running.
 - [ ] `scripts/run-e2e-ci.sh` passes 100%.
-- [ ] `task agent:reconcile` shows "✅" for Spec, Mock, and Real API.
+- [ ] `task agent:reconcile` (api_tools.py) shows "✅" for all layers.
 
 ## 6. Token Efficiency
 - **Don't** read the entire `generated/` folder.

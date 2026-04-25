@@ -34,6 +34,7 @@ When a feature request is received, follow this 5-phase lifecycle:
 ## 2. Token Consciousness (Context Management)
 - **The Orchestrator** is the "High-Context" agent. It knows the whole repo.
 - **Sub-Agents** are "Low-Context" agents. Use the **L.E.A.N. Protocol** in [SKILL_CREATE_PROMPT.md](SKILL_CREATE_PROMPT.md) to prune their environment.
+- **The Signal Directive**: Prioritize **High Signal** (guardrails, verification) over **Minimum Text**. Do not compress away integrity steps.
 
 ## 3. Conflict Resolution
 If workstreams drift or contracts break during implementation:

@@ -670,7 +670,7 @@ tasks:
   agent:reconcile:
     desc: "🤖 Reconcile Spec vs Mock vs Real API"
     cmds:
-      - python3 scripts/agent/reconcile_api.py
+      - python3 scripts/agent/api_tools.py
 
   # ============================================================================
   # AGENT TOOLS (AI OPTIMIZED)
@@ -698,7 +698,7 @@ tasks:
   agent:api:
     desc: "🤖 Map all API endpoints (Low token discovery)"
     cmds:
-      - python3 scripts/agent/map_api.py
+      - python3 scripts/agent/api_tools.py --discovery
 
   agent:status:
     desc: "🤖 Read the handover journal"

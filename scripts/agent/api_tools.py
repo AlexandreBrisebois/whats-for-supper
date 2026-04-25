@@ -2,12 +2,7 @@ import os
 import re
 import json
 import sys
-
-try:
-    import yaml
-except ImportError as e:
-    print(f"❌ Error: Failed to import yaml. Install with: pip install pyyaml", file=sys.stderr)
-    sys.exit(1)
+import argparse
 
 # Paths
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
@@ -15,6 +10,12 @@ SPEC_PATH = os.path.join(ROOT, "specs/openapi.yaml")
 CONTROLLERS_DIR = os.path.join(ROOT, "api/src/RecipeApi/Controllers")
 
 def load_spec():
+    try:
+        import yaml
+    except ImportError:
+        print(f"❌ Error: Failed to import yaml. Install with: pip install pyyaml", file=sys.stderr)
+        sys.exit(1)
+        
     with open(SPEC_PATH, 'r') as f:
         return yaml.safe_load(f)
 
@@ -30,7 +31,11 @@ def get_spec_endpoints(spec):
     return endpoints
 
 def get_mock_endpoints(spec=None):
-    with open(os.path.join(ROOT, "pwa/package.json"), "r") as f:
+    pkg_path = os.path.join(ROOT, "pwa/package.json")
+    if not os.path.exists(pkg_path):
+        return []
+        
+    with open(pkg_path, "r") as f:
         pkg = json.load(f)
     
     if "prism mock" in pkg.get("scripts", {}).get("mock-api", "") and spec:
@@ -39,11 +44,12 @@ def get_mock_endpoints(spec=None):
 
     return []
 
-def get_real_endpoints():
+def get_real_endpoints(include_method_name=False):
     endpoints = []
     for root, dirs, files in os.walk(CONTROLLERS_DIR):
         for file in files:
             if file.endswith("Controller.cs"):
+                controller_name = file.replace(".cs", "")
                 path = os.path.join(root, file)
                 with open(path, 'r') as f:
                     content = f.read()
@@ -54,9 +60,12 @@ def get_real_endpoints():
                 base_route = base_route.replace("[controller]", file.replace("Controller.cs", "").lower())
                 
                 # Find methods
-                method_pattern = r'\[Http(Get|Post|Put|Delete|Patch)(?:\("([^"]*)"\))?\]'
-                matches = re.findall(method_pattern, content)
-                for http_method, sub_route in matches:
+                # Pattern: [HttpVerb("route")] followed by optional other attributes and then the method name
+                method_pattern = r'\[Http(Get|Post|Put|Delete|Patch)(?:\("([^"]*)"\))?\].*? (\w+)\('
+                # Use re.DOTALL to allow .* to match newlines between attribute and method name
+                matches = re.findall(method_pattern, content, re.DOTALL)
+                
+                for http_method, sub_route, method_name in matches:
                     full_path = f"/{base_route}"
                     if sub_route:
                         if not full_path.endswith("/") and not sub_route.startswith("/"):
@@ -69,15 +78,32 @@ def get_real_endpoints():
                     # Normalize path (replace {id:guid} with {id})
                     full_path = re.sub(r'\{([^:]+):[^}]+\}', r'{\1}', full_path)
                     
-                    endpoints.append({
+                    item = {
                         'path': full_path,
-                        'method': http_method.upper()
-                    })
+                        'method': http_method.upper(),
+                        'controller': controller_name
+                    }
+                    if include_method_name:
+                        item['method_name'] = method_name
+                        
+                    endpoints.append(item)
     return endpoints
 
 def normalize_path(path):
     # Replace any {param} with a generic {id} for comparison
     return re.sub(r'\{[^}]+\}', '{id}', path).lower().rstrip('/')
+
+def discovery():
+    print("🔍 API Discovery (Full Backend Surface)")
+    print("| Controller | Method | Route | C# Method |")
+    print("|------------|--------|-------|-----------|")
+    
+    endpoints = get_real_endpoints(include_method_name=True)
+    # Sort by controller then path
+    endpoints.sort(key=lambda x: (x['controller'], x['path']))
+    
+    for e in endpoints:
+        print(f"| {e['controller']} | {e['method']} | {e['path']} | {e['method_name']} |")
 
 def reconcile():
     print("🔍 Starting API Reconciliation...")
@@ -144,4 +170,12 @@ def reconcile():
         sys.exit(1)
 
 if __name__ == "__main__":
-    reconcile()
+    parser = argparse.ArgumentParser(description="API Tools for discovery and reconciliation.")
+    parser.add_argument("--discovery", action="store_true", help="Run in discovery mode (map all controllers).")
+    
+    args = parser.parse_args()
+    
+    if args.discovery:
+        discovery()
+    else:
+        reconcile()
