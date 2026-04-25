@@ -15,6 +15,14 @@ This file contains the historical session logs and technical archives for the "W
 
 ## Session History
 
+### [2026-04-25] Full-Stack Contract & Schema Realignment
+**Status**: COMPLETED ✅
+- **Objective**: Resolve schema drift across the entire API surface and align DTOs with the OpenAPI contract.
+- **Drift Remediation**: Fixed 22+ issues by applying `[JsonPropertyName]` and aligning nullability/requiredness in C# DTOs.
+- **Route Mapping**: Updated `openapi.yaml` to include Management and Import routes, achieving 100% route coverage.
+- **Tooling**: Refactored `drift.py` to support modern C# features (records, `required` modifiers) and explicit JSON mapping.
+- **Result**: Zero Drift verified via `task agent:drift`. All system tests passing via `task review`.
+
 ### [2026-04-23] Automated API Contract Workflow (Kiota & Prism)
 **Status**: COMPLETED ✅
 - **Architectural Shift**: Replaced manual `openapi-typescript` and custom Node mock server with an automated generation and mocking pipeline.

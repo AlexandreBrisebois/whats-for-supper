@@ -1,6 +1,6 @@
 # What's For Supper
 
-A mobile-first recipe capture app for families. Phase 0 delivers the core capture loop: select who you are, photograph a recipe, rate it, and save it — in under a minute.
+A mobile-first recipe capture and planning app for families. What's For Supper streamlines the "what's for dinner?" problem with AI-powered capture, collaborative family voting, intelligent weekly planning, and a premium step-by-step Cook's Mode.
 
 ---
 
@@ -30,7 +30,7 @@ All services start in order. The first run takes ~2 minutes while Docker pulls b
                          │ HTTP  :3000
 ┌────────────────────────▼─────────────────────────────┐
 │           API — ASP.NET Core 10 (.NET 10)            │
-│  /api/family  /api/recipes  /health                  │
+│  /api/family  /api/recipes  /api/management  /health │
 │  Auto-migrates DB on startup                         │
 └────────────────────────┬─────────────────────────────┘
                          │ TCP   :9001
@@ -60,7 +60,7 @@ Health endpoints:
 
 ## Development
 
-**AI-Optimized Entry**: If you are an AI agent (Copilot, Gemini, Claude), start with **[AGENT.md](AGENT.md)**. Then read **[specs/API_DESIGN.md](specs/API_DESIGN.md)** before modifying any API endpoints.
+**AI-Optimized Entry**: If you are an AI agent (Copilot, Gemini, Claude), start with **[AGENT.md](AGENT.md)**. Then read **[specs/02_BACKEND/backend-api.spec.md](specs/02_BACKEND/backend-api.spec.md)** before modifying any API endpoints.
 
 **Human Developer Guide**: For detailed setup instructions, local dev without Docker, troubleshooting, and environment variable reference, see **[LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md)**.
 
@@ -86,6 +86,14 @@ task test:api
 
 # Run Playwright E2E tests (from pwa/)
 npm run test:e2e
+
+# --- System Integrity ---
+
+# Check for schema drift (C# DTOs vs OpenAPI)
+task agent:drift
+
+# View full API mapping
+task agent:api
 ```
 
 ---
@@ -119,10 +127,6 @@ E2E suites:
 
 ---
 
-## User Guide
-
-See [docs/PHASE0_WALKTHROUGH.md](docs/PHASE0_WALKTHROUGH.md) for a step-by-step walkthrough with ASCII diagrams and an FAQ.
-
 ---
 
 ## Status
@@ -133,10 +137,13 @@ See [docs/PHASE0_WALKTHROUGH.md](docs/PHASE0_WALKTHROUGH.md) for a step-by-step 
 | REST API (family + recipes) | Complete |
 | PWA onboarding flow | Complete |
 | PWA capture flow | Complete |
+| PWA discovery & voting | Complete |
+| PWA weekly planner | Complete |
+| PWA cook's mode | Complete |
 | Docker Compose integration | Complete |
 | E2E tests (Playwright) | Complete |
 | CI/CD (GitHub Actions) | Complete |
-| Phase 1 (discovery, search) | Planned |
+| Phase 5 (Diet Agent, AI Inference) | Active |
 
 ---
 

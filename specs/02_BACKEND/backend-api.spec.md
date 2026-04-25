@@ -276,7 +276,33 @@ GET /api/schedule/fill-the-gap
 
 ---
 
-## 3.2 Implementation Details
+## 3.2 Management & Maintenance
+
+### 3.2.1 POST `/api/management/backup`
+Triggers an asynchronous backup of the recipe database and images.
+
+### 3.2.2 POST `/api/management/seed`
+Triggers an asynchronous restore/seed from the backup data.
+
+### 3.2.3 GET `/api/management/status`
+Returns the status of the current or most recent management task.
+
+---
+
+## 3.3 Recipe Import Pipeline
+
+### 3.3.1 POST `/api/recipes/{id}/import`
+Triggers an asynchronous import/analysis task for a raw recipe.
+
+### 3.3.2 GET `/api/recipes/{id}/import`
+Returns the status of a specific recipe's import task.
+
+### 3.3.3 GET `/api/recipes/import-status`
+Returns a summary of the import pipeline's overall health and counts.
+
+---
+
+## 3.4 Implementation Details
 
 ### File References
 - **Model**: [api/src/RecipeApi/Models/CalendarEvent.cs](../../api/src/RecipeApi/Models/CalendarEvent.cs)

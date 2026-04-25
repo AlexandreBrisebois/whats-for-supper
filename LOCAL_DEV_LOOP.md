@@ -68,6 +68,8 @@ task
 | `task dev:pwa` | Start PWA with hot reload |
 | `task test` | Run all tests 🧪 |
 | `task logs` | View logs from all services 📋 |
+| `task agent:drift` | 🤖 Check for schema drift (C# vs Spec) |
+| `task agent:api` | 🤖 View full API controller mapping |
 | `task agent:summary` | 🤖 Context-dense AI summary |
 | `task health` | Check if services are running 🏥 |
 | `task clean` | Clean everything up 🧹 |
@@ -249,6 +251,20 @@ task ship
 # Shows instructions for next steps
 task work
 ```
+
+### Workflow 5: Contract-First Development (The Elite Loop)
+
+**When modifying API endpoints or DTOs:**
+
+1. **Update Spec**: Edit `specs/openapi.yaml` first.
+2. **Verify Drift**: Run `task agent:drift` to see the delta.
+3. **Align Backend**: Update C# DTOs/Controllers to match.
+4. **Verify Again**: `task agent:drift` should report "No schema drift detected!".
+5. **Regenerate Client**: Kiota will automatically pick up changes during `task up` or `task build`.
+
+**Integrity Checks:**
+- `task agent:drift`: Validates that backend DTOs match the OpenAPI contract (nullability, names, types).
+- `task agent:api`: Validates that all routes in the spec are actually implemented by a controller.
 
 ---
 

@@ -145,6 +145,33 @@ Successfully redesigned the PWA Planner and Cook's Mode to be more intuitive, em
 
 ---
 
+## Completed Mission: Full-Stack Contract & Schema Realignment [✅ COMPLETE]
+
+### Status: COMPLETED
+**Session**: System Optimization Audit & Schema Realignment
+
+### Accomplishment Summary
+Successfully resolved 22+ schema drift issues and achieved **Zero Drift** across the entire API surface:
+
+1. **Phase 0: Contract Correction & Expansion**
+   - Updated `openapi.yaml` to reflect the minimal `POST /api/recipes` flow.
+   - Anchored missing `/api/management/*` and `/api/recipes/*` (Import) routes.
+   - Verified 100% route coverage via `task agent:api`.
+
+2. **Phases 1-4: DTO Drift Remediation**
+   - **Naming**: Applied `[JsonPropertyName]` to all DTOs and records for camelCase parity.
+   - **Nullability**: Aligned C# property modifiers (`required`, `?`) with the OpenAPI spec.
+   - **Records**: Updated `ScheduleDays`, `SmartDefaults`, etc., with `[property: JsonPropertyName]`.
+
+3. **Tooling Enhancement**
+   - Refactored `drift.py` to support modern C# features (records, `required` modifiers, and explicit `JsonPropertyName` mapping).
+
+### Result
+✅ **Zero Drift detected** via `task agent:drift`.
+✅ **Review Passed**: `task review` confirmed build and test success.
+
+---
+
 ## Next Active Mission: Phase 5 — Diet Agent & AI Inference [READY TO START]
 
 ### Objectives
