@@ -205,11 +205,53 @@ components:
     # --- Health ---
     HealthCheckResponse:
       type: object
-      required: [status, timestamp]
+      required: [status, timestamp, checks]
       properties:
         status: { type: string }
         timestamp: { type: string, format: date-time }
         checks: { type: object, additionalProperties: true }
+
+    # --- Management ---
+    ManagementTaskStatusResponse:
+      type: object
+      required: [id, type, status, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [Backup, Restore, DisasterRecovery] }
+        status: { type: string, enum: [Pending, Processing, Completed, Failed] }
+        errorMessage: { type: string, nullable: true }
+        result: { type: object, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ManagementTaskAcceptedResponse:
+      type: object
+      required: [message, taskId]
+      properties:
+        message: { type: string }
+        taskId: { type: string, format: uuid }
+
+    # --- Import ---
+    RecipeImportTriggerResponseDto:
+      type: object
+      required: [importId]
+      properties:
+        importId: { type: string, format: uuid }
+
+    RecipeImportStatusResponseDto:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+        errorMessage: { type: string, nullable: true }
+
+    RecipeImportSummaryDto:
+      type: object
+      required: [importedCount, queueCount, failedCount]
+      properties:
+        importedCount: { type: integer }
+        queueCount: { type: integer }
+        failedCount: { type: integer }
 
 paths:
   /health:
@@ -422,10 +464,9 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
-                description: { type: string }
-                difficulty: { type: string }
-                totalTime: { type: string }
+                rating: { type: integer, minimum: 0, maximum: 3, default: 0 }
+                finishedDishImageIndex: { type: integer, default: -1 }
+                notes: { type: string, nullable: true }
                 images:
                   type: array
                   items:
@@ -702,3 +743,76 @@ paths:
                       - dayIndex: 1
                       - dayIndex: 3
                     consensusRecipesCount: 1
+
+  /api/management/backup:
+    post:
+      summary: Trigger an asynchronous backup
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
+
+  /api/management/seed:
+    post:
+      summary: Trigger an asynchronous restore (seed)
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
+
+  /api/management/disaster-recovery:
+    post:
+      summary: Trigger an asynchronous disaster recovery
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
+
+  /api/management/status:
+    get:
+      summary: Get status of the current or most recent management task
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementTaskStatusResponse' }
+
+  /api/recipes/{id}/import:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Trigger a manual recipe import
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeImportTriggerResponseDto' }
+    get:
+      summary: Check status of a recipe import
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeImportStatusResponseDto' }
+
+  /api/recipes/import-status:
+    get:
+      summary: Get summary of the import pipeline's health
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeImportSummaryDto' }

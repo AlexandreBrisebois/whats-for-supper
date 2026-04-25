@@ -1,7 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace RecipeApi.Dto;
 
 public class RecipeImportStatusResponseDto
 {
-    public string Status { get; set; } = string.Empty;
+    [JsonPropertyName("status")]
+    public required string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("errorMessage")]
     public string? ErrorMessage { get; set; }
 }

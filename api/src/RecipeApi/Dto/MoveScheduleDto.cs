@@ -1,3 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace RecipeApi.Dto;
 
-public record MoveScheduleDto(int WeekOffset, int FromIndex, int ToIndex);
+public record MoveScheduleDto(
+    [property: JsonPropertyName("weekOffset")] int WeekOffset,
+    [property: JsonPropertyName("fromIndex")] int FromIndex,
+    [property: JsonPropertyName("toIndex")] int ToIndex);

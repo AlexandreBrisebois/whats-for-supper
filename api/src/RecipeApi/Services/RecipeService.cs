@@ -96,6 +96,7 @@ public class RecipeService(
             Description = r.Description,
             Category = r.Category,
             Difficulty = r.Difficulty,
+            ImageUrl = $"/api/recipes/{r.Id}/hero",
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
             Ingredients = string.IsNullOrEmpty(r.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(r.Ingredients),
             CreatedAt = r.CreatedAt
@@ -133,6 +134,7 @@ public class RecipeService(
                 Description = recipe.Description,
                 Category = recipe.Category,
                 Difficulty = recipe.Difficulty,
+                ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 Ingredients = string.IsNullOrEmpty(recipe.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(recipe.Ingredients),
                 CreatedAt = recipe.CreatedAt
@@ -180,6 +182,7 @@ public class RecipeService(
                 Description = recipe.Description,
                 Category = recipe.Category,
                 Difficulty = recipe.Difficulty,
+                ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 Ingredients = string.IsNullOrEmpty(recipe.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(recipe.Ingredients),
                 CreatedAt = recipe.CreatedAt

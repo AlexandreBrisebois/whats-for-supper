@@ -12,24 +12,44 @@ def load_spec_schemas():
         spec = yaml.safe_load(f)
     return spec.get('components', {}).get('schemas', {})
 
-def parse_cs_dto(file_path):
+def parse_cs_dto(file_path, schema_name):
     with open(file_path, 'r') as f:
         content = f.read()
     
-    # Simple regex to find properties: public type Name { get; set; }
-    # Also handle [Required] attribute
-    prop_pattern = r'(?:\[Required\]\s+)?public\s+([\w<>?]+)\s+(\w+)\s+\{\s*get;\s*set;\s*\}'
-    matches = re.finditer(prop_pattern, content)
-    
     props = {}
-    for m in matches:
-        type_name = m.group(1)
+    
+    # 1. Find all properties with JsonPropertyName
+    json_pattern = r'\[(?:property:\s*)?JsonPropertyName\("([^"]+)"\)\][\s\n]*(?:public\s+)?(?:required\s+)?([^\n(]+?)\s+(\w+)'
+    for m in re.finditer(json_pattern, content):
+        name = m.group(1)
+        type_name = m.group(2).strip()
+        is_required = "required" in m.group(0) or "?" not in type_name
+        # print(f"DEBUG: {name} | type={type_name} | is_req={is_required}")
+        props[name] = {"required": is_required}
+
+    # 2. Find all public properties without JsonPropertyName
+    prop_pattern = r'public\s+(?:required\s+)?([^\n]+?)\s+(\w+)\s+\{\s*get;\s*set;\s*\}'
+    for m in re.finditer(prop_pattern, content):
+        type_name = m.group(1).strip()
         prop_name = m.group(2)
-        is_required = "[Required]" in m.group(0) or "?" not in type_name
-        props[prop_name] = {
-            "type": type_name,
-            "required": is_required
-        }
+        if prop_name not in props: # Prioritize JsonPropertyName
+            is_required = "required" in m.group(0) or "?" not in type_name
+            props[prop_name] = {"required": is_required}
+
+    # 3. Find record parameters without JsonPropertyName
+    record_pattern = r'public\s+record\s+\w+\((.*?)\);'
+    for rm in re.finditer(record_pattern, content, re.DOTALL):
+        params = rm.group(1).split(',')
+        for p in params:
+            if 'JsonPropertyName' in p: continue
+            m = re.search(r'([\w<>?\[\]]+)\s+(\w+)$', p.strip())
+            if m:
+                type_name = m.group(1)
+                prop_name = m.group(2)
+                if prop_name not in props:
+                    is_required = "?" not in type_name
+                    props[prop_name] = {"required": is_required}
+
     return props
 
 def main():
@@ -38,34 +58,42 @@ def main():
     
     issues = 0
     for schema_name, schema_data in schemas.items():
-        # Map schema name to C# file (assuming PascalCase naming)
+        # Map schema name to C# file
         dto_path = os.path.join(DTO_DIR, f"{schema_name}.cs")
         if not os.path.exists(dto_path):
-            # Try appending Dto or similar
             if os.path.exists(os.path.join(DTO_DIR, f"{schema_name}Dto.cs")):
                 dto_path = os.path.join(DTO_DIR, f"{schema_name}Dto.cs")
             else:
                 continue
 
         print(f"\nChecking {schema_name} ↔ {os.path.basename(dto_path)}")
-        cs_props = parse_cs_dto(dto_path)
+        cs_props = parse_cs_dto(dto_path, schema_name)
         spec_props = schema_data.get('properties', {})
         spec_required = schema_data.get('required', [])
 
-        # Check for missing properties
         for p in spec_props:
-            # OpenAPI is camelCase, C# is PascalCase (usually)
             pascal_p = p[0].upper() + p[1:] if p else p
-            if pascal_p not in cs_props:
-                print(f"⚠️ Property `{p}` found in Spec but missing in C# (`{pascal_p}`)")
+            
+            match = None
+            if p in cs_props:
+                match = p
+            elif pascal_p in cs_props:
+                match = pascal_p
+            
+            if not match:
+                print(f"⚠️ Property `{p}` found in Spec but missing in C#")
                 issues += 1
             else:
-                # Check requiredness
                 is_spec_req = p in spec_required
-                is_cs_req = cs_props[pascal_p]['required']
+                is_cs_req = cs_props[match]['required']
                 if is_spec_req != is_cs_req:
                     print(f"⚠️ Nullability mismatch for `{p}`: Spec Required={is_spec_req}, C# Required={is_cs_req}")
                     issues += 1
+
+    if issues == 0:
+        print("\n🎉 No schema drift detected!")
+    else:
+        print(f"\n⚠️ Found {issues} schema drift issues.")
 
     if issues == 0:
         print("\n🎉 No schema drift detected!")
