@@ -206,7 +206,7 @@ jobs:
         run: pip install pyyaml
 
       - name: Verify API ↔ Spec ↔ Mock parity
-        run: python3 scripts/agent/reconcile_api.py
+        run: python3 scripts/agent/api_tools.py
         env:
           SPEC_PATH: specs/openapi.yaml
 

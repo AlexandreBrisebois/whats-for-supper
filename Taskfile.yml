@@ -710,3 +710,23 @@ tasks:
     cmds:
       - task -l | grep "agent:"
     silent: true
+
+  agent:slice:
+    desc: "🤖 Vertical Slice Viewer (Contract ↔ Backend ↔ Client). Usage: task agent:slice -- /api/route"
+    cmds:
+      - python3 scripts/agent/slice.py {{.CLI_ARGS}}
+
+  agent:drift:
+    desc: "🤖 Schema Drift Fuzzer (Contract vs. Backend DTOs)"
+    cmds:
+      - python3 scripts/agent/drift.py
+
+  agent:audit:
+    desc: "🤖 Brittle Selector Audit (Check tests for missing data-testid)"
+    cmds:
+      - python3 scripts/agent/test_ops.py --audit
+
+  agent:test:impact:
+    desc: "🤖 Impact-Aware Test Runner (Only run tests affected by git changes)"
+    cmds:
+      - python3 scripts/agent/test_ops.py --impact

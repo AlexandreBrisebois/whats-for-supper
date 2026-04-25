@@ -15,7 +15,11 @@
     "test:e2e": "playwright test",
     "test:e2e:ci": "npm run build && playwright test",
     "test:e2e:debug": "playwright test --debug",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "agent:slice": "python3 ../scripts/agent/slice.py",
+    "agent:drift": "python3 ../scripts/agent/drift.py",
+    "agent:audit": "python3 ../scripts/agent/test_ops.py --audit",
+    "agent:test:impact": "python3 ../scripts/agent/test_ops.py --impact"
   },
   "dependencies": {
     "@microsoft/kiota-abstractions": "^1.0.0-preview.100",

@@ -7,7 +7,10 @@ A registry of custom scripts and tools designed to optimize agent efficiency.
 | Tool | Purpose | Usage |
 | :--- | :--- | :--- |
 | `api_tools.py` | Multi-purpose tool for API Discovery and Parity Reconciliation. | `task agent:api` or `task agent:reconcile` |
-| `run-e2e-ci.sh` | Runs full E2E suite in a stable, CI-like environment. | `scripts/run-e2e-ci.sh` |
+| `slice.py` | Vertical Slice Viewer for full-stack route context. | `task agent:slice -- /api/route` |
+| `drift.py` | Schema Drift Fuzzer (Contract vs. Backend DTOs). | `task agent:drift` |
+| `test_ops.py` | Brittle Selector Guard & Impact-Aware Runner. | `task agent:audit` or `task agent:test:impact` |
+| `run-e2e-ci.sh` | Runs full E2E suite in a stable environment. | `task test:pwa:ci` |
 
 ---
 
@@ -20,7 +23,22 @@ A registry of custom scripts and tools designed to optimize agent efficiency.
     - `--discovery`: Maps C# Controller endpoints to a markdown table (use via `task agent:api`).
     - `(default)`: Checks parity between Spec, Mock, and Real API (use via `task agent:reconcile`).
 
+### slice.py
+- **Source**: [scripts/agent/slice.py](file:///Users/alex/Code/whats-for-supper/scripts/agent/slice.py)
+- **Problem Solved**: Context hopping between OpenAPI, C#, and TypeScript.
+- **Output**: Unified view of a route across all three layers.
+
+### drift.py
+- **Source**: [scripts/agent/drift.py](file:///Users/alex/Code/whats-for-supper/scripts/agent/drift.py)
+- **Problem Solved**: Silent runtime failures due to nullability or field naming mismatches between C# DTOs and the OpenAPI spec.
+
+### test_ops.py
+- **Source**: [scripts/agent/test_ops.py](file:///Users/alex/Code/whats-for-supper/scripts/agent/test_ops.py)
+- **Problem Solved**: High maintenance cost of brittle CSS selectors and slow E2E feedback loops.
+- **Modes**:
+    - `--audit`: Flags locators not using `data-testid`.
+    - `--impact`: Runs only tests affected by recent `git` changes.
+
 ### run-e2e-ci.sh
 - **Source**: [scripts/run-e2e-ci.sh](file:///Users/alex/Code/whats-for-supper/scripts/run-e2e-ci.sh)
-- **Problem Solved**: Eliminates race conditions, hydration issues, and environment drift common in standard `npm run test:e2e` calls.
-- **Output**: Playwright test results with strict environment management.
+- **Problem Solved**: Environment drift during E2E runs.
