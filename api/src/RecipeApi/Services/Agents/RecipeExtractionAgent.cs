@@ -32,7 +32,7 @@ public class RecipeExtractionAgent(
         }
 
         var recipeId = idProp.GetGuid();
-        
+
         // Strict check: recipe.info must exist
         var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
         var infoPath = Path.Combine(recipeDir, "recipe.info");

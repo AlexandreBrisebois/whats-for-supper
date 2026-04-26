@@ -4,28 +4,35 @@
 // @ts-ignore
 import { TriggerRequestBuilderRequestsMetadata, type TriggerRequestBuilder } from './trigger/index';
 // @ts-ignore
-import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata } from '@microsoft/kiota-abstractions';
+import {
+  type BaseRequestBuilder,
+  type KeysToExcludeForNavigationMetadata,
+  type NavigationMetadata,
+} from '@microsoft/kiota-abstractions';
 
 /**
  * Builds and executes requests for operations under /api/workflows/{workflowId}
  */
 export interface WithWorkflowItemRequestBuilder extends BaseRequestBuilder<WithWorkflowItemRequestBuilder> {
-    /**
-     * The trigger property
-     */
-    get trigger(): TriggerRequestBuilder;
+  /**
+   * The trigger property
+   */
+  get trigger(): TriggerRequestBuilder;
 }
 /**
  * Uri template for the request builder.
  */
-export const WithWorkflowItemRequestBuilderUriTemplate = "{+baseurl}/api/workflows/{workflowId}";
+export const WithWorkflowItemRequestBuilderUriTemplate = '{+baseurl}/api/workflows/{workflowId}';
 /**
  * Metadata for all the navigation properties in the request builder.
  */
-export const WithWorkflowItemRequestBuilderNavigationMetadata: Record<Exclude<keyof WithWorkflowItemRequestBuilder, KeysToExcludeForNavigationMetadata>, NavigationMetadata> = {
-    trigger: {
-        requestsMetadata: TriggerRequestBuilderRequestsMetadata,
-    },
+export const WithWorkflowItemRequestBuilderNavigationMetadata: Record<
+  Exclude<keyof WithWorkflowItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
+  NavigationMetadata
+> = {
+  trigger: {
+    requestsMetadata: TriggerRequestBuilderRequestsMetadata,
+  },
 };
 /* tslint:enable */
 /* eslint-enable */

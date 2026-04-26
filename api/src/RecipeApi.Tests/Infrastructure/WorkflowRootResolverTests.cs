@@ -5,8 +5,19 @@ using Xunit;
 
 namespace RecipeApi.Tests.Infrastructure;
 
-public class WorkflowRootResolverTests
+[Collection("WorkflowRootResolver")]
+public class WorkflowRootResolverTests : IDisposable
 {
+    public WorkflowRootResolverTests()
+    {
+        Environment.SetEnvironmentVariable("WORKFLOWS_ROOT", null);
+    }
+
+    public void Dispose()
+    {
+        Environment.SetEnvironmentVariable("WORKFLOWS_ROOT", null);
+    }
+
     [Fact]
     public void Root_Returns_EnvVar_When_Set()
     {
@@ -16,18 +27,11 @@ public class WorkflowRootResolverTests
         var config = new Mock<IConfiguration>().Object;
         var resolver = new WorkflowRootResolver(config);
 
-        try
-        {
-            // Act
-            var result = resolver.Root;
+        // Act
+        var result = resolver.Root;
 
-            // Assert
-            Assert.Equal(expected, result);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("WORKFLOWS_ROOT", null);
-        }
+        // Assert
+        Assert.Equal(expected, result);
     }
 
     [Fact]

@@ -4,38 +4,54 @@
 // @ts-ignore
 import { serializeAssignScheduleDto, type AssignScheduleDto } from '../../../models/index';
 // @ts-ignore
-import { type AdditionalDataHolder, type BaseRequestBuilder, type Parsable, type ParsableFactory, type ParseNode, type RequestConfiguration, type RequestInformation, type RequestsMetadata, type SerializationWriter } from '@microsoft/kiota-abstractions';
+import {
+  type AdditionalDataHolder,
+  type BaseRequestBuilder,
+  type Parsable,
+  type ParsableFactory,
+  type ParseNode,
+  type RequestConfiguration,
+  type RequestInformation,
+  type RequestsMetadata,
+  type SerializationWriter,
+} from '@microsoft/kiota-abstractions';
 
 export interface AssignPostResponse extends AdditionalDataHolder, Parsable {
-    /**
-     * The data property
-     */
-    data?: AssignPostResponse_data | null;
+  /**
+   * The data property
+   */
+  data?: AssignPostResponse_data | null;
 }
 export interface AssignPostResponse_data extends AdditionalDataHolder, Parsable {
-    /**
-     * The message property
-     */
-    message?: string | null;
+  /**
+   * The message property
+   */
+  message?: string | null;
 }
 /**
  * Builds and executes requests for operations under /api/schedule/assign
  */
 export interface AssignRequestBuilder extends BaseRequestBuilder<AssignRequestBuilder> {
-    /**
-     * Assign a recipe to a schedule slot
-     * @param body The request body
-     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-     * @returns {Promise<AssignPostResponse>}
-     */
-     post(body: AssignScheduleDto, requestConfiguration?: RequestConfiguration<object> | undefined) : Promise<AssignPostResponse | undefined>;
-    /**
-     * Assign a recipe to a schedule slot
-     * @param body The request body
-     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-     * @returns {RequestInformation}
-     */
-     toPostRequestInformation(body: AssignScheduleDto, requestConfiguration?: RequestConfiguration<object> | undefined) : RequestInformation;
+  /**
+   * Assign a recipe to a schedule slot
+   * @param body The request body
+   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+   * @returns {Promise<AssignPostResponse>}
+   */
+  post(
+    body: AssignScheduleDto,
+    requestConfiguration?: RequestConfiguration<object> | undefined
+  ): Promise<AssignPostResponse | undefined>;
+  /**
+   * Assign a recipe to a schedule slot
+   * @param body The request body
+   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+   * @returns {RequestInformation}
+   */
+  toPostRequestInformation(
+    body: AssignScheduleDto,
+    requestConfiguration?: RequestConfiguration<object> | undefined
+  ): RequestInformation;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -43,8 +59,10 @@ export interface AssignRequestBuilder extends BaseRequestBuilder<AssignRequestBu
  * @returns {AssignPostResponse_data}
  */
 // @ts-ignore
-export function createAssignPostResponse_dataFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoAssignPostResponse_data;
+export function createAssignPostResponse_dataFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoAssignPostResponse_data;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -52,8 +70,10 @@ export function createAssignPostResponse_dataFromDiscriminatorValue(parseNode: P
  * @returns {AssignPostResponse}
  */
 // @ts-ignore
-export function createAssignPostResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoAssignPostResponse;
+export function createAssignPostResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoAssignPostResponse;
 }
 /**
  * The deserialization information for the current model
@@ -61,10 +81,16 @@ export function createAssignPostResponseFromDiscriminatorValue(parseNode: ParseN
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoAssignPostResponse(assignPostResponse: Partial<AssignPostResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "data": n => { assignPostResponse.data = n.getObjectValue<AssignPostResponse_data>(createAssignPostResponse_dataFromDiscriminatorValue); },
-    }
+export function deserializeIntoAssignPostResponse(
+  assignPostResponse: Partial<AssignPostResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    data: (n) => {
+      assignPostResponse.data = n.getObjectValue<AssignPostResponse_data>(
+        createAssignPostResponse_dataFromDiscriminatorValue
+      );
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -72,10 +98,14 @@ export function deserializeIntoAssignPostResponse(assignPostResponse: Partial<As
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoAssignPostResponse_data(assignPostResponse_data: Partial<AssignPostResponse_data> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "message": n => { assignPostResponse_data.message = n.getStringValue(); },
-    }
+export function deserializeIntoAssignPostResponse_data(
+  assignPostResponse_data: Partial<AssignPostResponse_data> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      assignPostResponse_data.message = n.getStringValue();
+    },
+  };
 }
 /**
  * Serializes information the current object
@@ -84,10 +114,20 @@ export function deserializeIntoAssignPostResponse_data(assignPostResponse_data: 
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeAssignPostResponse(writer: SerializationWriter, assignPostResponse: Partial<AssignPostResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!assignPostResponse || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<AssignPostResponse_data>("data", assignPostResponse.data, serializeAssignPostResponse_data);
-    writer.writeAdditionalData(assignPostResponse.additionalData);
+export function serializeAssignPostResponse(
+  writer: SerializationWriter,
+  assignPostResponse: Partial<AssignPostResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!assignPostResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<AssignPostResponse_data>(
+    'data',
+    assignPostResponse.data,
+    serializeAssignPostResponse_data
+  );
+  writer.writeAdditionalData(assignPostResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -96,28 +136,34 @@ export function serializeAssignPostResponse(writer: SerializationWriter, assignP
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeAssignPostResponse_data(writer: SerializationWriter, assignPostResponse_data: Partial<AssignPostResponse_data> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!assignPostResponse_data || isSerializingDerivedType) { return; }
-    writer.writeStringValue("message", assignPostResponse_data.message);
-    writer.writeAdditionalData(assignPostResponse_data.additionalData);
+export function serializeAssignPostResponse_data(
+  writer: SerializationWriter,
+  assignPostResponse_data: Partial<AssignPostResponse_data> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!assignPostResponse_data || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', assignPostResponse_data.message);
+  writer.writeAdditionalData(assignPostResponse_data.additionalData);
 }
 /**
  * Uri template for the request builder.
  */
-export const AssignRequestBuilderUriTemplate = "{+baseurl}/api/schedule/assign";
+export const AssignRequestBuilderUriTemplate = '{+baseurl}/api/schedule/assign';
 /**
  * Metadata for all the requests in the request builder.
  */
 export const AssignRequestBuilderRequestsMetadata: RequestsMetadata = {
-    post: {
-        uriTemplate: AssignRequestBuilderUriTemplate,
-        responseBodyContentType: "application/json",
-        adapterMethodName: "send",
-        responseBodyFactory:  createAssignPostResponseFromDiscriminatorValue,
-        requestBodyContentType: "application/json",
-        requestBodySerializer: serializeAssignScheduleDto,
-        requestInformationContentSetMethod: "setContentFromParsable",
-    },
+  post: {
+    uriTemplate: AssignRequestBuilderUriTemplate,
+    responseBodyContentType: 'application/json',
+    adapterMethodName: 'send',
+    responseBodyFactory: createAssignPostResponseFromDiscriminatorValue,
+    requestBodyContentType: 'application/json',
+    requestBodySerializer: serializeAssignScheduleDto,
+    requestInformationContentSetMethod: 'setContentFromParsable',
+  },
 };
 /* tslint:enable */
 /* eslint-enable */

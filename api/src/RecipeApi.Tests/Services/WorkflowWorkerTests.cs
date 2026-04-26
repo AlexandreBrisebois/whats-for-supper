@@ -468,7 +468,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         await db.DisposeAsync();
     }
 
-    [Fact(Skip = "WIP: Debugging task pickup issue")]
+    [Fact]
     public async Task DependencyPromotion_SimplestCase()
     {
         // Arrange: Single pending task with a waiting dependent
@@ -527,6 +527,9 @@ public class WorkflowWorkerTests : IAsyncLifetime
         // Assert: Processor should have run
         Assert.Single(_executedProcessorNames);
         Assert.Contains("ExtractRecipe", _executedProcessorNames);
+
+        // Clear change tracker so we re-query from the database
+        _db.ChangeTracker.Clear();
 
         // Assert: Task A should be completed
         var resultA = _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId).Result;
@@ -617,13 +620,21 @@ public class WorkflowWorkerTests : IAsyncLifetime
         // Assert: Task B should be promoted from Waiting to Pending
         var updatedB = await _db.WorkflowTasks.AsNoTracking().FirstAsync(t => t.TaskId == taskB.TaskId);
         Assert.Equal(TaskStatus.Pending, updatedB.Status);
+        Assert.Equal(TaskStatus.Completed, (await _db.WorkflowTasks.AsNoTracking().FirstAsync(t => t.TaskId == taskA.TaskId)).Status);
 
         // Act: Process task B (this should trigger promotion of C)
         await _worker.ProcessPendingTasksAsync(_cts.Token);
 
+        // Clear change tracker so we re-query from the database
+        _db.ChangeTracker.Clear();
+
         // Assert: Task C should be promoted from Waiting to Pending
         var updatedC = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskC.TaskId);
         Assert.Equal(TaskStatus.Pending, updatedC.Status);
+
+        // Verify B is also completed
+        var completedB = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskB.TaskId);
+        Assert.Equal(TaskStatus.Completed, completedB.Status);
     }
 
     [Fact]

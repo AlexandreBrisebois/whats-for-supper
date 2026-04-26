@@ -43,6 +43,20 @@ This file contains the historical session logs and technical archives for the "W
 - **POC**: Refactored `pwa/src/lib/api/planner.ts` to consume the generated Kiota client, applying necessary type casting to maintain existing frontend constraints.
 - **Documentation**: Updated `SKILL_API_DISCOVERY.md` to reflect the new automated "Contract-First" workflow. Added ADR `015-automated-api-contract-workflow.md`.
 
+### [2026-04-26] Build Prompt 10: E2E Verification & Legacy Cleanup
+**Status**: COMPLETED ✅
+- **Objective**: Finalize the recipe-import workflow migration by verifying end-to-end execution and removing deprecated code.
+- **Deliverables**:
+  - Created `/data/workflows/recipe-import.yaml` with 3-step workflow chain (ExtractRecipe → GenerateHero → SyncRecipe)
+  - Verified Program.cs cleanup: only WorkflowWorker registered, legacy services commented out
+  - Deleted `RecipeImportService.cs` and `RecipeImportWorker.cs` (superseded by WorkflowOrchestrator/WorkflowWorker)
+  - Wrapped `RecipeImportController` in `#if false` (disabled)
+  - Confirmed all three processors registered as `IWorkflowProcessor`
+  - Added HTTP test request to `/api/RestClient/07-workflow.rest` for manual E2E verification
+- **Workflow Infrastructure**: WorkflowOrchestrator loads YAML definitions, validates dependencies, creates task snapshots at trigger time
+- **Zero-Loss Guarantee**: Atomic workflow execution with proper error handling ensures no recipe data loss
+- **Commit**: `2052241` — "feat: finalize recipe-import workflow migration and remove legacy services" (92 files)
+
 ### [2026-04-23] Merge SmartDefaults Into Planner Grid: Unified Grid Integration
 **Status**: COMPLETED ✅
 - **Feature**: Merged SmartDefaults component into the 7-day planner grid for a single unified view.

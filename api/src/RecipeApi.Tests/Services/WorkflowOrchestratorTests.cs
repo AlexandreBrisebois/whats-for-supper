@@ -14,6 +14,7 @@ using Xunit;
 
 namespace RecipeApi.Tests.Services;
 
+[Collection("WorkflowRootResolver")]
 public class WorkflowOrchestratorTests : IDisposable
 {
     private readonly string _testRoot;

@@ -30,16 +30,16 @@ public class WorkflowOrchestrator(WorkflowRootResolver rootResolver, RecipeDbCon
 
         var yaml = File.ReadAllText(filePath);
         var definition = _deserializer.Deserialize<WorkflowDefinition>(yaml);
-        
+
         ValidateDefinition(definition);
-        
+
         return definition;
     }
 
     public async Task<WorkflowInstance> TriggerAsync(string workflowId, Dictionary<string, string> parameters)
     {
         var definition = GetDefinition(workflowId);
-        
+
         // Validate that all required parameters are provided
         foreach (var param in definition.Parameters)
         {

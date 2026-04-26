@@ -1,7 +1,7 @@
 # ADR 016: General-Purpose Workflow System
 
 ## Status
-Proposed (2026-04-26)
+Accepted & Implemented (2026-04-26)
 
 ## Context
 The current recipe import process is implemented as a monolithic `RecipeImportWorker` that hardcodes the execution order of AI agents (Extraction -> Hero -> Sync). This approach is difficult to extend, lacks granular observability, and cannot easily recover from partial failures in a resilient way.

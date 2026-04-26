@@ -13,9 +13,9 @@ public class WorkflowTaskDefinition
 {
     public string Id { get; set; } = string.Empty;
     public string Processor { get; set; } = string.Empty;
-    
+
     [YamlMember(Alias = "depends_on")]
     public List<string> DependsOn { get; set; } = new();
-    
+
     public Dictionary<string, object> Payload { get; set; } = new();
 }
