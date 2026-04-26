@@ -1,8 +1,19 @@
 #!/bin/bash
 # Pre-commit hook to ensure code quality before every commit.
-# Runs formatting, linting, and tests.
+# Runs formatting, linting, and tests, unless only markdown files are changed.
 
 set -e
+
+# Get the list of files staged for commit
+STAGED_FILES=$(git diff --cached --name-only)
+
+# Check if there are any non-markdown files
+NON_MD_FILES=$(echo "$STAGED_FILES" | grep -v "\.md$" || true)
+
+if [ -n "$STAGED_FILES" ] && [ -z "$NON_MD_FILES" ]; then
+    echo "📝 Only markdown files detected. Skipping pre-commit review."
+    exit 0
+fi
 
 echo "🔍 Running pre-commit review (task review)..."
 
@@ -10,3 +21,4 @@ echo "🔍 Running pre-commit review (task review)..."
 task review
 
 echo "✅ Pre-commit checks passed!"
+
