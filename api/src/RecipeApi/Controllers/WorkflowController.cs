@@ -11,8 +11,20 @@ namespace RecipeApi.Controllers;
 [Route("api/workflows")]
 public class WorkflowController(
     IWorkflowOrchestrator orchestrator,
+    RecipeImportBulkService bulkImport,
     RecipeDbContext db) : ControllerBase
 {
+    /// <summary>
+    /// POST /api/workflows/recipe-import/bulk-trigger — queue a recipe-import instance for every unimported recipe.
+    /// </summary>
+    /// <returns>202 Accepted with the count and list of created instance IDs.</returns>
+    [HttpPost("recipe-import/bulk-trigger")]
+    public async Task<IActionResult> BulkTriggerRecipeImport()
+    {
+        var result = await bulkImport.TriggerAllPendingAsync();
+        return Accepted(result);
+    }
+
     /// <summary>
     /// POST /api/workflows/{workflowId}/trigger — trigger a workflow execution.
     /// </summary>

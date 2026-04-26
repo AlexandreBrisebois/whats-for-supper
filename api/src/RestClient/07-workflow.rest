@@ -18,6 +18,17 @@ Content-Type: application/json
   }
 }
 
+### 1a. Trigger recipe-description-regeneration workflow execution
+# Regenerates the AI-powered description from the existing recipe.json and finished dish image.
+POST {{baseUrl}}/api/workflows/recipe-description-regeneration/trigger
+Content-Type: application/json
+
+{
+  "parameters": {
+    "recipeId": "{{recipeId}}"
+  }
+}
+
 ### 1b. Trigger legacy recipe-extraction workflow execution
 # Triggers the recipe-extraction workflow with parameters.
 POST {{baseUrl}}/api/workflows/{{workflowId}}/trigger
@@ -42,4 +53,8 @@ Accept: application/json
 ### 4. Reset a failed task
 # Resets a failed task to Pending status and updates the workflow to Processing.
 POST {{baseUrl}}/api/workflows/tasks/{{taskId}}/reset
+Accept: application/json
+
+### 5. Bulk-trigger recipe-import for all unimported recipes
+POST {{baseUrl}}/api/workflows/recipe-import/bulk-trigger
 Accept: application/json

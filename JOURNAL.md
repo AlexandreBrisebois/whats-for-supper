@@ -192,3 +192,17 @@ This file contains the historical session logs and technical archives for the "W
 - **Core Logic**: Created `DiscoveryService.cs` with matching threshold (≥ 50%) and difficulty inference (<5 ingred + <20m).
 - **API Surface**: Exposed `GET /categories`, `GET /discovery`, and `POST /vote`.
 - **Reference**: `DiscoveryServiceTests.cs`.
+
+### [2026-04-26] Phase 9 Task 01: Bulk Recipe Import Trigger
+**Status**: COMPLETED ✅
+- **Objective**: Implement a bulk trigger for the recipe-import workflow to process unimported recipes.
+- **Backend Implementation**:
+  - Created `RecipeImportBulkService` to query recipes with `Name == null`.
+  - Added `POST /api/workflows/recipe-import/bulk-trigger` to `WorkflowController`.
+  - Implemented `BulkImportTriggerResponseDto` for count and ID tracking.
+- **Contract & Docs**:
+  - Updated `openapi.yaml` with schema and endpoint.
+  - Memorialized the "Bulk Trigger Pattern" in **ADR 017**.
+  - Verified 100% parity with `task agent:reconcile`.
+- **Testing**: Added manual test case to `07-workflow.rest`.
+- **Result**: System can now trigger mass AI processing of legacy or raw captures with a single API call.

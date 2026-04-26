@@ -13,7 +13,7 @@ public class ExtractRecipeProcessorTests : IDisposable
 {
     private readonly string _testRoot;
     private readonly Mock<IChatClient> _chatClientMock;
-    private readonly RecipeExtractionAgent _agent;
+    private readonly RecipeAgent _agent;
     private readonly Guid _recipeId = Guid.NewGuid();
 
     public ExtractRecipeProcessorTests()
@@ -30,11 +30,12 @@ public class ExtractRecipeProcessorTests : IDisposable
         Environment.SetEnvironmentVariable("RECIPES_ROOT", null);
         var recipesRootResolver = new RecipesRootResolver(mockConfig.Object);
 
-        _agent = new RecipeExtractionAgent(
+        _agent = new RecipeAgent(
             _chatClientMock.Object,
             recipesRootResolver,
             mockConfig.Object,
-            new Mock<ILogger<RecipeExtractionAgent>>().Object);
+            new Mock<ILogger<RecipeAgent>>().Object,
+            "ExtractRecipe");
     }
 
     public void Dispose()

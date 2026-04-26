@@ -78,6 +78,7 @@ try
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
     builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
+    builder.Services.AddScoped<RecipeImportBulkService>();
 
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<IValidationService, ValidationService>();
@@ -85,11 +86,24 @@ try
     builder.Services.AddScoped<ManagementService>();
     builder.Services.AddSingleton<ManagementTaskStore>();
     builder.Services.AddHostedService<ManagementWorker>();
-    builder.Services.AddScoped<RecipeExtractionAgent>();
     builder.Services.AddScoped<RecipeHeroAgent>();
+    builder.Services.AddScoped<RecipeAgent>();
     builder.Services.AddScoped<SyncRecipeProcessor>();
 
-    builder.Services.AddScoped<IWorkflowProcessor, RecipeExtractionAgent>();
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
+        sp.GetRequiredService<IChatClient>(),
+        sp.GetRequiredService<RecipesRootResolver>(),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetRequiredService<ILogger<RecipeAgent>>(),
+        "ExtractRecipe"));
+
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
+        sp.GetRequiredService<IChatClient>(),
+        sp.GetRequiredService<RecipesRootResolver>(),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetRequiredService<ILogger<RecipeAgent>>(),
+        "GenerateDescription"));
+
     builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
     builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
     builder.Services.AddScoped<RecipeService>();
@@ -208,6 +222,29 @@ tasks:
 """;
         await File.WriteAllTextAsync(recipeImportPath, recipeImportContent);
         Log.Information("Created workflow file at {WorkflowPath}", recipeImportPath);
+    }
+
+    var recipeDescriptionRegenPath = Path.Combine(workflowsDir, "recipe-description-regeneration.yaml");
+    if (!File.Exists(recipeDescriptionRegenPath))
+    {
+        var content = """
+id: recipe-description-regeneration
+parameters:
+  - recipeId
+tasks:
+  - id: generate_description
+    processor: GenerateDescription
+    payload:
+      recipeId: "{{ recipeId }}"
+  - id: sync_recipe
+    processor: SyncRecipe
+    depends_on:
+      - generate_description
+    payload:
+      recipeId: "{{ recipeId }}"
+""";
+        await File.WriteAllTextAsync(recipeDescriptionRegenPath, content);
+        Log.Information("Created workflow file at {WorkflowPath}", recipeDescriptionRegenPath);
     }
 
     // ── Middleware pipeline ───────────────────────────────────────────────────

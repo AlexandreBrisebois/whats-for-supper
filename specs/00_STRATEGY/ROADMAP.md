@@ -14,6 +14,7 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 | **5 — Agents** | Suggestion Engine | Diet Agent, Shopping Lists | 🏃 Active |
 | **6 — Polish** | Resilience | Offline-first, Performance, Final Aesthetics | 📝 Planned |
 | **7 — Ops** | Production Ready | Cloudflare Tunnel, Monitoring, Cleanup | 📝 Planned |
+| **9 — Workflows** | Extensions & Bulk | Bulk triggers, Dashboard, Retry UI | 🏃 Active |
 
 ---
 
@@ -129,3 +130,14 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 | [ai-worker.spec.md](../03_AI_WORKER/ai-worker.spec.md) | 1 | ✅ |
 | [infrastructure.spec.md](../04_OPS_TESTING/infrastructure.spec.md) | 7 | 📝 |
 
+
+---
+
+## Phase 9 — Workflow Extensions & Bulk Ops [ACTIVE]
+
+**Goal**: Expand the workflow system with bulk processing capabilities and visibility tools.
+
+### Additions
+- [x] **Bulk Recipe Import**: Implement a trigger to process all recipes missing AI metadata.
+- [ ] **Workflow Dashboard**: A dedicated PWA view to monitor active, paused, and failed workflow instances.
+- [ ] **Manual Retry UI**: One-tap task reset from the dashboard.
