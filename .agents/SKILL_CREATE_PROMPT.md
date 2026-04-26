@@ -52,7 +52,7 @@ Every Build Prompt generated must follow this strict, non-compressed structure:
 2.  **Strict Scope**: 
     -   **TARGET**: List specific files to be modified.
     -   **FORBIDDEN**: List files that MUST NOT be touched to prevent regression or drift.
-3.  **The Seams (Contract Link)**: Provide direct references or snippets of the Shared Types or OpenAPI contracts.
+3.  **The Seams (Contract Link)**: Provide direct references or snippets of the Shared Types or OpenAPI contracts created via [SKILL_CONTRACT_ENGINEER.md](SKILL_CONTRACT_ENGINEER.md).
 4.  **Technical Skeleton**: Provide the exact boilerplate code (Namespaces, Class/Interface signatures, DTOs) to be used.
 5.  **Dependency Anchors**: List the exact DI services and interfaces to be injected or consumed.
 6.  **Execution Limit**: Explicitly state: "Implement ONLY [Feature X]. Do not refactor or touch [Feature Y]."

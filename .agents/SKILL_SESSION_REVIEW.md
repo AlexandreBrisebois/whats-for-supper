@@ -13,9 +13,9 @@ Follow these directives in order when the user signals the end of a session or w
 
 ### Directive 1: Audit Work & Synchronize State
 1.  **Summarize Delta**: Identify every file changed and test passed in this session.
-2.  **Update Handover**: Revise [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) with technical precision. Focus ONLY on active tasks.
-3.  **Archive History**: Move completed session details from [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) to [JOURNAL.md](file:///Users/alex/Code/whats-for-supper/JOURNAL.md).
-4.  **Update Strategy**: If a milestone was reached, update [ROADMAP.md](file:///Users/alex/Code/whats-for-supper/specs/00_STRATEGY/ROADMAP.md).
+2.  **Update Handover**: Revise [HANDOVER.md](HANDOVER.md) with technical precision. Focus ONLY on active tasks.
+3.  **Archive History**: Move completed session details from [HANDOVER.md](HANDOVER.md) to [JOURNAL.md](JOURNAL.md).
+4.  **Update Strategy**: If a milestone was reached, update [ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
 
 ### Directive 2: Memorialize Technical Decisions (ADRs)
 1.  **Identify ADR Triggers**: Check if any change:
@@ -36,14 +36,14 @@ Follow these directives in order when the user signals the end of a session or w
 3.  **Schemas**: Run `task agent:reconcile` one final time to confirm OpenAPI and DB parity.
 
 ### Directive 5: Session Compaction & Turn-End
-1.  **Active Pruning**: Ensure [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) contains ONLY the delta for the next session.
+1.  **Active Pruning**: Ensure [HANDOVER.md](HANDOVER.md) contains ONLY the delta for the next session.
 2.  **Death Audit**: Use [SKILL_DEATH_AUDIT.md](SKILL_DEATH_AUDIT.md) to prune temporary files, build prompts, or "zombie" code.
 3.  **Next Steps**: Draft a sharp, 3-bullet plan for the next agent to resume immediately.
 
 ## 2. Integrity Check (Mandatory)
 
 Before signing off, you must confirm:
-- [ ] **State**: [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) is clean and [JOURNAL.md](file:///Users/alex/Code/whats-for-supper/JOURNAL.md) is updated.
+- [ ] **State**: [HANDOVER.md](HANDOVER.md) is clean and [JOURNAL.md](JOURNAL.md) is updated.
 - [ ] **Decisions**: All architectural shifts are documented as ADRs.
 - [ ] **Hygiene**: No temporary scripts or "zombie" artifacts remain in the workspace.
 - [ ] **Sync**: Documentation (Env, Tasks, Specs) matches the implementation.

@@ -10,14 +10,15 @@ This document is the primary instruction set for AI agents working on the "What'
 ## 2. Primary Operational Directives (Mandatory)
 These directives are non-negotiable and must be followed in every turn.
 
-1.  **State Initialization**: Every session must begin by reading [HANDOVER.md](HANDOVER.md) to understand the active task and [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md) for context.
-2.  **Contract-First Development**: You must update [specs/openapi.yaml](specs/openapi.yaml) before making any changes to the API or Frontend models. Use the [Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md) skill.
-3.  **Test-Driven Development**: You must write or update tests before implementing logic. Refer to [Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md).
-4.  **Orchestration Logic**: All feature work must follow the multi-phase workflow defined in the [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md).
-5.  **Schema Integrity**: Before merging or completing a task, run `task agent:reconcile` to ensure parity between the OpenAPI Specification, Mock API, and Backend implementation.
-6.  **Code Hygiene**: Conduct a [Death Audit](.agents/SKILL_DEATH_AUDIT.md) regularly to remove unused code, deprecated documentation, or "zombie" components.
-7.  **Atomic Delegation**: If a task involves high entropy, architectural ambiguity, or exceeds the optimal context for your model (Flash/Haiku), you **MUST** use [SKILL_CREATE_PROMPT.md](.agents/SKILL_CREATE_PROMPT.md) to decompose work into atomic "Build Prompts" for sub-agent execution or sequential turns.
-8.  **Turn-End Compaction**: Before ending your turn, you must perform a session review and update [JOURNAL.md](JOURNAL.md) and [HANDOVER.md](HANDOVER.md) using the [Session Review](.agents/SKILL_SESSION_REVIEW.md) skill.
+1.  **Planning & Alignment**: Before taking any action (other than research), you **MUST** evaluate if the task warrants an Implementation Plan. If it does, you **MUST** create one and obtain explicit user approval before execution. Use the [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md) to manage this workflow. **If the user provides a pre-prepared Implementation Plan or Build Prompt, acknowledge it as the source of truth and proceed directly to execution mapping.**
+2.  **State Initialization**: Every session must begin by reading [HANDOVER.md](HANDOVER.md) to understand the active task and [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md) for context.
+3.  **Contract-First Development**: You must update [specs/openapi.yaml](specs/openapi.yaml) before making any changes to the API or Frontend models. Use the [Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md) skill.
+4.  **Test-Driven Development**: You must write or update tests before implementing logic. Refer to [Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md).
+5.  **Orchestration Logic**: All feature work must follow the multi-phase workflow defined in the [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md).
+6.  **Schema Integrity**: Before merging or completing a task, run `task agent:reconcile` to ensure parity between the OpenAPI Specification, Mock API, and Backend implementation.
+7.  **Code Hygiene**: Conduct a [Death Audit](.agents/SKILL_DEATH_AUDIT.md) regularly to remove unused code, deprecated documentation, or "zombie" components.
+8.  **Atomic Delegation**: If a task involves high entropy, architectural ambiguity, or exceeds the optimal context for your model (Flash/Haiku), you **MUST** use [SKILL_CREATE_PROMPT.md](.agents/SKILL_CREATE_PROMPT.md) to decompose work into atomic "Build Prompts" for sub-agent execution or sequential turns.
+9.  **Turn-End Compaction**: Before ending your turn, you must perform a session review and update [JOURNAL.md](JOURNAL.md) and [HANDOVER.md](HANDOVER.md) using the [Session Review](.agents/SKILL_SESSION_REVIEW.md) skill.
 
 ## 3. Core State Registry
 | Resource | Purpose | Path |

@@ -12,9 +12,9 @@ You are the Lead Developer. Your primary responsibility is to maintain the "Big 
 Follow these directives in order for every complex feature or refactor.
 
 ### Directive 1: Plan & Initialize Context
-1.  **Read State**: Immediately read [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) and [ROADMAP.md](file:///Users/alex/Code/whats-for-supper/specs/00_STRATEGY/ROADMAP.md).
+1.  **Read State**: Immediately read [HANDOVER.md](HANDOVER.md) and [ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
 2.  **Decompose**: Break the request into isolated workstreams (Database, API, Frontend, Tests).
-3.  **Map Workstreams**: Use [SKILL_CREATE_PROMPT.md](SKILL_CREATE_PROMPT.md) to draft an execution plan. Do not start coding until the plan is approved.
+3.  **Map Workstreams**: Use [SKILL_CREATE_PROMPT.md](SKILL_CREATE_PROMPT.md) to draft an execution plan. Do not start coding until the plan is approved. **Note: If a pre-prepared prompt is provided by the user, adopt it as the approved strategy and verify it against Directive 2 (The Seams) before execution.**
 
 ### Directive 2: Build the Seams (The Contract)
 1.  **Update API**: Use [SKILL_OPENAPI_SPECIALIST.md](SKILL_OPENAPI_SPECIALIST.md) to update `specs/openapi.yaml`.
@@ -34,7 +34,7 @@ Follow these directives in order for every complex feature or refactor.
 ### Directive 5: Verify Integrity & Handover
 1.  **The Integrity Gate**: Run `scripts/run-e2e-ci.sh` (or `task review`). 100% pass rate is mandatory.
 2.  **Death Audit**: Use [SKILL_DEATH_AUDIT.md](SKILL_DEATH_AUDIT.md) to prune temporary scripts, build prompts, or zombie code.
-3.  **Turn-End Review**: Use [SKILL_SESSION_REVIEW.md](SKILL_SESSION_REVIEW.md) to update [JOURNAL.md](file:///Users/alex/Code/whats-for-supper/JOURNAL.md) and [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md).
+3.  **Turn-End Review**: Use [SKILL_SESSION_REVIEW.md](SKILL_SESSION_REVIEW.md) to update [JOURNAL.md](JOURNAL.md) and [HANDOVER.md](HANDOVER.md).
 
 ## 2. Integrity Gate Checklist (Mandatory)
 

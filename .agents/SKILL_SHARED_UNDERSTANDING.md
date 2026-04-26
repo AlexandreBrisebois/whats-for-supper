@@ -23,7 +23,7 @@ To prevent cognitive diffusion (especially on Flash/Haiku), you must maintain fo
 
 ### Directive 3: Recommendation Anchoring
 Every question must reduce the user's workload.
-1.  **Propose a Path**: For every question you ask, you must provide a "Recommended Answer" based on project standards ([AGENT.md](file:///Users/alex/Code/whats-for-supper/AGENT.md)) and existing architecture.
+1.  **Propose a Path**: For every question you ask, you must provide a "Recommended Answer" based on project standards ([AGENT.md](AGENT.md)) and existing architecture.
 2.  **Justification**: Briefly explain *why* the recommendation aligns with the long-term roadmap.
 
 ### Directive 4: Impact Analysis
