@@ -29,6 +29,8 @@ Each generated prompt MUST include:
 - **Persona**: A specialized identity (e.g., "Sr. Backend Engineer").
 - **Strict Scope**: Explicitly list files that MUST NOT be touched to prevent drift.
 - **Contract Link**: Link to "The Seams" (Mock API lines, Type definitions) created via [SKILL_CONTRACT_ENGINEER.md](SKILL_CONTRACT_ENGINEER.md).
+- **Technical Skeleton**: [MANDATORY for small models] Provide the exact boilerplate (Namespaces, Class/Interface signatures) to prevent contextual drift.
+- **Dependency Anchor**: Explicitly list DI services and their interfaces to be used.
 - **Execution Limit**: "Goal: Implement ONLY behavior X. Do not refactor Y."
 - **TDD Protocol**: 
   - **Backend**: Force implementation via xUnit tests.
@@ -36,17 +38,27 @@ Each generated prompt MUST include:
 - **Mandatory Handover**: Requirement to provide a **Micro-Handover** summarizing changes and test results.
 - **Verification Rule**: Explicit adherence to Section 6 of `AGENT.md`.
 
-## 4. Workstream Identification
+## 4. Optimization for Small Models (Flash/Haiku)
+When targeting smaller models, you MUST minimize "Creative Freedom" to prevent architectural drift:
+1. **The "Seams" Rule**: Always include a `Technical Skeleton` block. This block must contain:
+   - Full Namespace declarations.
+   - Required `using` statements.
+   - Empty class/interface/enum signatures.
+2. **Explicit Injection**: List the exact service interfaces to be injected into the constructor.
+3. **Reference Snippets**: If the task modifies a complex file, provide the specific method signature to be updated as a "Target" to prevent the model from rewriting the whole file.
+4. **Incremental Verification**: Provide specific commands (e.g., `dotnet test --filter ...`) to run after every sub-task.
+
+## 5. Workstream Identification
 Group dependencies to enable parallel dev:
 - **Database**: Schema, migrations, snapshots.
 - **Backend**: API endpoints, services, business logic, unit tests.
 - **Frontend**: UI components, state management, E2E tests.
 - **Mocks**: Stateful mock API updates (pwa/mock-api.js).
 
-## 5. Storage
+## 6. Storage
 Propose storage in `build-prompts/phase-{theme}/`. Allow the user to override the theme name.
 
-## 6. Ambiguity Handling
+## 7. Ambiguity Handling
 If the implementation plan has conflicting or incomplete instructions:
 1. **Push Back**: Identify the conflict.
 2. **Propose Options**: Offer 2-3 technical solutions.

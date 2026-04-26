@@ -12,6 +12,16 @@
 - **Decision: Strict recipe.info**: All processors must verify the existence of `recipe.info` as the primary anchor.
 - **Decision: Communication via Persistence**: Processors read/write to `recipe.json` or the DB directly; they do not pass in-memory state.
 
+## Technical Skeleton
+```csharp
+namespace RecipeApi.Services.Processors;
+
+public interface IWorkflowProcessor {
+    string ProcessorName { get; }
+    Task ExecuteAsync(WorkflowTask task, CancellationToken ct);
+}
+```
+
 ## Requirements
 1.  **IWorkflowProcessor Interface**:
     ```csharp

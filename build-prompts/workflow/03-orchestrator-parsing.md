@@ -24,6 +24,16 @@
       payload: { recipe_id: "{{recipe_id}}", force: true }
   ```
 
+## Technical Skeleton
+```csharp
+namespace RecipeApi.Services;
+
+public interface IWorkflowOrchestrator {
+    Task<WorkflowInstance> TriggerAsync(string workflowId, Dictionary<string, string> parameters);
+    WorkflowDefinition GetDefinition(string workflowId);
+}
+```
+
 ## Requirements
 1.  **WorkflowDefinition POCO**: Create classes that match the YAML structure (using `YamlDotNet` or similar).
 2.  **YAML Loading**: 

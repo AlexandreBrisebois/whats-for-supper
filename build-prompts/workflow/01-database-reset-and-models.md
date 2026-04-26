@@ -13,6 +13,15 @@
 - **Decision: Clean Slate**: We are dropping the legacy `recipe_imports` table. There is no production data; all tables are currently empty.
 - **Decision: Reset Migrations**: We must delete the current `Migrations` folder to eliminate schema debt and "ghosts in the machine."
 
+## Technical Skeleton
+Use these exact namespaces and using statements:
+```csharp
+namespace RecipeApi.Models;
+
+public enum WorkflowStatus { Pending, Processing, Completed, Failed, Paused }
+public enum TaskStatus { Waiting, Pending, Processing, Completed, Failed }
+```
+
 ## Requirements
 1.  **WorkflowInstance Model**:
     - `Guid Id` (Primary Key)

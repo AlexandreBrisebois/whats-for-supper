@@ -14,6 +14,15 @@
     - Recipes: `/data/recipes`
     - Workflows: `/data/workflows`
 
+## Technical Skeleton
+```csharp
+namespace RecipeApi.Infrastructure;
+
+public sealed class WorkflowRootResolver(IConfiguration configuration) {
+    public string Root => ... // Implementation logic
+}
+```
+
 ## Requirements
 1.  **WorkflowRootResolver**:
     - Create a singleton class (similar to `RecipesRootResolver`).

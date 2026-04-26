@@ -11,6 +11,19 @@
 - **Decision: High Concurrency**: Use `SELECT ... FOR UPDATE SKIP LOCKED` to prevent multiple workers from picking the same task.
 - **Decision: Per-Processor Throttling**: Use Semaphores to limit concurrent execution based on processor type.
 
+## Technical Skeleton
+```csharp
+namespace RecipeApi.Services;
+
+public class WorkflowWorker(
+    IServiceScopeFactory scopeFactory,
+    WorkflowRootResolver workflowRoot,
+    ILogger<WorkflowWorker> logger) : BackgroundService 
+{
+    // Implementation
+}
+```
+
 ## Requirements
 1.  **Throttling Config**:
     - Add a section to `appsettings.json` for "WorkflowThrottle":
