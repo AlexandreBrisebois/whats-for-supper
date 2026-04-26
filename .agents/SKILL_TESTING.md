@@ -1,40 +1,41 @@
 ---
-name: e2e-testing
-description: Procedural guidance for Playwright E2E testing, Mock API management, and integration verification.
+name: universal-testing-qa
+description: Procedural guidance for End-to-End (E2E) testing, Contract-First verification, and Quality Assurance (QA).
 ---
 
-# Skill: E2E & Integration Testing
+# Skill: Universal Testing & Quality Assurance
 
-Procedural guidance for Playwright and Mock API testing.
+This skill provides the operational logic for ensuring system integrity, contract parity, and zero-regression development.
 
-## 1. The TDD Mandate (Mandatory)
-All new features and fixes MUST follow the TDD workflow:
-1. **Plan & Spec**: Update specifications in `specs/`.
-2. **Write Tests**: Create or update tests (E2E for PWA, xUnit for API) before code.
-3. **Mock Contract**: Update `mock-api.js` to reflect the new API behavior.
-4. **Implement**: Write code to satisfy the tests.
+## 1. The Quality Assurance Mission
+**Objective**: Maintain a 100% pass rate for all tests and zero drift between the Application Programming Interface (API) specification and the implementation.
+- **Principle**: Tests are the documentation of behavior. If a test fails, the feature is broken.
+- **Constraint**: No feature is complete until it passes the "Integrity Gate" (`scripts/run-e2e-ci.sh`).
 
-## 2. Testing Hierarchy
-1. **Mock API**: Update specs/openapi.yaml with schemas and rich examples. Prism will serve this data, providing a High-Fidelity Contract that allows frontend work to proceed independently of the backend. Used for rapid PWA layout and flow verification. **Always run with `task review`**.
-2. **Live API (Slow)**: Used for final integration verification.
+## 2. Test-Driven Development (TDD) Workflow
+You must follow this sequence for every change:
 
-### Run PWA Tests (Mock)
-```bash
-cd pwa
-task review
-```
+1.  **Specification Phase**: Update the [specs/openapi.yaml](specs/openapi.yaml) to reflect model or endpoint changes.
+2.  **Test Definition Phase**:
+    *   **Frontend**: Write End-to-End (E2E) tests in `pwa/e2e/`. Use [Next.js Testing Detail](SKILL_NEXTJS_TESTING.md) for locator rules.
+    *   **Backend**: Write xUnit unit or integration tests in the `api/` project.
+3.  **Contract Mocking Phase**: Ensure the [specs/openapi.yaml](specs/openapi.yaml) contains rich examples. Prism serves these mocks for frontend development.
+4.  **Implementation Phase**: Write the minimum code required to make the tests pass.
+5.  **Verification Phase**: Run the reconciliation task to ensure parity across Spec, Mock, and Code.
 
-### Run API Tests (Unit/Integration)
-```bash
-cd api
-dotnet test
-```
+## 3. Testing Tiers & Commands
+Execute these commands from the project root using `task`.
 
-## 3. Specialized Guidance
-- [Next.js Testing Best Practices](SKILL_NEXTJS_TESTING.md) — Mandatory `data-testid` and Playwright rules.
-- [Next.js Developer](SKILL_NEXTJS_DEVELOPER.md) — Frontend TDD and Next.js 15 patterns.
-- [Senior .NET Developer](SKILL_DOTNET_DEVELOPER.md) — Backend TDD and .NET 10 patterns.
+| Tier | Purpose | Command |
+| :--- | :--- | :--- |
+| **Contract Mocking** | Serves mock data based on the OpenAPI spec. | `npm run mock-api` (in `pwa/`) |
+| **Frontend Dev Loop** | Runs formatting, linting, and E2E tests. | `task review` |
+| **Backend Verification** | Runs all .NET unit and integration tests. | `task api:test` |
+| **Integrity Gate** | Final CI-parity check for the full PWA suite. | `task test:pwa:ci` |
+| **Parity Check** | Validates Spec ↔ Mock ↔ API synchronization. | `task agent:reconcile` |
 
-## 4. Mock API Management
-- The Stateful Mock API is located in `pwa/mock-api.js`.
-- **High-Fidelity**: It is a contract for frontend development. Update it *before* implementing the real backend.
+## 4. Operational Directives
+1.  **Contract-First Priority**: The OpenAPI specification is the "Source of Truth". Frontend development must rely on Prism mocks served from the spec.
+2.  **Zero Brittle Policy**: Use `data-testid` for all locators. Do not use fragile CSS selectors or volatile text-based matching.
+3.  **Regression Discipline**: Every bug fix must include a regression test that fails without the fix and passes with it.
+4.  **Stateful Mocking**: If the OpenAPI spec is insufficient for complex state, use specialized mocks in `pwa/e2e/` rather than relying on a global stateful mock file.

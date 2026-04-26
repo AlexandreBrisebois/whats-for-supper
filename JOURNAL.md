@@ -11,6 +11,17 @@ This file contains the historical session logs and technical archives for the "W
 - **[2026-04-17] Workspace Hygiene**: Moved `.env` to `docker/`, unified `Taskfile.yml` as the entry point.
 - **[2026-04-17] Universal Agent Protocol**: Created `AGENT.md` and reorganized meta-docs.
 
+### [2026-04-26] Agentic Framework Optimization (Flash & Haiku)
+**Status**: IN_PROGRESS 🚧
+- **Objective**: Refactor the project's meta-documentation and skill library for maximum performance on Gemini 3 Flash and Haiku 4.5.
+- **Uncompressed Protocol**: Refactored `AGENT.md` to eliminate intent diffusion, replacing metaphorical "Laws" with explicit "Operational Directives".
+- **Contract-First Testing**: Optimized `SKILL_TESTING.md` by removing legacy `mock-api.js` references and consolidating the workflow around OpenAPI/Prism.
+- **PostgreSQL Schema Logic**: Optimized `SKILL_DATABASE.md` with a clear two-tier command registry (Local for generation, Container for application).
+- **Zero Ambiguity**: Replaced technical compression (TDD, E2E, PWA) with explicit descriptions to ensure 100% instruction adherence across model families.
+- **Developer Experience**: Refactored `.agents/SKILL_DOTNET_DEVELOPER.md`, `.agents/SKILL_NEXTJS_DEVELOPER.md`, and `.agents/SKILL_OPENAPI_SPECIALIST.md` into directive-driven manuals.
+- **Architectural Seams**: Refactored `.agents/SKILL_CONTRACT_ENGINEER.md` into a sequential, directive-driven manual. Promoted `task agent:slice` and `task agent:drift` to core operational directives to ensure zero-drift integration between OpenAPI, C#, and TypeScript.
+- **Result**: Core "Source of Truth" and Developer skills optimized for fast, high-intent agents. Remaining utility skills queued for follow-up review.
+
 ---
 
 ## Session History
@@ -90,10 +101,10 @@ This file contains the historical session logs and technical archives for the "W
 - **Root Cause Analysis**:
   - Frontend: Image component rendered without checking if `image` prop existed or was empty
   - Backend: `FillTheGapAsync` returned raw `Recipe` entities instead of DTOs, missing image URL construction
-- **Frontend Fix** ([pwa/src/components/planner/QuickFindModal.tsx:89-107](pwa/src/components/planner/QuickFindModal.tsx#L89)):
+- **Frontend Fix**:
   - Added conditional rendering: only render Image if `recipes[currentIndex].image` exists and is not empty
   - Added fallback placeholder with fork & knife emoji (🍽️) and "No image available" text for missing images
-- **Backend Fix** ([api/src/RecipeApi/Services/ScheduleService.cs:119-149](api/src/RecipeApi/Services/ScheduleService.cs#L119)):
+- **Backend Fix**:
   - Changed `FillTheGapAsync` return type from `List<Recipe>` to `List<ScheduleRecipeDto>`
   - Map Recipe entities to ScheduleRecipeDto with proper image URLs: `/api/recipes/{recipeId}/hero`
   - Apply same mapping to fallback DiscoveryRecipes

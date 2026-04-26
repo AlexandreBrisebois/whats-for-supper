@@ -1,53 +1,53 @@
 ---
 name: session-review
-description: Mandatory end-of-session audit to update HANDOVER.md, capture technical decisions (ADRs), and optimize token usage.
+description: Mandatory end-of-session integrity audit. Update HANDOVER.md, memorialize technical decisions (ADRs), and optimize token usage/context.
 ---
 
-# Skill: Session Review & Audit
+# Skill: Session Review & Integrity Audit
 
-Procedural guidance for performing the mandatory end-of-session review and technical alignment.
+You are the Integrity Officer. Your responsibility is to ensure the repository state is synchronized, decisions are durable, and context bloat is eliminated before the session concludes.
 
-## 1. Objective
-Ensure the repository remains high-integrity, technical decisions are captured, and context bloat is minimized.
+## 1. Operational Directives (Sequential)
 
-## 2. Review Checklist
-At the end of every work session, perform the following:
+Follow these directives in order when the user signals the end of a session or when a major task is completed.
 
-### A. Summarize the Work & Update Handover
-- **MANDATORY**: Update [HANDOVER.md](HANDOVER.md) with absolute technical detail for **active tasks only**.
-- Move historical session details to the "Archive" section or summarize them.
-- Link to specific modified files and tests.
+### Directive 1: Audit Work & Synchronize State
+1.  **Summarize Delta**: Identify every file changed and test passed in this session.
+2.  **Update Handover**: Revise [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) with technical precision. Focus ONLY on active tasks.
+3.  **Archive History**: Move completed session details from [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) to [JOURNAL.md](file:///Users/alex/Code/whats-for-supper/JOURNAL.md).
+4.  **Update Strategy**: If a milestone was reached, update [ROADMAP.md](file:///Users/alex/Code/whats-for-supper/specs/00_STRATEGY/ROADMAP.md).
 
-### B. Capture Technical Decisions (ADRs)
-- **ADR Trigger**: Create a new ADR in `specs/decisions/` only if a decision:
-  1. Breaks/Changes a Contract (API, Schema, Env Vars).
-  2. Shifts Architecture (Libraries, Patterns).
-  3. Deviates from Brand/Aesthetic Identity.
-- Update relevant `.spec.md` files for implementation-level changes.
+### Directive 2: Memorialize Technical Decisions (ADRs)
+1.  **Identify ADR Triggers**: Check if any change:
+    - Breaks/Changes a Contract (API, Schema, Env Vars).
+    - Shifts Architecture (Libraries, Patterns, Paradigms).
+    - Deviates from Brand/UX Identity.
+2.  **Generate ADRs**: If a trigger is met, create a new ADR in `specs/decisions/`.
+3.  **Update Specs**: Synchronize implementation-level changes with relevant `.spec.md` files.
 
-### C. Tooling & Token Audit
-- **Efficiency Leaks**: Identify where tokens were wasted:
-  - Did we read the same file multiple times?
-  - Did we load the entire backend for a frontend-only change?
-  - Did we use a full `ls -R` when a targeted `ls` would have worked?
-- **Registry Update**: If a new script was created, move it to `scripts/agent/` and register it in [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md).
-- Offer to build missing tools that would benefit future autonomy.
+### Directive 3: Perform Efficiency & Toolbox Audit
+1.  **Waste Analysis**: Identify "Efficiency Leaks" (e.g., redundant file reads, loading excessive context).
+2.  **Register Tools**: If a temporary script was created, move it to `scripts/agent/` and register it in [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md).
+3.  **Propose Enhancements**: Offer to build missing tools that would have reduced friction or token waste.
 
-### D. Proactive Documentation Sync
-Perform a **Surface Area Scan** to ensure documentation hasn't drifted:
-- **Environment**: Check `.env.example` against new `process.env` or `config` additions.
-- **Tasks**: Cross-reference `package.json` or `Taskfile.yml` with [LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md).
-- **Strategy**: Update [specs/ROADMAP.md](specs/ROADMAP.md) if a phase or milestone was reached.
+### Directive 4: Synchronize Documentation Surface Area
+1.  **Environment**: Verify `.env.example` matches any new `process.env` or `config` additions.
+2.  **Tasks**: Ensure `Taskfile.yml` or `package.json` updates are reflected in [LOCAL_DEV_LOOP.md](LOCAL_DEV_LOOP.md).
+3.  **Schemas**: Run `task agent:reconcile` one final time to confirm OpenAPI and DB parity.
 
-### E. Session Compaction & Slimming (Mandatory)
-To maintain "Zero-Waste" context and prevent token bloat:
-1. **Journaling**: Move completed "Session History" from `HANDOVER.md` to `JOURNAL.md`.
-2. **Active Pruning**: Ensure `HANDOVER.md` ONLY contains the delta for the **current active task**.
-3. **Promotion to ADR**: If a technical decision (schema change, architectural shift) was finalized, create a new ADR in `specs/decisions/` and remove the detail from the Handover.
-4. **Zombies**: Run [Death Audit](SKILL_DEATH_AUDIT.md) on any temporary files (e.g., used build prompts).
+### Directive 5: Session Compaction & Turn-End
+1.  **Active Pruning**: Ensure [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) contains ONLY the delta for the next session.
+2.  **Death Audit**: Use [SKILL_DEATH_AUDIT.md](SKILL_DEATH_AUDIT.md) to prune temporary files, build prompts, or "zombie" code.
+3.  **Next Steps**: Draft a sharp, 3-bullet plan for the next agent to resume immediately.
 
-### F. Next Steps Plan
-- Build a concise plan for the NEXT session to ensure immediate continuity.
+## 2. Integrity Check (Mandatory)
 
-## 3. Enforcement
-The Session Review is a **non-negotiable prerequisite** for the final response of every session. If the user indicates the session is ending, trigger this audit automatically.
+Before signing off, you must confirm:
+- [ ] **State**: [HANDOVER.md](file:///Users/alex/Code/whats-for-supper/HANDOVER.md) is clean and [JOURNAL.md](file:///Users/alex/Code/whats-for-supper/JOURNAL.md) is updated.
+- [ ] **Decisions**: All architectural shifts are documented as ADRs.
+- [ ] **Hygiene**: No temporary scripts or "zombie" artifacts remain in the workspace.
+- [ ] **Sync**: Documentation (Env, Tasks, Specs) matches the implementation.
+
+## 3. Enforcement Policy
+
+The Session Review is a **non-negotiable prerequisite** for the final response of every session. If the session is ending, trigger this audit automatically. No turn shall end with "dirty" context or unmemorialized decisions.

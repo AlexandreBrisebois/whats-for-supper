@@ -1,35 +1,41 @@
 ---
-name: database-migrations
-description: Procedural guidance for managing PostgreSQL database schema and migrations using Entity Framework Core.
+name: database-schema-evolution
+description: Procedural guidance for managing PostgreSQL database schema and migrations using Entity Framework Core (EF Core).
 ---
 
-# Skill: Database & EF Core Migrations
+# Skill: Database & Schema Evolution (PostgreSQL)
 
-Procedural guidance for managing the PostgreSQL database schema using Entity Framework Core.
+This skill provides the operational logic for modifying the PostgreSQL database schema and ensuring data integrity across environments.
 
-## 1. Migration Workflow
-Always run EF migrations from the root directory to utilize the monorepo paths correctly.
+## 1. The Database Integrity Mission
+**Objective**: Maintain a consistent, version-controlled database schema that aligns perfectly with the Backend models.
+- **Principle**: The code is the Source of Truth for the schema (Code-First).
+- **PostgreSQL Focus**: We leverage PostgreSQL-specific features including `pgvector` for vector-based recipe searches and advanced indexing.
 
-### Add a Migration
-```bash
-dotnet ef migrations add [MigrationName] \
-  --project api/src/RecipeApi/RecipeApi.csproj \
-  --startup-project api/src/RecipeApi/RecipeApi.csproj
-```
+## 2. Schema Evolution Workflow
+Follow this sequence for every model or schema change:
 
-### Apply Migrations
-The API auto-migrates on startup, but to apply manually:
-```bash
-dotnet ef database update \
-  --project api/src/RecipeApi/RecipeApi.csproj \
-  --startup-project api/src/RecipeApi/RecipeApi.csproj
-```
+1.  **Model Modification**: Update the C# entity classes in the `api/` project.
+2.  **Migration Creation**: Generate a new migration file that captures the changes using the local `dotnet ef` tool.
+3.  **Snapshot Review**: Inspect the generated migration `.cs` files and the `DbContextModelSnapshot` to ensure intent matches output.
+4.  **Application**: Apply the migration to the PostgreSQL development database.
+5.  **Validation**: Verify that the API starts successfully and the schema changes are reflected in the database.
 
-## 2. Troubleshooting
-- **Missing Tool**: If `dotnet ef` fails, run `dotnet tool restore` in the `api/` directory.
-- **Connection Errors**: Ensure the Docker daemon is running and the database container is healthy before applying migrations.
-- **Namespace Issues**: Use primary constructors and file-scoped namespaces (C# 12/13+ standards) for new model entities.
+## 3. Operations & Commands
+Execute these commands from the project root.
 
-## 3. Verification
-- After adding a migration, check `api/src/RecipeApi/Data/Migrations/` for the new `.cs` files.
-- Verify `RecipeDbContextModelSnapshot` was updated.
+| Operation | Tool / Command |
+| :--- | :--- |
+| **Start Database** | `task dev:db` |
+| **Apply Migrations** | `task migrate` (Runs against the API container) |
+| **Add New Migration** | `dotnet ef migrations add [Name] --project api/src/RecipeApi --startup-project api/src/RecipeApi` |
+| **Seed Test Data** | `task seed` |
+| **Database Shell** | `task shell:db` |
+| **Health Check** | `task health` |
+
+## 4. Operational Directives
+1.  **Monorepo Pathing**: Always run migration commands from the project root. Do not change directories into the `api/` folder.
+2.  **Tooling Recovery**: If `dotnet ef` is not found, run `dotnet tool restore` in the `api/` directory to re-initialize the local tools.
+3.  **Snapshot Protection**: Never manually edit the `DbContextModelSnapshot`. If a migration is incorrect, remove it using `dotnet ef migrations remove` and try again.
+4.  **Container Dependency**: Ensure the PostgreSQL container is healthy (`task health`) before attempting to apply migrations or seed data.
+5.  **C# Standards**: Use Primary Constructors and File-Scoped Namespaces for all new Entity models to maintain consistency with the .NET 10 stack.

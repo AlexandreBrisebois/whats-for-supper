@@ -1,39 +1,50 @@
 # Universal Agent Protocol (UAP)
 
-Source of Truth for the "What's For Supper" (WFS) project. This is a **Registry**; all procedural logic lives in `.agents/`.
+This document is the primary instruction set for AI agents working on the "What's For Supper" (WFS) project. It serves as the **Operational Registry**. All specific logic, workflows, and personas are defined in the `.agents/` directory.
 
-## 1. Project Identity
-- **Stack**: .NET 10 (C#), Next.js 15 (TS), PostgreSQL (pgvector).
-- **Elite Model**: Parallel Workstreams governed by [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md).
+## 1. Project Mission & Identity
+**Primary Mission**: Build a premium, high-performance Meal Planning Progressive Web App (PWA) using a contract-first, test-driven approach.
+- **Stack**: .NET 10 (Backend), Next.js 15 (Frontend), PostgreSQL with pgvector (Database).
+- **Core Principle**: Zero-tolerance for "zombie code", schema drift, or untested features.
 
-## 2. Core Entry Points
-- **Roadmap**: [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md)
-- **Active Task**: [HANDOVER.md](HANDOVER.md) (Active only)
-- **History**: [JOURNAL.md](JOURNAL.md) (Archives)
-- **Execution**: [Taskfile.yml](Taskfile.yml)
+## 2. Primary Operational Directives (Mandatory)
+These directives are non-negotiable and must be followed in every turn.
 
-## 3. Mandatory Law
-1. **Orchestration**: Follow [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md) for all feature work.
-2. **Contract-First**: Update [specs/openapi.yaml](specs/openapi.yaml) before API changes. Mock responses auto-generate via Prism ([Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md)).
-3. **Integrity Gate**: CI validates Spec ↔ Mock ↔ API parity via [Team Orchestrator Phase 4](.agents/SKILL_TEAM_ORCHESTRATOR.md#phase-4-reintegration--merge). Reconciliation check is **required** before merge.
-4. **TDD-First**: Write tests before implementation ([Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md)).
-5. **Cleanliness**: Perform [Death Audit](.agents/SKILL_DEATH_AUDIT.md) to remove zombie code/docs.
-6. **Session Review**: Mandatory audit and [Compaction](.agents/SKILL_SESSION_REVIEW.md) before turn end.
+1.  **State Initialization**: Every session must begin by reading [HANDOVER.md](HANDOVER.md) to understand the active task and [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md) for context.
+2.  **Contract-First Development**: You must update [specs/openapi.yaml](specs/openapi.yaml) before making any changes to the API or Frontend models. Use the [Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md) skill.
+3.  **Test-Driven Development**: You must write or update tests before implementing logic. Refer to [Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md).
+4.  **Orchestration Logic**: All feature work must follow the multi-phase workflow defined in the [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md).
+5.  **Schema Integrity**: Before merging or completing a task, run `task agent:reconcile` to ensure parity between the OpenAPI Specification, Mock API, and Backend implementation.
+6.  **Code Hygiene**: Conduct a [Death Audit](.agents/SKILL_DEATH_AUDIT.md) regularly to remove unused code, deprecated documentation, or "zombie" components.
+7.  **Atomic Delegation**: If a task involves high entropy, architectural ambiguity, or exceeds the optimal context for your model (Flash/Haiku), you **MUST** use [SKILL_CREATE_PROMPT.md](.agents/SKILL_CREATE_PROMPT.md) to decompose work into atomic "Build Prompts" for sub-agent execution or sequential turns.
+8.  **Turn-End Compaction**: Before ending your turn, you must perform a session review and update [JOURNAL.md](JOURNAL.md) and [HANDOVER.md](HANDOVER.md) using the [Session Review](.agents/SKILL_SESSION_REVIEW.md) skill.
 
-## 4. Skills Library
-| Role | Skill File |
+## 3. Core State Registry
+| Resource | Purpose | Path |
+| :--- | :--- | :--- |
+| **Strategy** | Long-term goals and architecture. | [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md) |
+| **Active Task** | Current focus and immediate next steps. | [HANDOVER.md](HANDOVER.md) |
+| **History** | Chronological log of decisions and changes. | [JOURNAL.md](JOURNAL.md) |
+| **Automation** | Entry point for all project commands. | [Taskfile.yml](Taskfile.yml) |
+| **Toolbox** | Registry of agent-specific helper scripts. | [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md) |
+
+## 4. Skills & Roles
+When performing a specific role, you must load and follow the instructions in the corresponding skill file.
+
+| Scenario / Role | Primary Skill File |
 | :--- | :--- |
-| **Lead / Lead Dev** | [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md) |
-| **Architect** | [Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md) |
-| **PWA Testing** | [Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md) |
-| **Backend Dev** | [Senior .NET Developer](.agents/SKILL_DOTNET_DEVELOPER.md) |
-| **Frontend Dev** | [Next.js Developer](.agents/SKILL_NEXTJS_DEVELOPER.md) |
-| **Planning** | [Build Prompt Creation](.agents/SKILL_CREATE_PROMPT.md) |
-| **Audit** | [Session Review & Compaction](.agents/SKILL_SESSION_REVIEW.md) |
-| **Cleanup** | [Death Audit (Kill Zombies)](.agents/SKILL_DEATH_AUDIT.md) |
-| **Designer** | [Designer Agent (The Mère-Designer)](.agents/SKILL_DESIGNER.md) |
-| **Stress-Test** | [Shared Understanding (Grill Me)](.agents/SKILL_SHARED_UNDERSTANDING.md) |
+| **Managing Workflow / Lead Dev** | [.agents/SKILL_TEAM_ORCHESTRATOR.md](.agents/SKILL_TEAM_ORCHESTRATOR.md) |
+| **Designing API / Architect** | [.agents/SKILL_CONTRACT_ENGINEER.md](.agents/SKILL_CONTRACT_ENGINEER.md) |
+| **Building Frontend / UI Dev** | [.agents/SKILL_NEXTJS_DEVELOPER.md](.agents/SKILL_NEXTJS_DEVELOPER.md) |
+| **Building Backend / .NET Dev** | [.agents/SKILL_DOTNET_DEVELOPER.md](.agents/SKILL_DOTNET_DEVELOPER.md) |
+| **Visual Design / UX** | [.agents/SKILL_DESIGNER.md](.agents/SKILL_DESIGNER.md) |
+| **Testing / Quality Assurance** | [.agents/SKILL_NEXTJS_TESTING.md](.agents/SKILL_NEXTJS_TESTING.md) |
+| **Cleanup / Auditing** | [.agents/SKILL_DEATH_AUDIT.md](.agents/SKILL_DEATH_AUDIT.md) |
+| **Drafting Build Prompts** | [.agents/SKILL_CREATE_PROMPT.md](.agents/SKILL_CREATE_PROMPT.md) |
+| **Stress-Test / Shared Understanding** | [.agents/SKILL_SHARED_UNDERSTANDING.md](.agents/SKILL_SHARED_UNDERSTANDING.md) |
+| **End of Session Review** | [.agents/SKILL_SESSION_REVIEW.md](.agents/SKILL_SESSION_REVIEW.md) |
 
-## 5. Environment
-- Use absolute paths for `dotnet`, `task`, `docker` if $PATH fails.
-- Entry point: `task -l`.
+## 5. Execution Environment
+- **Command Discovery**: Use `task -l` to list all available automation commands.
+- **Path Resolution**: If standard commands fail, use absolute paths for `dotnet`, `task`, and `docker`.
+- **Tooling**: Refer to [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md) for custom agent scripts (e.g., `api_tools.py`, `slice.py`).

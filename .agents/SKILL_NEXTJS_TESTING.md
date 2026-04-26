@@ -1,56 +1,62 @@
 ---
-name: nextjs-testing-best-practices
-description: Procedural guidance for Next.js E2E testing with Playwright, focusing on robustness (data-testid) and TDD.
+name: nextjs-testing-specialist
+description: Operational directives for Next.js E2E testing with Playwright, focusing on contract-first verification and the Integrity Gate.
 ---
 
-# Skill: Next.js E2E Testing & TDD
+# Skill: Next.js Testing Specialist
 
-Procedural guidance for creating robust, maintainable E2E tests for the Next.js PWA.
+This skill defines the mandatory directives for creating and maintaining robust, contract-first End-to-End (E2E) tests for the Next.js Progressive Web App (PWA).
 
-## 1. The TDD Workflow (Mandatory)
-Every feature or bug fix must follow this sequence:
-1. **Specs**: Update/Create specifications in `specs/`.
-2. **Tests**: Update/Create Playwright tests in `pwa/e2e/`.
-3. **Mock API**: Update `specs/openapi.yaml` with schemas and rich examples. Prism will serve this data, providing a **High-Fidelity Contract** that allows frontend work to proceed independently of the backend.
-4. **Implementation**: Write the code to satisfy the tests.
+## 1. The Next.js TDD Loop (Mandatory)
+Every feature or bug fix must follow this exact sequence:
 
-## 2. Robust Locators (Zero Brittle Policy)
-Avoid using `getByText` or `getByRole` for elements that are likely to change their text or structure.
-- **MANDATORY**: Use `data-testid` for all interactive elements (buttons, inputs, links) and key containers.
-- **Selector Priority**:
-  1. `page.getByTestId('...')` or `locator('[data-testid="..."]')`
-  2. `page.getByRole('...', { name: '...' })` (Only if the role/name is extremely stable)
-  3. `page.locator(...)` with CSS/XPath (Avoid unless necessary for complex interactions)
+1.  **Contract Alignment**: Verify [specs/openapi.yaml](specs/openapi.yaml) contains the schemas and examples required for the feature.
+2.  **Spec Initialization**: Create or update the relevant specification in `specs/`.
+3.  **Test Definition**: Create or update Playwright tests in `pwa/e2e/`. Use `.spec.ts` for functional flows and `.mobile.spec.ts` for PWA-specific mobile views.
+4.  **Mock Verification**: Start the Prism mock server using `npm run mock-api` in `pwa/`. Verify that the test fails against the mock if the logic is missing.
+5.  **Logic Implementation**: Write the minimal React/Next.js code to satisfy the test assertions.
+6.  **Local Validation**: Run `task review` to confirm the local dev loop passes.
 
-### Example
+## 2. Zero-Brittle Locator Directives
+You must ensure locators are resilient to UI refactors and design changes.
+
+-   **Directive 1: Prioritize `data-testid`**: Use `page.getByTestId('...')` as the primary selection method for all interactive elements (buttons, inputs, links).
+-   **Directive 2: Semantic Roles**: Use `page.getByRole('...', { name: '...' })` only for elements where the role and name are part of the core accessibility contract (e.g., "Main Menu").
+-   **Directive 3: Forbidden Locators**: Do not use CSS selectors based on generated class names (e.g., `_button_1a2b3`) or deeply nested DOM paths.
+-   **Directive 4: Test ID Hygiene**: Name IDs based on function, not appearance (e.g., `data-testid="submit-recipe"` instead of `data-testid="green-button"`).
+
+### Standard Pattern
 ```typescript
-// ❌ Avoid (Brittle if text changes to "Start" or "Go")
-await page.getByRole('button', { name: 'Cook Now' }).click();
-
-// ✅ Recommended (Stable even if text/icon changes)
-await page.getByTestId('start-cook-mode').click();
+// ✅ MANDATORY: Use stable test IDs
+await page.getByTestId('nav-cook-mode').click();
+await expect(page.getByTestId('step-indicator')).toBeVisible();
 ```
 
-## 3. Testing Environment & Integrity Gates
-We use a two-tier verification strategy to ensure zero regressions:
+## 3. The Integrity Gate Protocol
+A feature is not "Done" until it passes the Tier 2 Integrity Gate.
 
-- **Tier 1: Local Development (`task review`)**:
-  - Runs formatting, linting, type-checking, and E2E tests.
-  - Relies on Playwright's automatic `webServer` management.
-  - **Best for**: Rapid iteration and pre-commit checks.
+### Tier 1: Local Dev Loop (`task review`)
+-   Runs linting, type-checking, and local Playwright tests.
+-   Best for rapid iteration and component-level verification.
 
-- **Tier 2: The Integrity Gate (`scripts/run-e2e-ci.sh`)**:
-  - **High-Fidelity**: Kills lingering processes and waits for stable PWA hydration (5 consecutive health checks).
-  - **CI Parity**: Mimics the exact environment used in GitHub Actions.
-  - **MANDATORY**: This script MUST pass before a feature is considered "Integrated."
+### Tier 2: CI Integrity Gate (`task test:pwa:ci`)
+-   **Mechanism**: Executes `scripts/run-e2e-ci.sh`.
+-   **Validation**: This script kills lingering processes, starts a fresh Prism mock, and waits for stable PWA hydration (5 consecutive health checks).
+-   **MANDATORY**: You must run this command before declaring a task complete. If it fails while `task review` passes, you have a race condition or hydration mismatch.
 
-### Assumption Validation
-If `scripts/run-e2e-ci.sh` passes, `task review` should also pass. If they diverge, it usually indicates a race condition or hydration issue that the CI script's "stable wait" logic is catching.
+## 4. Next.js Specific Operational Logic
+-   **Hydration Awareness**: Always wait for a specific interactive element to be visible before clicking. Do not rely on page load events; wait for React hydration to complete.
+-   **App Router State**: Verify outcomes, not internal state. Test that the URL changed or the DOM updated, rather than checking private Next.js data structures.
+-   **PWA Assets**: When testing PWA features, verify the existence of the manifest and service worker registration if applicable.
 
-## 4. Test Maintenance & Pruning
-- **False Positives**: If a test fails because a behavior *intentionally* changed, the test must be updated or pruned immediately. Do not waste tokens or time trying to "fix" code to satisfy an obsolete test.
-- **Cleanup**: Remove tests for features that have been removed or significantly refactored.
+## 5. Test Maintenance & Pruning
+1.  **Intentional Regressions**: If a behavior is changed by design, you must update the test before implementing the code change.
+2.  **Zombie Test Removal**: Conduct a "Death Audit" on the `pwa/e2e/` directory regularly. Remove tests for deprecated features or components.
+3.  **Flakiness Zero-Tolerance**: If a test is flaky, you must either stabilize it using better locators/waits or prune it. Never ignore a failing test.
 
-## 5. Next.js Specifics
-- **Hydration**: Wait for specific elements to be visible to ensure React hydration is complete.
-- **App Router**: Don't rely on `__NEXT_DATA__`. Use user-visible outcomes.
+## 6. Post-Implementation Checklist
+Before completing a testing-related task, verify:
+- [ ] Every interactive element has a `data-testid`.
+- [ ] `task test:pwa:ci` (Integrity Gate) passes 100%.
+- [ ] The test covers both "Happy Path" and critical error states (e.g., 404 or API failure).
+- [ ] No hardcoded URLs or environment-specific strings are in the test files.
