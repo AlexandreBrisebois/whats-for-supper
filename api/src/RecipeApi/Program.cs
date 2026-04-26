@@ -5,6 +5,8 @@ using RecipeApi.Infrastructure;
 using RecipeApi.Middleware;
 using RecipeApi.Services;
 using RecipeApi.Services.Agents;
+using RecipeApi.Services.Processors;
+using RecipeApi.Workflow;
 using OpenAI;
 using Microsoft.Extensions.AI;
 using System.ClientModel;
@@ -74,6 +76,9 @@ try
 
     // ── Application services ─────────────────────────────────────────────────
     builder.Services.AddSingleton<RecipesRootResolver>();
+    builder.Services.AddSingleton<WorkflowRootResolver>();
+    builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
+
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
@@ -82,11 +87,20 @@ try
     builder.Services.AddHostedService<ManagementWorker>();
     builder.Services.AddScoped<RecipeExtractionAgent>();
     builder.Services.AddScoped<RecipeHeroAgent>();
+    builder.Services.AddScoped<SyncRecipeProcessor>();
+
+    builder.Services.AddScoped<IWorkflowProcessor, RecipeExtractionAgent>();
+    builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
+    builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
     builder.Services.AddScoped<RecipeService>();
-    builder.Services.AddScoped<RecipeImportService>();
+    // builder.Services.AddScoped<RecipeImportService>();
+
     builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddScoped<ScheduleService>();
-    builder.Services.AddHostedService<RecipeImportWorker>();
+    // builder.Services.AddHostedService<RecipeImportWorker>();
+
+    builder.Services.AddHostedService<WorkflowWorker>();
+
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────
     var agentSettings = builder.Configuration.GetSection("AgentSettings");

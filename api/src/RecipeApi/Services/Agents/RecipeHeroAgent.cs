@@ -5,13 +5,42 @@ using Microsoft.Extensions.AI;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
+using RecipeApi.Workflow;
+
 namespace RecipeApi.Services.Agents;
 
 public class RecipeHeroAgent(
     RecipesRootResolver recipesRoot,
     IConfiguration configuration,
-    ILogger<RecipeHeroAgent> logger)
+    ILogger<RecipeHeroAgent> logger) : IWorkflowProcessor
 {
+    public string ProcessorName => "GenerateHero";
+
+    public async Task ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(task.Payload))
+        {
+            throw new ArgumentException("Task payload is empty.");
+        }
+
+        using var doc = JsonDocument.Parse(task.Payload);
+        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) && !doc.RootElement.TryGetProperty("RecipeId", out idProp))
+        {
+            throw new ArgumentException("Task payload does not contain recipeId.");
+        }
+
+        var recipeId = idProp.GetGuid();
+
+        // Strict check: recipe.info must exist
+        var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
+        var infoPath = Path.Combine(recipeDir, "recipe.info");
+        if (!System.IO.File.Exists(infoPath))
+        {
+            throw new FileNotFoundException($"Recipe info file not found: {infoPath}");
+        }
+
+        await CreateHeroImageAsync(recipeId);
+    }
     private string RecipesRoot => recipesRoot.Root;
 
     // Resolved on demand; if missing the agent will fail with a warning when called.

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -26,6 +26,34 @@ namespace RecipeApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "vw_recipe_matches",
+                columns: table => new
+                {
+                    recipe_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    like_count = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_vw_recipe_matches", x => x.recipe_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "workflow_instances",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    WorkflowId = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<short>(type: "smallint", nullable: false),
+                    Parameters = table.Column<string>(type: "jsonb", nullable: true),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_workflow_instances", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "recipes",
                 columns: table => new
                 {
@@ -40,6 +68,8 @@ namespace RecipeApi.Migrations
                     is_discoverable = table.Column<bool>(type: "boolean", nullable: false),
                     category = table.Column<string>(type: "text", nullable: true),
                     difficulty = table.Column<string>(type: "text", nullable: true),
+                    is_vegetarian = table.Column<bool>(type: "boolean", nullable: false),
+                    is_healthy_choice = table.Column<bool>(type: "boolean", nullable: false),
                     raw_metadata = table.Column<string>(type: "jsonb", nullable: true),
                     ingredients = table.Column<string>(type: "jsonb", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
@@ -59,6 +89,32 @@ namespace RecipeApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "workflow_tasks",
+                columns: table => new
+                {
+                    TaskId = table.Column<Guid>(type: "uuid", nullable: false),
+                    InstanceId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ProcessorName = table.Column<string>(type: "text", nullable: false),
+                    Payload = table.Column<string>(type: "jsonb", nullable: true),
+                    Status = table.Column<short>(type: "smallint", nullable: false),
+                    DependsOn = table.Column<string[]>(type: "text[]", nullable: false),
+                    RetryCount = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    ScheduledAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    ErrorMessage = table.Column<string>(type: "text", nullable: true),
+                    StackTrace = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_workflow_tasks", x => x.TaskId);
+                    table.ForeignKey(
+                        name: "FK_workflow_tasks_workflow_instances_InstanceId",
+                        column: x => x.InstanceId,
+                        principalTable: "workflow_instances",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "calendar_events",
                 columns: table => new
                 {
@@ -74,28 +130,6 @@ namespace RecipeApi.Migrations
                     table.CheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 3");
                     table.ForeignKey(
                         name: "FK_calendar_events_recipes_recipe_id",
-                        column: x => x.recipe_id,
-                        principalTable: "recipes",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "recipe_imports",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    recipe_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    status = table.Column<short>(type: "smallint", nullable: false),
-                    error_message = table.Column<string>(type: "text", nullable: true),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_recipe_imports", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_recipe_imports_recipes_recipe_id",
                         column: x => x.recipe_id,
                         principalTable: "recipes",
                         principalColumn: "id",
@@ -140,16 +174,6 @@ namespace RecipeApi.Migrations
                 column: "recipe_id");
 
             migrationBuilder.CreateIndex(
-                name: "idx_recipe_imports_recipe_id",
-                table: "recipe_imports",
-                column: "recipe_id");
-
-            migrationBuilder.CreateIndex(
-                name: "idx_recipe_imports_status",
-                table: "recipe_imports",
-                column: "status");
-
-            migrationBuilder.CreateIndex(
                 name: "idx_recipe_votes_family_member_id",
                 table: "recipe_votes",
                 column: "family_member_id");
@@ -177,58 +201,32 @@ namespace RecipeApi.Migrations
                 columns: new[] { "category", "id" },
                 filter: "is_discoverable = TRUE");
 
-            migrationBuilder.Sql(@"
-CREATE VIEW vw_recipe_matches AS
-SELECT
-    recipe_id,
-    COUNT(*) as like_count
-FROM recipe_votes
-WHERE vote = CAST(1 AS smallint)
-GROUP BY recipe_id
-HAVING COUNT(*) >= CEIL((SELECT (COUNT(*) + 1.0) / 2.0 FROM family_members));
-            ");
-
-            migrationBuilder.Sql(@"
-CREATE VIEW vw_discovery_recipes AS
-SELECT
-    r.id,
-    r.name,
-    r.category,
-    r.description,
-    r.image_count,
-    r.difficulty,
-    r.total_time,
-    r.last_cooked_date,
-    r.created_at,
-    COALESCE(v.vote_count, 0) as vote_count
-FROM recipes r
-LEFT JOIN (
-    SELECT recipe_id, COUNT(*) as vote_count
-    FROM recipe_votes
-    GROUP BY recipe_id
-) v ON r.id = v.recipe_id
-WHERE r.is_discoverable = TRUE
-ORDER BY vote_count DESC, last_cooked_date DESC NULLS FIRST;
-            ");
+            migrationBuilder.CreateIndex(
+                name: "IX_workflow_tasks_InstanceId",
+                table: "workflow_tasks",
+                column: "InstanceId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("DROP VIEW vw_discovery_recipes;");
-            migrationBuilder.Sql("DROP VIEW vw_recipe_matches;");
-
             migrationBuilder.DropTable(
                 name: "calendar_events");
-
-            migrationBuilder.DropTable(
-                name: "recipe_imports");
 
             migrationBuilder.DropTable(
                 name: "recipe_votes");
 
             migrationBuilder.DropTable(
+                name: "vw_recipe_matches");
+
+            migrationBuilder.DropTable(
+                name: "workflow_tasks");
+
+            migrationBuilder.DropTable(
                 name: "recipes");
+
+            migrationBuilder.DropTable(
+                name: "workflow_instances");
 
             migrationBuilder.DropTable(
                 name: "family_members");

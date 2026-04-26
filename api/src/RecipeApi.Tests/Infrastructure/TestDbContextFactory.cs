@@ -13,6 +13,7 @@ public static class TestDbContextFactory
     {
         var options = new DbContextOptionsBuilder<RecipeDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         return new RecipeDbContext(options);

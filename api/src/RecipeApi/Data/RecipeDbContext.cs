@@ -9,11 +9,13 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
 {
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
-    public DbSet<RecipeImport> RecipeImports => Set<RecipeImport>();
+    public DbSet<WorkflowInstance> WorkflowInstances => Set<WorkflowInstance>();
+    public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
     public DbSet<RecipeVote> RecipeVotes => Set<RecipeVote>();
     public DbSet<RecipeMatch> RecipeMatches => Set<RecipeMatch>();
     public DbSet<DiscoveryRecipe> DiscoveryRecipes => Set<DiscoveryRecipe>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -92,24 +94,43 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                   .HasDatabaseName("idx_recipe_votes_family_member_id");
         });
 
-        modelBuilder.Entity<RecipeImport>(entity =>
+        modelBuilder.Entity<WorkflowInstance>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Status)
                   .HasConversion<short>();
+            entity.Property(e => e.Parameters)
+                  .HasColumnType("jsonb");
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt)
                   .HasDefaultValueSql("NOW()");
-            entity.HasOne(e => e.Recipe)
-                  .WithMany()
-                  .HasForeignKey(e => e.RecipeId)
+
+            entity.HasMany(e => e.Tasks)
+                  .WithOne(t => t.Instance)
+                  .HasForeignKey(t => t.InstanceId)
                   .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasIndex(e => e.RecipeId)
-                  .HasDatabaseName("idx_recipe_imports_recipe_id");
-            entity.HasIndex(e => e.Status)
-                  .HasDatabaseName("idx_recipe_imports_status");
+            entity.ToTable("workflow_instances");
+        });
+
+        modelBuilder.Entity<WorkflowTask>(entity =>
+        {
+            entity.HasKey(e => e.TaskId);
+            entity.Property(e => e.Status)
+                  .HasConversion<short>();
+            entity.Property(e => e.Payload)
+                  .HasColumnType("jsonb");
+            entity.Property(e => e.DependsOn)
+                  .HasColumnType("text[]");
+            entity.Property(e => e.RetryCount)
+                  .HasDefaultValue(0);
+            entity.Property(e => e.CreatedAt)
+                  .HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt)
+                  .HasDefaultValueSql("NOW()");
+
+            entity.ToTable("workflow_tasks");
         });
 
         modelBuilder.Entity<RecipeMatch>(entity =>
@@ -137,6 +158,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.HasIndex(e => e.Date).HasDatabaseName("idx_calendar_events_date");
         });
     }
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

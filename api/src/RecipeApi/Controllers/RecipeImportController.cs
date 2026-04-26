@@ -1,3 +1,4 @@
+#if false
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Dto;
 using RecipeApi.Services;
@@ -56,3 +57,4 @@ public class RecipeImportController(RecipeImportService importService) : Control
         return Ok(summary);
     }
 }
+#endif

@@ -94,6 +94,5 @@ pwa/e2e-screenshots
 .scratch/
 
 # Local data mounts
-/recipes
-!/pwa/src/app/(app)/recipes
+/data
 api/appsettings.Development.json

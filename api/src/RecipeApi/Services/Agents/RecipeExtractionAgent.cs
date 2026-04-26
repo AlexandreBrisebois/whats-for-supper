@@ -6,14 +6,43 @@ using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Utils;
 
+using RecipeApi.Workflow;
+
 namespace RecipeApi.Services.Agents;
 
 public class RecipeExtractionAgent(
     IChatClient chatClient,
     RecipesRootResolver recipesRoot,
     IConfiguration configuration,
-    ILogger<RecipeExtractionAgent> logger)
+    ILogger<RecipeExtractionAgent> logger) : IWorkflowProcessor
 {
+    public string ProcessorName => "ExtractRecipe";
+
+    public async Task ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(task.Payload))
+        {
+            throw new ArgumentException("Task payload is empty.");
+        }
+
+        using var doc = JsonDocument.Parse(task.Payload);
+        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) && !doc.RootElement.TryGetProperty("RecipeId", out idProp))
+        {
+            throw new ArgumentException("Task payload does not contain recipeId.");
+        }
+
+        var recipeId = idProp.GetGuid();
+        
+        // Strict check: recipe.info must exist
+        var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
+        var infoPath = Path.Combine(recipeDir, "recipe.info");
+        if (!File.Exists(infoPath))
+        {
+            throw new FileNotFoundException($"Recipe info file not found: {infoPath}");
+        }
+
+        await ExtractRecipe(recipeId);
+    }
     private string RecipesRoot => recipesRoot.Root;
 
     private const string SchemaDefinition = @"

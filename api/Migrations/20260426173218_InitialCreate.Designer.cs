@@ -12,8 +12,8 @@ using RecipeApi.Data;
 namespace RecipeApi.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    [Migration("20260424034958_FixRecipeMatchesViewFormula")]
-    partial class FixRecipeMatchesViewFormula
+    [Migration("20260426173218_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -87,6 +87,10 @@ namespace RecipeApi.Migrations
                     b.Property<int>("ImageCount")
                         .HasColumnType("integer")
                         .HasColumnName("image_count");
+
+                    b.Property<string>("Ingredients")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("ingredients");
 
                     b.Property<DateTimeOffset?>("LastCookedDate")
                         .HasColumnType("timestamp with time zone")
@@ -184,6 +188,14 @@ namespace RecipeApi.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_discoverable");
 
+                    b.Property<bool>("IsHealthyChoice")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_healthy_choice");
+
+                    b.Property<bool>("IsVegetarian")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_vegetarian");
+
                     b.Property<DateTimeOffset?>("LastCookedDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_cooked_date");
@@ -232,48 +244,6 @@ namespace RecipeApi.Migrations
                         {
                             t.HasCheckConstraint("CK_recipes_rating", "rating >= 0 AND rating <= 3");
                         });
-                });
-
-            modelBuilder.Entity("RecipeApi.Models.RecipeImport", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasColumnType("text")
-                        .HasColumnName("error_message");
-
-                    b.Property<Guid>("RecipeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("recipe_id");
-
-                    b.Property<short>("Status")
-                        .HasColumnType("smallint")
-                        .HasColumnName("status");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RecipeId")
-                        .HasDatabaseName("idx_recipe_imports_recipe_id");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("idx_recipe_imports_status");
-
-                    b.ToTable("recipe_imports");
                 });
 
             modelBuilder.Entity("RecipeApi.Models.RecipeMatch", b =>
@@ -328,6 +298,81 @@ namespace RecipeApi.Migrations
                         });
                 });
 
+            modelBuilder.Entity("RecipeApi.Models.WorkflowInstance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Parameters")
+                        .HasColumnType("jsonb");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("WorkflowId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("workflow_instances", (string)null);
+                });
+
+            modelBuilder.Entity("RecipeApi.Models.WorkflowTask", b =>
+                {
+                    b.Property<Guid>("TaskId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.PrimitiveCollection<string[]>("DependsOn")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("InstanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ProcessorName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RetryCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTimeOffset?>("ScheduledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StackTrace")
+                        .HasColumnType("text");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("TaskId");
+
+                    b.HasIndex("InstanceId");
+
+                    b.ToTable("workflow_tasks", (string)null);
+                });
+
             modelBuilder.Entity("RecipeApi.Models.CalendarEvent", b =>
                 {
                     b.HasOne("RecipeApi.Models.Recipe", "Recipe")
@@ -349,17 +394,6 @@ namespace RecipeApi.Migrations
                     b.Navigation("AddedByMember");
                 });
 
-            modelBuilder.Entity("RecipeApi.Models.RecipeImport", b =>
-                {
-                    b.HasOne("RecipeApi.Models.Recipe", "Recipe")
-                        .WithMany()
-                        .HasForeignKey("RecipeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Recipe");
-                });
-
             modelBuilder.Entity("RecipeApi.Models.RecipeVote", b =>
                 {
                     b.HasOne("RecipeApi.Models.FamilyMember", "FamilyMember")
@@ -379,9 +413,25 @@ namespace RecipeApi.Migrations
                     b.Navigation("Recipe");
                 });
 
+            modelBuilder.Entity("RecipeApi.Models.WorkflowTask", b =>
+                {
+                    b.HasOne("RecipeApi.Models.WorkflowInstance", "Instance")
+                        .WithMany("Tasks")
+                        .HasForeignKey("InstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instance");
+                });
+
             modelBuilder.Entity("RecipeApi.Models.FamilyMember", b =>
                 {
                     b.Navigation("Recipes");
+                });
+
+            modelBuilder.Entity("RecipeApi.Models.WorkflowInstance", b =>
+                {
+                    b.Navigation("Tasks");
                 });
 #pragma warning restore 612, 618
         }

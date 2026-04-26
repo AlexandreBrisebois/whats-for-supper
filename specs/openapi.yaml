@@ -253,6 +253,60 @@ components:
         queueCount: { type: integer }
         failedCount: { type: integer }
 
+    # --- Workflow ---
+    WorkflowTriggerRequestDto:
+      type: object
+      required: [parameters]
+      properties:
+        parameters:
+          type: object
+          additionalProperties: { type: string }
+
+    WorkflowTriggerResponseDto:
+      type: object
+      required: [instanceId]
+      properties:
+        instanceId: { type: string, format: uuid }
+
+    WorkflowTaskDto:
+      type: object
+      required: [taskId, processorName, status, retryCount, createdAt, updatedAt]
+      properties:
+        taskId: { type: string, format: uuid }
+        processorName: { type: string }
+        status: { type: string, enum: [Waiting, Pending, Processing, Completed, Failed] }
+        dependsOn: { type: array, items: { type: string }, nullable: true }
+        retryCount: { type: integer }
+        scheduledAt: { type: string, format: date-time, nullable: true }
+        errorMessage: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    WorkflowInstanceDetailDto:
+      type: object
+      required: [id, workflowId, status, createdAt, updatedAt, tasks]
+      properties:
+        id: { type: string, format: uuid }
+        workflowId: { type: string }
+        status: { type: string, enum: [Pending, Processing, Completed, Failed, Paused] }
+        parameters: { type: object, additionalProperties: { type: string }, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        tasks:
+          type: array
+          items: { $ref: '#/components/schemas/WorkflowTaskDto' }
+
+    WorkflowInstanceSummaryDto:
+      type: object
+      required: [id, workflowId, status, createdAt, updatedAt, taskCount]
+      properties:
+        id: { type: string, format: uuid }
+        workflowId: { type: string }
+        status: { type: string, enum: [Pending, Processing, Completed, Failed, Paused] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        taskCount: { type: integer }
+
 paths:
   /health:
     get:
@@ -816,3 +870,137 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecipeImportSummaryDto' }
+
+  /api/workflows/{workflowId}/trigger:
+    post:
+      summary: Trigger a workflow execution
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkflowTriggerRequestDto' }
+            example:
+              parameters:
+                recipeUrl: 'https://www.recipetineats.com/beef-and-broccoli-stir-fry/'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/WorkflowTriggerResponseDto' }
+              example:
+                data:
+                  instanceId: '550e8400-e29b-41d4-a716-446655440010'
+        '404':
+          description: Workflow not found
+
+  /api/workflows/instances/{instanceId}:
+    parameters:
+      - name: instanceId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get workflow instance details with all tasks
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/WorkflowInstanceDetailDto' }
+              example:
+                data:
+                  id: '550e8400-e29b-41d4-a716-446655440010'
+                  workflowId: 'recipe-extraction'
+                  status: 'Processing'
+                  parameters:
+                    recipeUrl: 'https://www.recipetineats.com/beef-and-broccoli-stir-fry/'
+                  createdAt: '2026-04-26T10:00:00Z'
+                  updatedAt: '2026-04-26T10:05:00Z'
+                  tasks:
+                    - taskId: '660e8400-e29b-41d4-a716-446655440020'
+                      processorName: 'RecipeExtractionAgent'
+                      status: 'Completed'
+                      dependsOn: null
+                      retryCount: 0
+                      scheduledAt: '2026-04-26T10:00:00Z'
+                      errorMessage: null
+                      createdAt: '2026-04-26T10:00:00Z'
+                      updatedAt: '2026-04-26T10:02:00Z'
+                    - taskId: '660e8400-e29b-41d4-a716-446655440021'
+                      processorName: 'RecipeHeroAgent'
+                      status: 'Processing'
+                      dependsOn: ['660e8400-e29b-41d4-a716-446655440020']
+                      retryCount: 0
+                      scheduledAt: '2026-04-26T10:02:00Z'
+                      errorMessage: null
+                      createdAt: '2026-04-26T10:00:30Z'
+                      updatedAt: '2026-04-26T10:05:00Z'
+        '404':
+          description: Workflow instance not found
+
+  /api/workflows/active:
+    get:
+      summary: Get all active (Processing or Paused) workflow instances
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/WorkflowInstanceSummaryDto' }
+              example:
+                data:
+                  - id: '550e8400-e29b-41d4-a716-446655440010'
+                    workflowId: 'recipe-extraction'
+                    status: 'Processing'
+                    createdAt: '2026-04-26T10:00:00Z'
+                    updatedAt: '2026-04-26T10:05:00Z'
+                    taskCount: 2
+                  - id: '550e8400-e29b-41d4-a716-446655440011'
+                    workflowId: 'recipe-extraction'
+                    status: 'Paused'
+                    createdAt: '2026-04-26T09:00:00Z'
+                    updatedAt: '2026-04-26T09:45:00Z'
+                    taskCount: 3
+
+  /api/workflows/tasks/{taskId}/reset:
+    post:
+      summary: Reset a failed task to Pending status
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
+              example:
+                data:
+                  message: 'Task reset successfully.'
+        '404':
+          description: Task not found

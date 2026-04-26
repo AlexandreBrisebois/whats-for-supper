@@ -1,0 +1,45 @@
+@baseUrl = http://localhost:5050
+@recipeUrl = http://localhost:3000
+@workflowId = recipe-extraction
+@recipeImportWorkflowId = recipe-import
+@recipeId = 0384639a-96e2-48d9-89fe-c30d55e06c98
+@instanceId = 00000000-0000-0000-0000-000000000000
+@taskId = 00000000-0000-0000-0000-000000000000
+
+### 1. Trigger recipe-import workflow execution
+# Triggers the recipe-import workflow with a recipe ID for the 3-step process:
+# Extract -> GenerateHero -> SyncRecipe
+POST {{baseUrl}}/api/workflows/{{recipeImportWorkflowId}}/trigger
+Content-Type: application/json
+
+{
+  "parameters": {
+    "recipeId": "{{recipeId}}"
+  }
+}
+
+### 1b. Trigger legacy recipe-extraction workflow execution
+# Triggers the recipe-extraction workflow with parameters.
+POST {{baseUrl}}/api/workflows/{{workflowId}}/trigger
+Content-Type: application/json
+
+{
+  "parameters": {
+    "recipeUrl": "{{recipeUrl}}"
+  }
+}
+
+### 2. Get workflow instance details
+# Returns the instance metadata and all associated tasks.
+GET {{baseUrl}}/api/workflows/instances/{{instanceId}}
+Accept: application/json
+
+### 3. Get all active workflows
+# Returns all Processing or Paused workflow instances.
+GET {{baseUrl}}/api/workflows/active
+Accept: application/json
+
+### 4. Reset a failed task
+# Resets a failed task to Pending status and updates the workflow to Processing.
+POST {{baseUrl}}/api/workflows/tasks/{{taskId}}/reset
+Accept: application/json

@@ -69,7 +69,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<IValidationService, ValidationService>();
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
-        builder.Services.AddScoped<RecipeImportService>();
+        // builder.Services.AddScoped<RecipeImportService>();
+
         builder.Services.AddSingleton<RecipesRootResolver>();
 
         builder.Services.AddDbContext<RecipeDbContext>(opts =>
