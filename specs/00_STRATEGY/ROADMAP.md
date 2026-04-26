@@ -34,6 +34,7 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 - **Solar Earth Branding**: Implementation of warm, family-centric UI tokens and layout.
 - **The Smart Pivot (Planning)**: Design of the express discovery hub on the Home screen.
 - **Identity Architecture Pivot**: Implementation of cookie-based `IdentityValidator` for reliable cross-service auth.
+- **General-Purpose Workflow System**: Refactor of the processing pipeline into a YAML-driven DAG system for resilience and extensibility.
 - **Modular Worker (DB Polling)**: Optimized processing pipeline (Hybrid Gemma4/Gemini).
 - **Recipe Scrapers**: Support for scraping recipes from various websites.
 
