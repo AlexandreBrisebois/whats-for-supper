@@ -170,6 +170,46 @@ try
         Log.Information("Database ready.");
     }
 
+    // ── Initialize data directories ─────────────────────────────────────────
+    var recipesResolver = app.Services.GetRequiredService<RecipesRootResolver>();
+    var recipesDir = recipesResolver.Root;
+    Directory.CreateDirectory(recipesDir);
+    Log.Information("Ensured recipes directory exists at {RecipesDir}", recipesDir);
+
+    var workflowResolver = app.Services.GetRequiredService<WorkflowRootResolver>();
+    var workflowsDir = workflowResolver.Root;
+    Directory.CreateDirectory(workflowsDir);
+    Log.Information("Ensured workflows directory exists at {WorkflowsDir}", workflowsDir);
+
+    var recipeImportPath = Path.Combine(workflowsDir, "recipe-import.yaml");
+    if (!File.Exists(recipeImportPath))
+    {
+        var recipeImportContent = """
+id: recipe-import
+parameters:
+  - recipeId
+tasks:
+  - id: extract_recipe
+    processor: ExtractRecipe
+    payload:
+      recipeId: "{{ recipeId }}"
+  - id: generate_hero
+    processor: GenerateHero
+    depends_on:
+      - extract_recipe
+    payload:
+      recipeId: "{{ recipeId }}"
+  - id: sync_recipe
+    processor: SyncRecipe
+    depends_on:
+      - generate_hero
+    payload:
+      recipeId: "{{ recipeId }}"
+""";
+        await File.WriteAllTextAsync(recipeImportPath, recipeImportContent);
+        Log.Information("Created workflow file at {WorkflowPath}", recipeImportPath);
+    }
+
     // ── Middleware pipeline ───────────────────────────────────────────────────
     if (app.Environment.IsDevelopment())
     {
