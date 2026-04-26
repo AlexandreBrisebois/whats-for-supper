@@ -242,8 +242,10 @@ jobs:
           EOF
 
       - name: Fix permissions for data volume
-        # UID 1654 is the default 'app' user in .NET chiseled images
-        run: sudo chown -R 1654:1654 data
+        # Ensure directory exists (it is gitignored) and set ownership for the .NET 'app' user (UID 1654)
+        run: |
+          mkdir -p data
+          sudo chown -R 1654:1654 data
 
       - name: Build and start all services
         run: docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/ci-overrides.yml up --build --detach
