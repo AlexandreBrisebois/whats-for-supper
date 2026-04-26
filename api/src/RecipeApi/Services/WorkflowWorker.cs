@@ -140,9 +140,10 @@ public class WorkflowWorker(
         logger.LogInformation("Picked up {TaskCount} pending tasks", pendingTasks.Count);
 
         // Fire off execution tasks without waiting to maximize throughput
+        // Each task gets its own scope/context to avoid concurrency issues during parallel execution
         var executionTasks = pendingTasks.Select(async task =>
         {
-            await ExecuteTaskWithThrottle(task, db, ct);
+            await ExecuteTaskWithThrottle(task, ct);
         });
 
         // Wait for all executions to complete
@@ -168,7 +169,7 @@ public class WorkflowWorker(
             .ToListAsync(ct);
     }
 
-    private async Task ExecuteTaskWithThrottle(WorkflowTask task, RecipeDbContext db, CancellationToken ct)
+    private async Task ExecuteTaskWithThrottle(WorkflowTask task, CancellationToken ct)
     {
         var throttle = GetOrCreateThrottle(task.ProcessorName);
 
@@ -179,6 +180,11 @@ public class WorkflowWorker(
 
             try
             {
+                // Create a new scope and context for each task execution to avoid concurrency issues
+                // Each parallel task needs its own db context to see up-to-date state
+                using var taskScope = scopeFactory.CreateScope();
+                var services = taskScope.ServiceProvider;
+                var db = services.GetRequiredService<RecipeDbContext>();
                 await ProcessTaskAsync(task, db, ct);
             }
             finally
@@ -202,6 +208,10 @@ public class WorkflowWorker(
     {
         try
         {
+            // Reload task in case it's from a different context
+            task = await db.WorkflowTasks.FindAsync([task.TaskId], cancellationToken: ct)
+                ?? throw new InvalidOperationException($"Task {task.TaskId} not found");
+
             // Mark as processing
             task.Status = TaskStatus.Processing;
             task.ErrorMessage = null;
