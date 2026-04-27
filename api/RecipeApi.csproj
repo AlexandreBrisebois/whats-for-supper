@@ -29,9 +29,6 @@
     <!-- Npgsql EF Core provider + pgvector support -->
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.*" />
     <PackageReference Include="Pgvector" Version="0.*" />
-    <!-- JSON -->
-    <PackageReference Include="Newtonsoft.Json" Version="13.*" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.*" />
     <!-- OpenAPI -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.*" />
     <!-- Logging -->

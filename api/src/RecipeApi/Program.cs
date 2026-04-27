@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using RecipeApi.Data;
@@ -64,12 +66,11 @@ try
         {
             options.Filters.Add<SuccessWrappingFilter>();
         })
-        .AddNewtonsoftJson(options =>
+        .AddJsonOptions(options =>
         {
-            options.SerializerSettings.ReferenceLoopHandling =
-                Newtonsoft.Json.ReferenceLoopHandling.Ignore;
-            options.SerializerSettings.ContractResolver =
-                new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
+            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+            options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
         });
 
     builder.Services.AddOpenApi();

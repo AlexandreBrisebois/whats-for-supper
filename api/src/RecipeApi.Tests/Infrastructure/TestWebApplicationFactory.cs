@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -5,7 +7,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Middleware;
@@ -61,9 +62,12 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                 options.Filters.Add<SuccessWrappingFilter>();
             })
             .AddApplicationPart(typeof(RecipeApi.Controllers.HealthController).Assembly)
-            .AddNewtonsoftJson(opts =>
-                opts.SerializerSettings.ReferenceLoopHandling =
-                    Newtonsoft.Json.ReferenceLoopHandling.Ignore);
+            .AddJsonOptions(opts =>
+            {
+                opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
+            });
 
         builder.Services.AddScoped<FamilyService>();
         builder.Services.AddScoped<IValidationService, ValidationService>();
