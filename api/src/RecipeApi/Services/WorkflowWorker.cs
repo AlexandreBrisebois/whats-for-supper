@@ -159,8 +159,8 @@ public class WorkflowWorker(
                 SELECT t.""TaskId"", t.""InstanceId"", t.""ProcessorName"", t.""Payload"",
                        t.""Status"", t.""DependsOn"", t.""RetryCount"", t.""ScheduledAt"",
                        t.""ErrorMessage"", t.""StackTrace"", t.""CreatedAt"", t.""UpdatedAt""
-                FROM ""WorkflowTasks"" t
-                WHERE t.""Status"" = {TaskStatus.Pending.ToString()}
+                FROM ""workflow_tasks"" t
+                WHERE t.""Status"" = {(int)TaskStatus.Pending}
                   AND (t.""ScheduledAt"" IS NULL OR t.""ScheduledAt"" <= {now})
                 ORDER BY t.""ScheduledAt"" ASC
                 LIMIT 10
