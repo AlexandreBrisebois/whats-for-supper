@@ -1,7 +1,9 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Services;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
 namespace RecipeApi.Controllers;
@@ -58,7 +60,12 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
             return NotFound(new { message = "No management tasks have been run yet." });
         }
 
-        var completedTasks = lastInstance.Tasks.Count(t => t.Status == Models.TaskStatus.Completed);
+        var lastTaskResult = lastInstance.Tasks
+            .Where(t => t.Status == Models.TaskStatus.Completed && t.Result != null)
+            .OrderByDescending(t => t.UpdatedAt)
+            .Select(t => JsonSerializer.Deserialize<object>(t.Result!, JsonDefaults.CamelCase))
+            .FirstOrDefault();
+
         var status = new ManagementStatus
         {
             WorkflowId = lastInstance.Id,
@@ -66,8 +73,7 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
             Status = lastInstance.Status,
             CreatedAt = lastInstance.CreatedAt,
             UpdatedAt = lastInstance.UpdatedAt,
-            TotalTasks = lastInstance.Tasks.Count,
-            CompletedTasks = completedTasks
+            Result = lastTaskResult,
         };
 
         return Ok(status);

@@ -7,6 +7,5 @@ public class ManagementStatus
     public WorkflowStatus Status { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public int TotalTasks { get; set; }
-    public int CompletedTasks { get; set; }
+    public object? Result { get; set; }
 }

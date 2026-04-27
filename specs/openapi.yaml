@@ -214,15 +214,14 @@ components:
     # --- Management ---
     ManagementTaskStatusResponse:
       type: object
-      required: [id, type, status, createdAt, updatedAt]
+      required: [workflowId, workflowType, status, createdAt, updatedAt]
       properties:
-        id: { type: string, format: uuid }
-        type: { type: string, enum: [Backup, Restore, DisasterRecovery] }
+        workflowId: { type: string, format: uuid }
+        workflowType: { type: string }
         status: { type: string, enum: [Pending, Processing, Completed, Failed] }
-        errorMessage: { type: string, nullable: true }
-        result: { type: object, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        result: { type: object, nullable: true }
 
     ManagementTaskAcceptedResponse:
       type: object
@@ -423,20 +422,28 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name]
+                      required: [id, name, createdAt, updatedAt]
                       properties:
                         id: { type: string, format: uuid }
                         name: { type: string }
+                        createdAt: { type: string, format: date-time }
+                        updatedAt: { type: string, format: date-time }
               examples:
                 default:
                   value:
                     data:
                       - id: '550e8400-e29b-41d4-a716-446655440001'
                         name: 'Alex'
+                        createdAt: '2024-01-01T00:00:00Z'
+                        updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440002'
                         name: 'Jordan'
+                        createdAt: '2024-01-01T00:00:00Z'
+                        updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440003'
                         name: 'Test User'
+                        createdAt: '2024-01-01T00:00:00Z'
+                        updatedAt: '2024-01-01T00:00:00Z'
 
     post:
       summary: Create or update a family member
@@ -459,13 +466,18 @@ paths:
                 properties:
                   data:
                     type: object
+                    required: [id, name, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
+                      createdAt: { type: string, format: date-time }
+                      updatedAt: { type: string, format: date-time }
               example:
                 data:
                   id: '550e8400-e29b-41d4-a716-446655440003'
                   name: 'Test User'
+                  createdAt: '2024-01-01T00:00:00Z'
+                  updatedAt: '2024-01-01T00:00:00Z'
 
   /api/family/{id}:
     parameters:
@@ -482,6 +494,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [name]
               properties:
                 name: { type: string }
       responses:
@@ -592,6 +605,31 @@ paths:
       responses:
         '204':
           description: Deleted
+
+  /api/recipes/{recipeId}/original/{photoIndex}:
+    parameters:
+      - name: recipeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: photoIndex
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get original recipe image by index
+      operationId: getRecipeOriginalImage
+      tags: [Recipes]
+      responses:
+        '200':
+          description: Raw image binary
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Recipe or image not found
 
   /api/recipes/{id}/hero:
     parameters:

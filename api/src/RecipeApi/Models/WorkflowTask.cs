@@ -39,6 +39,9 @@ public class WorkflowTask
     [Column("stack_trace")]
     public string? StackTrace { get; set; }
 
+    [Column("result", TypeName = "jsonb")]
+    public string? Result { get; set; }
+
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
 

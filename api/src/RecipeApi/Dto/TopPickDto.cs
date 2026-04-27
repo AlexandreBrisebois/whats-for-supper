@@ -5,7 +5,7 @@ namespace RecipeApi.Dto;
 public class TopPickDto
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+    public Guid Id { get; set; }
 
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;

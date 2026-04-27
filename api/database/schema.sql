@@ -70,6 +70,7 @@ CREATE TABLE workflow_tasks (
     scheduled_at timestamptz,
     error_message text,
     stack_trace text,
+    result jsonb,
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL
 );

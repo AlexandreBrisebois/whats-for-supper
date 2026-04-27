@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace RecipeApi.Dto;
 
-public class RecommendationsDto
+public class RecommendationsResponseDto
 {
     [JsonPropertyName("topPick")]
     public TopPickDto TopPick { get; set; } = new();
