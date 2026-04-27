@@ -56,6 +56,7 @@ jobs:
         run: dotnet format --verify-no-changes --verbosity diagnostic
         working-directory: api
 
+
       - name: Build
         run: dotnet build src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --configuration Release
         working-directory: api

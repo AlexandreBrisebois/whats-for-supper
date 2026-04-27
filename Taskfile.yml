@@ -546,12 +546,20 @@ tasks:
   # ============================================================================
 
   clean:
-    desc: "🧹 Clean up everything (containers, volumes, caches)"
+    desc: "🧹 Clean up build artifacts and docker state (keeps node_modules)"
     cmds:
       - '{{.COMPOSE_CMD}} down -v'
       - rm -rf api/bin api/obj
-      - rm -rf pwa/node_modules pwa/.next
-      - echo "✓ Cleaned up"
+      - rm -rf pwa/.next
+      - echo "✓ Cleaned up (node_modules preserved)"
+    interactive: true
+
+  clean:all:
+    desc: "🧹 Deep clean including node_modules"
+    cmds:
+      - task: clean
+      - rm -rf pwa/node_modules
+      - echo "✓ Deep clean complete"
     interactive: true
 
 
@@ -565,11 +573,13 @@ tasks:
       - |
         echo "Setting up What's For Supper..."
         echo ""
+      - task: init:tools
       - task: init:env
       - task: init:dependencies
       - task: up
       - task: migrate
       - task: seed
+      - task: hooks:install
       - |
         echo ""
         echo "✓ Project initialized!"
@@ -604,6 +614,21 @@ tasks:
         echo "Installing PWA dependencies..."
         cd ../pwa && npm install
         echo "✓ PWA dependencies installed"
+
+  init:tools:
+    desc: "Install required development tools (pre-commit, etc.)"
+    cmds:
+      - |
+        if ! command -v pre-commit &> /dev/null; then
+          echo "Installing pre-commit..."
+          if command -v brew &> /dev/null; then
+            brew install pre-commit
+          else
+            pip3 install pre-commit || echo "⚠️ Failed to install pre-commit. Please install it manually: https://pre-commit.com/#install"
+          fi
+        else
+          echo "✓ pre-commit already installed"
+        fi
 
   # ============================================================================
   # GIT HOOKS (optional)
