@@ -31,9 +31,22 @@ Follow these directives in order for every API change or new endpoint.
 2.  **Slice Inspection**: Use `task agent:slice -- /api/your-route` to verify the vertical alignment between the Spec, the C# Controller, and the TypeScript Client.
 3.  **Parity Check**: Run `task agent:reconcile` to perform a multi-layer validation of the API surface.
 
-### Directive 5: Zero-Drift Enforcement
-1.  **Drift Audit**: Run `task agent:drift` to catch mismatches between C# DTOs and the OpenAPI Specification (nullability, property naming, types).
-2.  **Refine & Repeat**: If drift is detected, immediately update `specs/openapi.yaml` and repeat Directives 2-4.
+### Directive 5: Zero-Drift Enforcement (Tiered)
+
+Use the cheapest tier first. Escalate only if drift is detected or the API is unavailable.
+
+| Tier | Command | Model | Requires |
+| :--- | :--- | :--- | :--- |
+| **0 — Endpoint Diff** | `task agent:drift:endpoints` | Haiku 4.5 / Gemini 2.0 Flash | API running at `127.0.0.1:5001` |
+| **1 — Schema Drift** | `task agent:drift:schemas` | Haiku 4.5 / Gemini 2.0 Flash | Nothing (static analysis) |
+| **Full** | `task agent:drift` | Haiku 4.5 / Gemini 2.0 Flash | API running (Tier 0 skipped gracefully if not) |
+| **2 — Manual Review** | You read specific files | Larger model | Tier 0/1 found something ambiguous |
+
+**Workflow:**
+1. **Tier 0**: Run `task agent:drift:endpoints` — fetches `/openapi/v1.json` from the running .NET API and diffs all paths/methods against `specs/openapi.yaml`. Catches missing endpoints instantly.
+2. **Tier 1**: Run `task agent:drift:schemas` — compares `components/schemas` in the spec against C# DTO files. Catches property name, type, and nullability drift.
+3. **Tier 2**: Only if Tier 0/1 report something ambiguous — inspect the specific file, keep naming conventions and example quality standards high.
+4.  **Refine & Repeat**: If drift is detected, immediately update `specs/openapi.yaml` and repeat Directives 2-4.
 
 ### Directive 6: Frontend Integration (Wiring)
 1.  **Centralized Client**: Initialize the `ApiClient` once in a wrapper service (e.g., `pwa/src/lib/api/client.ts`).

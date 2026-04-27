@@ -714,9 +714,19 @@ tasks:
       - python3 scripts/agent/slice.py {{.CLI_ARGS}}
 
   agent:drift:
-    desc: "🤖 Schema Drift Fuzzer (Contract vs. Backend DTOs)"
+    desc: "🤖 Schema Drift — Tier 0 (endpoint diff, needs API running) + Tier 1 (DTO schema comparison)"
     cmds:
       - python3 scripts/agent/drift.py
+
+  agent:drift:endpoints:
+    desc: "🤖 Schema Drift — Tier 0 only: diff generated API endpoints vs specs/openapi.yaml (needs API running)"
+    cmds:
+      - python3 scripts/agent/drift.py --endpoint-diff
+
+  agent:drift:schemas:
+    desc: "🤖 Schema Drift — Tier 1 only: compare spec schemas vs C# DTOs (no API needed)"
+    cmds:
+      - python3 scripts/agent/drift.py --schema-only
 
   agent:audit:
     desc: "🤖 Brittle Selector Audit (Check tests for missing data-testid)"

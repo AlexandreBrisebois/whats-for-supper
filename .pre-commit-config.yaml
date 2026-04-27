@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: openapi-schema-drift
+        name: OpenAPI schema drift (spec vs C# DTOs)
+        language: python
+        additional_dependencies: [pyyaml]
+        entry: python3 scripts/agent/drift.py --schema-only
+        files: ^(specs/openapi\.yaml|api/src/RecipeApi/Dto/.+\.cs)$
+        pass_filenames: false

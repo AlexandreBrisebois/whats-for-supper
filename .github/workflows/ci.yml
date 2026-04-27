@@ -214,6 +214,9 @@ jobs:
         env:
           SPEC_PATH: specs/openapi.yaml
 
+      - name: Schema drift — Tier 1 (spec vs C# DTOs)
+        run: python3 scripts/agent/drift.py --schema-only
+
   # ────────────────────────────────────────────────────────────────────────────
   # Docker Compose smoke test — verify all services start and pass health checks
   # ────────────────────────────────────────────────────────────────────────────
@@ -274,6 +277,13 @@ jobs:
 
       - name: Verify API health endpoint
         run: curl -sf http://localhost:9001/health | python3 -m json.tool
+
+      - name: Schema drift — Tier 0 (generated endpoint diff)
+        run: |
+          pip install pyyaml -q
+          python3 scripts/agent/drift.py --endpoint-diff
+        env:
+          GENERATED_API_URL: http://localhost:9001/openapi/v1.json
 
       - name: Dump logs on failure
         if: failure()
