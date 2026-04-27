@@ -101,10 +101,10 @@ public class RecipeController(RecipeService recipeService, ImageService imageSer
     /// GET /api/recipes/{id}/hero — AI-generated hero thumbnail (JPEG).
     /// Returns 404 until a recipe import has been completed.
     /// </summary>
-    [HttpGet("{recipeId:guid}/hero")]
-    public IActionResult GetHero(Guid recipeId)
+    [HttpGet("{id:guid}/hero")]
+    public IActionResult GetHero(Guid id)
     {
-        var (stream, contentType) = imageService.GetHeroImage(recipeId);
+        var (stream, contentType) = imageService.GetHeroImage(id);
         return File(stream, contentType);
     }
 

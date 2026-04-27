@@ -15,6 +15,9 @@ public class WorkflowTask
     [Column("instance_id")]
     public Guid InstanceId { get; set; }
 
+    [Column("task_name")]
+    public string TaskName { get; set; } = string.Empty;
+
     [Column("processor_name")]
     public string ProcessorName { get; set; } = string.Empty;
 

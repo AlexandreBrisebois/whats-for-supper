@@ -1,18 +1,18 @@
-name: recipe-import
+id: recipe-import
 parameters:
     - recipeId
 tasks:
-    - name: extract_recipe
+    - id: extract_recipe
       processor: ExtractRecipe
       payload:
           recipeId: "{{ recipeId }}"
-    - name: generate_hero
+    - id: generate_hero
       processor: GenerateHero
       depends_on:
           - extract_recipe
       payload:
           recipeId: "{{ recipeId }}"
-    - name: sync_recipe
+    - id: sync_recipe
       processor: SyncRecipe
       depends_on:
           - generate_hero

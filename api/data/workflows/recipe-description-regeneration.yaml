@@ -1,12 +1,12 @@
-name: recipe-description-regeneration
+id: recipe-description-regeneration
 parameters:
     - recipeId
 tasks:
-    - name: generate_description
+    - id: generate_description
       processor: GenerateDescription
       payload:
           recipeId: "{{ recipeId }}"
-    - name: sync_recipe
+    - id: sync_recipe
       processor: SyncRecipe
       depends_on:
           - generate_description

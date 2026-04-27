@@ -107,7 +107,7 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
     builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
     builder.Services.AddScoped<RecipeService>();
-    // builder.Services.AddScoped<RecipeImportService>();
+    builder.Services.AddScoped<RecipeImportService>();
 
     builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddScoped<ScheduleService>();

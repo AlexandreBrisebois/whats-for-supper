@@ -317,11 +317,11 @@ public class WorkflowWorker(
     {
         try
         {
-            // Find all tasks in the same instance that have this task as a dependency
-            var completedTaskIdStr = completedTask.TaskId.ToString();
+            // Find all tasks in the same instance that have this task's logical TaskName as a dependency
+            var completedTaskName = completedTask.TaskName;
             var dependentTasks = await db.WorkflowTasks
                 .Where(t => t.InstanceId == completedTask.InstanceId &&
-                           t.DependsOn.Any(d => d == completedTaskIdStr) &&
+                           t.DependsOn.Any(d => d == completedTaskName) &&
                            t.Status == TaskStatus.Waiting)
                 .ToListAsync(ct);
 
@@ -359,19 +359,17 @@ public class WorkflowWorker(
         if (task.DependsOn.Length == 0)
             return true;
 
-        // Get all dependency task IDs
-        var dependencyIds = task.DependsOn
-            .Select(dep => Guid.Parse(dep))
-            .ToList();
+        // Get all dependency logical names
+        var dependencyNames = task.DependsOn.ToList();
 
-        // Check if all are completed
+        // Check if all are completed by matching their TaskName
         var completedCount = await db.WorkflowTasks
             .Where(t => t.InstanceId == task.InstanceId &&
-                       dependencyIds.Contains(t.TaskId) &&
+                       dependencyNames.Contains(t.TaskName) &&
                        t.Status == TaskStatus.Completed)
             .CountAsync(ct);
 
-        return completedCount == dependencyIds.Count;
+        return completedCount == dependencyNames.Count;
     }
 
     private async Task CheckInstanceCompletionAsync(Guid instanceId, RecipeDbContext db, CancellationToken ct)

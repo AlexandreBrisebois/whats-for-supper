@@ -168,3 +168,7 @@ Accept: application/json
 ### Get recipe import status
 GET {{baseUrl}}/api/recipes/{{recipeId}}/import
 Accept: application/json
+
+### Get consolidated import summary
+GET {{baseUrl}}/api/recipes/import-status
+Accept: application/json

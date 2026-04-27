@@ -51,10 +51,10 @@ public class WorkflowOrchestratorTests : IDisposable
     {
         // Arrange
         var yaml = @"
-id: test_workflow
+name: test_workflow
 parameters: [recipe_id]
 tasks:
-  - id: extract
+  - name: extract
     processor: ExtractRecipe
     payload: { recipe_id: ""{{recipe_id}}"" }
 ";
@@ -64,11 +64,11 @@ tasks:
         var definition = _orchestrator.GetDefinition("test_workflow");
 
         // Assert
-        Assert.Equal("test_workflow", definition.Id);
+        Assert.Equal("test_workflow", definition.Name);
         Assert.Single(definition.Parameters);
         Assert.Equal("recipe_id", definition.Parameters[0]);
         Assert.Single(definition.Tasks);
-        Assert.Equal("extract", definition.Tasks[0].Id);
+        Assert.Equal("extract", definition.Tasks[0].Name);
     }
 
     [Fact]
@@ -76,12 +76,12 @@ tasks:
     {
         // Arrange
         var yaml = @"
-id: circular
+name: circular
 tasks:
-  - id: a
+  - name: a
     depends_on: [b]
     processor: dummy
-  - id: b
+  - name: b
     depends_on: [a]
     processor: dummy
 ";
@@ -97,9 +97,9 @@ tasks:
     {
         // Arrange
         var yaml = @"
-id: missing_dep
+name: missing_dep
 tasks:
-  - id: a
+  - name: a
     depends_on: [ghost]
     processor: dummy
 ";
@@ -115,10 +115,10 @@ tasks:
     {
         // Arrange
         var yaml = @"
-id: undefined_param
+name: undefined_param
 parameters: []
 tasks:
-  - id: a
+  - name: a
     processor: dummy
     payload: { val: ""{{ghost}}"" }
 ";
@@ -134,10 +134,10 @@ tasks:
     {
         // Arrange
         var yaml = @"
-id: trigger_test
+name: trigger_test
 parameters: [required_param]
 tasks:
-  - id: a
+  - name: a
     processor: dummy
 ";
         File.WriteAllText(Path.Combine(_testRoot, "trigger_test.yaml"), yaml);
@@ -152,13 +152,13 @@ tasks:
     {
         // Arrange
         var yaml = @"
-id: recipe_import
+name: recipe_import
 parameters: [recipe_id]
 tasks:
-  - id: extract
+  - name: extract
     processor: ExtractRecipe
     payload: { recipe_id: ""{{recipe_id}}"" }
-  - id: hero
+  - name: hero
     processor: GenerateHeroImage
     depends_on: [extract]
     payload: { recipe_id: ""{{recipe_id}}"" }

@@ -65,6 +65,7 @@ public class WorkflowOrchestrator(WorkflowRootResolver rootResolver, RecipeDbCon
             {
                 TaskId = Guid.NewGuid(),
                 InstanceId = instance.Id,
+                TaskName = taskDef.Name,
                 ProcessorName = taskDef.Processor,
                 Status = taskDef.DependsOn.Any() ? TaskStatus.Waiting : TaskStatus.Pending,
                 DependsOn = taskDef.DependsOn.ToArray(),
@@ -116,16 +117,16 @@ public class WorkflowOrchestrator(WorkflowRootResolver rootResolver, RecipeDbCon
 
     private void ValidateDefinition(WorkflowDefinition definition)
     {
-        var taskIds = definition.Tasks.Select(t => t.Id).ToHashSet();
+        var taskNames = definition.Tasks.Select(t => t.Name).ToHashSet();
 
         foreach (var task in definition.Tasks)
         {
             // 1. All depends_on IDs exist
             foreach (var dependency in task.DependsOn)
             {
-                if (!taskIds.Contains(dependency))
+                if (!taskNames.Contains(dependency))
                 {
-                    throw new InvalidWorkflowException($"Task '{task.Id}' depends on non-existent task '{dependency}'");
+                    throw new InvalidWorkflowException($"Task '{task.Name}' depends on non-existent task '{dependency}'");
                 }
             }
 
@@ -152,7 +153,7 @@ public class WorkflowOrchestrator(WorkflowRootResolver rootResolver, RecipeDbCon
                     var paramName = match.Groups[1].Value.Trim();
                     if (!definedParamsSet.Contains(paramName))
                     {
-                        throw new InvalidWorkflowException($"Task '{task.Id}' uses undefined parameter '{{{{{paramName}}}}}'");
+                        throw new InvalidWorkflowException($"Task '{task.Name}' uses undefined parameter '{{{{{paramName}}}}}'");
                     }
                 }
             }
@@ -161,13 +162,13 @@ public class WorkflowOrchestrator(WorkflowRootResolver rootResolver, RecipeDbCon
 
     private void DetectCycles(WorkflowDefinition definition)
     {
-        var adj = definition.Tasks.ToDictionary(t => t.Id, t => t.DependsOn);
+        var adj = definition.Tasks.ToDictionary(t => t.Name, t => t.DependsOn);
         var visited = new HashSet<string>();
         var stack = new HashSet<string>();
 
-        foreach (var taskId in adj.Keys)
+        foreach (var taskName in adj.Keys)
         {
-            if (HasCycle(taskId, adj, visited, stack))
+            if (HasCycle(taskName, adj, visited, stack))
             {
                 throw new InvalidWorkflowException("Circular dependency detected in workflow definition.");
             }

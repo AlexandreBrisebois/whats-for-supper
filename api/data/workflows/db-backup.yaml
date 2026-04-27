@@ -1,6 +1,6 @@
-name: db-backup
+id: db-backup
 parameters: []
 tasks:
-    - name: backup
+    - id: backup
       processor: BackupDatabase
       payload: {}
