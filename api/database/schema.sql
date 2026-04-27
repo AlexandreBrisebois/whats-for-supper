@@ -1,6 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 1. Independent Tables
 CREATE TABLE family_members (
     id uuid PRIMARY KEY,
     name varchar(100) NOT NULL,
@@ -17,7 +16,6 @@ CREATE TABLE workflow_instances (
     updated_at timestamptz DEFAULT now() NOT NULL
 );
 
--- 2. Tables depending on family_members
 CREATE TABLE recipes (
     id uuid PRIMARY KEY,
     rating smallint NOT NULL,
@@ -40,7 +38,6 @@ CREATE TABLE recipes (
     CONSTRAINT recipes_rating_check CHECK (rating >= 0 AND rating <= 3)
 );
 
--- 3. Tables depending on recipes/instances
 CREATE TABLE calendar_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
@@ -75,7 +72,6 @@ CREATE TABLE workflow_tasks (
     updated_at timestamptz DEFAULT now() NOT NULL
 );
 
--- 4. Indexes
 CREATE INDEX idx_calendar_events_recipe_id ON calendar_events (recipe_id);
 CREATE INDEX idx_workflow_tasks_instance_id ON workflow_tasks (instance_id);
 CREATE INDEX idx_calendar_events_date ON calendar_events (date);
@@ -85,16 +81,15 @@ CREATE INDEX idx_recipes_added_by ON recipes (added_by) WHERE (added_by IS NOT N
 CREATE INDEX idx_recipes_created_at_desc ON recipes (created_at DESC);
 CREATE INDEX idx_recipes_discovery_lookup ON recipes (category, id) WHERE (is_discoverable = true);
 
--- 5. Views (Using count(column) to avoid psqldef count(*) stripping bug)
-CREATE VIEW vw_recipe_matches AS 
-  SELECT recipe_id, count(recipe_id) AS vote_count 
-  FROM recipe_votes 
-  WHERE vote = 1 
-  GROUP BY recipe_id;
+CREATE OR REPLACE VIEW vw_recipe_matches AS 
+SELECT recipe_id, count(recipe_id) AS vote_count 
+FROM recipe_votes 
+WHERE vote = 1 
+GROUP BY recipe_id;
 
-CREATE VIEW vw_discovery_recipes AS
- SELECT r.id, r.name, r.category, r.description, r.ingredients, r.image_count, r.difficulty, r.total_time, r.is_vegetarian, r.is_healthy_choice, r.last_cooked_date, r.created_at,
- COALESCE(v.vote_count, 0) AS vote_count
- FROM recipes r
- LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id
- WHERE r.is_discoverable = true;
+CREATE OR REPLACE VIEW vw_discovery_recipes AS
+SELECT r.id, r.name, r.category, r.description, r.ingredients, r.image_count, r.difficulty, r.total_time, r.is_vegetarian, r.is_healthy_choice, r.last_cooked_date, r.created_at,
+COALESCE(v.vote_count, 0) AS vote_count
+FROM recipes r
+LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id
+WHERE r.is_discoverable = true;

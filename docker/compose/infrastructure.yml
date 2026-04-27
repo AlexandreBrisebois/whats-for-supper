@@ -39,6 +39,28 @@ services:
     networks:
       - internal
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 18 - DB Migrations
+  # ──────────────────────────────────────────────────────────────────────────
+  migration:
+    image: whats-for-supper-db-migration
+    build:
+      context: ../../api/database
+      dockerfile: Dockerfile
+    restart: "no"
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command: >
+      -h postgres
+      -U ${POSTGRES_USER:-recipe_app}
+      ${POSTGRES_DB:-recipe_app_db}
+      -f /schema.sql
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
 networks:
   proxy:
     name: wfs-proxy

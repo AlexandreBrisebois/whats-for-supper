@@ -1,0 +1,6 @@
+id: db-restore
+parameters: []
+tasks:
+  - id: restore
+    processor: RestoreDatabase
+    payload: {}

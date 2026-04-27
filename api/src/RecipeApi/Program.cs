@@ -183,14 +183,6 @@ try
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
 
-    // ── Ensure schema is ready (Migrations handled by psqldef sidecar) ────────
-    using (var scope = app.Services.CreateScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        // await db.Database.MigrateAsync(); // Handled by psqldef
-        Log.Information("Database connected.");
-    }
-
     // ── Initialize data directories ─────────────────────────────────────────
     var recipesResolver = app.Services.GetRequiredService<RecipesRootResolver>();
     var recipesDir = recipesResolver.Root;

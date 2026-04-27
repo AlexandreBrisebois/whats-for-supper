@@ -26,7 +26,7 @@ tasks:
   default:
     desc: "Show available tasks"
     cmds:
-      - task -l
+      - task -lF
 
   # ============================================================================
   # CORE DEVELOPMENT
@@ -196,7 +196,7 @@ tasks:
 
   publish:
     desc: "🚀 Build images (local by default, set PUSH=true to push)"
-    deps: [publish:api, publish:pwa]
+    deps: [publish:migration, publish:api, publish:pwa]
     cmds:
       - |
         if [ "{{.PUSH}}" == "true" ]; then
@@ -238,6 +238,22 @@ tasks:
         {{.CACHE_FLAGS}}
         {{.PUSH_FLAG}} 
         --target production
+
+  publish:migration:
+    desc: "Build migration image"
+    vars:
+      TAG: '{{default .TAG .CLI_ARGS}}'
+      PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
+      CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
+    cmds:
+      - echo "Building migration {{.TAG}} (Push={{.PUSH | default "false"}})..."
+      - >
+        docker buildx build
+        --platform {{.PLATFORMS}}
+        -t {{.WFS_REGISTRY}}/whats-for-supper-db-migration:{{.TAG}}
+        ./api/database
+        {{.CACHE_FLAGS}}
+        {{.PUSH_FLAG}}
 
   # ============================================================================
   # RELEASE

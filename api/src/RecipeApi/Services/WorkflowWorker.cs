@@ -173,7 +173,8 @@ public class WorkflowWorker(
             .FromSqlInterpolated($@"
                 SELECT t.task_id, t.instance_id, t.processor_name, t.payload,
                        t.status, t.depends_on, t.retry_count, t.scheduled_at,
-                       t.error_message, t.stack_trace, t.created_at, t.updated_at
+                       t.error_message, t.stack_trace, t.created_at, t.updated_at, 
+                       t.result
                 FROM workflow_tasks t
                 WHERE t.status = {(int)TaskStatus.Pending}
                   AND (t.scheduled_at IS NULL OR t.scheduled_at <= {now})
