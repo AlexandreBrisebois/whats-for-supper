@@ -25,7 +25,8 @@ public class WorkflowRootResolverTests : IDisposable
         var expected = "/env/workflows";
         Environment.SetEnvironmentVariable("WORKFLOWS_ROOT", expected);
         var config = new Mock<IConfiguration>().Object;
-        var resolver = new WorkflowRootResolver(config);
+        var dataRoot = new DataRootResolver(config);
+        var resolver = new WorkflowRootResolver(dataRoot, config);
 
         // Act
         var result = resolver.Root;
@@ -44,7 +45,8 @@ public class WorkflowRootResolverTests : IDisposable
         var mockConfig = new Mock<IConfiguration>();
         mockConfig.Setup(c => c["WorkflowsRoot"]).Returns(expected);
         
-        var resolver = new WorkflowRootResolver(mockConfig.Object);
+        var dataRoot = new DataRootResolver(mockConfig.Object);
+        var resolver = new WorkflowRootResolver(dataRoot, mockConfig.Object);
 
         // Act
         var result = resolver.Root;
@@ -61,8 +63,10 @@ public class WorkflowRootResolverTests : IDisposable
         
         var mockConfig = new Mock<IConfiguration>();
         mockConfig.Setup(c => c["WorkflowsRoot"]).Returns((string?)null);
+        mockConfig.Setup(c => c["DataRoot"]).Returns("/data");
         
-        var resolver = new WorkflowRootResolver(mockConfig.Object);
+        var dataRoot = new DataRootResolver(mockConfig.Object);
+        var resolver = new WorkflowRootResolver(dataRoot, mockConfig.Object);
 
         // Act
         var result = resolver.Root;

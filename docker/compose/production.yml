@@ -9,10 +9,11 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_PROJECT_ID: ${GEMINI_PROJECT_ID}
+    ports:
+      - "${API_PORT_EXTERNAL:-9101}:9001"
     volumes:
       - ./recipes:/data/recipes
-    # We remove the local ports if Traefik is handling 80
-    ports: !reset []
 
   # ──────────────────────────────────────────────────────────────────────────
   # PWA Production Overrides
@@ -23,8 +24,8 @@ services:
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       API_INTERNAL_URL: http://api:9001
-    # We remove the local ports if Traefik is handling 80
-    ports: !reset []
+    ports:
+      - "${PWA_PORT_EXTERNAL:-9102}:3000"
 
   # ──────────────────────────────────────────────────────────────────────────
   # PostgreSQL Production Overrides
@@ -34,12 +35,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
-    ports: !reset []
+    ports:
+      - "${POSTGRES_PORT_EXTERNAL:-9103}:5432"
 
   # ──────────────────────────────────────────────────────────────────────────
   # Traefik Production Overrides
   # ──────────────────────────────────────────────────────────────────────────
   traefik:
     ports:
-      - "${TRAEFIK_HTTP_PORT:-80}:80"
-      - "${TRAEFIK_ADMIN_PORT:-8080}:8080"
+      - "${TRAEFIK_HTTP_PORT:-9100}:80"
+      - "${TRAEFIK_ADMIN_PORT:-9180}:8080"

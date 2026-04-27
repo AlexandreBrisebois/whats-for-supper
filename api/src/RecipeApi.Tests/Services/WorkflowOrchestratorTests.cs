@@ -31,7 +31,8 @@ public class WorkflowOrchestratorTests : IDisposable
         // Override environment variable for testing
         Environment.SetEnvironmentVariable("WORKFLOWS_ROOT", _testRoot);
         
-        var rootResolver = new WorkflowRootResolver(mockConfig.Object);
+        var dataRootResolver = new DataRootResolver(mockConfig.Object);
+        var rootResolver = new WorkflowRootResolver(dataRootResolver, mockConfig.Object);
         _dbContext = TestDbContextFactory.Create();
         _orchestrator = new WorkflowOrchestrator(rootResolver, _dbContext);
     }

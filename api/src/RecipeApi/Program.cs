@@ -75,6 +75,7 @@ try
     builder.Services.AddOpenApi();
 
     // ── Application services ─────────────────────────────────────────────────
+    builder.Services.AddSingleton<DataRootResolver>();
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
     builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();

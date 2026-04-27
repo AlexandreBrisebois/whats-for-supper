@@ -28,7 +28,8 @@ public class ExtractRecipeProcessorTests : IDisposable
         
         // Ensure env var doesn't override configuration
         Environment.SetEnvironmentVariable("RECIPES_ROOT", null);
-        var recipesRootResolver = new RecipesRootResolver(mockConfig.Object);
+        var dataRootResolver = new DataRootResolver(mockConfig.Object);
+        var recipesRootResolver = new RecipesRootResolver(dataRootResolver, mockConfig.Object);
 
         _agent = new RecipeAgent(
             _chatClientMock.Object,

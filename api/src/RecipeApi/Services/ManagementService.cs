@@ -10,9 +10,11 @@ namespace RecipeApi.Services;
 public class ManagementService(
     RecipeDbContext db,
     RecipesRootResolver recipesRoot,
+    DataRootResolver dataRoot,
     ILogger<ManagementService> logger)
 {
     private string RecipesRoot => recipesRoot.Root;
+    private string DataRoot => dataRoot.Root;
 
     public async Task BackupAsync()
     {
@@ -117,7 +119,7 @@ public class ManagementService(
         }
 
         // 1. Restore Family Members
-        var membersPath = Path.Combine(root, "family-members.json");
+        var membersPath = Path.Combine(DataRoot, "family-members.json");
         if (File.Exists(membersPath))
         {
             var json3 = await File.ReadAllTextAsync(membersPath, ct);
@@ -353,7 +355,7 @@ public class ManagementService(
 
         if (!Directory.Exists(root)) return result;
 
-        var membersPath = Path.Combine(root, "family-members.json");
+        var membersPath = Path.Combine(DataRoot, "family-members.json");
         List<FamilyMember> existingMembers = [];
         if (File.Exists(membersPath))
         {
@@ -407,7 +409,7 @@ public class ManagementService(
         var root = RecipesRoot;
         if (!Directory.Exists(root)) Directory.CreateDirectory(root);
 
-        var membersPath = Path.Combine(root, "family-members.json");
+        var membersPath = Path.Combine(DataRoot, "family-members.json");
         List<FamilyMember> existingMembers = [];
         if (File.Exists(membersPath))
         {

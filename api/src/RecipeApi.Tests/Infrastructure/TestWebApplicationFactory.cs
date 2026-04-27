@@ -71,7 +71,9 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipeService>();
         // builder.Services.AddScoped<RecipeImportService>();
 
+        builder.Services.AddSingleton<DataRootResolver>();
         builder.Services.AddSingleton<RecipesRootResolver>();
+        builder.Services.AddSingleton<WorkflowRootResolver>();
 
         builder.Services.AddDbContext<RecipeDbContext>(opts =>
             opts.UseInMemoryDatabase(_dbName));

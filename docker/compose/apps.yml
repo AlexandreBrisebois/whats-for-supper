@@ -13,17 +13,14 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:9001
       CORS__ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost,http://localhost:3000}
-      RECIPES_ROOT: /data/recipes
-      WORKFLOWS_ROOT: /data/workflows
 
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_PROJECT_ID: ${GEMINI_PROJECT_ID:-}
       AgentSettings__Endpoint: ${OLLAMA_API_ENDPOINT:-http://host.docker.internal:11434/v1}
       AgentSettings__ModelId: ${OLLAMA_MODEL_ID:-gemma4:e4b}
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ${DATA_VOLUME_SOURCE:-../../data}:/data
 
     networks:
       - proxy
@@ -31,9 +28,9 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.api-container.rule=Host(`${API_HOST:-api.wfs.localhost}`)"
-      - "traefik.http.routers.api-container.entrypoints=web"
-      - "traefik.http.services.api-container.loadbalancer.server.port=9001"
+      - "traefik.http.routers.api.rule=Host(`${API_HOST:-api.wfs.localhost}`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=9001"
 
   # ──────────────────────────────────────────────────────────────────────────
   # Next.js 15 PWA
@@ -54,9 +51,15 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.pwa-container.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`)"
-      - "traefik.http.routers.pwa-container.entrypoints=web"
-      - "traefik.http.services.pwa-container.loadbalancer.server.port=3000"
+      - "traefik.http.routers.pwa.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`)"
+      - "traefik.http.routers.pwa.entrypoints=web"
+      - "traefik.http.services.pwa.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
 
 networks:
   proxy:

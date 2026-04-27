@@ -28,7 +28,8 @@ public class SyncRecipeProcessorTests : IDisposable
         
         var mockConfig = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
         mockConfig.Setup(c => c["RecipesRoot"]).Returns(_testRoot);
-        var recipesRootResolver = new RecipesRootResolver(mockConfig.Object);
+        var dataRootResolver = new DataRootResolver(mockConfig.Object);
+        var recipesRootResolver = new RecipesRootResolver(dataRootResolver, mockConfig.Object);
         // Ensure env var doesn't override configuration
         Environment.SetEnvironmentVariable("RECIPES_ROOT", null);
 

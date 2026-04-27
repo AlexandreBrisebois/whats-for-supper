@@ -517,7 +517,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         _db.SaveChanges();
 
         // Verify: Task A is in database and pending
-        var preTask = _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId).Result;
+        var preTask = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId);
         Assert.NotNull(preTask);
         Assert.Equal(TaskStatus.Pending, preTask.Status);
 
@@ -532,11 +532,11 @@ public class WorkflowWorkerTests : IAsyncLifetime
         _db.ChangeTracker.Clear();
 
         // Assert: Task A should be completed
-        var resultA = _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId).Result;
+        var resultA = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId);
         Assert.Equal(TaskStatus.Completed, resultA.Status);
 
         // Assert: Task B should be promoted to Pending
-        var resultB = _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskBId).Result;
+        var resultB = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskBId);
         Assert.Equal(TaskStatus.Pending, resultB.Status);
     }
 
