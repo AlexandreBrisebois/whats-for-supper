@@ -43,13 +43,14 @@ services:
   # PostgreSQL 18 - DB Migrations
   # ──────────────────────────────────────────────────────────────────────────
   migration:
-    image: whats-for-supper-db-migration
+    container_name: whats-for-supper-migration
+    image: whats-for-supper-db-migration:latest
     build:
       context: ../../api/database
       dockerfile: Dockerfile
     restart: "no"
     environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-secure_dev_password}
     command: >
       -h postgres
       -U ${POSTGRES_USER:-recipe_app}
@@ -58,6 +59,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+        required: true
     networks:
       - internal
 
