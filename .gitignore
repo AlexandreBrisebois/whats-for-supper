@@ -95,4 +95,5 @@ pwa/e2e-screenshots
 
 # Local data mounts
 /data
+docker/compose/data/
 api/appsettings.Development.json
