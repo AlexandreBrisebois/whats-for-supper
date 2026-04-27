@@ -1,6 +1,6 @@
 id: db-disaster-recovery
 parameters: []
 tasks:
-  - id: disaster_recovery
-    processor: DisasterRecovery
-    payload: {}
+    - id: disaster_recovery
+      processor: DisasterRecovery
+      payload: {}

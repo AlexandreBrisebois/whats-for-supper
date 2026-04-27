@@ -1,6 +1,7 @@
 # Planner Voting Feature - Implementation Summary
 
 ## Overview
+
 Successfully implemented the voting feature for the weekly meal planner that tracks family consensus on recipes and persists vote counts for history and data mining.
 
 **Implementation Date**: 2026-04-23  
@@ -13,6 +14,7 @@ Successfully implemented the voting feature for the weekly meal planner that tra
 ### 1. Model Updates
 
 #### CalendarEvent.cs
+
 - **Added**: `public int? VoteCount { get; set; }`
 - **Purpose**: Persists vote count from family voting to track consensus per week
 - **Nullable**: Yes (null before voting, number after voting closes)
@@ -20,6 +22,7 @@ Successfully implemented the voting feature for the weekly meal planner that tra
 ### 2. DTO Updates
 
 #### ScheduleDays.cs - ScheduleRecipeDto
+
 - **Added**: `int? VoteCount = null` parameter
 - **Purpose**: Return vote counts to planner UI during and after voting phases
 - **Default**: null (optional parameter)
@@ -29,10 +32,12 @@ Successfully implemented the voting feature for the weekly meal planner that tra
 #### ScheduleService.cs
 
 **GetScheduleAsync()**
+
 - Updated to pass `VoteCount` from CalendarEvent to ScheduleRecipeDto
 - Now includes vote counts in planner response after voting closes
 
 **LockScheduleAsync()**
+
 - Enhanced to persist vote counts before clearing votes
 - Queries RecipeVotes grouped by recipe
 - Counts "Like" votes only (consensus metric)
@@ -42,6 +47,7 @@ Successfully implemented the voting feature for the weekly meal planner that tra
 ### 4. Database Migration
 
 #### Migration: 20260423160000_AddVoteCountToCalendarEvent
+
 - Adds `vote_count INT NULL` column to `calendar_events` table
 - Creates index on `vote_count` for data mining queries
 - Reversible (down migration removes column and index)
@@ -53,31 +59,32 @@ Successfully implemented the voting feature for the weekly meal planner that tra
 ### New Tests (All Passing ✅)
 
 1. **LockScheduleAsync_PersistsVoteCount_WhenVotesExist**
-   - Verifies vote counts are persisted to CalendarEvent when locking
-   - Setup: 3 family member votes
-   - Assert: CalendarEvent.VoteCount == 3
+    - Verifies vote counts are persisted to CalendarEvent when locking
+    - Setup: 3 family member votes
+    - Assert: CalendarEvent.VoteCount == 3
 
 2. **LockScheduleAsync_ClearsRecipeVotes_AfterPersistingVoteCount**
-   - Verifies RecipeVotes table is cleared after persisting
-   - Setup: 2 family member votes
-   - Assert: RecipeVotes.Count() == 0 after locking
+    - Verifies RecipeVotes table is cleared after persisting
+    - Setup: 2 family member votes
+    - Assert: RecipeVotes.Count() == 0 after locking
 
 3. **GetSmartDefaultsAsync_IncludesVoteCount_FromRecipeVotes**
-   - Verifies smart defaults show real-time vote counts during voting
-   - Setup: 2 family member votes on recipe
-   - Assert: PreSelectedRecipeDto.VoteCount == 2
+    - Verifies smart defaults show real-time vote counts during voting
+    - Setup: 2 family member votes on recipe
+    - Assert: PreSelectedRecipeDto.VoteCount == 2
 
 4. **GetSmartDefaultsAsync_MarksUnanimous_WhenAllFamilyMembersVote**
-   - Verifies unanimous recipes are marked correctly
-   - Setup: All 3 family members vote for recipe
-   - Assert: UnanimousVote == true, VoteCount == FamilySize
+    - Verifies unanimous recipes are marked correctly
+    - Setup: All 3 family members vote for recipe
+    - Assert: UnanimousVote == true, VoteCount == FamilySize
 
 5. **GetScheduleAsync_ReturnsVoteCount_FromCalendarEvent_AfterVotingClosed**
-   - Verifies vote counts are returned from CalendarEvent after voting
-   - Setup: CalendarEvent with Locked status and VoteCount = 4
-   - Assert: VoteCount is available in response
+    - Verifies vote counts are returned from CalendarEvent after voting
+    - Setup: CalendarEvent with Locked status and VoteCount = 4
+    - Assert: VoteCount is available in response
 
 ### Overall Test Results
+
 - **Total Tests**: 89
 - **Passed**: 89 ✅
 - **Failed**: 0
@@ -88,8 +95,9 @@ Successfully implemented the voting feature for the weekly meal planner that tra
 ## Data Flow
 
 ### During Voting Phase
+
 ```
-Family votes in Discovery UI 
+Family votes in Discovery UI
   ↓
 RecipeVotes table (accumulated)
   ↓
@@ -99,6 +107,7 @@ Planner shows live vote counts
 ```
 
 ### When Voting Ends (LockScheduleAsync)
+
 ```
 RecipeVotes grouped by recipe
   ↓
@@ -112,6 +121,7 @@ Planner shows persisted vote counts (historical)
 ```
 
 ### After Voting Closed
+
 ```
 GetScheduleAsync reads CalendarEvent.VoteCount
   ↓
@@ -149,17 +159,20 @@ Available for data mining queries
 ## Future Work
 
 ### Immediate (Phase 2)
+
 - [ ] Enhance DiscoveryService to filter out already-planned recipes during voting
 - [ ] Add weekOffset parameter to GetRecipesForDiscoveryAsync
 - [ ] Implement voting reopening for open slots only
 - [ ] Update discovery controller to pass week context
 
 ### Data Mining (Phase 3)
+
 - [ ] Create analytics queries for most-voted recipes per week
 - [ ] Build family preference insights dashboard
 - [ ] Track voting trends over time
 
 ### UI (Phase 3)
+
 - [ ] Display vote count badges on recipe cards in planner
 - [ ] Green indicator for unanimous votes
 - [ ] Show "last week's consensus" in historical view
@@ -173,4 +186,3 @@ Available for data mining queries
 - Only "Like" votes (VoteType.Like) count toward consensus
 - The schema supports nullable VoteCount to distinguish voting states
 - All existing tests continue to pass (backward compatible)
-
