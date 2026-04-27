@@ -8,6 +8,9 @@ public class WorkflowTaskDto
     [JsonPropertyName("taskId")]
     public Guid TaskId { get; set; }
 
+    [JsonPropertyName("taskName")]
+    public string TaskName { get; set; } = string.Empty;
+
     [JsonPropertyName("processorName")]
     public string ProcessorName { get; set; } = string.Empty;
 
@@ -35,6 +38,7 @@ public class WorkflowTaskDto
     public static WorkflowTaskDto FromModel(WorkflowTask task) => new()
     {
         TaskId = task.TaskId,
+        TaskName = task.TaskName,
         ProcessorName = task.ProcessorName,
         Status = task.Status.ToString(),
         DependsOn = task.DependsOn?.Length > 0 ? task.DependsOn : null,

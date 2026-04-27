@@ -217,6 +217,7 @@ tasks:
         docker buildx build 
         --platform {{.PLATFORMS}} 
         -t {{.WFS_REGISTRY}}/whats-for-supper-api:{{.TAG}} 
+        -t {{.WFS_REGISTRY}}/whats-for-supper-api:latest 
         ./api 
         {{.CACHE_FLAGS}}
         {{.PUSH_FLAG}} 
@@ -234,6 +235,7 @@ tasks:
         docker buildx build 
         --platform {{.PLATFORMS}} 
         -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:{{.TAG}} 
+        -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:latest 
         ./pwa 
         {{.CACHE_FLAGS}}
         {{.PUSH_FLAG}} 
@@ -251,6 +253,7 @@ tasks:
         docker buildx build
         --platform {{.PLATFORMS}}
         -t {{.WFS_REGISTRY}}/whats-for-supper-db-migration:{{.TAG}}
+        -t {{.WFS_REGISTRY}}/whats-for-supper-db-migration:latest
         ./api/database
         {{.CACHE_FLAGS}}
         {{.PUSH_FLAG}}

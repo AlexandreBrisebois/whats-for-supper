@@ -171,7 +171,7 @@ public class WorkflowWorker(
         // PostgreSQL-specific query using raw SQL with FOR UPDATE SKIP LOCKED
         return await db.WorkflowTasks
             .FromSqlInterpolated($@"
-                SELECT t.task_id, t.instance_id, t.processor_name, t.payload,
+                SELECT t.task_id, t.instance_id, t.task_name, t.processor_name, t.payload,
                        t.status, t.depends_on, t.retry_count, t.scheduled_at,
                        t.error_message, t.stack_trace, t.created_at, t.updated_at, 
                        t.result
