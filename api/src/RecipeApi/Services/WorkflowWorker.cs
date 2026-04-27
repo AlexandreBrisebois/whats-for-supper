@@ -341,7 +341,7 @@ public class WorkflowWorker(
                     task.Status = TaskStatus.Pending;
                     task.UpdatedAt = DateTimeOffset.UtcNow;
                     anyChanges = true;
-                    logger.LogInformation("Promoted task {TaskId} ({TaskName}) from Waiting to Pending", 
+                    logger.LogInformation("Promoted task {TaskId} ({TaskName}) from Waiting to Pending",
                         task.TaskId, task.TaskName);
                 }
             }
@@ -349,9 +349,9 @@ public class WorkflowWorker(
             // 2. Check instance completion
             // The instance is completed if no tasks are in a "doing" state (Waiting, Pending, Processing).
             // IMPORTANT: We only mark as Completed if there are no Failed tasks.
-            var hasActiveTasks = allTasks.Any(t => 
-                t.Status == TaskStatus.Waiting || 
-                t.Status == TaskStatus.Pending || 
+            var hasActiveTasks = allTasks.Any(t =>
+                t.Status == TaskStatus.Waiting ||
+                t.Status == TaskStatus.Pending ||
                 t.Status == TaskStatus.Processing);
 
             var hasFailedTasks = allTasks.Any(t => t.Status == TaskStatus.Failed);
@@ -362,7 +362,7 @@ public class WorkflowWorker(
                 if (instance != null)
                 {
                     var targetStatus = hasFailedTasks ? WorkflowStatus.Failed : WorkflowStatus.Completed;
-                    
+
                     if (instance.Status != targetStatus && instance.Status != WorkflowStatus.Paused)
                     {
                         instance.Status = targetStatus;

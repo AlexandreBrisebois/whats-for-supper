@@ -8,3 +8,17 @@ repos:
         entry: python3 scripts/agent/drift.py --schema-only
         files: ^(specs/openapi\.yaml|api/src/RecipeApi/Dto/.+\.cs)$
         pass_filenames: false
+
+      - id: api-review
+        name: API Review (Lint & Test)
+        language: system
+        entry: bash -c "cd api && dotnet format --verify-no-changes && dotnet test"
+        files: ^api/
+        pass_filenames: false
+
+      - id: pwa-review
+        name: PWA Review (Lint, Typecheck & Test)
+        language: system
+        entry: bash -c "cd pwa && npm run lint && npm run typecheck && npm run test"
+        files: ^pwa/
+        pass_filenames: false

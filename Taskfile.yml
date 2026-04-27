@@ -612,13 +612,8 @@ tasks:
   hooks:install:
     desc: "Install git pre-commit hook"
     cmds:
-      - mkdir -p .git/hooks
-      - cp tools/hooks/pre-commit .git/hooks/pre-commit
-      - chmod +x .git/hooks/pre-commit
-      - echo "✓ Pre-commit hook installed and executable"
-    status:
-      - test -f .git/hooks/pre-commit
-      - diff tools/hooks/pre-commit .git/hooks/pre-commit
+      - pre-commit install
+      - echo "✓ Pre-commit hooks installed via pre-commit framework"
 
   # ============================================================================
   # DOCUMENTATION
