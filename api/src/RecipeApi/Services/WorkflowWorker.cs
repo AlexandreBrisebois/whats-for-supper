@@ -258,9 +258,8 @@ public class WorkflowWorker(
             task.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
 
-            // Promote dependent tasks and check instance completion (atomic)
-            await PromoteDependentTasksAsync(task, db, ct);
-            await CheckInstanceCompletionAsync(task.InstanceId, db, ct);
+            // Handle promotion and completion in a single consolidated step
+            await HandleTaskCompletionAsync(task.InstanceId, db, ct);
 
             logger.LogInformation("Completed task {TaskId} with processor {ProcessorName}",
                 task.TaskId, task.ProcessorName);
@@ -313,95 +312,75 @@ public class WorkflowWorker(
         }
     }
 
-    private async Task PromoteDependentTasksAsync(WorkflowTask completedTask, RecipeDbContext db, CancellationToken ct)
+    private async Task HandleTaskCompletionAsync(Guid instanceId, RecipeDbContext db, CancellationToken ct)
     {
         try
         {
-            // Find all tasks in the same instance that have this task's logical TaskName as a dependency
-            var completedTaskName = completedTask.TaskName;
-            var dependentTasks = await db.WorkflowTasks
-                .Where(t => t.InstanceId == completedTask.InstanceId &&
-                           t.DependsOn.Any(d => d == completedTaskName) &&
-                           t.Status == TaskStatus.Waiting)
+            // Fetch all tasks for this instance to perform promotion and completion logic in memory.
+            // This avoids complex EF Core translations for array properties and potential race conditions
+            // in parallel execution. Since workflows typically have < 100 tasks, this is efficient.
+            var allTasks = await db.WorkflowTasks
+                .Where(t => t.InstanceId == instanceId)
                 .ToListAsync(ct);
 
-            foreach (var dependentTask in dependentTasks)
-            {
-                // Check if all dependencies of this task are completed
-                var allDependenciesCompleted = await CheckAllDependenciesCompletedAsync(
-                    dependentTask, db, ct);
+            var waitingTasks = allTasks.Where(t => t.Status == TaskStatus.Waiting).ToList();
+            var completedTaskNames = allTasks
+                .Where(t => t.Status == TaskStatus.Completed)
+                .Select(t => t.TaskName)
+                .ToHashSet();
 
-                if (allDependenciesCompleted)
+            var anyChanges = false;
+
+            // 1. Promote dependents
+            foreach (var task in waitingTasks)
+            {
+                // A task can be promoted to Pending if all its dependencies are in the Completed set.
+                // If it has no dependencies (DependsOn is empty), All() returns true.
+                if (task.DependsOn.All(d => completedTaskNames.Contains(d)))
                 {
-                    dependentTask.Status = TaskStatus.Pending;
-                    dependentTask.UpdatedAt = DateTimeOffset.UtcNow;
-                    logger.LogInformation(
-                        "Promoted task {TaskId} from Waiting to Pending (dependencies satisfied)",
-                        dependentTask.TaskId);
+                    task.Status = TaskStatus.Pending;
+                    task.UpdatedAt = DateTimeOffset.UtcNow;
+                    anyChanges = true;
+                    logger.LogInformation("Promoted task {TaskId} ({TaskName}) from Waiting to Pending", 
+                        task.TaskId, task.TaskName);
                 }
             }
 
-            if (dependentTasks.Any())
+            // 2. Check instance completion
+            // The instance is completed if no tasks are in a "doing" state (Waiting, Pending, Processing).
+            // IMPORTANT: We only mark as Completed if there are no Failed tasks.
+            var hasActiveTasks = allTasks.Any(t => 
+                t.Status == TaskStatus.Waiting || 
+                t.Status == TaskStatus.Pending || 
+                t.Status == TaskStatus.Processing);
+
+            var hasFailedTasks = allTasks.Any(t => t.Status == TaskStatus.Failed);
+
+            if (!hasActiveTasks)
+            {
+                var instance = await db.WorkflowInstances.FindAsync([instanceId], ct);
+                if (instance != null)
+                {
+                    var targetStatus = hasFailedTasks ? WorkflowStatus.Failed : WorkflowStatus.Completed;
+                    
+                    if (instance.Status != targetStatus && instance.Status != WorkflowStatus.Paused)
+                    {
+                        instance.Status = targetStatus;
+                        instance.UpdatedAt = DateTimeOffset.UtcNow;
+                        anyChanges = true;
+                        logger.LogInformation("Workflow instance {InstanceId} marked as {Status}", instanceId, targetStatus);
+                    }
+                }
+            }
+
+            if (anyChanges)
             {
                 await db.SaveChangesAsync(ct);
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error promoting dependent tasks for task {TaskId}",
-                completedTask.TaskId);
-        }
-    }
-
-    private async Task<bool> CheckAllDependenciesCompletedAsync(
-        WorkflowTask task, RecipeDbContext db, CancellationToken ct)
-    {
-        if (task.DependsOn.Length == 0)
-            return true;
-
-        // Get all dependency logical names
-        var dependencyNames = task.DependsOn.ToList();
-
-        // Check if all are completed by matching their TaskName
-        var completedCount = await db.WorkflowTasks
-            .Where(t => t.InstanceId == task.InstanceId &&
-                       dependencyNames.Contains(t.TaskName) &&
-                       t.Status == TaskStatus.Completed)
-            .CountAsync(ct);
-
-        return completedCount == dependencyNames.Count;
-    }
-
-    private async Task CheckInstanceCompletionAsync(Guid instanceId, RecipeDbContext db, CancellationToken ct)
-    {
-        try
-        {
-            // Check if there are any incomplete tasks
-            var incompleteCount = await db.WorkflowTasks
-                .Where(t => t.InstanceId == instanceId &&
-                           (t.Status == TaskStatus.Waiting ||
-                            t.Status == TaskStatus.Pending ||
-                            t.Status == TaskStatus.Processing))
-                .CountAsync(ct);
-
-            if (incompleteCount == 0)
-            {
-                // All tasks are either Completed or Failed
-                var instance = await db.WorkflowInstances
-                    .FirstOrDefaultAsync(i => i.Id == instanceId, ct);
-
-                if (instance != null && instance.Status != WorkflowStatus.Completed)
-                {
-                    instance.Status = WorkflowStatus.Completed;
-                    instance.UpdatedAt = DateTimeOffset.UtcNow;
-                    await db.SaveChangesAsync(ct);
-                    logger.LogInformation("Workflow instance {InstanceId} marked as Completed", instanceId);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error checking instance completion for {InstanceId}", instanceId);
+            logger.LogError(ex, "Error handling task completion for instance {InstanceId}", instanceId);
         }
     }
 

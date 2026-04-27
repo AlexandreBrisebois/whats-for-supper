@@ -109,6 +109,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = taskId,
             InstanceId = instance.Id,
+            TaskName = "extract",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             ScheduledAt = now.AddSeconds(-1),
@@ -153,6 +154,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             {
                 TaskId = Guid.NewGuid(),
                 InstanceId = instance.Id,
+                TaskName = $"extract_{i}",
                 ProcessorName = "ExtractRecipe",
                 Status = TaskStatus.Pending,
                 ScheduledAt = DateTimeOffset.UtcNow.AddSeconds(-1),
@@ -203,6 +205,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             {
                 TaskId = Guid.NewGuid(),
                 InstanceId = instance.Id,
+                TaskName = $"extract_{i}",
                 ProcessorName = "ExtractRecipe",
                 Status = TaskStatus.Pending,
                 ScheduledAt = DateTimeOffset.UtcNow.AddSeconds(-1),
@@ -243,6 +246,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "future_task",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             ScheduledAt = DateTimeOffset.UtcNow.AddSeconds(10),
@@ -323,6 +327,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "extract",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             ScheduledAt = now.AddSeconds(-1),
@@ -433,6 +438,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "extract",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             ScheduledAt = now.AddSeconds(-1),
@@ -490,6 +496,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = taskAId,
             InstanceId = instance.Id,
+            TaskName = "A",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             DependsOn = [],
@@ -503,9 +510,10 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = taskBId,
             InstanceId = instance.Id,
+            TaskName = "B",
             ProcessorName = "GenerateHero",
             Status = TaskStatus.Waiting,
-            DependsOn = [taskAId.ToString()],
+            DependsOn = ["A"],
             ScheduledAt = now.AddSeconds(-10),
             Instance = instance,
             CreatedAt = now,
@@ -559,6 +567,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "A",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             DependsOn = [],
@@ -572,9 +581,10 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "B",
             ProcessorName = "GenerateHero",
             Status = TaskStatus.Waiting,
-            DependsOn = [taskA.TaskId.ToString()],
+            DependsOn = ["A"],
             ScheduledAt = now.AddSeconds(-1),
             Instance = instance,
             CreatedAt = now,
@@ -585,9 +595,10 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "C",
             ProcessorName = "SyncRecipe",
             Status = TaskStatus.Waiting,
-            DependsOn = [taskB.TaskId.ToString()],
+            DependsOn = ["B"],
             ScheduledAt = now.AddSeconds(-1),
             Instance = instance,
             CreatedAt = now,
@@ -601,7 +612,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var savedTaskB = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskB.TaskId);
         Assert.Equal(TaskStatus.Waiting, savedTaskB.Status);
         Assert.Single(savedTaskB.DependsOn);
-        Assert.Equal(taskA.TaskId.ToString(), savedTaskB.DependsOn[0]);
+        Assert.Equal("A", savedTaskB.DependsOn[0]);
 
         // Act: Process task A (this should trigger promotion of B)
         await _worker.ProcessPendingTasksAsync(_cts.Token);
@@ -656,6 +667,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "A",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             DependsOn = [],
@@ -669,9 +681,10 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "B",
             ProcessorName = "GenerateHero",
             Status = TaskStatus.Waiting,
-            DependsOn = [taskA.TaskId.ToString()],
+            DependsOn = ["A"],
             ScheduledAt = now.AddSeconds(-1),
             Instance = instance,
             CreatedAt = now,
@@ -682,9 +695,10 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "C",
             ProcessorName = "SyncRecipe",
             Status = TaskStatus.Waiting,
-            DependsOn = [taskA.TaskId.ToString()],
+            DependsOn = ["A"],
             ScheduledAt = now.AddSeconds(-1),
             Instance = instance,
             CreatedAt = now,
@@ -695,9 +709,10 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
+            TaskName = "D",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Waiting,
-            DependsOn = [taskB.TaskId.ToString(), taskC.TaskId.ToString()],
+            DependsOn = ["B", "C"],
             ScheduledAt = now.AddSeconds(-1),
             Instance = instance,
             CreatedAt = now,
