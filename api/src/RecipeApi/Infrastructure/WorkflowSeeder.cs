@@ -10,7 +10,7 @@ public static class WorkflowSeeder
         {
             // Core workflows are bundled in the "Workflows" directory in the output
             var sourceDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "src", "RecipeApi", "Workflows");
-            
+
             // Fallback for different build environments (e.g. if it's just "Workflows" at the root of the output)
             if (!Directory.Exists(sourceDir))
             {

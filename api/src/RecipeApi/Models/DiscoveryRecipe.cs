@@ -30,7 +30,7 @@ public class DiscoveryRecipe
 
     [Column("total_time")]
     public string? TotalTime { get; set; }
-    
+
     [Column("is_vegetarian")]
     public bool IsVegetarian { get; set; } = false;
 
