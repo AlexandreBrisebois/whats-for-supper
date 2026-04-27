@@ -21,6 +21,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migration:
+        condition: service_completed_successfully
 
     networks:
       - proxy
@@ -31,6 +33,27 @@ services:
       - "traefik.http.routers.api.rule=Host(`${API_HOST:-api.wfs.localhost}`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.services.api.loadbalancer.server.port=9001"
+ 
+  # ──────────────────────────────────────────────────────────────────────────
+  # Database Migrations (psqldef)
+  # ──────────────────────────────────────────────────────────────────────────
+  migration:
+    container_name: whats-for-supper-migration
+    image: sqldef/psqldef:latest
+    volumes:
+      - ../../api/database/schema.sql:/schema.sql:ro
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD:-secure_dev_password}
+    command: >
+      -h postgres 
+      -U ${POSTGRES_USER:-recipe_app} 
+      ${POSTGRES_DB:-recipe_app_db} 
+      -f /schema.sql
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
 
   # ──────────────────────────────────────────────────────────────────────────
   # Next.js 15 PWA

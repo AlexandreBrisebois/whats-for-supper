@@ -10,6 +10,6 @@ public class RecipeMatch
     [Column("recipe_id")]
     public Guid RecipeId { get; set; }
 
-    [Column("like_count")]
+    [Column("vote_count")]
     public int LikeCount { get; set; }
 }

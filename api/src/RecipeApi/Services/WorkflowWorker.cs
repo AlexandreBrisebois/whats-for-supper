@@ -19,6 +19,9 @@ public class WorkflowWorker(
     private readonly Dictionary<string, SemaphoreSlim> _processorThrottles = [];
     private volatile bool _initialized = false;
     private int _maxRetries = 3;
+    private int _idleCount = 0;
+    private const int MinDelayMs = 500;
+    private const int MaxDelayMs = 60_000;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -35,9 +38,19 @@ public class WorkflowWorker(
         {
             try
             {
-                await ProcessPendingTasks(stoppingToken);
-                // Poll every 500ms for new tasks
-                await Task.Delay(500, stoppingToken);
+                var taskCount = await ProcessPendingTasks(stoppingToken);
+
+                if (taskCount > 0)
+                {
+                    _idleCount = 0;
+                    await Task.Delay(MinDelayMs, stoppingToken);
+                }
+                else
+                {
+                    _idleCount++;
+                    var delay = (int)Math.Min(MinDelayMs * Math.Pow(2, _idleCount), MaxDelayMs);
+                    await Task.Delay(delay, stoppingToken);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -83,9 +96,9 @@ public class WorkflowWorker(
     }
 
     // Public method for testing
-    public async Task ProcessPendingTasksAsync(CancellationToken ct)
+    public async Task<int> ProcessPendingTasksAsync(CancellationToken ct)
     {
-        await ProcessPendingTasks(ct);
+        return await ProcessPendingTasks(ct);
     }
 
     private SemaphoreSlim GetOrCreateThrottle(string processorName)
@@ -102,7 +115,7 @@ public class WorkflowWorker(
         return defaultThrottle;
     }
 
-    private async Task ProcessPendingTasks(CancellationToken ct)
+    private async Task<int> ProcessPendingTasks(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var services = scope.ServiceProvider;
@@ -134,7 +147,7 @@ public class WorkflowWorker(
         if (!pendingTasks.Any())
         {
             logger.LogTrace("No pending tasks found at {Now}", now);
-            return;
+            return 0;
         }
 
         logger.LogInformation("Picked up {TaskCount} pending tasks", pendingTasks.Count);
@@ -148,6 +161,8 @@ public class WorkflowWorker(
 
         // Wait for all executions to complete
         await Task.WhenAll(executionTasks);
+
+        return pendingTasks.Count;
     }
 
     private static async Task<List<WorkflowTask>> QueryWithSkipLocked(
@@ -156,13 +171,13 @@ public class WorkflowWorker(
         // PostgreSQL-specific query using raw SQL with FOR UPDATE SKIP LOCKED
         return await db.WorkflowTasks
             .FromSqlInterpolated($@"
-                SELECT t.""TaskId"", t.""InstanceId"", t.""ProcessorName"", t.""Payload"",
-                       t.""Status"", t.""DependsOn"", t.""RetryCount"", t.""ScheduledAt"",
-                       t.""ErrorMessage"", t.""StackTrace"", t.""CreatedAt"", t.""UpdatedAt""
-                FROM ""workflow_tasks"" t
-                WHERE t.""Status"" = {(int)TaskStatus.Pending}
-                  AND (t.""ScheduledAt"" IS NULL OR t.""ScheduledAt"" <= {now})
-                ORDER BY t.""ScheduledAt"" ASC
+                SELECT t.task_id, t.instance_id, t.processor_name, t.payload,
+                       t.status, t.depends_on, t.retry_count, t.scheduled_at,
+                       t.error_message, t.stack_trace, t.created_at, t.updated_at
+                FROM workflow_tasks t
+                WHERE t.status = {(int)TaskStatus.Pending}
+                  AND (t.scheduled_at IS NULL OR t.scheduled_at <= {now})
+                ORDER BY t.scheduled_at ASC
                 LIMIT 10
                 FOR UPDATE SKIP LOCKED")
             .Include(t => t.Instance)

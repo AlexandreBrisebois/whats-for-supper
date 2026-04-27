@@ -79,14 +79,12 @@ try
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
     builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
+    builder.Services.AddScoped<ManagementService>();
     builder.Services.AddScoped<RecipeImportBulkService>();
 
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
-    builder.Services.AddScoped<ManagementService>();
-    builder.Services.AddSingleton<ManagementTaskStore>();
-    builder.Services.AddHostedService<ManagementWorker>();
     builder.Services.AddScoped<RecipeHeroAgent>();
     builder.Services.AddScoped<RecipeAgent>();
     builder.Services.AddScoped<SyncRecipeProcessor>();
@@ -112,7 +110,15 @@ try
 
     builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddScoped<ScheduleService>();
-    // builder.Services.AddHostedService<RecipeImportWorker>();
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       "BackupDatabase"));
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       "RestoreDatabase"));
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       "DisasterRecovery"));
 
     builder.Services.AddHostedService<WorkflowWorker>();
 
@@ -176,13 +182,12 @@ try
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
 
-    // ── Ensure schema exists on startup ──────────────────────────────────────
+    // ── Ensure schema is ready (Migrations handled by psqldef sidecar) ────────
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        Log.Information("Applying database migrations...");
-        await db.Database.MigrateAsync();
-        Log.Information("Database ready.");
+        // await db.Database.MigrateAsync(); // Handled by psqldef
+        Log.Information("Database connected.");
     }
 
     // ── Initialize data directories ─────────────────────────────────────────
@@ -193,60 +198,7 @@ try
 
     var workflowResolver = app.Services.GetRequiredService<WorkflowRootResolver>();
     var workflowsDir = workflowResolver.Root;
-    Directory.CreateDirectory(workflowsDir);
-    Log.Information("Ensured workflows directory exists at {WorkflowsDir}", workflowsDir);
-
-    var recipeImportPath = Path.Combine(workflowsDir, "recipe-import.yaml");
-    if (!File.Exists(recipeImportPath))
-    {
-        var recipeImportContent = """
-id: recipe-import
-parameters:
-  - recipeId
-tasks:
-  - id: extract_recipe
-    processor: ExtractRecipe
-    payload:
-      recipeId: "{{ recipeId }}"
-  - id: generate_hero
-    processor: GenerateHero
-    depends_on:
-      - extract_recipe
-    payload:
-      recipeId: "{{ recipeId }}"
-  - id: sync_recipe
-    processor: SyncRecipe
-    depends_on:
-      - generate_hero
-    payload:
-      recipeId: "{{ recipeId }}"
-""";
-        await File.WriteAllTextAsync(recipeImportPath, recipeImportContent);
-        Log.Information("Created workflow file at {WorkflowPath}", recipeImportPath);
-    }
-
-    var recipeDescriptionRegenPath = Path.Combine(workflowsDir, "recipe-description-regeneration.yaml");
-    if (!File.Exists(recipeDescriptionRegenPath))
-    {
-        var content = """
-id: recipe-description-regeneration
-parameters:
-  - recipeId
-tasks:
-  - id: generate_description
-    processor: GenerateDescription
-    payload:
-      recipeId: "{{ recipeId }}"
-  - id: sync_recipe
-    processor: SyncRecipe
-    depends_on:
-      - generate_description
-    payload:
-      recipeId: "{{ recipeId }}"
-""";
-        await File.WriteAllTextAsync(recipeDescriptionRegenPath, content);
-        Log.Information("Created workflow file at {WorkflowPath}", recipeDescriptionRegenPath);
-    }
+    WorkflowSeeder.SeedCoreWorkflows(workflowsDir, Log.Logger);
 
     // ── Middleware pipeline ───────────────────────────────────────────────────
     if (app.Environment.IsDevelopment())

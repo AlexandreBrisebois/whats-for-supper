@@ -60,6 +60,7 @@ public class ManagementService(
                     existing.IsHealthyChoice = recipe.IsHealthyChoice;
                     existing.IsVegetarian = recipe.IsVegetarian;
                     existing.Difficulty = recipe.Difficulty;
+                    existing.TotalTime = recipe.TotalTime;
                     existing.LastCookedDate = recipe.LastCookedDate;
                     var updatedJson = JsonSerializer.Serialize(existing, JsonDefaults.CamelCase);
                     await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
@@ -83,6 +84,7 @@ public class ManagementService(
                     IsHealthyChoice = recipe.IsHealthyChoice,
                     IsVegetarian = recipe.IsVegetarian,
                     Difficulty = recipe.Difficulty,
+                    TotalTime = recipe.TotalTime,
                     LastCookedDate = recipe.LastCookedDate
                 };
                 var json2 = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
@@ -112,6 +114,8 @@ public class ManagementService(
         var root = RecipesRoot;
         var result = new SeedResult();
 
+        logger.LogInformation("Starting restore from RecipesRoot: {Root}", root);
+
         if (!Directory.Exists(root))
         {
             logger.LogWarning("Restore requested but RecipesRoot {Root} does not exist.", root);
@@ -120,10 +124,12 @@ public class ManagementService(
 
         // 1. Restore Family Members
         var membersPath = Path.Combine(DataRoot, "family-members.json");
+        logger.LogInformation("Looking for family members at: {Path}", membersPath);
         if (File.Exists(membersPath))
         {
             var json3 = await File.ReadAllTextAsync(membersPath, ct);
             var members = JsonSerializer.Deserialize<List<FamilyMember>>(json3, JsonDefaults.CamelCase) ?? [];
+            logger.LogInformation("Found {Count} family members to restore", members.Count);
             foreach (var member in members)
             {
                 if (ct.IsCancellationRequested) break;
@@ -141,10 +147,16 @@ public class ManagementService(
                 }
             }
             await db.SaveChangesAsync(ct);
+            logger.LogInformation("Family members restore complete - Added: {Added}, Updated: {Updated}", result.MembersAdded, result.MembersUpdated);
+        }
+        else
+        {
+            logger.LogWarning("Family members file not found at {Path}", membersPath);
         }
 
         // 2. Scan Recipes for missing family members and restore recipes
         var recipeDirs = Directory.GetDirectories(root);
+        logger.LogInformation("Found {Count} recipe directories in {Root}", recipeDirs.Length, root);
         var missingMemberIds = new HashSet<Guid>();
         var recipesToRestore = new List<Recipe>();
 
@@ -152,13 +164,20 @@ public class ManagementService(
         {
             if (ct.IsCancellationRequested) break;
 
+            var recipeName = Path.GetFileName(dir);
             var infoPath = Path.Combine(dir, "recipe.info");
             var jsonPath = Path.Combine(dir, "recipe.json");
 
             bool hasInfo = File.Exists(infoPath);
             bool hasJson = File.Exists(jsonPath);
 
-            if (!hasInfo && !hasJson) continue;
+            logger.LogDebug("Processing recipe directory {RecipeId}: hasInfo={HasInfo}, hasJson={HasJson}", recipeName, hasInfo, hasJson);
+
+            if (!hasInfo && !hasJson)
+            {
+                logger.LogDebug("Skipping recipe {RecipeId} - no recipe.info or recipe.json found", recipeName);
+                continue;
+            }
 
             try
             {
@@ -171,6 +190,7 @@ public class ManagementService(
                     var info = JsonSerializer.Deserialize<RecipeInfo>(json4, JsonDefaults.CamelCase);
                     if (info != null)
                     {
+                        logger.LogDebug("Loaded recipe.info for {RecipeId}: name={Name}", recipeName, info.Name);
                         // Validate/Clamp Rating to prevent CK_recipes_rating violation
                         if (!Enum.IsDefined(typeof(RecipeRating), info.Rating))
                         {
@@ -193,6 +213,7 @@ public class ManagementService(
                             IsHealthyChoice = info.IsHealthyChoice,
                             IsVegetarian = info.IsVegetarian,
                             Difficulty = info.Difficulty,
+                            TotalTime = info.TotalTime,
                             LastCookedDate = info.LastCookedDate
                         };
                     }
@@ -203,7 +224,7 @@ public class ManagementService(
                 {
                     var json5 = await File.ReadAllTextAsync(jsonPath, ct);
 
-                    // We avoid deserializing directly into the 'Recipe' model because properties like 'Ingredients' 
+                    // We avoid deserializing directly into the 'Recipe' model because properties like 'Ingredients'
                     // in local files are often arrays/objects, whereas in the EF model they are raw JSON strings (mapped to JSONB).
                     // This mismatch causes JsonException.
 
@@ -214,6 +235,8 @@ public class ManagementService(
                     {
                         recipe = new Recipe { Id = Guid.Parse(Path.GetFileName(dir)) };
                     }
+
+                    logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeName);
 
                     // Map AI data (RawMetadata is the entire file for fidelity)
                     recipe.RawMetadata = json5;
@@ -251,7 +274,11 @@ public class ManagementService(
                     }
                 }
 
-                if (recipe == null) continue;
+                if (recipe == null)
+                {
+                    logger.LogDebug("Recipe object is null for {RecipeId}, skipping", recipeName);
+                    continue;
+                }
 
                 if (recipe.AddedBy.HasValue)
                 {
@@ -262,6 +289,7 @@ public class ManagementService(
                     }
                 }
 
+                logger.LogInformation("Queued recipe for restore: {RecipeId} ({Name})", recipeName, recipe.Name ?? "unknown");
                 recipesToRestore.Add(recipe);
             }
             catch (Exception ex)
@@ -270,6 +298,8 @@ public class ManagementService(
                 result.Errors++;
             }
         }
+
+        logger.LogInformation("Recipe loading complete - queued {Count} recipes for restore, missing members: {MissingCount}", recipesToRestore.Count, missingMemberIds.Count);
 
         // 3. Create placeholder family members for referential integrity
         if (missingMemberIds.Count > 0)
@@ -290,6 +320,7 @@ public class ManagementService(
         }
 
         // 4. Save Recipes
+        logger.LogInformation("Starting save phase for {Count} recipes", recipesToRestore.Count);
         foreach (var recipe in recipesToRestore)
         {
             try
@@ -305,7 +336,7 @@ public class ManagementService(
 
                 if (!hasImages)
                 {
-                    logger.LogWarning("Skipping recipe {Id} - no images found in {Dir}", recipe.Id, originalDir);
+                    logger.LogWarning("Skipping recipe {Id} ({Name}) - no images found in {Dir}", recipe.Id, recipe.Name ?? "unknown", originalDir);
                     result.RecipesSkipped++;
                     continue;
                 }
@@ -313,11 +344,13 @@ public class ManagementService(
                 var existing = await db.Recipes.FindAsync(new object[] { recipe.Id }, ct);
                 if (existing == null)
                 {
+                    logger.LogDebug("Adding new recipe: {Id} ({Name})", recipe.Id, recipe.Name ?? "unknown");
                     db.Recipes.Add(recipe);
                     result.RecipesAdded++;
                 }
                 else
                 {
+                    logger.LogDebug("Updating existing recipe: {Id} ({Name})", recipe.Id, recipe.Name ?? "unknown");
                     // Update metadata
                     existing.Rating = recipe.Rating;
                     existing.Notes = recipe.Notes;
@@ -345,6 +378,8 @@ public class ManagementService(
         }
 
         await db.SaveChangesAsync(ct);
+        logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, Errors: {Errors}",
+            result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.Errors);
         return result;
     }
 

@@ -56,7 +56,12 @@
     <Compile Remove="src/RecipeApi.Tests/**" />
     <Content Remove="src/RecipeApi.Tests/**" />
     <EmbeddedResource Remove="src/RecipeApi.Tests/**" />
-    <None Remove="src/RecipeApi.Tests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="src/RecipeApi/Workflows/*.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

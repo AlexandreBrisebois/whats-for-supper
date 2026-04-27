@@ -139,5 +139,7 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 
 ### Additions
 - [x] **Bulk Recipe Import**: Implement a trigger to process all recipes missing AI metadata.
+- [x] **Management Workflow Standardization**: Unified Backup/Restore operations under the generic workflow engine (ADR 019).
+- [x] **Automated Workflow Seeding**: Core workflows are now bundled in-project and synced to volumes on startup (ADR 020).
 - [ ] **Workflow Dashboard**: A dedicated PWA view to monitor active, paused, and failed workflow instances.
 - [ ] **Manual Retry UI**: One-tap task reset from the dashboard.

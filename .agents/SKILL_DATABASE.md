@@ -1,41 +1,53 @@
 ---
 name: database-schema-evolution
-description: Procedural guidance for managing PostgreSQL database schema and migrations using Entity Framework Core (EF Core).
+description: Procedural guidance for managing PostgreSQL database schema and migrations using psqldef and EF Core.
 ---
 
 # Skill: Database & Schema Evolution (PostgreSQL)
 
-This skill provides the operational logic for modifying the PostgreSQL database schema and ensuring data integrity across environments.
+This skill provides the operational logic for modifying the PostgreSQL database schema using a declarative, non-destructive approach with `psqldef`.
 
 ## 1. The Database Integrity Mission
-**Objective**: Maintain a consistent, version-controlled database schema that aligns perfectly with the Backend models.
-- **Principle**: The code is the Source of Truth for the schema (Code-First).
-- **PostgreSQL Focus**: We leverage PostgreSQL-specific features including `pgvector` for vector-based recipe searches and advanced indexing.
+**Objective**: Maintain a consistent, version-controlled database schema that aligns perfectly with Backend models.
+- **Principle**: `api/database/schema.sql` is the Source of Truth for the schema (Declarative DDL).
+- **Tooling**: `psqldef` is used to synchronize the database with the schema file.
+- **PostgreSQL Focus**: We leverage `pgvector` for vector-based recipe searches and advanced indexing.
+- **Safety**: Migrations must be non-destructive. Avoid dropping columns or tables unless absolutely necessary and approved.
 
-## 2. Schema Evolution Workflow
-Follow this sequence for every model or schema change:
+## Sequence of Work
+Follow this strict sequence for every database or model change:
 
-1.  **Model Modification**: Update the C# entity classes in the `api/` project.
-2.  **Migration Creation**: Generate a new migration file that captures the changes using the local `dotnet ef` tool.
-3.  **Snapshot Review**: Inspect the generated migration `.cs` files and the `DbContextModelSnapshot` to ensure intent matches output.
-4.  **Application**: Apply the migration to the PostgreSQL development database.
-5.  **Validation**: Verify that the API starts successfully and the schema changes are reflected in the database.
+1.  **Authoritative Schema Update**: Update `api/database/schema.sql` first to reflect the desired state (new tables, columns, indexes). Use `IF NOT EXISTS` for new objects.
+2.  **Model & DbContext Alignment**: Update C# entity classes and `RecipeDbContext.cs` to match the schema. Use `[Table]` and `[Column]` attributes to ensure 1:1 parity with snake_case database names.
+3.  **Dry Run**: Verify the impact of the changes without applying them:
+    -   `task db:schema:push DRY_RUN=true`
+4.  **Application**: Apply the changes to the development database (runs `psqldef` via the migration sidecar):
+    -   `task migrate`
+5.  **Drift Audit**: Verify that the C# models and the database schema are in perfect sync. No missing properties, type mismatches, or naming discrepancies.
 
-## 3. Operations & Commands
+## Definition of Done
+- [ ] `schema.sql` contains the new DDL and is the Source of Truth.
+- [ ] All new objects use `IF NOT EXISTS` and no unintended `DROP` statements are present.
+- [ ] C# Models have explicit `[Table]` and `[Column]` attributes mapping to snake_case database names.
+- [ ] `RecipeDbContext` identifies all entities and views correctly.
+- [ ] `task db:schema:push DRY_RUN=true` reports no pending changes (Database matches `schema.sql`).
+- [ ] The API builds and starts successfully, and the changes are reflected in the database.
+
+## 2. Operations & Commands
 Execute these commands from the project root.
 
 | Operation | Tool / Command |
 | :--- | :--- |
-| **Start Database** | `task dev:db` |
-| **Apply Migrations** | `task migrate` (Runs against the API container) |
-| **Add New Migration** | `dotnet ef migrations add [Name] --project api/src/RecipeApi --startup-project api/src/RecipeApi` |
-| **Seed Test Data** | `task seed` |
+| **Apply Migrations** | `task migrate` |
+| **Dry Run Migration** | `task db:schema:push DRY_RUN=true` |
+| **Pull Schema from DB** | `task db:schema:pull` |
 | **Database Shell** | `task shell:db` |
-| **Health Check** | `task health` |
+| **Start Database** | `task dev:db` |
+| **Seed Test Data** | `task seed` |
 
-## 4. Operational Directives
-1.  **Monorepo Pathing**: Always run migration commands from the project root. Do not change directories into the `api/` folder.
-2.  **Tooling Recovery**: If `dotnet ef` is not found, run `dotnet tool restore` in the `api/` directory to re-initialize the local tools.
-3.  **Snapshot Protection**: Never manually edit the `DbContextModelSnapshot`. If a migration is incorrect, remove it using `dotnet ef migrations remove` and try again.
-4.  **Container Dependency**: Ensure the PostgreSQL container is healthy (`task health`) before attempting to apply migrations or seed data.
-5.  **C# Standards**: Use Primary Constructors and File-Scoped Namespaces for all new Entity models to maintain consistency with the .NET 10 stack.
+## 3. Operational Directives
+1.  **Monorepo Pathing**: Always run migration commands from the project root.
+2.  **Declarative Priority**: Never manually edit the database schema using a shell unless you immediately sync the changes back to `schema.sql` using `task db:schema:pull`.
+3.  **Vector Support**: Always ensure `CREATE EXTENSION IF NOT EXISTS vector;` is at the top of the schema file.
+4.  **Non-Destructive**: Avoid `DROP` statements in the primary schema file unless decommissioning a feature or specifically approved.
+5.  **C# Standards**: Maintain parity between `schema.sql` (snake_case) and C# Models (PascalCase with explicit mapping).

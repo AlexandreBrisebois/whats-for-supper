@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace RecipeApi.Models;
 
+[Table("vw_discovery_recipes")]
 public class DiscoveryRecipe
 {
     [Key]
@@ -29,6 +30,12 @@ public class DiscoveryRecipe
 
     [Column("total_time")]
     public string? TotalTime { get; set; }
+    
+    [Column("is_vegetarian")]
+    public bool IsVegetarian { get; set; } = false;
+
+    [Column("is_healthy_choice")]
+    public bool IsHealthyChoice { get; set; } = false;
 
     [Column("last_cooked_date")]
     public DateTimeOffset? LastCookedDate { get; set; }
@@ -49,7 +56,10 @@ public class DiscoveryRecipe
         ImageCount = ImageCount,
         Difficulty = Difficulty,
         TotalTime = TotalTime,
+        IsVegetarian = IsVegetarian,
+        IsHealthyChoice = IsHealthyChoice,
         LastCookedDate = LastCookedDate,
-        CreatedAt = CreatedAt
+        CreatedAt = CreatedAt,
+        Ingredients = Ingredients
     };
 }

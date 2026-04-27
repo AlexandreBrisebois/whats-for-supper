@@ -52,7 +52,7 @@ tasks:
     dir: api
     env:
       ASPNETCORE_ENVIRONMENT: Development
-      RECIPES_ROOT: "/Users/alex/Code/whats-for-supper/recipes"
+      RECIPES_ROOT: "/Users/alex/Code/whats-for-supper/data/recipes"
       ASPNETCORE_URLS: http://localhost:9001
       POSTGRES_CONNECTION_STRING: "Host=localhost;Port=5432;Database=recipe_app_db;Username=recipe_app;Password=secure_dev_password"
     cmds:
@@ -362,10 +362,24 @@ tasks:
   # ============================================================================
 
   migrate:
-    desc: "🗄️  Run database migrations"
+    desc: "🗄️  Run database migrations (psqldef)"
     cmds:
-      - 'docker exec whats-for-supper-api dotnet ef database update'
-      - echo "✓ Migrations applied"
+      - '{{.COMPOSE_CMD}} run --rm migration'
+      - echo "✓ Migrations applied via psqldef"
+
+  db:schema:pull:
+    desc: "Update api/database/schema.sql from live database"
+    cmds:
+      - 'docker exec whats-for-supper-postgres pg_dump -U recipe_app -s {{.DB_NAME}} > api/database/schema.sql'
+      - echo "✓ Schema pulled to api/database/schema.sql"
+
+  db:schema:push:
+    desc: "Apply api/database/schema.sql to live database (Dry run: set DRY_RUN=true)"
+    cmds:
+      - |
+        DRY_FLAG=""
+        if [ "{{.DRY_RUN}}" == "true" ]; then DRY_FLAG="--dry-run"; fi
+        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD=secure_dev_password sqldef/psqldef:latest -h postgres -U recipe_app {{.DB_NAME}} $DRY_FLAG -f /schema.sql
 
   seed:
     desc: "Populate database with test data"

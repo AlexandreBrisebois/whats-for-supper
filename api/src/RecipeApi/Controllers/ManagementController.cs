@@ -1,67 +1,75 @@
 using Microsoft.AspNetCore.Mvc;
-using RecipeApi.Models;
 using RecipeApi.Services;
+using Microsoft.EntityFrameworkCore;
+using RecipeApi.Data;
+using RecipeApi.Models;
 
 namespace RecipeApi.Controllers;
 
 [ApiController]
 [Route("api/management")]
-public class ManagementController(ManagementTaskStore taskStore) : ControllerBase
+public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbContext db) : ControllerBase
 {
     /// <summary>
     /// POST /api/management/backup — trigger an asynchronous export.
     /// </summary>
     [HttpPost("backup")]
-    public IActionResult Backup()
+    public async Task<IActionResult> Backup()
     {
-        if (!taskStore.TryEnqueue(ManagementTaskType.Backup, out var task))
-        {
-            return Conflict(new { message = "A management task is already in progress. Please wait." });
-        }
-
-        return Accepted(new { message = "Backup task enqueued.", taskId = task!.Id });
+        var instance = await orchestrator.TriggerAsync("db-backup", []);
+        return Accepted(new { message = "Backup task enqueued.", taskId = instance.Id });
     }
 
     /// <summary>
     /// POST /api/management/seed — trigger an asynchronous restore.
     /// </summary>
     [HttpPost("seed")]
-    public IActionResult Restore()
+    public async Task<IActionResult> Restore()
     {
-        if (!taskStore.TryEnqueue(ManagementTaskType.Restore, out var task))
-        {
-            return Conflict(new { message = "A management task is already in progress. Please wait." });
-        }
-
-        return Accepted(new { message = "Restore task enqueued.", taskId = task!.Id });
+        var instance = await orchestrator.TriggerAsync("db-restore", []);
+        return Accepted(new { message = "Restore task enqueued.", taskId = instance.Id });
     }
 
     /// <summary>
     /// POST /api/management/disaster-recovery — trigger an asynchronous disaster recovery.
     /// </summary>
     [HttpPost("disaster-recovery")]
-    public IActionResult DisasterRecovery()
+    public async Task<IActionResult> DisasterRecovery()
     {
-        if (!taskStore.TryEnqueue(ManagementTaskType.DisasterRecovery, out var task))
-        {
-            return Conflict(new { message = "A management task is already in progress. Please wait." });
-        }
-
-        return Accepted(new { message = "Disaster recovery task enqueued.", taskId = task!.Id });
+        var instance = await orchestrator.TriggerAsync("db-disaster-recovery", []);
+        return Accepted(new { message = "Disaster recovery task enqueued.", taskId = instance.Id });
     }
 
     /// <summary>
-    /// GET /api/management/status — get the status of the current or most recent task.
+    /// GET /api/management/status — get the status of the most recent management workflow.
     /// </summary>
     [HttpGet("status")]
-    public IActionResult GetStatus()
+    public async Task<IActionResult> GetStatus()
     {
-        var task = taskStore.GetCurrentTask();
-        if (task == null)
+        var managementWorkflows = new[] { "db-backup", "db-restore", "db-disaster-recovery" };
+        var lastInstance = await db.WorkflowInstances
+            .Where(i => managementWorkflows.Contains(i.WorkflowId))
+            .Include(i => i.Tasks)
+            .OrderByDescending(i => i.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (lastInstance == null)
         {
             return NotFound(new { message = "No management tasks have been run yet." });
         }
 
-        return Ok(task);
+        var completedTasks = lastInstance.Tasks.Count(t => t.Status == Models.TaskStatus.Completed);
+        var status = new ManagementStatus
+        {
+            WorkflowId = lastInstance.Id,
+            WorkflowType = lastInstance.WorkflowId,
+            Status = lastInstance.Status,
+            CreatedAt = lastInstance.CreatedAt,
+            UpdatedAt = lastInstance.UpdatedAt,
+            TotalTasks = lastInstance.Tasks.Count,
+            CompletedTasks = completedTasks
+        };
+
+        return Ok(status);
     }
 }

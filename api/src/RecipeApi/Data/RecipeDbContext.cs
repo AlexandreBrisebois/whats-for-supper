@@ -125,6 +125,10 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                   .HasColumnType("text[]");
             entity.Property(e => e.RetryCount)
                   .HasDefaultValue(0);
+            entity.Property(e => e.ErrorMessage)
+                  .HasColumnName("error_message");
+            entity.Property(e => e.StackTrace)
+                  .HasColumnName("stack_trace");
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt)

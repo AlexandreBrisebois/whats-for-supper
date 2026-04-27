@@ -22,7 +22,7 @@ services:
   # ──────────────────────────────────────────────────────────────────────────
   postgres:
     container_name: whats-for-supper-postgres
-    image: postgres:18-alpine3.23
+    image: pgvector/pgvector:pg18
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-recipe_app}

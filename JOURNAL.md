@@ -206,3 +206,34 @@ This file contains the historical session logs and technical archives for the "W
   - Verified 100% parity with `task agent:reconcile`.
 - **Testing**: Added manual test case to `07-workflow.rest`.
 - **Result**: System can now trigger mass AI processing of legacy or raw captures with a single API call.
+
+### [2026-04-27] Management Workflow Standardization & Automated Seeding
+**Status**: COMPLETED ✅
+- **Architectural Pivot**: Standardized database management (Backup, Restore, Disaster Recovery) by migrating them to the generic **Workflow System**.
+  - Created `ManagementProcessor` and associated YAML workflow definitions.
+  - Removed custom `ManagementWorker` and `ManagementTaskStore` (deleted 3 files).
+  - Updated `ManagementController` to trigger workflows and query standard history tables.
+- **Core Workflow Seeding**: Implemented a self-contained strategy for distributing core workflows.
+  - Bundled YAML definitions in `src/RecipeApi/Workflows`.
+  - Created `WorkflowSeeder` to sync bundled workflows to external volumes on startup.
+  - Removed hardcoded workflow strings and manual file-writing from `Program.cs`.
+- **Database Integrity**: Fixed regressions where views were incorrectly created as tables. Removed `[Table]` attribute from `RecipeMatch` and added migration `FixViewsRegression` with manual SQL.
+- **Data Fidelity**: Updated `ManagementService` to preserve `TotalTime` during backup/restore.
+- **Verification**: Project builds successfully. Architecture verified via manual code review and plan approval.
+- **References**: ADR 019, ADR 020.
+
+### [2026-04-27] Agentic Framework Evolution & Drift Resolution
+**Status**: COMPLETED ✅
+- **Objective**: Standardize agent workflows with explicit "Sequence of Work" and "Definition of Done" sections and resolve minor schema drift.
+- **Skill Evolution**:
+  - Rethought `.agents/SKILL_DATABASE.md` to prioritize a "Schema-First" workflow (Authoritative SQL -> C# Models -> Drift Audit).
+  - Codified explicit success criteria (Definition of Done) to ensure 100% parity across model families.
+- **Drift Remediation**:
+  - Aligned `WorkflowInstance` and `WorkflowTask` models with the authoritative `schema.sql` by adding missing `[Table]` and `[Key]` attributes.
+  - Performed a full parity audit of all 8 primary tables and views; verified zero drift.
+- **Efficiency**:
+  - Deleted temporary `drift_audit_db_vs_context.md` prompt to reduce context noise.
+- **Verification**:
+  - Build parity confirmed via `dotnet build api/RecipeApi.csproj`.
+  - Architecture verified via manual cross-reference.
+- **Result**: Agent database evolution is now governed by a prescriptive, non-negotiable protocol, reducing the risk of future schema drift.

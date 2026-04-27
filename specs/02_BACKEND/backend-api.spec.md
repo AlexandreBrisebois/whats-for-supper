@@ -51,6 +51,28 @@ Recipes balance structure with the flexibility required for AI-extracted data.
   
 - **sync_state**: Tracks last successful sync with Google/Outlook.
 
+### 2.4 Workflow Infrastructure (Orchestration)
+Workflows are stored as declarative YAML files in `data/workflows/` and persisted as instances/tasks for background execution.
+
+- **workflow_instances**: 
+  | Column | Type | Description |
+  | :--- | :--- | :--- |
+  | `id` | UUID | Primary Key. |
+  | `workflow_id` | String | ID of the YAML definition. |
+  | `status` | SMALLINT | Pending, Processing, Completed, Failed, Paused. |
+  | `parameters` | JSONB | Input parameters provided at trigger time. |
+
+- **workflow_tasks**:
+  | Column | Type | Description |
+  | :--- | :--- | :--- |
+  | `task_id` | UUID | Primary Key. |
+  | `instance_id` | UUID | FK to `workflow_instances`. |
+  | `processor_name`| String | Name of the C# processor class. |
+  | `payload` | JSONB | Task-specific data (interpolated from parameters). |
+  | `status` | SMALLINT | Waiting, Pending, Processing, Completed, Failed. |
+  | `depends_on` | Text[] | IDs of other tasks in the same instance. |
+  | `retry_count` | Integer | Number of failed execution attempts. |
+
 ---
 
 ## 3. API Endpoints (Scheduler & Planning)
