@@ -16,7 +16,7 @@ public class RecipeHeroAgent(
 {
     public string ProcessorName => "GenerateHero";
 
-    public async Task ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(task.Payload))
         {
@@ -40,6 +40,7 @@ public class RecipeHeroAgent(
         }
 
         await CreateHeroImageAsync(recipeId);
+        return new { Message = $"Generated hero image for {recipeId}" };
     }
     private string RecipesRoot => recipesRoot.Root;
 

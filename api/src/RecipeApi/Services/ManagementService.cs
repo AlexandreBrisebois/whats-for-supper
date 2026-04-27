@@ -16,7 +16,7 @@ public class ManagementService(
     private string RecipesRoot => recipesRoot.Root;
     private string DataRoot => dataRoot.Root;
 
-    public async Task BackupAsync()
+    public async Task<object> BackupAsync()
     {
         var root = RecipesRoot;
         if (!Directory.Exists(root)) Directory.CreateDirectory(root);
@@ -107,6 +107,7 @@ public class ManagementService(
             backedUpCount++;
         }
         logger.LogInformation("Updated/Created {Count} metadata files in {Root}", backedUpCount, root);
+        return new { Message = $"Updated/Created {backedUpCount} metadata files.", FilesProcessed = backedUpCount };
     }
 
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)

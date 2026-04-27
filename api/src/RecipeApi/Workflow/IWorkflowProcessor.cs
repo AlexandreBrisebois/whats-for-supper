@@ -5,5 +5,5 @@ namespace RecipeApi.Workflow;
 public interface IWorkflowProcessor
 {
     string ProcessorName { get; }
-    Task ExecuteAsync(WorkflowTask task, CancellationToken ct);
+    Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct);
 }

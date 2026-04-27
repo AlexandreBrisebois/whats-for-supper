@@ -15,7 +15,7 @@ public class SyncRecipeProcessor(
 {
     public string ProcessorName => "SyncRecipe";
 
-    public async Task ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(task.Payload))
         {
@@ -30,6 +30,7 @@ public class SyncRecipeProcessor(
 
         var recipeId = idProp.GetGuid();
         await SyncDiskToDb(recipeId, ct);
+        return new { Message = $"Synchronized recipe {recipeId} from disk to database." };
     }
 
     private async Task SyncDiskToDb(Guid recipeId, CancellationToken ct)

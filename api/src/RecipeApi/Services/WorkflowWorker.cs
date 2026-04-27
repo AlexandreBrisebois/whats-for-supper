@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
@@ -251,11 +252,17 @@ public class WorkflowWorker(
             }
 
             // Execute processor
-            await processor.ExecuteAsync(task, ct);
+            var result = await processor.ExecuteAsync(task, ct);
 
             // Mark as completed and handle promotion in a single transaction
             task.Status = TaskStatus.Completed;
             task.UpdatedAt = DateTimeOffset.UtcNow;
+
+            if (result != null)
+            {
+                task.Result = JsonSerializer.Serialize(result, JsonDefaults.CamelCase);
+            }
+
             await db.SaveChangesAsync(ct);
 
             // Handle promotion and completion in a single consolidated step

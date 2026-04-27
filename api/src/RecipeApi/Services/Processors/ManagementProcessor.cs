@@ -7,21 +7,14 @@ public class ManagementProcessor(ManagementService managementService, string pro
 {
     public string ProcessorName => processorName;
 
-    public async Task ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
-        switch (ProcessorName)
+        return ProcessorName switch
         {
-            case "BackupDatabase":
-                await managementService.BackupAsync();
-                break;
-            case "RestoreDatabase":
-                await managementService.RestoreAsync(ct);
-                break;
-            case "DisasterRecovery":
-                await managementService.DisasterRecoveryAsync();
-                break;
-            default:
-                throw new NotSupportedException($"Processor {ProcessorName} is not supported by ManagementProcessor.");
-        }
+            "BackupDatabase" => await managementService.BackupAsync(),
+            "RestoreDatabase" => await managementService.RestoreAsync(ct),
+            "DisasterRecovery" => await managementService.DisasterRecoveryAsync(),
+            _ => throw new NotSupportedException($"Processor {ProcessorName} is not supported by ManagementProcessor.")
+        };
     }
 }

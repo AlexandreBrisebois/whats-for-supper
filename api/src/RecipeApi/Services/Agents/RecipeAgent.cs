@@ -22,7 +22,7 @@ public class RecipeAgent(
 {
     public string ProcessorName => processorName;
 
-    public async Task ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(task.Payload))
         {
@@ -37,17 +37,24 @@ public class RecipeAgent(
 
         var recipeId = idProp.GetGuid();
 
-        switch (ProcessorName)
+        return ProcessorName switch
         {
-            case "ExtractRecipe":
-                await ExtractRecipeAsync(recipeId, ct);
-                break;
-            case "GenerateDescription":
-                await GenerateDescriptionAsync(recipeId, ct);
-                break;
-            default:
-                throw new NotSupportedException($"Processor {ProcessorName} is not supported by RecipeAgent.");
-        }
+            "ExtractRecipe" => await ExtractRecipeAsync(recipeId, ct),
+            "GenerateDescription" => await GenerateDescriptionAsync(recipeId, ct),
+            _ => throw new NotSupportedException($"Processor {ProcessorName} is not supported by RecipeAgent.")
+        };
+    }
+
+    private async Task<object> ExtractRecipeAsync(Guid recipeId, CancellationToken ct)
+    {
+        await DoExtractRecipeAsync(recipeId, ct);
+        return new { Message = $"Extracted recipe and generated description for {recipeId}" };
+    }
+
+    private async Task<object> GenerateDescriptionAsync(Guid recipeId, CancellationToken ct)
+    {
+        await DoGenerateDescriptionAsync(recipeId, ct);
+        return new { Message = $"Generated description for {recipeId}" };
     }
 
     private string RecipesRoot => recipesRoot.Root;
@@ -148,7 +155,7 @@ RULES:
 {SchemaDefinition}
 ";
 
-    public async Task ExtractRecipeAsync(Guid recipeId, CancellationToken ct)
+    public async Task DoExtractRecipeAsync(Guid recipeId, CancellationToken ct)
     {
         var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
         var originalDir = Path.Combine(recipeDir, "original");
@@ -235,7 +242,7 @@ RULES:
 
     #region Description Logic
 
-    public async Task GenerateDescriptionAsync(Guid recipeId, CancellationToken ct)
+    public async Task DoGenerateDescriptionAsync(Guid recipeId, CancellationToken ct)
     {
         try
         {

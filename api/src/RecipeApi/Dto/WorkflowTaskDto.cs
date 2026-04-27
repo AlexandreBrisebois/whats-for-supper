@@ -32,6 +32,9 @@ public class WorkflowTaskDto
     [JsonPropertyName("createdAt")]
     public DateTimeOffset CreatedAt { get; set; }
 
+    [JsonPropertyName("result")]
+    public string? Result { get; set; }
+
     [JsonPropertyName("updatedAt")]
     public DateTimeOffset UpdatedAt { get; set; }
 
@@ -45,6 +48,7 @@ public class WorkflowTaskDto
         RetryCount = task.RetryCount,
         ScheduledAt = task.ScheduledAt,
         ErrorMessage = task.ErrorMessage,
+        Result = task.Result,
         CreatedAt = task.CreatedAt,
         UpdatedAt = task.UpdatedAt
     };

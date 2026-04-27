@@ -760,11 +760,12 @@ public class MockWorkflowProcessor(string processorName, List<string> executedNa
 {
     public string ProcessorName => processorName;
 
-    public async Task ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
         // Simulate processing delay
         await Task.Delay(100, ct);
         executedNames.Add(processorName);
+        return new { Message = $"Executed {processorName}" };
     }
 }
 
@@ -775,7 +776,7 @@ public class ThrowingWorkflowProcessor(string processorName, Exception toThrow) 
 {
     public string ProcessorName => processorName;
 
-    public async Task ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
         await Task.Yield();
         throw toThrow;
