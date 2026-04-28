@@ -101,9 +101,9 @@ public class RecipeController(
     }
 
     /// <summary>
-    /// POST /api/recipes/import/bulk — queue a recipe-import workflow for every unimported recipe.
+    /// POST /api/recipes/imports/bulk — queue a recipe-import workflow for every unimported recipe.
     /// </summary>
-    [HttpPost("import/bulk")]
+    [HttpPost("imports/bulk")]
     [SkipWrapping]
     public async Task<IActionResult> BulkTriggerImport()
     {
