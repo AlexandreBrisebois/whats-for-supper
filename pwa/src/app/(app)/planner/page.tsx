@@ -63,6 +63,22 @@ export default function PlannerPage() {
     }
   }, [isLoading]);
 
+  // Scroll Tracking for the Rail
+  const [scrollPercentage, setScrollPercentage] = useState(0);
+  useEffect(() => {
+    const handleScroll = () => {
+      const height = document.documentElement.scrollHeight - window.innerHeight;
+      if (height <= 0) {
+        setScrollPercentage(0);
+        return;
+      }
+      const scrolled = (window.scrollY / height) * 100;
+      setScrollPercentage(Math.min(100, Math.max(0, scrolled)));
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   if (currentWeekOffset !== prevOffset) {
     setPrevOffset(currentWeekOffset);
     setIsLoading(true);
@@ -531,190 +547,29 @@ export default function PlannerPage() {
                 axis="y"
                 values={schedule}
                 onReorder={handleReorder}
-                className="space-y-4"
+                className="space-y-4 relative"
                 data-testid="reorder-group"
               >
+                {/* The "Scroll Rail" (Grabber) */}
+                <div className="fixed right-1 top-1/4 bottom-1/4 w-1 z-50">
+                  <div className="absolute inset-0 bg-charcoal/5 rounded-full" />
+                  <motion.div
+                    className="absolute w-2 h-12 -left-0.5 bg-sage/40 rounded-full blur-[0.5px] shadow-sm"
+                    style={{ top: `${scrollPercentage}%` }}
+                  />
+                </div>
                 {schedule.map((day, index) => (
-                  <Reorder.Item
+                  <PlannerDayCard
                     key={day._uiId}
-                    value={day}
-                    onDragStart={() => setDraggedId(day._uiId)}
-                    onDragEnd={() => setDraggedId(null)}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                    }}
-                    transition={{
-                      delay: hasAnimatedIn ? 0 : index * 0.05,
-                      type: 'spring',
-                      damping: 15,
-                      stiffness: 100,
-                    }}
-                    whileDrag={{
-                      scale: 1.02,
-                      opacity: 1,
-                      backgroundColor: '#ffffff',
-                      backdropFilter: 'blur(0px)',
-                      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                      borderColor: '#8a9a5b', // Sage green border as a visual cue to lock in
-                      borderWidth: '2px',
-                      borderStyle: 'solid',
-                      zIndex: 999,
-                      cursor: 'grabbing',
-                    }}
-                    className={cn(
-                      'rounded-2xl overflow-hidden glass shadow-sm relative group transition-colors duration-500',
-                      day.recipe ? 'cursor-grab active:cursor-grabbing' : '',
-                      successDay === index
-                        ? 'ring-4 ring-sage ring-offset-4 ring-offset-transparent'
-                        : 'border border-white/20'
-                    )}
-                    data-testid={`day-card-${index}`}
-                    id={`day-card-${index}`}
-                  >
-                    {/* Success Pulse Background */}
-                    <AnimatePresence>
-                      {successDay === index && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 0.1, scale: 1.5 }}
-                          exit={{ opacity: 0 }}
-                          data-testid="success-ring"
-                          className="absolute inset-0 bg-sage rounded-full pointer-events-none"
-                          transition={{ duration: 1, repeat: Infinity }}
-                        />
-                      )}
-                    </AnimatePresence>
-
-                    <motion.div
-                      whileTap={{ scale: 0.98 }}
-                      className="flex items-center p-4 relative z-10"
-                    >
-                      <div className="flex flex-col items-center justify-center w-12 mr-4">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
-                          {day.day}
-                        </span>
-                        <span className="text-lg font-heading font-extrabold text-charcoal leading-none">
-                          {(() => {
-                            if (!day.date) return '';
-                            const d = new Date(day.date);
-                            return d.getDate();
-                          })()}
-                        </span>
-                        <span className="text-[10px] font-bold uppercase tracking-tighter text-charcoal/40 leading-none mt-1">
-                          {(() => {
-                            if (!day.date) return '';
-                            const d = new Date(day.date);
-                            return d.toLocaleDateString('en-US', { month: 'short' });
-                          })()}
-                        </span>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        {day.recipe?.id ? (
-                          <div className="flex items-center">
-                            {day.recipe.image && (
-                              <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5 flex-shrink-0">
-                                <Image
-                                  src={
-                                    day.recipe.image.startsWith('/api/')
-                                      ? `/backend${day.recipe.image}`
-                                      : day.recipe.image
-                                  }
-                                  alt={day.recipe.name || 'Recipe'}
-                                  fill
-                                  className="object-cover"
-                                  unoptimized
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
-                              </div>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowPivot({ dayIndex: index });
-                              }}
-                              className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
-                              data-testid="edit-recipe-button"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-bold text-charcoal line-clamp-2">
-                                  {day.recipe.name}
-                                </h4>
-                                {(day._voteCount != null || day.recipe?.voteCount != null) &&
-                                  (() => {
-                                    const count = day._voteCount ?? day.recipe?.voteCount;
-                                    const isUnanimous = day._unanimousVote;
-                                    return (
-                                      <span
-                                        className={cn(
-                                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block mt-1',
-                                          isUnanimous
-                                            ? 'bg-sage/20 text-sage'
-                                            : 'bg-ochre/20 text-ochre'
-                                        )}
-                                      >
-                                        {count} voted
-                                      </span>
-                                    );
-                                  })()}
-                              </div>
-                              <p className="text-[10px] text-charcoal/40 font-medium">
-                                Supper planned
-                              </p>
-                            </button>
-                            {currentWeekOffset === 0 && day.recipe && (
-                              <motion.button
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveCookMode(day);
-                                }}
-                                className="mr-2 text-2xl active:scale-90 transition-transform"
-                                data-testid="start-cook-mode"
-                              >
-                                👨‍🍳
-                              </motion.button>
-                            )}
-                            <GripVertical className="text-charcoal/20 ml-2" size={18} />
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setShowPivot({ dayIndex: index })}
-                            data-testid="plan-meal-button"
-                            className="flex items-center w-full text-left group"
-                          >
-                            <motion.div
-                              animate={{
-                                borderColor: [
-                                  'rgba(205, 93, 69, 0.2)',
-                                  'rgba(205, 93, 69, 0.5)',
-                                  'rgba(205, 93, 69, 0.2)',
-                                ],
-                                backgroundColor: [
-                                  'rgba(205, 93, 69, 0.05)',
-                                  'rgba(205, 93, 69, 0.1)',
-                                  'rgba(205, 93, 69, 0.05)',
-                                ],
-                              }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                              className="h-10 w-10 rounded-xl border border-dashed flex items-center justify-center mr-3 group-hover:bg-terracotta/10 transition-colors"
-                            >
-                              <Plus className="text-terracotta" size={18} />
-                            </motion.div>
-                            <span className="text-sm font-bold text-terracotta/60">
-                              Plan a meal
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    </motion.div>
-                  </Reorder.Item>
+                    day={day}
+                    index={index}
+                    currentWeekOffset={currentWeekOffset}
+                    successDay={successDay}
+                    onPivot={() => setShowPivot({ dayIndex: index })}
+                    onCookMode={() => setActiveCookMode(day)}
+                    setDraggedId={setDraggedId}
+                    hasAnimatedIn={hasAnimatedIn}
+                  />
                 ))}
               </Reorder.Group>
 
@@ -864,5 +719,210 @@ export default function PlannerPage() {
           )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function PlannerDayCard({
+  day,
+  index,
+  currentWeekOffset,
+  successDay,
+  onPivot,
+  onCookMode,
+  setDraggedId,
+  hasAnimatedIn,
+}: {
+  day: UILocalScheduleDay;
+  index: number;
+  currentWeekOffset: number;
+  successDay: number | null;
+  onPivot: () => void;
+  onCookMode: () => void;
+  setDraggedId: (id: string | null) => void;
+  hasAnimatedIn: boolean;
+}) {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={day}
+      dragListener={false}
+      dragControls={dragControls}
+      onDragStart={() => setDraggedId(day._uiId)}
+      onDragEnd={() => setDraggedId(null)}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      transition={{
+        delay: hasAnimatedIn ? 0 : index * 0.05,
+        type: 'spring',
+        damping: 15,
+        stiffness: 100,
+      }}
+      whileDrag={{
+        scale: 1.02,
+        opacity: 1,
+        backgroundColor: '#ffffff',
+        backdropFilter: 'blur(0px)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        borderColor: '#8a9a5b',
+        borderWidth: '2px',
+        borderStyle: 'solid',
+        zIndex: 999,
+        cursor: 'grabbing',
+      }}
+      className={cn(
+        'rounded-2xl overflow-hidden glass shadow-sm relative group transition-colors duration-500',
+        successDay === index
+          ? 'ring-4 ring-sage ring-offset-4 ring-offset-transparent'
+          : 'border border-white/20'
+      )}
+      data-testid={`day-card-${index}`}
+      id={`day-card-${index}`}
+    >
+      <AnimatePresence>
+        {successDay === index && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 0.1, scale: 1.5 }}
+            exit={{ opacity: 0 }}
+            data-testid="success-ring"
+            className="absolute inset-0 bg-sage rounded-full pointer-events-none"
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+        )}
+      </AnimatePresence>
+
+      <motion.div whileTap={{ scale: 0.98 }} className="flex items-center p-4 relative z-10">
+        <div className="flex flex-col items-center justify-center w-12 mr-4">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
+            {day.day}
+          </span>
+          <span className="text-lg font-heading font-extrabold text-charcoal leading-none">
+            {(() => {
+              if (!day.date) return '';
+              const d = new Date(day.date);
+              return d.getDate();
+            })()}
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-tighter text-charcoal/40 leading-none mt-1">
+            {(() => {
+              if (!day.date) return '';
+              const d = new Date(day.date);
+              return d.toLocaleDateString('en-US', { month: 'short' });
+            })()}
+          </span>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          {day.recipe?.id ? (
+            <div className="flex items-center">
+              {day.recipe.image && (
+                <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5 flex-shrink-0">
+                  <Image
+                    src={
+                      day.recipe.image.startsWith('/api/')
+                        ? `/backend${day.recipe.image}`
+                        : day.recipe.image
+                    }
+                    alt={day.recipe.name || 'Recipe'}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPivot();
+                }}
+                className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                data-testid="edit-recipe-button"
+              >
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold text-charcoal line-clamp-2">
+                    {day.recipe.name}
+                  </h4>
+                  {(day._voteCount != null || day.recipe?.voteCount != null) &&
+                    (() => {
+                      const count = day._voteCount ?? day.recipe?.voteCount;
+                      const isUnanimous = day._unanimousVote;
+                      return (
+                        <span
+                          className={cn(
+                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block mt-1',
+                            isUnanimous ? 'bg-sage/20 text-sage' : 'bg-ochre/20 text-ochre'
+                          )}
+                        >
+                          {count} voted
+                        </span>
+                      );
+                    })()}
+                </div>
+                <p className="text-[10px] text-charcoal/40 font-medium">Supper planned</p>
+              </button>
+              {currentWeekOffset === 0 && day.recipe && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCookMode();
+                  }}
+                  className="mr-2 text-2xl active:scale-90 transition-transform"
+                  data-testid="start-cook-mode"
+                >
+                  👨‍🍳
+                </motion.button>
+              )}
+              {/* Custom Drag Handle */}
+              <div
+                onPointerDown={(e) => dragControls.start(e)}
+                className="p-3 -mr-3 cursor-grab active:cursor-grabbing touch-none select-none group/handle"
+                aria-label="Drag to reorder"
+              >
+                <GripVertical
+                  className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
+                  size={20}
+                />
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={onPivot}
+              data-testid="plan-meal-button"
+              className="flex items-center w-full text-left group"
+            >
+              <motion.div
+                animate={{
+                  borderColor: [
+                    'rgba(205, 93, 69, 0.2)',
+                    'rgba(205, 93, 69, 0.5)',
+                    'rgba(205, 93, 69, 0.2)',
+                  ],
+                  backgroundColor: [
+                    'rgba(205, 93, 69, 0.05)',
+                    'rgba(205, 93, 69, 0.1)',
+                    'rgba(205, 93, 69, 0.05)',
+                  ],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="h-10 w-10 rounded-xl border border-dashed flex items-center justify-center mr-3 group-hover:bg-terracotta/10 transition-colors"
+              >
+                <Plus className="text-terracotta" size={18} />
+              </motion.div>
+              <span className="text-sm font-bold text-terracotta/60">Plan a meal</span>
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </Reorder.Item>
   );
 }

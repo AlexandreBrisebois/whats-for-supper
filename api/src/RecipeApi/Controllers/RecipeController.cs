@@ -115,7 +115,7 @@ public class RecipeController(
     [HttpGet("recommendations")]
     public IActionResult GetRecommendations()
     {
-        var response = new RecommendationsResponseDto
+        var response = new RecommendationsDto
         {
             TopPick = new TopPickDto
             {
