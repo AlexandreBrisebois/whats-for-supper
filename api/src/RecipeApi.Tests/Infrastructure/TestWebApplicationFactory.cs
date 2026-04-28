@@ -7,9 +7,11 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Middleware;
+using RecipeApi.Models;
 using RecipeApi.Services;
 
 namespace RecipeApi.Tests.Infrastructure;
@@ -73,7 +75,22 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<IValidationService, ValidationService>();
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
-        // builder.Services.AddScoped<RecipeImportService>();
+        builder.Services.AddScoped<RecipeImportService>();
+        builder.Services.AddScoped<RecipeImportBulkService>();
+
+        // Mock IWorkflowOrchestrator — returns a new WorkflowInstance per TriggerAsync call
+        var mockOrchestrator = new Mock<IWorkflowOrchestrator>();
+        mockOrchestrator
+            .Setup(o => o.TriggerAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .ReturnsAsync(() => new WorkflowInstance
+            {
+                Id = Guid.NewGuid(),
+                WorkflowId = "recipe-import",
+                Status = WorkflowStatus.Processing,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        builder.Services.AddScoped<IWorkflowOrchestrator>(_ => mockOrchestrator.Object);
 
         builder.Services.AddSingleton<DataRootResolver>();
         builder.Services.AddSingleton<RecipesRootResolver>();

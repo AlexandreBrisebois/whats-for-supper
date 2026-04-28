@@ -98,7 +98,7 @@ public class RecipeService(
             Difficulty = r.Difficulty,
             ImageUrl = $"/api/recipes/{r.Id}/hero",
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
-            Ingredients = string.IsNullOrEmpty(r.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(r.Ingredients),
+            Ingredients = DeserializeIngredients(r.Ingredients),
             CreatedAt = r.CreatedAt
         }).ToList();
 
@@ -136,7 +136,8 @@ public class RecipeService(
                 Difficulty = recipe.Difficulty,
                 ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
-                Ingredients = string.IsNullOrEmpty(recipe.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(recipe.Ingredients),
+                Ingredients = DeserializeIngredients(recipe.Ingredients),
+
                 CreatedAt = recipe.CreatedAt
             }
         };
@@ -184,7 +185,8 @@ public class RecipeService(
                 Difficulty = recipe.Difficulty,
                 ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
-                Ingredients = string.IsNullOrEmpty(recipe.Ingredients) ? [] : JsonSerializer.Deserialize<List<string>>(recipe.Ingredients),
+                Ingredients = DeserializeIngredients(recipe.Ingredients),
+
                 CreatedAt = recipe.CreatedAt
             }
         };
@@ -202,5 +204,49 @@ public class RecipeService(
         // 2. Remove from DB (cascades to recipe_imports)
         db.Recipes.Remove(recipe);
         await db.SaveChangesAsync();
+    }
+    /// <summary>
+    /// Deserializes the ingredients JSON column, tolerating both string arrays
+    /// (["flour", "eggs"]) and object arrays ([{"name":"flour",...}]) from legacy data.
+    /// </summary>
+    public static List<string> DeserializeIngredients(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+
+        var trimmed = json.Trim();
+        if (!trimmed.StartsWith('[') || !trimmed.EndsWith(']'))
+        {
+            // Not an array? Return as single element if not empty, or empty list
+            return string.IsNullOrEmpty(trimmed) ? [] : [trimmed];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json) ?? [];
+        }
+        catch (JsonException)
+        {
+            try
+            {
+                // Fallback: ingredients stored as objects — serialize each element back to a string
+                // This handles the "StartObject" error when the list contains objects instead of strings
+                var elements = JsonSerializer.Deserialize<List<JsonElement>>(json) ?? [];
+                return elements.Select(e =>
+                {
+                    if (e.ValueKind == JsonValueKind.String) return e.GetString() ?? "";
+                    if (e.ValueKind == JsonValueKind.Object && e.TryGetProperty("name", out var nameProp))
+                    {
+                        return nameProp.GetString() ?? e.GetRawText();
+                    }
+                    return e.GetRawText();
+                })
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToList();
+            }
+            catch
+            {
+                return [json]; // Total failure? Return raw JSON as single string
+            }
+        }
     }
 }

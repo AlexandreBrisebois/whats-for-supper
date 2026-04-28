@@ -22,7 +22,7 @@ Follow these directives in order for every complex feature or refactor.
 3.  **Generate Clients**: Ensure the Kiota client or frontend models are regenerated BEFORE implementation begins.
 
 ### Directive 3: Execute Parallel Workstreams
-1.  **Isolate Logic**: Focus on one workstream at a time or prepare clean prompts for sub-agents.
+1.  **Isolate Logic**: Focus on one workstream at a time or prepare clean prompts for sub-agents. If you spawn sub-agents, you must tell me what they will work on, coordinate them and ensure they follow Directive 4.
 2.  **Verify Locally**: Each workstream MUST pass its own unit/component tests before reintegration.
 3.  **Micro-Handover**: Document exactly what changed in the workstream and which tests were passed.
 

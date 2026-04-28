@@ -54,7 +54,3 @@ Accept: application/json
 # Resets a failed task to Pending status and updates the workflow to Processing.
 POST {{baseUrl}}/api/workflows/tasks/{{taskId}}/reset
 Accept: application/json
-
-### 5. Bulk-trigger recipe-import for all unimported recipes
-POST {{baseUrl}}/api/workflows/recipe-import/bulk-trigger
-Accept: application/json

@@ -37,6 +37,8 @@ public class RecipeAgent(
 
         var recipeId = idProp.GetGuid();
 
+        // logger.LogInformation("Base URI: {baseUri}", chatClient.BaseUri?.ToString());
+
         return ProcessorName switch
         {
             "ExtractRecipe" => await ExtractRecipeAsync(recipeId, ct),
@@ -56,6 +58,7 @@ public class RecipeAgent(
         await DoGenerateDescriptionAsync(recipeId, ct);
         return new { Message = $"Generated description for {recipeId}" };
     }
+
 
     private string RecipesRoot => recipesRoot.Root;
 
@@ -128,7 +131,9 @@ EXTRACTION PROTOCOL (STRICT):
    - Identify serving columns (e.g. 2P / 4P). Select the smallest column (left-most).
    - recipeYield MUST match selected column (e.g. ""2 portions"").
    - Extract quantities verbatim. No math. No superscripts.
-4. UNIT RULES: If a unit is missing in the table, check the corresponding Step in ""Instructions"".
+   - PANTRY ITEMS: You MUST scan the entire image for sections like ""Il vous faudra"", ""What you will need"", or ""À avoir sous la main"". These items (e.g., oil, salt, pepper) MUST be included in the final recipeIngredient array.
+4. CONTENT FIDELITY: DO NOT summarize, paraphrase, or skip any text. Extract 100% of the instructions and ingredients in full detail. No compression allowed.
+5. UNIT RULES: If a unit is missing in the table, check the corresponding Step in ""Instructions"".
    - ""c. à soupe"" -> ""Tablespoon""
    - ""c. à thé"" -> ""Teaspoon""
 
@@ -137,22 +142,21 @@ EXTRACTION PROTOCOL (STRICT):
 STRICT OUTPUT:
 - Return ONLY valid JSON. No markdown. No preamble.
 - Use null for missing fields.
+
 ";
         if (debug) prompt += "\nDEBUG: Include a \"_thoughtProcess\" string explaining the logic.";
         return prompt;
     }
 
     private string GetRefinementPrompt() => @$"
-Role: JSON Formatter & Verifier.
-Task: Fix any schema errors or omissions in the provided `recipe.json`.
+Role: High-Fidelity JSON Verifier.
+Task: Fix errors or omissions (like missing pantry items) in the previous response.
 
 RULES:
-1. MANDATORY KEYS: [languageCode, name, recipeYield, recipeIngredient, supply, recipeInstructions].
-2. NO TRUNCATION: You MUST return the ENTIRE recipe JSON.
-3. FIDELITY: Ensure text and quantities match the card exactly.
-4. If perfect, return exactly ""NO CHANGES"".
-
-{SchemaDefinition}
+1. NO COMPRESSION: You MUST return the ENTIRE recipe JSON. Do not summarize instructions.
+2. FIDELITY: Ensure text and quantities match the card exactly.
+3. COMPLETENESS: Ensure all pantry items and all instruction steps are present.
+4. If the previous JSON is already perfect and complete, return exactly ""NO CHANGES"".
 ";
 
     public async Task DoExtractRecipeAsync(Guid recipeId, CancellationToken ct)
@@ -175,20 +179,31 @@ RULES:
 
         logger.LogInformation("Extracting recipe {RecipeId} from {Count} images.", recipeId, imageFiles.Count);
 
-        var message = new ChatMessage(ChatRole.User, "Please extract the recipe from these images as instructed.");
-        await AddImagesToMessageAsync(message, imageFiles);
+        var messages = new List<ChatMessage>
+        {
+            new ChatMessage(ChatRole.System, GetExtractionPrompt(false)),
+            new ChatMessage(ChatRole.User, "Please extract the recipe from these images as instructed.")
+        };
+        await AddImagesToMessageAsync(messages[1], imageFiles);
 
-        var agent = chatClient.AsAIAgent(name: "RecipeExtractor", instructions: GetExtractionPrompt(false));
+        var response = await chatClient.GetResponseAsync(messages, GetChatOptions().ChatOptions, ct);
+        messages.Add(new ChatMessage(ChatRole.Assistant, response.Text));
 
-        var response = await agent.RunAsync(
-            messages: new[] { message },
-            options: GetChatOptions(),
-            cancellationToken: ct);
         var extractionJson = response.Text;
         var sanitizedExtraction = JsonUtils.SanitizeJson(extractionJson);
 
         // Validation & Refinement
-        var initialRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(sanitizedExtraction, JsonDefaults.CaseInsensitive);
+        SchemaOrgRecipe? initialRecipe = null;
+        try
+        {
+            initialRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(sanitizedExtraction, JsonDefaults.CaseInsensitive);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogError(ex, "Failed to deserialize initial extraction for {RecipeId}. JSON (first 500 chars): {JsonSample}", recipeId, sanitizedExtraction.Length > 500 ? sanitizedExtraction[..500] : sanitizedExtraction);
+            // We'll proceed to refinement if possible, or it will fail later if finalJson is also invalid
+        }
+
         bool isInitialValid = !string.IsNullOrWhiteSpace(initialRecipe?.Name) &&
                                initialRecipe?.RecipeIngredient != null &&
                                initialRecipe.RecipeIngredient.Count > 0;
@@ -197,46 +212,66 @@ RULES:
         if (!isInitialValid)
         {
             logger.LogInformation("Initial extraction for {RecipeId} is incomplete. Triggering refinement.", recipeId);
-            finalJson = await RefineExtractionAsync(recipeId, imageFiles, sanitizedExtraction, ct) ?? sanitizedExtraction;
+            finalJson = await RefineExtractionAsync(recipeId, messages, ct) ?? sanitizedExtraction;
         }
 
-        // Save output
+        // Final validation and normalization to ensure consistent schema on disk
+        var finalRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(finalJson, JsonDefaults.CaseInsensitive);
+
+        if (string.IsNullOrWhiteSpace(finalRecipe?.Name) && !string.IsNullOrWhiteSpace(initialRecipe?.Name))
+        {
+            // Fallback to initial if refinement wiped out the name
+            finalRecipe = initialRecipe;
+        }
+
+        if (string.IsNullOrWhiteSpace(finalRecipe?.Name))
+        {
+            throw new Exception($"Extraction failed for {recipeId}: Final JSON does not match the required Recipe schema (missing name).");
+        }
+
+        // Re-serialize to ensure we save in our standard format, not the model's hallucinated schema
+        var normalizedJson = JsonSerializer.Serialize(finalRecipe, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
+
         var outputPath = Path.Combine(recipeDir, "recipe.json");
-        await File.WriteAllTextAsync(outputPath, finalJson);
+        await File.WriteAllTextAsync(outputPath, normalizedJson);
         logger.LogInformation("Saved extracted recipe to {Path}", outputPath);
 
         // Update recipe.info name
-        var recipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(finalJson, JsonDefaults.CaseInsensitive);
-        if (!string.IsNullOrWhiteSpace(recipe?.Name))
+        if (!string.IsNullOrWhiteSpace(finalRecipe?.Name))
         {
-            await UpdateRecipeInfoNameAsync(recipeId, recipe.Name);
+            await UpdateRecipeInfoNameAsync(recipeId, finalRecipe.Name);
         }
 
         // Automatic Description Generation as part of extraction
         await GenerateDescriptionAsync(recipeId, ct);
     }
 
-    private async Task<string?> RefineExtractionAsync(Guid recipeId, List<string> imageFiles, string initialJson, CancellationToken ct)
+    private async Task<string?> RefineExtractionAsync(Guid recipeId, List<ChatMessage> messages, CancellationToken ct)
     {
-        var messages = new List<ChatMessage>
-        {
-            new ChatMessage(ChatRole.System, GetRefinementPrompt()),
-            new ChatMessage(ChatRole.User, "Please review and refine this recipe JSON based on the images provided.")
-        };
+        messages.Add(new ChatMessage(ChatRole.User, @$"The initial extraction was incomplete or contains errors (e.g., missing pantry items or summarized instructions).
 
-        var userMessage = messages.Last();
-        userMessage.Contents.Add(new TextContent($"Initial recipe.json:\n{initialJson}"));
-        await AddImagesToMessageAsync(userMessage, imageFiles);
+Please re-examine the images and refine the JSON according to these rules:
+{GetRefinementPrompt()}"));
 
         var response = await chatClient.GetResponseAsync(messages, GetChatOptions().ChatOptions, ct);
         var responseText = response.Text?.Trim() ?? string.Empty;
 
-        if (responseText.Contains("NO CHANGES", StringComparison.OrdinalIgnoreCase)) return initialJson;
+        if (responseText.Contains("NO CHANGES", StringComparison.OrdinalIgnoreCase))
+        {
+            // We return the previous text (which is the last assistant message in history)
+            return messages.Count >= 2 ? messages[^2].Text : string.Empty;
+        }
 
         var sanitized = JsonUtils.SanitizeJson(responseText);
-        try { JsonDocument.Parse(sanitized); return sanitized; }
-        catch { return initialJson; }
+        try
+        {
+            JsonDocument.Parse(sanitized);
+            messages.Add(new ChatMessage(ChatRole.Assistant, response.Text));
+            return sanitized;
+        }
+        catch { return messages.Count >= 2 ? messages[^2].Text : string.Empty; }
     }
+
 
     #endregion
 
@@ -260,7 +295,7 @@ RULES:
             var info = await GetRecipeInfoAsync(infoPath, recipeId);
 
             var prompt = @"Write a short, objective description of the recipe based on the following details and the image of the finished dish (if provided). Focus on the core ingredients, flavors, and preparation style to help a user decide if this is the right meal for them.
-Constraint: The description MUST be exactly one paragraph and contain exactly 2-3 sentences. Avoid any marketing fluff, sales-oriented language, or 'selling' the dish. 
+Constraint: The description MUST be exactly one paragraph and contain exactly 2-3 sentences. Avoid any marketing fluff, sales-oriented language, or 'selling' the dish.
 Return ONLY the description text.";
 
             var message = new ChatMessage(ChatRole.User, prompt);
@@ -297,6 +332,7 @@ Return ONLY the description text.";
             if (ProcessorName == "GenerateDescription") throw; // Only fail the task if it's the primary goal
         }
     }
+
 
     #endregion
 
@@ -336,11 +372,11 @@ Return ONLY the description text.";
         {
             ChatOptions = new ChatOptions
             {
-                Temperature = 0.0f,
-                MaxOutputTokens = configuration.GetValue<int?>("AgentSettings:ContextWindow") / 4 ?? 4096,
+                Temperature = 0.1f,
+                MaxOutputTokens = configuration.GetValue<int?>("GEMINI_MAX_OUTPUT_TOKENS") ?? 8192,
                 AdditionalProperties = new AdditionalPropertiesDictionary
                 {
-                    ["num_ctx"] = configuration.GetValue<int>("AgentSettings:ContextWindow", 32768)
+                    ["num_ctx"] = configuration.GetValue<int>("GEMINI_CONTEXT_WINDOW", 32768)
                 }
             }
         };

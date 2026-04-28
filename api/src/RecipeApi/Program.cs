@@ -76,6 +76,7 @@ try
     builder.Services.AddOpenApi();
 
     // ── Application services ─────────────────────────────────────────────────
+
     builder.Services.AddSingleton<DataRootResolver>();
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
@@ -123,15 +124,24 @@ try
 
     builder.Services.AddHostedService<WorkflowWorker>();
 
-
     // ── AI / Agent Framework ─────────────────────────────────────────────────
-    var agentSettings = builder.Configuration.GetSection("AgentSettings");
-    var endpoint = agentSettings["Endpoint"] ?? "http://localhost:11434/v1";
-    var modelId = agentSettings["ModelId"] ?? "gemma4:e4b";
-    Log.Information("AI Agent configured at {Endpoint} with model {ModelId}", endpoint, modelId);
+    // ── AI Configuration ─────────────────────────────────────────────────────
+    var modelId = builder.Configuration["GEMINI_MODEL_ID"] ?? "gemini-3-flash-preview";
+    var endpoint = builder.Configuration["GEMINI_ENDPOINT"] ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
+    var apiKey = builder.Configuration["GEMINI_API_KEY"];
+
+    if (string.IsNullOrEmpty(apiKey))
+    {
+        Log.Warning("GEMINI_API_KEY is not set. AI features will fail.");
+    }
+
+    Log.Information("─── AI CONFIGURATION ───");
+    Log.Information("Endpoint:       {Endpoint}", endpoint);
+    Log.Information("Model ID:       {Model}", modelId);
+    Log.Information("────────────────────────");
 
     builder.Services.AddChatClient(new OpenAIClient(
-        new ApiKeyCredential("ollama"), // API key is required but ignored by Ollama
+        new ApiKeyCredential(apiKey ?? "none"),
         new OpenAIClientOptions
         {
             Endpoint = new Uri(endpoint),
@@ -182,6 +192,10 @@ try
 
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
+
+    Log.Information("DataRoot: {DataRoot}", app.Services.GetRequiredService<DataRootResolver>().Root.ToString());
+    Log.Information("RecipesRoot: {RecipesRoot}", app.Services.GetRequiredService<RecipesRootResolver>().Root.ToString());
+    Log.Information("WorkflowRoot: {WorkflowRoot}", app.Services.GetRequiredService<WorkflowRootResolver>().Root.ToString());
 
     // ── Initialize data directories ─────────────────────────────────────────
     var recipesResolver = app.Services.GetRequiredService<RecipesRootResolver>();

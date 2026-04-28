@@ -922,7 +922,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecipeImportSummaryDto' }
 
-  /api/workflows/recipe-import/bulk-trigger:
+  /api/recipes/imports/bulk:
     post:
       summary: Bulk-trigger recipe-import for all unimported recipes
       responses:
@@ -930,16 +930,12 @@ paths:
           description: Accepted
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/BulkImportTriggerResponseDto' }
+              schema: { $ref: '#/components/schemas/BulkImportTriggerResponseDto' }
               example:
-                data:
-                  queuedCount: 5
-                  instanceIds:
-                    - '550e8400-e29b-41d4-a716-446655440010'
-                    - '550e8400-e29b-41d4-a716-446655440011'
+                queuedCount: 5
+                instanceIds:
+                  - '550e8400-e29b-41d4-a716-446655440010'
+                  - '550e8400-e29b-41d4-a716-446655440011'
 
   /api/workflows/{workflowId}/trigger:
     post:

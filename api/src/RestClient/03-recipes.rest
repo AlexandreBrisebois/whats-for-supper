@@ -1,4 +1,4 @@
-@baseUrl = http://localhost:5050
+##@baseUrl = http://localhost:5050
 @baseUrl = http://api.wfs.localhost
 ### @baseUrl = http://192.168.1.226:9101
 
@@ -77,98 +77,22 @@ Accept: image/*
 DELETE {{baseUrl}}/api/recipes/{{recipeId}}
 Accept: application/json
 
-### Trigger recipe import
+# ============================================================================
+# IMPORT
+# ============================================================================
+
+### Trigger import for a single recipe
 POST {{baseUrl}}/api/recipes/{{recipeId}}/import
 Accept: application/json
 
-### Trigger recipe import for 0384639a-96e2-48d9-89fe-c30d55e06c98
-POST {{baseUrl}}/api/recipes/0384639a-96e2-48d9-89fe-c30d55e06c98/import
+### Bulk-trigger import for all unimported recipes
+POST {{baseUrl}}/api/recipes/imports/bulk
 Accept: application/json
 
-### Trigger recipe import for 06726f44-ff99-4d62-a4b8-20ef165476f5
-POST {{baseUrl}}/api/recipes/06726f44-ff99-4d62-a4b8-20ef165476f5/import
-Accept: application/json
-
-### Trigger recipe import for 0732fd95-15ab-4ac2-8f68-3f42e811d6f0
-POST {{baseUrl}}/api/recipes/0732fd95-15ab-4ac2-8f68-3f42e811d6f0/import
-Accept: application/json
-
-### Trigger recipe import for 221fda72-e196-4b75-b19c-fdd44ccc8239
-POST {{baseUrl}}/api/recipes/221fda72-e196-4b75-b19c-fdd44ccc8239/import
-Accept: application/json
-
-### Trigger recipe import for 2740ef1c-6fb0-4d23-823f-af46c2f2e8fe
-POST {{baseUrl}}/api/recipes/2740ef1c-6fb0-4d23-823f-af46c2f2e8fe/import
-Accept: application/json
-
-### Trigger recipe import for 34d722e1-5ae1-4ff2-b9c2-37aa0cdbb481
-POST {{baseUrl}}/api/recipes/34d722e1-5ae1-4ff2-b9c2-37aa0cdbb481/import
-Accept: application/json
-
-### Trigger recipe import for 388ea661-5155-4d03-b4db-6dc4f3196766
-POST {{baseUrl}}/api/recipes/388ea661-5155-4d03-b4db-6dc4f3196766/import
-Accept: application/json
-
-### Trigger recipe import for 3a8e06c9-8ceb-4391-b89c-eb4969382f06
-POST {{baseUrl}}/api/recipes/3a8e06c9-8ceb-4391-b89c-eb4969382f06/import
-Accept: application/json
-
-### Trigger recipe import for 4ef7ea47-7ffd-44da-899c-3ac36b8aea77
-POST {{baseUrl}}/api/recipes/4ef7ea47-7ffd-44da-899c-3ac36b8aea77/import
-Accept: application/json
-
-### Trigger recipe import for 5dd5df7e-833d-41b5-8756-0dceeee7482b
-POST {{baseUrl}}/api/recipes/5dd5df7e-833d-41b5-8756-0dceeee7482b/import
-Accept: application/json
-
-### Trigger recipe import for 6ecf33c0-b6b9-4277-b740-7d302314e496
-POST {{baseUrl}}/api/recipes/6ecf33c0-b6b9-4277-b740-7d302314e496/import
-Accept: application/json
-
-### Trigger recipe import for 8c9f976a-e0a3-41c9-8527-a9a5722236a2
-POST {{baseUrl}}/api/recipes/8c9f976a-e0a3-41c9-8527-a9a5722236a2/import
-Accept: application/json
-
-### Trigger recipe import for 8ce8068c-41e5-4a7d-a427-2095853e7bb4
-POST {{baseUrl}}/api/recipes/8ce8068c-41e5-4a7d-a427-2095853e7bb4/import
-Accept: application/json
-
-### Trigger recipe import for 92a42910-4429-4335-a422-ea2c79801fdf
-POST {{baseUrl}}/api/recipes/92a42910-4429-4335-a422-ea2c79801fdf/import
-Accept: application/json
-
-### Trigger recipe import for 9cfeac13-8102-41fe-aecd-6313c00eae79
-POST {{baseUrl}}/api/recipes/9cfeac13-8102-41fe-aecd-6313c00eae79/import
-Accept: application/json
-
-### Trigger recipe import for a6f67f9b-4cc2-4282-a9d0-ce90bc18bead
-POST {{baseUrl}}/api/recipes/a6f67f9b-4cc2-4282-a9d0-ce90bc18bead/import
-Accept: application/json
-
-### Trigger recipe import for b484b8e2-5a10-43a4-a260-9c054ba6947d
-POST {{baseUrl}}/api/recipes/b484b8e2-5a10-43a4-a260-9c054ba6947d/import
-Accept: application/json
-
-### Trigger recipe import for bbf32558-54df-487a-9092-c911d63d2e0a
-POST {{baseUrl}}/api/recipes/bbf32558-54df-487a-9092-c911d63d2e0a/import
-Accept: application/json
-
-### Trigger recipe import for df0aa48c-3253-43e7-b642-f919cd1ae376
-POST {{baseUrl}}/api/recipes/df0aa48c-3253-43e7-b642-f919cd1ae376/import
-Accept: application/json
-
-### Trigger recipe import for e2b2e759-913e-4925-bfcf-e34cac913f5a
-POST {{baseUrl}}/api/recipes/e2b2e759-913e-4925-bfcf-e34cac913f5a/import
-Accept: application/json
-
-### Trigger recipe import for f4d4d64e-7d1e-4974-ac65-ef95a71acf48
-POST {{baseUrl}}/api/recipes/f4d4d64e-7d1e-4974-ac65-ef95a71acf48/import
-Accept: application/json
-
-### Get recipe import status
+### Get import status for a single recipe
 GET {{baseUrl}}/api/recipes/{{recipeId}}/import
 Accept: application/json
 
-### Get consolidated import summary
+### Get consolidated import pipeline summary
 GET {{baseUrl}}/api/recipes/import-status
 Accept: application/json

@@ -16,7 +16,7 @@ vars:
   WFS_REGISTRY: '{{.WFS_REGISTRY | default "192.168.1.226:5050"}}'
   # Default platform (GitHub Actions: amd64, Local: arm64)
   PLATFORMS: '{{if .PLATFORMS}}{{.PLATFORMS}}{{else if .GITHUB_ACTIONS}}linux/amd64{{else}}linux/arm64{{end}}'
-  TAG: 'v0.1' 
+  TAG: 'v0.1'
   # Database Target (localhost or NAS IP)
   TARGET_DB_HOST: '{{.TARGET_DB_HOST | default "localhost"}}'
   # CLI helper for docker compose
@@ -69,24 +69,42 @@ tasks:
     cmds:
       - '{{.COMPOSE_CMD}} up -d postgres'
       - echo "✓ Database started on localhost:{{.DB_PORT}}"
-      - echo ""
-      - echo "Set these env vars:"
-      - echo "  POSTGRES_CONNECTION_STRING=postgres://recipe_app:secure_dev_password@localhost:{{.DB_PORT}}/recipe_app_db"
-      - echo "  RECIPES_ROOT=/tmp/recipes"
+
+  dev:db:sync:
+    desc: "🔄 Full Docker DB refresh: up + migrate + seed (Forces Rebuild)"
+    cmds:
+      - task: dev:db
+      - task: migrate
+      - '{{.COMPOSE_CMD}} up -d --build traefik api'
+      - task: seed
+      - echo "✓ Docker database is synced, seeded, and running fresh code"
+
+  dev:clean:sync:
+    desc: "🛑 Nuclear Option: Wipe all volumes/images and run a clean dev:db:sync"
+    cmds:
+      - '{{.COMPOSE_CMD}} down -v --rmi local'
+      - task: dev:db:sync
 
   dev:kill:
-    desc: "Kill lingering dev:api and dev:pwa instances blocking ports"
+    desc: "Kill lingering dev:api and dev:pwa instances (ports + background dotnet)"
     cmds:
       - |
-        echo "Searching for processes on API (9001) and PWA ({{.PWA_PORT}}) ports..."
-        PIDS=$(lsof -ti:9001,{{.PWA_PORT}} 2>/dev/null)
-        if [ -n "$PIDS" ]; then
-          echo "Killing processes: $PIDS"
-          echo "$PIDS" | xargs kill -9
-          echo "✓ Lingering processes killed"
-        else
-          echo "✓ No lingering processes found"
+        echo "Searching for lingering processes..."
+
+        # Kill processes blocking ports 9001 and {{.PWA_PORT}}
+        PORT_PIDS=$(lsof -ti:9001,{{.PWA_PORT}} 2>/dev/null || true)
+        if [ -n "$PORT_PIDS" ]; then
+          echo "Killing processes on ports: $PORT_PIDS"
+          echo "$PORT_PIDS" | xargs kill -9
         fi
+
+        # Kill any lingering dotnet processes related to the API (watch or direct run)
+        # Using pkill -f to match the command line arguments
+        echo "Cleaning up lingering dotnet processes..."
+        pkill -9 -f "dotnet.*RecipeApi" || true
+        pkill -9 -f "dotnet-watch" || true
+
+        echo "✓ Lingering processes cleaned up"
 
   # ============================================================================
   # TESTING
@@ -190,14 +208,21 @@ tasks:
   # ============================================================================
 
   build:
-    desc: "📦 Build all images locally"
+    desc: "📦 Force rebuild all images (No-cache + Image removal)"
     cmds:
+      - task: clean:images
       - task: publish
+        vars: { NOCACHE: "true" }
 
   publish:
     desc: "🚀 Build images (local by default, set PUSH=true to push)"
-    deps: [publish:migration, publish:api, publish:pwa]
     cmds:
+      - task: publish:migration
+        vars: { NOCACHE: "{{.NOCACHE}}" }
+      - task: publish:api
+        vars: { NOCACHE: "{{.NOCACHE}}" }
+      - task: publish:pwa
+        vars: { NOCACHE: "{{.NOCACHE}}" }
       - |
         if [ "{{.PUSH}}" == "true" ]; then
           echo "✓ Version {{.TAG}} pushed to {{.WFS_REGISTRY}}"
@@ -211,16 +236,18 @@ tasks:
       TAG: '{{default .TAG .CLI_ARGS}}'
       PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
       CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
+      NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
     cmds:
-      - echo "Building API {{.TAG}} (Push={{.PUSH | default "false"}})..."
+      - echo "Building API {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
       - >
-        docker buildx build 
-        --platform {{.PLATFORMS}} 
-        -t {{.WFS_REGISTRY}}/whats-for-supper-api:{{.TAG}} 
-        -t {{.WFS_REGISTRY}}/whats-for-supper-api:latest 
-        ./api 
+        docker buildx build
+        {{.NOCACHE_FLAG}}
+        --platform {{.PLATFORMS}}
+        -t {{.WFS_REGISTRY}}/whats-for-supper-api:{{.TAG}}
+        -t {{.WFS_REGISTRY}}/whats-for-supper-api:latest
+        ./api
         {{.CACHE_FLAGS}}
-        {{.PUSH_FLAG}} 
+        {{.PUSH_FLAG}}
         --target production
 
   publish:pwa:
@@ -229,16 +256,18 @@ tasks:
       TAG: '{{default .TAG .CLI_ARGS}}'
       PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
       CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
+      NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
     cmds:
-      - echo "Building PWA {{.TAG}} (Push={{.PUSH | default "false"}})..."
+      - echo "Building PWA {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
       - >
-        docker buildx build 
-        --platform {{.PLATFORMS}} 
-        -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:{{.TAG}} 
-        -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:latest 
-        ./pwa 
+        docker buildx build
+        {{.NOCACHE_FLAG}}
+        --platform {{.PLATFORMS}}
+        -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:{{.TAG}}
+        -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:latest
+        ./pwa
         {{.CACHE_FLAGS}}
-        {{.PUSH_FLAG}} 
+        {{.PUSH_FLAG}}
         --target production
 
   publish:migration:
@@ -247,10 +276,12 @@ tasks:
       TAG: '{{default .TAG .CLI_ARGS}}'
       PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
       CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
+      NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
     cmds:
-      - echo "Building migration {{.TAG}} (Push={{.PUSH | default "false"}})..."
+      - echo "Building migration {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
       - >
         docker buildx build
+        {{.NOCACHE_FLAG}}
         --platform {{.PLATFORMS}}
         -t {{.WFS_REGISTRY}}/whats-for-supper-db-migration:{{.TAG}}
         -t {{.WFS_REGISTRY}}/whats-for-supper-db-migration:latest
@@ -403,10 +434,155 @@ tasks:
   seed:
     desc: "Populate database with test data"
     cmds:
-      - 'docker exec whats-for-supper-api bash -c "cd src/RecipeApi && dotnet user-secrets set SeedDatabase true"'
-      - 'docker restart whats-for-supper-api'
-      - sleep 2
-      - echo "✓ Test data seeded"
+      - |
+        echo "🚀 Waiting for API to be healthy..."
+        for i in $(seq 1 20); do
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: api.wfs.localhost" http://localhost/health)
+          if [ "$STATUS" == "200" ]; then
+            echo "✅ API is up!"
+            break
+          fi
+          [ "$i" -eq 20 ] && echo "❌ API failed to start (Status: $STATUS)" && exit 1
+          printf "."
+          sleep 2
+        done
+
+        echo "🚀 Triggering database seed..."
+        # Retry the trigger itself a few times if proxy is still warm-up
+        for i in $(seq 1 5); do
+          RESPONSE=$(curl -X POST -s -H "Host: api.wfs.localhost" http://localhost/api/management/seed)
+          # Try root first (SkipWrapping), then data (Default)
+          TASK_ID=$(echo $RESPONSE | jq -r '.taskId // .data.taskId // empty')
+          if [ -n "$TASK_ID" ] && [ "$TASK_ID" != "null" ]; then break; fi
+          sleep 1
+        done
+
+        if [ -z "$TASK_ID" ] || [ "$TASK_ID" == "null" ]; then
+          echo "❌ Failed to enqueue seed task: $RESPONSE"
+          exit 1
+        fi
+
+        echo "⏳ Seed task enqueued ($TASK_ID). Waiting for completion..."
+
+        # Poll status every 2 seconds
+        for i in $(seq 1 30); do
+          STATUS_JSON=$(curl -s -H "Host: api.wfs.localhost" http://localhost/api/management/status)
+          # Status endpoint is also [SkipWrapping]
+          CURRENT_STATUS=$(echo $STATUS_JSON | jq -r '.status // .data.status')
+          CURRENT_ID=$(echo $STATUS_JSON | jq -r '.workflowId // .data.workflowId')
+
+          if [ "$CURRENT_ID" == "$TASK_ID" ]; then
+            if [ "$CURRENT_STATUS" == "Completed" ]; then
+              echo "✅ Seed Completed Successfully!"
+              echo $STATUS_JSON | jq '.result // .data.result'
+              exit 0
+            elif [ "$CURRENT_STATUS" == "Failed" ]; then
+              echo "❌ Seed Failed!"
+              echo $STATUS_JSON | jq '.result // .data.result'
+              exit 1
+            fi
+          fi
+
+          printf "."
+          sleep 2
+        done
+
+        echo "⚠️  Timeout waiting for seed task to complete. Check 'task logs:api' for details."
+
+  # ============================================================================
+  # RECIPE MANAGEMENT
+  # ============================================================================
+
+  recipes:import:all:
+    desc: "📥 Bulk-trigger recipe-import for all unimported recipes"
+    cmds:
+      - |
+        if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
+          API_BASE="http://localhost:9001"
+          api_curl() { curl -s "$@"; }
+          echo "🔧 Using dev API at $API_BASE"
+        else
+          API_BASE="http://localhost"
+          api_curl() { curl -s -H "Host: api.wfs.localhost" "$@"; }
+        fi
+        echo "🚀 Triggering bulk recipe import..."
+        HTTP_CODE=$(api_curl -X POST -o /tmp/wfs_import.json -w "%{http_code}" "$API_BASE/api/management/bulk-import")
+        RESPONSE=$(cat /tmp/wfs_import.json 2>/dev/null || echo "")
+        if [ "$HTTP_CODE" = "000" ]; then
+          echo "❌ Connection failed — API is not reachable at $API_BASE"
+          echo "   → Check: task logs:api  (or: task up)"
+          exit 1
+        fi
+        QUEUED=$(echo "$RESPONSE" | jq -r '.queuedCount // empty' 2>/dev/null)
+        if [ -z "$QUEUED" ]; then
+          echo "❌ Failed (HTTP $HTTP_CODE): $RESPONSE"
+          exit 1
+        fi
+        echo "✅ Queued $QUEUED recipe-import workflow(s)."
+        echo "$RESPONSE" | jq '.instanceIds'
+
+  recipes:import:
+    desc: "📥 Trigger import for recipes. Usage: task recipes:import -- <recipe-id> [<recipe-id>...]"
+    cmds:
+      - |
+        RECIPE_IDS="{{.CLI_ARGS}}"
+        if [ -z "$RECIPE_IDS" ]; then
+          echo "❌ Error: Recipe ID(s) required."
+          echo "Usage: task recipes:import -- <recipe-id> [<recipe-id>...]"
+          exit 1
+        fi
+
+        # Determine API Base
+        if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
+          API_BASE="http://localhost:9001"
+          api_curl() { curl -s "$@"; }
+          echo "🔧 Using dev API at $API_BASE"
+        else
+          API_BASE="http://localhost"
+          api_curl() { curl -s -H "Host: api.wfs.localhost" "$@"; }
+        fi
+
+        for RECIPE_ID in $RECIPE_IDS; do
+          echo "🚀 Triggering import for recipe $RECIPE_ID..."
+          HTTP_CODE=$(api_curl -X POST -o /tmp/wfs_import.json -w "%{http_code}" "$API_BASE/api/recipes/$RECIPE_ID/import")
+          RESPONSE=$(cat /tmp/wfs_import.json 2>/dev/null || echo "")
+
+          if [ "$HTTP_CODE" = "000" ]; then
+            echo "❌ Connection failed — API is not reachable at $API_BASE"
+            exit 1
+          fi
+
+          IMPORT_ID=$(echo "$RESPONSE" | jq -r '.importId // empty' 2>/dev/null)
+          if [ -z "$IMPORT_ID" ]; then
+            echo "❌ Failed for $RECIPE_ID (HTTP $HTTP_CODE): $RESPONSE"
+          else
+            echo "✅ Import triggered for $RECIPE_ID. Import ID: $IMPORT_ID"
+          fi
+        done
+
+  recipes:import:status:
+    desc: "📊 Get import pipeline summary (imported / queued / failed counts)"
+    cmds:
+      - |
+        if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
+          API_BASE="http://localhost:9001"
+          api_curl() { curl -s "$@"; }
+          echo "🔧 Using dev API at $API_BASE"
+        else
+          API_BASE="http://localhost"
+          api_curl() { curl -s -H "Host: api.wfs.localhost" "$@"; }
+        fi
+        HTTP_CODE=$(api_curl -o /tmp/wfs_status.json -w "%{http_code}" "$API_BASE/api/recipes/import-status")
+        if [ "$HTTP_CODE" = "000" ]; then
+          echo "❌ Connection failed — API is not reachable at $API_BASE"
+          echo "   → Check: task logs:api  (or: task up)"
+          exit 1
+        fi
+        cat /tmp/wfs_status.json | jq .
+
+
+
+
 
   db:backup:
     desc: "Backup database (Local or Remote)"
@@ -436,7 +612,7 @@ tasks:
           echo "❌ Error: File $FILE not found."
           exit 1
         fi
-        
+
         echo "Restoring $FILE to {{.TARGET_DB_HOST}}..."
         if [ "{{.TARGET_DB_HOST}}" == "localhost" ] || [ "{{.TARGET_DB_HOST}}" == "postgres" ]; then
           docker exec -i whats-for-supper-postgres psql -U recipe_app {{.DB_NAME}} < "$FILE"
@@ -537,12 +713,73 @@ tasks:
       - |
         echo "Environment Variables:"
         echo ""
-        grep -E "^(POSTGRES|API|REDIS|OLLAMA)" docker/.env 2>/dev/null || echo "  No service env vars in docker/.env"
+        grep -E "^(POSTGRES|API|REDIS|GEMINI)" docker/.env 2>/dev/null || echo "  No service env vars in docker/.env"
         echo ""
         echo "Service Ports:"
         echo "  API: {{.API_PORT}}"
         echo "  PWA: {{.PWA_PORT}}"
         echo "  DB:  {{.DB_PORT}}"
+
+  # ============================================================================
+  # OLLAMA
+  # ============================================================================
+
+  ollama:start:
+    desc: "🤖 Start Ollama daemon (bound to 0.0.0.0) and preload gemma4:e4b"
+    vars:
+      OLLAMA_MODEL: '{{.OLLAMA_MODEL | default "gemma4:e4b"}}'
+    cmds:
+      - |
+        if pgrep -x ollama > /dev/null; then
+          echo "✓ Ollama already running (Note: if it's not reachable from outside, run 'task ollama:stop' first)"
+        else
+          echo "🚀 Starting Ollama daemon (0.0.0.0)..."
+          OLLAMA_HOST=0.0.0.0 ollama serve &>/tmp/ollama.log &
+          # Wait for it to be ready
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:11434/ > /dev/null 2>&1; then
+              echo "  ✓ Ollama daemon ready"
+              break
+            fi
+            [ "$i" -eq 15 ] && echo "  ✗ Ollama failed to start" && exit 1
+            sleep 1
+          done
+        fi
+      - |
+        echo "📥 Pulling model {{.OLLAMA_MODEL}} (no-op if already present)..."
+        ollama pull {{.OLLAMA_MODEL}}
+        echo "🔥 Preloading {{.OLLAMA_MODEL}} into memory..."
+        ollama run {{.OLLAMA_MODEL}} "" 2>/dev/null || true
+        echo "✅ Ollama ready with model {{.OLLAMA_MODEL}}"
+
+  ollama:stop:
+    desc: "🛑 Stop Ollama daemon"
+    cmds:
+      - |
+        if pgrep -x ollama > /dev/null; then
+          pkill -x ollama
+          echo "✓ Ollama daemon stopped"
+        else
+          echo "✓ Ollama is not running"
+        fi
+
+  ollama:status:
+    desc: "📊 Show Ollama daemon status and loaded models"
+    cmds:
+      - |
+        echo "Ollama Daemon:"
+        if pgrep -x ollama > /dev/null; then
+          echo "  ✓ Running (PID: $(pgrep -x ollama))"
+        else
+          echo "  ✗ Not running"
+          exit 0
+        fi
+        echo ""
+        echo "Available Models:"
+        ollama list 2>/dev/null || echo "  (none)"
+        echo ""
+        echo "Running Models:"
+        ollama ps 2>/dev/null || echo "  (none loaded)"
 
   # ============================================================================
   # CLEANUP
@@ -565,6 +802,19 @@ tasks:
       - echo "✓ Deep clean complete"
     interactive: true
 
+
+  clean:images:
+    desc: "🧹 Remove all project images"
+    cmds:
+      - |
+        echo "Removing project images..."
+        IMAGES=$(docker images --format '{{`{{.Repository}}:{{.Tag}}`}}' | grep -E "(whats-for-supper|{{.WFS_REGISTRY}}/whats-for-supper)" || true)
+        if [ -n "$IMAGES" ]; then
+          docker rmi -f $IMAGES || true
+          echo "✓ Project images removed"
+        else
+          echo "✓ No project images found"
+        fi
 
   # ============================================================================
   # SETUP & INITIALIZATION

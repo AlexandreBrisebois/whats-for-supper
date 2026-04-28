@@ -3,9 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 
+using RecipeApi.Infrastructure;
+
 namespace RecipeApi.Controllers;
 
 [ApiController]
+[SkipWrapping]
 public class HealthController(RecipeDbContext db) : ControllerBase
 {
     [HttpGet("/health")]

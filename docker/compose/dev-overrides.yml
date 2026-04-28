@@ -1,7 +1,7 @@
 services:
   api:
     volumes:
-      - ./data:/data
+      - ${DATA_ROOT:-../../data}:/data
     # In dev, we can optionally expose the API port directly
     # ports:
     #   - "9001:9001"

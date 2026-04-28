@@ -37,26 +37,59 @@ public static class JsonUtils
         int firstBracket = sanitized.IndexOf('[');
 
         int start = -1;
-        char endChar = ' ';
+        char openChar = ' ';
+        char closeChar = ' ';
 
         if (firstBrace > -1 && (firstBracket == -1 || firstBrace < firstBracket))
         {
             start = firstBrace;
-            endChar = '}';
+            openChar = '{';
+            closeChar = '}';
         }
         else if (firstBracket > -1)
         {
             start = firstBracket;
-            endChar = ']';
+            openChar = '[';
+            closeChar = ']';
         }
 
         if (start > -1)
         {
-            int lastBrace = sanitized.LastIndexOf(endChar);
-            if (lastBrace > start)
+            int depth = 0;
+            bool inString = false;
+            bool escaped = false;
+
+            for (int i = start; i < sanitized.Length; i++)
             {
-                return sanitized.Substring(start, lastBrace - start + 1);
+                char c = sanitized[i];
+                if (escaped) { escaped = false; continue; }
+                if (c == '\\') { escaped = true; continue; }
+                if (c == '"') { inString = !inString; continue; }
+                if (!inString)
+                {
+                    if (c == openChar) depth++;
+                    else if (c == closeChar)
+                    {
+                        depth--;
+                        if (depth == 0)
+                        {
+                            return sanitized.Substring(start, i - start + 1);
+                        }
+                    }
+                }
             }
+
+            // If we didn't find the closing brace but we have a start,
+            // we might be truncated. Returning the whole thing from start
+            // is better than nothing, but let's at least try to find the last
+            // close brace as a fallback.
+            int lastClose = sanitized.LastIndexOf(closeChar);
+            if (lastClose > start)
+            {
+                return sanitized.Substring(start, lastClose - start + 1);
+            }
+
+            return sanitized.Substring(start);
         }
 
         return sanitized;

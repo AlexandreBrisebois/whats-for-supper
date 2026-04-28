@@ -146,7 +146,7 @@ public class ScheduleService(RecipeDbContext dbContext)
                 x.Recipe.Name,
                 $"/api/recipes/{x.Recipe.Id}/hero",
                 x.Match.LikeCount,
-                x.Recipe.Ingredients != null ? JsonSerializer.Deserialize<List<string>>(x.Recipe.Ingredients) : null,
+                RecipeService.DeserializeIngredients(x.Recipe.Ingredients),
                 x.Recipe.Description))
             .ToList();
 
@@ -169,7 +169,7 @@ public class ScheduleService(RecipeDbContext dbContext)
                     dr.Name,
                     $"/api/recipes/{dr.Id}/hero",
                     null,
-                    dr.Ingredients != null ? JsonSerializer.Deserialize<List<string>>(dr.Ingredients) : null,
+                    RecipeService.DeserializeIngredients(dr.Ingredients),
                     dr.Description)));
         }
 

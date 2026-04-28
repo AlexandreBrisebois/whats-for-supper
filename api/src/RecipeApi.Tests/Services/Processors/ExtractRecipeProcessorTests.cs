@@ -24,7 +24,9 @@ public class ExtractRecipeProcessorTests : IDisposable
         _chatClientMock = new Mock<IChatClient>();
         var mockConfig = new Mock<IConfiguration>();
         mockConfig.Setup(c => c["RecipesRoot"]).Returns(_testRoot);
-        mockConfig.Setup(c => c.GetSection("AgentSettings:ContextWindow")).Returns(new Mock<IConfigurationSection>().Object);
+        var mockSection = new Mock<IConfigurationSection>();
+        mockConfig.Setup(c => c.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
+        mockSection.Setup(s => s.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
         
         // Ensure env var doesn't override configuration
         Environment.SetEnvironmentVariable("RECIPES_ROOT", null);

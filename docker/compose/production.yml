@@ -3,23 +3,25 @@ services:
   # API Production Overrides
   # ──────────────────────────────────────────────────────────────────────────
   api:
-    image: ${WFS_REGISTRY:-whats-for-supper}/whats-for-supper-api:${TAG:-latest}
+    image: ${WFS_REGISTRY:-192.168.1.226:5050}/whats-for-supper-api:${TAG:-latest}
     build: null # Disable local build in production
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_PROJECT_ID: ${GEMINI_PROJECT_ID}
+      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
+      DATA_ROOT: ${DATA_ROOT:-./data}
+      CORS__ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost}
     ports:
       - "${API_PORT_EXTERNAL:-9101}:9001"
     volumes:
-      - ./recipes:/data/recipes
+      - ${DATA_ROOT:-./data}:/data
 
   # ──────────────────────────────────────────────────────────────────────────
   # PWA Production Overrides
   # ──────────────────────────────────────────────────────────────────────────
   pwa:
-    image: ${WFS_REGISTRY:-whats-for-supper}/whats-for-supper-pwa:${TAG:-latest}
+    image: ${WFS_REGISTRY:-192.168.1.226:5050}/whats-for-supper-pwa:${TAG:-latest}
     build: null # Disable local build in production
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
@@ -33,10 +35,17 @@ services:
   postgres:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT_EXTERNAL:-9103}:5432"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # DB Migration Production Overrides
+  # ──────────────────────────────────────────────────────────────────────────
+  migration:
+    image: ${WFS_REGISTRY:-192.168.1.226:5050}/whats-for-supper-db-migration:${TAG:-latest}
 
   # ──────────────────────────────────────────────────────────────────────────
   # Traefik Production Overrides

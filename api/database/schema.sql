@@ -59,7 +59,7 @@ CREATE TABLE recipe_votes (
 CREATE TABLE workflow_tasks (
     task_id uuid PRIMARY KEY,
     instance_id uuid NOT NULL REFERENCES workflow_instances(id) ON DELETE CASCADE,
-    task_name text NOT NULL,
+    task_name text DEFAULT '' NOT NULL,
     processor_name text NOT NULL,
     payload jsonb,
     status smallint NOT NULL,

@@ -26,6 +26,25 @@ This file contains the historical session logs and technical archives for the "W
 
 ## Session History
 
+### [2026-04-27] Data Resilience & Routing Consolidation
+**Status**: COMPLETED ✅
+- **Objective**: Resolve 500 errors caused by legacy ingredient data and fix 404 errors in the bulk import workflow.
+- **Robust Deserialization**:
+  - Refactored `RecipeService.DeserializeIngredients` into a robust, public static utility.
+  - Implemented multi-stage fallback: String Array -> Object Array (plucking "name") -> Raw Text -> Empty.
+  - Applied the fix to `ScheduleService` to ensure planner stability.
+- **Routing Consolidation**:
+  - Deleted redundant `RecipeImportController.cs`.
+  - Merged all import logic into `RecipeController.cs` to eliminate route ambiguity.
+  - Moved the `BulkTriggerImport` action to `ManagementController` (`POST /api/management/bulk-import`) to align with administrative workflow standards.
+- **Developer Experience**:
+  - Updated `Taskfile.yml` to reflect the new management route.
+  - Hardened the build process by identifying and cleaning stale `bin/obj` artifacts that were blocking code updates in Docker layers.
+- **Verification**:
+  - `GET /api/recipes` verified returning 200 OK with heterogeneous ingredient data.
+  - `task recipes:import:all` verified triggering workflows successfully.
+- **References**: ADR 024.
+
 ### [2026-04-25] Full-Stack Contract & Schema Realignment
 **Status**: COMPLETED ✅
 - **Objective**: Resolve schema drift across the entire API surface and align DTOs with the OpenAPI contract.
@@ -237,3 +256,17 @@ This file contains the historical session logs and technical archives for the "W
   - Build parity confirmed via `dotnet build api/RecipeApi.csproj`.
   - Architecture verified via manual cross-reference.
 - **Result**: Agent database evolution is now governed by a prescriptive, non-negotiable protocol, reducing the risk of future schema drift.
+
+### [2026-04-27] API Centralization & Dev Workflow Hardening
+**Status**: COMPLETED ✅
+- **Architectural Shift**: Centralized successful API response wrapping into a global `SuccessWrappingFilter`.
+  - Removed manual anonymous wrappers from all controllers.
+  - Introduced `[SkipWrapping]` attribute for endpoints requiring raw responses (Health, Management, etc.).
+  - Documented in **ADR 022**.
+- **Contract Parity**: Resolved a critical PWA navigation bug by renaming `recipeId` to `id` in the recipe creation response, matching the OpenAPI spec.
+- **Docker Dev Workflow**: Hardened development tooling for distroless (chiseled) compatibility.
+  - Overhauled `task seed` to use HTTP triggers instead of `docker exec`, allowing it to work with minimal production images.
+  - Updated `task dev:db:sync` and `task dev:clean:sync` to force rebuilds (`--build`) and poll for workflow completion.
+  - Documented in **ADR 023**.
+- **Database Resilience**: Fixed `schema.sql` to be idempotent (added `DEFAULT ''` to `task_name`) and resolved a schema drift issue that was blocking container startup.
+- **Verification**: Verified zero drift across all 111 API tests and 21 PWA E2E tests.

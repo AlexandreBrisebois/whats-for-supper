@@ -9,15 +9,15 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+
       POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING:-postgres://recipe_app:secure_dev_password@postgres:5432/recipe_app_db}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:9001
       CORS__ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost,http://localhost:3000}
+      DATA_ROOT: /data
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
 
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_PROJECT_ID: ${GEMINI_PROJECT_ID:-}
-      AgentSettings__Endpoint: ${OLLAMA_API_ENDPOINT:-http://host.docker.internal:11434/v1}
-      AgentSettings__ModelId: ${OLLAMA_MODEL_ID:-gemma4:e4b}
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,6 +47,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+
+
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://api.wfs.localhost}
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:9001}
     depends_on:

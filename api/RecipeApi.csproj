@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>RecipeApi</RootNamespace>
     <AssemblyName>RecipeApi</AssemblyName>
+    <UserSecretsId>whats-for-supper-api-secrets</UserSecretsId>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <SuppressTfmSupportCheck>true</SuppressTfmSupportCheck>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>

@@ -15,11 +15,9 @@ public class SuccessWrappingFilter : IAsyncResultFilter
         if (context.Result is ObjectResult objectResult &&
             context.HttpContext.Response.StatusCode is >= 200 and < 300)
         {
-            // Don't wrap if it's already an ApiResponse or has a 'data' property
-            // (Simple heuristic: if the value is an anonymous type with a 'data' property)
             var value = objectResult.Value;
 
-            if (value != null && !IsAlreadyWrapped(value))
+            if (value != null && !ShouldSkip(context, value))
             {
                 objectResult.Value = new { data = value };
             }
@@ -28,16 +26,25 @@ public class SuccessWrappingFilter : IAsyncResultFilter
         await next();
     }
 
-    private static bool IsAlreadyWrapped(object value)
+    private static bool ShouldSkip(ResultExecutingContext context, object value)
     {
-        var type = value.GetType();
-
-        // Don't wrap ResponseDto types — they define their own structure
-        if (type.Name.EndsWith("ResponseDto"))
+        // 1. Explicit skip via attribute
+        if (context.ActionDescriptor.EndpointMetadata.Any(m => m is SkipWrappingAttribute))
             return true;
 
-        // Don't wrap if it's an anonymous type that already has a 'data' property.
+        var type = value.GetType();
+
+        // 2. Anonymous types with 'data' are already wrapped
         if (type.Name.Contains("AnonymousType") && type.GetProperty("data") != null)
+            return true;
+
+        // 3. ResponseDto types define their own structure (e.g. RecipeListResponseDto)
+        // EXCEPT for WorkflowTriggerResponseDto which the spec says MUST be wrapped.
+        if (type.Name.EndsWith("ResponseDto") && !type.Name.StartsWith("WorkflowTrigger"))
+            return true;
+
+        // 4. Specifically named Response types
+        if (type.Name.EndsWith("Response") && !type.Name.StartsWith("WorkflowTrigger"))
             return true;
 
         return false;

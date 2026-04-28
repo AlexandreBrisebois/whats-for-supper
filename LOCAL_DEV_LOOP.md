@@ -15,8 +15,8 @@ graph TD
 
 ## Discovery Rules
 - **Tooling**: Always check [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md) for custom scripts.
-- **Environment**: Infrastructure variables live in `docker/.env`. PWA-specific overrides live in `pwa/.env.local`.
-- **Migrations**: `api/Migrations/` is the authoritative source for schema changes.
+- **Environment**: Infrastructure variables live in `docker/.env`. Local overrides in `docker/.env.local`.
+- **Migrations**: `api/database/schema.sql` is the authoritative source for schema changes (via `psqldef`).
 - **Paths**: All infrastructure commands (Task, Docker) MUST be run from the project root.
 
 ---
@@ -63,15 +63,18 @@ task
 |------|-------------|
 | `task up` | Start all Phase 0 services (Traefik) 🚀 |
 | `task down` | Stop all modular services ⛔ |
-| `task dev` | Alias for `task up` |
 | `task dev:api` | Start API with hot reload |
 | `task dev:pwa` | Start PWA with hot reload |
 | `task test` | Run all tests 🧪 |
-| `task logs` | View logs from all services 📋 |
+| `task test:smoke` | 💨 Docker Smoke Test (Local CI Parity) |
+| `task types:sync` | 🔄 Sync TypeScript types from OpenAPI spec |
 | `task agent:drift` | 🤖 Check for schema drift (C# vs Spec) |
 | `task agent:api` | 🤖 View full API controller mapping |
-| `task agent:summary` | 🤖 Context-dense AI summary |
+| `task agent:slice` | 🤖 Vertical Slice Viewer (Route Context) |
 | `task health` | Check if services are running 🏥 |
+| `task dev:db:sync` | 🔄 Full Docker DB refresh (Forces Rebuild) |
+| `task dev:clean:sync` | 🛑 Nuclear Reset (Wipe all + Rebuild) |
+| `task review` | 🧐 Pre-commit review (Format + Lint + Test) |
 | `task clean` | Clean everything up 🧹 |
 
 **Detailed usage:**
@@ -92,12 +95,16 @@ task test:api          # API tests only
 task test:api:watch    # API tests in watch mode
 task test:pwa          # PWA tests only
 task test:pwa:watch    # PWA tests in watch mode
-task test:e2e          # Run E2E tests (Playwright)
+task test:pwa:ci       # E2E tests in CI-parity mode
+task test:pwa:e2e      # E2E tests against live backend
+task test:smoke        # 💨 Full Docker smoke test (CI Parity)
 
-# Building
-task build             # Build all Docker images
-task build:api         # Build API image only
-task build:pwa         # Build PWA image only
+# Building & Publishing
+task build             # Force rebuild all images (No-cache + Image removal) 📦
+task publish           # Build & Push (if PUSH=true)
+task publish:api       # Build API image
+task publish:pwa       # Build PWA image
+task publish:migration # Build migration image
 
 # Container management
 task ps                # Show running containers
@@ -112,8 +119,10 @@ task logs:db           # View database logs
 task logs:tail         # View last 50 lines from all services
 
 # Database
-task migrate           # Run migrations
+task migrate           # Run migrations (psqldef)
 task seed              # Populate test data
+task db:schema:pull    # Update schema.sql from live DB
+task db:schema:push    # Apply schema.sql to live DB
 task db:backup         # Backup database
 task db:restore        # Restore from backup
 
@@ -126,20 +135,24 @@ task shell:db          # psql in database
 task format            # Format all code
 task lint              # Lint all code
 task typecheck         # Type check TypeScript
+task types:sync        # Sync types from OpenAPI
 
 # Health & diagnostics
 task health            # Check all services
 task env               # Show environment vars
 
 # Cleanup
+task dev:db:sync       # 🔄 Full Docker DB refresh (Build + Migrate + Seed)
+task dev:clean:sync    # 🛑 Nuclear reset (Wipe volumes + Rebuild)
 task clean             # Delete containers, volumes, caches
-task clean:soft        # Stop containers (keep data)
+task clean:all         # Deep clean (includes node_modules)
 
-# Workflows
-task work              # Start dev workflow (shows next steps)
+# Workflows & Git Hooks
+task init              # Initialize project (first-time setup)
+task hooks:install     # Install pre-commit git hooks
 task review            # Pre-commit review (format + lint + test)
 task ship              # Final ship checklist
-task prod:config       # Generate unified production compose file 🏷️
+task tag               # 🏷️ Tag and push release (patch|minor|major)
 ```
 
 ---
@@ -260,26 +273,24 @@ task work
 2. **Verify Drift**: Run `task agent:drift` to see the delta.
 3. **Align Backend**: Update C# DTOs/Controllers to match.
 4. **Verify Again**: `task agent:drift` should report "No schema drift detected!".
-5. **Regenerate Client**: Kiota will automatically pick up changes during `task up` or `task build`.
+5. **Regenerate Client**: Run `task types:sync` to update TypeScript types in the PWA.
 
 **Integrity Checks:**
 - `task agent:drift`: Validates that backend DTOs match the OpenAPI contract (nullability, names, types).
 - `task agent:api`: Validates that all routes in the spec are actually implemented by a controller.
+- `task agent:slice`: Provides a unified view of a route across Spec, Backend, and Client.
 
 ---
 
 ## Local Loop Best Practices
 
-### 1. **Database Snapshots**
-Before making breaking schema changes, save a snapshot:
-```bash
-# Backup
-task db:backup
-# Creates: backup_1712345678.sql
-
-# Restore
-task db:restore
-```
+### 1. **Database Migrations (psqldef)**
+This project uses `psqldef` for declarative schema management.
+- **Run Migrations**: `task migrate` (runs the migration container).
+- **Manual Control**:
+    - `task db:schema:pull`: Pulls the current live schema into `api/database/schema.sql`.
+    - `task db:schema:push`: Validates and applies local `schema.sql` to the database.
+- **Safety**: Always run `task db:backup` before manual schema pushes.
 
 ### 2. **Test Data**
 Always have test families and recipes:
@@ -321,12 +332,15 @@ ASPNETCORE_ENVIRONMENT=Development
 EOF
 ```
 
-### 5. **Know Your Workflows**
+### 5. **Git Hooks (pre-commit)**
+We use the `pre-commit` framework to ensure code quality before every commit.
+- **Installation**: `task hooks:install`
+- **What it does**: Automatically runs formatting and linting on staged files.
+- **Manual Run**: `pre-commit run --all-files`
+
+### 6. **Know Your Workflows**
 Use Task's built-in workflows:
 ```bash
-# Development workflow (with instructions)
-task work
-
 # Pre-commit review (format + lint + test)
 task review
 
@@ -592,8 +606,8 @@ task dev:pwa
 # Terminal 3: Watch logs
 task logs
 
-# Or use the guided workflow
-task work
+# Or use the agent tools for discovery
+task agent:summary
 
 # Edit code → see changes in browser instantly
 # Tests fail → fix issue → tests pass
@@ -626,7 +640,7 @@ git push
 ### Cleanup
 ```bash
 # Stop everything (keep data)
-task stop
+task down
 
 # Or full reset (delete containers, volumes, caches)
 task clean
@@ -689,21 +703,32 @@ task clean
 
 ---
 
-## Next Steps
+## Maintenance & Observability
 
-1. ✅ **Taskfile.yml** created at project root
-2. ✅ **LOCAL_DEV_LOOP.md** (this file) documents all workflows
-3. ⏭️ **Create `.env.example`** with all needed vars
-4. ⏭️ **Create `.github/workflows/test.yml`** for PR validation on every push
-5. ⏭️ **Create `.github/workflows/build.yml`** to build containers on merge
-6. ⏭️ **Document in README.md** which `task` commands to run first
+1. ✅ **Taskfile.yml**: Centralized task runner.
+2. ✅ **LOCAL_DEV_LOOP.md**: This document.
+3. ✅ **.env.example**: Environment template in `docker/`.
+4. ✅ **ci.yml**: PR validation and smoke tests.
+5. ✅ **publish.yml**: Container builds and registry distribution.
+6. ⏭️ **Observability**: Add Prometheus/Grafana dashboard tasks.
 
 ## Working with AI Agents
 
-This repository is optimized for **Universal Agent Protocol (UAP)**.
-- **Master Rules**: See [AGENT.md](../../AGENT.md).
-- **Session Log**: See [HANDOVER.md](../../HANDOVER.md) for transient execution state.
-- **Discovery**: Use `task agent:summary` to rapidly map the workspace.
+This repository is optimized for **Universal Agent Protocol (UAP)** and includes a specialized toolbox in [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md).
+
+### Agent Toolbox Quick Start
+
+| Task | AI Utility |
+|------|------------|
+| `task agent:summary` | Generates a context-dense summary of the project. |
+| `task agent:api` | Maps all C# endpoints to a markdown table (low token cost). |
+| `task agent:drift` | Fuzzes the delta between OpenAPI specs and C# DTOs. |
+| `task agent:slice` | Shows the full "vertical slice" (Spec ↔ Backend ↔ Client) for a route. |
+| `task agent:audit` | Scans PWA tests for brittle selectors (missing `data-testid`). |
+| `task agent:test:impact` | Runs only the tests affected by current git changes. |
+
+### Master Rules
+See [AGENT.md](../../AGENT.md) for core architectural constraints and agent instructions.
 
 ## 7. Troubleshooting
 

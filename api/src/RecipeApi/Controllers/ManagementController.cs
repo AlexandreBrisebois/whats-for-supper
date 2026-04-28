@@ -10,6 +10,7 @@ namespace RecipeApi.Controllers;
 
 [ApiController]
 [Route("api/management")]
+[SkipWrapping]
 public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbContext db) : ControllerBase
 {
     /// <summary>
@@ -77,5 +78,15 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
         };
 
         return Ok(status);
+    }
+
+    /// <summary>
+    /// POST /api/management/bulk-import — queue a recipe-import workflow for every unimported recipe.
+    /// </summary>
+    [HttpPost("bulk-import")]
+    public async Task<IActionResult> BulkTriggerImport([FromServices] RecipeImportBulkService bulkImportService)
+    {
+        var result = await bulkImportService.TriggerAllPendingAsync();
+        return Accepted(result);
     }
 }

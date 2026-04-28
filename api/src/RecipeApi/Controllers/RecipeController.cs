@@ -1,12 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
 using RecipeApi.Services;
 
 namespace RecipeApi.Controllers;
 
 [ApiController]
 [Route("api/recipes")]
-public class RecipeController(RecipeService recipeService, ImageService imageService) : ControllerBase
+public class RecipeController(
+    RecipeService recipeService,
+    ImageService imageService,
+    RecipeImportService importService,
+    RecipeImportBulkService bulkImportService) : ControllerBase
 {
     /// <summary>POST /api/recipes — upload images and create a new recipe.</summary>
     [HttpPost]
@@ -20,11 +25,12 @@ public class RecipeController(RecipeService recipeService, ImageService imageSer
             return BadRequest(new { message = "X-Family-Member-Id header is required." });
 
         var recipeId = await recipeService.CreateRecipe(familyMemberId.Value, files, dto);
-        return Ok(new { recipeId, message = "Recipe created." });
+        return Ok(new { id = recipeId });
     }
 
     /// <summary>GET /api/recipes — paginated list, newest first.</summary>
     [HttpGet]
+    [SkipWrapping]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
@@ -35,6 +41,7 @@ public class RecipeController(RecipeService recipeService, ImageService imageSer
 
     /// <summary>GET /api/recipes/{id} — full detail for a single recipe.</summary>
     [HttpGet("{id:guid}")]
+    [SkipWrapping]
     public async Task<IActionResult> Detail(Guid id)
     {
         var result = await recipeService.GetRecipeDetail(id);
@@ -51,6 +58,57 @@ public class RecipeController(RecipeService recipeService, ImageService imageSer
     {
         var result = await recipeService.UpdateRecipe(id, dto);
         return Ok(result);
+    }
+
+    /// <summary>
+    /// POST /api/recipes/{id}/import — trigger a manual recipe import.
+    /// </summary>
+    [HttpPost("{id:guid}/import")]
+    public async Task<IActionResult> TriggerImport(Guid id)
+    {
+        try
+        {
+            var importId = await importService.TriggerImport(id);
+            return Accepted(new RecipeImportTriggerResponseDto { ImportId = importId });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// GET /api/recipes/{id}/import — check the status of a recipe import.
+    /// </summary>
+    [HttpGet("{id:guid}/import")]
+    public async Task<IActionResult> GetImportStatus(Guid id)
+    {
+        var result = await importService.GetImportStatus(id);
+        return result == null
+            ? NotFound(new { message = "No import status found for this recipe." })
+            : Ok(result);
+    }
+
+    /// <summary>
+    /// GET /api/recipes/import-status — get a summary of the import pipeline's health.
+    /// </summary>
+    [HttpGet("import-status")]
+    [SkipWrapping]
+    public async Task<IActionResult> GetImportSummary()
+    {
+        var summary = await importService.GetImportSummary();
+        return Ok(summary);
+    }
+
+    /// <summary>
+    /// POST /api/recipes/import/bulk — queue a recipe-import workflow for every unimported recipe.
+    /// </summary>
+    [HttpPost("import/bulk")]
+    [SkipWrapping]
+    public async Task<IActionResult> BulkTriggerImport()
+    {
+        var result = await bulkImportService.TriggerAllPendingAsync();
+        return Accepted(result);
     }
 
     /// <summary>GET /api/recipes/recommendations — mock recommendations (100% mocked data for development).</summary>
