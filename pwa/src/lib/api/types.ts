@@ -63,6 +63,15 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
+            /**
+             * @example {
+             *       "data": [
+             *         "Gourmet Discovery",
+             *         "Coastal Kitchen",
+             *         "Organic Vitality"
+             *       ]
+             *     }
+             */
             'application/json': {
               data?: string[];
             };
@@ -103,6 +112,24 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
+            /**
+             * @example {
+             *       "data": [
+             *         {
+             *           "id": "660e8400-e29b-41d4-a716-446655440001",
+             *           "name": "Mock Gourmet Discovery 1",
+             *           "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
+             *           "createdAt": "2026-04-23T20:00:00Z"
+             *         },
+             *         {
+             *           "id": "660e8400-e29b-41d4-a716-446655440002",
+             *           "name": "Mock Gourmet Discovery 2",
+             *           "imageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
+             *           "createdAt": "2026-04-23T20:00:00Z"
+             *         }
+             *       ]
+             *     }
+             */
             'application/json': {
               data?: components['schemas']['RecipeDto'][];
             };
@@ -149,6 +176,13 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "message": "Vote recorded"
+             *       }
+             *     }
+             */
             'application/json': {
               data?: {
                 message?: string;
@@ -189,8 +223,13 @@ export interface paths {
           content: {
             'application/json': {
               data?: {
+                /** Format: uuid */
                 id: string;
                 name: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
               }[];
             };
           };
@@ -220,6 +259,71 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "id": "550e8400-e29b-41d4-a716-446655440003",
+             *         "name": "Test User",
+             *         "createdAt": "2024-01-01T00:00:00Z",
+             *         "updatedAt": "2024-01-01T00:00:00Z"
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              };
+            };
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/family/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** Update a family member */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            name: string;
+          };
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
             'application/json': {
               data?: {
                 id?: string;
@@ -230,7 +334,28 @@ export interface paths {
         };
       };
     };
-    delete?: never;
+    post?: never;
+    /** Delete a family member */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Deleted */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
@@ -278,7 +403,116 @@ export interface paths {
       };
       requestBody: {
         content: {
-          'application/json': Record<string, never>;
+          'multipart/form-data': {
+            /** @default 0 */
+            rating?: number;
+            /** @default -1 */
+            finishedDishImageIndex?: number;
+            notes?: string | null;
+            images?: string[];
+          };
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "id": "550e8400-e29b-41d4-a716-446655440003"
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: {
+                /** Format: uuid */
+                id?: string;
+              };
+            };
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/recipes/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    /** Get recipe detail */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['RecipeDetailResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    /** Delete a recipe */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Deleted */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    /** Update a recipe */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['UpdateRecipeDto'];
         };
       };
       responses: {
@@ -295,20 +529,38 @@ export interface paths {
         };
       };
     };
+    trace?: never;
+  };
+  '/api/recipes/{recipeId}/original/{photoIndex}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        recipeId: string;
+        photoIndex: number;
+      };
+      cookie?: never;
+    };
+    /** Get original recipe image by index */
+    get: operations['getRecipeOriginalImage'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/recipes/{id}': {
+  '/api/recipes/{id}/hero': {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        id: string;
+      };
       cookie?: never;
     };
-    /** Get recipe detail */
+    /** Get recipe hero image */
     get: {
       parameters: {
         query?: never;
@@ -320,13 +572,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK (Not wrapped in data envelope) */
+        /** @description Image binary data */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': components['schemas']['RecipeDetailResponse'];
+            'image/jpeg': string;
+            'image/png': string;
           };
         };
       };
@@ -412,6 +665,84 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/schedule/voting/open': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Open voting for a week */
+    post: {
+      parameters: {
+        query?: {
+          weekOffset?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              data?: {
+                message?: string;
+              };
+            };
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/schedule/day/{date}/remove': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove a recipe from a scheduled day */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          date: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Removed */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
@@ -570,6 +901,38 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
+            /**
+             * @example {
+             *       "data": [
+             *         {
+             *           "id": "550e8400-e29b-41d4-a716-446655440001",
+             *           "name": "Zesty Lemon Chicken",
+             *           "image": "/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero",
+             *           "description": "A bright and citrusy Mediterranean classic that comes together in minutes.",
+             *           "ingredients": [
+             *             "Chicken breast",
+             *             "Lemon juice",
+             *             "Garlic",
+             *             "Oregano",
+             *             "Olive oil"
+             *           ]
+             *         },
+             *         {
+             *           "id": "550e8400-e29b-41d4-a716-446655440002",
+             *           "name": "Gorgonzola Gnocchi",
+             *           "image": "/api/recipes/550e8400-e29b-41d4-a716-446655440002/hero",
+             *           "description": "Rich, creamy, and sophisticated—perfect for a quick gourmet weeknight dinner.",
+             *           "ingredients": [
+             *             "Potato gnocchi",
+             *             "Gorgonzola cheese",
+             *             "Heavy cream",
+             *             "Walnuts",
+             *             "Sage"
+             *           ]
+             *         }
+             *       ]
+             *     }
+             */
             'application/json': {
               data?: components['schemas']['ScheduleRecipeDto'][];
             };
@@ -579,6 +942,54 @@ export interface paths {
     };
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/schedule/day/{date}/validate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        date: string;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Validate a scheduled day (Cooked/Skipped) */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          date: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ValidationDto'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              data?: {
+                message?: string;
+              };
+            };
+          };
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -625,6 +1036,563 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/management/backup': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Trigger an asynchronous backup */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ManagementTaskAcceptedResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/management/seed': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Trigger an asynchronous restore (seed) */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ManagementTaskAcceptedResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/management/disaster-recovery': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Trigger an asynchronous disaster recovery */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ManagementTaskAcceptedResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/management/status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get status of the current or most recent management task */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ManagementTaskStatusResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/recipes/{id}/import': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    /** Check status of a recipe import */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['RecipeImportStatusResponseDto'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /** Trigger a manual recipe import */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['RecipeImportTriggerResponseDto'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/recipes/import-status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get summary of the import pipeline's health */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['RecipeImportSummaryDto'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/recipes/imports/bulk': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Bulk-trigger recipe-import for all unimported recipes */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "queuedCount": 5,
+             *       "instanceIds": [
+             *         "550e8400-e29b-41d4-a716-446655440010",
+             *         "550e8400-e29b-41d4-a716-446655440011"
+             *       ]
+             *     }
+             */
+            'application/json': components['schemas']['BulkImportTriggerResponseDto'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workflows/{workflowId}/trigger': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Trigger a workflow execution */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          workflowId: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          /**
+           * @example {
+           *       "parameters": {
+           *         "recipeUrl": "https://www.recipetineats.com/beef-and-broccoli-stir-fry/"
+           *       }
+           *     }
+           */
+          'application/json': components['schemas']['WorkflowTriggerRequestDto'];
+        };
+      };
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "instanceId": "550e8400-e29b-41d4-a716-446655440010"
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: components['schemas']['WorkflowTriggerResponseDto'];
+            };
+          };
+        };
+        /** @description Workflow not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workflows/instances/{instanceId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        instanceId: string;
+      };
+      cookie?: never;
+    };
+    /** Get workflow instance details with all tasks */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          instanceId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "id": "550e8400-e29b-41d4-a716-446655440010",
+             *         "workflowId": "recipe-extraction",
+             *         "status": "Processing",
+             *         "parameters": {
+             *           "recipeUrl": "https://www.recipetineats.com/beef-and-broccoli-stir-fry/"
+             *         },
+             *         "createdAt": "2026-04-26T10:00:00Z",
+             *         "updatedAt": "2026-04-26T10:05:00Z",
+             *         "tasks": [
+             *           {
+             *             "taskId": "660e8400-e29b-41d4-a716-446655440020",
+             *             "processorName": "RecipeExtractionAgent",
+             *             "status": "Completed",
+             *             "dependsOn": null,
+             *             "retryCount": 0,
+             *             "scheduledAt": "2026-04-26T10:00:00Z",
+             *             "errorMessage": null,
+             *             "createdAt": "2026-04-26T10:00:00Z",
+             *             "updatedAt": "2026-04-26T10:02:00Z"
+             *           },
+             *           {
+             *             "taskId": "660e8400-e29b-41d4-a716-446655440021",
+             *             "processorName": "RecipeHeroAgent",
+             *             "status": "Processing",
+             *             "dependsOn": [
+             *               "660e8400-e29b-41d4-a716-446655440020"
+             *             ],
+             *             "retryCount": 0,
+             *             "scheduledAt": "2026-04-26T10:02:00Z",
+             *             "errorMessage": null,
+             *             "createdAt": "2026-04-26T10:00:30Z",
+             *             "updatedAt": "2026-04-26T10:05:00Z"
+             *           }
+             *         ]
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: components['schemas']['WorkflowInstanceDetailDto'];
+            };
+          };
+        };
+        /** @description Workflow instance not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workflows/active': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get all active (Processing or Paused) workflow instances */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": [
+             *         {
+             *           "id": "550e8400-e29b-41d4-a716-446655440010",
+             *           "workflowId": "recipe-extraction",
+             *           "status": "Processing",
+             *           "createdAt": "2026-04-26T10:00:00Z",
+             *           "updatedAt": "2026-04-26T10:05:00Z",
+             *           "taskCount": 2
+             *         },
+             *         {
+             *           "id": "550e8400-e29b-41d4-a716-446655440011",
+             *           "workflowId": "recipe-extraction",
+             *           "status": "Paused",
+             *           "createdAt": "2026-04-26T09:00:00Z",
+             *           "updatedAt": "2026-04-26T09:45:00Z",
+             *           "taskCount": 3
+             *         }
+             *       ]
+             *     }
+             */
+            'application/json': {
+              data?: components['schemas']['WorkflowInstanceSummaryDto'][];
+            };
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workflows/tasks/{taskId}/reset': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reset a failed task to Pending status */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "message": "Task reset successfully."
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: {
+                message?: string;
+              };
+            };
+          };
+        };
+        /** @description Task not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -641,14 +1609,22 @@ export interface components {
       id: string;
       name: string | null;
       description?: string | null;
+      /** @example https://images.unsplash.com/photo-1546069901-ba9599a7e63c */
       imageUrl: string | null;
       totalTime?: string | null;
       category?: string | null;
       difficulty?: string | null;
       images?: number[];
       rating?: number;
+      isVegetarian?: boolean;
+      isHealthyChoice?: boolean;
       /** Format: uuid */
       addedBy?: string | null;
+      ingredients?: string[] | null;
+      /** @description Raw metadata extracted by AI from recipe images (contains recipeInstructions, recipeYield, etc.) */
+      rawMetadata?: {
+        [key: string]: unknown;
+      } | null;
       /** Format: date-time */
       createdAt: string;
     };
@@ -673,40 +1649,65 @@ export interface components {
       results: components['schemas']['RecommendationResultDto'][];
     };
     TopPickDto: {
+      /** Format: uuid */
       id: string;
       name: string;
       description: string;
+      /**
+       * @description Relative path proxied through /backend
+       * @example /api/recipes/550e8400-e29b-41d4-a716-446655440000/hero
+       */
       imageUrl: string;
       prepTime: string;
       difficulty: string;
     };
     RecommendationResultDto: {
+      /** Format: uuid */
       id: string;
       name: string;
       time: string;
+      /**
+       * @description Relative path proxied through /backend
+       * @example /api/recipes/550e8400-e29b-41d4-a716-446655440001/hero
+       */
       image: string;
     };
     ScheduleDays: {
       weekOffset: number;
       locked: boolean;
+      /** @description 0: Draft, 1: VotingOpen, 2: Locked */
+      status: number;
       days: components['schemas']['ScheduleDayDto'][];
     };
     ScheduleDayDto: {
       day: string;
       date: string;
       recipe?: components['schemas']['ScheduleRecipeDto'];
+      /** @description 0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus */
+      status?: number;
     };
     ScheduleRecipeDto: {
       /** Format: uuid */
       id: string;
       name: string | null;
+      /**
+       * @description Relative path proxied through /backend
+       * @example /api/recipes/550e8400-e29b-41d4-a716-446655440001/hero
+       */
       image: string;
+      description?: string | null;
+      ingredients?: string[] | null;
       voteCount?: number | null;
     };
     MoveScheduleDto: {
       weekOffset: number;
       fromIndex: number;
       toIndex: number;
+      /**
+       * @default swap
+       * @enum {string}
+       */
+      intent: 'swap' | 'push';
     };
     AssignScheduleDto: {
       weekOffset: number;
@@ -724,6 +1725,10 @@ export interface components {
       }[];
       consensusRecipesCount: number;
     };
+    UpdateRecipeDto: {
+      notes?: string | null;
+      rating?: number | null;
+    };
     PreSelectedRecipeDto: {
       /** Format: uuid */
       recipeId: string;
@@ -735,13 +1740,104 @@ export interface components {
       dayIndex: number;
       isLocked: boolean;
     };
+    ValidationDto: {
+      /** @description 1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus */
+      status: number;
+    };
     HealthCheckResponse: {
       status: string;
       /** Format: date-time */
       timestamp: string;
-      checks?: {
+      checks: {
         [key: string]: unknown;
       };
+    };
+    ManagementTaskStatusResponse: {
+      /** Format: uuid */
+      workflowId: string;
+      workflowType: string;
+      /** @enum {string} */
+      status: 'Pending' | 'Processing' | 'Completed' | 'Failed';
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+      result?: Record<string, never> | null;
+    };
+    ManagementTaskAcceptedResponse: {
+      message: string;
+      /** Format: uuid */
+      taskId: string;
+    };
+    RecipeImportTriggerResponseDto: {
+      /** Format: uuid */
+      importId: string;
+    };
+    RecipeImportStatusResponseDto: {
+      status: string;
+      errorMessage?: string | null;
+    };
+    RecipeImportSummaryDto: {
+      importedCount: number;
+      queueCount: number;
+      failedCount: number;
+    };
+    WorkflowTriggerRequestDto: {
+      parameters: {
+        [key: string]: string;
+      };
+    };
+    WorkflowTriggerResponseDto: {
+      /** Format: uuid */
+      instanceId: string;
+    };
+    BulkImportTriggerResponseDto: {
+      queuedCount: number;
+      instanceIds: string[];
+    };
+    WorkflowTaskDto: {
+      /** Format: uuid */
+      taskId: string;
+      taskName: string;
+      processorName: string;
+      /** @enum {string} */
+      status: 'Waiting' | 'Pending' | 'Processing' | 'Completed' | 'Failed';
+      dependsOn?: string[] | null;
+      retryCount: number;
+      /** Format: date-time */
+      scheduledAt?: string | null;
+      errorMessage?: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    WorkflowInstanceDetailDto: {
+      /** Format: uuid */
+      id: string;
+      workflowId: string;
+      /** @enum {string} */
+      status: 'Pending' | 'Processing' | 'Completed' | 'Failed' | 'Paused';
+      parameters?: {
+        [key: string]: string;
+      } | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+      tasks: components['schemas']['WorkflowTaskDto'][];
+    };
+    WorkflowInstanceSummaryDto: {
+      /** Format: uuid */
+      id: string;
+      workflowId: string;
+      /** @enum {string} */
+      status: 'Pending' | 'Processing' | 'Completed' | 'Failed' | 'Paused';
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+      taskCount: number;
     };
   };
   responses: never;
@@ -751,4 +1847,35 @@ export interface components {
   pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+  getRecipeOriginalImage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        recipeId: string;
+        photoIndex: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Raw image binary */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'image/*': string;
+        };
+      };
+      /** @description Recipe or image not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+}

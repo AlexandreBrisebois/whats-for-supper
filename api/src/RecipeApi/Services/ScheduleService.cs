@@ -3,13 +3,15 @@ using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Models;
+using Microsoft.Extensions.Logging;
 using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public class ScheduleService(RecipeDbContext dbContext)
+public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
+    private readonly ILogger<ScheduleService> _logger = logger;
 
     public async Task<ScheduleDays> GetScheduleAsync(int weekOffset)
     {
@@ -20,7 +22,9 @@ public class ScheduleService(RecipeDbContext dbContext)
             .Where(e => e.Date >= monday && e.Date <= sunday)
             .ToListAsync();
 
-        var isLocked = events.Any(e => e.Status == CalendarEventStatus.Locked);
+        var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
+        var isLocked = plan?.Status == WeeklyPlanStatus.Locked;
+        var status = (int)(plan?.Status ?? WeeklyPlanStatus.Draft);
 
         var days = new List<ScheduleDayDto>();
         var dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
@@ -39,19 +43,54 @@ public class ScheduleService(RecipeDbContext dbContext)
                     @event.Recipe.Description)
                 : null;
 
-            days.Add(new ScheduleDayDto(dayNames[i], date.ToString("yyyy-MM-dd"), recipe));
+            days.Add(new ScheduleDayDto(dayNames[i], date.ToString("yyyy-MM-dd"), recipe, (int)(@event?.Status ?? CalendarEventStatus.Planned)));
         }
 
-        return new ScheduleDays(weekOffset, isLocked, days);
+        return new ScheduleDays(weekOffset, isLocked, status, days);
+    }
+
+    public async Task OpenVotingAsync(int weekOffset)
+    {
+        var (monday, _) = GetWeekBounds(weekOffset);
+        var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
+
+        if (plan == null)
+        {
+            plan = new WeeklyPlan
+            {
+                Id = Guid.NewGuid(),
+                WeekStartDate = monday,
+                Status = WeeklyPlanStatus.VotingOpen
+            };
+            _dbContext.WeeklyPlans.Add(plan);
+            _logger.LogInformation("Created new WeeklyPlan for week starting {Date} with status VotingOpen", monday);
+        }
+        else
+        {
+            plan.Status = WeeklyPlanStatus.VotingOpen;
+            _logger.LogInformation("Updated WeeklyPlan for week starting {Date} to status VotingOpen", monday);
+        }
+
+        await _dbContext.SaveChangesAsync();
     }
 
     public async Task LockScheduleAsync(int weekOffset)
     {
         var (monday, sunday) = GetWeekBounds(weekOffset);
 
+        // 1. Update WeeklyPlan
+        var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
+        if (plan == null)
+        {
+            plan = new WeeklyPlan { WeekStartDate = monday };
+            _dbContext.WeeklyPlans.Add(plan);
+        }
+        plan.Status = WeeklyPlanStatus.Locked;
+
+        // 2. Lock all events for this week
         var events = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
-            .Where(e => e.Date >= monday && e.Date <= sunday && e.Status == CalendarEventStatus.Planned)
+            .Where(e => e.Date >= monday && e.Date <= sunday)
             .ToListAsync();
 
         // Get vote counts for recipes in this week and persist them before clearing votes
@@ -70,14 +109,12 @@ public class ScheduleService(RecipeDbContext dbContext)
             {
                 @event.VoteCount = voteCount;
             }
-            if (@event.Recipe != null)
-            {
-                @event.Recipe.LastCookedDate = DateTimeOffset.UtcNow;
-            }
         }
 
+        // 3. Global Purge #1: Delete all recipe votes
         var votes = await _dbContext.RecipeVotes.ToListAsync();
         _dbContext.RecipeVotes.RemoveRange(votes);
+        _logger.LogInformation("Global Purge #1: Deleted {Count} votes from recipe_votes", votes.Count);
 
         await _dbContext.SaveChangesAsync();
     }
@@ -89,16 +126,66 @@ public class ScheduleService(RecipeDbContext dbContext)
         var toDate = monday.AddDays(dto.ToIndex);
 
         var fromEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == fromDate);
-        var toEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == toDate);
+        if (fromEvent == null) return;
 
-        if (fromEvent == null && toEvent == null)
+        if (dto.Intent == "push")
         {
-            return;
+            // Push logic: find first empty slot starting at toIndex
+            var targetIndex = dto.ToIndex;
+            bool foundEmpty = false;
+            while (targetIndex < 7)
+            {
+                var checkDate = monday.AddDays(targetIndex);
+                var exists = await _dbContext.CalendarEvents.AnyAsync(e => e.Date == checkDate);
+                if (!exists)
+                {
+                    foundEmpty = true;
+                    break;
+                }
+                targetIndex++;
+            }
+
+            if (foundEmpty)
+            {
+                _logger.LogInformation("Pushing recipe from {From} to {To}, shifting slots", fromDate, toDate);
+                // Shift recipes from targetIndex down to toIndex
+                for (int i = targetIndex; i > dto.ToIndex; i--)
+                {
+                    var currentDay = monday.AddDays(i);
+                    var prevDay = monday.AddDays(i - 1);
+                    var prevEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == prevDay);
+                    if (prevEvent != null)
+                    {
+                        prevEvent.Date = currentDay;
+                    }
+                }
+                fromEvent.Date = toDate;
+            }
+            else
+            {
+                _logger.LogWarning("No empty slot found for push, falling back to swap");
+                await SwapInternalAsync(fromDate, toDate);
+            }
         }
+        else
+        {
+            await SwapInternalAsync(fromDate, toDate);
+        }
+
+        await _dbContext.SaveChangesAsync();
+    }
+
+    private async Task SwapInternalAsync(DateOnly fromDate, DateOnly toDate)
+    {
+        var fromEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == fromDate);
+        var toEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == toDate);
 
         if (fromEvent != null && toEvent != null)
         {
+            _logger.LogInformation("Swapping recipes between {From} and {To}", fromDate, toDate);
             (fromEvent.RecipeId, toEvent.RecipeId) = (toEvent.RecipeId, fromEvent.RecipeId);
+            (fromEvent.VoteCount, toEvent.VoteCount) = (toEvent.VoteCount, fromEvent.VoteCount);
+            (fromEvent.Status, toEvent.Status) = (toEvent.Status, fromEvent.Status);
         }
         else if (fromEvent != null)
         {
@@ -108,8 +195,6 @@ public class ScheduleService(RecipeDbContext dbContext)
         {
             toEvent.Date = fromDate;
         }
-
-        await _dbContext.SaveChangesAsync();
     }
 
     public async Task AssignRecipeAsync(AssignScheduleDto dto)
@@ -180,6 +265,17 @@ public class ScheduleService(RecipeDbContext dbContext)
         }
 
         return dtos;
+    }
+
+    public async Task RemoveRecipeAsync(DateOnly date)
+    {
+        var @event = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == date);
+        if (@event != null)
+        {
+            _dbContext.CalendarEvents.Remove(@event);
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Removed recipe from date {Date}", date);
+        }
     }
 
     public async Task<SmartDefaultsDto> GetSmartDefaultsAsync(int weekOffset)
@@ -302,14 +398,37 @@ public class ScheduleService(RecipeDbContext dbContext)
             throw new Exception("No meal planned for this date");
         }
 
+        var oldStatus = @event.Status;
         @event.Status = (CalendarEventStatus)dto.Status;
+
+        // Consensus Purge (Global Purge #2)
+        if (oldStatus == CalendarEventStatus.AwaitingConsensus && @event.Status == CalendarEventStatus.Locked)
+        {
+            _logger.LogInformation("Consensus Purge #2: Recipe {RecipeId} reached consensus, purging votes", @event.RecipeId);
+            var votesToPurge = await _dbContext.RecipeVotes.Where(v => v.RecipeId == @event.RecipeId).ToListAsync();
+            _dbContext.RecipeVotes.RemoveRange(votesToPurge);
+        }
 
         if (dto.Status == 2 && @event.Recipe != null) // 2 = Cooked
         {
             @event.Recipe.LastCookedDate = DateTimeOffset.UtcNow;
+            _logger.LogInformation("Updated LastCookedDate for recipe {RecipeId}", @event.RecipeId);
         }
 
         await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<Dictionary<string, bool>> UpdateGroceryStateAsync(
+        int weekOffset,
+        Dictionary<string, bool> groceryState)
+    {
+        var (monday, _) = GetWeekBounds(weekOffset);
+        var weekPlan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(wp => wp.WeekStartDate == monday)
+            ?? throw new KeyNotFoundException($"Weekly plan for week starting {monday} not found.");
+
+        weekPlan.GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryState);
+        await _dbContext.SaveChangesAsync();
+        return groceryState;
     }
 
     private static (DateOnly Monday, DateOnly Sunday) GetWeekBounds(int weekOffset)

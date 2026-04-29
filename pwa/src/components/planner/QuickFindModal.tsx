@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Check, ChevronRight } from 'lucide-react';
+import { X, Sparkles, Check, ChevronRight, Utensils } from 'lucide-react';
 import Image from 'next/image';
 import { getFillTheGap } from '@/lib/api/planner';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
     }
   };
 
+  const isNudgeCard = recipes.length > 0 && currentIndex === 4;
   const currentRecipe = recipes[currentIndex];
 
   return (
@@ -82,77 +83,110 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
             </div>
           ) : recipes.length > 0 ? (
             <div className="relative aspect-[4/5] mb-8 perspective-1000">
-              <motion.div
-                key={currentIndex}
-                animate={{ rotateY: isFlipped ? 180 : 0 }}
-                transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                className="relative w-full h-full preserve-3d cursor-pointer"
-                onClick={() => setIsFlipped(!isFlipped)}
-              >
-                {/* Front of Card */}
-                <div
-                  className={cn(
-                    'absolute inset-0 rounded-[3rem] overflow-hidden shadow-2xl backface-hidden border-2 border-white/20',
-                    isFlipped ? 'pointer-events-none' : ''
-                  )}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentIndex}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1, rotateY: isFlipped ? 180 : 0 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+                  className="relative w-full h-full preserve-3d cursor-pointer"
+                  onClick={() => !isNudgeCard && setIsFlipped(!isFlipped)}
                 >
-                  {currentRecipe.image && (
+                  {isNudgeCard ? (
+                    /* Search Nudge Card */
+                    <div className="absolute inset-0 rounded-[3rem] bg-white p-10 flex flex-col items-center justify-center text-center shadow-2xl border-2 border-white/20">
+                      <div className="h-20 w-20 rounded-3xl bg-ochre/10 text-ochre flex items-center justify-center mb-8">
+                        <Utensils size={40} />
+                      </div>
+                      <h4 className="text-2xl font-heading font-black text-charcoal mb-4 leading-tight tracking-tight">
+                        Didn&apos;t find a match?
+                      </h4>
+                      <p className="text-sm text-charcoal/40 font-medium leading-relaxed mb-10">
+                        Our library has thousands of recipes. Try searching for exactly what
+                        you&apos;re craving.
+                      </p>
+                      <Button
+                        asChild
+                        className="w-full h-16 rounded-2xl bg-ochre text-white font-black uppercase tracking-widest text-[11px] shadow-lg shadow-ochre/20"
+                      >
+                        <a href="/recipes">Search Library</a>
+                      </Button>
+                    </div>
+                  ) : (
+                    /* Regular Recipe Card */
                     <>
-                      <Image
-                        src={`/backend${currentRecipe.image}`}
-                        alt={currentRecipe.name}
-                        fill
-                        className="object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                      {/* Front of Card */}
+                      <div
+                        className={cn(
+                          'absolute inset-0 rounded-[3rem] overflow-hidden shadow-2xl backface-hidden border-2 border-white/20',
+                          isFlipped ? 'pointer-events-none' : ''
+                        )}
+                      >
+                        {currentRecipe.image && (
+                          <>
+                            <Image
+                              src={
+                                currentRecipe.image.startsWith('/api/')
+                                  ? `/backend${currentRecipe.image}`
+                                  : currentRecipe.image
+                              }
+                              alt={currentRecipe.name}
+                              fill
+                              className="object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                          </>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 p-8">
+                          <h4 className="text-2xl font-heading font-black text-white mb-3 leading-tight tracking-tight">
+                            {currentRecipe.name}
+                          </h4>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-white text-[10px] font-black uppercase tracking-widest bg-ochre px-3 py-1.5 rounded-full shadow-lg">
+                              Ready in 25 mins
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Back of Card */}
+                      <div
+                        className={cn(
+                          'absolute inset-0 rounded-[3rem] bg-white shadow-2xl rotate-y-180 backface-hidden border-2 border-ochre/20 overflow-hidden',
+                          !isFlipped ? 'pointer-events-none' : ''
+                        )}
+                      >
+                        <div className="h-full overflow-y-auto scrollbar-none">
+                          <div className="min-h-full p-10 flex flex-col items-center justify-center text-center">
+                            <Sparkles size={32} className="text-ochre/40 mb-6 flex-shrink-0" />
+                            <h4 className="text-xl font-heading font-black text-charcoal mb-4 flex-shrink-0">
+                              Why we love it
+                            </h4>
+                            <p className="text-sm text-charcoal/60 leading-relaxed mb-6">
+                              {currentRecipe.description ||
+                                'A delicious home-cooked meal waiting for you.'}
+                            </p>
+                            <div className="flex flex-wrap justify-center gap-2">
+                              {(currentRecipe.ingredients || []).map((ing: string) => (
+                                <span
+                                  key={ing}
+                                  className="text-[10px] font-bold uppercase tracking-widest bg-charcoal/5 px-3 py-1.5 rounded-lg text-charcoal/40"
+                                >
+                                  {ing}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="mt-8 text-[10px] font-black text-ochre uppercase tracking-widest flex-shrink-0">
+                              Tap to flip back
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </>
                   )}
-                  <div className="absolute bottom-0 left-0 right-0 p-8">
-                    <h4 className="text-2xl font-heading font-black text-white mb-3 leading-tight tracking-tight">
-                      {currentRecipe.name}
-                    </h4>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white text-[10px] font-black uppercase tracking-widest bg-ochre px-3 py-1.5 rounded-full shadow-lg">
-                        Ready in 25 mins
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Back of Card */}
-                <div
-                  className={cn(
-                    'absolute inset-0 rounded-[3rem] bg-white shadow-2xl rotate-y-180 backface-hidden border-2 border-ochre/20 overflow-hidden',
-                    !isFlipped ? 'pointer-events-none' : ''
-                  )}
-                >
-                  <div className="h-full overflow-y-auto scrollbar-none">
-                    <div className="min-h-full p-10 flex flex-col items-center justify-center text-center">
-                      <Sparkles size={32} className="text-ochre/40 mb-6 flex-shrink-0" />
-                      <h4 className="text-xl font-heading font-black text-charcoal mb-4 flex-shrink-0">
-                        Why we love it
-                      </h4>
-                      <p className="text-sm text-charcoal/60 leading-relaxed mb-6">
-                        {currentRecipe.description ||
-                          'A delicious home-cooked meal waiting for you.'}
-                      </p>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {(currentRecipe.ingredients || []).map((ing: string) => (
-                          <span
-                            key={ing}
-                            className="text-[10px] font-bold uppercase tracking-widest bg-charcoal/5 px-3 py-1.5 rounded-lg text-charcoal/40"
-                          >
-                            {ing}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="mt-8 text-[10px] font-black text-ochre uppercase tracking-widest flex-shrink-0">
-                        Tap to flip back
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              </AnimatePresence>
             </div>
           ) : (
             <p className="text-center py-10 text-white/40">No recipes found.</p>
@@ -166,12 +200,17 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
               disabled={isLoading}
               data-testid="quick-find-next"
             >
-              Skip
+              {isNudgeCard ? 'Start Over' : 'Skip'}
             </Button>
             <Button
-              className="h-16 rounded-3xl bg-white text-ochre font-black shadow-xl shadow-ochre/40 active:scale-95 transition-all uppercase tracking-widest text-[11px]"
-              onClick={() => onSelect(currentRecipe)}
-              disabled={isLoading}
+              className={cn(
+                'h-16 rounded-3xl font-black shadow-xl active:scale-95 transition-all uppercase tracking-widest text-[11px]',
+                isNudgeCard
+                  ? 'bg-white/20 text-white/40 cursor-not-allowed'
+                  : 'bg-white text-ochre shadow-ochre/40'
+              )}
+              onClick={() => !isNudgeCard && onSelect(currentRecipe)}
+              disabled={isLoading || isNudgeCard}
               data-testid="quick-find-select"
             >
               Select
@@ -179,7 +218,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
           </div>
 
           <div className="mt-8 flex justify-center space-x-2">
-            {recipes.map((_, i) => (
+            {[0, 1, 2, 3, 4].map((i) => (
               <motion.div
                 key={i}
                 animate={{

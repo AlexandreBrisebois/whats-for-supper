@@ -26,6 +26,8 @@ import { LockRequestBuilderRequestsMetadata, type LockRequestBuilder } from './l
 // @ts-ignore
 import { MoveRequestBuilderRequestsMetadata, type MoveRequestBuilder } from './move/index';
 // @ts-ignore
+import { type VotingRequestBuilder, VotingRequestBuilderNavigationMetadata } from './voting/index';
+// @ts-ignore
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
@@ -98,6 +100,10 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
    * The move property
    */
   get move(): MoveRequestBuilder;
+  /**
+   * The voting property
+   */
+  get voting(): VotingRequestBuilder;
   /**
    * Gets an item from the ApiSdk.api.schedule.item collection
    * @param weekOffset Unique identifier of the item
@@ -178,6 +184,9 @@ export const ScheduleRequestBuilderNavigationMetadata: Record<
   },
   move: {
     requestsMetadata: MoveRequestBuilderRequestsMetadata,
+  },
+  voting: {
+    navigationMetadata: VotingRequestBuilderNavigationMetadata,
   },
 };
 /**

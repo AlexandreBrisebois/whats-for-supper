@@ -49,6 +49,16 @@ export const assignRecipeToDay = async (
   });
 };
 
+export const openVoting = async (weekOffset: number) => {
+  return await apiClient.api.schedule.voting.open.post({
+    queryParameters: { weekOffset },
+  });
+};
+
+export const removeRecipeFromDay = async (date: string) => {
+  return await apiClient.api.schedule.day.byDate(date).remove.delete();
+};
+
 export const getSmartDefaults = async (
   weekOffset: number
 ): Promise<SmartDefaultsResponse | null> => {

@@ -57,6 +57,21 @@ components:
           type: array
           items: { type: string }
           nullable: true
+        recipeInstructions:
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  text:
+                    type: string
+          nullable: true
+          description: 'Parsed recipe instructions (string array or HowToStep objects)'
         createdAt: { type: string, format: date-time }
 
     RecipeListResponse:
@@ -119,10 +134,11 @@ components:
     # --- Schedule ---
     ScheduleDays:
       type: object
-      required: [weekOffset, locked, days]
+      required: [weekOffset, locked, days, status]
       properties:
         weekOffset: { type: integer }
         locked: { type: boolean }
+        status: { type: integer, description: '0: Draft, 1: VotingOpen, 2: Locked' }
         days:
           type: array
           minItems: 7
@@ -137,6 +153,7 @@ components:
         day: { type: string }
         date: { type: string }
         recipe: { $ref: '#/components/schemas/ScheduleRecipeDto', nullable: true }
+        status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
 
     ScheduleRecipeDto:
       type: object
@@ -159,6 +176,7 @@ components:
         weekOffset: { type: integer }
         fromIndex: { type: integer }
         toIndex: { type: integer }
+        intent: { type: string, enum: [swap, push], default: swap }
 
     AssignScheduleDto:
       type: object
@@ -206,7 +224,7 @@ components:
       type: object
       required: [status]
       properties:
-        status: { type: integer, description: '1: Planned, 2: Cooked, 3: Skipped' }
+        status: { type: integer, description: '1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
 
     # --- Health ---
     HealthCheckResponse:
@@ -730,6 +748,38 @@ paths:
                       - day: Sunday
                         date: '2026-04-29'
 
+  /api/schedule/voting/open:
+    post:
+      summary: Open voting for a week
+      parameters:
+        - name: weekOffset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
+
+  /api/schedule/day/{date}/remove:
+    delete:
+      summary: Remove a recipe from a scheduled day
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '204':
+          description: Removed
+
   /api/schedule/lock:
     post:
       summary: Lock schedule for a week
@@ -880,6 +930,38 @@ paths:
                       - dayIndex: 1
                       - dayIndex: 3
                     consensusRecipesCount: 1
+
+  /api/schedule/{weekOffset}/grocery:
+    patch:
+      summary: Update grocery checklist state for a week
+      parameters:
+        - name: weekOffset
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: boolean
+              example:
+                'Chicken Breast': true
+                'Olive Oil': false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: boolean
 
   /api/management/backup:
     post:

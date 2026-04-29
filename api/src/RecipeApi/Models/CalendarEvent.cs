@@ -19,11 +19,17 @@ public class CalendarEvent
     [Column("status")]
     public CalendarEventStatus Status { get; set; }
 
+    [Column("meal_slot")]
+    public short MealSlot { get; set; }
+
     [ForeignKey(nameof(RecipeId))]
     public Recipe? Recipe { get; set; }
 
     [Column("vote_count")]
     public int? VoteCount { get; set; }
+
+    [Column("candidate_ids")]
+    public Guid[]? CandidateIds { get; set; }
 }
 
 public enum CalendarEventStatus : short
@@ -31,5 +37,6 @@ public enum CalendarEventStatus : short
     Planned = 0,
     Locked = 1,
     Cooked = 2,
-    Skipped = 3
+    Skipped = 3,
+    AwaitingConsensus = 4
 }

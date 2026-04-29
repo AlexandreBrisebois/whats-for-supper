@@ -44,6 +44,9 @@ public class RecipeDto
     [JsonPropertyName("ingredients")]
     public List<string>? Ingredients { get; set; }
 
+    [JsonPropertyName("recipeInstructions")]
+    public object? RecipeInstructions { get; set; }
+
     [JsonPropertyName("createdAt")]
     public required DateTimeOffset CreatedAt { get; set; }
 }

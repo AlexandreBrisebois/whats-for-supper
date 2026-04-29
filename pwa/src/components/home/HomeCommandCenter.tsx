@@ -1,17 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  TonightMenuCard,
-  SmartPivotCard,
-  NextPrepStepCard,
-  QuickCaptureTrigger,
-} from './HomeSections';
+import { SmartPivotCard, NextPrepStepCard, QuickCaptureTrigger } from './HomeSections';
+import { TonightMenuCard } from './TonightMenuCard';
+import { SkipRecoveryDialog } from './SkipRecoveryDialog';
+import { QuickFindModal } from '../planner/QuickFindModal';
 import { CooksMode } from '../planner/CooksMode';
 import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
+import { assignRecipeToDay } from '@/lib/api/planner';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
@@ -25,6 +24,8 @@ export function HomeCommandCenter({
   isPrepActive,
 }: HomeCommandCenterProps) {
   const [showCooksMode, setShowCooksMode] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [showQuickFind, setShowQuickFind] = useState(false);
   const [isSkipped, setIsSkipped] = useState(false);
   const router = useRouter();
 
@@ -32,25 +33,77 @@ export function HomeCommandCenter({
     setShowCooksMode(true);
   };
 
-  const handleSkip = async () => {
+  const handleSkipTrigger = () => {
+    setShowRecovery(true);
+  };
+
+  const handleRecoveryAction = async (action: string) => {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       const todayDate = DateOnly.parse(todayStr);
       if (!todayDate) return;
 
-      await apiClient.api.schedule.day.byDate(todayDate).validate.post({
-        status: 3, // Skipped
-      });
-      setIsSkipped(true);
+      if (action === 'order_in') {
+        // Just mark as skipped for now, step 2 will handle rescheduling
+        await apiClient.api.schedule.day.byDate(todayDate).validate.post({
+          status: 3, // Skipped
+        });
+        setIsSkipped(true);
+      } else if (action === 'pick_else') {
+        setShowRecovery(false);
+        setShowQuickFind(true);
+      } else if (action === 'tomorrow') {
+        // Global Domino Shift (Push tonight to tomorrow)
+        await apiClient.api.schedule.move.post({
+          weekOffset: 0,
+          fromIndex: (new Date().getDay() + 6) % 7, // Convert 0-6 (Sun-Sat) to 0-6 (Mon-Sun)
+          toIndex: ((new Date().getDay() + 6) % 7) + 1,
+          intent: 'push',
+        });
+        setShowRecovery(false);
+        setIsSkipped(true);
+        router.refresh();
+      } else if (action === 'next_week') {
+        // Move to next week (Push logic)
+        await apiClient.api.schedule.move.post({
+          weekOffset: 0,
+          fromIndex: (new Date().getDay() + 6) % 7,
+          toIndex: (new Date().getDay() + 6) % 7,
+          // Note: In a real app we'd target weekOffset: 1, but MoveScheduleDto currently targets current week
+          // For now we'll just drop it or move it to end of week if possible
+          intent: 'push',
+        });
+        setShowRecovery(false);
+        setIsSkipped(true);
+        router.refresh();
+      } else if (action === 'drop') {
+        await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
+        setShowRecovery(false);
+        setIsSkipped(true);
+        router.refresh();
+      }
+    } catch (error) {
+      console.error('Failed recovery action:', error);
+    }
+  };
+
+  const handleQuickFindSelect = async (recipe: any) => {
+    try {
+      const dayIndex = (new Date().getDay() + 6) % 7;
+      await assignRecipeToDay(0, dayIndex, recipe);
+      setShowQuickFind(false);
+      setIsSkipped(false); // Reset skipped state because we picked a new meal
       router.refresh();
     } catch (error) {
-      console.error('Failed to skip meal:', error);
+      console.error('Failed to assign quick find recipe:', error);
     }
   };
 
   return (
-    <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto w-full">
-      {(!todaysRecipe || isSkipped) && <SmartPivotCard />}
+    <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto w-full px-6 sm:px-0">
+      {(!todaysRecipe || isSkipped) && (
+        <SmartPivotCard onSelect={(choice) => choice === 'surprise' && setShowQuickFind(true)} />
+      )}
 
       {isPrepActive && !isSkipped && <NextPrepStepCard task={nextTask} />}
 
@@ -63,7 +116,7 @@ export function HomeCommandCenter({
           ingredients={todaysRecipe.ingredients || []}
           prepTime="30-45 mins"
           onCookMode={handleCookMode}
-          onSkip={handleSkip}
+          onSkip={handleSkipTrigger}
         />
       )}
 
@@ -78,6 +131,25 @@ export function HomeCommandCenter({
               image: todaysRecipe.image,
             }}
             onClose={() => setShowCooksMode(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showRecovery && (
+          <SkipRecoveryDialog
+            isOpen={showRecovery}
+            onClose={() => setShowRecovery(false)}
+            onAction={handleRecoveryAction}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showQuickFind && (
+          <QuickFindModal
+            onClose={() => setShowQuickFind(false)}
+            onSelect={handleQuickFindSelect}
           />
         )}
       </AnimatePresence>

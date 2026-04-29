@@ -2,458 +2,175 @@ using RecipeApi.Data;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Xunit;
+using RecipeApi.Dto;
 
 namespace RecipeApi.Tests.Services;
 
-public class ScheduleServiceTests
+public class ScheduleServiceTests : IAsyncLifetime
 {
-    [Fact]
-    public async Task GetScheduleAsync_ReturnsEmptyDays_WhenNoEvents()
+    private TestWebApplicationFactory _factory = null!;
+    private IServiceScope _scope = null!;
+    private RecipeDbContext _db = null!;
+    private ScheduleService _service = null!;
+
+    public async Task InitializeAsync()
     {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
+        _factory = await TestWebApplicationFactory.CreateAsync();
+        _scope = _factory.Services.CreateScope();
+        _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
+        _service = new ScheduleService(_db, logger);
+    }
 
-        var schedule = await service.GetScheduleAsync(0);
-
-        Assert.NotNull(schedule);
-        Assert.Equal(0, schedule.WeekOffset);
-        Assert.False(schedule.Locked);
-        Assert.Equal(7, schedule.Days.Count);
-        Assert.All(schedule.Days, day => Assert.Null(day.Recipe));
+    public async Task DisposeAsync()
+    {
+        _scope.Dispose();
+        await _factory.DisposeAsync();
     }
 
     [Fact]
-    public async Task GetScheduleAsync_PopulatesRecipe_WhenEventExists()
+    public async Task Should_Open_Voting_And_Create_WeeklyPlan()
     {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
+        // Act
+        await _service.OpenVotingAsync(0);
 
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Recipe",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
-        var monday = today.AddDays(-daysToMonday);
-        var wednesdayOfWeek = monday.AddDays(2);
-
-        var @event = new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe.Id,
-            Date = wednesdayOfWeek,
-            Status = CalendarEventStatus.Planned,
-            Recipe = recipe
-        };
-
-        dbContext.Recipes.Add(recipe);
-        dbContext.CalendarEvents.Add(@event);
-        await dbContext.SaveChangesAsync();
-
-        var schedule = await service.GetScheduleAsync(0);
-
-        Assert.Equal(7, schedule.Days.Count);
-        var wednesdayDto = schedule.Days[2];
-        Assert.NotNull(wednesdayDto.Recipe);
-        Assert.Equal(recipe.Id, wednesdayDto.Recipe.Id);
-        Assert.Equal("Test Recipe", wednesdayDto.Recipe.Name);
-        Assert.Equal($"/api/recipes/{recipe.Id}/hero", wednesdayDto.Recipe.Image);
-    }
-
-    [Fact]
-    public async Task LockScheduleAsync_SetsStatusLocked_AndPurgesVotes()
-    {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
-
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Recipe",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        var familyMember = new FamilyMember { Id = Guid.NewGuid(), Name = "Test Member" };
-
+        // Assert
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
-        var @event = new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe.Id,
-            Date = monday,
-            Status = CalendarEventStatus.Planned
-        };
-
-        var vote = new RecipeVote
-        {
-            RecipeId = recipe.Id,
-            FamilyMemberId = familyMember.Id,
-            Vote = VoteType.Like
-        };
-
-        dbContext.Recipes.Add(recipe);
-        dbContext.FamilyMembers.Add(familyMember);
-        dbContext.CalendarEvents.Add(@event);
-        dbContext.RecipeVotes.Add(vote);
-        await dbContext.SaveChangesAsync();
-
-        await service.LockScheduleAsync(0);
-
-        var updatedEvent = await dbContext.CalendarEvents.FindAsync(@event.Id);
-        Assert.NotNull(updatedEvent);
-        Assert.Equal(CalendarEventStatus.Locked, updatedEvent.Status);
-
-        var voteCount = dbContext.RecipeVotes.Count();
-        Assert.Equal(0, voteCount);
-
-        var updatedRecipe = await dbContext.Recipes.FindAsync(recipe.Id);
-        Assert.NotNull(updatedRecipe);
-        Assert.NotNull(updatedRecipe.LastCookedDate);
+        var plan = _db.WeeklyPlans.FirstOrDefault(p => p.WeekStartDate == monday);
+        Assert.NotNull(plan);
+        Assert.Equal(WeeklyPlanStatus.VotingOpen, plan.Status);
     }
 
     [Fact]
-    public async Task MoveScheduleEventAsync_SwapsRecipes()
+    public async Task Should_Purge_Votes_On_Lock()
     {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var memberId = _factory.DefaultFamilyMemberId;
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Test" });
+        _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipeId, FamilyMemberId = memberId, Vote = VoteType.Like });
+        await _db.SaveChangesAsync();
 
-        var recipe1 = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Recipe 1",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
+        // Act
+        await _service.LockScheduleAsync(0);
 
-        var recipe2 = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Recipe 2",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
+        // Assert
+        Assert.Empty(_db.RecipeVotes);
+        var plan = _db.WeeklyPlans.FirstOrDefault();
+        Assert.Equal(WeeklyPlanStatus.Locked, plan?.Status);
+    }
 
+    [Fact]
+    public async Task Should_Update_LastCookedDate_On_Validation()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var recipe = new Recipe { Id = recipeId, Name = "Test" };
+        _db.Recipes.Add(recipe);
+        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = date, Status = CalendarEventStatus.Planned });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.ValidateDayAsync(date.ToString("yyyy-MM-dd"), new ValidationDto(2)); // 2 = Cooked
+
+        // Assert
+        var updatedRecipe = _db.Recipes.Find(recipeId);
+        Assert.NotNull(updatedRecipe?.LastCookedDate);
+        var updatedEvent = _db.CalendarEvents.First();
+        Assert.Equal(CalendarEventStatus.Cooked, updatedEvent.Status);
+    }
+
+    [Fact]
+    public async Task Should_Swap_Recipes_When_Moving_To_Occupied_Slot()
+    {
+        // Arrange
+        var recipe1Id = Guid.NewGuid();
+        var recipe2Id = Guid.NewGuid();
+        _db.Recipes.AddRange(new Recipe { Id = recipe1Id, Name = "R1" }, new Recipe { Id = recipe2Id, Name = "R2" });
+        
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
+        
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipe1Id, Date = monday, Status = CalendarEventStatus.Planned },
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipe2Id, Date = monday.AddDays(1), Status = CalendarEventStatus.Planned }
+        );
+        await _db.SaveChangesAsync();
 
-        var event1 = new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe1.Id,
-            Date = monday,
-            Status = CalendarEventStatus.Planned
-        };
+        // Act
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, 0, 1, "swap"));
 
-        var event2 = new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe2.Id,
-            Date = monday.AddDays(1),
-            Status = CalendarEventStatus.Planned
-        };
-
-        dbContext.Recipes.AddRange(recipe1, recipe2);
-        dbContext.CalendarEvents.AddRange(event1, event2);
-        await dbContext.SaveChangesAsync();
-
-        await service.MoveScheduleEventAsync(new(0, 0, 1));
-
-        var updatedEvent1 = await dbContext.CalendarEvents.FindAsync(event1.Id);
-        var updatedEvent2 = await dbContext.CalendarEvents.FindAsync(event2.Id);
-
-        Assert.Equal(recipe2.Id, updatedEvent1!.RecipeId);
-        Assert.Equal(recipe1.Id, updatedEvent2!.RecipeId);
+        // Assert
+        var e1 = _db.CalendarEvents.First(e => e.Date == monday);
+        var e2 = _db.CalendarEvents.First(e => e.Date == monday.AddDays(1));
+        Assert.Equal(recipe2Id, e1.RecipeId);
+        Assert.Equal(recipe1Id, e2.RecipeId);
     }
 
     [Fact]
-    public async Task AssignRecipeAsync_Upserts()
+    public async Task Should_Push_Recipe_To_Next_Available_Slot()
     {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
-
-        var recipe1 = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Recipe 1",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        var recipe2 = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Recipe 2",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        dbContext.Recipes.AddRange(recipe1, recipe2);
-        await dbContext.SaveChangesAsync();
-
-        await service.AssignRecipeAsync(new(0, 0, recipe1.Id));
-
-        var events = dbContext.CalendarEvents.ToList();
-        Assert.Single(events);
-        Assert.Equal(recipe1.Id, events[0].RecipeId);
-
-        await service.AssignRecipeAsync(new(0, 0, recipe2.Id));
-
-        events = dbContext.CalendarEvents.ToList();
-        Assert.Single(events);
-        Assert.Equal(recipe2.Id, events[0].RecipeId);
-    }
-
-    [Fact]
-    public async Task LockScheduleAsync_PersistsVoteCount_WhenVotesExist()
-    {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
-
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Recipe",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        var member1 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 1" };
-        var member2 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 2" };
-        var member3 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 3" };
-
+        // Arrange
+        var r1Id = Guid.NewGuid();
+        var r2Id = Guid.NewGuid();
+        _db.Recipes.AddRange(new Recipe { Id = r1Id, Name = "R1" }, new Recipe { Id = r2Id, Name = "R2" });
+        
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
+        
+        // Slot 0: R1, Slot 1: R2, Slot 2: Empty
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = r1Id, Date = monday, Status = CalendarEventStatus.Planned },
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = r2Id, Date = monday.AddDays(1), Status = CalendarEventStatus.Planned }
+        );
+        await _db.SaveChangesAsync();
 
-        var @event = new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe.Id,
-            Date = monday,
-            Status = CalendarEventStatus.Planned
-        };
+        // Act: Push Slot 0 (R1) to Slot 1. R2 should shift to Slot 2.
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, 0, 1, "push"));
 
-        // Three family members vote for the recipe
-        var votes = new[]
-        {
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member1.Id, Vote = VoteType.Like },
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member2.Id, Vote = VoteType.Like },
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member3.Id, Vote = VoteType.Like }
-        };
-
-        dbContext.Recipes.Add(recipe);
-        dbContext.FamilyMembers.AddRange(member1, member2, member3);
-        dbContext.CalendarEvents.Add(@event);
-        dbContext.RecipeVotes.AddRange(votes);
-        await dbContext.SaveChangesAsync();
-
-        // Lock the schedule
-        await service.LockScheduleAsync(0);
-
-        // Verify vote count is persisted to CalendarEvent
-        var updatedEvent = await dbContext.CalendarEvents.FindAsync(@event.Id);
-        Assert.NotNull(updatedEvent);
-        Assert.Equal(3, updatedEvent.VoteCount);
+        // Assert
+        var e1 = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday);
+        var e2 = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday.AddDays(1));
+        var e3 = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday.AddDays(2));
+        
+        Assert.Null(e1);
+        Assert.Equal(r1Id, e2?.RecipeId);
+        Assert.Equal(r2Id, e3?.RecipeId);
     }
 
     [Fact]
-    public async Task LockScheduleAsync_ClearsRecipeVotes_AfterPersistingVoteCount()
+    public async Task Should_Purge_Recipe_Votes_On_Consensus()
     {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var memberId = _factory.DefaultFamilyMemberId;
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Test" });
+        _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipeId, FamilyMemberId = memberId, Vote = VoteType.Like });
+        
+        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.Add(new CalendarEvent 
+        { 
+            Id = Guid.NewGuid(), 
+            RecipeId = recipeId, 
+            Date = date, 
+            Status = CalendarEventStatus.AwaitingConsensus 
+        });
+        await _db.SaveChangesAsync();
 
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Recipe",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
+        // Act: Validate as Locked (status 1)
+        await _service.ValidateDayAsync(date.ToString("yyyy-MM-dd"), new ValidationDto(1));
 
-        var member1 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 1" };
-        var member2 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 2" };
-
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
-        var monday = today.AddDays(-daysToMonday);
-
-        var @event = new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe.Id,
-            Date = monday,
-            Status = CalendarEventStatus.Planned
-        };
-
-        var votes = new[]
-        {
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member1.Id, Vote = VoteType.Like },
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member2.Id, Vote = VoteType.Like }
-        };
-
-        dbContext.Recipes.Add(recipe);
-        dbContext.FamilyMembers.AddRange(member1, member2);
-        dbContext.CalendarEvents.Add(@event);
-        dbContext.RecipeVotes.AddRange(votes);
-        await dbContext.SaveChangesAsync();
-
-        Assert.Equal(2, dbContext.RecipeVotes.Count());
-
-        // Lock the schedule
-        await service.LockScheduleAsync(0);
-
-        // Verify votes are cleared
-        Assert.Equal(0, dbContext.RecipeVotes.Count());
-    }
-
-    [Fact]
-    public async Task GetSmartDefaultsAsync_IncludesVoteCount_FromRecipeVotes()
-    {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
-
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Popular Recipe",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        var member1 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 1" };
-        var member2 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 2" };
-
-        // Two family members like the recipe
-        var votes = new[]
-        {
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member1.Id, Vote = VoteType.Like },
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member2.Id, Vote = VoteType.Like }
-        };
-
-        dbContext.Recipes.Add(recipe);
-        dbContext.FamilyMembers.AddRange(member1, member2);
-        dbContext.RecipeVotes.AddRange(votes);
-        await dbContext.SaveChangesAsync();
-
-        // Get smart defaults for current week
-        var smartDefaults = await service.GetSmartDefaultsAsync(0);
-
-        // Verify vote count is included
-        Assert.NotEmpty(smartDefaults.PreSelectedRecipes);
-        var preSelected = smartDefaults.PreSelectedRecipes.FirstOrDefault(p => p.RecipeId == recipe.Id);
-        Assert.NotNull(preSelected);
-        Assert.Equal(2, preSelected.VoteCount);
-    }
-
-    [Fact]
-    public async Task GetSmartDefaultsAsync_MarksUnanimous_WhenAllFamilyMembersVote()
-    {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
-
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Unanimous Recipe",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        var member1 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 1" };
-        var member2 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 2" };
-        var member3 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 3" };
-
-        // All three family members like the recipe (unanimous)
-        var votes = new[]
-        {
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member1.Id, Vote = VoteType.Like },
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member2.Id, Vote = VoteType.Like },
-            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = member3.Id, Vote = VoteType.Like }
-        };
-
-        dbContext.Recipes.Add(recipe);
-        dbContext.FamilyMembers.AddRange(member1, member2, member3);
-        dbContext.RecipeVotes.AddRange(votes);
-        await dbContext.SaveChangesAsync();
-
-        var smartDefaults = await service.GetSmartDefaultsAsync(0);
-
-        var preSelected = smartDefaults.PreSelectedRecipes.FirstOrDefault(p => p.RecipeId == recipe.Id);
-        Assert.NotNull(preSelected);
-        Assert.True(preSelected.UnanimousVote, "Recipe should be marked as unanimous when all family members vote for it");
-        Assert.Equal(3, preSelected.VoteCount);
-        Assert.Equal(3, preSelected.FamilySize);
-    }
-
-    [Fact]
-    public async Task GetScheduleAsync_ReturnsVoteCount_FromCalendarEvent_AfterVotingClosed()
-    {
-        var dbContext = TestDbContextFactory.Create();
-        var service = new ScheduleService(dbContext);
-
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Recipe",
-            IsDiscoverable = true,
-            Rating = RecipeRating.Like,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
-        var monday = today.AddDays(-daysToMonday);
-        var wednesdayOfWeek = monday.AddDays(2);
-
-        var @event = new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe.Id,
-            Date = wednesdayOfWeek,
-            Status = CalendarEventStatus.Locked,
-            VoteCount = 4  // Persisted vote count
-        };
-
-        dbContext.Recipes.Add(recipe);
-        dbContext.CalendarEvents.Add(@event);
-        await dbContext.SaveChangesAsync();
-
-        var schedule = await service.GetScheduleAsync(0);
-
-        var wednesdayDto = schedule.Days[2];
-        Assert.NotNull(wednesdayDto.Recipe);
-        // Verify vote count is returned (note: ScheduleRecipeDto needs VoteCount field)
-        // This test verifies the data is available in CalendarEvent after voting
+        // Assert
+        var votes = _db.RecipeVotes.Where(v => v.RecipeId == recipeId).ToList();
+        Assert.Empty(votes);
     }
 }

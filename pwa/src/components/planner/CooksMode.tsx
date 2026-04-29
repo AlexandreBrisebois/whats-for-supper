@@ -16,6 +16,8 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { getRecipe, Recipe } from '@/lib/api/recipes';
 import { SolarLoader } from '@/components/ui/SolarLoader';
+import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
+import { usePlannerStore } from '@/store/plannerStore';
 
 interface CooksModeProps {
   recipe: {
@@ -29,19 +31,51 @@ interface CooksModeProps {
   onClose: () => void;
 }
 
+const getFallbackSteps = (): CookingStep[] => [
+  {
+    index: 1,
+    title: 'Check & Prep',
+    instruction: 'Gather everything you need. Clear the counter and get ready to cook!',
+  },
+  {
+    index: 2,
+    title: 'Prep the Base',
+    instruction: 'Prepare your base ingredients according to the recipe.',
+  },
+  {
+    index: 3,
+    title: 'Cook',
+    instruction: 'Follow the recipe instructions carefully.',
+  },
+  {
+    index: 4,
+    title: 'Finish',
+    instruction: 'Add final touches and plate your dish.',
+  },
+];
+
 export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(0);
   const [recipeDetails, setRecipeDetails] = useState<Recipe | null>(null);
+  const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { cookProgress, setCookProgress } = usePlannerStore();
+  const currentStep = cookProgress[initialRecipe.id] ?? 0;
 
   useEffect(() => {
     const fetchDetails = async () => {
       try {
         const details = await getRecipe(initialRecipe.id);
         setRecipeDetails(details);
+        const steps = parseRecipeSteps(details.recipeInstructions);
+        if (steps.length > 0) {
+          setParsedSteps(steps);
+        } else {
+          setParsedSteps(getFallbackSteps());
+        }
       } catch (error) {
         console.error('Failed to fetch recipe details:', error);
+        setParsedSteps(getFallbackSteps());
       } finally {
         setIsLoading(false);
       }
@@ -49,38 +83,11 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
     fetchDetails();
   }, [initialRecipe.id]);
 
-  // Mock steps for prototype, but Step 1 is dynamic
-  const steps = [
-    {
-      title: 'Check & Prep',
-      instruction: 'Gather everything you need. Clear the counter and get ready to cook!',
-      type: 'prep',
-    },
-    {
-      title: 'Prep the Base',
-      instruction:
-        'Finely dice 2 onions and 3 cloves of garlic. Sauté in olive oil until translucent.',
-    },
-    {
-      title: 'Brown the Meat',
-      instruction:
-        'Add 500g of ground beef. Cook until browned, breaking up clumps with a wooden spoon.',
-    },
-    {
-      title: 'Simmer Sauce',
-      instruction:
-        'Stir in tomato paste and crushed tomatoes. Season with oregano, salt, and pepper. Simmer for 20 mins.',
-    },
-    {
-      title: 'Layer and Bake',
-      instruction:
-        'Layer pasta sheets with sauce and béchamel. Top with mozzarella. Bake at 200°C for 30 mins.',
-    },
-  ];
+  const steps = parsedSteps.length > 0 ? parsedSteps : getFallbackSteps();
 
   const nextStep = () => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
+      setCookProgress(initialRecipe.id, currentStep + 1);
     } else {
       onClose();
       router.push('/home');
@@ -88,7 +95,9 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
   };
 
   const prevStep = () => {
-    if (currentStep > 0) setCurrentStep(currentStep - 1);
+    if (currentStep > 0) {
+      setCookProgress(initialRecipe.id, currentStep - 1);
+    }
   };
 
   if (isLoading) {
@@ -182,7 +191,7 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
                 {currentStepData.title}
               </h3>
 
-              {currentStepData.type === 'prep' ? (
+              {currentStep === 0 ? (
                 <div className="mt-8 space-y-8">
                   <p className="text-xl font-medium text-charcoal/60 leading-relaxed max-w-lg mx-auto">
                     {currentStepData.instruction}

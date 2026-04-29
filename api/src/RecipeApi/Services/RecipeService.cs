@@ -99,6 +99,9 @@ public class RecipeService(
             ImageUrl = $"/api/recipes/{r.Id}/hero",
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
             Ingredients = DeserializeIngredients(r.Ingredients),
+            RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
+            IsVegetarian = r.IsVegetarian,
+            IsHealthyChoice = r.IsHealthyChoice,
             CreatedAt = r.CreatedAt
         }).ToList();
 
@@ -137,7 +140,6 @@ public class RecipeService(
                 ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 Ingredients = DeserializeIngredients(recipe.Ingredients),
-
                 CreatedAt = recipe.CreatedAt
             }
         };
@@ -186,7 +188,6 @@ public class RecipeService(
                 ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 Ingredients = DeserializeIngredients(recipe.Ingredients),
-
                 CreatedAt = recipe.CreatedAt
             }
         };
@@ -248,5 +249,25 @@ public class RecipeService(
                 return [json]; // Total failure? Return raw JSON as single string
             }
         }
+    }
+
+    private static object? ExtractRecipeInstructions(string? rawMetadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawMetadataJson)) return null;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(rawMetadataJson);
+            if (doc.RootElement.TryGetProperty("recipeInstructions", out var instructions))
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<object>(instructions.GetRawText());
+            }
+        }
+        catch
+        {
+            // Silently return null if parsing fails
+        }
+
+        return null;
     }
 }

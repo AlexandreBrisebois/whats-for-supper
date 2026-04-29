@@ -106,8 +106,28 @@ public class ManagementService(
 
             backedUpCount++;
         }
+        // 3. Backup Weekly Plans
+        var weeklyPlans = await db.WeeklyPlans.AsNoTracking().ToListAsync();
+        if (weeklyPlans.Count > 0)
+        {
+            var plansPath = Path.Combine(DataRoot, "weekly-plans.json");
+            var plansJson = JsonSerializer.Serialize(weeklyPlans, JsonDefaults.CamelCase);
+            await File.WriteAllTextAsync(plansPath, plansJson);
+            logger.LogInformation("Backed up {Count} weekly plans to {Path}", weeklyPlans.Count, plansPath);
+        }
+
+        // 4. Backup Calendar Events
+        var calendarEvents = await db.CalendarEvents.AsNoTracking().ToListAsync();
+        if (calendarEvents.Count > 0)
+        {
+            var eventsPath = Path.Combine(DataRoot, "calendar-events.json");
+            var eventsJson = JsonSerializer.Serialize(calendarEvents, JsonDefaults.CamelCase);
+            await File.WriteAllTextAsync(eventsPath, eventsJson);
+            logger.LogInformation("Backed up {Count} calendar events to {Path}", calendarEvents.Count, eventsPath);
+        }
+
         logger.LogInformation("Updated/Created {Count} metadata files in {Root}", backedUpCount, root);
-        return new { Message = $"Updated/Created {backedUpCount} metadata files.", FilesProcessed = backedUpCount };
+        return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
     }
 
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)
@@ -379,9 +399,88 @@ public class ManagementService(
         }
 
         await db.SaveChangesAsync(ct);
-        logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, Errors: {Errors}",
-            result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.Errors);
+
+        // 5. Restore Weekly Plans
+        var plansPath = Path.Combine(DataRoot, "weekly-plans.json");
+        if (File.Exists(plansPath))
+        {
+            var plansJson = await File.ReadAllTextAsync(plansPath, ct);
+            var plans = JsonSerializer.Deserialize<List<WeeklyPlan>>(plansJson, JsonDefaults.CamelCase) ?? [];
+            foreach (var plan in plans)
+            {
+                if (ct.IsCancellationRequested) break;
+                var existing = await db.WeeklyPlans.FindAsync(new object[] { plan.Id }, ct);
+                if (existing == null) db.WeeklyPlans.Add(plan);
+                else db.Entry(existing).CurrentValues.SetValues(plan);
+                result.WeeklyPlansRestored++;
+            }
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Restored {Count} weekly plans.", result.WeeklyPlansRestored);
+        }
+
+        // 6. Restore Calendar Events
+        var eventsPath = Path.Combine(DataRoot, "calendar-events.json");
+        if (File.Exists(eventsPath))
+        {
+            var eventsJson = await File.ReadAllTextAsync(eventsPath, ct);
+            var events = JsonSerializer.Deserialize<List<CalendarEvent>>(eventsJson, JsonDefaults.CamelCase) ?? [];
+            foreach (var @event in events)
+            {
+                if (ct.IsCancellationRequested) break;
+                // Verify recipe exists before adding event
+                var recipeExists = await db.Recipes.AnyAsync(r => r.Id == @event.RecipeId, ct);
+                if (!recipeExists)
+                {
+                    logger.LogWarning("Skipping calendar event {EventId} because recipe {RecipeId} is missing.", @event.Id, @event.RecipeId);
+                    continue;
+                }
+
+                var existing = await db.CalendarEvents.FindAsync(new object[] { @event.Id }, ct);
+                if (existing == null) db.CalendarEvents.Add(@event);
+                else db.Entry(existing).CurrentValues.SetValues(@event);
+                result.CalendarEventsRestored++;
+            }
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Restored {Count} calendar events.", result.CalendarEventsRestored);
+        }
+
+        logger.LogInformation("Restored {Count} calendar events.", result.CalendarEventsRestored);
+
+        // 7. Forward compatibility - initialize WeeklyPlans if missing
+        var allEvents = await db.CalendarEvents.AsNoTracking().ToListAsync(ct);
+        var uniqueMondays = allEvents.Select(e => GetMonday(e.Date)).Distinct().ToList();
+
+        int initializedPlans = 0;
+        foreach (var monday in uniqueMondays)
+        {
+            var exists = await db.WeeklyPlans.AnyAsync(p => p.WeekStartDate == monday, ct);
+            if (!exists)
+            {
+                db.WeeklyPlans.Add(new WeeklyPlan
+                {
+                    Id = Guid.NewGuid(),
+                    WeekStartDate = monday,
+                    Status = WeeklyPlanStatus.Locked, // Historical data is assumed Locked
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+                initializedPlans++;
+            }
+        }
+        if (initializedPlans > 0)
+        {
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Initialized {Count} missing weekly plans for forward compatibility.", initializedPlans);
+        }
+
+        logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Errors: {Errors}",
+            result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.Errors);
         return result;
+    }
+
+    private static DateOnly GetMonday(DateOnly date)
+    {
+        var daysToMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
+        return date.AddDays(-daysToMonday);
     }
 
     public async Task<SeedResult> DisasterRecoveryAsync()

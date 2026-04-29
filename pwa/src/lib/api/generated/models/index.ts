@@ -557,6 +557,11 @@ export function deserializeIntoMoveScheduleDto(
     fromIndex: (n) => {
       moveScheduleDto.fromIndex = n.getNumberValue();
     },
+    intent: (n) => {
+      moveScheduleDto.intent =
+        n.getEnumValue<MoveScheduleDto_intent>(MoveScheduleDto_intentObject) ??
+        MoveScheduleDto_intentObject.Swap;
+    },
     toIndex: (n) => {
       moveScheduleDto.toIndex = n.getNumberValue();
     },
@@ -842,6 +847,9 @@ export function deserializeIntoScheduleDayDto(
         createScheduleRecipeDtoFromDiscriminatorValue
       );
     },
+    status: (n) => {
+      scheduleDayDto.status = n.getNumberValue();
+    },
   };
 }
 /**
@@ -861,6 +869,9 @@ export function deserializeIntoScheduleDays(
     },
     locked: (n) => {
       scheduleDays.locked = n.getBooleanValue();
+    },
+    status: (n) => {
+      scheduleDays.status = n.getNumberValue();
     },
     weekOffset: (n) => {
       scheduleDays.weekOffset = n.getNumberValue();
@@ -1255,6 +1266,10 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
    */
   fromIndex?: number | null;
   /**
+   * The intent property
+   */
+  intent?: MoveScheduleDto_intent | null;
+  /**
    * The toIndex property
    */
   toIndex?: number | null;
@@ -1263,6 +1278,8 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
    */
   weekOffset?: number | null;
 }
+export type MoveScheduleDto_intent =
+  (typeof MoveScheduleDto_intentObject)[keyof typeof MoveScheduleDto_intentObject];
 export interface PaginationDto extends AdditionalDataHolder, Parsable {
   /**
    * The limit property
@@ -1375,6 +1392,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   rating?: number | null;
   /**
+   * The recipeInstructions property
+   */
+  recipeInstructions?: any | null;
+  /**
    * The totalTime property
    */
   totalTime?: string | null;
@@ -1464,6 +1485,10 @@ export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
    * The recipe property
    */
   recipe?: ScheduleRecipeDto | null;
+  /**
+   * 0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
+   */
+  status?: number | null;
 }
 export interface ScheduleDays extends AdditionalDataHolder, Parsable {
   /**
@@ -1474,6 +1499,10 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    * The locked property
    */
   locked?: boolean | null;
+  /**
+   * 0: Draft, 1: VotingOpen, 2: Locked
+   */
+  status?: number | null;
   /**
    * The weekOffset property
    */
@@ -1673,6 +1702,10 @@ export function serializeMoveScheduleDto(
     return;
   }
   writer.writeNumberValue('fromIndex', moveScheduleDto.fromIndex);
+  writer.writeEnumValue<MoveScheduleDto_intent>(
+    'intent',
+    moveScheduleDto.intent ?? MoveScheduleDto_intentObject.Swap
+  );
   writer.writeNumberValue('toIndex', moveScheduleDto.toIndex);
   writer.writeNumberValue('weekOffset', moveScheduleDto.weekOffset);
   writer.writeAdditionalData(moveScheduleDto.additionalData);
@@ -1927,6 +1960,7 @@ export function serializeScheduleDayDto(
     scheduleDayDto.recipe,
     serializeScheduleRecipeDto
   );
+  writer.writeNumberValue('status', scheduleDayDto.status);
   writer.writeAdditionalData(scheduleDayDto.additionalData);
 }
 /**
@@ -1950,6 +1984,7 @@ export function serializeScheduleDays(
     serializeScheduleDayDto
   );
   writer.writeBooleanValue('locked', scheduleDays.locked);
+  writer.writeNumberValue('status', scheduleDays.status);
   writer.writeNumberValue('weekOffset', scheduleDays.weekOffset);
   writer.writeAdditionalData(scheduleDays.additionalData);
 }
@@ -2341,7 +2376,7 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
 }
 export interface ValidationDto extends AdditionalDataHolder, Parsable {
   /**
-   * 1: Planned, 2: Cooked, 3: Skipped
+   * 1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
    */
   status?: number | null;
 }
@@ -2474,6 +2509,10 @@ export const ManagementTaskStatusResponse_statusObject = {
   Processing: 'Processing',
   Completed: 'Completed',
   Failed: 'Failed',
+} as const;
+export const MoveScheduleDto_intentObject = {
+  Swap: 'swap',
+  Push: 'push',
 } as const;
 export const WorkflowInstanceDetailDto_statusObject = {
   Pending: 'Pending',

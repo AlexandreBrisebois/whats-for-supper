@@ -12,6 +12,9 @@ export interface Recipe {
   category: string;
   rating: number;
   ingredients?: string[];
+  isVegetarian?: boolean;
+  isHealthyChoice?: boolean;
+  recipeInstructions?: string[] | Array<{ name?: string; text?: string }>;
 }
 
 export type RecommendationResult = {
@@ -34,6 +37,9 @@ export type RecommendationsResponse = {
 };
 
 function mapToRecipe(dto: RecipeDto): Recipe {
+  const instructions = dto.recipeInstructions as any;
+  const recipeInstructions = Array.isArray(instructions) ? instructions : undefined;
+
   return {
     id: dto.id || '',
     name: dto.name || '',
@@ -44,6 +50,9 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     category: dto.category || '',
     rating: dto.rating || 0,
     ingredients: dto.ingredients ?? [],
+    isVegetarian: dto.isVegetarian ?? false,
+    isHealthyChoice: dto.isHealthyChoice ?? false,
+    recipeInstructions,
   };
 }
 

@@ -5,7 +5,8 @@ namespace RecipeApi.Dto;
 public record ScheduleDayDto(
     [property: JsonPropertyName("day")] string Day,
     [property: JsonPropertyName("date")] string Date,
-    [property: JsonPropertyName("recipe")] ScheduleRecipeDto? Recipe);
+    [property: JsonPropertyName("recipe")] ScheduleRecipeDto? Recipe,
+    [property: JsonPropertyName("status")] int Status = 0);
 
 public record ScheduleRecipeDto(
     [property: JsonPropertyName("id")] Guid Id,
@@ -18,4 +19,5 @@ public record ScheduleRecipeDto(
 public record ScheduleDays(
     [property: JsonPropertyName("weekOffset")] int WeekOffset,
     [property: JsonPropertyName("locked")] bool Locked,
+    [property: JsonPropertyName("status")] int Status,
     [property: JsonPropertyName("days")] List<ScheduleDayDto> Days);

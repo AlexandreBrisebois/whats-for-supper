@@ -15,6 +15,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<RecipeMatch> RecipeMatches => Set<RecipeMatch>();
     public DbSet<DiscoveryRecipe> DiscoveryRecipes => Set<DiscoveryRecipe>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
+    public DbSet<WeeklyPlan> WeeklyPlans => Set<WeeklyPlan>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -153,13 +154,30 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Status).HasConversion<short>();
+            entity.Property(e => e.MealSlot).HasConversion<short>();
+            entity.Property(e => e.CandidateIds).HasColumnType("uuid[]");
+
             entity.ToTable("calendar_events", t =>
-                t.HasCheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 3"));
+                t.HasCheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 4"));
+
             entity.HasOne(e => e.Recipe)
                   .WithMany()
                   .HasForeignKey(e => e.RecipeId)
                   .OnDelete(DeleteBehavior.Cascade);
+
             entity.HasIndex(e => e.Date).HasDatabaseName("idx_calendar_events_date");
+            entity.HasIndex(e => new { e.Date, e.MealSlot })
+                  .IsUnique()
+                  .HasDatabaseName("calendar_events_date_slot_unique");
+        });
+
+        modelBuilder.Entity<WeeklyPlan>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Status).HasConversion<short>();
+            entity.HasIndex(e => e.WeekStartDate).IsUnique();
+            entity.ToTable("weekly_plans");
         });
     }
 

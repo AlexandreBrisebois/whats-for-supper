@@ -19,11 +19,14 @@ import {
   moveRecipe,
   getSmartDefaults,
   assignRecipeToDay,
+  openVoting,
+  removeRecipeFromDay,
   ScheduleDay,
 } from '@/lib/api/planner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
+import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
 
 type UILocalScheduleDay = ScheduleDay & {
   _uiId: string;
@@ -40,9 +43,17 @@ import { CooksMode } from '@/components/planner/CooksMode';
 
 export default function PlannerPage() {
   const router = useRouter();
-  const { currentWeekOffset, activeTab, setWeekOffset, setActiveTab } = usePlannerStore();
+  const {
+    currentWeekOffset,
+    activeTab,
+    setWeekOffset,
+    setActiveTab,
+    isVotingOpen,
+    isLocked,
+    setVotingOpen,
+    setIsLocked,
+  } = usePlannerStore();
   const [schedule, setSchedule] = useState<UILocalScheduleDay[]>([]);
-  const [isLocked, setIsLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showPivot, setShowPivot] = useState<{ dayIndex: number } | null>(null);
   const [showQuickFind, setShowQuickFind] = useState(false);
@@ -119,10 +130,12 @@ export default function PlannerPage() {
           });
 
           setSchedule(mergedDays);
-          // Only update locked state if we aren't in the middle of a local finalize
-          if (scheduleData.locked || !isLocked) {
-            setIsLocked(scheduleData.locked || false);
-          }
+
+          // Use explicit status logic
+          const status = (scheduleData as any).status ?? 0;
+          setVotingOpen(status === 1);
+          setIsLocked(status === 2 || scheduleData.locked === true);
+
           setIsLoading(false);
         }
       } catch (error: any) {
@@ -239,7 +252,11 @@ export default function PlannerPage() {
 
             return updated;
           });
-          setIsLocked(scheduleData.locked || false);
+
+          // Update status from polling
+          const status = (scheduleData as any).status ?? 0;
+          setVotingOpen(status === 1);
+          setIsLocked(status === 2 || scheduleData.locked === true);
         }
       } catch (error: any) {
         // Silently fail polling to avoid console spam
@@ -343,10 +360,39 @@ export default function PlannerPage() {
     router.push(`/recipes?addToDay=${showPivot.dayIndex}&weekOffset=${currentWeekOffset}`);
   };
 
-  const handleAskFamily = () => {
-    // Unlock the week to allow voting/changes
-    setIsLocked(false);
-    setShowPivot(null);
+  const handleAskFamily = async () => {
+    try {
+      await openVoting(currentWeekOffset);
+      setVotingOpen(true);
+      setShowPivot(null);
+    } catch (error: any) {
+      console.warn('Failed to open voting:', error?.message || error);
+    }
+  };
+
+  const handleRemoveRecipe = async () => {
+    if (showPivot === null) return;
+    const dayIndex = showPivot.dayIndex;
+    const date = schedule[dayIndex].date;
+    if (!date) return;
+
+    try {
+      await removeRecipeFromDay(date);
+
+      // Update local state
+      const newSchedule = [...schedule];
+      newSchedule[dayIndex].recipe = undefined;
+      newSchedule[dayIndex]._isPending = false;
+      setSchedule(newSchedule);
+
+      // Trigger success animation (Success Ring)
+      setSuccessDay(dayIndex);
+      setTimeout(() => setSuccessDay(null), 2000);
+
+      setShowPivot(null);
+    } catch (error: any) {
+      console.warn('Failed to remove recipe:', error?.message || error);
+    }
   };
 
   const handleReorder = (newSchedule: UILocalScheduleDay[]) => {
@@ -477,6 +523,23 @@ export default function PlannerPage() {
                 {plannedCount}/7 Planned
               </div>
             </div>
+
+            {!isVotingOpen && !isLocked && plannedCount > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-center mt-4"
+              >
+                <Button
+                  onClick={handleAskFamily}
+                  data-testid="ask-family-cta"
+                  className="bg-sage text-white text-[10px] font-bold uppercase tracking-widest h-8 px-6 rounded-full shadow-lg shadow-sage/20 active:scale-95 transition-all"
+                >
+                  <Users size={12} className="mr-2" />
+                  Ask the Family
+                </Button>
+              </motion.div>
+            )}
           </div>
 
           <button
@@ -586,90 +649,17 @@ export default function PlannerPage() {
         </AnimatePresence>
       </main>
 
-      {/* Planning Pivot Sheet */}
-      <AnimatePresence>
-        {showPivot !== null && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowPivot(null)}
-              className="fixed inset-0 bg-charcoal/20 backdrop-blur-sm z-40"
-            />
-            <motion.div
-              data-testid="pivot-sheet"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 z-50 glass rounded-t-[2.5rem] border-t border-white/40 px-6 pt-8 pb-12 shadow-2xl"
-            >
-              <div className="w-12 h-1.5 bg-charcoal/10 rounded-full mx-auto mb-8" />
-
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-heading font-extrabold text-charcoal">
-                  Choose your path
-                </h3>
-                <div className="p-2 rounded-full bg-terracotta/5 text-terracotta font-bold text-[10px] uppercase tracking-wider">
-                  Day {showPivot.dayIndex + 1}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                <button
-                  onClick={() => setShowQuickFind(true)}
-                  data-testid="pivot-quick-find"
-                  className="flex items-center p-5 rounded-3xl bg-white border border-charcoal/5 shadow-sm active:scale-95 transition-all text-left"
-                >
-                  <div className="h-12 w-12 rounded-2xl bg-ochre/10 text-ochre flex items-center justify-center mr-4">
-                    <Sparkles size={24} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-charcoal">Quick find</h4>
-                    <p className="text-[11px] text-charcoal/40 font-medium">
-                      Swipe through 5 tailored picks
-                    </p>
-                  </div>
-                  <ChevronRight size={18} className="text-charcoal/20" />
-                </button>
-
-                <button
-                  onClick={handleSearchPath}
-                  data-testid="pivot-search-library"
-                  className="flex items-center p-5 rounded-3xl bg-white border border-charcoal/5 shadow-sm active:scale-95 transition-all text-left"
-                >
-                  <div className="h-12 w-12 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center mr-4">
-                    <Search size={24} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-charcoal">Search library</h4>
-                    <p className="text-[11px] text-charcoal/40 font-medium">
-                      Browse your collection
-                    </p>
-                  </div>
-                  <ChevronRight size={18} className="text-charcoal/20" />
-                </button>
-
-                <button
-                  onClick={handleAskFamily}
-                  data-testid="pivot-ask-family"
-                  className="flex items-center p-5 rounded-3xl bg-white border border-charcoal/5 shadow-sm active:scale-95 transition-all text-left"
-                >
-                  <div className="h-12 w-12 rounded-2xl bg-sage/10 text-sage flex items-center justify-center mr-4">
-                    <Users size={24} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-charcoal">Ask the family</h4>
-                    <p className="text-[11px] text-charcoal/40 font-medium">Open for voting</p>
-                  </div>
-                  <ChevronRight size={18} className="text-charcoal/20" />
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <PlanningPivotSheet
+        isOpen={showPivot !== null}
+        onClose={() => setShowPivot(null)}
+        dayIndex={showPivot?.dayIndex ?? 0}
+        onQuickFind={() => setShowQuickFind(true)}
+        onSearchLibrary={handleSearchPath}
+        onAskFamily={handleAskFamily}
+        onRemoveRecipe={handleRemoveRecipe}
+        isVotingOpen={isVotingOpen}
+        hasRecipe={!!(showPivot !== null && schedule[showPivot.dayIndex]?.recipe?.id)}
+      />
 
       <AnimatePresence>
         {showQuickFind && (

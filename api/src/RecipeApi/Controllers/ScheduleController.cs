@@ -58,4 +58,28 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         await _scheduleService.ValidateDayAsync(date, dto);
         return Ok(new { message = "Day validated" });
     }
+
+    [HttpPost("voting/open")]
+    public async Task<IActionResult> OpenVoting([FromQuery] int weekOffset = 0)
+    {
+        await _scheduleService.OpenVotingAsync(weekOffset);
+        return Ok(new { message = "Voting opened" });
+    }
+
+    [HttpDelete("day/{date}/remove")]
+    public async Task<IActionResult> RemoveRecipe(string date)
+    {
+        var d = DateOnly.Parse(date);
+        await _scheduleService.RemoveRecipeAsync(d);
+        return NoContent();
+    }
+
+    [HttpPatch("{weekOffset}/grocery")]
+    public async Task<IActionResult> UpdateGroceryState(
+        int weekOffset,
+        [FromBody] Dictionary<string, bool> groceryState)
+    {
+        var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState);
+        return Ok(new { data = result });
+    }
 }
