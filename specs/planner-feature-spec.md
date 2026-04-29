@@ -3,6 +3,8 @@
 
 > **Purpose**: This document is a complete, ground-truth specification assembled by reverse-engineering the live vertical slice — PWA → API → Database. It serves as the authoritative foundation for targeted improvements to this critical feature.
 >
+> **Phase 4 Update**: This version incorporates high-fidelity decisions regarding **Hearth Secret Security**, **Kindle-style Family Management**, and **Intent-Based Movement**.
+>
 > **Team**: Four expert personas collaborated on this document:
 > - 🎨 **Mère-Designer (UX Lead)** — "Sanity-First UX, The Toddler Rule"
 > - 🏗️ **API Architect** — Contract clarity, consistency, performance
@@ -17,6 +19,15 @@ The **Planner** is the "Peace of Mind" center of the app. It transforms the week
 
 ### 1.1 Core User Goal
 > "What are we having this week, and who decided?" — answered in **2 seconds**.
+
+### 1.2 Authentication: The Hearth Secret (No-Password Auth)
+To ensure privacy on the public web without the friction of passwords, the app uses a "Digital Key" approach.
+- **Global Secret**: A memorable phrase defined in the environment (`HEARTH_SECRET`).
+- **Middleware Protection**: All routes (PWA & API) are protected. Requests without a valid `h_access` cookie are redirected to a `/welcome` screen.
+- **Magic Invite Links**: `whats-for-supper.app/join?secret={TOKEN}&memberId={UUID}`.
+    - Validates the signed token against the secret.
+    - Sets persistent cookies (`h_access`, `x-family-member-id`) with a **365-day expiry** to ensure sanctuary-grade persistence.
+    - Auto-selects the profile and redirects to `/home`.
 
 ### 1.2 Primary Actors
 | Actor | Role |
@@ -55,10 +66,18 @@ PlannerPage (page.tsx)
 │   ├── [Menu's In!] button (unlocked state)
 │   └── [✅ Week finalized / Plan next week] (locked state)
 │
+├── Settings & Family Management (Kindle-style)
+│   ├── [Settings] Icon in Profile view.
+│   └── Family Management View: Add/Remove members without profile-switching.
+│   └── "Share Invite" button: Triggers Web Share API with a Magic Link.
+│
 ├── Planning Pivot Sheet (AnimatePresence bottom sheet, z-50)
 │   ├── "Quick find" → opens QuickFindModal
 │   ├── "Search library" → navigates to /recipes?addToDay=N&weekOffset=N
-│   └── "Ask the family" → unlocks week for voting
+│   └── "Ask the Family" → Unlocks week for voting AND shows **[Nudge Family]** active share button.
+│
+├── Grocery Tab
+│   └── Aisle-First Checklist: Grouped by [Vegetables], [Meat], [Dairy], [Bakery], [Pantry].
 │
 ├── QuickFindModal (z-60, AnimatePresence)
 │   └── Flip-card carousel (5 curated picks from /fill-the-gap)
@@ -74,7 +93,10 @@ PlannerPage (page.tsx)
     - **Back Side**: Displays a concise ingredients list and full description.
     - **Direct Actions**:
         - [👨‍🍳 Cook's Mode] — Launches the full-screen step-by-step overlay.
-        - [❌ Skip Tonight] — Marks meal as `Skipped` and triggers the "Backup Plan" pivot.
+        - [❌ Skip Tonight] — Triggers the **Recovery Dialog**:
+            1. "What's the backup plan?" -> **[🥡 Ordering In]** or **[🔄 Pick Something Else]**.
+            2. If "Ordering In", ask: "What about tonight's recipe?" -> **[🗓️ Tomorrow]**, **[⏭️ Next Week]**, or **[🗑️ Drop It]**.
+            3. **Mom Stays in Control**: If "Tomorrow" is occupied, prompt: "Drop tomorrow's meal?" or "Push tomorrow to the next empty slot?". (*Swap is excluded here to avoid placing a recipe into tonight's 'Order In' dead zone*).
 - **Smart Pivot**: If no meal is planned for today, the card is replaced by the `SmartPivotCard` offering "Quick Fixes".
 ```
 
@@ -122,14 +144,18 @@ The results are **merged** in the frontend:
 
 ### 2.6 Key Interactions
 
-#### Drag-to-Reorder & Movement
-- **Interaction**: Framer Motion `Reorder.Group` / `Reorder.Item`
-- **Logic (Global Domino Shift)**: 
-    - Moving a meal to an occupied date triggers a **Global Shift**.
-    - The existing recipe at the target date is pushed to the next day (`T + 1`).
-    - If `T + 1` is also occupied, *that* recipe is pushed to `T + 2`, and so on.
-    - This shift is **recursive** and spans multiple weeks. It only stops when it finds an empty slot.
-- **API Call**: `POST /api/schedule/move` (fired asynchronously).
+#### Intent-Based Movement
+- **Interaction**: Framer Motion `Reorder.Group` / `Reorder.Item` or Pivot Sheet actions.
+- **Logic**: 
+    - **Physical Drag**: Dragging a meal onto an occupied slot triggers an immediate **Swap**.
+    - **Intent-Based "Push"**: User explicitly chooses to move a meal without swapping.
+        - **Push to Next Available**: Finds the first date after `T` with no planned meal and moves the recipe there.
+        - **Push to Next Week**: Moves the recipe to `T + 7` (or the next available slot in that week if occupied).
+- **API Call**: `POST /api/schedule/move` (supporting `intent` parameter).
+
+#### Social Nudge Flows
+- **The "Active Messenger" (Flow 1)**: Tapping "Ask the Family" in the Pivot Sheet reveals a **[Nudge Family]** button. It triggers the Web Share API with a link to the week's Discovery stack.
+- **The "Hearth Pulse" (Flow 2)**: When a voting round is open, the **Discovery (Compass)** icon on the bottom nav across all devices pulses in **Ochre** to ambiently invite participation.
 
 #### Planning Pivot Sheet
 Triggered by tapping any day card (planned or unplanned).
@@ -140,21 +166,29 @@ Triggered by tapping any day card (planned or unplanned).
 | **Search Library** | Navigates to `/recipes?addToDay={N}&weekOffset={N}` |
 | **Ask the Family** | Sets `isLocked=false` locally (opens voting) |
 
-#### Quick Find Modal
-- Loads 5 recipes from `GET /api/schedule/fill-the-gap`
-- Flip-card UI: front = hero image + name; back = description + ingredients
-- "Select" → `assignRecipeToDay()` + updates local state
-- "Skip" → cycles to next card (wraps around)
+#### Quick Find Modal (The Rescue Menu)
+- Loads 4 recipes from `GET /api/schedule/fill-the-gap`.
+- Flip-card UI: front = hero image + name; back = description + ingredients.
+- **The 5th Card (Search Nudge)**: A persistent "Didn't find a match?" card with a large **Search Library** CTA to prevent infinite loops.
+- "Select" → `assignRecipeToDay()` + updates local state.
+- "Skip" → cycles to next card.
 
-#### Cook's Mode
-- Available only for `currentWeekOffset === 0` (current week) or past weeks (Read-only).
-- Triggered by 👨‍🍳 emoji button on recipe cards.
-- Fetches full recipe details via `getRecipe(id)` for ingredients list.
-- **Steps**: Sourced from `recipe.raw_metadata` (Option B: Raw instructions).
-- Shows dietary badges (isVegetarian, isHealthyChoice) on Prep step.
+#### Cook's Mode (The Sanity Kitchen)
+- Available only for `currentWeekOffset === 0` (current week) or past weeks.
+- **Step Persistence**: `plannerStore` tracks `cookProgress: Record<string, number>`. Cook's Mode resumes at the exact step the user last viewed for that recipe (The Toddler Rule).
+- **Data Source**: Real instructions parsed from `recipe.raw_metadata` (Schema.org `recipeInstructions`).
 - **Post-Meal Validation**: For current/past days, the card displays **[✅ Cooked]** and **[❌ Skipped]** actions.
     - `Cooked` → Sets `status = 2`, updates `Recipe.lastCookedDate`.
-    - `Skipped` → Sets `status = 3`.
+    - `Skipped` → Triggers the **Skip Recovery Dialog** (see Section 2.2.1).
+
+#### Grocery Logic: Aisle-First Categorization
+- **Strategy**: **Ingredient Section Lookup** with **Fuzzy Matching**.
+- **Logic**:
+    - The system maintains a global mapping of `Ingredient Name` -> `Store Section` (Meat, Dairy, Bakery, Vegetables, Pantry, Frozen, etc.).
+    - **Fuzzy Matching**: Since ingredient names vary between recipes (e.g., "Chicken Breast" vs "Skinless Chicken Breast"), the lookup uses fuzzy string matching to find the closest existing category.
+    - When a new ingredient is imported that doesn't significantly match an existing entry, the system uses a **one-time AI turn** to categorize it and update the global lookup.
+    - This ensures `recipe.json` files remain 100% faithful to the **Schema.org Recipe Ontology**.
+    - Future recipes containing known or "close-match" ingredients incur **zero token cost** for categorization.
 
 #### Finalize ("Menu's In!")
 1. **Closing Voting**: Transitions `weekly_plans.status` from `VotingOpen` to `Finalizing`.
@@ -298,6 +332,7 @@ CREATE TABLE weekly_plans (
   week_start_date date UNIQUE NOT NULL,
   status smallint NOT NULL DEFAULT 0, -- 0=Draft, 1=VotingOpen, 2=Locked
   notified_at timestamptz,
+  grocery_state jsonb,                -- Map of { "Ingredient Name": boolean }
   created_at timestamptz DEFAULT now() NOT NULL
 );
 CREATE INDEX idx_weekly_plans_date ON weekly_plans (week_start_date);
@@ -482,10 +517,10 @@ graph TD
 4.  **Pulse**: The Discovery button is the universal CTA for family members.
 5.  **Vote Purge**: Global purge is retained but triggered sequentially (at Lock and at Consensus).
 6.  **Uniqueness**: Composite `UNIQUE(date, meal_slot)` added to schema.
-7.  **Grocery List**: Interactive checklist using parsed ingredients from `raw_metadata`. Quantities are split from names to facilitate cross-recipe aggregation.
-8.  **Validation**: Manual "Cooked" vs "Skipped" (Planned but not cooked).
+7.  **Grocery List**: Aggregated ingredients from `supply` metadata. Toggling an item ("Purchased") syncs to `weekly_plans.grocery_state` (JSONB) to support collaborative shopping across multiple stores.
+8.  **Validation**: Manual "Cooked" vs "Skipped".
 9.  **Declutter**: "Remove" action moved from cards to the Pivot Menu.
-10. **Persistence**: The **Global Domino Shift** is the default behavior for all movements, ensuring no recipe is ever dropped from the future schedule.
+10. **Persistence**: Intent-based "Push" actions replace the Global Domino Shift for movement, while `recipes.added_by` uses `ON DELETE SET NULL` to preserve data when members are removed.
 
 ---
 
