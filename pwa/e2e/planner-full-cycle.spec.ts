@@ -25,14 +25,15 @@ async function setupFamilyMember(page: Page): Promise<string> {
     },
   ]);
   await page.goto('/');
-  await page.evaluate(() =>
+  await page.evaluate((id) =>
     localStorage.setItem(
       'family-storage',
       JSON.stringify({
-        state: { selectedFamilyMemberId: memberId },
+        state: { selectedFamilyMemberId: id },
         version: 0,
       })
-    )
+    ),
+    memberId
   );
   return memberId;
 }

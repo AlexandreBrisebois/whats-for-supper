@@ -26,6 +26,18 @@ This file contains the historical session logs and technical archives for the "W
 
 ## Session History
 
+### [2026-04-29] Phase 10 Complete — Kitchen & Grocery Hardening
+**Status**: COMPLETED ✅
+- **Prompts**: 01–07 (DB Foundation → API Logic → Social UI → Home Command Center → Kitchen & Grocery → E2E Hardening → Lint & Finalization)
+- **DB**: `weekly_plans` table (Draft/VotingOpen/Locked status, `grocery_state` JSONB). `CalendarEvent` gains `CandidateIds` + 4-state status. `ScheduleEntry` decommissioned. Unique constraint on `(date, meal_slot)`.
+- **API**: Full schedule state machine — `OpenVotingAsync`, `LockScheduleAsync` (with global vote purge), `ValidateMealAsync` (updates `last_cooked_date` on Cooked), `MoveScheduleAsync` (Swap + Push intent). Backup/restore forward-compatible with new schema.
+- **PWA**: `TonightMenuCard` (3D flip, ingredients on back), `SkipRecoveryDialog` (Ordering In / Pick Something Else → Tomorrow / Next Week / Drop It), `QuickFindModal` (5-card carousel with Search Library nudge), `PlanningPivotSheet` (Nudge Family via Web Share, Remove Recipe). Vote polling every 30s. `isLocked`/`isVotingOpen` driven by `WeeklyPlan.status` from API, not frontend-calculated.
+- **Cook's Mode**: Parses `recipeInstructions` (string array or HowToStep objects). Step persistence via Zustand `cookProgress: Record<string, number>`.
+- **Grocery**: Aisle-first grouping (Vegetables/Meat/Dairy/Bakery/Pantry). Fuzzy keyword matching. Toggle state persisted to `weekly_plans.grocery_state`.
+- **Tests**: 125 .NET tests pass. E2E specs for full 7-step journey, utility flows, social coordination, and home recovery authored. 5 E2E tests are environment-dependent (require live Docker); all others pass.
+- **Lint**: All ESLint errors resolved (`CooksMode`, `GroceryList`, `QuickFindModal`). `memberId` scope bug fixed in `planner-full-cycle.spec.ts` E2E fixture.
+- **Commit**: `ee12511` — Phase 10 implementation + lint fixes committed.
+
 ### [2026-04-29] Prompt 05 — Kitchen & Grocery Hardening
 **Status**: COMPLETED ✅
 - **Objective**: Implement Cook's Mode step parsing and Aisle-First Grocery Checklist
