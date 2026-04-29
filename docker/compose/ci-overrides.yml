@@ -1,9 +1,23 @@
 services:
-  # Expose ports directly for stable CI health checks
+  # Sidecar to prepare named volume permissions for the chiseled API image
+  volume-fixer:
+    image: alpine
+    command: chown -R 1654:1654 /data
+    volumes:
+      - wfs_data:/data
+
   api:
+    depends_on:
+      volume-fixer:
+        condition: service_completed_successfully
     ports:
       - "9001:9001"
+    volumes:
+      - wfs_data:/data
 
   pwa:
     ports:
       - "3000:3000"
+
+volumes:
+  wfs_data:

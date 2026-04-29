@@ -6,6 +6,13 @@ const eslintConfig = [
   },
   ...nextConfig,
   {
+    settings: {
+      react: {
+        version: '19.0.0',
+      },
+    },
+  },
+  {
     files: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.test.ts', '**/*.test.tsx', 'e2e/**/*.ts'],
     rules: {
       'react/display-name': 'off',

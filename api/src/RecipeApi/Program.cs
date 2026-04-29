@@ -126,12 +126,22 @@ try
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────
     // ── AI Configuration ─────────────────────────────────────────────────────
-    var modelId = builder.Configuration["GEMINI_MODEL_ID"] ?? "gemini-3-flash-preview";
-    var endpoint = builder.Configuration["GEMINI_ENDPOINT"] ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
-    var apiKey = builder.Configuration["GEMINI_API_KEY"];
-
-    if (string.IsNullOrEmpty(apiKey))
+    var modelId = builder.Configuration["GEMINI_MODEL_ID"];
+    if (string.IsNullOrWhiteSpace(modelId))
     {
+        modelId = "gemini-3-flash-preview";
+    }
+
+    var endpoint = builder.Configuration["GEMINI_ENDPOINT"];
+    if (string.IsNullOrWhiteSpace(endpoint))
+    {
+        endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/";
+    }
+
+    var apiKey = builder.Configuration["GEMINI_API_KEY"];
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        apiKey = "none";
         Log.Warning("GEMINI_API_KEY is not set. AI features will fail.");
     }
 
@@ -141,7 +151,7 @@ try
     Log.Information("────────────────────────");
 
     builder.Services.AddChatClient(new OpenAIClient(
-        new ApiKeyCredential(apiKey ?? "none"),
+        new ApiKeyCredential(apiKey),
         new OpenAIClientOptions
         {
             Endpoint = new Uri(endpoint),
