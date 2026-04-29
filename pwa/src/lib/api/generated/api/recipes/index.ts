@@ -8,14 +8,19 @@ import {
 } from '../../models/index';
 // @ts-ignore
 import {
+  ImportsRequestBuilderNavigationMetadata,
+  type ImportsRequestBuilder,
+} from './imports/index';
+// @ts-ignore
+import {
   ImportStatusRequestBuilderRequestsMetadata,
   type ImportStatusRequestBuilder,
 } from './importStatus/index';
 // @ts-ignore
 import {
-  RecipesItemRequestBuilderNavigationMetadata,
-  RecipesItemRequestBuilderRequestsMetadata,
-  type RecipesItemRequestBuilder,
+  ItemRequestBuilderNavigationMetadata,
+  ItemRequestBuilderRequestsMetadata,
+  type ItemRequestBuilder,
 } from './item/index';
 // @ts-ignore
 import {
@@ -111,6 +116,10 @@ export interface RecipesPostResponse_data extends AdditionalDataHolder, Parsable
  */
 export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequestBuilder> {
   /**
+   * The imports property
+   */
+  get imports(): ImportsRequestBuilder;
+  /**
    * The importStatus property
    */
   get importStatus(): ImportStatusRequestBuilder;
@@ -121,9 +130,9 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
   /**
    * Gets an item from the ApiSdk.api.recipes.item collection
    * @param id Unique identifier of the item
-   * @returns {RecipesItemRequestBuilder}
+   * @returns {ItemRequestBuilder}
    */
-  byId(id: Guid): RecipesItemRequestBuilder;
+  byId(id: Guid): ItemRequestBuilder;
   /**
    * List recipes
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -220,9 +229,12 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
   NavigationMetadata
 > = {
   byId: {
-    requestsMetadata: RecipesItemRequestBuilderRequestsMetadata,
-    navigationMetadata: RecipesItemRequestBuilderNavigationMetadata,
-    pathParametersMappings: ['id'],
+    requestsMetadata: ItemRequestBuilderRequestsMetadata,
+    navigationMetadata: ItemRequestBuilderNavigationMetadata,
+    pathParametersMappings: ['%2Did'],
+  },
+  imports: {
+    navigationMetadata: ImportsRequestBuilderNavigationMetadata,
   },
   importStatus: {
     requestsMetadata: ImportStatusRequestBuilderRequestsMetadata,

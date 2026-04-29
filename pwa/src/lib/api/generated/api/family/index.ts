@@ -104,11 +104,17 @@ export function deserializeIntoFamilyGetResponse_data(
   familyGetResponse_data: Partial<FamilyGetResponse_data> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    createdAt: (n) => {
+      familyGetResponse_data.createdAt = n.getDateValue();
+    },
     id: (n) => {
       familyGetResponse_data.id = n.getGuidValue();
     },
     name: (n) => {
       familyGetResponse_data.name = n.getStringValue();
+    },
+    updatedAt: (n) => {
+      familyGetResponse_data.updatedAt = n.getDateValue();
     },
   };
 }
@@ -154,11 +160,17 @@ export function deserializeIntoFamilyPostResponse_data(
   familyPostResponse_data: Partial<FamilyPostResponse_data> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    createdAt: (n) => {
+      familyPostResponse_data.createdAt = n.getDateValue();
+    },
     id: (n) => {
       familyPostResponse_data.id = n.getGuidValue();
     },
     name: (n) => {
       familyPostResponse_data.name = n.getStringValue();
+    },
+    updatedAt: (n) => {
+      familyPostResponse_data.updatedAt = n.getDateValue();
     },
   };
 }
@@ -170,6 +182,10 @@ export interface FamilyGetResponse extends AdditionalDataHolder, Parsable {
 }
 export interface FamilyGetResponse_data extends AdditionalDataHolder, Parsable {
   /**
+   * The createdAt property
+   */
+  createdAt?: Date | null;
+  /**
    * The id property
    */
   id?: Guid | null;
@@ -177,6 +193,10 @@ export interface FamilyGetResponse_data extends AdditionalDataHolder, Parsable {
    * The name property
    */
   name?: string | null;
+  /**
+   * The updatedAt property
+   */
+  updatedAt?: Date | null;
 }
 export interface FamilyPostRequestBody extends AdditionalDataHolder, Parsable {
   /**
@@ -192,6 +212,10 @@ export interface FamilyPostResponse extends AdditionalDataHolder, Parsable {
 }
 export interface FamilyPostResponse_data extends AdditionalDataHolder, Parsable {
   /**
+   * The createdAt property
+   */
+  createdAt?: Date | null;
+  /**
    * The id property
    */
   id?: Guid | null;
@@ -199,6 +223,10 @@ export interface FamilyPostResponse_data extends AdditionalDataHolder, Parsable 
    * The name property
    */
   name?: string | null;
+  /**
+   * The updatedAt property
+   */
+  updatedAt?: Date | null;
 }
 /**
  * Builds and executes requests for operations under /api/family
@@ -284,8 +312,10 @@ export function serializeFamilyGetResponse_data(
   if (!familyGetResponse_data || isSerializingDerivedType) {
     return;
   }
+  writer.writeDateValue('createdAt', familyGetResponse_data.createdAt);
   writer.writeGuidValue('id', familyGetResponse_data.id);
   writer.writeStringValue('name', familyGetResponse_data.name);
+  writer.writeDateValue('updatedAt', familyGetResponse_data.updatedAt);
   writer.writeAdditionalData(familyGetResponse_data.additionalData);
 }
 /**
@@ -343,8 +373,10 @@ export function serializeFamilyPostResponse_data(
   if (!familyPostResponse_data || isSerializingDerivedType) {
     return;
   }
+  writer.writeDateValue('createdAt', familyPostResponse_data.createdAt);
   writer.writeGuidValue('id', familyPostResponse_data.id);
   writer.writeStringValue('name', familyPostResponse_data.name);
+  writer.writeDateValue('updatedAt', familyPostResponse_data.updatedAt);
   writer.writeAdditionalData(familyPostResponse_data.additionalData);
 }
 /**

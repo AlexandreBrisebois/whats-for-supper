@@ -64,8 +64,18 @@ PlannerPage (page.tsx)
 │   └── Flip-card carousel (5 curated picks from /fill-the-gap)
 │
 └── CooksMode (z-100, AnimatePresence full-screen overlay)
-    ├── Step-by-step instructions (mock steps, real ingredients from API)
+    ├── Step-by-step instructions (sourced from raw_metadata)
     └── Progress bar + Prev/Next navigation
+
+### 2.2.1 Home Page (Command Center)
+- Route: `/home` (Default landing)
+- **Today's Card**: A high-impact `TonightMenuCard` that serves as the primary CTA.
+    - **Flip Interaction**: Tapping the card flips it 180° to reveal the "Back Side".
+    - **Back Side**: Displays a concise ingredients list and full description.
+    - **Direct Actions**:
+        - [👨‍🍳 Cook's Mode] — Launches the full-screen step-by-step overlay.
+        - [❌ Skip Tonight] — Marks meal as `Skipped` and triggers the "Backup Plan" pivot.
+- **Smart Pivot**: If no meal is planned for today, the card is replaced by the `SmartPivotCard` offering "Quick Fixes".
 ```
 
 ### 2.3 State Inventory (Zustand + Local React State)
@@ -112,11 +122,14 @@ The results are **merged** in the frontend:
 
 ### 2.6 Key Interactions
 
-#### Drag-to-Reorder
-- Framer Motion `Reorder.Group` / `Reorder.Item`
-- Day names/dates are **fixed** to their index — only `recipe` data moves
-- `handleReorder` identifies `fromIndex`/`toIndex` using `_uiId` tracking
-- API call `POST /api/schedule/move` fired **asynchronously** (non-blocking)
+#### Drag-to-Reorder & Movement
+- **Interaction**: Framer Motion `Reorder.Group` / `Reorder.Item`
+- **Logic (Global Domino Shift)**: 
+    - Moving a meal to an occupied date triggers a **Global Shift**.
+    - The existing recipe at the target date is pushed to the next day (`T + 1`).
+    - If `T + 1` is also occupied, *that* recipe is pushed to `T + 2`, and so on.
+    - This shift is **recursive** and spans multiple weeks. It only stops when it finds an empty slot.
+- **API Call**: `POST /api/schedule/move` (fired asynchronously).
 
 #### Planning Pivot Sheet
 Triggered by tapping any day card (planned or unplanned).
@@ -150,10 +163,10 @@ Triggered by tapping any day card (planned or unplanned).
 4. **Purge**: Triggers global purge of `recipe_votes`.
 5. UI transitions to "Week finalized" state.
 
-### 2.7 Remove / Un-assign
-- Every assigned recipe card includes a "Remove" (X) button.
-- Action: `DELETE /api/schedule/{date}/remove`.
-- Effect: Reverts the day card to the "Plan a meal" (empty) state.
+#### Remove / Un-assign
+- **Placement**: To reduce card clutter, the "Remove" action is located in the **Planning Pivot Sheet** (accessed by tapping the recipe card).
+- **Action**: `DELETE /api/schedule/{date}/remove`.
+- **Effect**: Reverts the day card to the "Plan a meal" (empty) state.
 
 ### 2.7 Mock Fallback
 If API calls fail, the page renders **hardcoded mock data** (Mon: Homemade Lasagna, Wed: Zesty Lemon Chicken) so the UI experience is always demonstrable. This is a development/resilience pattern.
@@ -221,29 +234,26 @@ All responses are auto-wrapped in `{ data: ... }` by `SuccessWrappingFilter`.
 
 ---
 
-#### `POST /api/schedule/day/{date}/ask` (Body: `AskCandidatesDto`)
-**Goal**: The "Micro" Ask (Single day flash-poll).
-1. Requires `weekly_plans.status` to be `Locked` or `Draft` (cannot overlap with Macro ask).
-2. Sets `calendar_events.status = AwaitingConsensus`.
-3. Stores `CandidateRecipeIds` (from Quick Find list).
-4. Triggers "Pulse" on Discovery button.
-5. Once consensus is reached → Assign recipe, set `status = Locked`, and **Purge `recipe_votes`** (Global Purge #2).
+#### `GET /api/schedule/fill-the-gap?weekOffset={int}`
+**Goal**: Suggest 5 recipes to fill empty slots.
+**Selection Logic ("Most Popular Quick")**:
+1.  **Filter**: `is_discoverable = true` AND `total_time` contains keywords like "10", "15", "20", "25" minutes (or numeric equivalent < 30 mins).
+2.  **Popularity**: Order by `vote_count` (from `vw_recipe_matches`) DESC.
+3.  **Variety**: Filter out recipes already planned for the current week.
+4.  **Recency**: Secondary sort by `last_cooked_date` ASC (prioritize things we haven't had lately).
 
 ---
 
-#### `DELETE /api/schedule/{date}/remove`
-**Goal**: Clear a slot.
-1. Deletes `calendar_event` for the specific date and `meal_slot`.
-
----
-
-#### `POST /api/schedule/{date}/validate` (Body: `ValidationDto`)
+#### `POST /api/schedule/day/{date}/validate` (Body: `ValidationDto`)
 **Goal**: Mark meal as Cooked/Skipped.
-1. If `status = Cooked`:
+1.  **If `status = Cooked` (2)**:
     - Update event `status = 2`.
     - Update `Recipe.LastCookedDate = UtcNow`.
-2. If `status = Skipped`:
+2.  **If `status = Skipped` (3)**:
+    - **Semantics**: "Planned but not cooked." The family decided against this specific meal today (e.g., ordered pizza, too busy).
     - Update event `status = 3`.
+    - **UX Recovery**: UI should prompt: "Want to move this to tomorrow?"
+    - **Movement Behavior**: Moving a skipped meal to tomorrow triggers the **Global Domino Shift**. All subsequent planned meals in the calendar (even in future weeks) shift forward to accommodate the change.
 
 ### 3.3 DTO Inventory
 
@@ -458,7 +468,7 @@ graph TD
     Q --> R[Today's Card: Cook's Mode]
     R --> S{Validate?}
     S -- Cooked --> T[status=2 / Recipe.LastCooked=Now]
-    S -- Skipped --> U[status=3]
+    S -- Skipped --> U[status=3 / Trigger Backup Pivot]
     end
 ```
 
@@ -472,8 +482,10 @@ graph TD
 4.  **Pulse**: The Discovery button is the universal CTA for family members.
 5.  **Vote Purge**: Global purge is retained but triggered sequentially (at Lock and at Consensus).
 6.  **Uniqueness**: Composite `UNIQUE(date, meal_slot)` added to schema.
-7.  **Grocery List**: Interactive checklist of ingredients.
-8.  **Validation**: Manual "Cooked" vs "Skipped" validation by the user.
+7.  **Grocery List**: Interactive checklist using parsed ingredients from `raw_metadata`. Quantities are split from names to facilitate cross-recipe aggregation.
+8.  **Validation**: Manual "Cooked" vs "Skipped" (Planned but not cooked).
+9.  **Declutter**: "Remove" action moved from cards to the Pivot Menu.
+10. **Persistence**: The **Global Domino Shift** is the default behavior for all movements, ensuring no recipe is ever dropped from the future schedule.
 
 ---
 

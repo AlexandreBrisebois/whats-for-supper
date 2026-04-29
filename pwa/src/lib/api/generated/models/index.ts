@@ -24,6 +24,16 @@ export interface AssignScheduleDto extends AdditionalDataHolder, Parsable {
    */
   weekOffset?: number | null;
 }
+export interface BulkImportTriggerResponseDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The instanceIds property
+   */
+  instanceIds?: Guid[] | null;
+  /**
+   * The queuedCount property
+   */
+  queuedCount?: number | null;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -34,6 +44,17 @@ export function createAssignScheduleDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoAssignScheduleDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {BulkImportTriggerResponseDto}
+ */
+// @ts-ignore
+export function createBulkImportTriggerResponseDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoBulkImportTriggerResponseDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -291,6 +312,17 @@ export function createUpdateRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ValidationDto}
+ */
+// @ts-ignore
+export function createValidationDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoValidationDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {VoteDto}
  */
 // @ts-ignore
@@ -399,6 +431,24 @@ export function deserializeIntoAssignScheduleDto(
 }
 /**
  * The deserialization information for the current model
+ * @param BulkImportTriggerResponseDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoBulkImportTriggerResponseDto(
+  bulkImportTriggerResponseDto: Partial<BulkImportTriggerResponseDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    instanceIds: (n) => {
+      bulkImportTriggerResponseDto.instanceIds = n.getCollectionOfPrimitiveValues<Guid>();
+    },
+    queuedCount: (n) => {
+      bulkImportTriggerResponseDto.queuedCount = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param HealthCheckResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -462,12 +512,6 @@ export function deserializeIntoManagementTaskStatusResponse(
     createdAt: (n) => {
       managementTaskStatusResponse.createdAt = n.getDateValue();
     },
-    errorMessage: (n) => {
-      managementTaskStatusResponse.errorMessage = n.getStringValue();
-    },
-    id: (n) => {
-      managementTaskStatusResponse.id = n.getGuidValue();
-    },
     result: (n) => {
       managementTaskStatusResponse.result = n.getObjectValue<ManagementTaskStatusResponse_result>(
         createManagementTaskStatusResponse_resultFromDiscriminatorValue
@@ -478,13 +522,14 @@ export function deserializeIntoManagementTaskStatusResponse(
         ManagementTaskStatusResponse_statusObject
       );
     },
-    type: (n) => {
-      managementTaskStatusResponse.type = n.getEnumValue<ManagementTaskStatusResponse_type>(
-        ManagementTaskStatusResponse_typeObject
-      );
-    },
     updatedAt: (n) => {
       managementTaskStatusResponse.updatedAt = n.getDateValue();
+    },
+    workflowId: (n) => {
+      managementTaskStatusResponse.workflowId = n.getGuidValue();
+    },
+    workflowType: (n) => {
+      managementTaskStatusResponse.workflowType = n.getStringValue();
     },
   };
 }
@@ -951,6 +996,21 @@ export function deserializeIntoUpdateRecipeDto(
 }
 /**
  * The deserialization information for the current model
+ * @param ValidationDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoValidationDto(
+  validationDto: Partial<ValidationDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    status: (n) => {
+      validationDto.status = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param VoteDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -1082,6 +1142,9 @@ export function deserializeIntoWorkflowTaskDto(
     taskId: (n) => {
       workflowTaskDto.taskId = n.getGuidValue();
     },
+    taskName: (n) => {
+      workflowTaskDto.taskName = n.getStringValue();
+    },
     updatedAt: (n) => {
       workflowTaskDto.updatedAt = n.getDateValue();
     },
@@ -1163,14 +1226,6 @@ export interface ManagementTaskStatusResponse extends AdditionalDataHolder, Pars
    */
   createdAt?: Date | null;
   /**
-   * The errorMessage property
-   */
-  errorMessage?: string | null;
-  /**
-   * The id property
-   */
-  id?: Guid | null;
-  /**
    * The result property
    */
   result?: ManagementTaskStatusResponse_result | null;
@@ -1179,19 +1234,21 @@ export interface ManagementTaskStatusResponse extends AdditionalDataHolder, Pars
    */
   status?: ManagementTaskStatusResponse_status | null;
   /**
-   * The type property
-   */
-  type?: ManagementTaskStatusResponse_type | null;
-  /**
    * The updatedAt property
    */
   updatedAt?: Date | null;
+  /**
+   * The workflowId property
+   */
+  workflowId?: Guid | null;
+  /**
+   * The workflowType property
+   */
+  workflowType?: string | null;
 }
 export interface ManagementTaskStatusResponse_result extends AdditionalDataHolder, Parsable {}
 export type ManagementTaskStatusResponse_status =
   (typeof ManagementTaskStatusResponse_statusObject)[keyof typeof ManagementTaskStatusResponse_statusObject];
-export type ManagementTaskStatusResponse_type =
-  (typeof ManagementTaskStatusResponse_typeObject)[keyof typeof ManagementTaskStatusResponse_typeObject];
 export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
   /**
    * The fromIndex property
@@ -1470,6 +1527,28 @@ export function serializeAssignScheduleDto(
 }
 /**
  * Serializes information the current object
+ * @param BulkImportTriggerResponseDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeBulkImportTriggerResponseDto(
+  writer: SerializationWriter,
+  bulkImportTriggerResponseDto: Partial<BulkImportTriggerResponseDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!bulkImportTriggerResponseDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfPrimitiveValues<Guid>(
+    'instanceIds',
+    bulkImportTriggerResponseDto.instanceIds
+  );
+  writer.writeNumberValue('queuedCount', bulkImportTriggerResponseDto.queuedCount);
+  writer.writeAdditionalData(bulkImportTriggerResponseDto.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param HealthCheckResponse The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -1544,8 +1623,6 @@ export function serializeManagementTaskStatusResponse(
     return;
   }
   writer.writeDateValue('createdAt', managementTaskStatusResponse.createdAt);
-  writer.writeStringValue('errorMessage', managementTaskStatusResponse.errorMessage);
-  writer.writeGuidValue('id', managementTaskStatusResponse.id);
   writer.writeObjectValue<ManagementTaskStatusResponse_result>(
     'result',
     managementTaskStatusResponse.result,
@@ -1555,11 +1632,9 @@ export function serializeManagementTaskStatusResponse(
     'status',
     managementTaskStatusResponse.status
   );
-  writer.writeEnumValue<ManagementTaskStatusResponse_type>(
-    'type',
-    managementTaskStatusResponse.type
-  );
   writer.writeDateValue('updatedAt', managementTaskStatusResponse.updatedAt);
+  writer.writeGuidValue('workflowId', managementTaskStatusResponse.workflowId);
+  writer.writeStringValue('workflowType', managementTaskStatusResponse.workflowType);
   writer.writeAdditionalData(managementTaskStatusResponse.additionalData);
 }
 /**
@@ -1995,6 +2070,24 @@ export function serializeUpdateRecipeDto(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ValidationDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeValidationDto(
+  writer: SerializationWriter,
+  validationDto: Partial<ValidationDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!validationDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('status', validationDto.status);
+  writer.writeAdditionalData(validationDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param VoteDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -2114,6 +2207,7 @@ export function serializeWorkflowTaskDto(
   writer.writeDateValue('scheduledAt', workflowTaskDto.scheduledAt);
   writer.writeEnumValue<WorkflowTaskDto_status>('status', workflowTaskDto.status);
   writer.writeGuidValue('taskId', workflowTaskDto.taskId);
+  writer.writeStringValue('taskName', workflowTaskDto.taskName);
   writer.writeDateValue('updatedAt', workflowTaskDto.updatedAt);
   writer.writeAdditionalData(workflowTaskDto.additionalData);
 }
@@ -2245,6 +2339,12 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
    */
   rating?: number | null;
 }
+export interface ValidationDto extends AdditionalDataHolder, Parsable {
+  /**
+   * 1: Planned, 2: Cooked, 3: Skipped
+   */
+  status?: number | null;
+}
 export interface VoteDto extends AdditionalDataHolder, Parsable {
   /**
    * The vote property
@@ -2346,6 +2446,10 @@ export interface WorkflowTaskDto extends AdditionalDataHolder, Parsable {
    */
   taskId?: Guid | null;
   /**
+   * The taskName property
+   */
+  taskName?: string | null;
+  /**
    * The updatedAt property
    */
   updatedAt?: Date | null;
@@ -2370,11 +2474,6 @@ export const ManagementTaskStatusResponse_statusObject = {
   Processing: 'Processing',
   Completed: 'Completed',
   Failed: 'Failed',
-} as const;
-export const ManagementTaskStatusResponse_typeObject = {
-  Backup: 'Backup',
-  Restore: 'Restore',
-  DisasterRecovery: 'DisasterRecovery',
 } as const;
 export const WorkflowInstanceDetailDto_statusObject = {
   Pending: 'Pending',

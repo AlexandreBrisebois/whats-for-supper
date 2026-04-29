@@ -51,8 +51,10 @@ test('selecting a family member redirects to /home with a welcome message', asyn
   // Should land on /home
   await expect(page).toHaveURL(/\/home/);
 
-  // Wait for Tonight's Menu to appear (hydration)
-  await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible({
+  // Wait for the Command Center to appear (Tonight's Menu or Smart Pivot)
+  await expect(
+    page.getByTestId('tonight-menu-card').or(page.getByTestId('smart-pivot-card'))
+  ).toBeVisible({
     timeout: 10_000,
   });
 });

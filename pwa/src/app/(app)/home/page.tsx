@@ -4,12 +4,8 @@ import type { FamilyMember } from '@/types/domain';
 
 export const dynamic = 'force-dynamic';
 
-import {
-  TonightMenuCard,
-  QuickCaptureTrigger,
-  NextPrepStepCard,
-  SmartPivotCard,
-} from '@/components/home/HomeSections';
+import { HomeCommandCenter } from '@/components/home/HomeCommandCenter';
+import type { ScheduleDays } from '@/lib/api/generated/models';
 
 /**
  * HomePage is now a Server Component.
@@ -18,36 +14,35 @@ import {
  */
 export default async function HomePage() {
   let familyMembers: FamilyMember[] = [];
+  let schedule: ScheduleDays | null = null;
 
   try {
-    familyMembers = await serverFetch<FamilyMember[]>('/api/family');
+    [familyMembers, schedule] = await Promise.all([
+      serverFetch<FamilyMember[]>('/api/family'),
+      serverFetch<ScheduleDays>('/api/schedule?weekOffset=0'),
+    ]);
   } catch (error) {
-    console.error('Failed to fetch family members on server:', error);
+    console.error('Failed to fetch home data on server:', error);
   }
+
+  // Find today's recipe
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
+  const todaysRecipe = todaysEntry?.recipe;
 
   // Next Prep Step data (Mocked for now)
   const nextTask = { id: '1', label: 'Defrost ground beef', time: '3:00 PM', completed: false };
-  const isMealPlanned = true; // Toggle this to test SmartPivot
+  const isMealPlanned = !!todaysRecipe;
   const isPrepActive = true;
 
   return (
     <>
       <StoreInitializer familyMembers={familyMembers} />
-
-      <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto">
-        {!isMealPlanned && <SmartPivotCard />}
-
-        {isPrepActive && <NextPrepStepCard task={nextTask} />}
-
-        <TonightMenuCard
-          recipeName="Homemade Lasagna"
-          description="A cozy Italian classic, made from scratch with layers of rich meat sauce and creamy béchamel."
-          imageUrl="https://images.unsplash.com/photo-1574894709920-11b28e7367e3?auto=format&fit=crop&q=80&w=800"
-          prepTime="45 mins"
-        />
-
-        <QuickCaptureTrigger />
-      </div>
+      <HomeCommandCenter
+        todaysRecipe={todaysRecipe}
+        nextTask={nextTask}
+        isPrepActive={isPrepActive}
+      />
     </>
   );
 }

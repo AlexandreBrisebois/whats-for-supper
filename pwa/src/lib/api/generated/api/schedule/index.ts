@@ -10,6 +10,8 @@ import {
 // @ts-ignore
 import { AssignRequestBuilderRequestsMetadata, type AssignRequestBuilder } from './assign/index';
 // @ts-ignore
+import { DayRequestBuilderNavigationMetadata, type DayRequestBuilder } from './day/index';
+// @ts-ignore
 import {
   FillTheGapRequestBuilderRequestsMetadata,
   type FillTheGapRequestBuilder,
@@ -80,6 +82,10 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
    * The assign property
    */
   get assign(): AssignRequestBuilder;
+  /**
+   * The day property
+   */
+  get day(): DayRequestBuilder;
   /**
    * The fillTheGap property
    */
@@ -160,6 +166,9 @@ export const ScheduleRequestBuilderNavigationMetadata: Record<
   },
   assign: {
     requestsMetadata: AssignRequestBuilderRequestsMetadata,
+  },
+  day: {
+    navigationMetadata: DayRequestBuilderNavigationMetadata,
   },
   fillTheGap: {
     requestsMetadata: FillTheGapRequestBuilderRequestsMetadata,

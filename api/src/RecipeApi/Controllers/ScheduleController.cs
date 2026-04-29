@@ -51,4 +51,11 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         var defaults = await _scheduleService.GetSmartDefaultsAsync(weekOffset);
         return Ok(defaults);
     }
+
+    [HttpPost("day/{date}/validate")]
+    public async Task<IActionResult> ValidateDay(string date, [FromBody] ValidationDto dto)
+    {
+        await _scheduleService.ValidateDayAsync(date, dto);
+        return Ok(new { message = "Day validated" });
+    }
 }

@@ -102,7 +102,9 @@ test.describe('Capture Flow', () => {
   test('after successful capture, user can return to home', async ({ page }) => {
     // Navigate directly to home
     await page.goto('/home');
-    await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible();
+    await expect(
+      page.getByTestId('tonight-menu-card').or(page.getByTestId('smart-pivot-card'))
+    ).toBeVisible();
   });
 
   test('user can navigate to the search page from the navigation bar', async ({ page }) => {

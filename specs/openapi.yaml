@@ -202,6 +202,12 @@ components:
         dayIndex: { type: integer }
         isLocked: { type: boolean }
 
+    ValidationDto:
+      type: object
+      required: [status]
+      properties:
+        status: { type: integer, description: '1: Planned, 2: Cooked, 3: Skipped' }
+
     # --- Health ---
     HealthCheckResponse:
       type: object
@@ -812,6 +818,32 @@ paths:
                     image: '/api/recipes/550e8400-e29b-41d4-a716-446655440002/hero'
                     description: 'Rich, creamy, and sophisticated—perfect for a quick gourmet weeknight dinner.'
                     ingredients: ['Potato gnocchi', 'Gorgonzola cheese', 'Heavy cream', 'Walnuts', 'Sage']
+
+  /api/schedule/day/{date}/validate:
+    parameters:
+      - name: date
+        in: path
+        required: true
+        schema: { type: string, format: date }
+    post:
+      summary: Validate a scheduled day (Cooked/Skipped)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ValidationDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
 
   /api/schedule/{weekOffset}/smart-defaults:
     get:

@@ -17,6 +17,11 @@ import {
 } from './importEscaped/index';
 // @ts-ignore
 import {
+  OriginalRequestBuilderNavigationMetadata,
+  type OriginalRequestBuilder,
+} from './original/index';
+// @ts-ignore
+import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
   type KeysToExcludeForNavigationMetadata,
@@ -33,57 +38,57 @@ import {
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipesPatchResponse_data}
+ * @returns {PatchResponse_data}
  */
 // @ts-ignore
-export function createRecipesPatchResponse_dataFromDiscriminatorValue(
+export function createPatchResponse_dataFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipesPatchResponse_data;
+  return deserializeIntoPatchResponse_data;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipesPatchResponse}
+ * @returns {PatchResponse}
  */
 // @ts-ignore
-export function createRecipesPatchResponseFromDiscriminatorValue(
+export function createPatchResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipesPatchResponse;
+  return deserializeIntoPatchResponse;
 }
 /**
  * The deserialization information for the current model
- * @param RecipesPatchResponse The instance to deserialize into.
+ * @param PatchResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoRecipesPatchResponse(
-  recipesPatchResponse: Partial<RecipesPatchResponse> | undefined = {}
+export function deserializeIntoPatchResponse(
+  patchResponse: Partial<PatchResponse> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     data: (n) => {
-      recipesPatchResponse.data = n.getObjectValue<RecipesPatchResponse_data>(
-        createRecipesPatchResponse_dataFromDiscriminatorValue
+      patchResponse.data = n.getObjectValue<PatchResponse_data>(
+        createPatchResponse_dataFromDiscriminatorValue
       );
     },
   };
 }
 /**
  * The deserialization information for the current model
- * @param RecipesPatchResponse_data The instance to deserialize into.
+ * @param PatchResponse_data The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoRecipesPatchResponse_data(
-  recipesPatchResponse_data: Partial<RecipesPatchResponse_data> | undefined = {}
+export function deserializeIntoPatchResponse_data(
+  patchResponse_data: Partial<PatchResponse_data> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
 }
 /**
- * Builds and executes requests for operations under /api/recipes/{id}
+ * Builds and executes requests for operations under /api/recipes/{-id}
  */
-export interface RecipesItemRequestBuilder extends BaseRequestBuilder<RecipesItemRequestBuilder> {
+export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilder> {
   /**
    * The hero property
    */
@@ -92,6 +97,10 @@ export interface RecipesItemRequestBuilder extends BaseRequestBuilder<RecipesIte
    * The import property
    */
   get importEscaped(): ImportRequestBuilder;
+  /**
+   * The original property
+   */
+  get original(): OriginalRequestBuilder;
   /**
    * Delete a recipe
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -109,12 +118,12 @@ export interface RecipesItemRequestBuilder extends BaseRequestBuilder<RecipesIte
    * Update a recipe
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {Promise<RecipesPatchResponse>}
+   * @returns {Promise<PatchResponse>}
    */
   patch(
     body: UpdateRecipeDto,
     requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<RecipesPatchResponse | undefined>;
+  ): Promise<PatchResponse | undefined>;
   /**
    * Delete a recipe
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -142,61 +151,61 @@ export interface RecipesItemRequestBuilder extends BaseRequestBuilder<RecipesIte
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
 }
-export interface RecipesPatchResponse extends AdditionalDataHolder, Parsable {
+export interface PatchResponse extends AdditionalDataHolder, Parsable {
   /**
    * The data property
    */
-  data?: RecipesPatchResponse_data | null;
+  data?: PatchResponse_data | null;
 }
-export interface RecipesPatchResponse_data extends AdditionalDataHolder, Parsable {}
+export interface PatchResponse_data extends AdditionalDataHolder, Parsable {}
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipesPatchResponse The instance to serialize from.
+ * @param PatchResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeRecipesPatchResponse(
+export function serializePatchResponse(
   writer: SerializationWriter,
-  recipesPatchResponse: Partial<RecipesPatchResponse> | undefined | null = {},
+  patchResponse: Partial<PatchResponse> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
-  if (!recipesPatchResponse || isSerializingDerivedType) {
+  if (!patchResponse || isSerializingDerivedType) {
     return;
   }
-  writer.writeObjectValue<RecipesPatchResponse_data>(
+  writer.writeObjectValue<PatchResponse_data>(
     'data',
-    recipesPatchResponse.data,
-    serializeRecipesPatchResponse_data
+    patchResponse.data,
+    serializePatchResponse_data
   );
-  writer.writeAdditionalData(recipesPatchResponse.additionalData);
+  writer.writeAdditionalData(patchResponse.additionalData);
 }
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipesPatchResponse_data The instance to serialize from.
+ * @param PatchResponse_data The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeRecipesPatchResponse_data(
+export function serializePatchResponse_data(
   writer: SerializationWriter,
-  recipesPatchResponse_data: Partial<RecipesPatchResponse_data> | undefined | null = {},
+  patchResponse_data: Partial<PatchResponse_data> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
-  if (!recipesPatchResponse_data || isSerializingDerivedType) {
+  if (!patchResponse_data || isSerializingDerivedType) {
     return;
   }
-  writer.writeAdditionalData(recipesPatchResponse_data.additionalData);
+  writer.writeAdditionalData(patchResponse_data.additionalData);
 }
 /**
  * Uri template for the request builder.
  */
-export const RecipesItemRequestBuilderUriTemplate = '{+baseurl}/api/recipes/{id}';
+export const ItemRequestBuilderUriTemplate = '{+baseurl}/api/recipes/{%2Did}';
 /**
  * Metadata for all the navigation properties in the request builder.
  */
-export const RecipesItemRequestBuilderNavigationMetadata: Record<
-  Exclude<keyof RecipesItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
+export const ItemRequestBuilderNavigationMetadata: Record<
+  Exclude<keyof ItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
   NavigationMetadata
 > = {
   hero: {
@@ -205,26 +214,29 @@ export const RecipesItemRequestBuilderNavigationMetadata: Record<
   importEscaped: {
     requestsMetadata: ImportRequestBuilderRequestsMetadata,
   },
+  original: {
+    navigationMetadata: OriginalRequestBuilderNavigationMetadata,
+  },
 };
 /**
  * Metadata for all the requests in the request builder.
  */
-export const RecipesItemRequestBuilderRequestsMetadata: RequestsMetadata = {
+export const ItemRequestBuilderRequestsMetadata: RequestsMetadata = {
   delete: {
-    uriTemplate: RecipesItemRequestBuilderUriTemplate,
+    uriTemplate: ItemRequestBuilderUriTemplate,
     adapterMethodName: 'sendNoResponseContent',
   },
   get: {
-    uriTemplate: RecipesItemRequestBuilderUriTemplate,
+    uriTemplate: ItemRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
   },
   patch: {
-    uriTemplate: RecipesItemRequestBuilderUriTemplate,
+    uriTemplate: ItemRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     adapterMethodName: 'send',
-    responseBodyFactory: createRecipesPatchResponseFromDiscriminatorValue,
+    responseBodyFactory: createPatchResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',
     requestBodySerializer: serializeUpdateRecipeDto,
     requestInformationContentSetMethod: 'setContentFromParsable',

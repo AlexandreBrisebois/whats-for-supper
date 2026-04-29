@@ -30,7 +30,13 @@ public class ScheduleService(RecipeDbContext dbContext)
             var date = monday.AddDays(i);
             var @event = events.FirstOrDefault(e => e.Date == date);
             var recipe = @event?.Recipe != null
-                ? new ScheduleRecipeDto(@event.Recipe.Id, @event.Recipe.Name, $"/api/recipes/{@event.Recipe.Id}/hero", @event.VoteCount)
+                ? new ScheduleRecipeDto(
+                    @event.Recipe.Id,
+                    @event.Recipe.Name,
+                    $"/api/recipes/{@event.Recipe.Id}/hero",
+                    @event.VoteCount,
+                    RecipeService.DeserializeIngredients(@event.Recipe.Ingredients),
+                    @event.Recipe.Description)
                 : null;
 
             days.Add(new ScheduleDayDto(dayNames[i], date.ToString("yyyy-MM-dd"), recipe));
@@ -282,6 +288,28 @@ public class ScheduleService(RecipeDbContext dbContext)
             OpenSlots: openSlots,
             ConsensusRecipesCount: filteredVotes.Count
         );
+    }
+
+    public async Task ValidateDayAsync(string dateStr, ValidationDto dto)
+    {
+        var date = DateOnly.Parse(dateStr);
+        var @event = await _dbContext.CalendarEvents
+            .Include(e => e.Recipe)
+            .FirstOrDefaultAsync(e => e.Date == date);
+
+        if (@event == null)
+        {
+            throw new Exception("No meal planned for this date");
+        }
+
+        @event.Status = (CalendarEventStatus)dto.Status;
+
+        if (dto.Status == 2 && @event.Recipe != null) // 2 = Cooked
+        {
+            @event.Recipe.LastCookedDate = DateTimeOffset.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync();
     }
 
     private static (DateOnly Monday, DateOnly Sunday) GetWeekBounds(int weekOffset)

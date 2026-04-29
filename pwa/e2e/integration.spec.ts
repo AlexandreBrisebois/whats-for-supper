@@ -131,8 +131,10 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   const cookieValue = await page.evaluate(() => document.cookie);
   console.log('Cookies after navigation:', cookieValue);
 
-  // Home page shows the Tonight's Menu card
-  await expect(page.getByText(/tonight's menu/i)).toBeVisible({
+  // Home page shows the Command Center (Tonight's Menu or Smart Pivot)
+  await expect(
+    page.getByTestId('tonight-menu-card').or(page.getByTestId('smart-pivot-card'))
+  ).toBeVisible({
     timeout: 15_000,
   });
 
@@ -186,5 +188,7 @@ test('complete Phase 0 user journey', async ({ page, request }) => {
   await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
 
   // Home page still shows content — no regressions
-  await expect(page.getByRole('heading', { name: /tonight's menu/i })).toBeVisible();
+  await expect(
+    page.getByTestId('tonight-menu-card').or(page.getByTestId('smart-pivot-card'))
+  ).toBeVisible();
 });

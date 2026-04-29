@@ -12,11 +12,11 @@ import {
 } from '@microsoft/kiota-abstractions';
 
 /**
- * Builds and executes requests for operations under /api/recipes/{-id}/hero
+ * Builds and executes requests for operations under /api/recipes/{-id}/original/{photoIndex}
  */
-export interface HeroRequestBuilder extends BaseRequestBuilder<HeroRequestBuilder> {
+export interface WithPhotoIndexItemRequestBuilder extends BaseRequestBuilder<WithPhotoIndexItemRequestBuilder> {
   /**
-   * Get recipe hero image
+   * Get original recipe image by index
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ArrayBuffer>}
    */
@@ -24,7 +24,7 @@ export interface HeroRequestBuilder extends BaseRequestBuilder<HeroRequestBuilde
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<ArrayBuffer | undefined>;
   /**
-   * Get recipe hero image
+   * Get original recipe image by index
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -35,14 +35,15 @@ export interface HeroRequestBuilder extends BaseRequestBuilder<HeroRequestBuilde
 /**
  * Uri template for the request builder.
  */
-export const HeroRequestBuilderUriTemplate = '{+baseurl}/api/recipes/{%2Did}/hero';
+export const WithPhotoIndexItemRequestBuilderUriTemplate =
+  '{+baseurl}/api/recipes/{%2Did}/original/{photoIndex}';
 /**
  * Metadata for all the requests in the request builder.
  */
-export const HeroRequestBuilderRequestsMetadata: RequestsMetadata = {
+export const WithPhotoIndexItemRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
-    uriTemplate: HeroRequestBuilderUriTemplate,
-    responseBodyContentType: 'image/jpeg, image/png',
+    uriTemplate: WithPhotoIndexItemRequestBuilderUriTemplate,
+    responseBodyContentType: 'image/*',
     adapterMethodName: 'sendPrimitive',
     responseBodyFactory: 'ArrayBuffer',
   },
