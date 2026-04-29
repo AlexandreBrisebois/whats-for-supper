@@ -35,7 +35,7 @@ Once the spec is updated, solidify the other seams:
 ## 5. Phase 4: Reconciliation & Validation
 Before completing the architect phase, prove the seams are tight:
 1.  **Map API Surface**: Run `task agent:api` to verify the new endpoint is recognized by the system.
-2.  **Run Parity Check**: Run `task agent:reconcile` to check synchronization between Spec, Prism Mock, and Backend.
+2.  **Run Parity Check**: Run `task agent:reconcile` to check synchronization between Spec, Playwright Mocks, and Backend.
 3.  **Final Slice Review**: Run `task agent:slice` again on the new route to confirm the "vertical seam" is complete.
 
 ## 6. Token Efficiency Directives

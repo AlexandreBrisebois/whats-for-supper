@@ -146,4 +146,80 @@ export async function setupCommonRoutes(page: Page) {
       await route.continue();
     }
   });
+
+  // Family Detail
+  await page.route(/\/(?:backend\/)?api\/family\/[0-9a-f-]+(?:\?|$)/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+  });
+
+  // Discovery Vote
+  await page.route(/\/(?:backend\/)?api\/discovery\/.*\/vote/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+  });
+
+  // Recipes (Generic & Detail)
+  await page.route(/\/(?:backend\/)?api\/recipes(?:\?|$)/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], total: 0 }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/recipes\/recommendations/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { topPick: null, results: [] } }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+(?:\?|$)/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: builders.recipe() }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/hero/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
+  });
+  await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/import/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ importId: MOCK_IDS.RECIPE_LASAGNA }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/recipes\/import-status/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ importedCount: 0, queueCount: 0, failedCount: 0 }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/recipes\/imports\/bulk/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ queuedCount: 0, instanceIds: [] }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/recipes\/.*\/original\/.*/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
+  });
+
+  // Schedule Operations
+  await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/schedule\/lock/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/schedule\/fill-the-gap/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
+  });
+
+  // Management & Workflows (Specific mocks for parity)
+  await page.route(/\/(?:backend\/)?api\/management\/backup/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/management\/disaster-recovery/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/management\/seed/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/management\/status/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'Idle' }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/workflows\/instances\/[0-9a-f-]+(?:\?|$)/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: MOCK_IDS.RECIPE_LASAGNA, status: 'Completed' }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/workflows\/tasks\/[0-9a-f-]+\/reset/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/workflows\/active/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
+  });
+  await page.route(/\/(?:backend\/)?api\/workflows\/[0-9a-f-]+\/trigger/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ instanceId: MOCK_IDS.RECIPE_LASAGNA }) });
+  });
+  await page.route(/\/(?:backend\/)?health/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'Healthy' }) });
+  });
 }

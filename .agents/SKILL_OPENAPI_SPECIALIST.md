@@ -13,7 +13,7 @@ Follow these directives in order for every API change or new endpoint.
 
 ### Directive 1: Spec-First Initialization
 1.  **Modify Source**: Update `specs/openapi.yaml` before writing any implementation code.
-2.  **Rich Examples**: Every response schema MUST include high-fidelity `example` data. This is mandatory for Prism mocking.
+2.  **Rich Examples**: Every response schema MUST include high-fidelity `example` data. This is mandatory for Playwright mocking.
 3.  **Validate Spec**: Ensure the YAML is syntactically correct and follows OpenAPI 3.x standards.
 
 ### Directive 2: SDK & Type Synchronization
@@ -21,7 +21,7 @@ Follow these directives in order for every API change or new endpoint.
 2.  **Post-Process Imports**: Verify that `pwa/scripts/fix-kiota-imports.js` has executed (automatically triggered by `api:generate`).
 3.  **Sync Types**: Run `task types:sync` to update the flat TypeScript types in `pwa/src/lib/api/types.ts`.
 
-### Directive 3: Mock Verification (Prism)
+### Directive 3: Mock Verification (Playwright)
 1.  **Start Mock Server**: Run `npm run mock-api` in the PWA.
 2.  **Verify Data Flow**: Ensure the UI components can consume the new endpoint using the generated client and that the mock data renders correctly.
 3.  **Image High-Fidelity**: Use valid Unsplash URLs in examples to prevent layout shifts or broken image indicators during testing.

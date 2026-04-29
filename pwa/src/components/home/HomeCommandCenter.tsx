@@ -1,11 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  SmartPivotCard,
-  QuickCaptureTrigger,
-  CookedSuccessCard,
-} from './HomeSections';
+import { SmartPivotCard, QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
 import { QuickFindModal } from '../planner/QuickFindModal';
@@ -21,9 +17,7 @@ interface HomeCommandCenterProps {
   todaysRecipe: any;
 }
 
-export function HomeCommandCenter({
-  todaysRecipe,
-}: HomeCommandCenterProps) {
+export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showQuickFind, setShowQuickFind] = useState(false);
@@ -123,7 +117,6 @@ export function HomeCommandCenter({
           }}
         />
       )}
-
 
       {isCooked && <CookedSuccessCard onDismiss={() => setIsCooked(false)} />}
 

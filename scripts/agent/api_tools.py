@@ -31,18 +31,62 @@ def get_spec_endpoints(spec):
     return endpoints
 
 def get_mock_endpoints(spec=None):
-    pkg_path = os.path.join(ROOT, "pwa/package.json")
-    if not os.path.exists(pkg_path):
+    mock_dir = os.path.join(ROOT, "pwa/e2e")
+    if not os.path.exists(mock_dir):
         return []
         
-    with open(pkg_path, "r") as f:
-        pkg = json.load(f)
+    endpoints = []
+    # Pattern to capture everything inside page.route(...)
+    route_pattern = r'page\.route\((?:\/|["\'])(.*?)(?:\/|["\'])\s*,'
     
-    if "prism mock" in pkg.get("scripts", {}).get("mock-api", "") and spec:
-        # Prism reads directly from the spec, so mock parity is guaranteed 100%
-        return get_spec_endpoints(spec)
-
-    return []
+    for root, dirs, files in os.walk(mock_dir):
+        for file in files:
+            if file.endswith(".spec.ts") or file == "mock-api.ts":
+                path = os.path.join(root, file)
+                with open(path, 'r') as f:
+                    content = f.read()
+                    
+                matches = re.findall(route_pattern, content)
+                for m in matches:
+                    # Normalize
+                    # 1. Remove optional backend part
+                    clean = re.sub(r'\\\/\(\?:backend\\\/\)\?|\\\/\(\?:backend\/|\\\/\(backend\/', '', m)
+                    # 2. Remove leading slash
+                    clean = clean.lstrip('\\/')
+                    # 3. Handle specific regex escapes
+                    clean = clean.replace('\\/', '/')
+                    # 4. Strip trailing regex markers (only at the end of the string)
+                    # We split at things that look like regex anchors or optional groups at the end
+                    clean = re.split(r'\(\?\:|(?<!\\)\?|(?<!\\)\$|(?<!\\)\(', clean)[0]
+                    # 5. Trim trailing slash
+                    clean = clean.rstrip('/')
+                    # 6. Wildcards .* or dynamic segments like {weekOffset} or [0-9a-f-]+ to {id}
+                    clean = re.sub(r'\.\*|\{[^}]+\}|\[[^\]]+\]\+?', '{id}', clean)
+                    
+                    full_p = f"/{clean}"
+                    # Ensure leading slash
+                    if not full_p.startswith('/'):
+                        full_p = f"/{full_p}"
+                        
+                    if spec:
+                        norm_full_p = normalize_path(full_p)
+                        for se in get_spec_endpoints(spec):
+                            if normalize_path(se['path']) == norm_full_p:
+                                endpoints.append({
+                                    'path': se['path'],
+                                    'method': se['method']
+                                })
+    
+    # De-duplicate
+    unique_endpoints = []
+    seen = set()
+    for e in endpoints:
+        key = (e['path'], e['method'])
+        if key not in seen:
+            unique_endpoints.append(e)
+            seen.add(key)
+            
+    return unique_endpoints
 
 def get_real_endpoints(include_method_name=False):
     endpoints = []

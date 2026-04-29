@@ -13,7 +13,7 @@ Every feature or bug fix must follow this exact sequence:
 1.  **Contract Alignment**: Verify [specs/openapi.yaml](specs/openapi.yaml) contains the schemas and examples required for the feature.
 2.  **Spec Initialization**: Create or update the relevant specification in `specs/`.
 3.  **Test Definition**: Create or update Playwright tests in `pwa/e2e/`. Use `.spec.ts` for functional flows and `.mobile.spec.ts` for PWA-specific mobile views.
-4.  **Mock Verification**: Start the Prism mock server using `npm run mock-api` in `pwa/`. Verify that the test fails against the mock if the logic is missing.
+4.  **Mock Verification**: Start the Playwright mock server using `npm run mock-api` in `pwa/`. Verify that the test fails against the mock if the logic is missing.
 5.  **Logic Implementation**: Write the minimal React/Next.js code to satisfy the test assertions.
 6.  **Local Validation**: Run `task review` to confirm the local dev loop passes.
 
@@ -41,7 +41,7 @@ A feature is not "Done" until it passes the Tier 2 Integrity Gate.
 
 ### Tier 2: CI Integrity Gate (`task test:pwa:ci`)
 -   **Mechanism**: Executes `scripts/run-e2e-ci.sh`.
--   **Validation**: This script kills lingering processes, starts a fresh Prism mock, and waits for stable PWA hydration (5 consecutive health checks).
+-   **Validation**: This script kills lingering processes, starts a fresh Playwright mock, and waits for stable PWA hydration (5 consecutive health checks).
 -   **MANDATORY**: You must run this command before declaring a task complete. If it fails while `task review` passes, you have a race condition or hydration mismatch.
 
 ## 4. Next.js Specific Operational Logic

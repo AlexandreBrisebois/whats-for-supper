@@ -20,7 +20,7 @@ Instead of forcing agents to read raw source code for discovery, we provide spec
 - **Benefit**: An agent can "see" 30+ endpoints in ~20 lines of output instead of reading 10+ separate files.
 
 ### 2. Parity Reconciliation (`api_tools.py`)
-- **Strategy**: Compares the OpenAPI Spec, the Mock API (Prism), and the Real API (C#).
+- **Strategy**: Compares the OpenAPI Spec, the Mock API (Playwright), and the Real API (C#).
 - **Benefit**: Detects "Seam Drift" automatically. The agent doesn't need to manually verify if the C# implementation matches the spec; the tool gives a simple Pass/Fail matrix.
 
 ### 3. Contract-First Delegation

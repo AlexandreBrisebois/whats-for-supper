@@ -15,11 +15,11 @@ Follow these directives in order for every frontend feature or UI change.
 1.  **Verify Spec**: Update frontend specifications in `specs/01_FRONTEND/` and ensure `specs/openapi.yaml` is updated with the required endpoints and schemas.
 2.  **Sync Types**: Run `task types:sync` to regenerate TypeScript types in `pwa/src/lib/api/types.ts`.
 3.  **Discovery**: Run `task agent:slice -- /api/path` to understand the vertical slice from Spec to Backend.
-4.  **Reconcile**: Run `task agent:reconcile` to ensure the mock API (Prism) matches the spec before starting UI work.
+4.  **Reconcile**: Run `task agent:reconcile` to ensure the mock API (Playwright) matches the spec before starting UI work.
 
 ### Directive 2: Test-Driven Development (The Seams)
 1.  **Define Selectors**: Determine `data-testid` values for all new interactive elements.
-2.  **Write E2E Test**: Create or update Playwright tests in `pwa/e2e/`. Use Prism mocks to ensure the UI can be developed against a stable contract.
+2.  **Write E2E Test**: Create or update Playwright tests in `pwa/e2e/`. Use Playwright mocks to ensure the UI can be developed against a stable contract.
 3.  **Audit Selectors**: Run `task agent:audit` to ensure no brittle CSS selectors are used.
 4.  **Red Phase**: Run the test and confirm it fails.
 
