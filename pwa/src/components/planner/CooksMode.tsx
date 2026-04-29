@@ -124,9 +124,7 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
         <div className="flex items-center space-x-4">
           <div className="h-14 w-14 rounded-2xl overflow-hidden relative border-2 border-white shadow-md">
             <Image
-              src={
-                getImageUrl(initialRecipe.image)
-              }
+              src={getImageUrl(initialRecipe.image)}
               alt={initialRecipe.name || 'Recipe'}
               fill
               className="object-cover"

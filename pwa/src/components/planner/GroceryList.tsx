@@ -29,8 +29,8 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
   const grouped = useMemo(() => groupIngredientsByAisle(ingredients), [ingredients]);
 
   useEffect(() => {
-    // Initialize grocery state if not already set
-    if (Object.keys(groceryState).length === 0) {
+    // Initialize grocery state if not already set and we have ingredients
+    if (ingredients.length > 0 && Object.keys(groceryState).length === 0) {
       const initialState = ingredients.reduce(
         (acc, ing) => {
           acc[ing] = false;
@@ -63,7 +63,7 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-cream flex flex-col">
+    <div className="fixed inset-0 z-[100] bg-cream flex flex-col" data-testid="grocery-checklist">
       {/* Header */}
       <div className="p-8 flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md">
         <div>
@@ -112,6 +112,7 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       className="bg-white rounded-3xl border border-charcoal/5 overflow-hidden shadow-sm"
+                      data-testid={`aisle-section-${aisle}`}
                     >
                       {/* Aisle Header */}
                       <div className="px-6 py-4 bg-gradient-to-r from-charcoal/2 to-transparent border-b border-charcoal/5">
@@ -148,6 +149,8 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                                   ? 'bg-sage/5 text-charcoal/40'
                                   : 'hover:bg-charcoal/2 text-charcoal'
                               }`}
+                              data-testid={`grocery-item-checkbox`}
+                              data-item-name={item}
                             >
                               {isSaving ? (
                                 <Loader2 size={20} className="animate-spin flex-shrink-0" />

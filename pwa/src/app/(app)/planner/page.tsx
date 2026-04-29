@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   ChevronLeft,
@@ -9,7 +9,6 @@ import {
   GripVertical,
   CheckCircle2,
   Search,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -41,6 +40,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
 import { getImageUrl } from '@/lib/imageUtils';
+import { GroceryList } from '@/components/planner/GroceryList';
+import { useDiscoveryStore } from '@/store/discoveryStore';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -53,13 +54,23 @@ export default function PlannerPage() {
     isLocked,
     setVotingOpen,
     setIsLocked,
+    setGroceryState,
   } = usePlannerStore();
   const [schedule, setSchedule] = useState<UILocalScheduleDay[]>([]);
+  const memoizedIngredients = useMemo(
+    () => [...new Set(schedule.flatMap((day) => day.recipe?.ingredients ?? []))],
+    [schedule]
+  );
   const [isLoading, setIsLoading] = useState(true);
+  const isLockedRef = useRef(isLocked);
+  useEffect(() => {
+    isLockedRef.current = isLocked;
+  }, [isLocked]);
   const [showPivot, setShowPivot] = useState<{ dayIndex: number } | null>(null);
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [successDay, setSuccessDay] = useState<number | null>(null);
   const [activeCookMode, setActiveCookMode] = useState<UILocalScheduleDay | null>(null);
+  const { setHasPendingCards } = useDiscoveryStore();
   const searchParams = useSearchParams();
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
@@ -80,6 +91,10 @@ export default function PlannerPage() {
     setPrevOffset(currentWeekOffset);
     setIsLoading(true);
   }
+
+  useEffect(() => {
+    setHasPendingCards(isVotingOpen);
+  }, [isVotingOpen, setHasPendingCards]);
 
   useEffect(() => {
     let ignore = false;
@@ -137,12 +152,19 @@ export default function PlannerPage() {
           setVotingOpen(status === 1);
           setIsLocked(status === 2 || scheduleData.locked === true);
 
-          setIsLoading(false);
+          // Restore persisted grocery state from API if present
+          const serverGroceryState =
+            (scheduleData as any).groceryState ??
+            (scheduleData as any).additionalData?.groceryState;
+          if (serverGroceryState && typeof serverGroceryState === 'object') {
+            setGroceryState(serverGroceryState);
+          }
         }
+        setIsLoading(false);
       } catch (error: any) {
         if (!ignore) {
           console.warn('Failed to fetch schedule:', error?.message || error);
-          // Provide mock data so the UI can be experienced
+          // Provide mock data so the UI can be experienced even if API is down
           const mockDays = Array.from({ length: 7 }, (_, i) => {
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             const date = new Date();
@@ -153,27 +175,14 @@ export default function PlannerPage() {
                 currentWeekOffset * 7
             );
 
-            let recipe = undefined;
-            if (currentWeekOffset === 0 && i === 0) {
-              recipe = {
-                id: 'lasagna',
-                name: 'Homemade Lasagna',
-                image: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
-              };
-            }
-            if (currentWeekOffset === 0 && i === 2) {
-              recipe = {
-                id: '1',
-                name: 'Zesty Lemon Chicken',
-                image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435',
-              };
-            }
-
             return {
               day: days[i],
               date: date.toISOString().split('T')[0],
-              recipe,
-              _uiId: crypto.randomUUID(),
+              recipe: undefined,
+              _uiId:
+                typeof crypto !== 'undefined' && crypto.randomUUID
+                  ? crypto.randomUUID()
+                  : Math.random().toString(36).substring(7),
             };
           });
           setSchedule(mockDays);
@@ -266,18 +275,19 @@ export default function PlannerPage() {
 
     loadData();
 
-    // Poll every 30 seconds for vote count updates while voting is open
+    // Poll every 30 seconds (or 2s in test) for vote count updates while voting is open
+    const pollIntervalTime = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test' ? 60000 : 30000;
     pollInterval = setInterval(() => {
-      if (!isLocked) {
+      if (!isLockedRef.current) {
         updateVoteCounts();
       }
-    }, 30000);
+    }, pollIntervalTime);
 
     return () => {
       ignore = true;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [currentWeekOffset, isLocked, successParam]); // Refetch when coming back from search
+  }, [currentWeekOffset, successParam]); // isLocked intentionally excluded — use ref to avoid re-triggering loadData on lock
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -502,7 +512,13 @@ export default function PlannerPage() {
                   ? 'Next week'
                   : `Week ${currentWeekOffset}`}
             </span>
-            <h2 className="text-lg font-heading font-bold text-charcoal">
+            <h2 className="text-lg font-heading font-bold text-charcoal flex items-center justify-center">
+              {isVotingOpen && (
+                <span className="relative flex h-2 w-2 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-ochre"></span>
+                </span>
+              )}
               {schedule.length >= 7
                 ? (() => {
                     const start = new Date(schedule[0].date ?? '');
@@ -523,6 +539,18 @@ export default function PlannerPage() {
                 </span>
                 {plannedCount}/7 Planned
               </div>
+              {isVotingOpen && (
+                <div
+                  data-testid="voting-status-badge"
+                  className="flex items-center space-x-1 text-ochre font-bold text-[9px] bg-ochre/5 px-2 py-1 rounded-full border border-ochre/10 uppercase tracking-widest ml-2"
+                >
+                  <span className="relative flex h-1.5 w-1.5 mr-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-ochre"></span>
+                  </span>
+                  Voting live
+                </div>
+              )}
             </div>
 
             {!isVotingOpen && !isLocked && plannedCount > 0 && (
@@ -572,17 +600,12 @@ export default function PlannerPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex flex-col items-center justify-center py-20 text-center"
             >
-              <div className="mb-6 p-8 rounded-[2.5rem] bg-ochre/5 border border-ochre/10 text-ochre">
-                <Sparkles size={48} className="opacity-80" />
-              </div>
-              <h3 className="text-xl font-heading font-bold text-charcoal mb-2">
-                Grocery Intelligence
-              </h3>
-              <p className="max-w-xs text-sm text-charcoal/40 leading-relaxed">
-                Coming soon. We&apos;ll automatically organize your list by aisle and availability.
-              </p>
+              <GroceryList
+                weekOffset={currentWeekOffset}
+                ingredients={memoizedIngredients}
+                onClose={() => setActiveTab('planner')}
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -748,6 +771,7 @@ function PlannerDayCard({
           : 'border border-white/20'
       )}
       data-testid={`day-card-${index}`}
+      data-date={day.date}
       id={`day-card-${index}`}
     >
       <AnimatePresence>
@@ -790,9 +814,7 @@ function PlannerDayCard({
               {day.recipe.image && (
                 <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5 flex-shrink-0">
                   <Image
-                    src={
-                      getImageUrl(day.recipe.image)
-                    }
+                    src={getImageUrl(day.recipe.image)}
                     alt={day.recipe.name || 'Recipe'}
                     fill
                     className="object-cover"
@@ -812,7 +834,10 @@ function PlannerDayCard({
                 data-testid="edit-recipe-button"
               >
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-bold text-charcoal line-clamp-2">
+                  <h4
+                    className="text-sm font-bold text-charcoal line-clamp-2"
+                    data-testid="recipe-name"
+                  >
                     {day.recipe.name}
                   </h4>
                   {(day._voteCount != null || day.recipe?.voteCount != null) &&
@@ -821,6 +846,7 @@ function PlannerDayCard({
                       const isUnanimous = day._unanimousVote;
                       return (
                         <span
+                          data-testid="vote-count"
                           className={cn(
                             'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block mt-1',
                             isUnanimous ? 'bg-sage/20 text-sage' : 'bg-ochre/20 text-ochre'

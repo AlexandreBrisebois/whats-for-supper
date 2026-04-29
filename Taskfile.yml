@@ -149,14 +149,14 @@ tasks:
       - npm run test:e2e:ci
 
   test:pwa:e2e:
-    desc: "Test PWA against live local backend (port 5000)"
+    desc: "Run E2E suites sequentially (one file at a time to avoid cross-suite state)"
     dir: pwa
-    env:
-      USE_LIVE_API: "true"
-      API_INTERNAL_URL: "http://localhost:5050"
-      NEXT_PUBLIC_API_BASE_URL: "http://localhost:5050"
     cmds:
-      - npm run test:e2e
+      - npm run test:e2e:planner
+      - npm run test:e2e:planner-full-cycle
+      - npm run test:e2e:planner-social
+      - npm run test:e2e:utility
+      - npm run test:e2e:home
 
   test:smoke:
     desc: "💨 Docker Smoke Test (Local CI Parity)"
@@ -288,6 +288,16 @@ tasks:
         ./api/database
         {{.CACHE_FLAGS}}
         {{.PUSH_FLAG}}
+
+  # ============================================================================
+  # PRODUCTION & DEPLOYMENT
+  # ============================================================================
+
+  prod:config:
+    desc: "Generate production compose (for NAS)"
+    cmds:
+      - 'docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/production-overrides.yml config > docker/docker-compose.prod.yml'
+      - echo "✓ Production config generated at docker/docker-compose.prod.yml"
 
   # ============================================================================
   # RELEASE
@@ -1026,3 +1036,15 @@ tasks:
     desc: "🤖 Impact-Aware Test Runner (Only run tests affected by git changes)"
     cmds:
       - python3 scripts/agent/test_ops.py --impact
+  # ============================================================================
+  # AUTH
+  # ============================================================================
+  auth:token:
+    desc: "Generate a valid h_access token for a given secret (Usage: task auth:token -- [secret])"
+    cmds:
+      - node scripts/generate-auth-token.mjs "{{.CLI_ARGS}}" token
+
+  auth:cookie:
+    desc: "Generate a document.cookie string for browser injection (Usage: task auth:cookie -- [secret])"
+    cmds:
+      - node scripts/generate-auth-token.mjs "{{.CLI_ARGS}}" cookie

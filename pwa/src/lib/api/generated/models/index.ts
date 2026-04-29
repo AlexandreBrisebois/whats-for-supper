@@ -568,6 +568,9 @@ export function deserializeIntoMoveScheduleDto(
     weekOffset: (n) => {
       moveScheduleDto.weekOffset = n.getNumberValue();
     },
+    targetWeekOffset: (n) => {
+      moveScheduleDto.targetWeekOffset = n.getNumberValue();
+    },
   };
 }
 /**
@@ -1277,6 +1280,10 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
    * The weekOffset property
    */
   weekOffset?: number | null;
+  /**
+   * The targetWeekOffset property
+   */
+  targetWeekOffset?: number | null;
 }
 export type MoveScheduleDto_intent =
   (typeof MoveScheduleDto_intentObject)[keyof typeof MoveScheduleDto_intentObject];
@@ -1708,6 +1715,7 @@ export function serializeMoveScheduleDto(
   );
   writer.writeNumberValue('toIndex', moveScheduleDto.toIndex);
   writer.writeNumberValue('weekOffset', moveScheduleDto.weekOffset);
+  writer.writeNumberValue('targetWeekOffset', moveScheduleDto.targetWeekOffset ?? null);
   writer.writeAdditionalData(moveScheduleDto.additionalData);
 }
 /**

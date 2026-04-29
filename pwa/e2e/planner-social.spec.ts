@@ -1,114 +1,139 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { MOCK_IDS, builders, currentMonday, toDateStr } from './mock-api';
+
+// ADR-029: Compute the Monday of the current week at noon UTC — avoids timezone rollback
+
+function buildWeekDays(mondayRecipe?: object) {
+  const monday = currentMonday();
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setUTCDate(monday.getUTCDate() + i);
+    return {
+      day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+      date: toDateStr(d),
+      ...(i === 0 && mondayRecipe ? { recipe: mondayRecipe } : {}),
+    };
+  });
+}
+
+const MONDAY_RECIPE = builders.scheduleRecipe({
+  id: MOCK_IDS.RECIPE_CARBONARA,
+  name: 'Pasta Carbonara',
+  voteCount: 2,
+});
 
 test.describe('Planner Social Coordination', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock identity to bypass onboarding redirect
-    await page.addInitScript(() => {
-      document.cookie = 'x-family-member-id=550e8400-e29b-41d4-a716-446655440001; path=/';
-    });
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
-    // Mock family members API for IdentityValidator
-    await page.route('**/api/family', async (route) => {
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    // Inject localStorage before navigation to ensure the store is hydrated immediately (ADR-029)
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+
+    await page.route(/\/(?:backend\/)?api\/family/, async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({
-            data: [{ id: '550e8400-e29b-41d4-a716-446655440001', name: 'Test Member' }],
-          }),
+          body: JSON.stringify({ data: [builders.familyMember({ name: 'Test Member' })] }),
         });
       } else {
         await route.continue();
       }
     });
 
-    // Setup: Intercept API calls to mock schedule and voting status
-    await page.route('**/api/schedule*', async (route) => {
+    // Base schedule intercept — Draft, not locked
+    await page.route(/\/(?:backend\/)?api\/schedule(?:\?|$)/, async (route) => {
+      const url = route.request().url();
+      if (route.request().method() !== 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { message: 'ok' } }),
+        });
+        return;
+      }
+      if (url.includes('smart-defaults')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: { weekOffset: 0, preSelectedRecipes: [], isVotingOpen: false },
+          }),
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: {
-            weekOffset: 0,
-            locked: false,
-            status: 0, // Draft
-            days: [
-              {
-                day: 'Mon',
-                date: '2026-04-20',
-                recipe: {
-                  id: 'recipe-1',
-                  name: 'Pasta Carbonara',
-                  image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-                  voteCount: 2,
-                },
-              },
-              { day: 'Tue', date: '2026-04-21' },
-              { day: 'Wed', date: '2026-04-22' },
-              { day: 'Thu', date: '2026-04-23' },
-              { day: 'Fri', date: '2026-04-24' },
-              { day: 'Sat', date: '2026-04-25' },
-              { day: 'Sun', date: '2026-04-26' },
-            ],
-          },
+          data: { weekOffset: 0, locked: false, status: 0, days: buildWeekDays(MONDAY_RECIPE) },
         }),
       });
     });
 
     await page.goto('/planner');
+    await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
   });
 
   test('Verify Nudge Family button triggers Web Share', async ({ page }) => {
-    // 1. Open voting first
-    await page.route('**/api/schedule/voting/open*', async (route) => {
+    // 1. Mock voting endpoints for this test
+    await page.route(/\/(?:backend\/)?api\/schedule\/voting\/open/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: { message: 'Voting opened' } }),
+        body: JSON.stringify({ data: {} }),
       });
     });
 
-    // Mock the updated schedule with status: 1 (VotingOpen)
-    await page.route('**/api/schedule*', async (route) => {
-      if (route.request().method() === 'GET') {
+    // When voting is opened, the UI will re-fetch or transition. We stub the subsequent GET to reflect status: 1
+    await page.route(/\/(?:backend\/)?api\/schedule(?:\?|$)/, async (route) => {
+      const url = route.request().url();
+      if (route.request().method() !== 'GET') {
         await route.fulfill({
           status: 200,
-          body: JSON.stringify({
-            data: {
-              weekOffset: 0,
-              locked: false,
-              status: 1, // VotingOpen
-              days: [
-                {
-                  day: 'Mon',
-                  date: '2026-04-20',
-                  recipe: { id: 'recipe-1', name: 'Pasta Carbonara', image: '...', voteCount: 2 },
-                },
-                { day: 'Tue', date: '2026-04-21' },
-                { day: 'Wed', date: '2026-04-22' },
-                { day: 'Thu', date: '2026-04-23' },
-                { day: 'Fri', date: '2026-04-24' },
-                { day: 'Sat', date: '2026-04-25' },
-                { day: 'Sun', date: '2026-04-26' },
-              ],
-            },
-          }),
+          contentType: 'application/json',
+          body: JSON.stringify({ data: {} }),
         });
-      } else {
-        await route.continue();
+        return;
       }
+      if (url.includes('smart-defaults')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { isVotingOpen: true } }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: { weekOffset: 0, locked: false, status: 1, days: buildWeekDays(MONDAY_RECIPE) },
+        }),
+      });
     });
 
+    // 2. Click header "Ask the Family"
+    await expect(page.getByTestId('ask-family-cta')).toBeVisible({ timeout: 10_000 });
     await page.click('[data-testid="ask-family-cta"]');
 
-    // 2. Open Pivot Sheet for a day
+    // 3. Open Pivot Sheet for a day
     await page.click('[data-testid="day-card-0"]');
 
-    // 3. Check for Nudge button
+    // 4. Verify Nudge button appears
     const nudgeButton = page.locator('[data-testid="pivot-nudge-family"]');
-    await expect(nudgeButton).toBeVisible();
+    await expect(nudgeButton).toBeVisible({ timeout: 5_000 });
 
-    // 4. Mock navigator.share and verify it's called
+    // 5. Mock navigator.share
     await page.evaluate(() => {
       (window.navigator as any).share = async (data: any) => {
         (window as any).shareData = data;
@@ -122,7 +147,7 @@ test.describe('Planner Social Coordination', () => {
   });
 
   test('Verify Remove action updates grid immediately', async ({ page }) => {
-    await page.route('**/api/schedule/day/*/remove', async (route) => {
+    await page.route(/\/(?:backend\/)?api\/schedule\/day\/.*\/remove/, async (route) => {
       await route.fulfill({ status: 204 });
     });
 
@@ -134,7 +159,7 @@ test.describe('Planner Social Coordination', () => {
     await expect(removeButton).toBeVisible();
     await removeButton.click();
 
-    // 3. Verify grid is updated (recipe name should be gone or replaced by placeholder)
+    // 3. Verify grid is updated
     const cardContent = page.locator('[data-testid="day-card-0"]');
     await expect(cardContent).not.toContainText('Pasta Carbonara');
 

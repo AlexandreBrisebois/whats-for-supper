@@ -133,6 +133,34 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 
 ---
 
+## Phase 10 — Kitchen & Grocery Hardening [COMPLETE]
+
+**Goal**: Full post-discovery flow — from plan to plate.
+
+### Additions
+- [x] **DB Foundation**: `weekly_plans` table, `CalendarEvent` hardening.
+- [x] **API Logic**: `OpenVotingAsync`, `LockScheduleAsync`, `ValidateMealAsync`, `MoveScheduleAsync`.
+- [x] **PWA Social UI**: Planning Pivot Sheet, Nudge Family (Web Share), vote polling.
+- [x] **Home Command Center**: `TonightMenuCard` (3D flip), `SkipRecoveryDialog`, `QuickFindModal`.
+- [x] **Cook's Mode & Grocery**: Step parsing, aisle-first grocery checklist, JSONB persistence.
+- [x] **E2E Hardening**: `planner-full-cycle.spec.ts`, `ScheduleIntegrationTests.cs` (12 tests).
+
+---
+
+## Phase 11 — UX Seams & Auth Layer [COMPLETE]
+
+**Goal**: Wire remaining UI gaps and add stateless family authentication.
+
+### Additions
+- [x] **Grocery Tab**: Wired `GroceryList` into Planner's Grocery tab with ingredient extraction.
+- [x] **Discovery Nav Pulse**: `isVotingOpen` drives `hasPendingCards` → ochre pulse on nav icon.
+- [x] **Cooked Button**: Post-meal validation flow — "Cooked" button on Tonight Card back.
+- [x] **Cross-Week Move**: `TargetWeekOffset` on `MoveScheduleDto` enables true "Next Week" skip recovery (ADR 028).
+- [x] **Hearth Secret Auth**: Stateless HMAC-SHA256 no-password auth, middleware, welcome page, invite flow (ADR 027).
+- [x] **Share Invite Magic Link**: Per-member invite links with Web Share API integration.
+
+---
+
 ## Phase 9 — Workflow Extensions & Bulk Ops [ACTIVE]
 
 **Goal**: Expand the workflow system with bulk processing capabilities and visibility tools.

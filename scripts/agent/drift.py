@@ -116,12 +116,14 @@ def parse_cs_dto(file_path):
             if jpn:
                 # Use the JSON name from [property: JsonPropertyName("x")]
                 name = jpn.group(1)
-                type_match = re.search(r'\)\]\s+([\w<>?, \[\]]+?)\s+\w+$', p)
+                # Handle optional default values e.g. string? Intent = "swap"
+                type_match = re.search(r'\)\]\s+([\w<>?, \[\]]+?)\s+\w+(?:\s*=.*)?$', p)
                 type_name = type_match.group(1).strip() if type_match else ""
                 is_nullable = type_name.endswith("?") or bool(re.search(r'>\s*\?', type_name))
                 props[name] = {"required": not is_nullable}
             else:
-                m = re.search(r"([\w<>?\[\]]+)\s+(\w+)$", p)
+                # Handle optional default values e.g. int weekOffset = 0
+                m = re.search(r"([\w<>?\[\]]+)\s+(\w+)(?:\s*=.*)?$", p)
                 if m:
                     type_name, prop_name = m.group(1), m.group(2)
                     if prop_name not in props:

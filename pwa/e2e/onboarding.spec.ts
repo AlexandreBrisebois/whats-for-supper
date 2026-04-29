@@ -1,82 +1,89 @@
-/**
- * E2E — Onboarding flow
- *
- * Covers the three primary paths a new user follows when they first open the
- * app: being redirected to /onboarding, selecting an existing family member,
- * and creating a brand-new family member.
- *
- * Tests are designed to be idempotent: each scenario runs in a fresh browser
- * context with no cookies, and any family members created use a timestamp
- * suffix to avoid collisions across runs.
- */
-
 import { test, expect } from './fixtures';
+import { MOCK_IDS, builders } from './mock-api';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Scenario 1 — Fresh user is redirected to /onboarding
-// ──────────────────────────────────────────────────────────────────────────────
+const NEW_MEMBER_ID = '550e8400-e29b-41d4-a716-446655440099';
 
-test('fresh user visiting / is redirected to /onboarding', async ({ page }) => {
-  await page.goto('/');
+test.describe('Onboarding', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route(/\/(?:backend\/)?api\/family(?:\?|$)/, async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: [builders.familyMember({ name: 'Alex' })] }),
+        });
+      } else if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON() as { name?: string };
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: builders.familyMember({
+              id: NEW_MEMBER_ID,
+              name: body.name ?? 'New Member',
+            }),
+          }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
 
-  // The middleware redirects unauthenticated users to /onboarding
-  await expect(page).toHaveURL(/\/onboarding/);
-});
-
-test('onboarding page displays the family member list', async ({ page }) => {
-  await page.goto('/onboarding');
-
-  // Page heading
-  await expect(page.getByRole('heading', { name: /who are you/i })).toBeVisible();
-
-  // The family member list container exists
-  await expect(page.getByTestId('family-list')).toBeVisible();
-});
-
-test('selecting a family member redirects to /home with a welcome message', async ({ page }) => {
-  await page.goto('/onboarding');
-
-  // Wait for the family list to finish loading
-  const familyList = page.getByTestId('family-list');
-  await expect(familyList).toBeVisible({ timeout: 10_000 });
-
-  // Find the first clickable family member button
-  // In the mock API, 'Alex' (id: 550e8400-e29b-41d4-a716-446655440001) exists.
-  const alexMember = page.getByTestId('family-member-550e8400-e29b-41d4-a716-446655440001');
-
-  // Wait for the member to be visible (with extended timeout for loading)
-  await expect(alexMember).toBeVisible({ timeout: 10_000 });
-  await alexMember.click();
-
-  // Should land on /home
-  await expect(page).toHaveURL(/\/home/);
-
-  // Wait for the Command Center to appear (Tonight's Menu or Smart Pivot)
-  await expect(
-    page.getByTestId('tonight-menu-card').or(page.getByTestId('smart-pivot-card'))
-  ).toBeVisible({
-    timeout: 10_000,
+    await page.route(/\/(?:backend\/)?api\/schedule/, async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { weekOffset: 0, locked: false, days: [], status: 0 } }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
   });
-});
 
-test('adding a new family member saves it and redirects to /home', async ({ page }) => {
-  const newName = `TestUser-${Date.now()}`;
+  test('fresh user visiting / is redirected to /onboarding', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/onboarding/);
+  });
 
-  await page.goto('/onboarding');
-  await expect(page.getByTestId('family-list')).toBeVisible({ timeout: 10_000 });
+  test('onboarding page displays the family member list', async ({ page }) => {
+    await page.goto('/onboarding');
+    await expect(page.getByRole('heading', { name: /who are you/i })).toBeVisible();
+    await expect(page.getByTestId('family-list')).toBeVisible();
+  });
 
-  // Open the "Don't see your name?" / add-member flow
-  const addButton = page.getByRole('button', { name: /Don't see your name/i });
-  await addButton.click();
+  test('selecting a family member redirects to /home with a welcome message', async ({ page }) => {
+    await page.goto('/onboarding');
 
-  // Fill in the name field
-  const nameInput = page.getByRole('textbox');
-  await nameInput.fill(newName);
+    const familyList = page.getByTestId('family-list');
+    await expect(familyList).toBeVisible({ timeout: 10_000 });
 
-  // Submit the form
-  const submitButton = page.getByRole('button', { name: 'Add Member', exact: true });
-  await submitButton.click();
+    const alexMember = page.getByTestId(`family-member-${MOCK_IDS.MEMBER_ALEX}`);
+    await expect(alexMember).toBeVisible({ timeout: 10_000 });
+    await alexMember.click();
 
-  // The app will automatically select the new member and redirect to /home.
-  await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/home/);
+    await expect(
+      page.getByTestId('tonight-menu-card').or(page.getByTestId('smart-pivot-card'))
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('adding a new family member saves it and redirects to /home', async ({ page }) => {
+    const newName = `TestUser-${Date.now()}`;
+
+    await page.goto('/onboarding');
+    await expect(page.getByTestId('family-list')).toBeVisible({ timeout: 10_000 });
+
+    const addButton = page.getByRole('button', { name: /Don't see your name/i });
+    await addButton.click();
+
+    const nameInput = page.getByRole('textbox');
+    await nameInput.fill(newName);
+
+    const submitButton = page.getByRole('button', { name: 'Add Member', exact: true });
+    await submitButton.click();
+
+    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+  });
 });

@@ -89,6 +89,10 @@ jobs:
     name: PWA — typecheck, lint & E2E
     runs-on: ubuntu-latest
     needs: contract-integrity-gate
+    env:
+      CI: true
+      BASE_URL: http://127.0.0.1:3000
+      HEARTH_SECRET: ${{ secrets.HEARTH_SECRET }}
 
     steps:
       - uses: actions/checkout@v6
@@ -124,23 +128,6 @@ jobs:
         run: npx playwright install chromium --with-deps
         working-directory: pwa
 
-      - name: Start Prism Mock API in background
-        run: |
-          npm run mock-api > mock-api.log 2>&1 &
-          echo "MOCK_API_PID=$!" >> $GITHUB_ENV
-        working-directory: pwa
-
-      - name: Wait for Mock API to be ready
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:5001/health; then
-              echo "Mock API is ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Mock API did not start in time" && exit 1
-
       - name: Build PWA
         run: npm run build
         working-directory: pwa
@@ -168,13 +155,41 @@ jobs:
           done
           echo "PWA did not start in time" && exit 1
 
-      - name: Run E2E tests
-        run: npm run test:e2e
+      - name: E2E — Planner (core)
+        run: npm run test:e2e:planner
         working-directory: pwa
-        env:
-          CI: true
-          BASE_URL: http://127.0.0.1:3000
-          MOCK_API_PORT: 5001
+
+      - name: E2E — Planner Full Cycle
+        run: npm run test:e2e:planner-full-cycle
+        working-directory: pwa
+
+      - name: E2E — Planner Social
+        run: npm run test:e2e:planner-social
+        working-directory: pwa
+
+      - name: E2E — Utility Flows
+        run: npm run test:e2e:utility
+        working-directory: pwa
+
+      - name: E2E — Home Recovery
+        run: npm run test:e2e:home
+        working-directory: pwa
+
+      - name: E2E — Capture Flow
+        run: npm run test:e2e:capture
+        working-directory: pwa
+
+      - name: E2E — Discovery
+        run: npm run test:e2e:discovery
+        working-directory: pwa
+
+      - name: E2E — Onboarding
+        run: npm run test:e2e:onboarding
+        working-directory: pwa
+
+      - name: E2E — Recipes
+        run: npm run test:e2e:recipes
+        working-directory: pwa
 
       - name: Upload Playwright report
         if: always()
@@ -190,7 +205,6 @@ jobs:
         with:
           name: service-logs
           path: |
-            pwa/mock-api.log
             pwa/pwa.log
 
   # ────────────────────────────────────────────────────────────────────────────

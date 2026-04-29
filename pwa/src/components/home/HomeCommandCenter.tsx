@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { SmartPivotCard, NextPrepStepCard, QuickCaptureTrigger } from './HomeSections';
+import {
+  SmartPivotCard,
+  NextPrepStepCard,
+  QuickCaptureTrigger,
+  CookedSuccessCard,
+} from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
 import { QuickFindModal } from '../planner/QuickFindModal';
@@ -28,6 +33,8 @@ export function HomeCommandCenter({
   const [showRecovery, setShowRecovery] = useState(false);
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [isSkipped, setIsSkipped] = useState(false);
+  const [isCooked, setIsCooked] = useState(false);
+  const [sessionDone, setSessionDone] = useState(false);
   const router = useRouter();
 
   const handleCookMode = () => {
@@ -36,6 +43,20 @@ export function HomeCommandCenter({
 
   const handleSkipTrigger = () => {
     setShowRecovery(true);
+  };
+
+  const handleCookedMark = async () => {
+    if (isCooked) return;
+    try {
+      const todayDate = DateOnly.parse(getTodayString());
+      if (!todayDate) return;
+      await apiClient.api.schedule.day.byDate(todayDate).validate.post({ status: 2 });
+      setIsCooked(true);
+      setSessionDone(true);
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to mark recipe as cooked:', error);
+    }
   };
 
   const handleRecoveryAction = async (action: string) => {
@@ -49,6 +70,7 @@ export function HomeCommandCenter({
           status: 3, // Skipped
         });
         setIsSkipped(true);
+        setSessionDone(true);
       } else if (action === 'pick_else') {
         setShowRecovery(false);
         setShowQuickFind(true);
@@ -67,7 +89,8 @@ export function HomeCommandCenter({
         await apiClient.api.schedule.move.post({
           weekOffset: 0,
           fromIndex: (new Date().getDay() + 6) % 7,
-          toIndex: (new Date().getDay() + 6) % 7,
+          toIndex: 0, // First slot of next week
+          targetWeekOffset: 1,
           intent: 'push',
         });
         setShowRecovery(false);
@@ -98,13 +121,17 @@ export function HomeCommandCenter({
 
   return (
     <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto w-full px-6 sm:px-0">
-      {(!todaysRecipe || isSkipped) && (
+      {(!todaysRecipe || isSkipped || sessionDone) && !isCooked && (
         <SmartPivotCard onSelect={(choice) => choice === 'surprise' && setShowQuickFind(true)} />
       )}
 
-      {isPrepActive && !isSkipped && <NextPrepStepCard task={nextTask} />}
+      {isPrepActive && !isSkipped && !isCooked && !sessionDone && (
+        <NextPrepStepCard task={nextTask} />
+      )}
 
-      {todaysRecipe && !isSkipped && (
+      {isCooked && <CookedSuccessCard onDismiss={() => setIsCooked(false)} />}
+
+      {todaysRecipe && !isSkipped && !isCooked && !sessionDone && (
         <TonightMenuCard
           recipeId={todaysRecipe.id!}
           recipeName={todaysRecipe.name!}
@@ -114,6 +141,7 @@ export function HomeCommandCenter({
           prepTime="30-45 mins"
           onCookMode={handleCookMode}
           onSkip={handleSkipTrigger}
+          onCooked={handleCookedMark}
         />
       )}
 

@@ -3,8 +3,12 @@ services:
     volumes:
       - ${DATA_ROOT:-../../data}:/data
     # In dev, we can optionally expose the API port directly
-    # ports:
-    #   - "9001:9001"
+    ports:
+      - "9001:9001"
+
+  pwa:
+    ports:
+      - "3000:3000"
 
   postgres:
     ports:

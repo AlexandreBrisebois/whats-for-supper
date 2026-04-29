@@ -19,7 +19,7 @@ You must follow this sequence for every change:
 2.  **Test Definition Phase**:
     *   **Frontend**: Write End-to-End (E2E) tests in `pwa/e2e/`. Use [Next.js Testing Detail](SKILL_NEXTJS_TESTING.md) for locator rules.
     *   **Backend**: Write xUnit unit or integration tests in the `api/` project.
-3.  **Contract Mocking Phase**: Ensure the [specs/openapi.yaml](specs/openapi.yaml) contains rich examples. Prism serves these mocks for frontend development.
+3.  **Contract Mocking Phase**: Ensure the [specs/openapi.yaml](specs/openapi.yaml) contains rich examples. E2E tests use `page.route()` intercepts — fixture data in `pwa/e2e/` must stay in sync with OpenAPI examples.
 4.  **Implementation Phase**: Write the minimum code required to make the tests pass.
 5.  **Verification Phase**: Run the reconciliation task to ensure parity across Spec, Mock, and Code.
 
@@ -28,14 +28,13 @@ Execute these commands from the project root using `task`.
 
 | Tier | Purpose | Command |
 | :--- | :--- | :--- |
-| **Contract Mocking** | Serves mock data based on the OpenAPI spec. | `npm run mock-api` (in `pwa/`) |
 | **Frontend Dev Loop** | Runs formatting, linting, and E2E tests. | `task review` |
 | **Backend Verification** | Runs all .NET unit and integration tests. | `task api:test` |
 | **Integrity Gate** | Final CI-parity check for the full PWA suite. | `task test:pwa:ci` |
 | **Parity Check** | Validates Spec ↔ Mock ↔ API synchronization. | `task agent:reconcile` |
 
 ## 4. Operational Directives
-1.  **Contract-First Priority**: The OpenAPI specification is the "Source of Truth". Frontend development must rely on Prism mocks served from the spec.
+1.  **Contract-First Priority**: The OpenAPI specification is the "Source of Truth". E2E tests use `page.route()` intercepts; fixture data must match OpenAPI examples. The `contract-integrity-gate` CI job is the authoritative parity check (ADR 030).
 2.  **Zero Brittle Policy**: Use `data-testid` for all locators. Do not use fragile CSS selectors or volatile text-based matching.
 3.  **Regression Discipline**: Every bug fix must include a regression test that fails without the fix and passes with it.
 4.  **Stateful Mocking**: If the OpenAPI spec is insufficient for complex state, use specialized mocks in `pwa/e2e/` rather than relying on a global stateful mock file.

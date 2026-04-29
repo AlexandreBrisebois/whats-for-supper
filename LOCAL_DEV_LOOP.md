@@ -313,23 +313,25 @@ task dev:pwa
 
 ### 4. **Environment Variables**
 
-This project uses a **Dual-Config Strategy** to separate your NAS settings from your local development overrides.
+This project uses a **Dual-Config Strategy** to separate your ecosystem settings (Docker) from your service-specific settings (Local PWA dev).
 
-- **[docker/.env](file:///Users/alex/Code/whats-for-supper/docker/.env)** (Gitignored): Stays as your primary source for NAS/Production settings (ports 9001/9002, NAS IPs, Production Secrets).
-- **[docker/.env.local](file:///Users/alex/Code/whats-for-supper/docker/.env.local)** (Gitignored): Used for your local machine overrides (standard ports 3000/5000, local internal URLs).
+- **[docker/.env](file:///Users/alex/Code/whats-for-supper/docker/.env)**: The primary source of truth for the entire ecosystem (Traefik, API, DB, PWA). 
+- **[pwa/.env.local](file:///Users/alex/Code/whats-for-supper/pwa/.env.local)**: Only used when running `task dev:pwa` (Next.js dev server outside Docker).
+- **[.env.test](file:///Users/alex/Code/whats-for-supper/.env.test)**: Shared overrides for Playwright and unit tests.
 
-The `Taskfile.yml` automatically stacks these files when running locally.
+**Key Variables:**
+- `HEARTH_SECRET`: The family passphrase for onboarding. **Must be the same** in all active config files for authentication to work across services.
+- `NEXT_PUBLIC_API_BASE_URL`: 
+  - Set to `http://api.wfs.localhost` (Docker) or `http://localhost:9001` (Local).
+  - Use `/backend` in production (Cloudflare) to leverage the Next.js rewrite proxy.
 
 **Initialize local overrides:**
 ```bash
-# Create local override file
-cat <<EOF > docker/.env.local
-API_PORT=5000
-PWA_PORT=3000
-API_INTERNAL_URL=http://api:5000
-CORS_ALLOWED_ORIGINS=http://pwa.wfs.localhost,http://localhost:3000
-ASPNETCORE_ENVIRONMENT=Development
-EOF
+# Create local override file for Docker
+cp docker/.env.example docker/.env.local
+
+# Create local override for PWA (if not using Docker for frontend)
+cp pwa/.env.local.example pwa/.env.local
 ```
 
 ### 5. **Git Hooks (pre-commit)**

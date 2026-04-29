@@ -122,3 +122,34 @@ export function NextPrepStepCard({
     </div>
   );
 }
+export function CookedSuccessCard({ onDismiss }: { onDismiss?: () => void }) {
+  return (
+    <div
+      data-testid="cooked-success-card"
+      className="bg-sage p-8 rounded-[2.5rem] shadow-sage-floating flex flex-col items-center justify-center gap-6 relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+      <div className="absolute bottom-0 left-0 -ml-8 -mb-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/40 text-white mb-2">
+        <Check size={48} strokeWidth={3} />
+      </div>
+
+      <div className="flex flex-col gap-2 items-center text-center relative z-10">
+        <h3 className="font-heading text-4xl font-black text-white leading-none tracking-tighter">
+          Enjoy your meal!
+        </h3>
+        <p className="text-white/70 text-xs font-black uppercase tracking-widest">
+          Recipe marked as cooked
+        </p>
+      </div>
+
+      <button
+        onClick={onDismiss}
+        className="mt-2 px-8 h-12 rounded-2xl bg-white text-sage font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 hover:bg-white/90"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}

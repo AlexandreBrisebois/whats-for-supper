@@ -1,3 +1,4 @@
+import { DateOnly } from '@microsoft/kiota-abstractions';
 import { apiClient } from './api-client';
 import type {
   ScheduleDays,
@@ -56,7 +57,7 @@ export const openVoting = async (weekOffset: number) => {
 };
 
 export const removeRecipeFromDay = async (date: string) => {
-  return await apiClient.api.schedule.day.byDate(date).remove.delete();
+  return await apiClient.api.schedule.day.byDate(DateOnly.parse(date)!).remove.delete();
 };
 
 export const getSmartDefaults = async (

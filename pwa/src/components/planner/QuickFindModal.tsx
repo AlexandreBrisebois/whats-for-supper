@@ -127,9 +127,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
                         {currentRecipe.image && (
                           <>
                             <Image
-                              src={
-                                getImageUrl(currentRecipe.image)
-                              }
+                              src={getImageUrl(currentRecipe.image)}
                               alt={currentRecipe.name}
                               fill
                               className="object-cover"

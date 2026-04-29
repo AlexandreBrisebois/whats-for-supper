@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Languages } from 'lucide-react';
+import { Languages, UserPlus } from 'lucide-react';
 
 import { FamilySelector } from '@/components/identity/FamilySelector';
 import { useFamily } from '@/hooks/useFamily';
@@ -10,12 +10,23 @@ import { useOnboardingStore } from '@/store/onboardingStore';
 import { ROUTES } from '@/lib/constants/routes';
 import { t } from '@/locales';
 import { useLocale } from '@/components/common/LocaleProvider';
+import { InviteLinkDialog } from '@/components/common/InviteLinkDialog';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { isLoading, error, selectedFamilyMemberId, loadFamily, selectFamilyMember } = useFamily();
+  const {
+    isLoading,
+    error,
+    selectedFamilyMemberId,
+    familyMembers,
+    loadFamily,
+    selectFamilyMember,
+  } = useFamily();
   const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
   const { locale, setCurrentLocale } = useLocale();
+  const [inviteTarget, setInviteTarget] = useState<{ memberId: string; memberName: string } | null>(
+    null
+  );
 
   const isSwitching = !!selectedFamilyMemberId;
 
@@ -61,6 +72,30 @@ export default function ProfilePage() {
         <FamilySelector onFamilyMemberSelected={handleFamilyMemberSelected} isLoading={isLoading} />
       </div>
 
+      {familyMembers && familyMembers.length > 0 && (
+        <div className="w-full max-w-md rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
+          <div className="flex items-center gap-2 mb-4">
+            <UserPlus className="h-4 w-4 text-indigo/60" />
+            <h3 className="text-xs font-bold uppercase tracking-widest text-indigo/60">
+              {t('profile.invite', 'Invite Family')}
+            </h3>
+          </div>
+          <div className="flex flex-col gap-2">
+            {familyMembers.map((member) => (
+              <div key={member.id} className="flex items-center justify-between py-2">
+                <span className="text-sm font-medium text-charcoal">{member.name}</span>
+                <button
+                  onClick={() => setInviteTarget({ memberId: member.id, memberName: member.name })}
+                  className="text-xs font-bold text-ochre border border-ochre/30 rounded-xl px-3 py-1.5 hover:bg-ochre/5 transition-colors active:scale-95"
+                >
+                  Share Invite
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-md rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
         <div className="flex items-center gap-2 mb-6">
           <Languages className="h-4 w-4 text-indigo/60" />
@@ -94,6 +129,13 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
+      {inviteTarget && (
+        <InviteLinkDialog
+          memberId={inviteTarget.memberId}
+          memberName={inviteTarget.memberName}
+          onClose={() => setInviteTarget(null)}
+        />
+      )}
     </div>
   );
 }

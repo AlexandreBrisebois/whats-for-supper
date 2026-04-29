@@ -147,6 +147,69 @@ E2E suites:
 
 ---
 
+## Self-Hosting & Deployment
+
+WFS is designed to be self-hosted on a NAS (e.g., Synology) or a local server. For secure public access without opening ports, we recommend **Cloudflare Tunnel**.
+
+### 1. Cloudflare Tunnel Setup
+
+Cloudflare Tunnel creates a secure outbound bridge between your NAS and the Cloudflare edge.
+
+1.  **Create a Tunnel**: Go to the [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/) -> **Networks** -> **Tunnels**.
+2.  **Name your Tunnel**: e.g., `wfs-nas`.
+3.  **Install Connector**: Select "Docker" and copy the **Tunnel Token** (the string after `--token`).
+4.  **Configure Public Hostnames**:
+    -   `wfs.srvrlss.dev` -> `http://traefik:80`
+    -   `api.wfs.srvrlss.dev` -> `http://traefik:80`
+5.  **Environment Variables**: Add your token to the `.env` file:
+    ```bash
+    CLOUDFLARE_TUNNEL_TOKEN=your-token-here
+    DOMAIN_NAME=srvrlss.dev
+    ```
+
+### 2. Security (Hearth Secret)
+
+WFS uses a "Hearth Secret" for no-password authentication. This is a shared passphrase known only to your family.
+
+-   **Setup**: Set the `HEARTH_SECRET` environment variable to a strong, private string.
+-   **How it works**: New members join via a **Magic Link**. Once they enter the secret, a signed `h_access` cookie is set in their browser.
+-   **Magic Links**: You can generate invite links via the PWA (Settings) or manually using the tool:
+    ```bash
+    node scripts/generate-auth-token.mjs --memberId <some-guid>
+    ```
+
+---
+
+## Local Tools & Taskfile
+
+We use [Task](https://taskfile.dev) to manage common development and deployment workflows.
+
+| Command | Description |
+|---------|-------------|
+| `task init` | Initialize environment and start all services |
+| `task up` | Start/Restart services in Docker |
+| `task logs:api` | Stream API logs |
+| `task prod:config` | Generate optimized production Docker Compose |
+| `task test:e2e` | Run Playwright E2E tests |
+
+---
+
+## Configuration & Environment Variables
+
+WFS uses several `.env` files depending on how you are running the application.
+
+| File | Scope | Usage |
+|------|-------|-------|
+| `docker/.env` | **Ecosystem** | Primary configuration for Docker Compose (`task up`). |
+| `pwa/.env.local` | **Frontend** | Used only when running the PWA locally via `npm run dev`. |
+| `.env.test` | **Testing** | Used by Playwright E2E tests and API unit tests. |
+
+### Setup Instructions
+1.  **Docker Setup**: Copy `docker/.env.example` to `docker/.env` and fill in your `GEMINI_API_KEY` and `HEARTH_SECRET`.
+2.  **Local PWA Dev**: If you want to run the PWA outside Docker, copy `pwa/.env.local.example` to `pwa/.env.local`. Set `API_INTERNAL_URL` to `http://localhost:9001` (if the API is running in Docker) or your local API port.
+
+---
+
 ## Contributing
 
 See **[CONTRIBUTING.md](CONTRIBUTING.md)** and **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)**.

@@ -49,8 +49,9 @@ services:
     environment:
 
 
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://api.wfs.localhost}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/backend}
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:9001}
+      HEARTH_SECRET: ${HEARTH_SECRET}
     depends_on:
       - api
     networks:

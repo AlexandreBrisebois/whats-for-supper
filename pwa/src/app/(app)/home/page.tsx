@@ -25,15 +25,16 @@ export default async function HomePage() {
     console.error('Failed to fetch home data on server:', error);
   }
 
-  // Find today's recipe
+  // Find today's recipe (only if not already cooked or skipped)
   const todayStr = new Date().toISOString().split('T')[0];
   const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
-  const todaysRecipe = todaysEntry?.recipe;
+  const isDone = todaysEntry?.status === 2 || todaysEntry?.status === 3;
+  const todaysRecipe = isDone ? null : todaysEntry?.recipe;
 
   // Next Prep Step data (Mocked for now)
   const nextTask = { id: '1', label: 'Defrost ground beef', time: '3:00 PM', completed: false };
   const isMealPlanned = !!todaysRecipe;
-  const isPrepActive = true;
+  const isPrepActive = !isDone;
 
   return (
     <>

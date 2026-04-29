@@ -121,6 +121,13 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
     public async Task MoveScheduleEventAsync(MoveScheduleDto dto)
     {
+        var targetWeekOffset = dto.TargetWeekOffset ?? dto.WeekOffset;
+        if (targetWeekOffset != dto.WeekOffset)
+        {
+            await MoveCrossWeekAsync(dto, targetWeekOffset);
+            return;
+        }
+
         var (monday, _) = GetWeekBounds(dto.WeekOffset);
         var fromDate = monday.AddDays(dto.FromIndex);
         var toDate = monday.AddDays(dto.ToIndex);
@@ -172,6 +179,35 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             await SwapInternalAsync(fromDate, toDate);
         }
 
+        await _dbContext.SaveChangesAsync();
+    }
+
+    private async Task MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset)
+    {
+        var (sourceMonday, _) = GetWeekBounds(dto.WeekOffset);
+        var (targetMonday, _) = GetWeekBounds(targetWeekOffset);
+        var fromDate = sourceMonday.AddDays(dto.FromIndex);
+
+        var fromEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == fromDate);
+        if (fromEvent == null) return;
+
+        // Find first available slot in target week starting at toIndex
+        var targetIndex = dto.ToIndex;
+        while (targetIndex < 7)
+        {
+            var checkDate = targetMonday.AddDays(targetIndex);
+            var exists = await _dbContext.CalendarEvents.AnyAsync(e => e.Date == checkDate);
+            if (!exists) break;
+            targetIndex++;
+        }
+
+        if (targetIndex >= 7)
+        {
+            _logger.LogWarning("No empty slot in target week {Offset}, cross-week move aborted", targetWeekOffset);
+            return;
+        }
+
+        fromEvent.Date = targetMonday.AddDays(targetIndex);
         await _dbContext.SaveChangesAsync();
     }
 
