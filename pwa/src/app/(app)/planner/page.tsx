@@ -63,7 +63,6 @@ export default function PlannerPage() {
     }
   }, [isLoading]);
 
-
   if (currentWeekOffset !== prevOffset) {
     setPrevOffset(currentWeekOffset);
     setIsLoading(true);
