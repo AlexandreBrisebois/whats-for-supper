@@ -49,6 +49,7 @@ export default function PlannerPage() {
   const [successDay, setSuccessDay] = useState<number | null>(null);
   const [activeCookMode, setActiveCookMode] = useState<UILocalScheduleDay | null>(null);
   const searchParams = useSearchParams();
+  const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
@@ -258,7 +259,7 @@ export default function PlannerPage() {
       ignore = true;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [currentWeekOffset, isLocked, searchParams.get('success')]); // Refetch when coming back from search
+  }, [currentWeekOffset, isLocked, successParam]); // Refetch when coming back from search
 
   useEffect(() => {
     const success = searchParams.get('success');
