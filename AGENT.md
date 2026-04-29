@@ -12,7 +12,9 @@ These directives are non-negotiable and must be followed in every turn.
 
 1.  **Planning & Alignment**: Before taking any action (other than research), you **MUST** evaluate if the task warrants an Implementation Plan. If it does, you **MUST** create one and obtain explicit user approval before execution. Use the [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md) to manage this workflow. **If the user provides a pre-prepared Implementation Plan or Build Prompt, acknowledge it as the source of truth and proceed directly to execution mapping.**
 2.  **State Initialization**: Every session must begin by reading [HANDOVER.md](HANDOVER.md) to understand the active task and [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md) for context.
-3.  **Contract-First Development**: You must update [specs/openapi.yaml](specs/openapi.yaml) before making any changes to the API or Frontend models. Use the [Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md) skill.
+3.  **Contract-First Development (OpenAPI is Law)**: The `specs/openapi.yaml` is the ultimate source of truth. 
+    - **Zero Drift**: Backend DTOs and PWA models must match the spec exactly. 
+    - **Mock Standardization**: E2E mocks MUST use `MOCK_IDS` (valid GUIDs) and schema-compliant `builders`. Hardcoded string IDs (e.g. `"recipe-1"`) are strictly forbidden. Use the [Contract Engineer](.agents/SKILL_CONTRACT_ENGINEER.md) skill.
 4.  **Test-Driven Development**: You must write or update tests before implementing logic. Refer to [Next.js Testing](.agents/SKILL_NEXTJS_TESTING.md).
 5.  **Orchestration Logic**: All feature work must follow the multi-phase workflow defined in the [Team Orchestrator](.agents/SKILL_TEAM_ORCHESTRATOR.md).
 6.  **Schema Integrity**: Before merging or completing a task, run `task agent:reconcile` to ensure parity between the OpenAPI Specification, Mock API, and Backend implementation.

@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Camera, ChevronRight, Zap, Clock, Utensils } from 'lucide-react';
+import { Check, Camera, ChevronRight, Search, Clock, Utensils } from 'lucide-react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
 
@@ -8,7 +8,7 @@ export function SmartPivotCard({ onSelect }: { onSelect?: (choice: string) => vo
   const choices = [
     { id: '15min', label: '15 Min Fix', icon: Clock, color: 'bg-terracotta' },
     { id: 'pantry', label: 'Pantry Pasta', icon: Utensils, color: 'bg-sage' },
-    { id: 'surprise', label: 'Surprise Me', icon: Zap, color: 'bg-charcoal' },
+    { id: 'quick-find', label: 'Quick Find', icon: Search, color: 'bg-charcoal' },
   ];
 
   return (
@@ -74,54 +74,6 @@ export function QuickCaptureTrigger() {
   );
 }
 
-export function NextPrepStepCard({
-  task,
-  onComplete,
-}: {
-  task: { id: string; label: string; time?: string; completed: boolean };
-  onComplete?: (id: string) => void;
-}) {
-  return (
-    <div className="glass-sage rounded-[2.5rem] p-6 flex flex-col gap-5 border-sage/20 transition-all hover:bg-sage/15">
-      <div className="flex justify-between items-center">
-        <h3 className="font-heading text-sage-800 text-[10px] font-black uppercase tracking-[0.2em]">
-          Next Prep Step
-        </h3>
-        {task.time && (
-          <span className="text-sage-700 text-[10px] font-black tabular-nums bg-sage/20 px-3 py-1 rounded-full uppercase tracking-widest">
-            {task.time}
-          </span>
-        )}
-      </div>
-
-      <div
-        className="flex items-center gap-4 group cursor-pointer"
-        onClick={() => onComplete?.(task.id)}
-      >
-        <div
-          className={`h-10 w-10 rounded-2xl flex items-center justify-center border-2 transition-all duration-300 ${
-            task.completed
-              ? 'bg-sage border-sage text-white scale-110'
-              : 'border-sage/40 bg-white/50 hover:border-sage'
-          }`}
-        >
-          {task.completed && <Check strokeWidth={3} size={20} />}
-        </div>
-        <span
-          className={`flex-1 text-charcoal text-2xl font-black tracking-tighter leading-none transition-all ${
-            task.completed ? 'opacity-30 line-through' : ''
-          }`}
-        >
-          {task.label}
-        </span>
-      </div>
-
-      <button className="text-sage-700 text-[10px] font-black uppercase tracking-widest mt-1 hover:text-sage-900 transition-colors flex items-center gap-1 self-start">
-        See all steps <ChevronRight size={14} />
-      </button>
-    </div>
-  );
-}
 export function CookedSuccessCard({ onDismiss }: { onDismiss?: () => void }) {
   return (
     <div

@@ -1013,9 +1013,10 @@ tasks:
       - python3 scripts/agent/slice.py {{.CLI_ARGS}}
 
   agent:drift:
-    desc: "🤖 Schema Drift — Tier 0 (endpoint diff, needs API running) + Tier 1 (DTO schema comparison)"
+    desc: "🤖 Schema Drift — Tier 0 (endpoint diff) + Tier 1 (DTO schema comparison) + Tier 2 (Mock compliance)"
     cmds:
       - python3 scripts/agent/drift.py
+      - python3 scripts/agent/drift_mocks.py
 
   agent:drift:endpoints:
     desc: "🤖 Schema Drift — Tier 0 only: diff generated API endpoints vs specs/openapi.yaml (needs API running)"
@@ -1026,6 +1027,11 @@ tasks:
     desc: "🤖 Schema Drift — Tier 1 only: compare spec schemas vs C# DTOs (no API needed)"
     cmds:
       - python3 scripts/agent/drift.py --schema-only
+
+  agent:drift:mocks:
+    desc: "🤖 Schema Drift — Tier 2 only: verify E2E mocks use valid GUIDs and builders"
+    cmds:
+      - python3 scripts/agent/drift_mocks.py
 
   agent:audit:
     desc: "🤖 Brittle Selector Audit (Check tests for missing data-testid)"

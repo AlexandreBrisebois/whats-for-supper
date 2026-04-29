@@ -31,19 +31,10 @@ export default async function HomePage() {
   const isDone = todaysEntry?.status === 2 || todaysEntry?.status === 3;
   const todaysRecipe = isDone ? null : todaysEntry?.recipe;
 
-  // Next Prep Step data (Mocked for now)
-  const nextTask = { id: '1', label: 'Defrost ground beef', time: '3:00 PM', completed: false };
-  const isMealPlanned = !!todaysRecipe;
-  const isPrepActive = !isDone;
-
   return (
     <>
       <StoreInitializer familyMembers={familyMembers} />
-      <HomeCommandCenter
-        todaysRecipe={todaysRecipe}
-        nextTask={nextTask}
-        isPrepActive={isPrepActive}
-      />
+      <HomeCommandCenter todaysRecipe={todaysRecipe} />
     </>
   );
 }

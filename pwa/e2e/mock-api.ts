@@ -1,22 +1,40 @@
 import { type Page } from '@playwright/test';
+import {
+  type RecipeDto,
+  type ScheduleRecipeDto,
+  type ScheduleDays,
+  type SmartDefaultsDto,
+} from '../src/lib/api/generated/models/index';
+import {
+  type FamilyGetResponse,
+  type FamilyGetResponse_data,
+} from '../src/lib/api/generated/api/family/index';
 
 /**
- * Standard GUIDs for consistent testing across suites.
+ * Standard MOCK_IDS for E2E tests.
+ * Always use these GUIDs instead of hardcoded strings like "recipe-1".
  */
 export const MOCK_IDS = {
+  // Members
   MEMBER_ALEX: '550e8400-e29b-41d4-a716-446655440001',
   MEMBER_JORDAN: '550e8400-e29b-41d4-a716-446655440002',
-  RECIPE_LASAGNA: '00000000-0000-0000-0000-000000000001',
-  RECIPE_CARBONARA: '00000000-0000-0000-0000-000000000002',
-  RECIPE_STIR_FRY: '00000000-0000-0000-0000-000000000003',
-  RECIPE_TACOS: '00000000-0000-0000-0000-000000000004',
+  MEMBER_TEST: '550e8400-e29b-41d4-a716-446655440003',
+
+  // Recipes
+  RECIPE_LASAGNA: '660e8400-e29b-41d4-a716-446655440010',
+  RECIPE_CHICKEN: '660e8400-e29b-41d4-a716-446655440011',
+  RECIPE_GNOCCHI: '660e8400-e29b-41d4-a716-446655440012',
+  RECIPE_CARBONARA: '660e8400-e29b-41d4-a716-446655440013',
+  RECIPE_STIR_FRY: '660e8400-e29b-41d4-a716-446655440014',
+  RECIPE_TACOS: '660e8400-e29b-41d4-a716-446655440015',
 };
 
 /**
- * Builders for common API objects to ensure they match openapi.yaml.
+ * Schema-compliant builders for mock data.
+ * These ensure that mock objects match the generated API client models.
  */
 export const builders = {
-  recipe: (overrides: any = {}) => ({
+  recipe: (overrides: Partial<RecipeDto> = {}): RecipeDto => ({
     id: MOCK_IDS.RECIPE_LASAGNA,
     name: 'Mock Recipe',
     description: 'A delicious mock recipe for testing.',
@@ -28,24 +46,24 @@ export const builders = {
     isVegetarian: false,
     isHealthyChoice: false,
     ingredients: ['Ingredient 1', 'Ingredient 2'],
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
     ...overrides,
   }),
 
-  scheduleRecipe: (overrides: any = {}) => ({
+  scheduleRecipe: (overrides: Partial<ScheduleRecipeDto> = {}): ScheduleRecipeDto => ({
     id: MOCK_IDS.RECIPE_LASAGNA,
-    name: 'Mock Recipe',
+    name: 'Mock Schedule Recipe',
     image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-    description: 'A delicious mock recipe.',
     voteCount: 0,
+    ingredients: [],
     ...overrides,
   }),
 
-  familyMember: (overrides: any = {}) => ({
+  familyMember: (overrides: Partial<FamilyGetResponse_data> = {}): FamilyGetResponse_data => ({
     id: MOCK_IDS.MEMBER_ALEX,
     name: 'Alex',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
+    createdAt: new Date(),
+    updatedAt: new Date(),
     ...overrides,
   }),
 };

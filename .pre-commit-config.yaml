@@ -9,6 +9,13 @@ repos:
         files: ^(specs/openapi\.yaml|api/src/RecipeApi/Dto/.+\.cs)$
         pass_filenames: false
 
+      - id: mock-drift-audit
+        name: E2E Mock Compliance (Valid GUIDs & Builders)
+        language: python
+        entry: python3 scripts/agent/drift_mocks.py
+        files: ^pwa/e2e/
+        pass_filenames: false
+
       - id: api-review
         name: API Review (Lint & Test)
         language: system

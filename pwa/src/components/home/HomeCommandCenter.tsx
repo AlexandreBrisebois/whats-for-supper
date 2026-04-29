@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import {
   SmartPivotCard,
-  NextPrepStepCard,
   QuickCaptureTrigger,
   CookedSuccessCard,
 } from './HomeSections';
@@ -20,14 +19,10 @@ import { getTodayString } from '@/lib/imageUtils';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
-  nextTask: any;
-  isPrepActive: boolean;
 }
 
 export function HomeCommandCenter({
   todaysRecipe,
-  nextTask,
-  isPrepActive,
 }: HomeCommandCenterProps) {
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
@@ -122,12 +117,13 @@ export function HomeCommandCenter({
   return (
     <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto w-full px-6 sm:px-0">
       {(!todaysRecipe || isSkipped || sessionDone) && !isCooked && (
-        <SmartPivotCard onSelect={(choice) => choice === 'surprise' && setShowQuickFind(true)} />
+        <SmartPivotCard
+          onSelect={(choice) => {
+            if (choice === 'quick-find') setShowQuickFind(true);
+          }}
+        />
       )}
 
-      {isPrepActive && !isSkipped && !isCooked && !sessionDone && (
-        <NextPrepStepCard task={nextTask} />
-      )}
 
       {isCooked && <CookedSuccessCard onDismiss={() => setIsCooked(false)} />}
 
