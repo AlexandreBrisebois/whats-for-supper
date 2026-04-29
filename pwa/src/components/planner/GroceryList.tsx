@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,9 +26,7 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
   const { updateGroceryState } = useSchedule();
   const [isSaving, setIsSaving] = useState(false);
-  const [grouped, setGrouped] = useState<Record<AisleSection, string[]>>(
-    groupIngredientsByAisle(ingredients)
-  );
+  const grouped = useMemo(() => groupIngredientsByAisle(ingredients), [ingredients]);
 
   useEffect(() => {
     // Initialize grocery state if not already set

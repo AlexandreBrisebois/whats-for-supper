@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { SmartPivotCard, NextPrepStepCard, QuickCaptureTrigger } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { assignRecipeToDay } from '@/lib/api/planner';
+import { getTodayString } from '@/lib/imageUtils';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
@@ -39,12 +40,11 @@ export function HomeCommandCenter({
 
   const handleRecoveryAction = async (action: string) => {
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getTodayString();
       const todayDate = DateOnly.parse(todayStr);
       if (!todayDate) return;
 
       if (action === 'order_in') {
-        // Just mark as skipped for now, step 2 will handle rescheduling
         await apiClient.api.schedule.day.byDate(todayDate).validate.post({
           status: 3, // Skipped
         });
@@ -64,13 +64,10 @@ export function HomeCommandCenter({
         setIsSkipped(true);
         router.refresh();
       } else if (action === 'next_week') {
-        // Move to next week (Push logic)
         await apiClient.api.schedule.move.post({
           weekOffset: 0,
           fromIndex: (new Date().getDay() + 6) % 7,
           toIndex: (new Date().getDay() + 6) % 7,
-          // Note: In a real app we'd target weekOffset: 1, but MoveScheduleDto currently targets current week
-          // For now we'll just drop it or move it to end of week if possible
           intent: 'push',
         });
         setShowRecovery(false);

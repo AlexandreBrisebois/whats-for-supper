@@ -29,12 +29,10 @@ export const usePlannerStore = create<PlannerState>((set) => ({
   setVotingOpen: (open) => set({ isVotingOpen: open }),
   setIsLocked: (locked) => set({ isLocked: locked }),
   setCookProgress: (recipeId, stepIndex) =>
-    set((state) => ({
-      cookProgress: {
-        ...state.cookProgress,
-        [recipeId]: stepIndex,
-      },
-    })),
+    set((state) => {
+      if (state.cookProgress[recipeId] === stepIndex) return state;
+      return { cookProgress: { ...state.cookProgress, [recipeId]: stepIndex } };
+    }),
   resetCookProgress: (recipeId) =>
     set((state) => {
       const { [recipeId]: _, ...rest } = state.cookProgress;

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { getImageUrl } from '@/lib/imageUtils';
 
 interface TonightMenuCardProps {
   recipeId: string;
@@ -61,7 +62,7 @@ export function TonightMenuCard({
           <div className="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-2xl mb-6">
             {imageUrl ? (
               <Image
-                src={imageUrl.startsWith('/api/') ? `/backend${imageUrl}` : imageUrl}
+                src={getImageUrl(imageUrl)}
                 alt={recipeName}
                 fill
                 className="object-cover"

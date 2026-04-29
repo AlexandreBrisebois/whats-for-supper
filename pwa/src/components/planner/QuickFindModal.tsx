@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Check, ChevronRight, Utensils } from 'lucide-react';
+import { X, Sparkles, Utensils } from 'lucide-react';
 import Image from 'next/image';
 import { getFillTheGap } from '@/lib/api/planner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SolarLoader } from '@/components/ui/SolarLoader';
+import { getImageUrl } from '@/lib/imageUtils';
 
 interface QuickFindModalProps {
   onClose: () => void;
@@ -106,12 +107,12 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
                         Our library has thousands of recipes. Try searching for exactly what
                         you&apos;re craving.
                       </p>
-                      <Button
-                        asChild
-                        className="w-full h-16 rounded-2xl bg-ochre text-white font-black uppercase tracking-widest text-[11px] shadow-lg shadow-ochre/20"
+                      <a
+                        href="/recipes"
+                        className="inline-flex items-center justify-center w-full h-16 rounded-2xl bg-ochre text-white font-black uppercase tracking-widest text-[11px] shadow-lg shadow-ochre/20"
                       >
-                        <a href="/recipes">Search Library</a>
-                      </Button>
+                        Search Library
+                      </a>
                     </div>
                   ) : (
                     /* Regular Recipe Card */
@@ -127,9 +128,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
                           <>
                             <Image
                               src={
-                                currentRecipe.image.startsWith('/api/')
-                                  ? `/backend${currentRecipe.image}`
-                                  : currentRecipe.image
+                                getImageUrl(currentRecipe.image)
                               }
                               alt={currentRecipe.name}
                               fill

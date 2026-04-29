@@ -40,6 +40,7 @@ import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
+import { getImageUrl } from '@/lib/imageUtils';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -790,9 +791,7 @@ function PlannerDayCard({
                 <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5 flex-shrink-0">
                   <Image
                     src={
-                      day.recipe.image.startsWith('/api/')
-                        ? `/backend${day.recipe.image}`
-                        : day.recipe.image
+                      getImageUrl(day.recipe.image)
                     }
                     alt={day.recipe.name || 'Recipe'}
                     fill

@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { getRecipe, Recipe } from '@/lib/api/recipes';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
+import { getImageUrl } from '@/lib/imageUtils';
 import { usePlannerStore } from '@/store/plannerStore';
 
 interface CooksModeProps {
@@ -124,9 +125,7 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
           <div className="h-14 w-14 rounded-2xl overflow-hidden relative border-2 border-white shadow-md">
             <Image
               src={
-                initialRecipe.image.startsWith('/api/')
-                  ? `/backend${initialRecipe.image}`
-                  : initialRecipe.image
+                getImageUrl(initialRecipe.image)
               }
               alt={initialRecipe.name || 'Recipe'}
               fill

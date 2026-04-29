@@ -1,3 +1,12 @@
+export function getImageUrl(path: string | null | undefined): string {
+  if (!path) return '';
+  return path.startsWith('/api/') ? `/backend${path}` : path;
+}
+
+export function getTodayString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const MAX_IMAGE_COUNT = 20;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
