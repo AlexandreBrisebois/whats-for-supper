@@ -134,17 +134,26 @@ Triggered by tapping any day card (planned or unplanned).
 - "Skip" → cycles to next card (wraps around)
 
 #### Cook's Mode
-- Available only for `currentWeekOffset === 0` (current week)
-- Triggered by 👨‍🍳 emoji button on recipe cards
-- Fetches full recipe details via `getRecipe(id)` for ingredients list
-- Steps are **currently mocked** (fixed 5-step template for all recipes)
-- Shows dietary badges (isVegetarian, isHealthyChoice) on Prep step
+- Available only for `currentWeekOffset === 0` (current week) or past weeks (Read-only).
+- Triggered by 👨‍🍳 emoji button on recipe cards.
+- Fetches full recipe details via `getRecipe(id)` for ingredients list.
+- **Steps**: Sourced from `recipe.raw_metadata` (Option B: Raw instructions).
+- Shows dietary badges (isVegetarian, isHealthyChoice) on Prep step.
+- **Post-Meal Validation**: For current/past days, the card displays **[✅ Cooked]** and **[❌ Skipped]** actions.
+    - `Cooked` → Sets `status = 2`, updates `Recipe.lastCookedDate`.
+    - `Skipped` → Sets `status = 3`.
 
 #### Finalize ("Menu's In!")
-1. For each `_isPending` day with a recipe → `POST /api/schedule/assign` (persists to DB)
-2. Then → `POST /api/schedule/lock?weekOffset=X` (locks all events)
-3. Sets `isLocked=true` locally
-4. UI transitions to "Week finalized" state with "Plan next week" CTA
+1. **Closing Voting**: Transitions `weekly_plans.status` from `VotingOpen` to `Finalizing`.
+2. **Persistence**: For each `_isPending` day with a recipe → `POST /api/schedule/assign` (persists to DB).
+3. **Locking**: Then → `POST /api/schedule/lock?weekOffset=X` (locks all events).
+4. **Purge**: Triggers global purge of `recipe_votes`.
+5. UI transitions to "Week finalized" state.
+
+### 2.7 Remove / Un-assign
+- Every assigned recipe card includes a "Remove" (X) button.
+- Action: `DELETE /api/schedule/{date}/remove`.
+- Effect: Reverts the day card to the "Plan a meal" (empty) state.
 
 ### 2.7 Mock Fallback
 If API calls fail, the page renders **hardcoded mock data** (Mon: Homemade Lasagna, Wed: Zesty Lemon Chicken) so the UI experience is always demonstrable. This is a development/resilience pattern.
@@ -196,71 +205,45 @@ All responses are auto-wrapped in `{ data: ... }` by `SuccessWrappingFilter`.
 **Service call**: `ScheduleService.LockScheduleAsync(weekOffset)`
 
 **Side effects (in order)**:
-1. Fetches `Planned` events for the week
-2. Fetches all `Like` vote counts grouped by `recipe_id`
-3. Sets each event's `Status = Locked`, persists vote count snapshot to `VoteCount`
-4. Sets `Recipe.LastCookedDate = UtcNow` for each locked recipe
-5. **Deletes ALL `recipe_votes`** (global purge, not week-scoped)
-6. `SaveChangesAsync()`
-
-> 🏗️ **Architect Note**: Vote purge is **global** (all votes, not just this week's). This is by design — one planning cycle per family at a time. The spec also snapshots vote counts onto the event before purging, preserving history.
+1. Fetches `Planned` events for the week.
+2. Updates `weekly_plans.status = Locked`.
+3. Sets each event's `Status = Locked`, persists vote count snapshot to `VoteCount`.
+4. **Deletes ALL `recipe_votes`** (Global Purge #1).
+5. `SaveChangesAsync()`.
 
 ---
 
-#### `POST /api/schedule/move` (body: `MoveScheduleDto`)
-```json
-{ "weekOffset": 0, "fromIndex": 0, "toIndex": 2 }
-```
-**Service call**: `ScheduleService.MoveScheduleEventAsync(dto)`
-
-**Logic**:
-- Both occupied: swap `RecipeId` values
-- One occupied: move recipe to the empty slot (via date change)
-- Both empty: no-op
+#### `POST /api/schedule/voting/open?weekOffset={int}`
+**Goal**: The "Macro" Ask (Whole week).
+1. Creates/Updates `weekly_plans` record for the week.
+2. Sets `status = VotingOpen`.
+3. Triggers "Pulse" on Discovery button for all family members.
 
 ---
 
-#### `POST /api/schedule/assign` (body: `AssignScheduleDto`)
-```json
-{ "weekOffset": 0, "dayIndex": 3, "recipeId": "uuid" }
-```
-**Service call**: `ScheduleService.AssignRecipeAsync(dto)`
-
-**Logic**: Upsert — if event exists for that date, update `RecipeId`; else create new `CalendarEvent` with `status = Planned`.
-
----
-
-#### `GET /api/schedule/fill-the-gap`
-**Service call**: `ScheduleService.FillTheGapAsync()`
-
-**Priority algorithm**:
-1. **Tier 1**: `vw_recipe_matches` (voted recipes) joined to `Recipes`, ordered by `LastCookedDate ASC NULLS FIRST`, take 5
-2. **Tier 2**: If fewer than 5, supplement from `vw_discovery_recipes` ordered by `VoteCount DESC`, then `LastCookedDate ASC`
-
-**Returns**: `List<ScheduleRecipeDto>` with `Ingredients` and `Description` populated.
+#### `POST /api/schedule/day/{date}/ask` (Body: `AskCandidatesDto`)
+**Goal**: The "Micro" Ask (Single day flash-poll).
+1. Requires `weekly_plans.status` to be `Locked` or `Draft` (cannot overlap with Macro ask).
+2. Sets `calendar_events.status = AwaitingConsensus`.
+3. Stores `CandidateRecipeIds` (from Quick Find list).
+4. Triggers "Pulse" on Discovery button.
+5. Once consensus is reached → Assign recipe, set `status = Locked`, and **Purge `recipe_votes`** (Global Purge #2).
 
 ---
 
-#### `GET /api/schedule/{weekOffset}/smart-defaults`
-**Service call**: `ScheduleService.GetSmartDefaultsAsync(weekOffset)`
+#### `DELETE /api/schedule/{date}/remove`
+**Goal**: Clear a slot.
+1. Deletes `calendar_event` for the specific date and `meal_slot`.
 
-**Consensus algorithm**:
-```
-threshold = Math.Ceiling((familySize + 1.0) / 2)
-```
+---
 
-| Family Size | Threshold | % |
-|---|---|---|
-| 2 | 2 | 100% |
-| 3 | 2 | 67% |
-| 4 | 3 | 75% |
-| 5 | 3 | 60% |
-
-**Ordering**: Unanimous recipes (all members voted Like) first, then by `LastCookedDate DESC NULLS LAST` (freshest = least recently cooked, `null` = never cooked = first).
-
-**Slot assignment**: Iterates through day indices 0–6, skipping days already occupied by `CalendarEvents`. Assigns one recipe per available slot.
-
-**Returns**: `SmartDefaultsDto` with `PreSelectedRecipes` and `OpenSlots` arrays.
+#### `POST /api/schedule/{date}/validate` (Body: `ValidationDto`)
+**Goal**: Mark meal as Cooked/Skipped.
+1. If `status = Cooked`:
+    - Update event `status = 2`.
+    - Update `Recipe.LastCookedDate = UtcNow`.
+2. If `status = Skipped`:
+    - Update event `status = 3`.
 
 ### 3.3 DTO Inventory
 
@@ -298,21 +281,36 @@ export const assignRecipeToDay = async (weekOffset, dayIndex, recipe) => {
 
 ### 4.1 Core Tables Involved
 
+#### `weekly_plans`
+```sql
+CREATE TABLE weekly_plans (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  week_start_date date UNIQUE NOT NULL,
+  status smallint NOT NULL DEFAULT 0, -- 0=Draft, 1=VotingOpen, 2=Locked
+  notified_at timestamptz,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+CREATE INDEX idx_weekly_plans_date ON weekly_plans (week_start_date);
+```
+
 #### `calendar_events`
 ```sql
 CREATE TABLE calendar_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
   date date NOT NULL,
-  status smallint NOT NULL,           -- 0=Planned, 1=Locked, 2=Cooked, 3=Skipped
-  vote_count integer,                 -- snapshot at lock time
-  CONSTRAINT calendar_events_status_check CHECK (status >= 0 AND status <= 3)
+  meal_slot smallint NOT NULL DEFAULT 0, -- 0=Supper, 1=Lunch, 2=Breakfast
+  status smallint NOT NULL,              -- 0=Planned, 1=Locked, 2=Cooked, 3=Skipped, 4=AwaitingConsensus
+  vote_count integer,                    -- snapshot at lock time
+  candidate_ids uuid[],                  -- used for daily flash-polls
+  CONSTRAINT calendar_events_status_check CHECK (status >= 0 AND status <= 4),
+  CONSTRAINT calendar_events_date_slot_unique UNIQUE (date, meal_slot)
 );
 CREATE INDEX idx_calendar_events_recipe_id ON calendar_events (recipe_id);
 CREATE INDEX idx_calendar_events_date ON calendar_events (date);
 ```
 
-> 🗄️ **DB Engineer Note**: There is **no UNIQUE constraint on `date`**. The schema permits multiple `calendar_events` for the same date (e.g., two recipes on Monday). The service uses `FirstOrDefaultAsync` which takes the first match. This is a latent bug — a unique constraint on `date` should be added.
+> 🗄️ **DB Engineer Note**: The `UNIQUE(date, meal_slot)` constraint is now the source of truth for single-assignment per slot.
 
 #### `recipe_votes`
 ```sql
@@ -373,12 +371,6 @@ SELECT recipe_id, COUNT(*) AS vote_count
 FROM recipe_votes WHERE vote = 1
 GROUP BY recipe_id
 -- Filter: vote_count >= ceil((family_size + 1) / 2)
-
--- Step 2: Load recipe metadata
-SELECT * FROM recipes WHERE id IN (...)
-
--- Step 3: Get occupied days
-SELECT date FROM calendar_events WHERE date IN week
 ```
 
 **LockScheduleAsync** — vote snapshot + purge:
@@ -411,27 +403,20 @@ DELETE FROM recipe_votes;
 ### 5.2 Identified Gaps & Friction Points
 
 #### 🎨 UX Gaps
-1. **Cook's Mode steps are mocked** — all 5 steps are hardcoded Bolognese instructions regardless of the actual recipe. The `recipeDetails` fetch is used only for the ingredients list on Step 1.
-2. **"Ask the Family" does nothing persistent** — it sets `isLocked=false` locally but does NOT call any API. Votes don't open server-side.
-3. **Grocery Tab** — placeholder only; shows "Coming soon" state.
-4. **"Search Library" flow** — navigates to `/recipes?addToDay=N`, but the recipes page must handle the `addToDay` param and return the user to `/planner?success=1&dayIndex=N`. This return flow exists but is fragile (depends on query params).
-5. **Vote badge** — shows `N voted` for pending defaults but has no tooltip explaining the family consensus threshold.
-6. **Finalize sequence** — fires `assign` for ALL pending slots before `lock`. If any assign fails, lock still fires (no rollback / transactional boundary).
+1. **Cook's Mode steps** — Need to implement parsing from `raw_metadata` (Option B).
+2. **"Ask the Family" Implementation** — Need to implement the `weekly_plans` table and API endpoints.
+3. **Grocery Tab Checklist** — Transition from static placeholder to interactive checklist.
+4. **Remove/Un-assign** — Add "X" button to day cards and implement `DELETE /api/schedule/{date}/remove`.
+5. **Post-Meal Validation** — Add [✅ Cooked] / [❌ Skipped] UI to cards.
 
 #### 🏗️ API Gaps
-1. **No `PATCH /api/schedule/{date}/remove`** — there is no way to un-assign a recipe from a day without replacing it with another.
-2. **`POST /api/schedule/lock` purges ALL votes globally** — there is no scoping by week. If a user is planning next week simultaneously, those votes are wiped.
-3. **Smart defaults only fetched for `weekOffset=0`** — the frontend explicitly skips smart defaults for future weeks.
-4. **`FillTheGapAsync` has no filters** — it does not exclude recipes already assigned to the current week, which could result in duplicates.
-5. **No pagination on `fill-the-gap`** — hardcoded to 5.
-6. **`MoveScheduleEventAsync` uses `FirstOrDefaultAsync` without ordering** — if multiple events exist for a date (possible with missing UNIQUE constraint), behavior is non-deterministic.
+1. **No `weekly_plans` table** — Need migration and EF model.
+2. **Sequential Purge** — Update `LockScheduleAsync` and implement `AwaitingConsensus` auto-purge.
+3. **`FillTheGapAsync` duplicates** — Should filter out recipes already assigned to the week.
 
 #### 🗄️ Database Gaps
-1. **Missing UNIQUE constraint on `calendar_events.date`** — the current schema permits multiple events per day. The service's `FirstOrDefaultAsync` pattern is a workaround, not a safeguard.
-2. **`VoteCount` on `calendar_events` is nullable** — at lock time, recipes with zero votes would have `null` vote count, not `0`.
-3. **No `meal_slot` column on `calendar_events`** — currently supports only one meal per day (Supper). Phase 5+ will need a `slot` column (breakfast/lunch/supper).
-4. **`last_cooked_date` set to `UtcNow` at lock time** — the "cooked date" records when the week was finalized, not when the meal was actually cooked that evening. This affects freshness ordering.
-5. **Vote purge is undifferentiated** — `DELETE FROM recipe_votes` removes all votes including any cast for future weeks. If the family has started voting on next week's plan before finalizing this week, those votes are lost.
+1. **Composite Constraint** — Add `UNIQUE(date, meal_slot)` to `calendar_events`.
+2. **`candidate_ids` column** — Add to `calendar_events` for flash-polls.
 
 #### 🔬 Test Gaps
 1. **Drag-to-reorder test is shallow** — only checks the group exists; does not verify the API call fires or the order updates.
@@ -445,74 +430,50 @@ DELETE FROM recipe_votes;
 
 ## 6. Data Flow Diagram
 
-```
-Family Discovery Voting
-        │
-        ▼
-   recipe_votes (DB)
-        │
-        ├──► vw_recipe_matches (view)
-        │         │
-        │         ▼
-        │   GET /api/schedule/{n}/smart-defaults
-        │         │
-        │         ▼
-        │   SmartDefaultsDto (_isPending UI state)
-        │
-        └──► vw_discovery_recipes (view)
-                  │
-                  ▼
-            GET /api/schedule/fill-the-gap
-                  │
-                  ▼
-            QuickFindModal (carousel)
-                  │
-                  ▼
-          POST /api/schedule/assign
-                  │
-                  ▼
-         calendar_events (DB, status=Planned)
-                  │
-                  ▼
-          GET /api/schedule?weekOffset=X
-                  │
-                  ▼
-        PlannerPage 7-day grid
-                  │
-           "Menu's In!" ▼
-                  │
-        POST /api/schedule/lock
-                  │
-          ┌───────┴────────┐
-          ▼                ▼
-  calendar_events      recipes
-  status=Locked    last_cooked_date=now()
-          │
-          ▼
-  DELETE FROM recipe_votes (global)
+```mermaid
+graph TD
+    subgraph Planning_Cycle
+    A[Planner: Start Week] --> B{Macro Ask?}
+    B -- Yes --> C[POST /voting/open]
+    C --> D[weekly_plans: VotingOpen]
+    D --> E[Discovery Button Pulse]
+    E --> F[Family Votes]
+    F --> G[Close Voting / Menu's In!]
+    G --> H[Global Purge #1]
+    H --> I[weekly_plans: Locked]
+    end
+
+    subgraph Gap_Filling
+    I --> J{Gaps Exist?}
+    J -- Yes --> K[Daily Ask]
+    K --> L[POST /day/date/ask]
+    L --> M[Flash Poll: Candidates]
+    M --> N[Family Votes on Candidates]
+    N --> O[Consensus Reached]
+    O --> P[Global Purge #2]
+    P --> Q[Slot Locked]
+    end
+
+    subgraph Kitchen_Mode
+    Q --> R[Today's Card: Cook's Mode]
+    R --> S{Validate?}
+    S -- Cooked --> T[status=2 / Recipe.LastCooked=Now]
+    S -- Skipped --> U[status=3]
+    end
 ```
 
 ---
 
-## 7. Open Questions for the UX/Product Discussion
+## 7. Resolved Decisions Log
 
-> These are the decisions that need answering before we can nail the experience.
-
-1. **Cook's Mode steps** — Should steps be sourced from the recipe's `raw_metadata` (instructions scraped from the original page)? Or do we need a new `steps` field extracted during the AI import?
-
-2. **"Ask the Family" API contract** — What does "open for voting" mean server-side? Does it flip a `calendar_events.status` flag? Or is it purely that votes exist in `recipe_votes`?
-
-3. **Vote scope at Lock** — Should `DELETE FROM recipe_votes` be week-scoped (only delete votes for recipes in THIS week's plan) or remain global? Global is simpler but destructive if future-week voting has started.
-
-4. **UNIQUE constraint on `date`** — Is the intent always one recipe per day (Supper only)? If yes, the constraint should be added now. If multi-slot is a near-term feature, add a `(date, meal_slot)` composite unique constraint.
-
-5. **Grocery list** — What data powers it? Aggregated `ingredients` from all `calendar_events` for the week? Is there a Phase 5 agent that categorizes by aisle?
-
-6. **Remove/un-assign** — Should users be able to remove a recipe from a day, leaving it empty? Currently not possible without replacing it.
-
-7. **Past weeks** — The planner shows `currentWeekOffset >= 0` only for the Finalize button. Should past weeks be read-only? Should Cook's Mode be available for past-week meals?
-
-8. **`lastCookedDate` accuracy** — Should the cook date be updated at lock time (planning decision) or when Cook's Mode is completed (actual cooking event)?
+1.  **Cook's Mode steps**: Sourced from `recipe.raw_metadata` (Option B: Raw text).
+2.  **"Ask the Family" Persistent State**: Implemented via `weekly_plans` table.
+3.  **Hierarchy**: Sequential Ask (Weekly Macro -> Daily Micro). 
+4.  **Pulse**: The Discovery button is the universal CTA for family members.
+5.  **Vote Purge**: Global purge is retained but triggered sequentially (at Lock and at Consensus).
+6.  **Uniqueness**: Composite `UNIQUE(date, meal_slot)` added to schema.
+7.  **Grocery List**: Interactive checklist of ingredients.
+8.  **Validation**: Manual "Cooked" vs "Skipped" validation by the user.
 
 ---
 
