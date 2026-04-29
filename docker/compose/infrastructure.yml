@@ -28,8 +28,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-recipe_app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-recipe_app_db}
+      PGDATA: /var/lib/postgresql/data
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-recipe_app} -d $${POSTGRES_DB:-recipe_app_db}"]
       interval: 5s

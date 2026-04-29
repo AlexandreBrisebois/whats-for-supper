@@ -49,6 +49,7 @@ export default function PlannerPage() {
   const [successDay, setSuccessDay] = useState<number | null>(null);
   const [activeCookMode, setActiveCookMode] = useState<UILocalScheduleDay | null>(null);
   const searchParams = useSearchParams();
+  const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
@@ -62,22 +63,6 @@ export default function PlannerPage() {
       return () => clearTimeout(timer);
     }
   }, [isLoading]);
-
-  // Scroll Tracking for the Rail
-  const [scrollPercentage, setScrollPercentage] = useState(0);
-  useEffect(() => {
-    const handleScroll = () => {
-      const height = document.documentElement.scrollHeight - window.innerHeight;
-      if (height <= 0) {
-        setScrollPercentage(0);
-        return;
-      }
-      const scrolled = (window.scrollY / height) * 100;
-      setScrollPercentage(Math.min(100, Math.max(0, scrolled)));
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   if (currentWeekOffset !== prevOffset) {
     setPrevOffset(currentWeekOffset);
@@ -274,7 +259,7 @@ export default function PlannerPage() {
       ignore = true;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [currentWeekOffset, isLocked, searchParams.get('success')]); // Refetch when coming back from search
+  }, [currentWeekOffset, isLocked, successParam]); // Refetch when coming back from search
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -547,17 +532,9 @@ export default function PlannerPage() {
                 axis="y"
                 values={schedule}
                 onReorder={handleReorder}
-                className="space-y-4 relative"
+                className="space-y-4"
                 data-testid="reorder-group"
               >
-                {/* The "Scroll Rail" (Grabber) */}
-                <div className="fixed right-1 top-1/4 bottom-1/4 w-1 z-50">
-                  <div className="absolute inset-0 bg-charcoal/5 rounded-full" />
-                  <motion.div
-                    className="absolute w-2 h-12 -left-0.5 bg-sage/40 rounded-full blur-[0.5px] shadow-sm"
-                    style={{ top: `${scrollPercentage}%` }}
-                  />
-                </div>
                 {schedule.map((day, index) => (
                   <PlannerDayCard
                     key={day._uiId}
