@@ -32,6 +32,7 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
         const isLanding = pathname === ROUTES.LANDING;
         const isOnboarding = pathname === ROUTES.ONBOARDING;
+        const isPublic = pathname === ROUTES.WELCOME || pathname === ROUTES.INVITE;
 
         // 1. Landing page: Instant redirect based on identity
         if (isLanding) {
@@ -41,9 +42,9 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
           return;
         }
 
-        // 2. Onboarding page: Always allow (Ready).
-        if (isOnboarding) {
-          console.log('[IdentityValidator] On onboarding page. Ready.');
+        // 2. Onboarding & Public pages: Always allow (Ready).
+        if (isOnboarding || isPublic) {
+          console.log('[IdentityValidator] On public or onboarding page. Ready.');
           setIsReady(true);
           return;
         }
