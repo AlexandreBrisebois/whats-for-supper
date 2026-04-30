@@ -11,10 +11,15 @@ import { t } from '@/locales';
 
 interface FamilySelectorProps {
   onFamilyMemberSelected: (familyMemberId: string) => void;
+  onInvite?: (id: string, name: string) => void;
   isLoading?: boolean;
 }
 
-export function FamilySelector({ onFamilyMemberSelected, isLoading = false }: FamilySelectorProps) {
+export function FamilySelector({
+  onFamilyMemberSelected,
+  onInvite,
+  isLoading = false,
+}: FamilySelectorProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const { familyMembers, selectedMember, addMember, isLoading: storeLoading } = useFamily();
 
@@ -33,6 +38,7 @@ export function FamilySelector({ onFamilyMemberSelected, isLoading = false }: Fa
         members={familyMembers ?? []}
         selectedId={selectedMember?.id ?? null}
         onSelect={onFamilyMemberSelected}
+        onInvite={onInvite}
       />
 
       {!showAddForm && (

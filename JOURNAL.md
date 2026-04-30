@@ -4,6 +4,19 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-04-30] PWA Immersion & Polish
+**Status**: COMPLETED ✅
+
+- **Objective**: Achieve a native-like, immersive experience by hiding browser bars and adding PWA shortcuts.
+- **Refactoring**:
+    - **Viewport Optimization**: Added `viewport-fit=cover` in `layout.tsx` to utilize notch areas.
+    - **UI Locking**: Implemented `overscroll-behavior: none` and `min-height: 100dvh` in `globals.css` to prevent browser chrome from reappearing on scroll.
+    - **Manifest Polish**: Added OS-level shortcuts for "Quick Find" and "Capture Meal," enabled maskable icons, and synchronized theme/background colors.
+- **Verification**: Verified via `tsc --noEmit` and passing E2E tests (`planner.spec.ts`).
+- **Files changed**: `pwa/src/app/layout.tsx`, `pwa/src/app/globals.css`, `pwa/public/manifest.json`.
+
+---
+
 ### [2026-04-30] Home Page Cleanup & Roadmap Alignment
 **Status**: COMPLETED ✅
 

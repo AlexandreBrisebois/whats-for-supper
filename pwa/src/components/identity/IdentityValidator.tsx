@@ -70,13 +70,9 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
           (m) => String(m.id).toLowerCase() === String(selectedFamilyMemberId).toLowerCase()
         );
 
-        console.log('[IdentityValidator] Member exists check:', {
-          exists,
-          count: latestMembers.length,
-        });
-
         // Only clear and redirect if we HAVE members but the ID is missing (e.g. deleted on another device)
-        if (!exists && latestMembers.length > 0) {
+        // We only do this after a successful load to avoid race conditions during onboarding
+        if (hasLoaded && !exists && latestMembers.length > 0) {
           console.warn('[IdentityValidator] Selected member no longer exists. Clearing identity.');
           useFamilyStore.getState().selectFamilyMember(null);
           router.replace(ROUTES.ONBOARDING);

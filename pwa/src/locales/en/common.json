@@ -55,7 +55,7 @@
     "addPrompt": "Don't see your name? Add it",
     "addMember": "Add a family member",
     "noMembers": "No family members yet. Add one below!",
-    "selected": "Selected",
+    "selected": "you",
     "saveName": "Save name",
     "cancelEditing": "Cancel editing",
     "editMember": "Edit {{name}}",

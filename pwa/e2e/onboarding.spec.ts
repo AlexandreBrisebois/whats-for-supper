@@ -5,24 +5,26 @@ const NEW_MEMBER_ID = '550e8400-e29b-41d4-a716-446655440099';
 
 test.describe('Onboarding', () => {
   test.beforeEach(async ({ page }) => {
-    await page.route(/\/(?:backend\/)?api\/family(?:\?|$)/, async (route) => {
+    const members = [builders.familyMember({ name: 'Alex' })];
+
+    await page.route(/\/api\/family/, async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: [builders.familyMember({ name: 'Alex' })] }),
+          body: JSON.stringify({ data: members }),
         });
       } else if (route.request().method() === 'POST') {
         const body = route.request().postDataJSON() as { name?: string };
+        const newMember = builders.familyMember({
+          id: NEW_MEMBER_ID,
+          name: body.name ?? 'New Member',
+        });
+        members.push(newMember);
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({
-            data: builders.familyMember({
-              id: NEW_MEMBER_ID,
-              name: body.name ?? 'New Member',
-            }),
-          }),
+          body: JSON.stringify({ data: newMember }),
         });
       } else {
         await route.continue();

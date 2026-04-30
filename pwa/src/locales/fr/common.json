@@ -55,7 +55,7 @@
     "addPrompt": "Vous ne voyez pas votre nom ? Ajoutez-le",
     "addMember": "Ajouter un membre",
     "noMembers": "Aucun membre pour le moment. Ajoutez-en un !",
-    "selected": "Sélectionné",
+    "selected": "moi",
     "saveName": "Enregistrer le nom",
     "cancelEditing": "Annuler l'édition",
     "editMember": "Modifier {{name}}",

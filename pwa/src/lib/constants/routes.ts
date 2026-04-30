@@ -9,6 +9,7 @@ export const ROUTES = {
   PLANNER: '/planner',
   DISCOVERY: '/discovery',
   PROFILE: '/profile',
+  PROFILE_SETTINGS: '/profile/settings',
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];

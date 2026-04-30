@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pencil, Check, X } from 'lucide-react';
+import { Pencil, Check, X, Share2 } from 'lucide-react';
 import type { FamilyMember } from '@/types/domain';
 import { useFamily } from '@/hooks/useFamily';
 import { t, tWithVars } from '@/locales';
@@ -10,9 +10,15 @@ interface FamilyMemberListProps {
   members: FamilyMember[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onInvite?: (id: string, name: string) => void;
 }
 
-export function FamilyMemberList({ members, selectedId, onSelect }: FamilyMemberListProps) {
+export function FamilyMemberList({
+  members,
+  selectedId,
+  onSelect,
+  onInvite,
+}: FamilyMemberListProps) {
   const { updateMember, isLoading } = useFamily();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -87,37 +93,54 @@ export function FamilyMemberList({ members, selectedId, onSelect }: FamilyMember
                         'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all',
                         'focus:outline-none focus:ring-2 focus:ring-indigo/40',
                         selected
-                          ? 'bg-indigo text-lavender shadow-card pr-24' // Add padding for "Selected" and "Edit"
-                          : 'bg-white text-charcoal shadow-card hover:bg-indigo/10 pr-12', // Add padding for "Edit"
+                          ? `bg-indigo text-lavender shadow-card ${onInvite ? 'pr-36' : 'pr-24'}`
+                          : `bg-white text-charcoal shadow-card hover:bg-indigo/10 ${onInvite ? 'pr-28' : 'pr-12'}`,
                       ].join(' ')}
                     >
                       <span className="font-medium truncate">{member.name}</span>
                       {selected && (
                         <span className="ml-auto text-xs font-semibold text-lavender/80">
-                          {t('family.selected', 'Selected')}
+                          {t('family.selected', 'you')}
                         </span>
                       )}
                     </button>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startEditing(member);
-                      }}
-                      className={[
-                        'absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2.5 transition-all',
-                        // On mobile, show it always for selected, otherwise group-hover
-                        selected
-                          ? 'opacity-100 text-lavender hover:bg-white/20'
-                          : 'opacity-0 group-hover:opacity-100 text-indigo hover:bg-indigo/10',
-                        // For touch devices, ensure it's at least visible if active or selected
-                      ].join(' ')}
-                      aria-label={tWithVars('family.editMember', 'Edit {{name}}', {
-                        name: member.name,
-                      })}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      {onInvite && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onInvite(member.id, member.name);
+                          }}
+                          className={[
+                            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm',
+                            selected
+                              ? 'bg-white/20 text-lavender hover:bg-white/30 ring-1 ring-white/30'
+                              : 'bg-terracotta/10 text-terracotta hover:bg-terracotta/20 ring-1 ring-terracotta/20',
+                          ].join(' ')}
+                        >
+                          <Share2 className="h-3 w-3" />
+                          {t('profile.invite', 'Invite')}
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditing(member);
+                        }}
+                        className={[
+                          'rounded-full p-2.5 transition-all',
+                          selected
+                            ? 'opacity-100 text-lavender hover:bg-white/20'
+                            : 'opacity-0 group-hover:opacity-100 text-indigo hover:bg-indigo/10',
+                        ].join(' ')}
+                        aria-label={tWithVars('family.editMember', 'Edit {{name}}', {
+                          name: member.name,
+                        })}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 )}
               </li>
