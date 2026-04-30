@@ -170,7 +170,17 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
           {(!currentRecipe || isSkipped || sessionDone) && !isCooked && (
             <SmartPivotCard
               onSelect={(choice) => {
-                if (choice === 'quick-find') setShowQuickFind(true);
+                switch (choice) {
+                  case 'quick-find':
+                    setShowQuickFind(true);
+                    break;
+                  case 'pantry':
+                  case '15min':
+                  default:
+                    // Roadmap items - no-op for now
+                    console.log(`Choice ${choice} is on the roadmap.`);
+                    break;
+                }
               }}
             />
           )}

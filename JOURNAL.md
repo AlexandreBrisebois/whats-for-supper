@@ -4,6 +4,20 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-04-30] Home Page Cleanup & Roadmap Alignment
+**Status**: COMPLETED ✅
+
+- **Objective**: Clean up the Home Command Center by removing dead UI elements and rebranding "Surprise Me" to "Quick Find".
+- **Refactoring**: 
+    - Rebranded `SmartPivotCard` choices: `surprise` → `quick-find` (Search icon).
+    - Removed `NextPrepStepCard` (unused/non-functional).
+    - Updated `HomeCommandCenter` selection logic to explicitly no-op roadmap items (`15min`, `pantry`).
+- **Roadmap**: Documented "15 Min Fix" and "Pantry Pasta" buttons as future features in `HANDOVER.md`.
+- **Verification**: Verified via `tsc` and E2E tests (`home-recovery.spec.ts`).
+- **Files changed**: `pwa/src/components/home/HomeSections.tsx`, `pwa/src/components/home/HomeCommandCenter.tsx`, `HANDOVER.md`.
+
+---
+
 ### [2026-04-29] API Reconciliation: Multi-line Detection & Schema Alignment
 **Status**: COMPLETED ✅
 
