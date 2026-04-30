@@ -1,12 +1,14 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders } from './mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
 const NEW_MEMBER_ID = '550e8400-e29b-41d4-a716-446655440099';
 
 test.describe('Onboarding', () => {
   test.beforeEach(async ({ page }) => {
+    await setupCommonRoutes(page);
     const members = [builders.familyMember({ name: 'Alex' })];
-
+    
+    // Override the family mock to handle the stateful members list
     await page.route(/\/api\/family/, async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
@@ -84,8 +86,11 @@ test.describe('Onboarding', () => {
     await nameInput.fill(newName);
 
     const submitButton = page.getByTestId('add-member-submit');
-    await submitButton.click();
+    await Promise.all([
+      page.waitForURL(/\/home/),
+      submitButton.click(),
+    ]);
 
-    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/home/);
   });
 });

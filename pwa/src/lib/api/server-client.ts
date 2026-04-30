@@ -21,6 +21,15 @@ export async function serverFetch<T>(endpoint: string, options: RequestInit = {}
     headers.set('X-Family-Member-Id', identity.value);
   }
 
+  // Forward the h_access cookie if present (required for backend auth)
+  const hAccess = cookieStore.get('h_access');
+  if (hAccess?.value) {
+    // Add to Cookie header. If multiple cookies are needed, they should be joined with ;
+    const existingCookie = headers.get('Cookie');
+    const newCookie = `h_access=${hAccess.value}`;
+    headers.set('Cookie', existingCookie ? `${existingCookie}; ${newCookie}` : newCookie);
+  }
+
   const response = await fetch(url, {
     ...options,
     headers,
