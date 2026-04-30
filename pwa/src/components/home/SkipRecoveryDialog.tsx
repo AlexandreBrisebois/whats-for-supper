@@ -64,7 +64,10 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                   {t('home.backupPlanTitle', "What's the backup plan?")}
                 </h3>
                 <p className="text-sm text-charcoal/40 font-medium">
-                  {t('home.backupPlanSubtitle', 'Plans changed. We get it. What are we eating instead?')}
+                  {t(
+                    'home.backupPlanSubtitle',
+                    'Plans changed. We get it. What are we eating instead?'
+                  )}
                 </p>
               </div>
 
@@ -122,7 +125,10 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                   {t('home.tonightRecipeTitle', "What about tonight's recipe?")}
                 </h3>
                 <p className="text-sm text-charcoal/40 font-medium">
-                  {t('home.tonightRecipeSubtitle', 'We have the ingredients. When should we cook it?')}
+                  {t(
+                    'home.tonightRecipeSubtitle',
+                    'We have the ingredients. When should we cook it?'
+                  )}
                 </p>
               </div>
 

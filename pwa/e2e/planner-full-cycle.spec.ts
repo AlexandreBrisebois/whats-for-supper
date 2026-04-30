@@ -58,13 +58,19 @@ async function setupPlanner(page: Page, locked = false) {
 
   const draftDays = buildDraftDays();
   // Use explicit MOCK_IDS to ensure uniqueness and validity
-  draftDays[0].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CARBONARA, name: 'Pasta Carbonara' });
+  draftDays[0].recipe = builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_CARBONARA,
+    name: 'Pasta Carbonara',
+  });
   draftDays[1].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Lasagna' });
   draftDays[2].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Chicken' });
   draftDays[3].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_GNOCCHI, name: 'Gnocchi' });
   draftDays[4].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Stir Fry' });
   draftDays[5].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_TACOS, name: 'Tacos' });
-  draftDays[6].recipe = builders.scheduleRecipe({ id: '660e8400-e29b-41d4-a716-446655440099', name: 'Other' });
+  draftDays[6].recipe = builders.scheduleRecipe({
+    id: '660e8400-e29b-41d4-a716-446655440099',
+    name: 'Other',
+  });
 
   // Stateful: POST/PUT (e.g. finalize) flips isLocked so the next GET reflects locked state
   let isLocked = locked;
@@ -125,10 +131,10 @@ async function setupPlanner(page: Page, locked = false) {
 test.describe('Planner — Finalize & Lock', () => {
   test('finalize shows locked state and plan-next-week button', async ({ page }) => {
     await setupPlanner(page, false);
- 
+
     // Wait for recipes to load and plannedCount to reach threshold
     await expect(page.getByTestId('planned-count-badge')).toContainText('7/7');
- 
+
     const finalizeBtn = page.getByTestId('finalize-button');
     await expect(finalizeBtn).toBeVisible();
 

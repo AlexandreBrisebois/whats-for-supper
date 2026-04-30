@@ -80,7 +80,9 @@ export default function MinimalCapture() {
           <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
             {t('capture.captured', 'Captured!')}
           </h2>
-          <p className="text-charcoal/60">{t('capture.savedInLibrary', 'Your recipe is safe in the library.')}</p>
+          <p className="text-charcoal/60">
+            {t('capture.savedInLibrary', 'Your recipe is safe in the library.')}
+          </p>
         </div>
         <Button
           variant="primary"
@@ -200,7 +202,9 @@ export default function MinimalCapture() {
           {/* Appreciation & Notes */}
           <div className="flex flex-col gap-6 mt-2">
             <div className="flex flex-col gap-3 px-2">
-              <label className="text-sm font-bold text-charcoal/80">{t('capture.appreciation', 'Appreciation')}</label>
+              <label className="text-sm font-bold text-charcoal/80">
+                {t('capture.appreciation', 'Appreciation')}
+              </label>
               <div className="flex gap-2">
                 {[
                   { value: 1, label: 'Not for me', icon: '👎' },
@@ -222,7 +226,9 @@ export default function MinimalCapture() {
             </div>
 
             <div className="flex flex-col gap-3 px-2">
-              <label className="text-sm font-bold text-charcoal/80">{t('capture.notes', 'Notes (Optional)')}</label>
+              <label className="text-sm font-bold text-charcoal/80">
+                {t('capture.notes', 'Notes (Optional)')}
+              </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -239,7 +245,7 @@ export default function MinimalCapture() {
               size="lg"
               isLoading={isSubmitting}
               onClick={handleSave}
-               className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
+              className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
             >
               {t('capture.saveRecipe', 'Save Recipe')}
             </Button>

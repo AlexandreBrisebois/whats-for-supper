@@ -507,12 +507,17 @@ export default function PlannerPage() {
           </button>
 
           <div className="text-center">
-            <span className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/30 text-center flex-1" data-testid="week-range">
+            <span
+              className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/30 text-center flex-1"
+              data-testid="week-range"
+            >
               {currentWeekOffset === 0
                 ? t('planner.thisWeek', 'This week')
                 : currentWeekOffset === 1
                   ? t('planner.nextWeek', 'Next week')
-                  : tWithVars('planner.weekX', `Week ${currentWeekOffset}`, { count: currentWeekOffset })}
+                  : tWithVars('planner.weekX', `Week ${currentWeekOffset}`, {
+                      count: currentWeekOffset,
+                    })}
             </span>
             <h2 className="text-lg font-heading font-bold text-charcoal flex items-center justify-center">
               {isVotingOpen && (
@@ -531,7 +536,7 @@ export default function PlannerPage() {
                     });
                     return `${fmt.format(start)} — ${fmt.format(end)}`;
                   })()
-                  : t('messages.loading', 'Loading...')}
+                : t('messages.loading', 'Loading...')}
             </h2>
             <div className="flex items-center justify-center mt-2">
               <div
@@ -694,7 +699,6 @@ export default function PlannerPage() {
           </div>
         </motion.div>
       )}
-
 
       <PlanningPivotSheet
         isOpen={showPivot !== null}

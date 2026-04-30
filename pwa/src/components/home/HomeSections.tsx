@@ -8,8 +8,18 @@ import { t } from '@/locales';
 export function SmartPivotCard({ onSelect }: { onSelect?: (choice: string) => void }) {
   const choices = [
     { id: '15min', label: t('home.fix15min', '15 Min Fix'), icon: Clock, color: 'bg-terracotta' },
-    { id: 'pantry', label: t('home.pantryPasta', 'Pantry Pasta'), icon: Utensils, color: 'bg-sage' },
-    { id: 'quick-find', label: t('home.quickFind', 'Quick Find'), icon: Search, color: 'bg-charcoal' },
+    {
+      id: 'pantry',
+      label: t('home.pantryPasta', 'Pantry Pasta'),
+      icon: Utensils,
+      color: 'bg-sage',
+    },
+    {
+      id: 'quick-find',
+      label: t('home.quickFind', 'Quick Find'),
+      icon: Search,
+      color: 'bg-charcoal',
+    },
   ];
 
   return (

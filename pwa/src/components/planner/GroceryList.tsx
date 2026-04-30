@@ -71,7 +71,9 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
           <p className="text-[10px] font-black uppercase tracking-widest text-sage/60">
             {t('grocery.smartShopping', 'Smart Shopping')}
           </p>
-          <h2 className="text-xl font-heading font-black text-charcoal">{t('grocery.checklist', 'Grocery Checklist')}</h2>
+          <h2 className="text-xl font-heading font-black text-charcoal">
+            {t('grocery.checklist', 'Grocery Checklist')}
+          </h2>
         </div>
         {onClose && (
           <Button
@@ -125,10 +127,14 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                                 {t(`grocery.aisles.${aisle}`, aisle)}
                               </h3>
                               <p className="text-xs text-charcoal/40 font-medium">
-                                {tWithVars('grocery.itemsCount', `${checkedCount}/${aisleItems.length} items`, {
-                                  checked: checkedCount,
-                                  total: aisleItems.length,
-                                })}
+                                {tWithVars(
+                                  'grocery.itemsCount',
+                                  `${checkedCount}/${aisleItems.length} items`,
+                                  {
+                                    checked: checkedCount,
+                                    total: aisleItems.length,
+                                  }
+                                )}
                               </p>
                             </div>
                           </div>

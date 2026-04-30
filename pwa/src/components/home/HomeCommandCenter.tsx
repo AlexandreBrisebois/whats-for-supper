@@ -192,7 +192,10 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
             <TonightMenuCard
               recipeId={currentRecipe.id!}
               recipeName={currentRecipe.name!}
-              description={currentRecipe.description || t('home.defaultDescription', 'A delicious meal planned for tonight.')}
+              description={
+                currentRecipe.description ||
+                t('home.defaultDescription', 'A delicious meal planned for tonight.')
+              }
               imageUrl={currentRecipe.image || undefined}
               ingredients={currentRecipe.ingredients || []}
               prepTime="30-45 mins"

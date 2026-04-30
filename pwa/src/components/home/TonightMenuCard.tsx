@@ -132,7 +132,9 @@ export function TonightMenuCard({
                 </span>
               ))}
               {ingredients.length === 0 && (
-                <span className="text-[10px] text-charcoal/30 italic">{t('home.noIngredients', 'No ingredients listed')}</span>
+                <span className="text-[10px] text-charcoal/30 italic">
+                  {t('home.noIngredients', 'No ingredients listed')}
+                </span>
               )}
             </div>
 
@@ -147,7 +149,9 @@ export function TonightMenuCard({
                   data-testid="skip-tonight-btn"
                 >
                   <Ban size={18} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{t('home.skip', 'Skip')}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    {t('home.skip', 'Skip')}
+                  </span>
                 </button>
                 <button
                   onClick={(e) => {
@@ -158,7 +162,9 @@ export function TonightMenuCard({
                   data-testid="cook-mode-btn"
                 >
                   <Utensils size={18} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{t('home.cook', 'Cook')}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    {t('home.cook', 'Cook')}
+                  </span>
                 </button>
               </div>
               <button
@@ -170,7 +176,9 @@ export function TonightMenuCard({
                 data-testid="cooked-btn"
               >
                 <CheckCircle2 size={18} />
-                <span className="text-[10px] font-black uppercase tracking-widest">{t('home.cooked', 'Cooked')}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  {t('home.cooked', 'Cooked')}
+                </span>
               </button>
             </div>
           </div>

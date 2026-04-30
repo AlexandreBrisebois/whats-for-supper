@@ -239,7 +239,10 @@ export default function DiscoveryPage() {
                         `You found ${matchCount} matches with your family! Ready to get cooking?`,
                         { count: matchCount }
                       )
-                    : t('discovery.noMoreRecipes', "You've seen everything for now. Why not add some fresh ideas?")}
+                    : t(
+                        'discovery.noMoreRecipes',
+                        "You've seen everything for now. Why not add some fresh ideas?"
+                      )}
                 </p>
 
                 <div className="flex flex-col w-full gap-3">
@@ -249,7 +252,9 @@ export default function DiscoveryPage() {
                     }
                     className="w-full rounded-full bg-ochre px-8 py-3.5 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-all hover:bg-ochre-dark"
                   >
-                    {matchCount > 0 ? t('discovery.goToPlanner', 'Go to Planner') : t('discovery.captureNew', 'Capture a New Recipe')}
+                    {matchCount > 0
+                      ? t('discovery.goToPlanner', 'Go to Planner')
+                      : t('discovery.captureNew', 'Capture a New Recipe')}
                   </button>
 
                   <button

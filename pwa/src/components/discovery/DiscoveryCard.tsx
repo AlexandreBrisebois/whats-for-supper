@@ -200,7 +200,9 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                 className="flex flex-col items-center gap-2 rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
               >
                 <X size={48} />
-                <span className="text-xl font-black tracking-widest">{t('discovery.pass', 'PASS')}</span>
+                <span className="text-xl font-black tracking-widest">
+                  {t('discovery.pass', 'PASS')}
+                </span>
               </motion.div>
             </div>
           )}

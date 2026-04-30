@@ -199,14 +199,14 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
                   </p>
 
                   {/* Dietary High-Five */}
-                    <div className="flex items-center justify-center space-x-3 text-sage bg-sage/5 py-3 px-6 rounded-2xl border border-sage/10 w-fit mx-auto animate-bounce-subtle">
-                      <Sparkles size={18} />
-                      <span className="text-xs font-black uppercase tracking-widest">
-                        {initialRecipe.isVegetarian
-                          ? t('cook.plantPowered', 'Plant-Powered Choice!')
-                          : t('cook.healthyPick', 'Healthy Pick!')}
-                      </span>
-                    </div>
+                  <div className="flex items-center justify-center space-x-3 text-sage bg-sage/5 py-3 px-6 rounded-2xl border border-sage/10 w-fit mx-auto animate-bounce-subtle">
+                    <Sparkles size={18} />
+                    <span className="text-xs font-black uppercase tracking-widest">
+                      {initialRecipe.isVegetarian
+                        ? t('cook.plantPowered', 'Plant-Powered Choice!')
+                        : t('cook.healthyPick', 'Healthy Pick!')}
+                    </span>
+                  </div>
 
                   {/* Ingredients Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">

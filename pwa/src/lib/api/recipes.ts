@@ -38,8 +38,18 @@ export type RecommendationsResponse = {
 
 function mapToRecipe(dto: RecipeDto): Recipe {
   const instructions = dto.recipeInstructions as any;
-  const recipeInstructions = Array.isArray(instructions) ? instructions : undefined;
-
+  let recipeInstructions = undefined;
+  if (Array.isArray(instructions)) {
+    recipeInstructions = instructions;
+  } else if (instructions && typeof instructions.getValue === 'function') {
+    const rawValue = instructions.getValue();
+    if (Array.isArray(rawValue)) {
+      // Kiota UntypedArray returns an array of UntypedNodes
+      recipeInstructions = rawValue.map((v) =>
+        v && typeof v.getValue === 'function' ? v.getValue() : v
+      );
+    }
+  }
   return {
     id: dto.id || '',
     name: dto.name || '',

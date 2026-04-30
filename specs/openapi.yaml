@@ -58,18 +58,8 @@ components:
           items: { type: string }
           nullable: true
         recipeInstructions:
-          oneOf:
-            - type: array
-              items:
-                type: string
-            - type: array
-              items:
-                type: object
-                properties:
-                  name:
-                    type: string
-                  text:
-                    type: string
+          type: array
+          items: {}
           nullable: true
           description: 'Parsed recipe instructions (string array or HowToStep objects)'
         createdAt: { type: string, format: date-time }

@@ -83,9 +83,13 @@ export default function RecipesPage() {
               {t('recipes.planningMode', 'Planning Mode')}
             </p>
             <p className="text-sm font-bold text-charcoal">
-              {tWithVars('recipes.selectMealForDay', `Select a meal for Day ${parseInt(addToDay) + 1}`, {
-                day: parseInt(addToDay) + 1,
-              })}
+              {tWithVars(
+                'recipes.selectMealForDay',
+                `Select a meal for Day ${parseInt(addToDay) + 1}`,
+                {
+                  day: parseInt(addToDay) + 1,
+                }
+              )}
             </p>
           </div>
           <button

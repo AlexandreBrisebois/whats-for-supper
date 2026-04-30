@@ -21,7 +21,12 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.HOME as Route, label: t('navigation.home', 'Home'), icon: Home },
   { href: '/recipes' as Route, label: t('navigation.search', 'Search'), icon: Search },
-  { href: ROUTES.DISCOVERY as Route, label: t('navigation.discover', 'Discover'), icon: Compass, isPrimary: true },
+  {
+    href: ROUTES.DISCOVERY as Route,
+    label: t('navigation.discover', 'Discover'),
+    icon: Compass,
+    isPrimary: true,
+  },
   { href: ROUTES.PLANNER as Route, label: t('navigation.planner', 'Planner'), icon: Calendar },
   { href: ROUTES.PROFILE as Route, label: t('navigation.profile', 'Profile'), icon: UserCircle },
 ];

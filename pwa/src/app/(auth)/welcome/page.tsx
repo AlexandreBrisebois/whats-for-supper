@@ -25,7 +25,12 @@ export default function WelcomePage() {
       if (res.ok) {
         router.replace('/onboarding');
       } else {
-        setError(t('auth.errorIncorrectPassphrase', 'Incorrect passphrase. Ask a family member for the right one.'));
+        setError(
+          t(
+            'auth.errorIncorrectPassphrase',
+            'Incorrect passphrase. Ask a family member for the right one.'
+          )
+        );
       }
     } catch {
       setError(t('auth.errorGeneric', 'Something went wrong. Please try again.'));
@@ -41,7 +46,7 @@ export default function WelcomePage() {
           {t('auth.welcomeTitle', "What's For Supper?")}
         </h1>
         <p className="mt-2 text-sm font-medium text-charcoal/60">
-          {t('auth.welcomeSubtitle', 'Enter your family\'s passphrase to continue')}
+          {t('auth.welcomeSubtitle', "Enter your family's passphrase to continue")}
         </p>
       </div>
 
@@ -56,7 +61,11 @@ export default function WelcomePage() {
           className="w-full px-4 py-3 rounded-2xl border border-charcoal/20 bg-white text-charcoal placeholder:text-charcoal/40 focus:outline-none focus:ring-2 focus:ring-ochre/50"
         />
 
-        {error && <p className="text-sm text-terracotta text-center" data-testid="auth-error">{error}</p>}
+        {error && (
+          <p className="text-sm text-terracotta text-center" data-testid="auth-error">
+            {error}
+          </p>
+        )}
 
         <button
           type="submit"

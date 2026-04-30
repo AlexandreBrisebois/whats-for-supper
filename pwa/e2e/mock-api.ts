@@ -46,6 +46,7 @@ export const builders = {
     isVegetarian: false,
     isHealthyChoice: false,
     ingredients: ['Ingredient 1', 'Ingredient 2'],
+    recipeInstructions: ['Real Step 1: Chop the onions', 'Real Step 2: Saute until golden'] as any,
     createdAt: new Date(),
     ...overrides,
   }),
@@ -184,7 +185,7 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: builders.recipe() }),
+      body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
     });
   });
   await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/hero/, async (route) => {
