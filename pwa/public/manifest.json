@@ -4,11 +4,10 @@
   "description": "Capture meals, plan your week, discover what to cook next.",
   "start_url": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#FDFCF0",
   "theme_color": "#CD5D45",
   "orientation": "portrait",
-  "permissions": ["camera"],
+  "categories": ["lifestyle", "utilities"],
   "icons": [
     {
       "src": "/favicon-32x32.png",
@@ -31,6 +30,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick Find",
+      "short_name": "Find",
+      "description": "Quickly find something to cook",
+      "url": "/discovery",
+      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Capture Meal",
+      "short_name": "Capture",
+      "description": "Capture a new meal idea",
+      "url": "/capture",
+      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192" }]
     }
   ]
 }
