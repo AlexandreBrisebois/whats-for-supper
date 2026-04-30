@@ -37,7 +37,8 @@ def get_mock_endpoints(spec=None):
         
     endpoints = []
     # Pattern to capture everything inside page.route(...)
-    route_pattern = r'page\.route\((?:\/|["\'])(.*?)(?:\/|["\'])\s*,'
+    # Handles whitespace and multi-line calls
+    route_pattern = r'page\.route\(\s*(?:\/|["\'])(.*?)(?:\/|["\'])\s*,'
     
     for root, dirs, files in os.walk(mock_dir):
         for file in files:
@@ -46,7 +47,7 @@ def get_mock_endpoints(spec=None):
                 with open(path, 'r') as f:
                     content = f.read()
                     
-                matches = re.findall(route_pattern, content)
+                matches = re.findall(route_pattern, content, re.DOTALL)
                 for m in matches:
                     # Normalize
                     # 1. Remove optional backend part

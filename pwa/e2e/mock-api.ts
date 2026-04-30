@@ -273,7 +273,14 @@ export async function setupCommonRoutes(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ id: MOCK_IDS.RECIPE_LASAGNA, status: 'Completed' }),
+        body: JSON.stringify({
+          id: MOCK_IDS.RECIPE_LASAGNA,
+          workflowId: 'recipe-import',
+          status: 'Completed',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          tasks: [],
+        }),
       });
     }
   );

@@ -4,6 +4,20 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-04-29] API Reconciliation: Multi-line Detection & Schema Alignment
+**Status**: COMPLETED ✅
+
+- **Issue**: `GET /api/workflows/instances/{instanceId}` was incorrectly reported as missing in `MOCK` column.
+- **Root Cause**: `api_tools.py` used a single-line regex for `page.route` detection, which failed to match a multi-line call in `mock-api.ts`.
+- **Fix 1 (Scanner)**: Updated `api_tools.py` regex to `page\.route\(\s*(?:\/|["\'])(.*?)(?:\/|["\'])\s*,` and enabled `re.DOTALL` to support multi-line and whitespace-heavy route definitions.
+- **Fix 2 (Mock)**: Standardized the `WorkflowInstance` mock in `mock-api.ts` to a single-line pattern.
+- **Fix 3 (Compliance)**: Expanded the `WorkflowInstance` mock data to include required fields (`workflowId`, `createdAt`, `updatedAt`, `tasks`) as per `specs/openapi.yaml`.
+- **Result**: Achieved "Perfect Parity for core endpoints!" across all 38 endpoints.
+- **Files changed**: `scripts/agent/api_tools.py`, `pwa/e2e/mock-api.ts`.
+
+---
+
+
 ### [2026-04-29] E2E Fix: Service Worker Blocking + Grocery State Persistence
 **Status**: COMPLETED ✅
 
@@ -53,6 +67,13 @@ This file contains the historical session logs and technical archives for the "W
 - **Mock Date Alignment**: Standardized on a fixed "Test Today" (April 27, 2026) to match OpenAPI static examples, resolving the data mismatch between SSR (Real API) and CSR (Mock Intercepts).
 - **Greening**: Achieved a clean exit code 0 by skipping the infrastructure-dependent "Full Cycle" test while verifying all 11 core sub-flows in isolation.
 - **ADR Created**: ADR 029 (Deterministic E2E Testing Strategy).
+
+---
+
+### [2026-04-29] Roadmap — Pantry Pasta button (Quick Fixes card)
+**Status**: PLANNED 📅
+- **Objective**: Implement a one-click "Pantry Pasta" recipe injection for the Quick Fixes card.
+- **Scope**: Create a built-in recipe (pasta, sauce, cheese, optional garlic bread) that populates a cook session immediately, bypassing external recipe lookup.
 
 
 ---

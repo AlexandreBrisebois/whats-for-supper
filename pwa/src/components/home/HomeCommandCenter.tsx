@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SmartPivotCard, QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
@@ -10,8 +10,9 @@ import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
-import { assignRecipeToDay } from '@/lib/api/planner';
+import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
 import { getTodayString } from '@/lib/imageUtils';
+import { SolarLoader } from '../ui/SolarLoader';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
@@ -24,7 +25,57 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   const [isSkipped, setIsSkipped] = useState(false);
   const [isCooked, setIsCooked] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
+  const [currentRecipe, setCurrentRecipe] = useState(todaysRecipe);
+  const [isLoading, setIsLoading] = useState(!todaysRecipe);
   const router = useRouter();
+
+  useEffect(() => {
+    let mounted = true;
+
+    // If we don't have a recipe from SSR, or we just want to ensure freshness in E2E
+    // We fetch on the client. This also allows Playwright to intercept the request.
+    if (!todaysRecipe && !sessionDone && !isCooked) {
+      const syncRecipe = async () => {
+        setIsLoading(true);
+        try {
+          const schedule = await getSchedule(0);
+          if (!mounted) return;
+
+          const todayStr = getTodayString();
+          const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
+
+          // Only update if it's not already cooked or skipped
+          if (todaysEntry?.status === 2) {
+            setIsCooked(true);
+            setSessionDone(true);
+          } else if (todaysEntry?.status === 3) {
+            setIsSkipped(true);
+            setSessionDone(true);
+          } else if (todaysEntry?.recipe) {
+            setCurrentRecipe(todaysEntry.recipe);
+          }
+        } catch (error) {
+          console.error("Failed to sync today's recipe:", error);
+        } finally {
+          if (mounted) setIsLoading(false);
+        }
+      };
+      syncRecipe();
+    } else {
+      // Defer state update to avoid cascading render error
+      const timer = setTimeout(() => {
+        if (mounted) setIsLoading(false);
+      }, 0);
+      return () => {
+        mounted = false;
+        clearTimeout(timer);
+      };
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [todaysRecipe, sessionDone, isCooked]);
 
   const handleCookMode = () => {
     setShowCooksMode(true);
@@ -110,39 +161,47 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
 
   return (
     <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto w-full px-6 sm:px-0">
-      {(!todaysRecipe || isSkipped || sessionDone) && !isCooked && (
-        <SmartPivotCard
-          onSelect={(choice) => {
-            if (choice === 'quick-find') setShowQuickFind(true);
-          }}
-        />
-      )}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <SolarLoader label="Aligning your day..." />
+        </div>
+      ) : (
+        <>
+          {(!currentRecipe || isSkipped || sessionDone) && !isCooked && (
+            <SmartPivotCard
+              onSelect={(choice) => {
+                if (choice === 'quick-find') setShowQuickFind(true);
+              }}
+            />
+          )}
 
-      {isCooked && <CookedSuccessCard onDismiss={() => setIsCooked(false)} />}
+          {isCooked && <CookedSuccessCard onDismiss={() => setIsCooked(false)} />}
 
-      {todaysRecipe && !isSkipped && !isCooked && !sessionDone && (
-        <TonightMenuCard
-          recipeId={todaysRecipe.id!}
-          recipeName={todaysRecipe.name!}
-          description={todaysRecipe.description || 'A delicious meal planned for tonight.'}
-          imageUrl={todaysRecipe.image || undefined}
-          ingredients={todaysRecipe.ingredients || []}
-          prepTime="30-45 mins"
-          onCookMode={handleCookMode}
-          onSkip={handleSkipTrigger}
-          onCooked={handleCookedMark}
-        />
+          {currentRecipe && !isSkipped && !isCooked && !sessionDone && (
+            <TonightMenuCard
+              recipeId={currentRecipe.id!}
+              recipeName={currentRecipe.name!}
+              description={currentRecipe.description || 'A delicious meal planned for tonight.'}
+              imageUrl={currentRecipe.image || undefined}
+              ingredients={currentRecipe.ingredients || []}
+              prepTime="30-45 mins"
+              onCookMode={handleCookMode}
+              onSkip={handleSkipTrigger}
+              onCooked={handleCookedMark}
+            />
+          )}
+        </>
       )}
 
       <QuickCaptureTrigger />
 
       <AnimatePresence>
-        {showCooksMode && todaysRecipe && (
+        {showCooksMode && currentRecipe && (
           <CooksMode
             recipe={{
-              id: todaysRecipe.id,
-              name: todaysRecipe.name,
-              image: todaysRecipe.image,
+              id: currentRecipe.id,
+              name: currentRecipe.name,
+              image: currentRecipe.image,
             }}
             onClose={() => setShowCooksMode(false)}
           />

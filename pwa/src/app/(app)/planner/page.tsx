@@ -287,7 +287,7 @@ export default function PlannerPage() {
       ignore = true;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [currentWeekOffset, successParam]); // isLocked intentionally excluded — use ref to avoid re-triggering loadData on lock
+  }, [currentWeekOffset, successParam, setGroceryState, setIsLocked, setVotingOpen]); // isLocked intentionally excluded — use ref to avoid re-triggering loadData on lock
 
   useEffect(() => {
     const success = searchParams.get('success');
