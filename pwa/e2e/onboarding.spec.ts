@@ -7,7 +7,7 @@ test.describe('Onboarding', () => {
   test.beforeEach(async ({ page }) => {
     await setupCommonRoutes(page);
     const members = [builders.familyMember({ name: 'Alex' })];
-    
+
     // Override the family mock to handle the stateful members list
     await page.route(/\/api\/family/, async (route) => {
       if (route.request().method() === 'GET') {
@@ -86,10 +86,7 @@ test.describe('Onboarding', () => {
     await nameInput.fill(newName);
 
     const submitButton = page.getByTestId('add-member-submit');
-    await Promise.all([
-      page.waitForURL(/\/home/),
-      submitButton.click(),
-    ]);
+    await Promise.all([page.waitForURL(/\/home/), submitButton.click()]);
 
     await expect(page).toHaveURL(/\/home/);
   });
