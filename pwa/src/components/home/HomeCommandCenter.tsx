@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { SmartPivotCard, QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
+import { QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
+import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
 import { QuickFindModal } from '../planner/QuickFindModal';
 import { CooksMode } from '../planner/CooksMode';
@@ -13,6 +14,7 @@ import { DateOnly } from '@microsoft/kiota-abstractions';
 import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
 import { getTodayString } from '@/lib/imageUtils';
 import { SolarLoader } from '../ui/SolarLoader';
+import { useFamilyStore } from '@/store/familyStore';
 import { t } from '@/locales';
 
 interface HomeCommandCenterProps {
@@ -29,9 +31,21 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   const [currentRecipe, setCurrentRecipe] = useState(todaysRecipe);
   const [isLoading, setIsLoading] = useState(!todaysRecipe);
   const router = useRouter();
+  const { loadSetting, saveSetting, familySettings } = useFamilyStore();
+
+  // Extract GOTO fields from the stored setting value
+  const gotoValue = familySettings['family_goto'] as
+    | { description?: string; recipeId?: string }
+    | null
+    | undefined;
+  const gotoDescription = gotoValue?.description ?? null;
+  const gotoRecipeId = gotoValue?.recipeId ?? null;
 
   useEffect(() => {
     let mounted = true;
+
+    // Load family GOTO setting (runs regardless of recipe state)
+    loadSetting('family_goto');
 
     // If we don't have a recipe from SSR, or we just want to ensure freshness in E2E
     // We fetch on the client. This also allows Playwright to intercept the request.
@@ -76,7 +90,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
     return () => {
       mounted = false;
     };
-  }, [todaysRecipe, sessionDone, isCooked]);
+  }, [todaysRecipe, sessionDone, isCooked, loadSetting]);
 
   const handleCookMode = () => {
     setShowCooksMode(true);
@@ -169,20 +183,25 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
       ) : (
         <>
           {(!currentRecipe || isSkipped || sessionDone) && !isCooked && (
-            <SmartPivotCard
-              onSelect={(choice) => {
-                switch (choice) {
-                  case 'quick-find':
-                    setShowQuickFind(true);
-                    break;
-                  case 'pantry':
-                  case '15min':
-                  default:
-                    // Roadmap items - no-op for now
-                    console.log(`Choice ${choice} is on the roadmap.`);
-                    break;
+            <TonightPivotCard
+              gotoDescription={gotoDescription}
+              gotoRecipeId={gotoRecipeId}
+              onConfirmGoto={() => {
+                if (gotoRecipeId) {
+                  const dayIndex = (new Date().getDay() + 6) % 7;
+                  assignRecipeToDay(0, dayIndex, {
+                    id: gotoRecipeId,
+                    name: gotoDescription ?? '',
+                    image: '',
+                  })
+                    .then(() => router.refresh())
+                    .catch((err) => console.error('Failed to confirm GOTO:', err));
+                } else {
+                  setShowQuickFind(true);
                 }
               }}
+              onDiscover={() => setShowQuickFind(true)}
+              onOrderIn={() => handleRecoveryAction('order_in')}
             />
           )}
 

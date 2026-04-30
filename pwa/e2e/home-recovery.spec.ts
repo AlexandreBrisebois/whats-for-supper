@@ -82,6 +82,15 @@ test.describe('Home Command Center — Recovery Flow', () => {
       });
     });
 
+    // Settings mock — default: no GOTO configured (404)
+    await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
+
     await page.goto('/home');
   });
 
@@ -115,7 +124,7 @@ test.describe('Home Command Center — Recovery Flow', () => {
     await page.getByTestId('recovery-action-tomorrow').click();
     await moveResponse;
 
-    await expect(page.getByTestId('smart-pivot-card')).toBeVisible();
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
   });
 
   test('Skip tonight -> Next Week moves recipe', async ({ page }) => {
@@ -137,7 +146,7 @@ test.describe('Home Command Center — Recovery Flow', () => {
     await page.getByTestId('recovery-action-next-week').click();
     await moveResponse;
 
-    await expect(page.getByTestId('smart-pivot-card')).toBeVisible();
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
   });
 
   test('Mark as cooked shows success card', async ({ page }) => {
@@ -155,6 +164,6 @@ test.describe('Home Command Center — Recovery Flow', () => {
 
     await page.getByTestId('cooked-success-dismiss').click();
     await expect(page.getByTestId('cooked-success-card')).not.toBeVisible();
-    await expect(page.getByTestId('smart-pivot-card')).toBeVisible();
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
   });
 });

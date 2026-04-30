@@ -8,6 +8,29 @@ import { cn } from '@/lib/utils';
 import { getImageUrl } from '@/lib/imageUtils';
 import { t } from '@/locales';
 
+// ---------------------------------------------------------------------------
+// TonightCardBase — shared Solar Earth card shell used by TonightMenuCard and
+// TonightPivotCard. Does NOT include perspective/preserve-3d — those belong on
+// the flip wrapper that TonightMenuCard controls.
+// ---------------------------------------------------------------------------
+interface TonightCardBaseProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function TonightCardBase({ children, className, ...rest }: TonightCardBaseProps) {
+  return (
+    <div
+      className={cn('rounded-[3rem] bg-white shadow-2xl border-2 border-white/20', className)}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
 interface TonightMenuCardProps {
   recipeId: string;
   recipeName: string;
@@ -45,9 +68,9 @@ export function TonightMenuCard({
         onClick={() => setIsFlipped(!isFlipped)}
       >
         {/* Front of Card */}
-        <div
+        <TonightCardBase
           className={cn(
-            'absolute inset-0 rounded-[3rem] bg-white flex flex-col p-6 backface-hidden shadow-2xl border-2 border-white/20',
+            'absolute inset-0 flex flex-col p-6 backface-hidden',
             isFlipped ? 'pointer-events-none' : ''
           )}
         >
@@ -87,7 +110,7 @@ export function TonightMenuCard({
               {t('home.tapForIngredients', 'Tap for ingredients')} <ChevronRight size={12} />
             </p>
           </div>
-        </div>
+        </TonightCardBase>
 
         {/* Back of Card (Glassmorphism) */}
         <div

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Languages } from 'lucide-react';
 import { FamilyManagement } from '@/components/profile/FamilyManagement';
+import { FamilyGOTOSettings } from '@/components/profile/FamilyGOTOSettings';
 import { useLocale } from '@/components/common/LocaleProvider';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
@@ -35,6 +36,9 @@ export default function SettingsPage() {
       <div className="flex flex-col gap-8">
         {/* Family Management */}
         <FamilyManagement />
+
+        {/* Family GOTO */}
+        <FamilyGOTOSettings />
 
         {/* Language Selection */}
         <div className="w-full rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">

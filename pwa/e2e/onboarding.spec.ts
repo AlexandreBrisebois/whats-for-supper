@@ -69,7 +69,7 @@ test.describe('Onboarding', () => {
 
     await expect(page).toHaveURL(/\/home/);
     await expect(
-      page.getByTestId('tonight-menu-card').or(page.getByTestId('smart-pivot-card'))
+      page.getByTestId('tonight-menu-card').or(page.getByTestId('tonight-pivot-card'))
     ).toBeVisible({ timeout: 10_000 });
   });
 

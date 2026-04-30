@@ -69,6 +69,15 @@ test.describe('Capture Flow', () => {
         });
       }
     });
+
+    // Settings mock — default: no GOTO configured (404)
+    await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
   });
 
   test('authenticated user can navigate to the capture page from home', async ({ page }) => {
@@ -118,7 +127,7 @@ test.describe('Capture Flow', () => {
   test('after successful capture, user can return to home', async ({ page }) => {
     await page.goto('/home');
     await expect(
-      page.getByTestId('tonight-menu-card').or(page.getByTestId('smart-pivot-card'))
+      page.getByTestId('tonight-menu-card').or(page.getByTestId('tonight-pivot-card'))
     ).toBeVisible();
   });
 

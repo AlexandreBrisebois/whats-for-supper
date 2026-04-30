@@ -12,6 +12,7 @@ import {
   setFamilyMemberIdCookie,
   removeFamilyMemberIdCookie,
 } from '@/lib/identity/cookie';
+import { apiClient } from '@/lib/api/api-client';
 import type { FamilyMember } from '@/types/domain';
 
 interface FamilyState {
@@ -21,6 +22,7 @@ interface FamilyState {
   error: string | null;
   _hasHydrated: boolean;
   hasLoaded: boolean;
+  familySettings: Record<string, unknown>;
 
   setFamilyMembers: (members: FamilyMember[]) => void;
   selectFamilyMember: (id: string | null) => void;
@@ -28,6 +30,8 @@ interface FamilyState {
   updateMember: (id: string, name: string) => Promise<void>;
   removeMember: (id: string) => Promise<void>;
   loadFamilyMembers: () => Promise<void>;
+  loadSetting: (key: string) => Promise<unknown | null>;
+  saveSetting: (key: string, value: unknown) => Promise<void>;
 }
 
 export const useFamilyStore = create<FamilyState>((set, get) => ({
@@ -39,6 +43,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   error: null,
   _hasHydrated: typeof window !== 'undefined',
   hasLoaded: false,
+  familySettings: {},
 
   setFamilyMembers: (members) => set({ familyMembers: members }),
 
@@ -114,5 +119,39 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
       const message = err instanceof Error ? err.message : 'Failed to load family members';
       set({ isLoading: false, error: message, hasLoaded: true });
     }
+  },
+
+  loadSetting: async (key: string) => {
+    try {
+      const response = await apiClient.api.settings.byKey(key).get();
+      // SettingsDto_value is an AdditionalDataHolder — raw fields live in additionalData
+      const value = response?.data?.value?.additionalData ?? null;
+      set((state) => ({
+        familySettings: { ...state.familySettings, [key]: value },
+      }));
+      return value;
+    } catch (err: unknown) {
+      // 404 means not configured yet — store null and return null
+      const status =
+        err != null && typeof err === 'object' && 'responseStatusCode' in err
+          ? (err as { responseStatusCode: number }).responseStatusCode
+          : undefined;
+      if (status === 404) {
+        set((state) => ({
+          familySettings: { ...state.familySettings, [key]: null },
+        }));
+        return null;
+      }
+      console.error(`Failed to load setting "${key}":`, err);
+      return null;
+    }
+  },
+
+  saveSetting: async (key: string, value: unknown) => {
+    const response = await apiClient.api.settings.byKey(key).post({ key, value: value as any });
+    const saved = response?.data?.value?.additionalData ?? value;
+    set((state) => ({
+      familySettings: { ...state.familySettings, [key]: saved },
+    }));
   },
 }));
