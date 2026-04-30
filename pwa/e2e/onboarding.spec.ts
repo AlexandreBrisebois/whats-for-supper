@@ -15,7 +15,7 @@ test.describe('Onboarding', () => {
       } else if (route.request().method() === 'POST') {
         const body = route.request().postDataJSON() as { name?: string };
         await route.fulfill({
-          status: 201,
+          status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             data: builders.familyMember({

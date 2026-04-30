@@ -19,9 +19,12 @@ export async function getFamilyMembers(): Promise<FamilyMember[]> {
 
 export async function createFamilyMember(payload: FamilyPostRequestBody): Promise<FamilyMember> {
   const result = await apiClient.api.family.post(payload);
+  if (!result?.data?.id) {
+    throw new Error('Failed to create family member: Invalid response from server');
+  }
   return {
-    id: result?.data?.id || '',
-    name: result?.data?.name || '',
+    id: result.data.id,
+    name: result.data.name || '',
   };
 }
 
@@ -30,9 +33,12 @@ export async function updateFamilyMember(
   payload: { name: string }
 ): Promise<FamilyMember> {
   const result = await apiClient.api.family.byId(id).put(payload);
+  if (!result?.data?.id) {
+    throw new Error('Failed to update family member: Invalid response from server');
+  }
   return {
-    id: result?.data?.id || '',
-    name: result?.data?.name || '',
+    id: result.data.id,
+    name: result.data.name || '',
   };
 }
 
