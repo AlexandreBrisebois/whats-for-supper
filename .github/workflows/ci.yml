@@ -92,7 +92,7 @@ jobs:
     env:
       CI: true
       BASE_URL: http://127.0.0.1:3000
-      HEARTH_SECRET: ${{ secrets.HEARTH_SECRET }}
+      HEARTH_SECRET: ${{ secrets.HEARTH_SECRET || 'our family loves cooking' }}
 
     steps:
       - uses: actions/checkout@v6

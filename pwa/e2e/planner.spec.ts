@@ -1,10 +1,11 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, currentMonday, toDateStr } from './mock-api';
+import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
 
 // Compute current week's Monday at noon UTC — avoids timezone rollback
 
 test.describe('Supper Planner', () => {
   test.beforeEach(async ({ page }) => {
+    await setupCommonRoutes(page);
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
     await page
