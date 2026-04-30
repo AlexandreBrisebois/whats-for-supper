@@ -644,7 +644,32 @@ export default function PlannerPage() {
                 ))}
               </Reorder.Group>
 
-              {/* Finalize Button removed from here (now floating) */}
+              {/* Relocated from fixed bottom to prevent overlap while remaining thumb-friendly at end of list */}
+              {!isFinalized && plannedCount >= 4 && (
+                <div className="mt-8 mb-4">
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    size="lg"
+                    onClick={handleFinalize}
+                    data-testid="finalize-button"
+                    className="rounded-[2rem] h-16 text-lg font-black shadow-xl shadow-terracotta/20 bg-terracotta text-white border-none"
+                  >
+                    {t('planner.planNextWeek', 'Plan next week')}
+                  </Button>
+                </div>
+              )}
+
+              {isFinalized && (
+                <div className="mt-8 mb-4">
+                  <div
+                    data-testid="finalized-status"
+                    className="w-full h-16 rounded-[2rem] bg-sage text-white font-black text-lg flex items-center justify-center shadow-xl shadow-sage/20 border-2 border-white/20"
+                  >
+                    {t('planner.menusIn', "Menu's In!")}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -670,32 +695,6 @@ export default function PlannerPage() {
         </motion.div>
       )}
 
-      {/* Floating Finalize Action */}
-      {!isFinalized && plannedCount >= 4 && activeTab === 'planner' && (
-        <div className="fixed bottom-28 left-6 right-6 z-40">
-          <Button
-            variant="primary"
-            fullWidth
-            size="lg"
-            onClick={handleFinalize}
-            data-testid="finalize-button"
-            className="rounded-[2rem] h-16 text-lg font-black shadow-xl shadow-terracotta/20 bg-terracotta text-white border-none"
-          >
-            {t('planner.planNextWeek', 'Plan next week')}
-          </Button>
-        </div>
-      )}
-
-      {isFinalized && activeTab === 'planner' && (
-        <div className="fixed bottom-28 left-6 right-6 z-40">
-          <div
-            data-testid="finalized-status"
-            className="w-full h-16 rounded-[2rem] bg-sage text-white font-black text-lg flex items-center justify-center shadow-xl shadow-sage/20 border-2 border-white/20"
-          >
-            {t('planner.menusIn', "Menu's In!")}
-          </div>
-        </div>
-      )}
 
       <PlanningPivotSheet
         isOpen={showPivot !== null}
