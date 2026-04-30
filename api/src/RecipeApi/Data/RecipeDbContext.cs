@@ -16,6 +16,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<DiscoveryRecipe> DiscoveryRecipes => Set<DiscoveryRecipe>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
     public DbSet<WeeklyPlan> WeeklyPlans => Set<WeeklyPlan>();
+    public DbSet<FamilySetting> FamilySettings => Set<FamilySetting>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -178,6 +179,16 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.Property(e => e.Status).HasConversion<short>();
             entity.HasIndex(e => e.WeekStartDate).IsUnique();
             entity.ToTable("weekly_plans");
+        });
+
+        modelBuilder.Entity<FamilySetting>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Value).HasColumnType("jsonb");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.Key).IsUnique().HasDatabaseName("idx_family_settings_key");
+            entity.ToTable("family_settings");
         });
     }
 

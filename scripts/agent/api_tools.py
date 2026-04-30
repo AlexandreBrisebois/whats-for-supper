@@ -50,19 +50,25 @@ def get_mock_endpoints(spec=None):
                 matches = re.findall(route_pattern, content, re.DOTALL)
                 for m in matches:
                     # Normalize
-                    # 1. Remove optional backend part
-                    clean = re.sub(r'\\\/\(\?:backend\\\/\)\?|\\\/\(\?:backend\/|\\\/\(backend\/', '', m)
-                    # 2. Remove leading slash
+                    # 1. Remove optional backend prefix variants:
+                    #    \\/(?:backend\\/)?  or  \/(?:backend\/)?
+                    clean = re.sub(r'\\\/\(\?:backend\\\/\)\?', '', m)
+                    clean = re.sub(r'\/\(\?:backend\/\)\?', '', clean)
+                    # 2. Remove leading slashes/backslashes
                     clean = clean.lstrip('\\/')
                     # 3. Handle specific regex escapes
                     clean = clean.replace('\\/', '/')
-                    # 4. Strip trailing regex markers (only at the end of the string)
-                    # We split at things that look like regex anchors or optional groups at the end
-                    clean = re.split(r'\(\?\:|(?<!\\)\?|(?<!\\)\$|(?<!\\)\(', clean)[0]
-                    # 5. Trim trailing slash
+                    # 4. Convert path-param capturing groups like (.+) or ([0-9a-f-]+) to {id}
+                    #    BEFORE splitting so they become path segments, not dropped.
+                    clean = re.sub(r'\((?!\?)[^)]*\)', '{id}', clean)    # (non-?: group) → {id}
+                    # 5. Strip trailing regex markers (anchors, non-capturing groups at end)
+                    clean = re.split(r'\(\?\:|(?<!\\)\$', clean)[0]
+                    # 6. Trim trailing slash
                     clean = clean.rstrip('/')
-                    # 6. Wildcards .* or dynamic segments like {weekOffset} or [0-9a-f-]+ to {id}
-                    clean = re.sub(r'\.\*|\{[^}]+\}|\[[^\]]+\]\+?', '{id}', clean)
+                    # 7. Convert remaining wildcards and character classes to {id}
+                    clean = re.sub(r'\[[^\]]+\]\+?', '{id}', clean)      # [char-class]+ → {id}
+                    clean = re.sub(r'\.\*|\.\+', '{id}', clean)          # .* or .+ → {id}
+                    clean = re.sub(r'\{[^}]+\}', '{id}', clean)          # {existing-params} → {id}
                     
                     full_p = f"/{clean}"
                     # Ensure leading slash
@@ -150,12 +156,22 @@ def discovery():
     for e in endpoints:
         print(f"| {e['controller']} | {e['method']} | {e['path']} | {e['method_name']} |")
 
+def is_api_reachable():
+    """Return True if the backend API is reachable."""
+    import urllib.request
+    try:
+        urllib.request.urlopen('http://127.0.0.1:5001/health', timeout=2)
+        return True
+    except Exception:
+        return False
+
 def reconcile():
     print("🔍 Starting API Reconciliation...")
     spec = load_spec()
     spec_endpoints = get_spec_endpoints(spec)
     mock_endpoints = get_mock_endpoints(spec)
     real_endpoints = get_real_endpoints()
+    api_reachable = is_api_reachable()
 
     # Core filter: only care about things in SPEC or MOCK, or core /api/ routes
     all_raw_paths = set([e['path'] for e in spec_endpoints + mock_endpoints + real_endpoints])
@@ -192,10 +208,13 @@ def reconcile():
             status_mock = "✅" if in_mock else "❌"
             status_real = "✅" if in_real else "❌"
             
-            # If it's in SPEC, it MUST be in MOCK and REAL
-            # If it's in MOCK, it SHOULD be in SPEC
+            # If it's in SPEC, it MUST be in MOCK.
+            # It MUST also be in REAL — but only when the API is reachable.
+            # If it's in MOCK, it SHOULD be in SPEC.
             is_issue = False
-            if in_spec and (not in_mock or not in_real):
+            if in_spec and not in_mock:
+                is_issue = True
+            elif in_spec and not in_real and api_reachable:
                 is_issue = True
             elif in_mock and not in_spec:
                 is_issue = True

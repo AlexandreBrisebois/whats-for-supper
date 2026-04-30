@@ -313,4 +313,35 @@ export async function setupCommonRoutes(page: Page) {
       body: JSON.stringify({ status: 'Healthy' }),
     });
   });
+
+  // Settings — per-test in-memory store (reset each time setupCommonRoutes is called in beforeEach)
+  const settingsStore: Record<string, unknown> = {
+    family_goto: null, // default: no GOTO configured
+  };
+  await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+    const key = new URL(route.request().url()).pathname.split('/').pop()!;
+    if (route.request().method() === 'GET') {
+      if (settingsStore[key] == null) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Not found' }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
+        });
+      }
+    } else {
+      const body = route.request().postDataJSON();
+      settingsStore[key] = body.value;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { key, value: body.value } }),
+      });
+    }
+  });
 }

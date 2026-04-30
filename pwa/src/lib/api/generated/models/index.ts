@@ -270,6 +270,28 @@ export function createScheduleRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SettingsDto_value}
+ */
+// @ts-ignore
+export function createSettingsDto_valueFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSettingsDto_value;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SettingsDto}
+ */
+// @ts-ignore
+export function createSettingsDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSettingsDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {SmartDefaultsDto_openSlots}
  */
 // @ts-ignore
@@ -917,6 +939,37 @@ export function deserializeIntoScheduleRecipeDto(
       scheduleRecipeDto.voteCount = n.getNumberValue();
     },
   };
+}
+/**
+ * The deserialization information for the current model
+ * @param SettingsDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSettingsDto(
+  settingsDto: Partial<SettingsDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    key: (n) => {
+      settingsDto.key = n.getStringValue();
+    },
+    value: (n) => {
+      settingsDto.value = n.getObjectValue<SettingsDto_value>(
+        createSettingsDto_valueFromDiscriminatorValue
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param SettingsDto_value The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSettingsDto_value(
+  settingsDto_value: Partial<SettingsDto_value> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
 }
 /**
  * The deserialization information for the current model
@@ -2030,6 +2083,46 @@ export function serializeScheduleRecipeDto(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SettingsDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSettingsDto(
+  writer: SerializationWriter,
+  settingsDto: Partial<SettingsDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!settingsDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('key', settingsDto.key);
+  writer.writeObjectValue<SettingsDto_value>(
+    'value',
+    settingsDto.value,
+    serializeSettingsDto_value
+  );
+  writer.writeAdditionalData(settingsDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SettingsDto_value The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSettingsDto_value(
+  writer: SerializationWriter,
+  settingsDto_value: Partial<SettingsDto_value> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!settingsDto_value || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(settingsDto_value.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param SmartDefaultsDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -2322,6 +2415,17 @@ export function serializeWorkflowTriggerResponseDto(
   writer.writeGuidValue('instanceId', workflowTriggerResponseDto.instanceId);
   writer.writeAdditionalData(workflowTriggerResponseDto.additionalData);
 }
+export interface SettingsDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The key property
+   */
+  key?: string | null;
+  /**
+   * The value property
+   */
+  value?: SettingsDto_value | null;
+}
+export interface SettingsDto_value extends AdditionalDataHolder, Parsable {}
 export interface SmartDefaultsDto extends AdditionalDataHolder, Parsable {
   /**
    * The consensusRecipesCount property

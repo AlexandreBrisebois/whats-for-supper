@@ -77,6 +77,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipeService>();
         builder.Services.AddScoped<RecipeImportService>();
         builder.Services.AddScoped<RecipeImportBulkService>();
+        builder.Services.AddScoped<SettingsService>();
 
         // Mock IWorkflowOrchestrator — returns a new WorkflowInstance per TriggerAsync call
         var mockOrchestrator = new Mock<IWorkflowOrchestrator>();

@@ -85,6 +85,13 @@ CREATE TABLE workflow_tasks (
     updated_at timestamptz DEFAULT now() NOT NULL
 );
 
+CREATE TABLE family_settings (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    key         text UNIQUE NOT NULL,
+    value       jsonb NOT NULL,
+    updated_at  timestamptz DEFAULT now() NOT NULL
+);
+
 CREATE INDEX idx_calendar_events_recipe_id ON calendar_events (recipe_id);
 CREATE INDEX idx_workflow_tasks_instance_id ON workflow_tasks (instance_id);
 CREATE INDEX idx_calendar_events_date ON calendar_events (date);

@@ -217,6 +217,14 @@ components:
       properties:
         status: { type: integer, description: '1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
 
+    # --- Settings ---
+    SettingsDto:
+      type: object
+      required: [key, value]
+      properties:
+        key:   { type: string }
+        value: { type: object, additionalProperties: true }
+
     # --- Health ---
     HealthCheckResponse:
       type: object
@@ -1194,3 +1202,49 @@ paths:
                   message: 'Task reset successfully.'
         '404':
           description: Task not found
+
+  /api/settings/{key}:
+    parameters:
+      - name: key
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Get a setting by key
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/SettingsDto' }
+              example:
+                data:
+                  key: family_goto
+                  value: { description: 'Our Family Spaghetti', recipeId: '660e8400-e29b-41d4-a716-446655440010' }
+        '404':
+          description: Setting not found
+    post:
+      summary: Upsert a setting by key
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettingsDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/SettingsDto' }
+              example:
+                data:
+                  key: family_goto
+                  value: { description: 'Our Family Spaghetti', recipeId: '660e8400-e29b-41d4-a716-446655440010' }

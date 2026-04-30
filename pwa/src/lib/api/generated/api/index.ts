@@ -32,6 +32,11 @@ import {
 } from './schedule/index';
 // @ts-ignore
 import {
+  SettingsRequestBuilderNavigationMetadata,
+  type SettingsRequestBuilder,
+} from './settings/index';
+// @ts-ignore
+import {
   type WorkflowsRequestBuilder,
   WorkflowsRequestBuilderNavigationMetadata,
 } from './workflows/index';
@@ -67,6 +72,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
    */
   get schedule(): ScheduleRequestBuilder;
   /**
+   * The settings property
+   */
+  get settings(): SettingsRequestBuilder;
+  /**
    * The workflows property
    */
   get workflows(): WorkflowsRequestBuilder;
@@ -100,6 +109,9 @@ export const ApiRequestBuilderNavigationMetadata: Record<
   schedule: {
     requestsMetadata: ScheduleRequestBuilderRequestsMetadata,
     navigationMetadata: ScheduleRequestBuilderNavigationMetadata,
+  },
+  settings: {
+    navigationMetadata: SettingsRequestBuilderNavigationMetadata,
   },
   workflows: {
     navigationMetadata: WorkflowsRequestBuilderNavigationMetadata,
