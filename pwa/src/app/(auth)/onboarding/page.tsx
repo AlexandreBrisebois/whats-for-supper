@@ -7,6 +7,7 @@ import { FamilySelector } from '@/components/identity/FamilySelector';
 import { useFamily } from '@/hooks/useFamily';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { ROUTES } from '@/lib/constants/routes';
+import { t } from '@/locales';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -28,19 +29,19 @@ export default function OnboardingPage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6 py-12">
       <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <h1 className="text-4xl font-bold text-indigo tracking-tight">
-          {isSwitching ? 'Switch Member' : 'Who Are You?'}
+        <h1 className="text-4xl font-bold text-indigo tracking-tight" data-testid="onboarding-title">
+          {isSwitching ? t('auth.switchMember', 'Switch Member') : t('auth.onboardingTitle', 'Who Are You?')}
         </h1>
         <p className="mt-2 text-sm font-medium text-charcoal-300">
           {isSwitching
-            ? 'Select a different name to change perspective'
-            : 'Select your name or add a new family member'}
+            ? t('auth.switchMemberSubtitle', 'Select a different name to change perspective')
+            : t('auth.onboardingSubtitle', 'Select your name or add a new family member')}
         </p>
       </div>
 
       {/* Status messages */}
       {isLoading && (
-        <p className="text-center text-sm text-charcoal-400">Loading family members…</p>
+        <p className="text-center text-sm text-charcoal-400">{t('profile.loading', 'Loading family members…')}</p>
       )}
       {error && (
         <p role="alert" className="text-center text-sm text-pink">

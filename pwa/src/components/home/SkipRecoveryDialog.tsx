@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Utensils, Pizza, RefreshCw, Calendar, ArrowRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { t } from '@/locales';
 
 interface SkipRecoveryDialogProps {
   isOpen: boolean;
@@ -35,8 +36,11 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
         className="relative w-full max-w-md bg-white rounded-[3rem] overflow-hidden shadow-2xl p-8"
       >
         <div className="flex justify-between items-center mb-8">
-          <h2 className="font-heading text-[10px] font-black uppercase tracking-[0.3em] text-terracotta">
-            Recovery Flow
+          <h2
+            className="font-heading text-[10px] font-black uppercase tracking-[0.3em] text-terracotta"
+            data-testid="recovery-dialog-title"
+          >
+            {t('home.recoveryFlow', 'Recovery Flow')}
           </h2>
           <button
             onClick={onClose}
@@ -57,10 +61,10 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
             >
               <div className="flex flex-col gap-2">
                 <h3 className="text-3xl font-heading font-black text-charcoal leading-none tracking-tighter">
-                  What&apos;s the backup plan?
+                  {t('home.backupPlanTitle', "What's the backup plan?")}
                 </h3>
                 <p className="text-sm text-charcoal/40 font-medium">
-                  Plans changed. We get it. What are we eating instead?
+                  {t('home.backupPlanSubtitle', 'Plans changed. We get it. What are we eating instead?')}
                 </p>
               </div>
 
@@ -70,6 +74,7 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                     onAction('order_in');
                     setStep(2);
                   }}
+                  data-testid="recovery-action-order-in"
                   className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
                 >
                   <div className="h-14 w-14 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -77,16 +82,17 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                   </div>
                   <div className="flex flex-col">
                     <span className="font-heading text-xl font-black text-charcoal tracking-tight">
-                      Ordering In
+                      {t('home.orderingIn', 'Ordering In')}
                     </span>
                     <span className="text-[10px] font-black uppercase tracking-widest text-charcoal/30">
-                      Takeout or Delivery
+                      {t('home.takeoutOrDelivery', 'Takeout or Delivery')}
                     </span>
                   </div>
                 </button>
 
                 <button
                   onClick={() => onAction('pick_else')}
+                  data-testid="recovery-action-pick-else"
                   className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-ochre/30 hover:bg-ochre/5 transition-all text-left group"
                 >
                   <div className="h-14 w-14 rounded-2xl bg-ochre/10 text-ochre flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -94,10 +100,10 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                   </div>
                   <div className="flex flex-col">
                     <span className="font-heading text-xl font-black text-charcoal tracking-tight">
-                      Pick Something Else
+                      {t('home.pickSomethingElse', 'Pick Something Else')}
                     </span>
                     <span className="text-[10px] font-black uppercase tracking-widest text-charcoal/30">
-                      Find a quick recipe
+                      {t('home.findQuickRecipe', 'Find a quick recipe')}
                     </span>
                   </div>
                 </button>
@@ -113,16 +119,17 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
             >
               <div className="flex flex-col gap-2">
                 <h3 className="text-3xl font-heading font-black text-charcoal leading-none tracking-tighter">
-                  What about tonight&apos;s recipe?
+                  {t('home.tonightRecipeTitle', "What about tonight's recipe?")}
                 </h3>
                 <p className="text-sm text-charcoal/40 font-medium">
-                  We have the ingredients. When should we cook it?
+                  {t('home.tonightRecipeSubtitle', 'We have the ingredients. When should we cook it?')}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => onAction('tomorrow')}
+                  data-testid="recovery-action-tomorrow"
                   className="flex items-center justify-between p-5 rounded-[2rem] bg-sage/10 border-2 border-transparent hover:border-sage/30 transition-all text-left"
                 >
                   <div className="flex items-center gap-4">
@@ -131,10 +138,10 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                     </div>
                     <div className="flex flex-col">
                       <span className="font-heading text-lg font-black text-charcoal tracking-tight">
-                        Tomorrow
+                        {t('home.tomorrow', 'Tomorrow')}
                       </span>
                       <span className="text-[10px] font-black uppercase tracking-widest text-sage-700/60">
-                        Shifts the whole week
+                        {t('home.shiftsWholeWeek', 'Shifts the whole week')}
                       </span>
                     </div>
                   </div>
@@ -143,6 +150,7 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
 
                 <button
                   onClick={() => onAction('next_week')}
+                  data-testid="recovery-action-next-week"
                   className="flex items-center justify-between p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-charcoal/20 transition-all text-left"
                 >
                   <div className="flex items-center gap-4">
@@ -151,10 +159,10 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                     </div>
                     <div className="flex flex-col">
                       <span className="font-heading text-lg font-black text-charcoal tracking-tight">
-                        Next Week
+                        {t('home.nextWeek', 'Next Week')}
                       </span>
                       <span className="text-[10px] font-black uppercase tracking-widest text-charcoal/30">
-                        Keep it for later
+                        {t('home.keepItLater', 'Keep it for later')}
                       </span>
                     </div>
                   </div>
@@ -162,6 +170,7 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
 
                 <button
                   onClick={() => onAction('drop')}
+                  data-testid="recovery-action-drop"
                   className="flex items-center justify-between p-5 rounded-[2rem] border-2 border-transparent hover:bg-terracotta/5 transition-all text-left"
                 >
                   <div className="flex items-center gap-4">
@@ -170,10 +179,10 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                     </div>
                     <div className="flex flex-col">
                       <span className="font-heading text-lg font-black text-terracotta tracking-tight">
-                        Drop It
+                        {t('home.dropIt', 'Drop It')}
                       </span>
                       <span className="text-[10px] font-black uppercase tracking-widest text-terracotta/40">
-                        Maybe another time
+                        {t('home.maybeAnotherTime', 'Maybe another time')}
                       </span>
                     </div>
                   </div>
@@ -182,9 +191,10 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
 
               <button
                 onClick={() => setStep(1)}
+                data-testid="recovery-back-btn"
                 className="text-center text-[10px] font-black uppercase tracking-widest text-charcoal/40 hover:text-charcoal transition-colors mt-2"
               >
-                Go back
+                {t('home.goBack', 'Go back')}
               </button>
             </motion.div>
           )}

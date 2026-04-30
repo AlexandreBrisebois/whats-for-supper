@@ -16,6 +16,7 @@ import { getRecommendations, RecommendationsResponse } from '@/lib/api/recipes';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { assignRecipeToDay } from '@/lib/api/planner';
 import { cn } from '@/lib/utils';
+import { t, tWithVars } from '@/locales';
 
 /**
  * RecipesPage / Search destination.
@@ -79,17 +80,19 @@ export default function RecipesPage() {
         >
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-terracotta/60 mb-1">
-              Planning Mode
+              {t('recipes.planningMode', 'Planning Mode')}
             </p>
             <p className="text-sm font-bold text-charcoal">
-              Select a meal for Day {parseInt(addToDay) + 1}
+              {tWithVars('recipes.selectMealForDay', `Select a meal for Day ${parseInt(addToDay) + 1}`, {
+                day: parseInt(addToDay) + 1,
+              })}
             </p>
           </div>
           <button
             onClick={() => router.push('/planner')}
             className="text-xs font-bold text-terracotta hover:underline"
           >
-            Cancel
+            {t('recipes.cancel', 'Cancel')}
           </button>
         </motion.div>
       )}
@@ -107,7 +110,7 @@ export default function RecipesPage() {
           value={query}
           data-testid="recipe-search-input"
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Something spicy for 4..."
+          placeholder={t('recipes.searchPlaceholder', 'Something spicy for 4...')}
           className="w-full bg-white/70 backdrop-blur-md border-2 border-charcoal/5 rounded-[2rem] py-5 pl-16 pr-8 text-lg font-bold text-charcoal placeholder:text-charcoal/20 focus:outline-none focus:border-terracotta/20 transition-all shadow-card focus:shadow-xl focus:bg-white"
         />
         {query && (
@@ -132,7 +135,7 @@ export default function RecipesPage() {
               className="flex items-center justify-between px-1"
             >
               <h2 className="font-heading text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-                Agent&apos;s Recommendations
+                {t('recipes.recommendations', "Agent's Recommendations")}
               </h2>
             </motion.div>
 
@@ -150,7 +153,7 @@ export default function RecipesPage() {
                 )}
               >
                 <div className="absolute top-5 left-5 z-20 bg-ochre text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg flex items-center gap-1.5">
-                  <Star size={12} fill="currentColor" /> Top Pick
+                  <Star size={12} fill="currentColor" /> {t('recipes.topPick', 'Top Pick')}
                 </div>
 
                 <div className="relative w-full aspect-[16/10] min-h-[240px] rounded-[2.5rem] overflow-hidden shadow-2xl glass-solar border border-white/20">

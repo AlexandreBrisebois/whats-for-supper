@@ -11,6 +11,7 @@ import {
   useMotionValueEvent,
 } from 'framer-motion';
 import { Heart, X } from 'lucide-react';
+import { t } from '@/locales';
 
 interface DiscoveryCardProps {
   id: string;
@@ -187,7 +188,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
               >
                 <Heart size={48} fill="currentColor" />
                 <span className="text-xl font-black tracking-widest">
-                  {hasFamilyInterest ? 'MATCH!' : 'LOVE'}
+                  {hasFamilyInterest ? t('discovery.match', 'MATCH!') : t('discovery.love', 'LOVE')}
                 </span>
               </motion.div>
 
@@ -199,7 +200,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                 className="flex flex-col items-center gap-2 rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
               >
                 <X size={48} />
-                <span className="text-xl font-black tracking-widest">PASS</span>
+                <span className="text-xl font-black tracking-widest">{t('discovery.pass', 'PASS')}</span>
               </motion.div>
             </div>
           )}
@@ -213,10 +214,10 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
           </h2>
           <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
-              Prep: {formatDuration(totalTime)}
+              {t('discovery.prep', 'Prep')}: {formatDuration(totalTime)}
             </span>
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sage-50/80 text-sage-700">
-              Diff: {difficulty || 'Medium'}
+              {t('discovery.diff', 'Diff')}: {difficulty || t('discovery.medium', 'Medium')}
             </span>
           </div>
         </div>

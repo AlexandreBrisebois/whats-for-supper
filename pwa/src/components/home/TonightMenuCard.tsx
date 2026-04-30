@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getImageUrl } from '@/lib/imageUtils';
+import { t } from '@/locales';
 
 interface TonightMenuCardProps {
   recipeId: string;
@@ -52,7 +53,7 @@ export function TonightMenuCard({
         >
           <div className="flex justify-between items-center mb-5 px-1">
             <h2 className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-              Tonight&apos;s Menu
+              {t('home.tonightsMenu', "Tonight's Menu")}
             </h2>
             {prepTime && (
               <span className="text-[10px] font-black text-terracotta bg-terracotta/10 px-3 py-1 rounded-full uppercase tracking-widest">
@@ -83,7 +84,7 @@ export function TonightMenuCard({
               {recipeName}
             </h3>
             <p className="text-charcoal/40 text-[10px] font-black uppercase tracking-widest mt-1 flex items-center gap-1">
-              Tap for ingredients <ChevronRight size={12} />
+              {t('home.tapForIngredients', 'Tap for ingredients')} <ChevronRight size={12} />
             </p>
           </div>
         </div>
@@ -102,8 +103,11 @@ export function TonightMenuCard({
         >
           <div className="flex-1 overflow-y-auto scrollbar-none p-8 flex flex-col">
             <div className="flex items-center justify-between mb-8">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-ochre">
-                Ingredients & Info
+              <h4
+                className="text-[10px] font-black uppercase tracking-[0.3em] text-ochre"
+                data-testid="ingredients-info-title"
+              >
+                {t('home.ingredientsAndInfo', 'Ingredients & Info')}
               </h4>
               <Sparkles size={16} className="text-ochre" />
             </div>
@@ -128,7 +132,7 @@ export function TonightMenuCard({
                 </span>
               ))}
               {ingredients.length === 0 && (
-                <span className="text-[10px] text-charcoal/30 italic">No ingredients listed</span>
+                <span className="text-[10px] text-charcoal/30 italic">{t('home.noIngredients', 'No ingredients listed')}</span>
               )}
             </div>
 
@@ -143,7 +147,7 @@ export function TonightMenuCard({
                   data-testid="skip-tonight-btn"
                 >
                   <Ban size={18} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Skip</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{t('home.skip', 'Skip')}</span>
                 </button>
                 <button
                   onClick={(e) => {
@@ -154,7 +158,7 @@ export function TonightMenuCard({
                   data-testid="cook-mode-btn"
                 >
                   <Utensils size={18} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Cook</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{t('home.cook', 'Cook')}</span>
                 </button>
               </div>
               <button
@@ -166,7 +170,7 @@ export function TonightMenuCard({
                 data-testid="cooked-btn"
               >
                 <CheckCircle2 size={18} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Cooked</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('home.cooked', 'Cooked')}</span>
               </button>
             </div>
           </div>

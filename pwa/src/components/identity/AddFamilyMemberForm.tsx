@@ -42,9 +42,10 @@ export function AddFamilyMemberForm({ onSubmit, isLoading = false }: AddFamilyMe
         error={error}
         disabled={isLoading}
         autoComplete="given-name"
+        data-testid="family-name-input"
       />
 
-      <Button type="submit" isLoading={isLoading} fullWidth>
+      <Button type="submit" isLoading={isLoading} fullWidth data-testid="add-member-submit">
         {t('family.addMemberButton', 'Add Member')}
       </Button>
     </form>

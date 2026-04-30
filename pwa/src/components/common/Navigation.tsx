@@ -9,6 +9,7 @@ import type { Route } from 'next';
 import { ROUTES } from '@/lib/constants/routes';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { getCategories } from '@/lib/api/discovery';
+import { t } from '@/locales';
 
 interface NavItem {
   href: Route;
@@ -18,11 +19,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: ROUTES.HOME as Route, label: 'Home', icon: Home },
-  { href: '/recipes' as Route, label: 'Search', icon: Search },
-  { href: ROUTES.DISCOVERY as Route, label: 'Discover', icon: Compass, isPrimary: true },
-  { href: ROUTES.PLANNER as Route, label: 'Planner', icon: Calendar },
-  { href: ROUTES.PROFILE as Route, label: 'Profile', icon: UserCircle },
+  { href: ROUTES.HOME as Route, label: t('navigation.home', 'Home'), icon: Home },
+  { href: '/recipes' as Route, label: t('navigation.search', 'Search'), icon: Search },
+  { href: ROUTES.DISCOVERY as Route, label: t('navigation.discover', 'Discover'), icon: Compass, isPrimary: true },
+  { href: ROUTES.PLANNER as Route, label: t('navigation.planner', 'Planner'), icon: Calendar },
+  { href: ROUTES.PROFILE as Route, label: t('navigation.profile', 'Profile'), icon: UserCircle },
 ];
 
 interface NavigationProps {
@@ -62,6 +63,7 @@ export function Navigation({ className = '' }: NavigationProps) {
             <Link
               key={item.href}
               href={item.href}
+              data-testid={`nav-item-${item.href.replace('/', '') || 'home'}`}
               className="relative -top-4 flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 active:scale-95 z-40"
               aria-current={active ? 'page' : undefined}
             >
@@ -84,6 +86,7 @@ export function Navigation({ className = '' }: NavigationProps) {
           <Link
             key={item.href}
             href={item.href}
+            data-testid={`nav-item-${item.href.replace('/', '') || 'home'}`}
             className={[
               'flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-bold transition-all z-40 uppercase tracking-tighter',
               active ? 'text-terracotta' : 'text-charcoal-400 hover:text-terracotta/70',

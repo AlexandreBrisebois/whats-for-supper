@@ -6,6 +6,7 @@ import { Camera, Image as ImageIcon, CheckCircle2, Loader2, X, Star } from 'luci
 import { useCapture } from '@/hooks/useCapture';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants/routes';
+import { t, tWithVars } from '@/locales';
 
 export default function MinimalCapture() {
   const router = useRouter();
@@ -77,16 +78,16 @@ export default function MinimalCapture() {
         </div>
         <div className="flex flex-col gap-2">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
-            Captured!
+            {t('capture.captured', 'Captured!')}
           </h2>
-          <p className="text-charcoal/60">Your recipe is safe in the library.</p>
+          <p className="text-charcoal/60">{t('capture.savedInLibrary', 'Your recipe is safe in the library.')}</p>
         </div>
         <Button
           variant="primary"
           onClick={() => router.push(ROUTES.HOME)}
           className="rounded-2xl px-8"
         >
-          Back to Home
+          {t('capture.backToHome', 'Back to Home')}
         </Button>
       </div>
     );
@@ -111,7 +112,7 @@ export default function MinimalCapture() {
           className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
         >
           <ImageIcon size={16} />
-          Pick from Gallery
+          {t('capture.pickFromGallery', 'Pick from Gallery')}
         </button>
 
         {/* Hidden Inputs */}
@@ -138,13 +139,15 @@ export default function MinimalCapture() {
         <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center justify-between px-2">
             <h3 className="font-heading text-lg font-bold text-charcoal">
-              Photos ({images.length})
+              {tWithVars('capture.photosCount', `Photos (${images.length})`, {
+                count: images.length,
+              })}
             </h3>
             <button
               onClick={() => images.forEach((_, i) => removeImage(0))}
               className="text-[10px] font-bold uppercase tracking-widest text-terracotta/40"
             >
-              Clear All
+              {t('capture.clearAll', 'Clear All')}
             </button>
           </div>
 
@@ -187,7 +190,7 @@ export default function MinimalCapture() {
                 {idx === selectedDishPhotoIndex && (
                   <div className="absolute bottom-0 left-0 right-0 bg-terracotta/90 py-1 text-center">
                     <span className="text-[9px] font-bold uppercase tracking-wider text-white">
-                      Main Dish
+                      {t('capture.mainDish', 'Main Dish')}
                     </span>
                   </div>
                 )}
@@ -197,7 +200,7 @@ export default function MinimalCapture() {
           {/* Appreciation & Notes */}
           <div className="flex flex-col gap-6 mt-2">
             <div className="flex flex-col gap-3 px-2">
-              <label className="text-sm font-bold text-charcoal/80">Appreciation</label>
+              <label className="text-sm font-bold text-charcoal/80">{t('capture.appreciation', 'Appreciation')}</label>
               <div className="flex gap-2">
                 {[
                   { value: 1, label: 'Not for me', icon: '👎' },
@@ -211,7 +214,7 @@ export default function MinimalCapture() {
                   >
                     <span className="text-2xl leading-none">{opt.icon}</span>
                     <span className="text-[10px] font-bold uppercase tracking-wider">
-                      {opt.label}
+                      {t(`capture.rating.${opt.value}`, opt.label)}
                     </span>
                   </button>
                 ))}
@@ -219,11 +222,11 @@ export default function MinimalCapture() {
             </div>
 
             <div className="flex flex-col gap-3 px-2">
-              <label className="text-sm font-bold text-charcoal/80">Notes (Optional)</label>
+              <label className="text-sm font-bold text-charcoal/80">{t('capture.notes', 'Notes (Optional)')}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any tweaks for next time?"
+                placeholder={t('capture.notesPlaceholder', 'Any tweaks for next time?')}
                 className="w-full rounded-3xl border-2 border-charcoal/10 bg-white p-5 text-sm text-charcoal placeholder:text-charcoal/30 focus:border-terracotta focus:outline-none focus:ring-4 focus:ring-terracotta/10 min-h-[120px] resize-none transition-all"
               />
             </div>
@@ -236,9 +239,9 @@ export default function MinimalCapture() {
               size="lg"
               isLoading={isSubmitting}
               onClick={handleSave}
-              className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
+               className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
             >
-              Save Recipe
+              {t('capture.saveRecipe', 'Save Recipe')}
             </Button>
           </div>
         </div>

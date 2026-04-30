@@ -94,7 +94,7 @@ test.describe('Home Command Center — Recovery Flow', () => {
     await page.waitForTimeout(500); // Wait for spring animation
 
     // Use a more relaxed check if backface-visibility is causing issues
-    await expect(page.getByText(/Ingredients & Info/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('ingredients-info-title')).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('cooked-btn')).toBeVisible({ timeout: 5000 });
   });
@@ -104,15 +104,15 @@ test.describe('Home Command Center — Recovery Flow', () => {
     await card.click();
 
     await page.getByTestId('skip-tonight-btn').click();
-    await expect(page.getByText("What's the backup plan?")).toBeVisible();
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
-    await page.getByText('Ordering In').click();
-    await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
+    await page.getByTestId('recovery-action-order-in').click();
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
     const moveResponse = page.waitForResponse(
       (resp) => resp.url().includes('/api/schedule/move') && resp.request().method() === 'POST'
     );
-    await page.getByText('Tomorrow').click();
+    await page.getByTestId('recovery-action-tomorrow').click();
     await moveResponse;
 
     await expect(page.getByTestId('smart-pivot-card')).toBeVisible();
@@ -123,9 +123,9 @@ test.describe('Home Command Center — Recovery Flow', () => {
     await card.click();
 
     await page.getByTestId('skip-tonight-btn').click();
-    await page.getByText('Ordering In').click();
+    await page.getByTestId('recovery-action-order-in').click();
 
-    await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
     const moveResponse = page.waitForResponse((resp) => {
       if (!resp.url().includes('/api/schedule/move') || resp.request().method() !== 'POST')
@@ -134,7 +134,7 @@ test.describe('Home Command Center — Recovery Flow', () => {
       return body.intent === 'push' && body.targetWeekOffset === 1;
     });
 
-    await page.getByText('Next Week').click();
+    await page.getByTestId('recovery-action-next-week').click();
     await moveResponse;
 
     await expect(page.getByTestId('smart-pivot-card')).toBeVisible();
@@ -151,9 +151,9 @@ test.describe('Home Command Center — Recovery Flow', () => {
     await validateResponse;
 
     await expect(page.getByTestId('cooked-success-card')).toBeVisible();
-    await expect(page.getByText('Enjoy your meal!')).toBeVisible();
+    await expect(page.getByTestId('cooked-success-title')).toBeVisible();
 
-    await page.getByText('Dismiss').click();
+    await page.getByTestId('cooked-success-dismiss').click();
     await expect(page.getByTestId('cooked-success-card')).not.toBeVisible();
     await expect(page.getByTestId('smart-pivot-card')).toBeVisible();
   });

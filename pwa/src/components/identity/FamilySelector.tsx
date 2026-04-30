@@ -48,6 +48,7 @@ export function FamilySelector({
           size="md"
           onClick={() => setShowAddForm(true)}
           fullWidth
+          data-testid="add-member-trigger"
         >
           {t('family.addPrompt', "Don't see your name? Add it")}
         </Button>

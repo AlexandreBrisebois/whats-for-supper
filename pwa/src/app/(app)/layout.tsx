@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import { t } from '@/locales';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -14,14 +15,14 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
 
   // Map pathnames to titles
   const getHeaderProps = (path: string) => {
-    if (path === ROUTES.HOME) return { title: 'Home' };
-    if (path === '/recipes') return { title: 'Search' };
-    if (path === ROUTES.PLANNER) return { title: 'Weekly Planner' };
-    if (path === ROUTES.DISCOVERY) return { title: 'Discovery' };
-    if (path === ROUTES.PROFILE) return { title: 'Profile' };
+    if (path === ROUTES.HOME) return { title: t('navigation.home', 'Home') };
+    if (path === '/recipes') return { title: t('navigation.search', 'Search') };
+    if (path === ROUTES.PLANNER) return { title: t('navigation.planner', 'Weekly Planner') };
+    if (path === ROUTES.DISCOVERY) return { title: t('navigation.discover', 'Discovery') };
+    if (path === ROUTES.PROFILE) return { title: t('navigation.profile', 'Profile') };
     if (path.startsWith(ROUTES.CAPTURE)) {
       return {
-        title: 'Add a Recipe',
+        title: t('capture.addRecipe', 'Add a Recipe'),
         rightAction: (
           <Link
             href={ROUTES.HOME}

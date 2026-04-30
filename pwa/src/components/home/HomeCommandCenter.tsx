@@ -13,6 +13,7 @@ import { DateOnly } from '@microsoft/kiota-abstractions';
 import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
 import { getTodayString } from '@/lib/imageUtils';
 import { SolarLoader } from '../ui/SolarLoader';
+import { t } from '@/locales';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
@@ -163,7 +164,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
     <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto w-full px-6 sm:px-0">
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
-          <SolarLoader label="Aligning your day..." />
+          <SolarLoader label={t('home.aligningDay', 'Aligning your day...')} />
         </div>
       ) : (
         <>
@@ -191,7 +192,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
             <TonightMenuCard
               recipeId={currentRecipe.id!}
               recipeName={currentRecipe.name!}
-              description={currentRecipe.description || 'A delicious meal planned for tonight.'}
+              description={currentRecipe.description || t('home.defaultDescription', 'A delicious meal planned for tonight.')}
               imageUrl={currentRecipe.image || undefined}
               ingredients={currentRecipe.ingredients || []}
               prepTime="30-45 mins"

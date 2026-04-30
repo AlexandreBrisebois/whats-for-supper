@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '@/store/plannerStore';
+import { t, tWithVars } from '@/locales';
 import { groupIngredientsByAisle, type AisleSection } from '@/lib/grocery/aisleMapper';
 import { useSchedule } from '@/lib/api/schedule';
 
@@ -68,9 +69,9 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
       <div className="p-8 flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md">
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-sage/60">
-            Smart Shopping
+            {t('grocery.smartShopping', 'Smart Shopping')}
           </p>
-          <h2 className="text-xl font-heading font-black text-charcoal">Grocery Checklist</h2>
+          <h2 className="text-xl font-heading font-black text-charcoal">{t('grocery.checklist', 'Grocery Checklist')}</h2>
         </div>
         {onClose && (
           <Button
@@ -94,7 +95,7 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                 className="text-center py-12"
               >
                 <p className="text-charcoal/40 font-medium">
-                  No ingredients in this week&apos;s plan
+                  {t('grocery.noIngredients', "No ingredients in this week's plan")}
                 </p>
               </motion.div>
             ) : (
@@ -120,9 +121,14 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                           <div className="flex items-center space-x-3">
                             <span className="text-3xl">{AISLE_ICONS[aisle]}</span>
                             <div>
-                              <h3 className="font-black text-charcoal text-lg">{aisle}</h3>
+                              <h3 className="font-black text-charcoal text-lg">
+                                {t(`grocery.aisles.${aisle}`, aisle)}
+                              </h3>
                               <p className="text-xs text-charcoal/40 font-medium">
-                                {checkedCount}/{aisleItems.length}&nbsp;items
+                                {tWithVars('grocery.itemsCount', `${checkedCount}/${aisleItems.length} items`, {
+                                  checked: checkedCount,
+                                  total: aisleItems.length,
+                                })}
                               </p>
                             </div>
                           </div>
@@ -184,9 +190,10 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
         <div className="p-8 bg-white/50 backdrop-blur-md border-t border-charcoal/5">
           <Button
             onClick={onClose}
+            data-testid="done-shopping-btn"
             className="w-full h-16 rounded-3xl bg-sage text-white text-lg font-bold shadow-xl shadow-sage/20"
           >
-            Done Shopping
+            {t('grocery.doneShopping', 'Done Shopping')}
           </Button>
         </div>
       )}

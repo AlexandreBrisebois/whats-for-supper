@@ -3,12 +3,13 @@
 import { Check, Camera, ChevronRight, Search, Clock, Utensils } from 'lucide-react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
+import { t } from '@/locales';
 
 export function SmartPivotCard({ onSelect }: { onSelect?: (choice: string) => void }) {
   const choices = [
-    { id: '15min', label: '15 Min Fix', icon: Clock, color: 'bg-terracotta' },
-    { id: 'pantry', label: 'Pantry Pasta', icon: Utensils, color: 'bg-sage' },
-    { id: 'quick-find', label: 'Quick Find', icon: Search, color: 'bg-charcoal' },
+    { id: '15min', label: t('home.fix15min', '15 Min Fix'), icon: Clock, color: 'bg-terracotta' },
+    { id: 'pantry', label: t('home.pantryPasta', 'Pantry Pasta'), icon: Utensils, color: 'bg-sage' },
+    { id: 'quick-find', label: t('home.quickFind', 'Quick Find'), icon: Search, color: 'bg-charcoal' },
   ];
 
   return (
@@ -20,10 +21,10 @@ export function SmartPivotCard({ onSelect }: { onSelect?: (choice: string) => vo
 
       <div className="flex flex-col gap-1 relative z-10">
         <h2 className="font-heading text-xs font-black uppercase tracking-[0.2em] text-white/60">
-          Nothing Planned?
+          {t('home.nothingPlanned', 'Nothing Planned?')}
         </h2>
         <h3 className="font-heading text-3xl font-black text-white leading-none tracking-tighter">
-          Quick Fixes
+          {t('home.quickFixes', 'Quick Fixes')}
         </h3>
       </div>
 
@@ -32,6 +33,7 @@ export function SmartPivotCard({ onSelect }: { onSelect?: (choice: string) => vo
           <button
             key={choice.id}
             onClick={() => onSelect?.(choice.id)}
+            data-testid={`smart-pivot-choice-${choice.id}`}
             className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 transition-all active:scale-90 hover:bg-white/30"
           >
             <choice.icon size={20} className="text-white" />
@@ -49,6 +51,7 @@ export function QuickCaptureTrigger() {
   return (
     <Link
       href={ROUTES.CAPTURE}
+      data-testid="quick-capture-trigger"
       className="group relative flex items-center justify-between w-full bg-white text-charcoal p-6 rounded-[2.5rem] border-2 border-charcoal/5 transition-all active:scale-[0.98] hover:border-terracotta/20"
     >
       <div className="flex items-center gap-5">
@@ -57,10 +60,10 @@ export function QuickCaptureTrigger() {
         </div>
         <div className="flex flex-col">
           <span className="font-heading text-xl font-black tracking-tighter leading-none">
-            Capture a Recipe
+            {t('home.captureRecipe', 'Capture a Recipe')}
           </span>
           <span className="text-charcoal/40 text-[10px] font-black uppercase tracking-widest mt-1">
-            Photo or Link
+            {t('home.photoOrLink', 'Photo or Link')}
           </span>
         </div>
       </div>
@@ -88,19 +91,23 @@ export function CookedSuccessCard({ onDismiss }: { onDismiss?: () => void }) {
       </div>
 
       <div className="flex flex-col gap-2 items-center text-center relative z-10">
-        <h3 className="font-heading text-4xl font-black text-white leading-none tracking-tighter">
-          Enjoy your meal!
+        <h3
+          data-testid="cooked-success-title"
+          className="font-heading text-4xl font-black text-white leading-none tracking-tighter"
+        >
+          {t('home.enjoyMeal', 'Enjoy your meal!')}
         </h3>
         <p className="text-white/70 text-xs font-black uppercase tracking-widest">
-          Recipe marked as cooked
+          {t('home.markedAsCooked', 'Recipe marked as cooked')}
         </p>
       </div>
 
       <button
         onClick={onDismiss}
+        data-testid="cooked-success-dismiss"
         className="mt-2 px-8 h-12 rounded-2xl bg-white text-sage font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 hover:bg-white/90"
       >
-        Dismiss
+        {t('home.dismiss', 'Dismiss')}
       </button>
     </div>
   );

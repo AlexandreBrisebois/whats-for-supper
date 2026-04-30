@@ -25,6 +25,12 @@ export const test = base.extend({
         console.log(`[PAGE ${msg.type().toUpperCase()}] ${msg.text()}`);
       }
     });
+
+    // Force English locale for deterministic tests
+    await page.addInitScript(() => {
+      window.localStorage.setItem('whats-for-supper-locale', 'en');
+    });
+
     await use(page);
   },
 });

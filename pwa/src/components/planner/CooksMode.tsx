@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { getRecipe, Recipe } from '@/lib/api/recipes';
 import { SolarLoader } from '@/components/ui/SolarLoader';
+import { t, tWithVars } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { getImageUrl } from '@/lib/imageUtils';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -104,7 +105,7 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-[110] bg-cream flex items-center justify-center">
-        <SolarLoader label="Getting your kitchen ready..." />
+        <SolarLoader label={t('cook.gettingReady', 'Getting your kitchen ready...')} />
       </div>
     );
   }
@@ -133,10 +134,10 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-terracotta/60">
-              Cook&apos;s mode
+              {t('cook.cooksMode', "Cook's mode")}
             </p>
             <h2 className="text-xl font-heading font-black text-charcoal">
-              {initialRecipe.name || 'Untitled Recipe'}
+              {initialRecipe.name || t('cook.untitledRecipe', 'Untitled Recipe')}
             </h2>
           </div>
         </div>
@@ -180,7 +181,10 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
               >
                 <UtensilsCrossed size={20} />
                 <span className="text-sm font-black uppercase tracking-widest">
-                  Step {currentStep + 1} of {steps.length}
+                  {tWithVars('cook.stepXofY', `Step ${currentStep + 1} of ${steps.length}`, {
+                    current: currentStep + 1,
+                    total: steps.length,
+                  })}
                 </span>
               </div>
 
@@ -195,14 +199,14 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
                   </p>
 
                   {/* Dietary High-Five */}
-                  {(initialRecipe.isVegetarian || initialRecipe.isHealthyChoice) && (
                     <div className="flex items-center justify-center space-x-3 text-sage bg-sage/5 py-3 px-6 rounded-2xl border border-sage/10 w-fit mx-auto animate-bounce-subtle">
                       <Sparkles size={18} />
                       <span className="text-xs font-black uppercase tracking-widest">
-                        {initialRecipe.isVegetarian ? 'Plant-Powered Choice!' : 'Healthy Pick!'}
+                        {initialRecipe.isVegetarian
+                          ? t('cook.plantPowered', 'Plant-Powered Choice!')
+                          : t('cook.healthyPick', 'Healthy Pick!')}
                       </span>
                     </div>
-                  )}
 
                   {/* Ingredients Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
@@ -224,8 +228,10 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
                     ) : (
                       <div className="col-span-full py-12 px-6 rounded-[2.5rem] bg-charcoal/5 border border-dashed border-charcoal/10">
                         <p className="text-charcoal/40 font-medium">
-                          Extraction in progress... we&apos;re still identifying the exact
-                          quantities.
+                          {t(
+                            'cook.extractionInProgress',
+                            "Extraction in progress... we're still identifying the exact quantities."
+                          )}
                         </p>
                       </div>
                     )}
@@ -251,14 +257,16 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
           className="h-20 rounded-3xl border-charcoal/10 text-charcoal/40 text-xl font-bold flex items-center justify-center space-x-3 active:scale-95 transition-all"
         >
           <ChevronLeft size={28} />
-          <span>Back</span>
+          <span>{t('cook.back', 'Back')}</span>
         </Button>
         <Button
           onClick={nextStep}
           data-testid="cooks-mode-step-next"
           className="h-20 rounded-3xl bg-terracotta text-white text-xl font-bold flex items-center justify-center space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
         >
-          <span>{currentStep === steps.length - 1 ? 'Done' : 'Next'}</span>
+          <span>
+            {currentStep === steps.length - 1 ? t('cook.done', 'Done') : t('cook.next', 'Next')}
+          </span>
           <ChevronRight size={28} />
         </Button>
       </div>
@@ -267,25 +275,27 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
       <div className="px-8 py-6 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/20">
         <div className="flex items-center space-x-2">
           <Timer size={14} />
-          <span>{recipeDetails?.totalTime || '45 mins'} total</span>
+          <span>
+            {recipeDetails?.totalTime || '45 mins'} {t('cook.total', 'total')}
+          </span>
         </div>
         <div className="flex items-center space-x-2 text-ochre">
           {initialRecipe.isCold ? (
             <>
               <Timer size={14} />
-              <span>No-Cook / Fresh</span>
+              <span>{t('cook.noCookFresh', 'No-Cook / Fresh')}</span>
             </>
           ) : (
             <>
               <Flame size={14} className="animate-pulse" />
-              <span>Medium Heat (Level 6)</span>
+              <span>{t('cook.mediumHeat', 'Medium Heat (Level 6)')}</span>
             </>
           )}
         </div>
         {initialRecipe.isVegetarian && (
           <div className="flex items-center space-x-2 text-sage font-black">
             <UtensilsCrossed size={14} />
-            <span>Plant-Powered! 🌿</span>
+            <span>{t('cook.plantPoweredEmoji', 'Plant-Powered! 🌿')}</span>
           </div>
         )}
       </div>

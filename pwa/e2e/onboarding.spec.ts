@@ -51,7 +51,7 @@ test.describe('Onboarding', () => {
 
   test('onboarding page displays the family member list', async ({ page }) => {
     await page.goto('/onboarding');
-    await expect(page.getByRole('heading', { name: /who are you/i })).toBeVisible();
+    await expect(page.getByTestId('onboarding-title')).toBeVisible();
     await expect(page.getByTestId('family-list')).toBeVisible();
   });
 
@@ -77,13 +77,13 @@ test.describe('Onboarding', () => {
     await page.goto('/onboarding');
     await expect(page.getByTestId('family-list')).toBeVisible({ timeout: 10_000 });
 
-    const addButton = page.getByRole('button', { name: /Don't see your name/i });
+    const addButton = page.getByTestId('add-member-trigger');
     await addButton.click();
 
-    const nameInput = page.getByRole('textbox');
+    const nameInput = page.getByTestId('family-name-input');
     await nameInput.fill(newName);
 
-    const submitButton = page.getByRole('button', { name: 'Add Member', exact: true });
+    const submitButton = page.getByTestId('add-member-submit');
     await submitButton.click();
 
     await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });

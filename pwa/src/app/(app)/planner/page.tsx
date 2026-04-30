@@ -10,8 +10,12 @@ import {
   CheckCircle2,
   Search,
   Users,
+  Check,
+  Calendar,
+  ShoppingCart,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
+import Image from 'next/image';
 import {
   getSchedule,
   lockSchedule,
@@ -33,8 +37,8 @@ type UILocalScheduleDay = ScheduleDay & {
   _voteCount?: number | null;
   _unanimousVote?: boolean | null;
 };
-import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { t, tWithVars } from '@/locales';
 import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
@@ -76,6 +80,7 @@ export default function PlannerPage() {
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
@@ -335,10 +340,14 @@ export default function PlannerPage() {
 
       await lockSchedule(currentWeekOffset);
       setIsLocked(true);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
     } catch (error: any) {
       console.warn('Failed to finalize:', error?.message || error);
       // Mock it working since the backend isn't ready
       setIsLocked(true);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
     }
   };
 
@@ -443,6 +452,7 @@ export default function PlannerPage() {
   };
 
   const plannedCount = schedule.filter((d) => d.recipe && d.recipe.id).length;
+  const isFinalized = isLocked;
 
   return (
     <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
@@ -463,34 +473,26 @@ export default function PlannerPage() {
       {/* Header Section */}
       <header className="sticky top-0 z-30 px-6 pt-6 pb-6 glass-nav">
         {/* Tab Switcher */}
-        <div className="flex p-1 mb-8 bg-charcoal/5 rounded-2xl border border-charcoal/5">
+        <div className="flex bg-charcoal/5 p-1.5 rounded-[1.5rem] relative">
           <button
-            role="tab"
-            data-testid="planner-tab"
-            aria-selected={activeTab === 'planner'}
             onClick={() => setActiveTab('planner')}
+            data-testid="planner-tab"
             className={cn(
-              'flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-300',
-              activeTab === 'planner'
-                ? 'bg-white text-charcoal shadow-sm ring-1 ring-charcoal/5'
-                : 'text-charcoal/40 hover:text-charcoal/60'
+              'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
+              activeTab === 'planner' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
             )}
           >
-            Planner
+            <Calendar size={14} /> {t('planner.planner', 'Planner')}
           </button>
           <button
-            role="tab"
-            data-testid="grocery-tab"
-            aria-selected={activeTab === 'grocery'}
             onClick={() => setActiveTab('grocery')}
+            data-testid="grocery-tab"
             className={cn(
-              'flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-300',
-              activeTab === 'grocery'
-                ? 'bg-white text-charcoal shadow-sm ring-1 ring-charcoal/5'
-                : 'text-charcoal/40 hover:text-charcoal/60'
+              'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
+              activeTab === 'grocery' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
             )}
           >
-            Grocery list
+            <ShoppingCart size={14} /> {t('planner.groceryList', 'Grocery list')}
           </button>
         </div>
 
@@ -504,13 +506,13 @@ export default function PlannerPage() {
             <ChevronLeft className="text-charcoal/60" />
           </button>
 
-          <div className="text-center" data-testid="week-range">
-            <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-charcoal/40 mb-1">
+          <div className="text-center">
+            <span className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/30 text-center flex-1" data-testid="week-range">
               {currentWeekOffset === 0
-                ? 'This week'
+                ? t('planner.thisWeek', 'This week')
                 : currentWeekOffset === 1
-                  ? 'Next week'
-                  : `Week ${currentWeekOffset}`}
+                  ? t('planner.nextWeek', 'Next week')
+                  : tWithVars('planner.weekX', `Week ${currentWeekOffset}`, { count: currentWeekOffset })}
             </span>
             <h2 className="text-lg font-heading font-bold text-charcoal flex items-center justify-center">
               {isVotingOpen && (
@@ -529,15 +531,20 @@ export default function PlannerPage() {
                     });
                     return `${fmt.format(start)} — ${fmt.format(end)}`;
                   })()
-                : 'Loading...'}
+                  : t('messages.loading', 'Loading...')}
             </h2>
             <div className="flex items-center justify-center mt-2">
-              <div className="flex items-center space-x-1 text-sage font-bold text-[9px] bg-sage/5 px-2 py-1 rounded-full border border-sage/10 uppercase tracking-widest">
+              <div
+                data-testid="planned-count-badge"
+                className="flex items-center space-x-1 text-sage font-bold text-[9px] bg-sage/5 px-2 py-1 rounded-full border border-sage/10 uppercase tracking-widest"
+              >
                 <span className="relative flex h-1.5 w-1.5 mr-1">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sage opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sage"></span>
                 </span>
-                {plannedCount}/7 Planned
+                {tWithVars('planner.plannedCount', `${plannedCount}/7 Planned`, {
+                  current: plannedCount,
+                })}
               </div>
               {isVotingOpen && (
                 <div
@@ -548,7 +555,7 @@ export default function PlannerPage() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-ochre"></span>
                   </span>
-                  Voting live
+                  {t('planner.votingLive', 'Voting live')}
                 </div>
               )}
             </div>
@@ -565,7 +572,7 @@ export default function PlannerPage() {
                   className="bg-sage text-white text-[10px] font-bold uppercase tracking-widest h-8 px-6 rounded-full shadow-lg shadow-sage/20 active:scale-95 transition-all"
                 >
                   <Users size={12} className="mr-2" />
-                  Ask the Family
+                  {t('planner.askFamily', 'Ask the Family')}
                 </Button>
               </motion.div>
             )}
@@ -592,7 +599,7 @@ export default function PlannerPage() {
               exit={{ opacity: 0 }}
               className="flex flex-col items-center justify-center py-20"
             >
-              <SolarLoader label="Curating your week..." />
+              <SolarLoader label={t('planner.curatingWeek', 'Curating your week...')} />
             </motion.div>
           ) : activeTab === 'grocery' ? (
             <motion.div
@@ -637,41 +644,58 @@ export default function PlannerPage() {
                 ))}
               </Reorder.Group>
 
-              {/* Finalize Button */}
-              {currentWeekOffset >= 0 && (
-                <div className="mt-8 mb-6">
-                  {isLocked ? (
-                    <div className="flex flex-col items-center py-6 bg-sage/5 rounded-3xl border border-sage/10 text-center">
-                      <CheckCircle2 size={32} className="text-sage mb-3" />
-                      <h3 className="text-lg font-heading font-bold text-charcoal">
-                        Week finalized
-                      </h3>
-                      <p className="text-xs text-charcoal/40 font-medium mb-6">
-                        Discovery votes purged and dates updated.
-                      </p>
-                      <Button
-                        className="border-sage/20 text-sage hover:bg-sage/5"
-                        onClick={() => setWeekOffset(currentWeekOffset + 1)}
-                        data-testid="plan-next-week"
-                      >
-                        Plan next week
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      className="w-full h-16 rounded-3xl bg-charcoal text-white font-bold text-lg shadow-xl shadow-charcoal/20 active:scale-[0.98] transition-all"
-                      onClick={handleFinalize}
-                      data-testid="finalize-button"
-                    >
-                      Menu&apos;s In!
-                    </Button>
-                  )}
-                </div>
-              )}
+              {/* Finalize Button removed from here (now floating) */}
             </motion.div>
           )}
         </AnimatePresence>
       </main>
+
+      {showSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-24 left-6 right-6 z-50 bg-sage text-white p-6 rounded-3xl shadow-2xl flex items-center gap-4"
+        >
+          <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+            <Check size={24} />
+          </div>
+          <div className="flex flex-col">
+            <h4 className="font-heading text-lg font-black tracking-tight leading-none">
+              {t('planner.weekFinalized', 'Week finalized')}
+            </h4>
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">
+              {t('planner.discoveryVotesPurged', 'Discovery votes purged and dates updated.')}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Floating Finalize Action */}
+      {!isFinalized && plannedCount >= 4 && activeTab === 'planner' && (
+        <div className="fixed bottom-28 left-6 right-6 z-40">
+          <Button
+            variant="primary"
+            fullWidth
+            size="lg"
+            onClick={handleFinalize}
+            data-testid="finalize-button"
+            className="rounded-[2rem] h-16 text-lg font-black shadow-xl shadow-terracotta/20 bg-terracotta text-white border-none"
+          >
+            {t('planner.planNextWeek', 'Plan next week')}
+          </Button>
+        </div>
+      )}
+
+      {isFinalized && activeTab === 'planner' && (
+        <div className="fixed bottom-28 left-6 right-6 z-40">
+          <div
+            data-testid="finalized-status"
+            className="w-full h-16 rounded-[2rem] bg-sage text-white font-black text-lg flex items-center justify-center shadow-xl shadow-sage/20 border-2 border-white/20"
+          >
+            {t('planner.menusIn', "Menu's In!")}
+          </div>
+        </div>
+      )}
 
       <PlanningPivotSheet
         isOpen={showPivot !== null}
@@ -833,7 +857,7 @@ function PlannerDayCard({
                 className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
                 data-testid="edit-recipe-button"
               >
-                <div className="flex-1 min-w-0">
+                <div className="flex flex-col gap-1.5">
                   <h4
                     className="text-sm font-bold text-charcoal line-clamp-2"
                     data-testid="recipe-name"

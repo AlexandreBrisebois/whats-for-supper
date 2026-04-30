@@ -74,6 +74,26 @@ test.describe('Supper Planner', () => {
                   dayIndex: 3,
                   isLocked: false,
                 },
+                {
+                  recipeId: MOCK_IDS.RECIPE_STIR_FRY,
+                  name: 'Ginger Beef Stir Fry',
+                  heroImageUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae',
+                  voteCount: 3,
+                  familySize: 3,
+                  unanimousVote: true,
+                  dayIndex: 4,
+                  isLocked: false,
+                },
+                {
+                  recipeId: MOCK_IDS.RECIPE_TACOS,
+                  name: 'Street Tacos',
+                  heroImageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47',
+                  voteCount: 2,
+                  familySize: 3,
+                  unanimousVote: false,
+                  dayIndex: 5,
+                  isLocked: false,
+                },
               ],
               openSlots: [],
               consensusRecipesCount: 1,
@@ -197,10 +217,9 @@ test.describe('Supper Planner', () => {
     // handleFinalize calls setIsLocked(true) on success or in the catch block.
     const finalizeBtn = page.getByTestId('finalize-button');
     await expect(finalizeBtn).toBeVisible();
-    await expect(finalizeBtn).toHaveText(/menu's in!/i);
     await finalizeBtn.scrollIntoViewIfNeeded();
     await finalizeBtn.click();
 
-    await expect(page.getByTestId('plan-next-week')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('finalized-status')).toBeVisible({ timeout: 15_000 });
   });
 });

@@ -9,6 +9,7 @@ import { getCategories, getDiscoveryStack, submitVote, DiscoveryRecipe } from '@
 import { API_BASE_URL } from '@/lib/constants/config';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useFamily } from '@/hooks/useFamily';
+import { t, tWithVars } from '@/locales';
 
 export default function DiscoveryPage() {
   const { setHasPendingCards } = useDiscoveryStore();
@@ -229,12 +230,16 @@ export default function DiscoveryPage() {
                   <RefreshCcw size={32} />
                 </div>
                 <h3 className="text-xl font-bold font-heading text-charcoal mb-2">
-                  That&apos;s a wrap!
+                  {t('discovery.wrapUpTitle', "That's a wrap!")}
                 </h3>
                 <p className="px-6 text-sm font-medium text-charcoal/60 leading-relaxed mb-8">
                   {matchCount > 0
-                    ? `You found ${matchCount} matches with your family! Ready to get cooking?`
-                    : "You've seen everything for now. Why not add some fresh ideas?"}
+                    ? tWithVars(
+                        'discovery.matchesFound',
+                        `You found ${matchCount} matches with your family! Ready to get cooking?`,
+                        { count: matchCount }
+                      )
+                    : t('discovery.noMoreRecipes', "You've seen everything for now. Why not add some fresh ideas?")}
                 </p>
 
                 <div className="flex flex-col w-full gap-3">
@@ -244,14 +249,14 @@ export default function DiscoveryPage() {
                     }
                     className="w-full rounded-full bg-ochre px-8 py-3.5 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-all hover:bg-ochre-dark"
                   >
-                    {matchCount > 0 ? 'Go to Planner' : 'Capture a New Recipe'}
+                    {matchCount > 0 ? t('discovery.goToPlanner', 'Go to Planner') : t('discovery.captureNew', 'Capture a New Recipe')}
                   </button>
 
                   <button
                     onClick={fetchCategories}
                     className="w-full rounded-full bg-white/50 px-8 py-3.5 font-bold text-charcoal/60 border border-charcoal/10 active:scale-95 transition-all hover:bg-white"
                   >
-                    Refresh Feed
+                    {t('discovery.refreshFeed', 'Refresh Feed')}
                   </button>
                 </div>
               </motion.div>
