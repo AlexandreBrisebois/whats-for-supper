@@ -28,6 +28,40 @@ A registry of custom scripts and tools designed to optimize agent efficiency.
 - **Problem Solved**: Context hopping between OpenAPI, C#, and TypeScript.
 - **Output**: Unified view of a route across all three layers.
 
+**Sample output** (`task agent:slice -- /api/recipes`):
+```
+# Vertical Slice: /api/recipes
+
+## 1. OpenAPI Specification
+✅ Found in spec: `/api/recipes`
+Methods: get, post
+
+## 2. Backend Implementation (C#)
+### POST in api/src/RecipeApi/Controllers/RecipeController.cs
+C# Method: `Create`
+[HttpPost]
+public async Task<IActionResult> Create(
+    [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId,
+    [FromForm] CreateRecipeDto dto,
+    [FromForm] IFormFileCollection files) { ... }
+
+### GET in api/src/RecipeApi/Controllers/RecipeController.cs
+C# Method: `List`
+[HttpGet]
+public async Task<IActionResult> List(
+    [FromQuery] int page = 1,
+    [FromQuery] int limit = 20) { ... }
+
+## 3. Frontend Client (TS)
+Generated Kiota files:
+- pwa/src/lib/api/generated/api/recipes/index.ts
+- pwa/src/lib/api/generated/api/recipes/item/index.ts
+- pwa/src/lib/api/generated/api/recipes/recommendations/index.ts
+- ... (one file per sub-route)
+```
+
+Use the output to understand the full contract ↔ backend ↔ client chain before making any changes. If a layer is missing from the output, that is a signal of drift or a missing implementation.
+
 ### drift.py
 - **Source**: [scripts/agent/drift.py](file:///Users/alex/Code/whats-for-supper/scripts/agent/drift.py)
 - **Problem Solved**: Silent runtime failures due to nullability or field naming mismatches between C# DTOs and the OpenAPI spec.

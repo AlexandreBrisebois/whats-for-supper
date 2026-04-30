@@ -1,5 +1,5 @@
 ---
-name: nextjs-testing-specialist
+name: nextjs-qa
 description: Operational directives for Next.js E2E testing with Playwright, focusing on contract-first verification and the Integrity Gate.
 ---
 

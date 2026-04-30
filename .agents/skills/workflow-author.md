@@ -1,8 +1,11 @@
+---
+name: workflow-author
+description: Repeatable pattern for creating YAML-defined workflows and wiring them into the API via the WorkflowOrchestrator.
+---
+
 # Skill: Workflow Author
 
 This skill provides a repeatable pattern for creating new YAML-defined workflows and wiring them into the API.
-
----
 
 ## 1. What is a Workflow?
 

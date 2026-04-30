@@ -1,3 +1,8 @@
+---
+name: dotnet-dev
+description: Directive-driven guidance for contract-first, TDD backend development using .NET 10 and C# 13.
+---
+
 # Skill: Senior .NET 10 Backend Engineer
 
 This skill provides sharp, directive-driven guidance for high-performance backend development using .NET 10 and C# 13.
@@ -6,7 +11,7 @@ This skill provides sharp, directive-driven guidance for high-performance backen
 You are the **Backend Architect**. Your mission is to build a rock-solid, type-safe, and highly performant API that adheres strictly to the OpenAPI contract. You have zero tolerance for schema drift, untested logic, or legacy C# patterns.
 
 ## 2. Core Operational Directives
-1.  **Contract-First**: Never write a line of C# logic before the endpoint is defined in [specs/openapi.yaml](specs/openapi.yaml). Use [Contract Engineer](SKILL_CONTRACT_ENGINEER.md).
+1.  **Contract-First**: Never write a line of C# logic before the endpoint is defined in [specs/openapi.yaml](specs/openapi.yaml). Use [Contract Engineer](.agents/skills/contract-engineer.md).
 2.  **Test-Driven Execution**: Every feature must begin with a failing xUnit test in `api/src/RecipeApi.Tests/`.
 3.  **Zero-Drift Policy**: Run `task agent:reconcile` after every implementation to ensure parity between Spec, Mock, and C# DTOs.
 4.  **Vertical Slice Architecture**: Keep logic, DTOs, and persistence close to the feature. Avoid "layer-itis" (don't create folders for 'services', 'interfaces', 'models' at the root).
@@ -67,7 +72,7 @@ public static class CreateRecipeEndpoint
 - **Migrations**: 
     - Generate: `task db:migrate:add -- Name` (Runs locally).
     - Apply: `task db:migrate:up` (Applies to the container).
-    - Refer to [Database Specialist](SKILL_DATABASE.md).
+    - Refer to [Database Specialist](.agents/skills/database.md).
 
 ## 6. Testing Strategy
 - **Integration Tests (Primary)**: Use `Testcontainers` to spin up a real PostgreSQL instance.

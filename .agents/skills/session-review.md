@@ -26,9 +26,12 @@ Follow these directives in order when the user signals the end of a session or w
 3.  **Update Specs**: Synchronize implementation-level changes with relevant `.spec.md` files.
 
 ### Directive 3: Perform Efficiency & Toolbox Audit
-1.  **Waste Analysis**: Identify "Efficiency Leaks" (e.g., redundant file reads, loading excessive context).
-2.  **Register Tools**: If a temporary script was created, move it to `scripts/agent/` and register it in [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md).
-3.  **Propose Enhancements**: Offer to build missing tools that would have reduced friction or token waste.
+1.  **Waste Checklist**: Check for these known efficiency leaks only:
+    - [ ] Were full files read when `task agent:slice` or `grep` would have sufficed?
+    - [ ] Was the same file read more than once in the session?
+    - [ ] Was context loaded from directories unrelated to the active workstream?
+2.  **Register Tools**: If a temporary script was created, move it to `scripts/agent/` and register it in [.agents/agent-toolbox.md](.agents/agent-toolbox.md).
+3.  **Tool Gap**: If a repeated manual lookup could be a `task` command, note it in `HANDOVER.md` under "Tooling Gaps". Do not build it now.
 
 ### Directive 4: Synchronize Documentation Surface Area
 1.  **Environment**: Verify `.env.example` matches any new `process.env` or `config` additions.
@@ -37,7 +40,7 @@ Follow these directives in order when the user signals the end of a session or w
 
 ### Directive 5: Session Compaction & Turn-End
 1.  **Active Pruning**: Ensure [HANDOVER.md](HANDOVER.md) contains ONLY the delta for the next session.
-2.  **Death Audit**: Use [SKILL_DEATH_AUDIT.md](SKILL_DEATH_AUDIT.md) to prune temporary files, build prompts, or "zombie" code.
+2.  **Death Audit**: Use [death-audit](.agents/skills/death-audit.md) to prune temporary files, build prompts, or "zombie" code.
 3.  **Next Steps**: Draft a sharp, 3-bullet plan for the next agent to resume immediately.
 
 ## 2. Integrity Check (Mandatory)

@@ -14,7 +14,7 @@ graph TD
 ```
 
 ## Discovery Rules
-- **Tooling**: Always check [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md) for custom scripts.
+- **Tooling**: Always check [.agents/agent-toolbox.md](.agents/agent-toolbox.md) for custom scripts.
 - **Environment**: Infrastructure variables live in `docker/.env`. Local overrides in `docker/.env.local`.
 - **Migrations**: `api/database/schema.sql` is the authoritative source for schema changes (via `psqldef`).
 - **Paths**: All infrastructure commands (Task, Docker) MUST be run from the project root.
@@ -716,7 +716,7 @@ task clean
 
 ## Working with AI Agents
 
-This repository is optimized for **Universal Agent Protocol (UAP)** and includes a specialized toolbox in [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md).
+This repository is optimized for **Universal Agent Protocol (UAP)** and includes a specialized toolbox in [.agents/agent-toolbox.md](.agents/agent-toolbox.md).
 
 ### Agent Toolbox Quick Start
 

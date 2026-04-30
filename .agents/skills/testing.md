@@ -1,5 +1,5 @@
 ---
-name: universal-testing-qa
+name: testing
 description: Procedural guidance for End-to-End (E2E) testing, Contract-First verification, and Quality Assurance (QA).
 ---
 

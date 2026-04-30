@@ -58,5 +58,5 @@ Use this hierarchy to determine the authoritative Source of Truth:
 | **4** | **API Contract** | [specs/openapi.yaml](specs/openapi.yaml) |
 | **5** | **Component Specs** | `specs/01_FRONTEND/`, `02_BACKEND/`, `03_AI_WORKER/` |
 | **6** | **Decision Logs** | `specs/decisions/` (ADRs) |
-| **7** | **Operational Manuals**| `LOCAL_DEV_LOOP.md`, [.agents/AGENT_TOOLBOX.md](.agents/AGENT_TOOLBOX.md) |
+| **7** | **Operational Manuals**| `LOCAL_DEV_LOOP.md`, [.agents/agent-toolbox.md](.agents/agent-toolbox.md) |
 | **8** | **Historical Archive** | `specs/05_ARCHIVE/` |

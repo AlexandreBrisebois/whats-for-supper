@@ -1,5 +1,5 @@
 ---
-name: nextjs-developer
+name: nextjs-dev
 description: Directive-driven manual for Next.js 15 development, focusing on RSC architecture, contract-first workflows, and the Solar Earth aesthetic.
 ---
 
@@ -31,9 +31,9 @@ Follow these directives in order for every frontend feature or UI change.
 
 ### Directive 4: Apply Solar Earth Design
 1.  **Design Tokens**: Use CSS variables defined in `index.css` for colors, spacing, and shadows. Do not use ad-hoc hex codes.
-2.  **Aesthetics**: Implement glassmorphism (backdrop-blur, semi-transparent backgrounds) and subtle gradients.
+2.  **Aesthetics**: Apply `backdrop-blur` and semi-transparent backgrounds using the `--glass-bg` and `--glass-border` CSS variables. Do not introduce inline opacity or blur values.
 3.  **Typography**: Use Google Fonts (Inter, Roboto, Outfit). Ensure proper heading hierarchy (H1-H6).
-4.  **Animations**: Use Framer Motion for spring-based transitions and staggered list entries to create a premium, editorial feel.
+4.  **Animations**: Use Framer Motion for transitions. Use `spring` type with `stiffness: 300, damping: 30` for interactive elements. Use `staggerChildren: 0.05` for list entries.
 
 ### Directive 5: Optimize & Verify
 1.  **Images**: Use `next/image` for all images. Set `priority` for LCP elements and provide proper `sizes` attributes.

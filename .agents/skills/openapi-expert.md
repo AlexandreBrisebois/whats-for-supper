@@ -1,5 +1,5 @@
 ---
-name: openapi-specialist
+name: openapi-expert
 description: Orchestrate the end-to-end API lifecycle. Ensure specifications, high-fidelity examples, generated clients, and E2E tests are perfectly aligned with zero-drift.
 ---
 

@@ -1,6 +1,6 @@
 ---
-name: database-schema-evolution
-description: Procedural guidance for managing PostgreSQL database schema and migrations using psqldef and EF Core.
+name: database
+description: Procedural guidance for managing PostgreSQL schema and migrations using psqldef and EF Core.
 ---
 
 # Skill: Database & Schema Evolution (PostgreSQL)

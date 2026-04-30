@@ -977,16 +977,29 @@ tasks:
     cmds:
       - |
         echo "=== PROJECT SUMMARY ==="
-        echo "Tech Stack: .NET 10, Next.js, Postgres (pgvector)"
+        echo "Tech Stack: .NET 10, Next.js 15, Postgres (pgvector)"
         echo ""
-        echo "Directory Tree (Depth 2):"
-        find . -maxdepth 2 -not -path '*/.*'
+        echo "Project Map:"
+        echo "  API:     api/src/RecipeApi/"
+        echo "  PWA:     pwa/src/"
+        echo "  Spec:    specs/openapi.yaml"
+        echo "  Scripts: scripts/agent/"
         echo ""
-        echo "Agent Skills Library:"
-        ls .agents/*.md
+        echo "Active Phases:"
+        grep "Active" specs/00_STRATEGY/ROADMAP.md | sed 's/^/  /'
         echo ""
-        echo "Service Health:"
-        task health
+        echo "Contract Integrity:"
+        python3 scripts/agent/drift.py --schema-only 2>&1 | tail -5 | sed 's/^/  /'
+        echo ""
+        echo "Active Build Prompts:"
+        ls build-prompts/*.md 2>/dev/null | grep -v -E '(README|_template)' | sed 's/^/  /'
+        ls -d build-prompts/*/ 2>/dev/null | grep -v -E 'done|archive' | sed 's/^/  /'
+        echo ""
+        echo "Active Feature Specs (.kiro/specs/):"
+        ls .kiro/specs/*.md 2>/dev/null | grep -v README | sed 's/^/  /'
+        echo ""
+        echo "Agent Skills (.agents/skills/):"
+        cat .agents/skills/README.md
         echo ""
         echo "Active Session:"
         cat HANDOVER.md 2>/dev/null || echo "No active handover log found."
