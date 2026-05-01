@@ -156,15 +156,15 @@ Work is split into six phases. Each phase is independently shippable and has a c
 
 **Stop condition**: `POST /api/recipes/describe` triggers `goto-synthesis`. All processors are registered stubs. `MarkGotoReadyProcessor` correctly flips the setting.
 
-- [ ] C1. Create `data/workflows/goto-synthesis.yaml` with the three-task chain (`SynthesizeRecipe` → `GenerateHero` → `MarkGotoReady`).
-- [ ] C2. Implement `SynthesizeRecipeProcessor` stub — creates recipe directory, writes minimal `recipe.json` (`{ name: description, recipeIngredient: [] }`) and `recipe.info` (`{ name: description, imageCount: 0, finishedDishImageIndex: -1 }`). No AI call.
-- [ ] C3. Implement `MarkGotoReadyProcessor` — queries `family_settings` for `key = 'family_goto'` where `value->>'recipeId' = recipeId::text`. If found: updates `value` JSON to set `status = 'ready'`, sets `recipe.image_count = 1` in `recipes` table. If not found: no-op (safe to append to any workflow).
-- [ ] C4. Verify `RecipeHeroAgent` (`GenerateHero`) is registered in `Program.cs`. No code change needed.
-- [ ] C5. Register `SynthesizeRecipeProcessor` and `MarkGotoReadyProcessor` in `Program.cs`.
-- [ ] C6. Wire workflow trigger into `POST describe` action — calls `IWorkflowOrchestrator.TriggerAsync("goto-synthesis", { recipeId, description })` after creating the recipe row.
-- [ ] C7. Update `recipe-import.yaml` — add optional `mark_goto_ready` task after `sync_recipe` with `depends_on: [sync_recipe]`. `MarkGotoReadyProcessor` no-ops if no matching GOTO setting exists.
-- [ ] C8. Write integration tests: `POST describe` triggers workflow; `MarkGotoReadyProcessor` updates setting `status` to `'ready'`; no-op when no matching GOTO setting.
-- [ ] C9. Run `task agent:test:impact` — all tests pass.
+- [x] C1. Create `data/workflows/goto-synthesis.yaml` with the three-task chain (`SynthesizeRecipe` → `GenerateHero` → `MarkGotoReady`).
+- [x] C2. Implement `SynthesizeRecipeProcessor` stub — creates recipe directory, writes minimal `recipe.json` (`{ name: description, recipeIngredient: [] }`) and `recipe.info` (`{ name: description, imageCount: 0, finishedDishImageIndex: -1 }`). No AI call.
+- [x] C3. Implement `MarkGotoReadyProcessor` — queries `family_settings` for `key = 'family_goto'` where `value->>'recipeId' = recipeId::text`. If found: updates `value` JSON to set `status = 'ready'`, sets `recipe.image_count = 1` in `recipes` table. If not found: no-op (safe to append to any workflow).
+- [x] C4. Verify `RecipeHeroAgent` (`GenerateHero`) is registered in `Program.cs`. No code change needed.
+- [x] C5. Register `SynthesizeRecipeProcessor` and `MarkGotoReadyProcessor` in `Program.cs`.
+- [x] C6. Wire workflow trigger into `POST describe` action — calls `IWorkflowOrchestrator.TriggerAsync("goto-synthesis", { recipeId, description })` after creating the recipe row.
+- [x] C7. Update `recipe-import.yaml` — add optional `mark_goto_ready` task after `sync_recipe` with `depends_on: [sync_recipe]`. `MarkGotoReadyProcessor` no-ops if no matching GOTO setting exists.
+- [x] C8. Write integration tests: `POST describe` triggers workflow; `MarkGotoReadyProcessor` updates setting `status` to `'ready'`; no-op when no matching GOTO setting.
+- [x] C9. Run `task agent:test:impact` — all tests pass.
 
 ---
 

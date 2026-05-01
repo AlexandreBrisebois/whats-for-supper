@@ -1,26 +1,22 @@
-name: recipe-import
+name: goto-synthesis
 parameters:
     - recipeId
+    - description
 tasks:
-    - name: extract_recipe
-      processor: ExtractRecipe
+    - name: synthesize_recipe
+      processor: SynthesizeRecipe
       payload:
           recipeId: "{{ recipeId }}"
+          description: "{{ description }}"
     - name: generate_hero
       processor: GenerateHero
       depends_on:
-          - extract_recipe
-      payload:
-          recipeId: "{{ recipeId }}"
-    - name: sync_recipe
-      processor: SyncRecipe
-      depends_on:
-          - generate_hero
+          - synthesize_recipe
       payload:
           recipeId: "{{ recipeId }}"
     - name: mark_goto_ready
       processor: MarkGotoReady
       depends_on:
-          - sync_recipe
+          - generate_hero
       payload:
           recipeId: "{{ recipeId }}"
