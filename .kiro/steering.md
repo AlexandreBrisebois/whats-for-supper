@@ -83,3 +83,57 @@ Follow [`.agents/core/context-loading.md`](../.agents/core/context-loading.md) s
 - The full repository tree to orient yourself.
 
 Between tasks, **summarize and narrow** the active context rather than carrying forward everything from the previous step. If a task requires loading more context than is reasonable to fit cleanly, decompose the task rather than expanding the context window.
+
+---
+
+## 6. E2E testing constraints — Next.js SSR + Playwright
+
+### The SSR bypass problem
+
+The home page (`/home`) is a **Next.js Server Component**. It calls `serverFetch()` which hits the backend directly via `API_INTERNAL_URL` (a Docker-internal or localhost URL). This fetch happens on the Node.js server process — **not in the browser** — so `page.route()` cannot intercept it.
+
+Concretely:
+- `serverFetch('/api/schedule?weekOffset=0')` → goes to `http://127.0.0.1:5001/api/schedule?weekOffset=0` from the server process.
+- `page.route(/...schedule.../)` → only intercepts browser-originated requests.
+- Result: SSR always returns real backend data regardless of Playwright mocks.
+
+`HomeCommandCenter` receives `todaysRecipe` as a prop from SSR. When it is non-null, the component skips the client-side `getSchedule()` fetch entirely (`!todaysRecipe` guard in `useEffect`). So even the client-side mock never fires.
+
+### What this means for E2E tests
+
+**You cannot mock the "no recipe tonight" state by mocking the schedule endpoint alone.** The SSR will return whatever the real backend has.
+
+### The proven workaround
+
+Reach the desired UI state **through the UI**, not by mocking SSR data:
+
+- To show `TonightPivotCard`: start with a planned recipe (SSR returns one), then skip it via the recovery dialog (`skip-tonight-btn` → `recovery-action-order-in` → `recovery-action-tomorrow`). This transitions `HomeCommandCenter` to `isSkipped=true` client-side, which shows the pivot card.
+- To show `CookedSuccessCard`: click `cooked-btn` and wait for the validate response.
+
+This approach is more robust anyway — it tests real state transitions rather than mocked initial states.
+
+### Settings mock
+
+The settings endpoint (`/api/settings/{key}`) is called client-side by `loadSetting()` in `HomeCommandCenter`'s `useEffect`. This **is** interceptable by `page.route()`. Always add it to `beforeEach` when testing home page behavior:
+
+```ts
+await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+  await route.fulfill({
+    status: 404,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: 'Not found' }),
+  });
+});
+```
+
+The `setupCommonRoutes()` helper in `pwa/e2e/mock-api.ts` already includes this. Tests that set up their own routes inline (without calling `setupCommonRoutes`) must add it manually.
+
+### NEXT_PUBLIC_API_BASE_URL in test mode
+
+In the Playwright test environment, `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001` (set in `playwright.config.ts`). This means the Kiota client calls the backend directly — not through the `/backend` Next.js proxy. The `page.route` patterns use `\/(?:backend\/)?api\/...` to match both the proxy path and the direct path.
+
+### Checklist before writing new E2E tests for home
+
+1. Does the test need a specific home state (no recipe, cooked, skipped)? → Reach it through UI actions, not schedule mocks.
+2. Does the test need the settings endpoint? → Add the settings mock to `beforeEach` if not using `setupCommonRoutes`.
+3. Does the test assert on `tonight-pivot-card`? → Get there via the skip flow, not by mocking an empty schedule.
