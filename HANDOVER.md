@@ -4,14 +4,19 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 
 ## Next Session Entry Points
 
-1. **Phase 12 is complete.** The next feature is Phase 13 — Recipe Agent (AI synthesis). The GOTO setting stores `{ description, recipeId }`. `SettingsService.SynthesizeRecipeAsync` is scaffolded as a stub in `api/src/RecipeApi/Services/SettingsService.cs`. Wire it to the AI agent to generate a real `RecipeDto` from the description and store it in the library.
+1. **Execute Phase 13 — GOTO Recipe Synthesis.** Spec is fully written at `.kiro/specs/phase-13-goto-synthesis.md`. Start at Phase A (tasks A1–A5). See kickoff prompt in JOURNAL for the exact first message to paste.
 
-2. **SmartPivotCard cleanup**: `SmartPivotCard` is no longer rendered in `HomeCommandCenter` but the component still exists in `pwa/src/components/home/HomeSections.tsx`. Remove it in a future cleanup pass (noted in phase-12 spec).
+2. **`saveSetting` Kiota serialization fix is live.** The `value` field is now passed via `additionalData` so Kiota's serializer doesn't drop it. The `family_settings` table must exist in the running DB — run `task down && task up` if the container predates Phase B.
 
-3. **Roadmap — 15 Min Fix / Pantry Pasta buttons**: These chips were on `SmartPivotCard` which is now replaced by `TonightPivotCard`. The roadmap items are deferred — no action needed now.
+3. **Empty planner slot pulse removed.** The `motion.div` infinite animation on empty day cards was replaced with a static dashed border + hover transition. No spec change needed.
 
-4. **E2E SSR constraint (standing)**: See ADR 032 and `.kiro/steering.md` §6. Any home page E2E test that needs a specific state (no recipe, cooked, skipped) must reach it through UI actions, not schedule mocks. The settings endpoint IS mockable client-side.
+4. **SmartPivotCard cleanup (deferred).** Component still exists in `HomeSections.tsx`, no longer rendered. Remove in a future cleanup pass.
+
+5. **E2E SSR constraint (standing).** See ADR 032 and `.kiro/steering.md` §6. Home page state must be reached through UI actions, not schedule mocks.
 
 ## Completed (Recently)
 
 - ✅ **Phase 12 — No-Menu Home State ("Tonight Pivot")**: All four phases complete, `task review` green.
+- ✅ **Phase 13 spec authored**: Full dead-end audit (9 risks), three-path design (Pick / Describe / Capture), 32 tasks across 6 phases, each with a hard stop condition.
+- ✅ **`saveSetting` Kiota serialization bug fixed**: Value fields now routed through `additionalData`.
+- ✅ **Planner empty slot pulse removed**: Static dashed border replaces infinite animation.

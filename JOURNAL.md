@@ -4,6 +4,36 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-04-30] Session — Phase 13 Spec + Bug Fixes
+**Status**: COMPLETED ✅
+
+**Objective**: Author the Phase 13 spec, fix the `saveSetting` Kiota serialization bug, and clean up the planner empty slot animation.
+
+**Phase 13 Spec (`goto-synthesis`)**
+- Three-path GOTO model agreed with designer/product: Pick from library, Describe it (AI synthesis), Capture it (photo).
+- "Change" bottom sheet in `FamilyGOTOSettings` is the single entry point for all three paths.
+- `status: 'pending' | 'ready'` field added to GOTO setting value — home card gated by `status === 'ready'`.
+- `MarkGotoReadyProcessor` is no-op-safe — appended to both `goto-synthesis` and `recipe-import` workflows.
+- `RecipeHeroAgent` (`GenerateHero`) and `RecipeAgent` (`ExtractRecipe`, `GenerateDescription`) confirmed already implemented and registered — no new agent infrastructure needed.
+- `SynthesizeRecipeProcessor` follows `RecipeAgent` pattern exactly — text prompt instead of images.
+- 9 dead ends identified and resolved in pre-spec audit.
+- 32 tasks across 6 phases (A–F), each with a hard stop condition for incremental execution.
+- Kickoff prompt written for new chat handoff.
+
+**`saveSetting` Kiota serialization fix**
+- Root cause: `serializeSettingsDto_value` only writes `additionalData`. Plain object properties (`description`, `recipeId`) were silently dropped before the POST body was sent.
+- Fix: value fields passed via `{ additionalData: valueAsRecord }` in `familyStore.saveSetting`.
+- File: `pwa/src/store/familyStore.ts`.
+
+**Planner empty slot pulse removed**
+- Root cause: `motion.div` with infinite `borderColor`/`backgroundColor` animation on every empty day card — visually noisy, reads as error state.
+- Fix: replaced with static dashed border (`border-terracotta/30`) + hover transition. No animation.
+- File: `pwa/src/app/(app)/planner/page.tsx`.
+
+**ADR**: None triggered (no architectural shifts — bug fix + spec authoring only).
+
+---
+
 ### [2026-04-30] Phase 12 — No-Menu Home State ("Tonight Pivot")
 **Status**: COMPLETED ✅
 

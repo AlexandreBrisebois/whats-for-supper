@@ -21,6 +21,8 @@ import {
   type OriginalRequestBuilder,
 } from './original/index';
 // @ts-ignore
+import { StatusRequestBuilderRequestsMetadata, type StatusRequestBuilder } from './status/index';
+// @ts-ignore
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
@@ -101,6 +103,10 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * The original property
    */
   get original(): OriginalRequestBuilder;
+  /**
+   * The status property
+   */
+  get status(): StatusRequestBuilder;
   /**
    * Delete a recipe
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -216,6 +222,9 @@ export const ItemRequestBuilderNavigationMetadata: Record<
   },
   original: {
     navigationMetadata: OriginalRequestBuilderNavigationMetadata,
+  },
+  status: {
+    requestsMetadata: StatusRequestBuilderRequestsMetadata,
   },
 };
 /**

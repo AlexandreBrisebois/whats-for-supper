@@ -36,6 +36,7 @@ type UILocalScheduleDay = ScheduleDay & {
   _isPending?: boolean;
   _voteCount?: number | null;
   _unanimousVote?: boolean | null;
+  _userCleared?: boolean;
 };
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
@@ -236,9 +237,9 @@ export default function PlannerPage() {
               for (const recipe of defaultsData.preSelectedRecipes) {
                 const alreadyPlaced = updated.some((day) => day.recipe?.id === recipe.recipeId);
                 if (!alreadyPlaced) {
-                  // Find first open slot
+                  // Find first open slot — skip slots the user explicitly cleared
                   const openSlot = updated.findIndex(
-                    (day, idx) => !day.recipe && !occupiedIndices.has(idx)
+                    (day, idx) => !day.recipe && !occupiedIndices.has(idx) && !day._userCleared
                   );
                   if (openSlot !== -1) {
                     const generateUiId = () =>
@@ -403,6 +404,7 @@ export default function PlannerPage() {
       const newSchedule = [...schedule];
       newSchedule[dayIndex].recipe = undefined;
       newSchedule[dayIndex]._isPending = false;
+      newSchedule[dayIndex]._userCleared = true;
       setSchedule(newSchedule);
 
       // Trigger success animation (Success Ring)

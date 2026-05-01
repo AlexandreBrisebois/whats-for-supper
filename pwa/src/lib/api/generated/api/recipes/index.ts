@@ -8,6 +8,11 @@ import {
 } from '../../models/index';
 // @ts-ignore
 import {
+  DescribeRequestBuilderRequestsMetadata,
+  type DescribeRequestBuilder,
+} from './describe/index';
+// @ts-ignore
+import {
   ImportsRequestBuilderNavigationMetadata,
   type ImportsRequestBuilder,
 } from './imports/index';
@@ -115,6 +120,10 @@ export interface RecipesPostResponse_data extends AdditionalDataHolder, Parsable
  * Builds and executes requests for operations under /api/recipes
  */
 export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequestBuilder> {
+  /**
+   * The describe property
+   */
+  get describe(): DescribeRequestBuilder;
   /**
    * The imports property
    */
@@ -232,6 +241,9 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
     requestsMetadata: ItemRequestBuilderRequestsMetadata,
     navigationMetadata: ItemRequestBuilderNavigationMetadata,
     pathParametersMappings: ['%2Did'],
+  },
+  describe: {
+    requestsMetadata: DescribeRequestBuilderRequestsMetadata,
   },
   imports: {
     navigationMetadata: ImportsRequestBuilderNavigationMetadata,

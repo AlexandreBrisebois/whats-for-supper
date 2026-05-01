@@ -93,6 +93,7 @@ export function TonightMenuCard({
                 fill
                 className="object-cover"
                 priority
+                unoptimized
               />
             ) : (
               <div className="w-full h-full bg-charcoal/5 flex items-center justify-center">
@@ -104,7 +105,11 @@ export function TonightMenuCard({
 
           <div className="flex flex-col gap-2 px-1">
             <h3 className="font-heading text-3xl font-black text-charcoal leading-none tracking-tighter">
-              {recipeName}
+              {recipeName || (
+                <span className="text-charcoal/30 italic text-xl">
+                  {t('home.preparingRecipe', 'Preparing recipe…')}
+                </span>
+              )}
             </h3>
             <p className="text-charcoal/40 text-[10px] font-black uppercase tracking-widest mt-1 flex items-center gap-1">
               {t('home.tapForIngredients', 'Tap for ingredients')} <ChevronRight size={12} />

@@ -27,6 +27,7 @@ export const MOCK_IDS = {
   RECIPE_CARBONARA: '660e8400-e29b-41d4-a716-446655440013',
   RECIPE_STIR_FRY: '660e8400-e29b-41d4-a716-446655440014',
   RECIPE_TACOS: '660e8400-e29b-41d4-a716-446655440015',
+  RECIPE_GOTO_STUB: '660e8400-e29b-41d4-a716-446655440020', // stub created by POST /api/recipes/describe
 };
 
 /**
@@ -180,6 +181,50 @@ export async function setupCommonRoutes(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({ data: { topPick: null, results: [] } }),
     });
+  });
+  // POST /api/recipes/describe — returns a stub RecipeDto; synthesis workflow is triggered server-side
+  await page.route(/\/(?:backend\/)?api\/recipes\/describe/, async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { name?: string; description?: string };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: builders.recipe({
+            id: MOCK_IDS.RECIPE_GOTO_STUB,
+            name: body?.name ?? 'Described Recipe',
+            description: body?.description ?? null,
+            imageUrl: null,
+          }),
+        }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+  // GET /api/recipes/{id}/status — returns pending by default; tests can override per-route
+  await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+    if (route.request().method() === 'GET') {
+      const id =
+        route
+          .request()
+          .url()
+          .match(/\/recipes\/([0-9a-f-]+)\/status/)?.[1] ?? MOCK_IDS.RECIPE_GOTO_STUB;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id,
+            name: null,
+            status: 'pending',
+            imageCount: 0,
+          },
+        }),
+      });
+    } else {
+      await route.continue();
+    }
   });
   await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+(?:\?|$)/, async (route) => {
     await route.fulfill({

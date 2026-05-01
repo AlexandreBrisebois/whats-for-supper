@@ -61,6 +61,17 @@ export function createBulkImportTriggerResponseDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DescribeRecipeDto}
+ */
+// @ts-ignore
+export function createDescribeRecipeDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDescribeRecipeDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {HealthCheckResponse_checks}
  */
 // @ts-ignore
@@ -211,6 +222,17 @@ export function createRecipeListResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipeListResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeStatusDto}
+ */
+// @ts-ignore
+export function createRecipeStatusDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeStatusDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -432,6 +454,16 @@ export function createWorkflowTriggerResponseDtoFromDiscriminatorValue(
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoWorkflowTriggerResponseDto;
 }
+export interface DescribeRecipeDto extends AdditionalDataHolder, Parsable {
+  /**
+   * Free-text description used to synthesize the full recipe via AI
+   */
+  description?: string | null;
+  /**
+   * Short name for the recipe (e.g. "Our family spaghetti")
+   */
+  name?: string | null;
+}
 /**
  * The deserialization information for the current model
  * @param AssignScheduleDto The instance to deserialize into.
@@ -468,6 +500,24 @@ export function deserializeIntoBulkImportTriggerResponseDto(
     },
     queuedCount: (n) => {
       bulkImportTriggerResponseDto.queuedCount = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DescribeRecipeDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDescribeRecipeDto(
+  describeRecipeDto: Partial<DescribeRecipeDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    description: (n) => {
+      describeRecipeDto.description = n.getStringValue();
+    },
+    name: (n) => {
+      describeRecipeDto.name = n.getStringValue();
     },
   };
 }
@@ -809,6 +859,30 @@ export function deserializeIntoRecipeListResponse(
     },
     updatedAt: (n) => {
       recipeListResponse.updatedAt = n.getDateValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeStatusDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeStatusDto(
+  recipeStatusDto: Partial<RecipeStatusDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    id: (n) => {
+      recipeStatusDto.id = n.getGuidValue();
+    },
+    imageCount: (n) => {
+      recipeStatusDto.imageCount = n.getNumberValue();
+    },
+    name: (n) => {
+      recipeStatusDto.name = n.getStringValue();
+    },
+    status: (n) => {
+      recipeStatusDto.status = n.getEnumValue<RecipeStatusDto_status>(RecipeStatusDto_statusObject);
     },
   };
 }
@@ -1511,6 +1585,26 @@ export interface RecipeListResponse extends AdditionalDataHolder, Parsable {
    */
   updatedAt?: Date | null;
 }
+export interface RecipeStatusDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+  /**
+   * The imageCount property
+   */
+  imageCount?: number | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+  /**
+   * "pending" while synthesis is in progress; "ready" once the recipe is fully synthesised and the hero image is generated
+   */
+  status?: RecipeStatusDto_status | null;
+}
+export type RecipeStatusDto_status =
+  (typeof RecipeStatusDto_statusObject)[keyof typeof RecipeStatusDto_statusObject];
 export interface RecommendationResultDto extends AdditionalDataHolder, Parsable {
   /**
    * The id property
@@ -1642,6 +1736,25 @@ export function serializeBulkImportTriggerResponseDto(
   );
   writer.writeNumberValue('queuedCount', bulkImportTriggerResponseDto.queuedCount);
   writer.writeAdditionalData(bulkImportTriggerResponseDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param DescribeRecipeDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDescribeRecipeDto(
+  writer: SerializationWriter,
+  describeRecipeDto: Partial<DescribeRecipeDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!describeRecipeDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('description', describeRecipeDto.description);
+  writer.writeStringValue('name', describeRecipeDto.name);
+  writer.writeAdditionalData(describeRecipeDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -1958,6 +2071,27 @@ export function serializeRecipeListResponse(
   );
   writer.writeDateValue('updatedAt', recipeListResponse.updatedAt);
   writer.writeAdditionalData(recipeListResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeStatusDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeStatusDto(
+  writer: SerializationWriter,
+  recipeStatusDto: Partial<RecipeStatusDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeStatusDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('id', recipeStatusDto.id);
+  writer.writeNumberValue('imageCount', recipeStatusDto.imageCount);
+  writer.writeStringValue('name', recipeStatusDto.name);
+  writer.writeEnumValue<RecipeStatusDto_status>('status', recipeStatusDto.status);
+  writer.writeAdditionalData(recipeStatusDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -2633,6 +2767,13 @@ export const ManagementTaskStatusResponse_statusObject = {
 export const MoveScheduleDto_intentObject = {
   Swap: 'swap',
   Push: 'push',
+} as const;
+/**
+ * "pending" while synthesis is in progress; "ready" once the recipe is fully synthesised and the hero image is generated
+ */
+export const RecipeStatusDto_statusObject = {
+  Pending: 'pending',
+  Ready: 'ready',
 } as const;
 export const WorkflowInstanceDetailDto_statusObject = {
   Pending: 'Pending',

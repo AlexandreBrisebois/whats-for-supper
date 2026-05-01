@@ -198,6 +198,22 @@ components:
         notes: { type: string, nullable: true }
         rating: { type: integer, nullable: true, minimum: 0, maximum: 3 }
 
+    DescribeRecipeDto:
+      type: object
+      required: [name, description]
+      properties:
+        name: { type: string, description: 'Short name for the recipe (e.g. "Our family spaghetti")' }
+        description: { type: string, description: 'Free-text description used to synthesize the full recipe via AI' }
+
+    RecipeStatusDto:
+      type: object
+      required: [id, status, imageCount]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, nullable: true }
+        status: { type: string, enum: [pending, ready], description: '"pending" while synthesis is in progress; "ready" once the recipe is fully synthesised and the hero image is generated' }
+        imageCount: { type: integer }
+
     PreSelectedRecipeDto:
       type: object
       required: [recipeId, name, heroImageUrl, voteCount, familySize, unanimousVote, dayIndex, isLocked]
@@ -1068,6 +1084,60 @@ paths:
                 instanceIds:
                   - '550e8400-e29b-41d4-a716-446655440010'
                   - '550e8400-e29b-41d4-a716-446655440011'
+
+  /api/recipes/describe:
+    post:
+      summary: Create a stub recipe from a text description and trigger AI synthesis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DescribeRecipeDto' }
+            example:
+              name: 'Our family spaghetti'
+              description: 'Homemade tomato sauce with meatballs, slow-cooked for two hours'
+      responses:
+        '200':
+          description: OK — stub recipe created; synthesis workflow triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/RecipeDto' }
+              example:
+                data:
+                  id: '660e8400-e29b-41d4-a716-446655440020'
+                  name: 'Our family spaghetti'
+                  description: 'Homemade tomato sauce with meatballs, slow-cooked for two hours'
+                  imageUrl: null
+                  createdAt: '2026-04-30T12:00:00Z'
+
+  /api/recipes/{id}/status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get the synthesis status of a recipe
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/RecipeStatusDto' }
+              example:
+                data:
+                  id: '660e8400-e29b-41d4-a716-446655440020'
+                  name: 'Our family spaghetti'
+                  status: 'pending'
+                  imageCount: 0
+        '404':
+          description: Recipe not found
 
   /api/workflows/{workflowId}/trigger:
     post:
