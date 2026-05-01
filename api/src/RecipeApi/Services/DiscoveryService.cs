@@ -21,13 +21,13 @@ public class DiscoveryService(RecipeDbContext dbContext)
         query = query.Where(r => !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id
                                                                 && v.FamilyMemberId == familyMemberId));
 
-        // Apply ordering: VoteCount DESC, then within same vote count: never-cooked first,
+        // Apply ordering: VoteCount DESC, then within same vote count: never-cooked first
+        // (NULL treated as DateTimeOffset.MinValue so it sorts before any real date),
         // then oldest last-cooked date first (ASC) — surfaces recipes that haven't been
         // on the table in a while, driving conversion toward high-momentum picks.
         query = query
             .OrderByDescending(r => r.VoteCount)
-            .ThenBy(r => r.LastCookedDate == null ? 0 : 1)
-            .ThenBy(r => r.LastCookedDate);
+            .ThenBy(r => r.LastCookedDate ?? DateTimeOffset.MinValue);
 
         var results = await query.ToListAsync();
 
