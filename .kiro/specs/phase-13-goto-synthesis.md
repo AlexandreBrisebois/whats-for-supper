@@ -143,12 +143,12 @@ Work is split into six phases. Each phase is independently shippable and has a c
 
 **Stop condition**: Endpoint creates a DB row and returns a valid recipe ID. No workflow yet.
 
-- [ ] B1. Add `DescribeRecipeDto.cs` to `api/src/RecipeApi/Dto/` — `record` with `Name` and `Description`.
-- [ ] B2. Add `RecipeStatusDto.cs` to `api/src/RecipeApi/Dto/` — `record` with `Id`, `Name`, `Status`, `ImageCount`.
-- [ ] B3. Add `POST describe` action to `RecipeController` — creates `Recipe` row (`Name`, `Description`, `IsDiscoverable = false`, `ImageCount = 0`), returns `RecipeDto`. No workflow trigger yet.
-- [ ] B4. Add `GET {id}/status` action to `RecipeController` — returns `RecipeStatusDto` with `status = recipe.Name != null && recipe.ImageCount > 0 ? "ready" : "pending"`.
-- [ ] B5. Write integration tests: `POST describe` returns 200 with valid ID; `GET status` returns `"pending"` for a stub recipe.
-- [ ] B6. Run `task agent:test:impact` — all tests pass.
+- [x] B1. Add `DescribeRecipeDto.cs` to `api/src/RecipeApi/Dto/` — `record` with `Name` and `Description`.
+- [x] B2. Add `RecipeStatusDto.cs` to `api/src/RecipeApi/Dto/` — `record` with `Id`, `Name`, `Status`, `ImageCount`.
+- [x] B3. Add `POST describe` action to `RecipeController` — creates `Recipe` row (`Name`, `Description`, `IsDiscoverable = false`, `ImageCount = 0`), returns `RecipeDto`. No workflow trigger yet.
+- [x] B4. Add `GET {id}/status` action to `RecipeController` — returns `RecipeStatusDto` with `status = recipe.Name != null && recipe.ImageCount > 0 ? "ready" : "pending"`.
+- [x] B5. Write integration tests: `POST describe` returns 200 with valid ID; `GET status` returns `"pending"` for a stub recipe.
+- [x] B6. Run `task agent:test:impact` — all tests pass.
 
 ---
 

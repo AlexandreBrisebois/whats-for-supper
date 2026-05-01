@@ -193,6 +193,64 @@ public class RecipeService(
         };
     }
 
+    /// <summary>
+    /// Creates a stub recipe from a text description.
+    /// Sets ImageCount = 0, IsDiscoverable = false.
+    /// The caller is responsible for triggering the goto-synthesis workflow.
+    /// </summary>
+    public async Task<RecipeDto> DescribeRecipe(DescribeRecipeDto dto)
+    {
+        var recipeId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Name = dto.Name,
+            Description = dto.Description,
+            ImageCount = 0,
+            IsDiscoverable = false,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+
+        return new RecipeDto
+        {
+            Id = recipe.Id,
+            Name = recipe.Name,
+            Description = recipe.Description,
+            ImageUrl = null,
+            Images = [],
+            Rating = (int)recipe.Rating,
+            CreatedAt = recipe.CreatedAt
+        };
+    }
+
+    /// <summary>
+    /// Returns the synthesis status of a recipe.
+    /// "ready" when Name is set and ImageCount > 0; "pending" otherwise.
+    /// </summary>
+    public async Task<RecipeStatusDto> GetRecipeStatus(Guid id)
+    {
+        var recipe = await db.Recipes.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        var status = !string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0
+            ? "ready"
+            : "pending";
+
+        return new RecipeStatusDto
+        {
+            Id = recipe.Id,
+            Name = recipe.Name,
+            Status = status,
+            ImageCount = recipe.ImageCount
+        };
+    }
+
     /// <summary>Deletes a recipe from disk and database.</summary>
     public async Task DeleteRecipe(Guid id)
     {

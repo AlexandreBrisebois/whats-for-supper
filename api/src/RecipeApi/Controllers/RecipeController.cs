@@ -111,6 +111,35 @@ public class RecipeController(
         return Accepted(result);
     }
 
+    /// <summary>
+    /// POST /api/recipes/describe — create a stub recipe from a text description.
+    /// Triggers the goto-synthesis workflow (added in Phase C).
+    /// </summary>
+    [HttpPost("describe")]
+    public async Task<IActionResult> Describe([FromBody] DescribeRecipeDto dto)
+    {
+        var result = await recipeService.DescribeRecipe(dto);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// GET /api/recipes/{id}/status — synthesis status for a recipe.
+    /// Returns "pending" while the goto-synthesis workflow is running; "ready" once complete.
+    /// </summary>
+    [HttpGet("{id:guid}/status")]
+    public async Task<IActionResult> GetStatus(Guid id)
+    {
+        try
+        {
+            var result = await recipeService.GetRecipeStatus(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     /// <summary>GET /api/recipes/recommendations — mock recommendations (100% mocked data for development).</summary>
     [HttpGet("recommendations")]
     public IActionResult GetRecommendations()
