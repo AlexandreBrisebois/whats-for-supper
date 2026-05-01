@@ -200,8 +200,8 @@ public class DiscoveryServiceTests
         Assert.Equal(4, results.Count);
         Assert.Equal(recipe3.Id, results[0].Id); // Top due to vote count
         Assert.Equal(recipe4.Id, results[1].Id); // Never cooked (NULL) comes first among same vote count
-        Assert.Equal(recipe2.Id, results[2].Id); // Next due to newer LastCookedDate
-        Assert.Equal(recipe1.Id, results[3].Id); // Last
+        Assert.Equal(recipe1.Id, results[2].Id); // Oldest last-cooked date comes before more recent
+        Assert.Equal(recipe2.Id, results[3].Id); // Most recently cooked is last
     }
 
     // TODO: Test for filtering planned recipes from discovery
