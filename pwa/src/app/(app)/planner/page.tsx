@@ -919,25 +919,10 @@ function PlannerDayCard({
               data-testid="plan-meal-button"
               className="flex items-center w-full text-left group"
             >
-              <motion.div
-                animate={{
-                  borderColor: [
-                    'rgba(205, 93, 69, 0.2)',
-                    'rgba(205, 93, 69, 0.5)',
-                    'rgba(205, 93, 69, 0.2)',
-                  ],
-                  backgroundColor: [
-                    'rgba(205, 93, 69, 0.05)',
-                    'rgba(205, 93, 69, 0.1)',
-                    'rgba(205, 93, 69, 0.05)',
-                  ],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="h-10 w-10 rounded-xl border border-dashed flex items-center justify-center mr-3 group-hover:bg-terracotta/10 transition-colors"
-              >
-                <Plus className="text-terracotta" size={18} />
-              </motion.div>
-              <span className="text-sm font-bold text-terracotta/60">Plan a meal</span>
+              <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
+                <Plus className="text-terracotta/50 group-hover:text-terracotta transition-colors" size={18} />
+              </div>
+              <span className="text-sm font-bold text-charcoal/30 group-hover:text-terracotta/60 transition-colors">Plan a meal</span>
             </button>
           )}
         </div>

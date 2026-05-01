@@ -148,8 +148,16 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   },
 
   saveSetting: async (key: string, value: unknown) => {
-    const response = await apiClient.api.settings.byKey(key).post({ key, value: value as any });
-    const saved = response?.data?.value?.additionalData ?? value;
+    // Kiota's SettingsDto_value serializer only writes additionalData.
+    // We must put the value fields into additionalData so they survive serialization.
+    const valueAsRecord = value as Record<string, unknown>;
+    const response = await apiClient.api.settings.byKey(key).post({
+      key,
+      value: { additionalData: valueAsRecord } as any,
+    });
+    // On GET, Kiota puts unknown fields into additionalData — use that if available,
+    // otherwise fall back to the value we sent (optimistic update).
+    const saved = response?.data?.value?.additionalData ?? valueAsRecord;
     set((state) => ({
       familySettings: { ...state.familySettings, [key]: saved },
     }));
