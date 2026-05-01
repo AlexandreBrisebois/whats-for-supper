@@ -172,17 +172,17 @@ Work is split into six phases. Each phase is independently shippable and has a c
 
 **Stop condition**: Settings page has the three-option Change sheet. Home card is gated by `status`. Typecheck clean.
 
-- [ ] D1. Update `FamilyGOTOSettings.tsx` — replace the current "Pick from library" / "Choose a GOTO recipe" buttons with a single "Change" button that opens a bottom sheet.
-- [ ] D2. Implement the Change bottom sheet with three options:
+- [x] D1. Update `FamilyGOTOSettings.tsx` — replace the current "Pick from library" / "Choose a GOTO recipe" buttons with a single "Change" button that opens a bottom sheet.
+- [x] D2. Implement the Change bottom sheet with three options:
   - **Pick from library** — opens existing `QuickFindModal`, saves `{ description: recipe.name, recipeId: recipe.id, status: 'ready' }`.
   - **Describe it** — navigates to `/capture?intent=goto`.
   - **Capture it** — navigates to `/capture?intent=goto&mode=photo`.
-- [ ] D3. Update the pending/ready display in `FamilyGOTOSettings`:
+- [x] D3. Update the pending/ready display in `FamilyGOTOSettings`:
   - `status === 'pending'`: spinner + "Your GOTO is being prepared…"
   - `status === 'ready'`: recipe name + "Change" button
   - no GOTO: "Set your GOTO" prompt + "Change" button
-- [ ] D4. Update `HomeCommandCenter.tsx` — after `loadSetting('family_goto')`, if `status !== 'ready'` (or missing), treat as no GOTO: `gotoDescription = null`, `gotoRecipeId = null`. `TonightPivotCard` shows "Nothing planned yet".
-- [ ] D5. Run `npm run typecheck` — zero type errors.
+- [x] D4. Update `HomeCommandCenter.tsx` — after `loadSetting('family_goto')`, if `status !== 'ready'` (or missing), treat as no GOTO: `gotoDescription = null`, `gotoRecipeId = null`. `TonightPivotCard` shows "Nothing planned yet".
+- [x] D5. Run `npm run typecheck` — zero type errors.
 
 ---
 

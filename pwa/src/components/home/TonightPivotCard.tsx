@@ -6,6 +6,8 @@ import { TonightCardBase } from './TonightMenuCard';
 interface TonightPivotCardProps {
   gotoDescription: string | null;
   gotoRecipeId: string | null;
+  /** "ready" once synthesis is complete; "pending" while in progress; null/undefined = no GOTO set */
+  gotoStatus?: string | null;
   onConfirmGoto: () => void;
   onDiscover: () => void;
   onOrderIn: () => void;
@@ -14,11 +16,16 @@ interface TonightPivotCardProps {
 export function TonightPivotCard({
   gotoDescription,
   gotoRecipeId,
+  gotoStatus,
   onConfirmGoto,
   onDiscover,
   onOrderIn,
 }: TonightPivotCardProps) {
+  // A GOTO is only actionable when it exists AND is ready.
+  // Existing values without a status field (set before Phase 13) are treated as ready.
   const hasGoto = gotoRecipeId != null;
+  const gotoReady = hasGoto && (gotoStatus == null || gotoStatus === 'ready');
+  const gotoPending = hasGoto && gotoStatus === 'pending';
 
   return (
     <TonightCardBase
@@ -43,10 +50,14 @@ export function TonightPivotCard({
 
       {/* Body */}
       <div className="flex flex-col gap-2 px-1 mb-5">
-        {gotoDescription ? (
+        {gotoReady && gotoDescription ? (
           <h3 className="font-heading text-3xl font-black text-charcoal leading-none tracking-tighter">
             {gotoDescription}
           </h3>
+        ) : gotoPending ? (
+          <p className="text-charcoal/40 text-sm font-medium italic">
+            Your GOTO is being prepared…
+          </p>
         ) : (
           <p className="text-charcoal/40 text-sm font-medium italic">Nothing planned yet</p>
         )}
@@ -61,23 +72,23 @@ export function TonightPivotCard({
         )}
       </div>
 
-      {/* Footer actions */}
+      {/* Footer actions — layout depends on whether a ready GOTO exists */}
       <div className="flex flex-col gap-2 mt-auto">
         <button
           onClick={onConfirmGoto}
-          disabled={!hasGoto}
           data-testid="confirm-goto-btn"
-          className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-black uppercase tracking-widest"
+          disabled={!gotoReady}
+          className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:active:scale-100"
         >
           Confirm GOTO
         </button>
-        <div className="grid grid-cols-2 gap-2">
+        <div className={gotoReady ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}>
           <button
             onClick={onDiscover}
             data-testid="discover-btn"
             className="flex items-center justify-center h-12 rounded-[1.5rem] bg-indigo/10 text-indigo transition-all active:scale-95 hover:bg-indigo/20 text-[10px] font-black uppercase tracking-widest"
           >
-            Discover
+            Quick Find
           </button>
           <button
             onClick={onOrderIn}

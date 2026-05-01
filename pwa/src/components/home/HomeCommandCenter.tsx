@@ -35,11 +35,16 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
 
   // Extract GOTO fields from the stored setting value
   const gotoValue = familySettings['family_goto'] as
-    | { description?: string; recipeId?: string }
+    | { description?: string; recipeId?: string; status?: string }
     | null
     | undefined;
-  const gotoDescription = gotoValue?.description ?? null;
-  const gotoRecipeId = gotoValue?.recipeId ?? null;
+
+  // Phase D4: treat status !== 'ready' as no GOTO for the home card.
+  // Backward compat: existing values without a status field are treated as 'ready'.
+  const gotoStatus = gotoValue?.status ?? null;
+  const gotoIsReady = !gotoValue || gotoStatus == null || gotoStatus === 'ready';
+  const gotoDescription = gotoIsReady ? (gotoValue?.description ?? null) : null;
+  const gotoRecipeId = gotoIsReady ? (gotoValue?.recipeId ?? null) : null;
 
   useEffect(() => {
     let mounted = true;
@@ -186,6 +191,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
             <TonightPivotCard
               gotoDescription={gotoDescription}
               gotoRecipeId={gotoRecipeId}
+              gotoStatus={gotoStatus}
               onConfirmGoto={() => {
                 if (gotoRecipeId) {
                   const dayIndex = (new Date().getDay() + 6) % 7;

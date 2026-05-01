@@ -4,7 +4,157 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
-### [2026-04-30] Session — Phase 13 Spec + Bug Fixes
+### [2026-04-30] Session — Phase 13 Phases A, B, C
+**Status**: COMPLETED ✅
+
+**Objective**: Execute Phase 13 (GOTO Recipe Synthesis) Phases A through C — contract, backend stub creation, and workflow plumbing.
+
+**Phase A — Contract**
+- Added `DescribeRecipeDto` (`name: string, description: string`) and `RecipeStatusDto` (`id, name?, status: pending|ready, imageCount`) schemas to `specs/openapi.yaml`.
+- Added `POST /api/recipes/describe` and `GET /api/recipes/{id}/status` paths.
+- Regenerated Kiota client — `apiClient.api.recipes.describe.post(...)` and `apiClient.api.recipes.byRecipeId(id).status.get()` confirmed.
+- Added `MOCK_IDS.RECIPE_GOTO_STUB` (`660e8400-...-446655440020`) to `pwa/e2e/mock-api.ts`.
+- Added mock handlers for both endpoints inside `setupCommonRoutes` — `describe` returns stub `RecipeDto`, `status` returns `pending` by default (tests can override).
+- Status handler registered before the generic `/{id}` catch-all to prevent route shadowing.
+- Zero drift confirmed.
+
+**Phase B — Backend Stub Creation**
+- `DescribeRecipeDto.cs` — `record` with `[Required] Name` and `[Required] Description`.
+- `RecipeStatusDto.cs` — `record` with `Id`, `Name?`, `Status`, `ImageCount`.
+- `RecipeService.DescribeRecipe()` — creates `Recipe` row (`ImageCount=0`, `IsDiscoverable=false`), returns `RecipeDto`. No workflow trigger yet.
+- `RecipeService.GetRecipeStatus()` — returns `"pending"` when `ImageCount==0`, `"ready"` when name set and `ImageCount>0`.
+- `POST /api/recipes/describe` and `GET /api/recipes/{id}/status` controller actions added.
+- 5 integration tests: 200 with valid GUID, 400 on missing name, 400 on missing description, pending status for stub, 404 for unknown ID.
+- 134/134 tests pass.
+
+**Phase C — Workflow Plumbing**
+- `goto-synthesis.yaml` created in `api/src/RecipeApi/Workflows/` (seeded at startup) and `data/workflows/`. Chain: `SynthesizeRecipe → GenerateHero → MarkGotoReady`.
+- `SynthesizeRecipeProcessor` stub: creates recipe directory, writes minimal `recipe.json` and `recipe.info` from description text. No AI call (Phase F).
+- `MarkGotoReadyProcessor`: queries `family_settings` for `key='family_goto'` whose `value.recipeId` matches payload. If found: patches `status="ready"` via `JsonNode` round-trip, sets `recipe.image_count=1`. If not found or mismatched: no-op. Safe to append to any workflow.
+- `RecipeHeroAgent` (`GenerateHero`) confirmed already registered — no change.
+- `SynthesizeRecipeProcessor` and `MarkGotoReadyProcessor` registered in `Program.cs`.
+- `RecipeService` constructor extended with `IWorkflowOrchestrator`. `DescribeRecipe` now calls `TriggerAsync("goto-synthesis", {recipeId, description})` after DB insert. Failure is non-fatal.
+- `recipe-import.yaml` updated: `mark_goto_ready` appended after `sync_recipe` (no-op safe).
+- 4 integration tests: workflow trigger, happy-path ready flip, no-setting no-op, recipeId-mismatch no-op.
+- 138/138 tests pass. Perfect parity (43/43 endpoints). Zero drift.
+
+**Bug investigation (not a code bug)**
+- "Preparing recipe…" on home card for a recipe that's in the planner: caused by `recipe.name = null` in DB for one specific recipe. `SyncRecipeProcessor` writes the name — if it failed or never ran, the DB name stays null. The "Preparing recipe…" fallback text was introduced by commit `ffb41cd` as a Phase 13 UI change, exposing this pre-existing data condition. Fix: `POST /api/recipes/imports/bulk` re-triggers `recipe-import` for all `name IS NULL` recipes.
+
+**Files changed**
+- `specs/openapi.yaml` — `DescribeRecipeDto`, `RecipeStatusDto` schemas; two new paths
+- `pwa/src/lib/api/generated/` — Kiota regenerated (describe + status accessors + models)
+- `pwa/e2e/mock-api.ts` — `RECIPE_GOTO_STUB` ID, describe + status mock handlers
+- `api/src/RecipeApi/Dto/DescribeRecipeDto.cs` (new)
+- `api/src/RecipeApi/Dto/RecipeStatusDto.cs` (new)
+- `api/src/RecipeApi/Services/RecipeService.cs` — `DescribeRecipe`, `GetRecipeStatus`, `IWorkflowOrchestrator` injection
+- `api/src/RecipeApi/Controllers/RecipeController.cs` — `Describe`, `GetStatus` actions
+- `api/src/RecipeApi/Workflows/goto-synthesis.yaml` (new)
+- `api/src/RecipeApi/Workflows/recipe-import.yaml` — `mark_goto_ready` step added
+- `api/src/RecipeApi/Services/Processors/SynthesizeRecipeProcessor.cs` (new)
+- `api/src/RecipeApi/Services/Processors/MarkGotoReadyProcessor.cs` (new)
+- `api/src/RecipeApi/Program.cs` — two new processor registrations
+- `data/workflows/goto-synthesis.yaml` (new)
+- `data/workflows/recipe-import.yaml` — `mark_goto_ready` step added
+- `api/src/RecipeApi.Tests/Integration/RecipeDescribeIntegrationTests.cs` (new, 5 tests)
+- `api/src/RecipeApi.Tests/Integration/GotoSynthesisIntegrationTests.cs` (new, 4 tests)
+
+**ADR**: None triggered. All new code follows established patterns.
+
+---
+
+### [2026-05-01] Session — Phase 13 Phase D4 + TonightPivotCard UX
+**Status**: COMPLETED ✅
+
+**Objective**: Implement the GOTO status gate on the home card and redesign `TonightPivotCard` action layout to be conditional on GOTO availability.
+
+**Changes**
+
+`TonightPivotCard.tsx`:
+- Added optional `gotoStatus` prop (`"ready" | "pending" | null | undefined`).
+- `gotoReady` = recipeId present AND status is `"ready"` or absent (backward compat).
+- `gotoPending` = recipeId present AND status is `"pending"`.
+- **No GOTO**: "Nothing planned yet" + "Set your GOTO →" link + two full-width buttons: **Quick Find** + **Order In**.
+- **GOTO pending**: "Your GOTO is being prepared…" + same two buttons (no Confirm GOTO).
+- **GOTO ready**: recipe name + **Confirm GOTO** prominently + **Quick Find** + **Order In** in 2-col grid.
+- Renamed "Discover" button label to **"Quick Find"** (prop name `onDiscover` unchanged).
+- Removed `disabled` state on Confirm GOTO — button simply not rendered when no ready GOTO.
+
+`HomeCommandCenter.tsx`:
+- Extended `gotoValue` type to include `status?: string`.
+- Phase D4 gate: if `status` present and not `"ready"`, `gotoDescription` and `gotoRecipeId` are null for the home card — pending synthesis doesn't surface as a plannable meal.
+- Passes `gotoStatus` to `TonightPivotCard`.
+- Backward compat: existing GOTO values without `status` treated as ready.
+
+**Verification**: `tsc --noEmit` exits clean. Zero type errors.
+
+**Files changed**
+- `pwa/src/components/home/TonightPivotCard.tsx`
+- `pwa/src/components/home/HomeCommandCenter.tsx`
+
+**ADR**: None triggered.
+
+---
+
+
+
+**Objective**: Execute Phase 13 (GOTO Recipe Synthesis) Phases A through C — contract, backend stub creation, and workflow plumbing.
+
+**Phase A — Contract**
+- Added `DescribeRecipeDto` (`name: string, description: string`) and `RecipeStatusDto` (`id, name?, status: pending|ready, imageCount`) schemas to `specs/openapi.yaml`.
+- Added `POST /api/recipes/describe` and `GET /api/recipes/{id}/status` paths.
+- Regenerated Kiota client — `apiClient.api.recipes.describe.post(...)` and `apiClient.api.recipes.byRecipeId(id).status.get()` confirmed.
+- Added `MOCK_IDS.RECIPE_GOTO_STUB` (`660e8400-...-446655440020`) to `pwa/e2e/mock-api.ts`.
+- Added mock handlers for both endpoints inside `setupCommonRoutes` — `describe` returns stub `RecipeDto`, `status` returns `pending` by default (tests can override).
+- Status handler registered before the generic `/{id}` catch-all to prevent route shadowing.
+- Zero drift confirmed.
+
+**Phase B — Backend Stub Creation**
+- `DescribeRecipeDto.cs` — `record` with `[Required] Name` and `[Required] Description`.
+- `RecipeStatusDto.cs` — `record` with `Id`, `Name?`, `Status`, `ImageCount`.
+- `RecipeService.DescribeRecipe()` — creates `Recipe` row (`ImageCount=0`, `IsDiscoverable=false`), returns `RecipeDto`. No workflow trigger yet.
+- `RecipeService.GetRecipeStatus()` — returns `"pending"` when `ImageCount==0`, `"ready"` when name set and `ImageCount>0`.
+- `POST /api/recipes/describe` and `GET /api/recipes/{id}/status` controller actions added.
+- 5 integration tests: 200 with valid GUID, 400 on missing name, 400 on missing description, pending status for stub, 404 for unknown ID.
+- 134/134 tests pass.
+
+**Phase C — Workflow Plumbing**
+- `goto-synthesis.yaml` created in `api/src/RecipeApi/Workflows/` (seeded at startup) and `data/workflows/`. Chain: `SynthesizeRecipe → GenerateHero → MarkGotoReady`.
+- `SynthesizeRecipeProcessor` stub: creates recipe directory, writes minimal `recipe.json` and `recipe.info` from description text. No AI call (Phase F).
+- `MarkGotoReadyProcessor`: queries `family_settings` for `key='family_goto'` whose `value.recipeId` matches payload. If found: patches `status="ready"` via `JsonNode` round-trip, sets `recipe.image_count=1`. If not found or mismatched: no-op. Safe to append to any workflow.
+- `RecipeHeroAgent` (`GenerateHero`) confirmed already registered — no change.
+- `SynthesizeRecipeProcessor` and `MarkGotoReadyProcessor` registered in `Program.cs`.
+- `RecipeService` constructor extended with `IWorkflowOrchestrator`. `DescribeRecipe` now calls `TriggerAsync("goto-synthesis", {recipeId, description})` after DB insert. Failure is non-fatal.
+- `recipe-import.yaml` updated: `mark_goto_ready` appended after `sync_recipe` (no-op safe).
+- 4 integration tests: workflow trigger, happy-path ready flip, no-setting no-op, recipeId-mismatch no-op.
+- 138/138 tests pass. Perfect parity (43/43 endpoints). Zero drift.
+
+**Bug investigation (not a code bug)**
+- "Preparing recipe…" on home card for a recipe that's in the planner: caused by `recipe.name = null` in DB for one specific recipe. `SyncRecipeProcessor` writes the name — if it failed or never ran, the DB name stays null. The "Preparing recipe…" fallback text was introduced by commit `ffb41cd` as a Phase 13 UI change, exposing this pre-existing data condition. Fix: `POST /api/recipes/imports/bulk` re-triggers `recipe-import` for all `name IS NULL` recipes.
+
+**Files changed**
+- `specs/openapi.yaml` — `DescribeRecipeDto`, `RecipeStatusDto` schemas; two new paths
+- `pwa/src/lib/api/generated/` — Kiota regenerated (describe + status accessors + models)
+- `pwa/e2e/mock-api.ts` — `RECIPE_GOTO_STUB` ID, describe + status mock handlers
+- `api/src/RecipeApi/Dto/DescribeRecipeDto.cs` (new)
+- `api/src/RecipeApi/Dto/RecipeStatusDto.cs` (new)
+- `api/src/RecipeApi/Services/RecipeService.cs` — `DescribeRecipe`, `GetRecipeStatus`, `IWorkflowOrchestrator` injection
+- `api/src/RecipeApi/Controllers/RecipeController.cs` — `Describe`, `GetStatus` actions
+- `api/src/RecipeApi/Workflows/goto-synthesis.yaml` (new)
+- `api/src/RecipeApi/Workflows/recipe-import.yaml` — `mark_goto_ready` step added
+- `api/src/RecipeApi/Services/Processors/SynthesizeRecipeProcessor.cs` (new)
+- `api/src/RecipeApi/Services/Processors/MarkGotoReadyProcessor.cs` (new)
+- `api/src/RecipeApi/Program.cs` — two new processor registrations
+- `data/workflows/goto-synthesis.yaml` (new)
+- `data/workflows/recipe-import.yaml` — `mark_goto_ready` step added
+- `api/src/RecipeApi.Tests/Integration/RecipeDescribeIntegrationTests.cs` (new, 5 tests)
+- `api/src/RecipeApi.Tests/Integration/GotoSynthesisIntegrationTests.cs` (new, 4 tests)
+
+**ADR**: None triggered. No architectural shifts — all new code follows established patterns (`SyncRecipeProcessor`, `RecipeAgent`, `ManagementProcessor`).
+
+---
+
+
 **Status**: COMPLETED ✅
 
 **Objective**: Author the Phase 13 spec, fix the `saveSetting` Kiota serialization bug, and clean up the planner empty slot animation.
