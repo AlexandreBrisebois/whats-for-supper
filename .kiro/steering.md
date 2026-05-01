@@ -97,7 +97,11 @@ Concretely:
 - `page.route(/...schedule.../)` → only intercepts browser-originated requests.
 - Result: SSR always returns real backend data regardless of Playwright mocks.
 
-`HomeCommandCenter` receives `todaysRecipe` as a prop from SSR. When it is non-null, the component skips the client-side `getSchedule()` fetch entirely (`!todaysRecipe` guard in `useEffect`). So even the client-side mock never fires.
+`HomeCommandCenter` receives `todaysRecipe` as a prop from SSR. The component **always** fires a client-side `getSchedule()` fetch on mount to reconcile stale SSR data (Phase 14 fix). When SSR returned a recipe, the fetch runs silently in the background — no spinner, no flash. When SSR returned nothing, the fetch shows a loader. This means:
+
+- The schedule endpoint **is** interceptable by `page.route()` for the client-side reconciliation fetch.
+- However, the **initial render** still uses the SSR prop — so if SSR returns a recipe, `TonightMenuCard` renders immediately before the client fetch completes.
+- You still cannot mock the "no recipe tonight" initial state via `page.route()` alone — SSR will return whatever the real backend has.
 
 ### What this means for E2E tests
 
@@ -108,7 +112,7 @@ Concretely:
 Reach the desired UI state **through the UI**, not by mocking SSR data:
 
 - To show `TonightPivotCard`: start with a planned recipe (SSR returns one), then skip it via the recovery dialog (`skip-tonight-btn` → `recovery-action-order-in` → `recovery-action-tomorrow`). This transitions `HomeCommandCenter` to `isSkipped=true` client-side, which shows the pivot card.
-- To show `CookedSuccessCard`: click `cooked-btn` and wait for the validate response.
+- To show `CookedSuccessCard`: open Cook's Mode (`cook-mode-btn` on the card back face), step through all steps with `cooks-mode-step-next`, and click "Done" on the last step. This calls `onCooked` which fires `POST /api/schedule/day/{date}/validate` with `status: 2`. **Note: `cooked-btn` no longer exists — it was removed in Phase 14. The only path to marking a meal cooked is completing Cook's Mode.**
 
 This approach is more robust anyway — it tests real state transitions rather than mocked initial states.
 
@@ -137,3 +141,5 @@ In the Playwright test environment, `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5
 1. Does the test need a specific home state (no recipe, cooked, skipped)? → Reach it through UI actions, not schedule mocks.
 2. Does the test need the settings endpoint? → Add the settings mock to `beforeEach` if not using `setupCommonRoutes`.
 3. Does the test assert on `tonight-pivot-card`? → Get there via the skip flow, not by mocking an empty schedule.
+4. Does the test need to mark a meal as cooked? → Go through Cook's Mode (`cook-mode-btn` → step through → "Done"). Do not look for `cooked-btn` — it does not exist.
+5. Does the test assert on `confirm-goto-btn`? → The button is **always rendered**. Use `toBeDisabled()` when no ready GOTO exists, `toBeEnabled()` when one does. Do not assert on its absence.

@@ -243,8 +243,8 @@ test.describe('Capture — GOTO intent', () => {
   test('Describe it creates a pending GOTO setting', async ({ page }) => {
     await page.goto('/capture?intent=goto');
 
-    // Switch to Describe tab
-    await page.getByRole('button', { name: /describe/i }).click();
+    // Switch to Describe form via the Describe_Link button
+    await page.getByRole('button', { name: /or describe it instead/i }).click();
 
     // Fill in the name
     await page.getByPlaceholder(/our family spaghetti/i).fill('Our family spaghetti');

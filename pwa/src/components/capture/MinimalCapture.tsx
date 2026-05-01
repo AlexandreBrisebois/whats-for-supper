@@ -10,16 +10,12 @@ import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants/routes';
 import { t, tWithVars } from '@/locales';
 
-type Tab = 'camera' | 'gallery' | 'describe';
-
 interface MinimalCaptureProps {
   /** When 'goto', wires the post-save saveSetting call */
   intent?: string;
-  /** When 'photo', pre-selects the camera tab */
-  mode?: string;
 }
 
-export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
+export default function MinimalCapture({ intent }: MinimalCaptureProps) {
   const router = useRouter();
   const { saveSetting } = useFamilyStore();
   const {
@@ -41,10 +37,6 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const saveAreaRef = useRef<HTMLDivElement>(null);
 
-  // Determine initial tab from mode prop
-  const initialTab: Tab = mode === 'photo' ? 'camera' : 'camera';
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-
   // Describe-it form state
   const [describeName, setDescribeName] = useState('');
   const [describeText, setDescribeText] = useState('');
@@ -52,6 +44,7 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
   const [describeError, setDescribeError] = useState<string | null>(null);
 
   const [onSuccess, setOnSuccess] = useState(false);
+  const [showDescribe, setShowDescribe] = useState(false);
 
   const isGoto = intent === 'goto';
 
@@ -168,38 +161,12 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
     );
   }
 
-  // ── Tab bar ─────────────────────────────────────────────────────────────────
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'camera', label: 'Camera', icon: <Camera size={14} /> },
-    { id: 'gallery', label: 'Gallery', icon: <ImageIcon size={14} /> },
-    { id: 'describe', label: 'Describe', icon: <PenLine size={14} /> },
-  ];
-
   return (
     <div className="flex flex-col gap-6">
-      {/* Tab switcher */}
-      <div className="flex rounded-2xl bg-charcoal/5 p-1 gap-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
-              activeTab === tab.id
-                ? 'bg-white text-charcoal shadow-sm'
-                : 'text-charcoal/40 hover:text-charcoal/60'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Camera / Gallery tab ─────────────────────────────────────────────── */}
-      {(activeTab === 'camera' || activeTab === 'gallery') && (
-        <div className="flex flex-col gap-10">
-          {/* Capture Area */}
-          <div className="flex flex-col items-center gap-6 rounded-[3rem] bg-terracotta/[0.03] border-2 border-dashed border-terracotta/10 p-12 text-center transition-colors hover:bg-terracotta/[0.05]">
+      {/* ── Camera / Gallery ─────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-10">
+        {/* Capture Area */}
+        <div className="flex flex-col items-center gap-6 rounded-[3rem] bg-terracotta/[0.03] border-2 border-dashed border-terracotta/10 p-12 text-center transition-colors hover:bg-terracotta/[0.05]">
             <button
               type="button"
               onClick={handleCapture}
@@ -217,6 +184,17 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
               <ImageIcon size={16} />
               {t('capture.pickFromGallery', 'Pick from Gallery')}
             </button>
+
+            {!showDescribe && (
+              <button
+                type="button"
+                onClick={() => setShowDescribe(true)}
+                className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/40 transition-colors hover:text-terracotta"
+              >
+                <PenLine size={16} />
+                Or Describe It Instead
+              </button>
+            )}
 
             <input
               ref={fileInputRef}
@@ -355,11 +333,10 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
             </p>
           )}
         </div>
-      )}
 
-      {/* ── Describe tab ─────────────────────────────────────────────────────── */}
-      {activeTab === 'describe' && (
-        <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+      {/* ── Describe form ────────────────────────────────────────────────────── */}
+      {showDescribe && (
+      <div className="flex flex-col gap-6 animate-in fade-in duration-300">
           <div className="flex flex-col gap-2">
             <h2 className="font-heading text-2xl font-black text-charcoal tracking-tight">
               Describe your recipe

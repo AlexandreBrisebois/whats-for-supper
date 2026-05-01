@@ -29,44 +29,50 @@ const sizes = [
   { width: 2048, height: 2732, name: 'ipad-pro-12' },
 ];
 
-// Background color matching manifest
-const bgColor = { r: 253, g: 252, b: 240, alpha: 1 }; // #FDFCF0
-
 const args = process.argv.slice(2);
 const backgroundArg = args.find((a) => a.startsWith('--background='));
 const backgroundImage = backgroundArg ? backgroundArg.split('=')[1] : null;
 
-const outDirArg = args.find((a) => a.startsWith('--outDir='));
-const customOutDir = outDirArg ? path.join(__dirname, '..', outDirArg.split('=')[1]) : splashDir;
+const isDark = args.includes('--dark');
 
-// Ensure output directory exists
+const outDirArg = args.find((a) => a.startsWith('--outDir='));
+const customOutDir = outDirArg
+  ? path.join(__dirname, '..', outDirArg.split('=')[1])
+  : isDark
+    ? path.join(splashDir, 'dark')
+    : splashDir;
+
 if (!fs.existsSync(customOutDir)) {
   fs.mkdirSync(customOutDir, { recursive: true });
 }
 
 async function generateSplashScreens() {
-  console.log('Generating PWA splash screens...');
+  console.log(`Generating PWA splash screens (Mode: ${isDark ? 'Dark' : 'Light'})...`);
   console.log(`Output directory: ${customOutDir}`);
-  if (backgroundImage) {
-    console.log(`Using background image: ${backgroundImage}`);
-  }
 
   try {
+    let backgroundBuffer = null;
+    if (backgroundImage) {
+      console.log(`Reading background image: ${backgroundImage}`);
+      backgroundBuffer = await sharp(backgroundImage).toBuffer();
+    }
+
     for (const size of sizes) {
       const filename = `splash-${size.width}x${size.height}.png`;
       const filepath = path.join(customOutDir, filename);
 
-      if (backgroundImage) {
+      if (backgroundBuffer) {
         // Full-bleed background approach (Resize to cover, then crop)
-        await sharp(backgroundImage)
+        await sharp(backgroundBuffer)
           .resize(size.width, size.height, {
             fit: 'cover',
             position: 'center',
           })
-          .png()
+          .png({ compressionLevel: 9, quality: 80 })
           .toFile(filepath);
       } else {
-        // Classic approach: Logo centered on solid background
+        // Fallback: Logo centered on solid background
+        const bgColor = { r: 253, g: 252, b: 240, alpha: 1 }; // #FDFCF0
         const canvas = sharp({
           create: {
             width: size.width,
@@ -87,11 +93,11 @@ async function generateSplashScreens() {
               gravity: 'center',
             },
           ])
-          .png()
+          .png({ compressionLevel: 9, quality: 80 })
           .toFile(filepath);
       }
 
-      console.log(`✓ Generated ${filename}`);
+      console.log(`✓ Generated ${filename} (${size.width}x${size.height})`);
     }
 
     console.log(`\n✓ All ${sizes.length} splash screens generated successfully!`);

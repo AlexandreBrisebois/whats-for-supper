@@ -4,6 +4,52 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-01] Session — Phase 14 UX Hardening
+**Status**: COMPLETED ✅
+
+**Objective**: Fix six production UX issues identified after Phase 12/13 went live.
+
+**Phase A — Cook's Mode steps parser**
+- `parseRecipeSteps` extended with a `HowToSection` branch: detects `itemListElement` array, flattens sections → steps with sequential global index. Generic section names ("Preparation", "Instructions", "Steps", "Directions", "Method" — FR and EN) are not prefixed. Existing string array and flat `HowToStep` branches unchanged.
+
+**Phase B — Done = cooked (implicit)**
+- `CooksMode` gets `onCooked?: () => void` prop. Tapping "Done" on the last step calls `onCooked?.()` before `onClose()`.
+- `HomeCommandCenter` passes `handleCookedMark` as `onCooked`.
+- Planner page passes an inline handler that calls `POST /api/schedule/day/{date}/validate` with `status: 2`.
+- "Cooked" button (`data-testid="cooked-btn"`) removed from `TonightMenuCard` back face. `onCooked` prop removed from `TonightMenuCardProps`. `CheckCircle2` import removed.
+- E2E tests updated: "Flip card" asserts `cook-mode-btn` instead of `cooked-btn`. "Mark as cooked" test now opens Cook's Mode and steps through to "Done".
+
+**Phase C — Close Voting button**
+- `handleCloseVoting` added to planner page: calls `lockSchedule`, sets `isVotingOpen = false`, `isLocked = true`.
+- "Close" button rendered inline next to "Voting live" badge when `isVotingOpen` is true. `data-testid="close-voting-btn"`.
+
+**Phase E — Plan next week transition**
+- `plannerStore.setWeekOffset` now resets `isVotingOpen = false`, `isLocked = false` on every week navigation — stale state no longer bleeds across weeks.
+- `loadData` already synced `isVotingOpen`/`isLocked` from API `status` field (was already correct).
+- `handleFinalize` updated: after locking this week, calls `openVoting(currentWeekOffset + 1)`, then auto-navigates to next week after 2s success toast.
+
+**Phase D4 — Stale SSR fix (home card "Preparing recipe…")**
+- `HomeCommandCenter` client-side `getSchedule()` fetch now always runs on mount (removed `!todaysRecipe` guard).
+- SSR prop is optimistic initial value only — client fetch reconciles silently when SSR had a recipe (no spinner), shows loader only when SSR had nothing.
+- Fixes "Preparing recipe…" showing after moving a meal into today's slot from the planner.
+
+**Files changed**
+- `pwa/src/lib/cooking/stepParser.ts`
+- `pwa/src/components/planner/CooksMode.tsx`
+- `pwa/src/components/home/HomeCommandCenter.tsx`
+- `pwa/src/components/home/TonightMenuCard.tsx`
+- `pwa/src/app/(app)/planner/page.tsx`
+- `pwa/src/store/plannerStore.ts`
+- `pwa/e2e/home-recovery.spec.ts`
+- `.kiro/specs/phase-14-ux-hardening.md`
+
+**Verification**: 17/17 E2E pass. `task review` ✓ Ready to commit.
+
+**ADR**: None triggered. No contract changes, no new libraries, no architectural shifts.
+
+---
+
+
 ### [2026-05-01] Session — Phase 13 F (AI Wiring), Phase 14 Spec, Discovery Fix
 **Status**: COMPLETED ✅
 
