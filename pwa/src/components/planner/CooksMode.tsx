@@ -31,6 +31,8 @@ interface CooksModeProps {
     isHealthyChoice?: boolean;
   };
   onClose: () => void;
+  /** Called when the user taps "Done" on the last step — marks the meal as cooked. */
+  onCooked?: () => void;
 }
 
 const getFallbackSteps = (): CookingStep[] => [
@@ -56,7 +58,7 @@ const getFallbackSteps = (): CookingStep[] => [
   },
 ];
 
-export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
+export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksModeProps) {
   const router = useRouter();
   const [recipeDetails, setRecipeDetails] = useState<Recipe | null>(null);
   const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
@@ -91,6 +93,7 @@ export function CooksMode({ recipe: initialRecipe, onClose }: CooksModeProps) {
     if (currentStep < steps.length - 1) {
       setCookProgress(initialRecipe.id, currentStep + 1);
     } else {
+      onCooked?.();
       onClose();
       router.push('/home');
     }

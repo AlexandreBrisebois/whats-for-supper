@@ -4,6 +4,56 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-01] Session — Phase 13 F (AI Wiring), Phase 14 Spec, Discovery Fix
+**Status**: COMPLETED ✅
+
+**Objective**: Complete Phase 13 F (AI wiring, E2E hardening), fix production bugs discovered during smoke testing, write Phase 14 spec.
+
+**Phase 13 F — AI Wiring & E2E Hardening**
+- `SynthesizeRecipeProcessor` fully wired to `IChatClient` (Gemini). Prompt instructs Gemini to produce Schema.org Recipe JSON from text description. Same sanitize → deserialize → fallback → write `recipe.json` + `recipe.info` pattern as `RecipeAgent`.
+- `Program.cs` registration updated to factory lambda with `IChatClient` injection.
+- Removed `AdditionalProperties` (`num_ctx`) from `SynthesizeRecipeProcessor.GetChatOptions()` — this Ollama-specific parameter caused Gemini to return 400. Only `Temperature` and `MaxOutputTokens` sent.
+- 6 new E2E tests: F4 (describe-it pending GOTO), F5 (settings spinner), F6 (ready GOTO enables button), F7 (pending GOTO disables button), F8 (capture path pending), F9 (17/17 pass).
+- `HomeCommandCenter` bug fixed: pending GOTO was being nulled out before passing to `TonightPivotCard`, preventing the "being prepared" state from showing. Fixed to pass raw values through.
+- `confirm-goto-btn` always rendered, `disabled={!gotoReady}` — fixes E2E `toBeDisabled()` assertion.
+- `pwa/eslint.config.mjs` — `src/lib/api/generated/**` added to ignore list, eliminating 52 Kiota warnings from `task review`.
+- Capture flow E2E: gallery button selector fixed to `exact: true` after new tab bar introduced a second "Gallery" button.
+- `task review` exits clean. Phase 13 fully complete (F3 smoke test pending live Gemini key).
+
+**Discovery Stack Ordering Fix**
+- `DiscoveryService.GetRecipesForDiscoveryAsync` ordering corrected: `VoteCount DESC`, then `LastCookedDate ASC NULLS FIRST`.
+- Implementation: `ThenBy(r => r.LastCookedDate ?? DateTimeOffset.MinValue)` — works in both PostgreSQL and EF in-memory provider.
+- Test assertion updated to match new ordering (NULL first, then oldest cooked date first within same vote group).
+- 12/12 discovery service tests pass.
+
+**Phase 14 Spec Written**
+- `.kiro/specs/phase-14-ux-hardening.md` created. Six issues identified from production smoke testing:
+  1. Cook's Mode shows fallback steps (parser doesn't handle `HowToSection`)
+  2. "Cooked" button confusing — should be implicit on Cook's Mode "Done"
+  3. No way to close voting without finalizing
+  4. TonightPivotCard direct landing verification
+  5. Discovery ordering (fixed this session)
+  6. "Plan next week" doesn't transition to next week's voting state
+- Five executable phases (A–E) + final review (F).
+
+**Files changed**
+- `api/src/RecipeApi/Services/DiscoveryService.cs` — ordering fix
+- `api/src/RecipeApi.Tests/Services/DiscoveryServiceTests.cs` — test assertion updated
+- `api/src/RecipeApi/Services/Processors/SynthesizeRecipeProcessor.cs` — AI wiring + `num_ctx` removal
+- `api/src/RecipeApi/Program.cs` — factory lambda registration for `SynthesizeRecipeProcessor`
+- `pwa/src/components/capture/MinimalCapture.tsx` — apostrophe lint fix
+- `pwa/src/components/home/HomeCommandCenter.tsx` — pending GOTO passthrough fix
+- `pwa/src/components/home/TonightPivotCard.tsx` — `confirm-goto-btn` always rendered
+- `pwa/e2e/capture-flow.spec.ts` — F4, F5, F8 tests + gallery selector fix
+- `pwa/e2e/home-recovery.spec.ts` — F6, F7 tests
+- `pwa/eslint.config.mjs` — generated files ignored
+- `.kiro/specs/phase-14-ux-hardening.md` — new spec
+
+**ADR**: None triggered. No contract changes, no architectural shifts.
+
+---
+
+
 ### [2026-05-01] Session — Phase 13 Phases D1–D3, D fix, E
 **Status**: COMPLETED ✅
 

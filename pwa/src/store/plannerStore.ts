@@ -24,7 +24,8 @@ export const usePlannerStore = create<PlannerState>((set) => ({
   isLocked: false,
   cookProgress: {},
   groceryState: {},
-  setWeekOffset: (offset) => set({ currentWeekOffset: offset }),
+  setWeekOffset: (offset) =>
+    set({ currentWeekOffset: offset, isVotingOpen: false, isLocked: false }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   setVotingOpen: (open) => set({ isVotingOpen: open }),
   setIsLocked: (locked) => set({ isLocked: locked }),

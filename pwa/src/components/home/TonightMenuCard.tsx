@@ -1,6 +1,6 @@
 'use client';
 
-import { Utensils, Ban, Sparkles, ChevronRight, Clock, CheckCircle2 } from 'lucide-react';
+import { Utensils, Ban, Sparkles, ChevronRight, Clock } from 'lucide-react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -40,7 +40,6 @@ interface TonightMenuCardProps {
   ingredients?: string[];
   onCookMode?: (id: string) => void;
   onSkip?: (id: string) => void;
-  onCooked?: (id: string) => void;
 }
 
 export function TonightMenuCard({
@@ -52,7 +51,6 @@ export function TonightMenuCard({
   ingredients = [],
   onCookMode,
   onSkip,
-  onCooked,
 }: TonightMenuCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -195,19 +193,6 @@ export function TonightMenuCard({
                   </span>
                 </button>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCooked?.(recipeId);
-                }}
-                className="flex items-center justify-center gap-2 h-14 rounded-[1.5rem] bg-sage text-white shadow-lg shadow-sage/30 transition-all active:scale-95 hover:brightness-110"
-                data-testid="cooked-btn"
-              >
-                <CheckCircle2 size={18} />
-                <span className="text-[10px] font-black uppercase tracking-widest">
-                  {t('home.cooked', 'Cooked')}
-                </span>
-              </button>
             </div>
           </div>
         </div>

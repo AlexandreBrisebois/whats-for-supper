@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const splashDir = path.join(__dirname, '../public/splash');
-const iconPath = path.join(__dirname, '../public/android-chrome-512x512.png');
+const defaultIconPath = path.join(__dirname, '../public/android-chrome-512x512.png');
 
 // Ensure splash directory exists
 if (!fs.existsSync(splashDir)) {
@@ -32,38 +32,64 @@ const sizes = [
 // Background color matching manifest
 const bgColor = { r: 253, g: 252, b: 240, alpha: 1 }; // #FDFCF0
 
+const args = process.argv.slice(2);
+const backgroundArg = args.find((a) => a.startsWith('--background='));
+const backgroundImage = backgroundArg ? backgroundArg.split('=')[1] : null;
+
+const outDirArg = args.find((a) => a.startsWith('--outDir='));
+const customOutDir = outDirArg ? path.join(__dirname, '..', outDirArg.split('=')[1]) : splashDir;
+
+// Ensure output directory exists
+if (!fs.existsSync(customOutDir)) {
+  fs.mkdirSync(customOutDir, { recursive: true });
+}
+
 async function generateSplashScreens() {
   console.log('Generating PWA splash screens...');
+  console.log(`Output directory: ${customOutDir}`);
+  if (backgroundImage) {
+    console.log(`Using background image: ${backgroundImage}`);
+  }
 
   try {
     for (const size of sizes) {
       const filename = `splash-${size.width}x${size.height}.png`;
-      const filepath = path.join(splashDir, filename);
+      const filepath = path.join(customOutDir, filename);
 
-      // Create canvas with background color
-      const canvas = sharp({
-        create: {
-          width: size.width,
-          height: size.height,
-          channels: 4,
-          background: bgColor,
-        },
-      });
-
-      // Composite the icon (scaled to ~200px, centered)
-      const iconBuffer = await sharp(iconPath)
-        .resize(200, 200, { fit: 'contain', background: bgColor })
-        .toBuffer();
-
-      await canvas
-        .composite([
-          {
-            input: iconBuffer,
-            gravity: 'center',
+      if (backgroundImage) {
+        // Full-bleed background approach (Resize to cover, then crop)
+        await sharp(backgroundImage)
+          .resize(size.width, size.height, {
+            fit: 'cover',
+            position: 'center',
+          })
+          .png()
+          .toFile(filepath);
+      } else {
+        // Classic approach: Logo centered on solid background
+        const canvas = sharp({
+          create: {
+            width: size.width,
+            height: size.height,
+            channels: 4,
+            background: bgColor,
           },
-        ])
-        .png()
-        .toFile(filepath);
+        });
+
+        const iconBuffer = await sharp(defaultIconPath)
+          .resize(200, 200, { fit: 'contain', background: bgColor })
+          .toBuffer();
+
+        await canvas
+          .composite([
+            {
+              input: iconBuffer,
+              gravity: 'center',
+            },
+          ])
+          .png()
+          .toFile(filepath);
+      }
 
       console.log(`✓ Generated ${filename}`);
     }

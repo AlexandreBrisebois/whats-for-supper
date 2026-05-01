@@ -230,6 +230,23 @@ tasks:
           echo "✓ Version {{.TAG}} built locally"
         fi
 
+  # ============================================================================
+  # ASSET GENERATION
+  # ============================================================================
+
+  gen:splash:
+    desc: "🎨 Generate PWA splash screens. Usage: task gen:splash -- [--background=/path/to/image.png]"
+    dir: pwa
+    cmds:
+      - node scripts/generate-splash.mjs {{.CLI_ARGS}}
+    silent: true
+
+  agent:gen:splash:
+    desc: "🤖 AI Tool: Generate PWA splash screens from a master background image"
+    cmds:
+      - task: gen:splash
+        vars: { CLI_ARGS: "--background={{.CLI_ARGS}}" }
+
   publish:api:
     desc: "Build API image"
     vars:

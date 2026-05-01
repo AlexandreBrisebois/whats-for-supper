@@ -29,7 +29,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   const [isCooked, setIsCooked] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
   const [currentRecipe, setCurrentRecipe] = useState(todaysRecipe);
-  const [isLoading, setIsLoading] = useState(!todaysRecipe);
+  const [isLoading, setIsLoading] = useState(!todaysRecipe); // Show loader only when SSR had nothing
   const router = useRouter();
   const { loadSetting, saveSetting, familySettings } = useFamilyStore();
 
@@ -52,11 +52,13 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
     // Load family GOTO setting (runs regardless of recipe state)
     loadSetting('family_goto');
 
-    // If we don't have a recipe from SSR, or we just want to ensure freshness in E2E
-    // We fetch on the client. This also allows Playwright to intercept the request.
-    if (!todaysRecipe && !sessionDone && !isCooked) {
+    // Always fetch on mount to reconcile stale SSR data.
+    // SSR prop is an optimistic initial value only — the client fetch is the source of truth.
+    // This fixes "Preparing recipe…" showing after a planner move.
+    if (!sessionDone && !isCooked) {
       const syncRecipe = async () => {
-        setIsLoading(true);
+        // Only show spinner when SSR had nothing — otherwise reconcile silently
+        if (!todaysRecipe) setIsLoading(true);
         try {
           const schedule = await getSchedule(0);
           if (!mounted) return;
@@ -73,6 +75,8 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
             setSessionDone(true);
           } else if (todaysEntry?.recipe) {
             setCurrentRecipe(todaysEntry.recipe);
+          } else {
+            setCurrentRecipe(null);
           }
         } catch (error) {
           console.error("Failed to sync today's recipe:", error);
@@ -226,7 +230,6 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
               prepTime="30-45 mins"
               onCookMode={handleCookMode}
               onSkip={handleSkipTrigger}
-              onCooked={handleCookedMark}
             />
           )}
         </>
@@ -243,6 +246,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
               image: currentRecipe.image,
             }}
             onClose={() => setShowCooksMode(false)}
+            onCooked={handleCookedMark}
           />
         )}
       </AnimatePresence>

@@ -44,9 +44,15 @@ Recipes with more votes were appearing at the bottom of the discovery stack. Fix
 
 **Status**: ✅ Already done. Documented here for completeness.
 
----
+### Issue 7 — Home card shows "Preparing recipe…" after moving a meal into today's slot
 
-## Tasks
+When a recipe is moved into today's slot from the planner, `HomeCommandCenter` receives a stale `todaysRecipe` from SSR (rendered before the move). The client-side `getSchedule()` fetch in `useEffect` is guarded by `!todaysRecipe` — so if SSR returned *any* recipe object (even one with `name: null`), the client fetch is skipped and the stale/broken data is displayed.
+
+The `recipeName` fallback in `TonightMenuCard` renders "Preparing recipe…" when `recipeName` is falsy — this is what the user sees.
+
+**Resolution**: Remove the `!todaysRecipe` guard on the client-side `getSchedule()` fetch. Always fetch on mount to ensure the home card reflects the current backend state. The SSR prop becomes an optimistic initial value only — the client fetch always reconciles it. This also fixes the case where a recipe's `name` is null in the DB (broken import state).
+
+---
 
 ### Phase A — Cook's Mode Steps Fix (seam: real recipe steps visible in production)
 
@@ -111,8 +117,9 @@ Recipes with more votes were appearing at the bottom of the discovery stack. Fix
   - Confirm there is no intermediate render of `TonightMenuCard` with a null recipe.
 - [ ] D2. Ensure `SkipRecoveryDialog` is only reachable from `TonightMenuCard` (planned meal skip flow). It must not be triggered from `TonightPivotCard`. Verify `TonightPivotCard`'s "Order In" button calls `handleRecoveryAction('order_in')` directly (skips the dialog) — this is already the case, confirm it.
 - [ ] D3. If a flash of `TonightMenuCard` is observed when no recipe is planned: add a guard so `TonightMenuCard` only renders when `currentRecipe` is non-null AND the recipe has a valid `id` and `name`. A recipe with `name = null` (broken DB state) should not render `TonightMenuCard`.
-- [ ] D4. Run `npm run typecheck` — zero type errors.
-- [ ] D5. Run `npx playwright test e2e/home-recovery.spec.ts` — all tests pass.
+- [ ] D4. Fix stale SSR data on home card — remove the `!todaysRecipe` guard on the client-side `getSchedule()` fetch in `HomeCommandCenter`. Always fetch on mount. The SSR prop is an optimistic initial value; the client fetch always reconciles. This fixes "Preparing recipe…" showing after a planner move.
+- [ ] D5. Run `npm run typecheck` — zero type errors.
+- [ ] D6. Run `npx playwright test e2e/home-recovery.spec.ts` — all tests pass.
 
 ---
 

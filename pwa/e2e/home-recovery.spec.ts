@@ -106,7 +106,7 @@ test.describe('Home Command Center — Recovery Flow', () => {
     // Use a more relaxed check if backface-visibility is causing issues
     await expect(page.getByTestId('ingredients-info-title')).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByTestId('cooked-btn')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('cook-mode-btn')).toBeVisible({ timeout: 5000 });
   });
 
   test('Skip tonight -> Tomorrow shifts calendar', async ({ page }) => {
@@ -154,13 +154,35 @@ test.describe('Home Command Center — Recovery Flow', () => {
     const card = page.getByTestId('tonight-menu-card');
     await card.click();
 
+    // Open Cook's Mode via the Cook button on the card back
+    await expect(page.getByTestId('cook-mode-btn')).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('cook-mode-btn').click();
+    await expect(page.getByTestId('cooks-mode-overlay')).toBeVisible({ timeout: 5000 });
+
+    // Step through to the last step and click Done — this triggers onCooked
     const validateResponse = page.waitForResponse(
       (resp) => resp.url().includes('/validate') && resp.request().method() === 'POST'
     );
-    await page.getByTestId('cooked-btn').click();
+
+    // Click Next until Done appears, then click Done
+    const nextBtn = page.getByTestId('cooks-mode-step-next');
+    let isDone = false;
+    for (let i = 0; i < 10; i++) {
+      const label = await nextBtn.textContent();
+      if (label?.toLowerCase().includes('done')) {
+        isDone = true;
+        break;
+      }
+      await nextBtn.click();
+      await page.waitForTimeout(200);
+    }
+    if (isDone) {
+      await nextBtn.click();
+    }
+
     await validateResponse;
 
-    await expect(page.getByTestId('cooked-success-card')).toBeVisible();
+    await expect(page.getByTestId('cooked-success-card')).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('cooked-success-title')).toBeVisible();
 
     await page.getByTestId('cooked-success-dismiss').click();

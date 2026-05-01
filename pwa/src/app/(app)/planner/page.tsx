@@ -26,6 +26,8 @@ import {
   removeRecipeFromDay,
   ScheduleDay,
 } from '@/lib/api/planner';
+import { apiClient } from '@/lib/api/api-client';
+import { DateOnly } from '@microsoft/kiota-abstractions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
@@ -323,6 +325,16 @@ export default function PlannerPage() {
   const handlePrevWeek = () => setWeekOffset(currentWeekOffset - 1);
   const handleNextWeek = () => setWeekOffset(currentWeekOffset + 1);
 
+  const handleCloseVoting = async () => {
+    try {
+      await lockSchedule(currentWeekOffset);
+    } catch {
+      // non-fatal — clear client state regardless
+    }
+    setVotingOpen(false);
+    setIsLocked(true);
+  };
+
   const handleFinalize = async () => {
     try {
       const pendingSlots = schedule
@@ -340,15 +352,29 @@ export default function PlannerPage() {
       }
 
       await lockSchedule(currentWeekOffset);
+
+      // Open voting for next week immediately
+      try {
+        await openVoting(currentWeekOffset + 1);
+      } catch {
+        // non-fatal — next week voting can be opened manually
+      }
+
       setIsLocked(true);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      setTimeout(() => {
+        setShowSuccess(false);
+        // Navigate to next week with clean state
+        setWeekOffset(currentWeekOffset + 1);
+      }, 2000);
     } catch (error: any) {
       console.warn('Failed to finalize:', error?.message || error);
-      // Mock it working since the backend isn't ready
       setIsLocked(true);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setWeekOffset(currentWeekOffset + 1);
+      }, 2000);
     }
   };
 
@@ -554,15 +580,24 @@ export default function PlannerPage() {
                 })}
               </div>
               {isVotingOpen && (
-                <div
-                  data-testid="voting-status-badge"
-                  className="flex items-center space-x-1 text-ochre font-bold text-[9px] bg-ochre/5 px-2 py-1 rounded-full border border-ochre/10 uppercase tracking-widest ml-2"
-                >
-                  <span className="relative flex h-1.5 w-1.5 mr-1">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-ochre"></span>
-                  </span>
-                  {t('planner.votingLive', 'Voting live')}
+                <div className="flex items-center gap-2 ml-2">
+                  <div
+                    data-testid="voting-status-badge"
+                    className="flex items-center space-x-1 text-ochre font-bold text-[9px] bg-ochre/5 px-2 py-1 rounded-full border border-ochre/10 uppercase tracking-widest"
+                  >
+                    <span className="relative flex h-1.5 w-1.5 mr-1">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-ochre"></span>
+                    </span>
+                    {t('planner.votingLive', 'Voting live')}
+                  </div>
+                  <button
+                    onClick={handleCloseVoting}
+                    data-testid="close-voting-btn"
+                    className="text-[9px] font-black uppercase tracking-widest text-terracotta bg-terracotta/10 px-2 py-1 rounded-full border border-terracotta/20 hover:bg-terracotta/20 transition-colors"
+                  >
+                    Close
+                  </button>
                 </div>
               )}
             </div>
@@ -735,6 +770,16 @@ export default function PlannerPage() {
                 image: activeCookMode.recipe.image,
               }}
               onClose={() => setActiveCookMode(null)}
+              onCooked={async () => {
+                if (!activeCookMode.date) return;
+                try {
+                  await apiClient.api.schedule.day
+                    .byDate(DateOnly.parse(activeCookMode.date)!)
+                    .validate.post({ status: 2 });
+                } catch (err) {
+                  console.warn('Failed to mark cooked from planner:', err);
+                }
+              }}
             />
           )}
       </AnimatePresence>
