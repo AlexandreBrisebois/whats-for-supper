@@ -920,9 +920,14 @@ function PlannerDayCard({
               className="flex items-center w-full text-left group"
             >
               <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
-                <Plus className="text-terracotta/50 group-hover:text-terracotta transition-colors" size={18} />
+                <Plus
+                  className="text-terracotta/50 group-hover:text-terracotta transition-colors"
+                  size={18}
+                />
               </div>
-              <span className="text-sm font-bold text-charcoal/30 group-hover:text-terracotta/60 transition-colors">Plan a meal</span>
+              <span className="text-sm font-bold text-charcoal/30 group-hover:text-terracotta/60 transition-colors">
+                Plan a meal
+              </span>
             </button>
           )}
         </div>
