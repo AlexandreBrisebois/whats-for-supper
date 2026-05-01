@@ -164,9 +164,5 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
     {
         Temperature = 0.3f,
         MaxOutputTokens = configuration.GetValue<int?>("GEMINI_MAX_OUTPUT_TOKENS") ?? 4096,
-        AdditionalProperties = new AdditionalPropertiesDictionary
-        {
-            ["num_ctx"] = configuration.GetValue<int>("GEMINI_CONTEXT_WINDOW", 32768)
-        }
     };
 }
