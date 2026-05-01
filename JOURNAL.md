@@ -4,6 +4,68 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-04-30] Phase 12 — No-Menu Home State ("Tonight Pivot")
+**Status**: COMPLETED ✅
+
+**Objective**: Replace the generic `SmartPivotCard` empty state on Home with a purposeful `TonightPivotCard` that surfaces the family's configured GOTO fallback meal.
+
+**Phase A — Contract & Client**
+- Added `SettingsDto` schema to `specs/openapi.yaml` with `GET/POST /api/settings/{key}`.
+- Regenerated Kiota client — `apiClient.api.settings.byKey(key).get()` / `.post()` confirmed.
+- Added settings mock handler to `pwa/e2e/mock-api.ts` inside `setupCommonRoutes` (per-test in-memory store, resets on each `beforeEach`).
+
+**Phase B — Backend Persistence**
+- `family_settings` table added to `api/database/schema.sql` (uuid PK, text key UNIQUE, jsonb value, timestamptz updated_at).
+- `FamilySetting` model, `RecipeDbContext` registration, `SettingsDto.cs` record.
+- `SettingsService` with `GetSettingAsync`, `UpsertSettingAsync`, and `SynthesizeRecipeAsync` stub (no AI call yet — hook for follow-on phase).
+- `SettingsController` following `ScheduleController` pattern.
+- Integration tests: 404 on unknown key, POST→GET round-trip, upsert idempotency, synthesis stub smoke test.
+
+**Phase C — PWA State & UI**
+- `familyStore` extended: `familySettings: Record<string, unknown>`, `loadSetting(key)`, `saveSetting(key, value)`.
+- `loadSetting` reads `response.data.value.additionalData` (Kiota `SettingsDto_value` is an `AdditionalDataHolder` — raw fields live in `additionalData`, not typed properties).
+- `TonightCardBase` extracted from `TonightMenuCard.tsx` — carries only the visual shell (`rounded-[3rem] bg-white shadow-2xl border-2 border-white/20`). `perspective-1000` and `preserve-3d` stay on `TonightMenuCard`'s outer wrapper.
+- `TonightPivotCard` built on `TonightCardBase` — three actions (`confirm-goto-btn`, `discover-btn`, `order-in-btn`), disabled Confirm GOTO when no `gotoRecipeId`, "Set your GOTO →" link when unconfigured.
+- `FamilyGOTOSettings` component — loads on mount, `QuickFindModal` picker, "Hearth Magic" loading state (stub hook for AI synthesis).
+- Settings page: `FamilyGOTOSettings` added below Family Management.
+- `HomeCommandCenter`: loads `family_goto` on mount, replaces `SmartPivotCard` with `TonightPivotCard`.
+
+**Phase D — E2E Hardening**
+- Updated `home-recovery.spec.ts`, `capture-flow.spec.ts`, `onboarding.spec.ts`: replaced all `smart-pivot-card` assertions with `tonight-pivot-card`; added settings mock to inline `beforeEach` blocks.
+- Added 4 new GOTO flow tests in `home-recovery.spec.ts` (Confirm GOTO, Discover, Order In, No GOTO prompt). Reached `TonightPivotCard` via the skip UI flow (not schedule mocking — see ADR 032).
+- `task review` exits clean.
+
+**Key technical decisions**
+- GOTO value shape: `{ description: string, recipeId: string }` stored as jsonb. Generic `key/value` schema supports future keys without contract changes.
+- `SmartPivotCard` not deleted — simply no longer rendered. Remove in a future cleanup pass.
+- SSR bypass constraint documented in ADR 032 and `.kiro/steering.md` §6.
+
+**Files changed (PWA)**
+- `pwa/src/store/familyStore.ts`
+- `pwa/src/components/home/TonightMenuCard.tsx` (+ `TonightCardBase` export)
+- `pwa/src/components/home/TonightPivotCard.tsx` (new)
+- `pwa/src/components/home/HomeCommandCenter.tsx`
+- `pwa/src/components/profile/FamilyGOTOSettings.tsx` (new)
+- `pwa/src/app/(app)/profile/settings/page.tsx`
+- `pwa/e2e/home-recovery.spec.ts`
+- `pwa/e2e/capture-flow.spec.ts`
+- `pwa/e2e/onboarding.spec.ts`
+- `.kiro/steering.md` (§6 added)
+
+**Files changed (API)**
+- `api/database/schema.sql`
+- `api/src/RecipeApi/Models/FamilySetting.cs` (new)
+- `api/src/RecipeApi/Data/RecipeDbContext.cs`
+- `api/src/RecipeApi/Dto/SettingsDto.cs` (new)
+- `api/src/RecipeApi/Services/SettingsService.cs` (new)
+- `api/src/RecipeApi/Controllers/SettingsController.cs` (new)
+- `api/src/RecipeApi/Program.cs`
+- `api/src/RecipeApi.Tests/Integration/SettingsIntegrationTests.cs` (new)
+
+**ADR**: 032 — SSR Bypass: E2E Testing Pattern for Server-Component Home Page
+
+---
+
 ### [2026-04-30] PWA Immersion & Polish
 **Status**: COMPLETED ✅
 
