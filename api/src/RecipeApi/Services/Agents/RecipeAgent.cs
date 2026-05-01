@@ -37,14 +37,23 @@ public class RecipeAgent(
 
         var recipeId = idProp.GetGuid();
 
-        // logger.LogInformation("Base URI: {baseUri}", chatClient.BaseUri?.ToString());
-
         return ProcessorName switch
         {
             "ExtractRecipe" => await ExtractRecipeAsync(recipeId, ct),
             "GenerateDescription" => await GenerateDescriptionAsync(recipeId, ct),
+            "SynthesizeRecipe" => await SynthesizeRecipeAsync(recipeId, GetDescription(doc), ct),
             _ => throw new NotSupportedException($"Processor {ProcessorName} is not supported by RecipeAgent.")
         };
+    }
+
+    private string GetDescription(JsonDocument doc)
+    {
+        if (!doc.RootElement.TryGetProperty("description", out var descProp) &&
+            !doc.RootElement.TryGetProperty("Description", out descProp))
+        {
+            throw new ArgumentException("Task payload does not contain description.");
+        }
+        return descProp.GetString() ?? string.Empty;
     }
 
     private async Task<object> ExtractRecipeAsync(Guid recipeId, CancellationToken ct)
@@ -57,6 +66,12 @@ public class RecipeAgent(
     {
         await DoGenerateDescriptionAsync(recipeId, ct);
         return new { Message = $"Generated description for {recipeId}" };
+    }
+
+    private async Task<object> SynthesizeRecipeAsync(Guid recipeId, string description, CancellationToken ct)
+    {
+        await DoSynthesizeRecipeAsync(recipeId, description, ct);
+        return new { Message = $"Synthesized recipe for {recipeId}" };
     }
 
 
@@ -333,6 +348,105 @@ Return ONLY the description text.";
         }
     }
 
+    #endregion
+
+    #region Synthesis Logic
+
+    private string GetSynthesisSystemPrompt() => @"
+Role: Recipe Synthesis Expert.
+Task: Given a short description of a family recipe, generate a complete Schema.org/Recipe JSON object.
+
+RULES:
+1. Infer realistic ingredients and steps from the description. Be practical and home-cook friendly.
+2. Use the language of the description (French or English).
+3. recipeIngredient: Array of strings in format ""[Quantity] [Unit] [Ingredient]"" (e.g., ""250 ml tomato sauce"").
+4. recipeInstructions: Array of HowToSection objects with itemListElement HowToStep arrays.
+5. totalTime: ISO 8601 duration (e.g., ""PT45M"").
+6. recipeYield: Reasonable serving size (e.g., ""4 portions"").
+7. Do NOT add nutrition data unless explicitly mentioned.
+
+SCHEMA TEMPLATE (MUST FOLLOW EXACTLY):
+{
+  ""@context"": ""https://schema.org/"",
+  ""@type"": ""Recipe"",
+  ""name"": ""Recipe Name"",
+  ""recipeYield"": ""4 portions"",
+  ""totalTime"": ""PT45M"",
+  ""recipeIngredient"": [""250 ml tomato sauce"", ""400 g spaghetti""],
+  ""recipeInstructions"": [
+    {
+      ""@type"": ""HowToSection"",
+      ""name"": ""Preparation"",
+      ""itemListElement"": [
+        { ""@type"": ""HowToStep"", ""text"": ""Boil salted water and cook pasta al dente."" }
+      ]
+    }
+  ]
+}
+
+STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
+";
+
+    public async Task DoSynthesizeRecipeAsync(Guid recipeId, string description, CancellationToken ct)
+    {
+        var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
+        Directory.CreateDirectory(recipeDir);
+
+        logger.LogInformation("Synthesizing recipe {RecipeId} from description: {Description}", recipeId, description);
+
+        var messages = new List<ChatMessage>
+        {
+            new ChatMessage(ChatRole.System, GetSynthesisSystemPrompt()),
+            new ChatMessage(ChatRole.User, $"Description: {description}")
+        };
+
+        var response = await chatClient.GetResponseAsync(messages, GetChatOptions().ChatOptions, ct);
+        var rawJson = response.Text ?? string.Empty;
+        var sanitized = JsonUtils.SanitizeJson(rawJson);
+
+        SchemaOrgRecipe? recipe = null;
+        try
+        {
+            recipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(sanitized, JsonDefaults.CaseInsensitive);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogError(ex, "Failed to deserialize synthesis response for {RecipeId}. JSON (first 500): {Sample}",
+                recipeId, sanitized.Length > 500 ? sanitized[..500] : sanitized);
+        }
+
+        // Fallback: if AI response is unusable, write a minimal stub
+        if (string.IsNullOrWhiteSpace(recipe?.Name))
+        {
+            logger.LogWarning("Synthesis produced no usable name for {RecipeId}. Falling back to description as name.", recipeId);
+            recipe = new SchemaOrgRecipe
+            {
+                Name = description,
+                RecipeIngredient = [],
+                RecipeInstructions = [],
+                TotalTime = null
+            };
+        }
+
+        // Write recipe.json
+        var normalizedJson = JsonSerializer.Serialize(recipe, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
+        var recipeJsonPath = Path.Combine(recipeDir, "recipe.json");
+        await File.WriteAllTextAsync(recipeJsonPath, normalizedJson, ct);
+        logger.LogInformation("Saved synthesized recipe.json for {RecipeId}", recipeId);
+
+        // Write / update recipe.info
+        var infoPath = Path.Combine(recipeDir, "recipe.info");
+        var info = await GetRecipeInfoAsync(infoPath, recipeId);
+
+        info.Name = recipe.Name;
+        info.ImageCount = 0;
+        info.FinishedDishImageIndex = -1;
+        if (!string.IsNullOrWhiteSpace(recipe.TotalTime))
+            info.TotalTime = recipe.TotalTime;
+
+        await File.WriteAllTextAsync(infoPath, JsonSerializer.Serialize(info, JsonDefaults.CamelCase), ct);
+        logger.LogInformation("Saved recipe.info for {RecipeId} with name: {Name}", recipeId, recipe.Name);
+    }
 
     #endregion
 

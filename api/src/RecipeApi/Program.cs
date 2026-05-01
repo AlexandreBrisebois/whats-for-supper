@@ -107,11 +107,12 @@ try
 
     builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
     builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
-    builder.Services.AddScoped<IWorkflowProcessor>(sp => new SynthesizeRecipeProcessor(
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
         sp.GetRequiredService<RecipesRootResolver>(),
         sp.GetRequiredService<IConfiguration>(),
-        sp.GetRequiredService<ILogger<SynthesizeRecipeProcessor>>()));
+        sp.GetRequiredService<ILogger<RecipeAgent>>(),
+        "SynthesizeRecipe"));
     builder.Services.AddScoped<IWorkflowProcessor, MarkGotoReadyProcessor>();
     builder.Services.AddScoped<RecipeService>();
     builder.Services.AddScoped<RecipeImportService>();
