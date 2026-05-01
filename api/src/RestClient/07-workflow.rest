@@ -1,9 +1,10 @@
 @baseUrl = http://localhost:9001
+@baseUrl = http://192.168.1.226:9101
 
 @workflowId = recipe-extraction
 @recipeImportWorkflowId = recipe-import
 @recipeId = 0384639a-96e2-48d9-89fe-c30d55e06c98
-@instanceId = 00000000-0000-0000-0000-000000000000
+@instanceId = 207241a0-55c3-4374-a5c0-61fb40a5355b
 @taskId = 00000000-0000-0000-0000-000000000000
 
 ### 1. Trigger recipe-import workflow execution

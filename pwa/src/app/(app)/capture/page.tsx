@@ -1,14 +1,14 @@
 import MinimalCapture from '@/components/capture/MinimalCapture';
 
 interface CapturePageProps {
-  searchParams: Promise<{ intent?: string }>;
+  searchParams: Promise<{ intent?: string; mode?: string }>;
 }
 
 export default async function CapturePage({ searchParams }: CapturePageProps) {
-  const { intent } = await searchParams;
+  const { intent, mode } = await searchParams;
   return (
     <div className="px-6 pb-12">
-      <MinimalCapture intent={intent} />
+      <MinimalCapture intent={intent} mode={mode} />
     </div>
   );
 }

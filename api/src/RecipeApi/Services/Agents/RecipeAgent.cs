@@ -194,18 +194,15 @@ RULES:
 
         logger.LogInformation("Extracting recipe {RecipeId} from {Count} images.", recipeId, imageFiles.Count);
 
-        var messages = new List<ChatMessage>
-        {
-            new ChatMessage(ChatRole.System, GetExtractionPrompt(false)),
-            new ChatMessage(ChatRole.User, "Please extract the recipe from these images as instructed.")
-        };
-        await AddImagesToMessageAsync(messages[1], imageFiles);
+        var agent = chatClient.AsAIAgent(name: "RecipeExtractor", instructions: GetExtractionPrompt(false));
+        var userMessage = new ChatMessage(ChatRole.User, "Please extract the recipe from these images as instructed.");
+        await AddImagesToMessageAsync(userMessage, imageFiles);
 
-        var response = await chatClient.GetResponseAsync(messages, GetChatOptions().ChatOptions, ct);
-        messages.Add(new ChatMessage(ChatRole.Assistant, response.Text));
+        var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(), cancellationToken: ct);
+        var messages = response.Messages.ToList();
 
         var extractionJson = response.Text;
-        var sanitizedExtraction = JsonUtils.SanitizeJson(extractionJson);
+        var sanitizedExtraction = JsonUtils.SanitizeJson(extractionJson ?? string.Empty);
 
         // Validation & Refinement
         SchemaOrgRecipe? initialRecipe = null;
@@ -263,17 +260,20 @@ RULES:
 
     private async Task<string?> RefineExtractionAsync(Guid recipeId, List<ChatMessage> messages, CancellationToken ct)
     {
-        messages.Add(new ChatMessage(ChatRole.User, @$"The initial extraction was incomplete or contains errors (e.g., missing pantry items or summarized instructions).
+        var refinementUserMessage = new ChatMessage(ChatRole.User, @$"The initial extraction was incomplete or contains errors (e.g., missing pantry items or summarized instructions).
 
 Please re-examine the images and refine the JSON according to these rules:
-{GetRefinementPrompt()}"));
+{GetRefinementPrompt()}");
 
-        var response = await chatClient.GetResponseAsync(messages, GetChatOptions().ChatOptions, ct);
+        messages.Add(refinementUserMessage);
+
+        var agent = chatClient.AsAIAgent(name: "RecipeRefiner", instructions: "Continue your extraction work.");
+        var response = await agent.RunAsync(messages: messages, options: GetChatOptions(), cancellationToken: ct);
         var responseText = response.Text?.Trim() ?? string.Empty;
 
         if (responseText.Contains("NO CHANGES", StringComparison.OrdinalIgnoreCase))
         {
-            // We return the previous text (which is the last assistant message in history)
+            // We return the previous text (which is the last assistant message before the refinement turn)
             return messages.Count >= 2 ? messages[^2].Text : string.Empty;
         }
 
@@ -281,7 +281,6 @@ Please re-examine the images and refine the JSON according to these rules:
         try
         {
             JsonDocument.Parse(sanitized);
-            messages.Add(new ChatMessage(ChatRole.Assistant, response.Text));
             return sanitized;
         }
         catch { return messages.Count >= 2 ? messages[^2].Text : string.Empty; }
@@ -394,13 +393,10 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
 
         logger.LogInformation("Synthesizing recipe {RecipeId} from description: {Description}", recipeId, description);
 
-        var messages = new List<ChatMessage>
-        {
-            new ChatMessage(ChatRole.System, GetSynthesisSystemPrompt()),
-            new ChatMessage(ChatRole.User, $"Description: {description}")
-        };
+        var agent = chatClient.AsAIAgent(name: "RecipeSynthesizer", instructions: GetSynthesisSystemPrompt());
+        var userMessage = new ChatMessage(ChatRole.User, $"Description: {description}");
 
-        var response = await chatClient.GetResponseAsync(messages, GetChatOptions().ChatOptions, ct);
+        var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(), cancellationToken: ct);
         var rawJson = response.Text ?? string.Empty;
         var sanitized = JsonUtils.SanitizeJson(rawJson);
 
@@ -446,6 +442,9 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
 
         await File.WriteAllTextAsync(infoPath, JsonSerializer.Serialize(info, JsonDefaults.CamelCase), ct);
         logger.LogInformation("Saved recipe.info for {RecipeId} with name: {Name}", recipeId, recipe.Name);
+
+        // Automatic Description Generation as part of synthesis (to match extraction pattern)
+        await GenerateDescriptionAsync(recipeId, ct);
     }
 
     #endregion

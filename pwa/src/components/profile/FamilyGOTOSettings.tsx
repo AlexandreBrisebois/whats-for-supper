@@ -68,7 +68,7 @@ export function FamilyGOTOSettings() {
 
   const handleDescribeIt = () => {
     setShowSheet(false);
-    router.push('/capture?intent=goto');
+    router.push('/capture?intent=goto&mode=describe');
   };
 
   const handleCaptureIt = () => {

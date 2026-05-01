@@ -14,9 +14,15 @@ tasks:
           - synthesize_recipe
       payload:
           recipeId: "{{ recipeId }}"
+    - name: sync_recipe
+      processor: SyncRecipe
+      depends_on:
+          - generate_hero
+      payload:
+          recipeId: "{{ recipeId }}"
     - name: mark_goto_ready
       processor: MarkGotoReady
       depends_on:
-          - generate_hero
+          - sync_recipe
       payload:
           recipeId: "{{ recipeId }}"
