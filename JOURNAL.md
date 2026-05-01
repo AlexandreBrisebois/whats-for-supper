@@ -4,6 +4,46 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-01] Session — Phase 13 Phases D1–D3, D fix, E
+**Status**: COMPLETED ✅
+
+**Objective**: Complete the PWA side of Phase 13 — "Change" bottom sheet in settings, GOTO status display states, E2E test fix, and capture page intent wiring.
+
+**Phase D1–D3 — FamilyGOTOSettings "Change" Sheet**
+- Replaced the single "Pick from library" / "Choose a GOTO recipe" buttons with a single "Change" / "Set your GOTO" button that opens a framer-motion bottom sheet.
+- Bottom sheet has three options: **Pick from library** (opens `QuickFindModal`, saves `status: 'ready'`), **Describe it** (navigates to `/capture?intent=goto`), **Capture it** (navigates to `/capture?intent=goto&mode=photo`).
+- Three display states in the card:
+  - `status === 'pending'`: spinning `Loader2` + "Your GOTO is being prepared…" + "Change" button.
+  - `status === 'ready'` (or no status — backward compat): recipe name + "Change" button.
+  - No GOTO: "No GOTO set yet." + full-width "Set your GOTO" button.
+- `GotoValue` interface extended with optional `status?: 'pending' | 'ready'`.
+- Bottom sheet follows `QuickFindModal` pattern: `fixed inset-0 z-[60]`, spring animation, backdrop blur.
+
+**E2E fix — `confirm-goto-btn` always rendered**
+- Test `home-recovery.spec.ts:363` asserted `toBeDisabled()` on `confirm-goto-btn` when no GOTO is configured. The button was conditionally rendered (`{gotoReady && <button>}`), so the element didn't exist — Playwright reported "element(s) not found".
+- Fix: `confirm-goto-btn` is now always rendered with `disabled={!gotoReady}`. Disabled styling: `opacity-40`, `cursor-not-allowed`, `shadow-none`, `active:scale-100`.
+- All 8 tests in `home-recovery.spec.ts` now pass.
+
+**Phase E — Capture Intent Wiring**
+- `capture/page.tsx` converted to async Server Component — awaits `searchParams` and passes `intent` and `mode` as props to `MinimalCapture`.
+- `MinimalCapture` refactored with a three-tab switcher (Camera / Gallery / Describe) at the top.
+- **Describe tab**: required `name` field + optional `description` textarea. Submit calls `apiClient.api.recipes.describe.post(...)`. If `intent === 'goto'`: saves `{ description: name, recipeId: id, status: 'pending' }` to `family_goto` setting.
+- **Photo path**: after `submitRecipe()` returns an ID, if `intent === 'goto'`: saves `{ description: 'Your captured recipe', recipeId: id, status: 'pending' }`. `MarkGotoReadyProcessor` in `recipe-import` workflow flips it to `'ready'`.
+- **Success screen**: when `intent === 'goto'`, heading is "Your GOTO is being prepared", subtext explains it'll appear on the home screen, auto-redirect and button both go to `/profile/settings`.
+- `router.push` calls cast to `any` to satisfy Next.js `typedRoutes: true` — consistent with existing pattern in the codebase.
+- `npm run typecheck` exits 0.
+
+**Files changed**
+- `pwa/src/components/profile/FamilyGOTOSettings.tsx` — full rewrite (bottom sheet, three display states)
+- `pwa/src/components/home/TonightPivotCard.tsx` — `confirm-goto-btn` always rendered, `disabled={!gotoReady}`
+- `pwa/src/app/(app)/capture/page.tsx` — async Server Component, passes `intent`/`mode` props
+- `pwa/src/components/capture/MinimalCapture.tsx` — three-tab layout, describe path, GOTO wiring, intent-aware success screen
+
+**ADR**: None triggered. All changes follow established patterns.
+
+---
+
+
 ### [2026-04-30] Session — Phase 13 Phases A, B, C
 **Status**: COMPLETED ✅
 

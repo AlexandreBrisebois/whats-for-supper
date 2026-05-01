@@ -39,12 +39,12 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
     | null
     | undefined;
 
-  // Phase D4: treat status !== 'ready' as no GOTO for the home card.
+  // Phase D4: pass status through to TonightPivotCard which gates the Confirm GOTO button.
   // Backward compat: existing values without a status field are treated as 'ready'.
+  // We always pass recipeId/description so the pending state ("being prepared") is visible.
   const gotoStatus = gotoValue?.status ?? null;
-  const gotoIsReady = !gotoValue || gotoStatus == null || gotoStatus === 'ready';
-  const gotoDescription = gotoIsReady ? (gotoValue?.description ?? null) : null;
-  const gotoRecipeId = gotoIsReady ? (gotoValue?.recipeId ?? null) : null;
+  const gotoDescription = gotoValue?.description ?? null;
+  const gotoRecipeId = gotoValue?.recipeId ?? null;
 
   useEffect(() => {
     let mounted = true;

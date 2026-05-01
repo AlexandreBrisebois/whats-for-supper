@@ -364,3 +364,162 @@ test.describe('Home Command Center — GOTO Flow', () => {
     await expect(page.getByRole('link', { name: /set your goto/i })).toBeVisible();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 13 — GOTO status tests (F5–F7)
+// ---------------------------------------------------------------------------
+
+test.describe('Home Command Center — GOTO Status', () => {
+  async function setupWithGotoStatus(
+    page: Page,
+    gotoValue: { description: string; recipeId: string; status: 'pending' | 'ready' } | null
+  ) {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await page.route(/\/(?:backend\/)?api\/family/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [builders.familyMember({ name: 'Alex' })] }),
+      });
+    });
+
+    await page.goto('/onboarding');
+    await page.evaluate((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({
+          state: {
+            selectedFamilyMemberId: id,
+            familyMembers: [{ id, name: 'Alex' }],
+            _hasHydrated: true,
+            hasLoaded: true,
+          },
+          version: 0,
+        })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+
+    let currentStatus = 0;
+
+    await page.route(/\/(?:backend\/)?api\/schedule\?weekOffset=0/, async (route) => {
+      const today = new Date().toISOString().split('T')[0];
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            weekOffset: 0,
+            locked: false,
+            days: [
+              {
+                date: today,
+                status: currentStatus,
+                recipe: builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_LASAGNA,
+                  name: 'Test Lasagna',
+                  image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+                  ingredients: ['Pasta', 'Cheese', 'Sauce'],
+                }),
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.route(/\/(?:backend\/)?api\/schedule\/day\/.*\/validate/, async (route) => {
+      const body = route.request().postDataJSON();
+      currentStatus = body.status;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await page.route(/\/(?:backend\/)?api\/schedule\/move/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    // Settings mock
+    await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+      if (gotoValue != null) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { key: 'family_goto', value: gotoValue } }),
+        });
+      } else {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Not found' }),
+        });
+      }
+    });
+
+    await page.goto('/home');
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
+  }
+
+  async function skipTonight(page: Page) {
+    await page.getByTestId('tonight-menu-card').click();
+    await page.getByTestId('skip-tonight-btn').click();
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
+    await page.getByTestId('recovery-action-order-in').click();
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
+    const moveResponse = page.waitForResponse(
+      (resp) => resp.url().includes('/api/schedule/move') && resp.request().method() === 'POST'
+    );
+    await page.getByTestId('recovery-action-tomorrow').click();
+    await moveResponse;
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible({ timeout: 5_000 });
+  }
+
+  // F6 — Ready GOTO enables Confirm GOTO on home
+  test('Ready GOTO enables Confirm GOTO button', async ({ page }) => {
+    await setupWithGotoStatus(page, {
+      description: 'Our Family Spaghetti',
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+      status: 'ready',
+    });
+    await skipTonight(page);
+
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeVisible();
+    await expect(confirmBtn).toBeEnabled();
+    await expect(page.getByText(/our family spaghetti/i)).toBeVisible();
+  });
+
+  // F7 — Pending GOTO disables Confirm GOTO on home
+  test('Pending GOTO disables Confirm GOTO button', async ({ page }) => {
+    await setupWithGotoStatus(page, {
+      description: 'Our Family Spaghetti',
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+      status: 'pending',
+    });
+    await skipTonight(page);
+
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeVisible();
+    await expect(confirmBtn).toBeDisabled();
+    await expect(page.getByText(/your goto is being prepared/i)).toBeVisible();
+  });
+});

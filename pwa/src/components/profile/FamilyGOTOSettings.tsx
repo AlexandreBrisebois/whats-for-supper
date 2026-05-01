@@ -54,7 +54,11 @@ export function FamilyGOTOSettings() {
     setIsSaving(true);
     setShowSaved(false);
     try {
-      await saveSetting(GOTO_KEY, { description: recipe.name, recipeId: recipe.id, status: 'ready' });
+      await saveSetting(GOTO_KEY, {
+        description: recipe.name,
+        recipeId: recipe.id,
+        status: 'ready',
+      });
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2500);
     } finally {

@@ -190,12 +190,12 @@ Work is split into six phases. Each phase is independently shippable and has a c
 
 **Stop condition**: Navigating to `/capture?intent=goto` shows the describe tab pre-selected. Navigating to `/capture?intent=goto&mode=photo` shows the camera tab. After save, GOTO setting is written with `status: 'pending'`.
 
-- [ ] E1. Update `pwa/src/app/(app)/capture/page.tsx` — read `intent` and `mode` from `searchParams`, pass as props to `MinimalCapture`.
-- [ ] E2. Add "Describe it" tab to `MinimalCapture` — a `name` field (required) and `description` textarea (optional). Shown as a permanent third tab alongside camera/gallery.
-- [ ] E3. Implement text submit path in `MinimalCapture` — calls `POST /api/recipes/describe` via Kiota, gets back recipe ID. If `intent === 'goto'`: calls `saveSetting('family_goto', { description: name, recipeId: id, status: 'pending' })`. Shows same success screen.
-- [ ] E4. When `intent === 'goto' && mode === 'photo'`: pre-select the camera tab. After photo capture and `submitRecipe()` succeeds: calls `saveSetting('family_goto', { description: recipeName, recipeId: id, status: 'pending' })`. The `recipe-import` workflow (with the new `MarkGotoReady` step) handles the rest.
-- [ ] E5. When `intent === 'goto'`: success screen shows "Your GOTO is being prepared" instead of "Captured!" and routes back to `/profile/settings` instead of `/home`.
-- [ ] E6. Run `npm run typecheck` — zero type errors.
+- [x] E1. Update `pwa/src/app/(app)/capture/page.tsx` — read `intent` and `mode` from `searchParams`, pass as props to `MinimalCapture`.
+- [x] E2. Add "Describe it" tab to `MinimalCapture` — a `name` field (required) and `description` textarea (optional). Shown as a permanent third tab alongside camera/gallery.
+- [x] E3. Implement text submit path in `MinimalCapture` — calls `POST /api/recipes/describe` via Kiota, gets back recipe ID. If `intent === 'goto'`: calls `saveSetting('family_goto', { description: name, recipeId: id, status: 'pending' })`. Shows same success screen.
+- [x] E4. When `intent === 'goto' && mode === 'photo'`: pre-select the camera tab. After photo capture and `submitRecipe()` succeeds: calls `saveSetting('family_goto', { description: recipeName, recipeId: id, status: 'pending' })`. The `recipe-import` workflow (with the new `MarkGotoReady` step) handles the rest.
+- [x] E5. When `intent === 'goto'`: success screen shows "Your GOTO is being prepared" instead of "Captured!" and routes back to `/profile/settings` instead of `/home`.
+- [x] E6. Run `npm run typecheck` — zero type errors.
 
 ---
 
@@ -203,16 +203,16 @@ Work is split into six phases. Each phase is independently shippable and has a c
 
 **Stop condition**: `SynthesizeRecipeProcessor` calls Gemini. Full E2E suite passes. `task review` clean.
 
-- [ ] F1. Wire `SynthesizeRecipeProcessor` to `IChatClient` (Gemini) — prompt: given `description`, return Schema.org Recipe JSON with `name`, `recipeIngredient[]`, `recipeInstructions[]`, `totalTime`. Write to `recipe.json` and `recipe.info`. Follow `RecipeAgent.DoExtractRecipeAsync` pattern exactly.
-- [ ] F2. Run `task agent:test:impact` — all processor tests pass.
+- [x] F1. Wire `SynthesizeRecipeProcessor` to `IChatClient` (Gemini) — prompt: given `description`, return Schema.org Recipe JSON with `name`, `recipeIngredient[]`, `recipeInstructions[]`, `totalTime`. Write to `recipe.json` and `recipe.info`. Follow `RecipeAgent.DoExtractRecipeAsync` pattern exactly.
+- [x] F2. Run `task agent:test:impact` — all processor tests pass.
 - [ ] F3. Manual smoke test: describe "Our family spaghetti with homemade sauce" → confirm `status` flips to `'ready'` after ~30s, home card shows recipe name and hero image.
-- [ ] F4. Add E2E test: "Describe it creates a pending GOTO" — fills name, submits, asserts `POST /api/recipes/describe` called and `POST /api/settings/family_goto` called with `status: 'pending'`.
-- [ ] F5. Add E2E test: "Pending GOTO shows synthesizing state in settings" — mock returns `status: 'pending'`, asserts spinner visible.
-- [ ] F6. Add E2E test: "Ready GOTO enables Confirm GOTO on home" — mock returns `status: 'ready'`, asserts `confirm-goto-btn` enabled and description visible.
-- [ ] F7. Add E2E test: "Pending GOTO disables Confirm GOTO on home" — mock returns `status: 'pending'`, asserts `confirm-goto-btn` disabled.
-- [ ] F8. Add E2E test: "Capture path sets GOTO pending" — mock photo capture, asserts `saveSetting` called with `status: 'pending'`.
-- [ ] F9. Run `npx playwright test e2e/home-recovery.spec.ts e2e/capture-flow.spec.ts` — all pass.
-- [ ] F10. Run `task review` — formatting, linting, type-check, full suite clean.
+- [x] F4. Add E2E test: "Describe it creates a pending GOTO" — fills name, submits, asserts `POST /api/recipes/describe` called and `POST /api/settings/family_goto` called with `status: 'pending'`.
+- [x] F5. Add E2E test: "Pending GOTO shows synthesizing state in settings" — mock returns `status: 'pending'`, asserts spinner visible.
+- [x] F6. Add E2E test: "Ready GOTO enables Confirm GOTO on home" — mock returns `status: 'ready'`, asserts `confirm-goto-btn` enabled and description visible.
+- [x] F7. Add E2E test: "Pending GOTO disables Confirm GOTO on home" — mock returns `status: 'pending'`, asserts `confirm-goto-btn` disabled.
+- [x] F8. Add E2E test: "Capture path sets GOTO pending" — mock photo capture, asserts `saveSetting` called with `status: 'pending'`.
+- [x] F9. Run `npx playwright test e2e/home-recovery.spec.ts e2e/capture-flow.spec.ts` — all pass.
+- [x] F10. Run `task review` — formatting, linting, type-check, full suite clean.
 
 ---
 
