@@ -92,6 +92,76 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
     await confirmBtn.click();
 
     await expect.poll(() => assignCalled).toBe(true);
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+  });
+
+  test('Menu card stays after GOTO confirm when schedule re-sync returns empty', async ({
+    page,
+  }) => {
+    // Regression test for: optimistic setCurrentRecipe being overwritten by syncRecipe()
+    // completing after the confirm click with an empty schedule response.
+
+    // 1. Mock schedule to always return empty (simulates the race where the in-flight
+    //    syncRecipe() hasn't seen the assignment yet when it completes)
+    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    // 2. Mock GOTO setting
+    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            key: 'family_goto',
+            value: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            },
+          },
+        }),
+      });
+    });
+
+    // 3. Mock GOTO status as ready
+    await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
+      });
+    });
+
+    // 4. Mock assign to resolve immediately
+    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await page.goto('/home');
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeEnabled({ timeout: 10000 });
+    await confirmBtn.click();
+
+    // Menu card must appear despite syncRecipe() getting an empty schedule
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 3000 });
+    // Wait out any re-sync window to confirm the card does not flicker back
+    await page.waitForTimeout(2000);
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+    await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
   });
 
   test('Pending GOTO polls until ready', async ({ page }) => {
