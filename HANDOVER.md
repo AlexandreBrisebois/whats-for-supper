@@ -4,17 +4,16 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 
 ## Next Session Entry Points
 
-1. **Phase 14 is complete — ready to commit.** All six issues addressed. `task review` exits clean. 17/17 E2E pass. Commit message suggestion: `feat: phase-14 ux hardening — cook's mode steps, done=cooked, close voting, plan next week transition, stale SSR fix`.
+1. **Planner E2E Suite Stabilized.** 9/9 tests in `planner.spec.ts` pass deterministically. Regressions regarding timezone rollback, nested data envelopes, and clock/mock drift are memorialized in **ADR 034**.
 
-2. **Phase 13 F3 smoke test still pending.** `SynthesizeRecipeProcessor` is wired to Gemini. Run manually: describe "Our family spaghetti with homemade sauce" → confirm `status` flips to `'ready'` after ~30s.
+2. **Phase 14 UX Hardening Complete.** All Cook's Mode interactions, finalization logic, and social planner transitions are verified. Ready for Phase 15.
 
-3. **`SmartPivotCard` cleanup (deferred).** Component still exists in `HomeSections.tsx`, no longer rendered. Remove in a future cleanup pass.
+3. **Phase 13 F3 Smoke Test (Recipe Agent).** `SynthesizeRecipeProcessor` is wired. Manual verification of synthesis status transition ('pending' -> 'ready') is recommended.
 
-4. **E2E SSR constraint (standing).** See ADR 032 and `.kiro/steering.md` §6. Home page state must be reached through UI actions, not schedule mocks.
+4. **`SmartPivotCard` cleanup.** Deferred but tracked. Remove from `HomeSections.tsx`.
 
 ## Standing Notes
 
-- **Discovery ordering is live.** `DiscoveryService` orders by `VoteCount DESC`, then `LastCookedDate ASC NULLS FIRST`.
-- **Gemini 400 fix is live.** `SynthesizeRecipeProcessor` no longer sends `num_ctx`.
-- **ESLint ignores `src/lib/api/generated/**`.** Kiota warnings suppressed.
-- **`saveSetting` Kiota serialization fix is live.** Value passed via `additionalData`.
+- **ADR 034 Enforced.** All time-sensitive E2E tests must use `page.clock.setFixedTime` and hardcoded mock dates.
+- **Strict Data Enveloping.** Nested entities (Recipe, Votes) must use `{ data: { ... } }` to avoid Kiota union deserialization failure (dumping into `additionalData`).
+- **UTC-Only Discipline.** Do not use local date methods on ISO strings.

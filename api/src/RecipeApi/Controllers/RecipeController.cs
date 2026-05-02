@@ -180,9 +180,9 @@ public class RecipeController(
 
     /// <summary>GET /api/recipes/{id}/original/{photoIndex} — raw image binary.</summary>
     [HttpGet("{recipeId:guid}/original/{photoIndex:int}")]
-    public IActionResult GetImage(Guid recipeId, int photoIndex)
+    public async Task<IActionResult> GetImage(Guid recipeId, int photoIndex)
     {
-        var (stream, contentType) = imageService.GetImage(recipeId, photoIndex);
+        var (stream, contentType) = await imageService.GetImage(recipeId, photoIndex);
         return File(stream, contentType);
     }
 
@@ -191,9 +191,9 @@ public class RecipeController(
     /// Returns 404 until a recipe import has been completed.
     /// </summary>
     [HttpGet("{id:guid}/hero")]
-    public IActionResult GetHero(Guid id)
+    public async Task<IActionResult> GetHero(Guid id)
     {
-        var (stream, contentType) = imageService.GetHeroImage(id);
+        var (stream, contentType) = await imageService.GetHeroImage(id);
         return File(stream, contentType);
     }
 

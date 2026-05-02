@@ -4,6 +4,25 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-02] Session — SmartPivotCard Cleanup
+**Status**: COMPLETED ✅
+
+**Objective**: Remove the deprecated `SmartPivotCard` from `HomeSections.tsx` as it is no longer rendered and considered "zombie" code.
+
+**Changes**
+- `HomeSections.tsx`: Removed the `SmartPivotCard` component and unused `Search`, `Clock`, and `Utensils` icon imports.
+- `planner-feature-spec.md`: Updated to reflect the transition from `SmartPivotCard` to `TonightPivotCard`.
+- `ROADMAP.md`: Updated checklist to reflect the final implementation of `TonightPivotCard`.
+
+**Verification**:
+- `task typecheck` passed.
+- `task lint:pwa` passed.
+- Full grep search confirms no remaining usages of `SmartPivotCard` in `pwa/src`.
+
+**ADR**: None triggered.
+
+---
+
 ### [2026-05-01] Session — Phase 14 UX Hardening
 **Status**: COMPLETED ✅
 

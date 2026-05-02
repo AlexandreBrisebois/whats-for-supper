@@ -9,57 +9,54 @@ import {
   type FamilyGetResponse,
   type FamilyGetResponse_data,
 } from '../src/lib/api/generated/api/family/index';
+import { REALISTIC_RECIPES, REALISTIC_SCHEDULE_RECIPES } from './realistic-recipes';
 
-/**
- * Standard MOCK_IDS for E2E tests.
- * Always use these GUIDs instead of hardcoded strings like "recipe-1".
- */
-export const MOCK_IDS = {
-  // Members
-  MEMBER_ALEX: '550e8400-e29b-41d4-a716-446655440001',
-  MEMBER_JORDAN: '550e8400-e29b-41d4-a716-446655440002',
-  MEMBER_TEST: '550e8400-e29b-41d4-a716-446655440003',
-
-  // Recipes
-  RECIPE_LASAGNA: '660e8400-e29b-41d4-a716-446655440010',
-  RECIPE_CHICKEN: '660e8400-e29b-41d4-a716-446655440011',
-  RECIPE_GNOCCHI: '660e8400-e29b-41d4-a716-446655440012',
-  RECIPE_CARBONARA: '660e8400-e29b-41d4-a716-446655440013',
-  RECIPE_STIR_FRY: '660e8400-e29b-41d4-a716-446655440014',
-  RECIPE_TACOS: '660e8400-e29b-41d4-a716-446655440015',
-  RECIPE_GOTO_STUB: '660e8400-e29b-41d4-a716-446655440020', // stub created by POST /api/recipes/describe
-};
+import { MOCK_IDS } from './mock-ids';
+export { MOCK_IDS };
 
 /**
  * Schema-compliant builders for mock data.
  * These ensure that mock objects match the generated API client models.
  */
 export const builders = {
-  recipe: (overrides: Partial<RecipeDto> = {}): RecipeDto => ({
-    id: MOCK_IDS.RECIPE_LASAGNA,
-    name: 'Mock Recipe',
-    description: 'A delicious mock recipe for testing.',
-    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-    totalTime: 'PT30M',
-    difficulty: 'Medium',
-    category: 'Italian',
-    rating: 0,
-    isVegetarian: false,
-    isHealthyChoice: false,
-    ingredients: ['Ingredient 1', 'Ingredient 2'],
-    recipeInstructions: ['Real Step 1: Chop the onions', 'Real Step 2: Saute until golden'] as any,
-    createdAt: new Date(),
-    ...overrides,
-  }),
+  recipe: (overrides: Partial<RecipeDto> = {}): RecipeDto => {
+    const base =
+      overrides.id && REALISTIC_RECIPES[overrides.id]
+        ? REALISTIC_RECIPES[overrides.id]
+        : {
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name: 'Mock Recipe',
+            description: 'A delicious mock recipe for testing.',
+            imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
+            totalTime: 'PT30M',
+            difficulty: 'Medium',
+            category: 'Italian',
+            rating: 0,
+            isVegetarian: false,
+            isHealthyChoice: false,
+            ingredients: ['Ingredient 1', 'Ingredient 2'],
+            recipeInstructions: [
+              'Real Step 1: Chop the onions',
+              'Real Step 2: Saute until golden',
+            ] as any,
+            createdAt: new Date(),
+          };
+    return { ...base, ...overrides };
+  },
 
-  scheduleRecipe: (overrides: Partial<ScheduleRecipeDto> = {}): ScheduleRecipeDto => ({
-    id: MOCK_IDS.RECIPE_LASAGNA,
-    name: 'Mock Schedule Recipe',
-    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-    voteCount: 0,
-    ingredients: [],
-    ...overrides,
-  }),
+  scheduleRecipe: (overrides: Partial<ScheduleRecipeDto> = {}): ScheduleRecipeDto => {
+    const base =
+      overrides.id && REALISTIC_SCHEDULE_RECIPES[overrides.id]
+        ? REALISTIC_SCHEDULE_RECIPES[overrides.id]
+        : {
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name: 'Mock Schedule Recipe',
+            image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
+            voteCount: 0,
+            ingredients: [],
+          };
+    return { ...base, ...overrides };
+  },
 
   familyMember: (overrides: Partial<FamilyGetResponse_data> = {}): FamilyGetResponse_data => ({
     id: MOCK_IDS.MEMBER_ALEX,
@@ -73,18 +70,13 @@ export const builders = {
 /**
  * Common date utilities for schedule mocking.
  */
-export function currentMonday(): Date {
-  const d = new Date();
-  d.setUTCHours(12, 0, 0, 0);
-  const day = d.getUTCDay(); // 0=Sun, 1=Mon...
-  const offset = day === 0 ? -6 : 1 - day;
-  d.setUTCDate(d.getUTCDate() + offset);
+/** Pins the test environment to a fixed Monday (May 4th, 2026) to prevent test drift. */
+export const currentMonday = () => {
+  const d = new Date('2026-05-04T12:00:00Z');
   return d;
-}
+};
 
-export function toDateStr(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
+export const toDateStr = (d: Date) => d.toISOString().split('T')[0];
 
 /**
  * Setup common API routes with sane defaults.
@@ -118,7 +110,7 @@ export async function setupCommonRoutes(page: Page) {
   });
 
   // Default Schedule (Empty)
-  await page.route(/\/(?:backend\/)?api\/schedule(?:\?|$)/, async (route) => {
+  await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
     if (route.request().method() === 'GET' && !route.request().url().includes('smart-defaults')) {
       const monday = currentMonday();
       const days = Array.from({ length: 7 }, (_, i) => {
@@ -149,8 +141,8 @@ export async function setupCommonRoutes(page: Page) {
     }
   });
 
-  // Family Detail
-  await page.route(/\/(?:backend\/)?api\/family\/[0-9a-f-]+(?:\?|$)/, async (route) => {
+  // Single family member details
+  await page.route(/\/(?:backend\/)?api\/family\/[0-9a-f-]+(?:\?.*)?$/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -168,7 +160,7 @@ export async function setupCommonRoutes(page: Page) {
   });
 
   // Recipes (Generic & Detail)
-  await page.route(/\/(?:backend\/)?api\/recipes(?:\?|$)/, async (route) => {
+  await page.route(/\/(?:backend\/)?api\/recipes(?:\?.*)?$/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -368,9 +360,9 @@ export async function setupCommonRoutes(page: Page) {
     if (route.request().method() === 'GET') {
       if (settingsStore[key] == null) {
         await route.fulfill({
-          status: 404,
+          status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ error: 'Not found' }),
+          body: JSON.stringify({ data: { key, value: null } }),
         });
       } else {
         await route.fulfill({

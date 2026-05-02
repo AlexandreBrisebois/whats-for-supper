@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -134,11 +135,10 @@ public class RecipeControllerTests : IAsyncLifetime
     [Fact]
     public async Task GetImage_Returns_Image_Binary()
     {
-        // Arrange: write a fake image directly into the factory's temp recipes root
+        // Arrange: write a fake image directly into the factory's store
         var recipeId = Guid.NewGuid();
-        var dir = Path.Combine(_factory.TempRecipesRoot, recipeId.ToString(), "original");
-        Directory.CreateDirectory(dir);
-        await File.WriteAllBytesAsync(Path.Combine(dir, "0.jpg"), MinimalJpeg);
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        await store.SaveOriginalImageAsync(recipeId, 0, "image/jpeg", new MemoryStream(MinimalJpeg));
 
         // Act — URL is now under /api/recipes/ (unified route convention)
         var response = await _client.GetAsync($"/api/recipes/{recipeId}/original/0");
@@ -155,11 +155,10 @@ public class RecipeControllerTests : IAsyncLifetime
     [Fact]
     public async Task GetHero_Returns_Hero_Image_When_Present()
     {
-        // Arrange: write a fake hero image into the factory's temp recipes root
+        // Arrange: write a fake hero image into the factory's store
         var recipeId = Guid.NewGuid();
-        var dir = Path.Combine(_factory.TempRecipesRoot, recipeId.ToString());
-        Directory.CreateDirectory(dir);
-        await File.WriteAllBytesAsync(Path.Combine(dir, "hero.jpg"), MinimalJpeg);
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        await store.SaveHeroImageAsync(recipeId, new MemoryStream(MinimalJpeg));
 
         // Act
         var response = await _client.GetAsync($"/api/recipes/{recipeId}/hero");

@@ -75,7 +75,7 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 - [ ] **Processing Feedback**: Add visual indicators for recipes in the AI pipeline.
 
 ### Implementation Checklist
-- [x] **Smart Pivot Card**: Compact `ExpressCard.tsx` (implemented as `SmartPivotCard`).
+- [x] **Tonight Pivot Card**: Purposeful fallback card (implemented as `TonightPivotCard`).
 - [x] **Home Integration**: Conditional display on `home/page.tsx`.
 - [ ] **Vector Search API**: Backend support for agentic natural language queries.
 - [x] **Swipe Logic**: Right-swipe triggers immediate planning (`TODAY`).
@@ -95,6 +95,7 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 - [x] **Smart Voting Defaults**: Consensus-based pre-selection (51%+ threshold) with visual vote badges and dynamic ordering.
 - [x] **Quick Find Modal**: Recipe carousel with hero images, skip/select actions, and fallback placeholders.
 - [x] **Cook's Mode**: High-visibility, hands-free UI for step-by-step cooking.
+- [x] **Planner E2E Stabilization**: Full coverage of finalization, reordering, and Cook's Mode (ADR 034).
 - [ ] **Calendar Sync Worker**: 5-minute polling.
 
 ---

@@ -13,6 +13,9 @@ import {
   Check,
   Calendar,
   ShoppingCart,
+  Ban,
+  Lock,
+  Sparkles,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
 import Image from 'next/image';
@@ -24,8 +27,10 @@ import {
   assignRecipeToDay,
   openVoting,
   removeRecipeFromDay,
+  isScheduleRecipe,
   ScheduleDay,
 } from '@/lib/api/planner';
+import { ScheduleRecipeDto } from '@/lib/api/generated/models';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { Button } from '@/components/ui/button';
@@ -33,7 +38,8 @@ import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
 
-type UILocalScheduleDay = ScheduleDay & {
+type UILocalScheduleDay = Omit<ScheduleDay, 'recipe'> & {
+  recipe?: ScheduleRecipeDto | null;
   _uiId: string;
   _isPending?: boolean;
   _voteCount?: number | null;
@@ -115,63 +121,65 @@ export default function PlannerPage() {
           currentWeekOffset === 0 ? getSmartDefaults(currentWeekOffset) : Promise.resolve(null),
         ]);
 
-        if (!ignore && scheduleData && scheduleData.days) {
-          const defaultsByDayIndex = new Map(
-            defaultsData?.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
-          );
+        if (!ignore) {
+          if (scheduleData && scheduleData.days) {
+            const defaultsByDayIndex = new Map(
+              defaultsData?.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
+            );
+            const mergedDays = scheduleData.days.map((day: any, index: number) => {
+              const generateUiId = () =>
+                typeof crypto !== 'undefined' && crypto.randomUUID
+                  ? crypto.randomUUID()
+                  : Math.random().toString(36).substring(7);
 
-          const mergedDays = scheduleData.days.map((day: any, index: number) => {
-            const generateUiId = () =>
-              typeof crypto !== 'undefined' && crypto.randomUUID
-                ? crypto.randomUUID()
-                : Math.random().toString(36).substring(7);
+              // Narrow the oneOf union — only treat as a recipe if it has an id
+              if (isScheduleRecipe(day.recipe)) {
+                const unwrapped = 'data' in day.recipe ? day.recipe.data : day.recipe;
+                return { ...day, recipe: unwrapped, _uiId: generateUiId() };
+              }
 
-            // Check if recipe exists and has content (not just empty object)
-            const hasRecipe = day.recipe && Object.keys(day.recipe).length > 0;
-            if (hasRecipe) {
-              return { ...day, _uiId: generateUiId() };
+              const smartDefault = defaultsByDayIndex.get(index);
+              if (smartDefault) {
+                return {
+                  ...day,
+                  recipe: {
+                    id: smartDefault.recipeId ?? '',
+                    name: smartDefault.name ?? '',
+                    image: smartDefault.heroImageUrl ?? '',
+                    voteCount: smartDefault.voteCount ?? 0,
+                  },
+                  _uiId: generateUiId(),
+                  _isPending: true,
+                  _voteCount: smartDefault.voteCount,
+                  _unanimousVote: smartDefault.unanimousVote,
+                };
+              }
+
+              return { ...day, recipe: undefined, _uiId: generateUiId() };
+            });
+
+            setSchedule(mergedDays);
+
+            // Use explicit status logic
+            const status = (scheduleData as any).status ?? 0;
+            setVotingOpen(status === 1);
+            setIsLocked(status === 2 || scheduleData.locked === true);
+
+            // Restore persisted grocery state from API if present
+            const serverGroceryState =
+              (scheduleData as any).groceryState ??
+              (scheduleData as any).additionalData?.groceryState;
+            if (serverGroceryState && typeof serverGroceryState === 'object') {
+              setGroceryState(serverGroceryState);
             }
-
-            const smartDefault = defaultsByDayIndex.get(index);
-            if (smartDefault) {
-              const recipe = {
-                id: smartDefault.recipeId || '',
-                name: smartDefault.name || '',
-                image: smartDefault.heroImageUrl || '',
-                voteCount: smartDefault.voteCount,
-              };
-              return {
-                ...day,
-                recipe,
-                _uiId: generateUiId(),
-                _isPending: true,
-                _voteCount: smartDefault.voteCount,
-                _unanimousVote: smartDefault.unanimousVote,
-              };
-            }
-
-            return { ...day, _uiId: generateUiId() };
-          });
-
-          setSchedule(mergedDays);
-
-          // Use explicit status logic
-          const status = (scheduleData as any).status ?? 0;
-          setVotingOpen(status === 1);
-          setIsLocked(status === 2 || scheduleData.locked === true);
-
-          // Restore persisted grocery state from API if present
-          const serverGroceryState =
-            (scheduleData as any).groceryState ??
-            (scheduleData as any).additionalData?.groceryState;
-          if (serverGroceryState && typeof serverGroceryState === 'object') {
-            setGroceryState(serverGroceryState);
+          } else {
+            setIsLoading(false);
           }
+          setIsLoading(false);
         }
-        setIsLoading(false);
       } catch (error: any) {
         if (!ignore) {
-          console.warn('Failed to fetch schedule:', error?.message || error);
+          console.error('[Planner] loadData: Failed to fetch schedule:', error?.message || error);
           // Provide mock data so the UI can be experienced even if API is down
           const mockDays = Array.from({ length: 7 }, (_, i) => {
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -226,8 +234,13 @@ export default function PlannerPage() {
               }
               // Persisted slot: update voteCount from CalendarEvent
               const newDay = scheduleData.days?.[idx];
-              if (!day.recipe || !newDay?.recipe) return day;
-              return { ...day, recipe: { ...day.recipe, voteCount: newDay.recipe.voteCount } };
+              const newDayRecipe = newDay?.recipe;
+              if (!day.recipe || !isScheduleRecipe(newDayRecipe)) return day;
+              const voteCount =
+                ('data' in newDayRecipe
+                  ? newDayRecipe.data?.voteCount
+                  : (newDayRecipe as any).voteCount) ?? 0;
+              return { ...day, recipe: { ...day.recipe, voteCount } };
             });
 
             // Add newly-reached consensus recipes to open slots
@@ -558,11 +571,29 @@ export default function PlannerPage() {
                 ? (() => {
                     const start = new Date(schedule[0].date ?? '');
                     const end = new Date(schedule[6].date ?? '');
-                    const fmt = new Intl.DateTimeFormat('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    });
-                    return `${fmt.format(start)} — ${fmt.format(end)}`;
+                    const monthNames = [
+                      'Jan',
+                      'Feb',
+                      'Mar',
+                      'Apr',
+                      'May',
+                      'Jun',
+                      'Jul',
+                      'Aug',
+                      'Sep',
+                      'Oct',
+                      'Nov',
+                      'Dec',
+                    ];
+                    const startMonth = monthNames[start.getUTCMonth()];
+                    const endMonth = monthNames[end.getUTCMonth()];
+                    const startDate = start.getUTCDate();
+                    const endDate = end.getUTCDate();
+
+                    if (startMonth === endMonth) {
+                      return `${startMonth} ${startDate} — ${endDate}`;
+                    }
+                    return `${startMonth} ${startDate} — ${endMonth} ${endDate}`;
                   })()
                 : t('messages.loading', 'Loading...')}
             </h2>
@@ -594,9 +625,10 @@ export default function PlannerPage() {
                   <button
                     onClick={handleCloseVoting}
                     data-testid="close-voting-btn"
-                    className="text-[9px] font-black uppercase tracking-widest text-terracotta bg-terracotta/10 px-2 py-1 rounded-full border border-terracotta/20 hover:bg-terracotta/20 transition-colors"
+                    className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-terracotta bg-white shadow-sm px-4 py-1.5 rounded-full border border-terracotta/10 hover:bg-terracotta hover:text-white transition-all active:scale-95 shadow-lg shadow-terracotta/5"
                   >
-                    Close
+                    <Ban size={10} />
+                    {t('planner.closeVoting', 'Close Voting')}
                   </button>
                 </div>
               )}
@@ -695,9 +727,13 @@ export default function PlannerPage() {
                     size="lg"
                     onClick={handleFinalize}
                     data-testid="finalize-button"
-                    className="rounded-[2rem] h-16 text-lg font-black shadow-xl shadow-terracotta/20 bg-terracotta text-white border-none"
+                    className="rounded-[2.5rem] h-20 text-xl font-black shadow-2xl shadow-terracotta/30 bg-gradient-to-br from-terracotta to-[#CD5D45] text-white border-none group relative overflow-hidden transition-all active:scale-[0.98]"
                   >
-                    {t('planner.planNextWeek', 'Plan next week')}
+                    <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="flex items-center justify-center gap-3">
+                      <Sparkles size={24} className="animate-pulse" />
+                      {t('planner.planNextWeek', 'Plan next week')}
+                    </div>
                   </Button>
                 </div>
               )}
@@ -870,7 +906,7 @@ function PlannerDayCard({
             {(() => {
               if (!day.date) return '';
               const d = new Date(day.date);
-              return d.getDate();
+              return d.getUTCDate();
             })()}
           </span>
           <span className="text-[10px] font-bold uppercase tracking-tighter text-charcoal/40 leading-none mt-1">

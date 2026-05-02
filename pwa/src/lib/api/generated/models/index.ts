@@ -259,6 +259,17 @@ export function createRecommendationsResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ScheduleDayDto_recipe}
+ */
+// @ts-ignore
+export function createScheduleDayDto_recipeFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoScheduleDayDto_recipe;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ScheduleDayDto}
  */
 // @ts-ignore
@@ -878,6 +889,9 @@ export function deserializeIntoRecipeStatusDto(
     imageCount: (n) => {
       recipeStatusDto.imageCount = n.getNumberValue();
     },
+    isSynthesized: (n) => {
+      recipeStatusDto.isSynthesized = n.getBooleanValue();
+    },
     name: (n) => {
       recipeStatusDto.name = n.getStringValue();
     },
@@ -949,12 +963,29 @@ export function deserializeIntoScheduleDayDto(
       scheduleDayDto.day = n.getStringValue();
     },
     recipe: (n) => {
-      scheduleDayDto.recipe = n.getObjectValue<ScheduleRecipeDto>(
-        createScheduleRecipeDtoFromDiscriminatorValue
+      scheduleDayDto.recipe = n.getObjectValue<ScheduleDayDto_recipe>(
+        createScheduleDayDto_recipeFromDiscriminatorValue
       );
     },
     status: (n) => {
       scheduleDayDto.status = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param ScheduleDayDto_recipe The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoScheduleDayDto_recipe(
+  scheduleDayDto_recipe: Partial<ScheduleDayDto_recipe> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    data: (n) => {
+      scheduleDayDto_recipe.data = n.getObjectValue<ScheduleRecipeDto>(
+        createScheduleRecipeDtoFromDiscriminatorValue
+      );
     },
   };
 }
@@ -1595,11 +1626,15 @@ export interface RecipeStatusDto extends AdditionalDataHolder, Parsable {
    */
   imageCount?: number | null;
   /**
+   * true once the goto-synthesis workflow has completed successfully
+   */
+  isSynthesized?: boolean | null;
+  /**
    * The name property
    */
   name?: string | null;
   /**
-   * "pending" while synthesis is in progress; "ready" once the recipe is fully synthesised and the hero image is generated
+   * "pending" while synthesis is in progress; "ready" once Name is set and either ImageCount > 0 (photo-upload path) or IsSynthesized = true (describe path)
    */
   status?: RecipeStatusDto_status | null;
 }
@@ -1645,11 +1680,17 @@ export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
   /**
    * The recipe property
    */
-  recipe?: ScheduleRecipeDto | null;
+  recipe?: ScheduleDayDto_recipe | null;
   /**
    * 0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
    */
   status?: number | null;
+}
+export interface ScheduleDayDto_recipe extends AdditionalDataHolder, Parsable {
+  /**
+   * The data property
+   */
+  data?: ScheduleRecipeDto | null;
 }
 export interface ScheduleDays extends AdditionalDataHolder, Parsable {
   /**
@@ -2089,6 +2130,7 @@ export function serializeRecipeStatusDto(
   }
   writer.writeGuidValue('id', recipeStatusDto.id);
   writer.writeNumberValue('imageCount', recipeStatusDto.imageCount);
+  writer.writeBooleanValue('isSynthesized', recipeStatusDto.isSynthesized);
   writer.writeStringValue('name', recipeStatusDto.name);
   writer.writeEnumValue<RecipeStatusDto_status>('status', recipeStatusDto.status);
   writer.writeAdditionalData(recipeStatusDto.additionalData);
@@ -2158,13 +2200,35 @@ export function serializeScheduleDayDto(
   }
   writer.writeStringValue('date', scheduleDayDto.date);
   writer.writeStringValue('day', scheduleDayDto.day);
-  writer.writeObjectValue<ScheduleRecipeDto>(
+  writer.writeObjectValue<ScheduleDayDto_recipe>(
     'recipe',
     scheduleDayDto.recipe,
-    serializeScheduleRecipeDto
+    serializeScheduleDayDto_recipe
   );
   writer.writeNumberValue('status', scheduleDayDto.status);
   writer.writeAdditionalData(scheduleDayDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ScheduleDayDto_recipe The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeScheduleDayDto_recipe(
+  writer: SerializationWriter,
+  scheduleDayDto_recipe: Partial<ScheduleDayDto_recipe> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!scheduleDayDto_recipe || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<ScheduleRecipeDto>(
+    'data',
+    scheduleDayDto_recipe.data,
+    serializeScheduleRecipeDto
+  );
+  writer.writeAdditionalData(scheduleDayDto_recipe.additionalData);
 }
 /**
  * Serializes information the current object
@@ -2769,7 +2833,7 @@ export const MoveScheduleDto_intentObject = {
   Push: 'push',
 } as const;
 /**
- * "pending" while synthesis is in progress; "ready" once the recipe is fully synthesised and the hero image is generated
+ * "pending" while synthesis is in progress; "ready" once Name is set and either ImageCount > 0 (photo-upload path) or IsSynthesized = true (describe path)
  */
 export const RecipeStatusDto_statusObject = {
   Pending: 'pending',

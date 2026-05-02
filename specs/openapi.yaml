@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: What's For Supper API
   description: API for the What's For Supper PWA, including recipe discovery, planning, and management.
@@ -39,28 +39,26 @@ components:
       required: [id, name, imageUrl, createdAt]
       properties:
         id: { type: string, format: uuid }
-        name: { type: string, nullable: true }
-        description: { type: string, nullable: true }
-        imageUrl: { type: string, nullable: true, example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
+        name: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        imageUrl: { type: [string, 'null'], example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }
 
-        totalTime: { type: string, nullable: true }
-        category: { type: string, nullable: true }
-        difficulty: { type: string, nullable: true }
+        totalTime: { type: [string, 'null'] }
+        category: { type: [string, 'null'] }
+        difficulty: { type: [string, 'null'] }
         images:
           type: array
           items: { type: integer }
         rating: { type: integer }
         isVegetarian: { type: boolean }
         isHealthyChoice: { type: boolean }
-        addedBy: { type: string, format: uuid, nullable: true }
+        addedBy: { type: [string, 'null'], format: uuid }
         ingredients:
-          type: array
+          type: [array, 'null']
           items: { type: string }
-          nullable: true
         recipeInstructions:
-          type: array
+          type: [array, 'null']
           items: {}
-          nullable: true
           description: 'Parsed recipe instructions (string array or HowToStep objects)'
         createdAt: { type: string, format: date-time }
 
@@ -142,7 +140,10 @@ components:
       properties:
         day: { type: string }
         date: { type: string }
-        recipe: { $ref: '#/components/schemas/ScheduleRecipeDto', nullable: true }
+        recipe:
+          type: object
+          properties:
+            data: { $ref: '#/components/schemas/ScheduleRecipeDto' }
         status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
 
     ScheduleRecipeDto:
@@ -150,14 +151,13 @@ components:
       required: [id, name, image]
       properties:
         id: { type: string, format: uuid }
-        name: { type: string, nullable: true }
+        name: { type: [string, 'null'] }
         image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
-        description: { type: string, nullable: true }
+        description: { type: [string, 'null'] }
         ingredients:
-          type: array
+          type: [array, 'null']
           items: { type: string }
-          nullable: true
-        voteCount: { type: integer, nullable: true }
+        voteCount: { type: [integer, 'null'] }
 
     MoveScheduleDto:
       type: object
@@ -167,7 +167,7 @@ components:
         fromIndex: { type: integer }
         toIndex: { type: integer }
         intent: { type: string, enum: [swap, push], default: swap }
-        targetWeekOffset: { type: integer, nullable: true }
+        targetWeekOffset: { type: [integer, 'null'] }
 
     AssignScheduleDto:
       type: object
@@ -195,8 +195,8 @@ components:
     UpdateRecipeDto:
       type: object
       properties:
-        notes: { type: string, nullable: true }
-        rating: { type: integer, nullable: true, minimum: 0, maximum: 3 }
+        notes: { type: [string, 'null'] }
+        rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
 
     DescribeRecipeDto:
       type: object
@@ -210,7 +210,7 @@ components:
       required: [id, status, imageCount, isSynthesized]
       properties:
         id: { type: string, format: uuid }
-        name: { type: string, nullable: true }
+        name: { type: [string, 'null'] }
         status: { type: string, enum: [pending, ready], description: '"pending" while synthesis is in progress; "ready" once Name is set and either ImageCount > 0 (photo-upload path) or IsSynthesized = true (describe path)' }
         imageCount: { type: integer }
         isSynthesized: { type: boolean, description: 'true once the goto-synthesis workflow has completed successfully' }
@@ -220,7 +220,7 @@ components:
       required: [recipeId, name, heroImageUrl, voteCount, familySize, unanimousVote, dayIndex, isLocked]
       properties:
         recipeId: { type: string, format: uuid }
-        name: { type: string, nullable: true }
+        name: { type: [string, 'null'] }
         heroImageUrl: { type: string }
         voteCount: { type: integer }
         familySize: { type: integer }
@@ -261,7 +261,7 @@ components:
         status: { type: string, enum: [Pending, Processing, Completed, Failed] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-        result: { type: object, nullable: true }
+        result: { type: [object, 'null'] }
 
     ManagementTaskAcceptedResponse:
       type: object
@@ -282,7 +282,7 @@ components:
       required: [status]
       properties:
         status: { type: string }
-        errorMessage: { type: string, nullable: true }
+        errorMessage: { type: [string, 'null'] }
 
     RecipeImportSummaryDto:
       type: object
@@ -327,10 +327,10 @@ components:
         taskName: { type: string }
         processorName: { type: string }
         status: { type: string, enum: [Waiting, Pending, Processing, Completed, Failed] }
-        dependsOn: { type: array, items: { type: string }, nullable: true }
+        dependsOn: { type: [array, 'null'], items: { type: string } }
         retryCount: { type: integer }
-        scheduledAt: { type: string, format: date-time, nullable: true }
-        errorMessage: { type: string, nullable: true }
+        scheduledAt: { type: [string, 'null'], format: date-time }
+        errorMessage: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -341,7 +341,7 @@ components:
         id: { type: string, format: uuid }
         workflowId: { type: string }
         status: { type: string, enum: [Pending, Processing, Completed, Failed, Paused] }
-        parameters: { type: object, additionalProperties: { type: string }, nullable: true }
+        parameters: { type: [object, 'null'], additionalProperties: { type: string } }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         tasks:
@@ -586,7 +586,7 @@ paths:
               properties:
                 rating: { type: integer, minimum: 0, maximum: 3, default: 0 }
                 finishedDishImageIndex: { type: integer, default: -1 }
-                notes: { type: string, nullable: true }
+                notes: { type: [string, 'null'] }
                 images:
                   type: array
                   items:

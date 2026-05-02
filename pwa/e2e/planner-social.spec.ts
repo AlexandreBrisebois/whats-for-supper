@@ -16,11 +16,13 @@ function buildWeekDays(mondayRecipe?: object) {
   });
 }
 
-const MONDAY_RECIPE = builders.scheduleRecipe({
-  id: MOCK_IDS.RECIPE_CARBONARA,
-  name: 'Pasta Carbonara',
-  voteCount: 2,
-});
+const MONDAY_RECIPE = {
+  data: builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_CARBONARA,
+    name: 'Pasta Carbonara',
+    voteCount: 2,
+  }),
+};
 
 test.describe('Planner Social Coordination', () => {
   test.beforeEach(async ({ page }) => {

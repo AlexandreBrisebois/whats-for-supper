@@ -3,6 +3,7 @@ import { apiClient } from './api-client';
 import type {
   ScheduleDays,
   ScheduleDayDto,
+  ScheduleRecipeDto,
   PreSelectedRecipeDto,
   SmartDefaultsDto,
 } from './generated/models';
@@ -11,6 +12,18 @@ export type ScheduleDay = ScheduleDayDto;
 export type ScheduleResponse = ScheduleDays;
 export type PreSelectedRecipe = PreSelectedRecipeDto;
 export type SmartDefaultsResponse = SmartDefaultsDto;
+
+/** Narrows the oneOf recipe union to the concrete ScheduleRecipeDto, filtering out the null member. */
+export function isScheduleRecipe(
+  recipe: any | null | undefined
+): recipe is { data: ScheduleRecipeDto } | ScheduleRecipeDto {
+  if (!recipe) return false;
+  // Handle wrapped { data: ScheduleRecipeDto }
+  if (recipe.data && (recipe.data.id != null || 'id' in recipe.data)) return true;
+  // Handle direct ScheduleRecipeDto
+  if (recipe.id != null || 'id' in recipe) return true;
+  return false;
+}
 
 export const getSchedule = async (weekOffset: number): Promise<ScheduleResponse | undefined> => {
   const result = await apiClient.api.schedule.get({

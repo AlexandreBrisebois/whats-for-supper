@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -50,9 +51,9 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         await _management.BackupAsync();
-
-        var infoPath = Path.Combine(_factory.TempRecipesRoot, recipe.Id.ToString(), "recipe.info");
-        Assert.True(File.Exists(infoPath), $"recipe.info should have been written for a ready recipe, but was not found at {infoPath}");
+        
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        Assert.True(await store.InfoExistsAsync(recipe.Id), $"recipe.info should have been written for a ready recipe, but was not found in store for {recipe.Id}");
     }
 
     [Fact]
@@ -73,7 +74,7 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
 
         await _management.BackupAsync();
 
-        var infoPath = Path.Combine(_factory.TempRecipesRoot, recipe.Id.ToString(), "recipe.info");
-        Assert.False(File.Exists(infoPath), $"recipe.info should NOT have been written for an unready recipe with no payload, but was found at {infoPath}");
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        Assert.False(await store.InfoExistsAsync(recipe.Id), $"recipe.info should NOT have been written for an unready recipe with no payload, but was found in store for {recipe.Id}");
     }
 }
