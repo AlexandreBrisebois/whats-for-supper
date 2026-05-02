@@ -81,6 +81,7 @@ try
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
+    builder.Services.AddSingleton<IRecipeStore, LocalRecipeStore>();
     builder.Services.AddSingleton<IPromptRepository, EmbeddedPromptRepository>();
     builder.Services.AddScoped<RecipeRepository>();
     builder.Services.AddScoped<WorkflowRepository>();

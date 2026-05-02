@@ -29,6 +29,23 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
       });
     });
 
+    // Mock GOTO status API
+    await page.route(
+      new RegExp(`/(?:backend/)?api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/status`),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
+          }),
+        });
+      }
+    );
+
     // Mock initial schedule: Today is empty (shows pivot card)
     await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
       const url = new URL(route.request().url());

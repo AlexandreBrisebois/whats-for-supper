@@ -4,15 +4,18 @@ import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from 
 // Compute current week's Monday at noon UTC — avoids timezone rollback
 
 test.describe('Supper Planner', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    // Pin time to 2026-05-04 12:00:00 UTC (a Monday)
+    await page.clock.setFixedTime(new Date('2026-05-04T12:00:00Z'));
+
     await setupCommonRoutes(page);
-    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    const baseUrl = baseURL || 'http://127.0.0.1:3000';
 
     await page
       .context()
       .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
 
-    // Set localStorage before first navigation — no goto('/') needed
+    // Set localStorage before first navigation
     await page.addInitScript((id) => {
       localStorage.setItem(
         'family-storage',
@@ -20,32 +23,24 @@ test.describe('Supper Planner', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
-    // Single intercept covering all schedule calls — zero Prism dependency
-    const monday = currentMonday();
-    const days = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(monday);
-      d.setUTCDate(monday.getUTCDate() + i);
-      return {
-        day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-        date: toDateStr(d),
-        ...(i === 0
-          ? {
-              recipe: builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_LASAGNA,
-                name: 'Homemade Lasagna',
-                voteCount: 3,
-                ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
-              }),
-            }
-          : {}),
-      };
-    });
+    const pinnedDates = [
+      '2026-05-04', // Mon
+      '2026-05-05', // Tue
+      '2026-05-06', // Wed
+      '2026-05-07', // Thu
+      '2026-05-08', // Fri
+      '2026-05-09', // Sat
+      '2026-05-10', // Sun
+    ];
 
     let isLocked = false;
 
+    // Single intercept covering all schedule calls — zero Prism dependency
     await page.route(/\/(?:backend\/)?api\/schedule/, async (route) => {
       const url = route.request().url();
-      if (route.request().method() !== 'GET') {
+      const method = route.request().method();
+
+      if (method !== 'GET') {
         isLocked = true;
         await route.fulfill({
           status: 200,
@@ -54,6 +49,7 @@ test.describe('Supper Planner', () => {
         });
         return;
       }
+
       if (url.includes('smart-defaults')) {
         await route.fulfill({
           status: 200,
@@ -103,11 +99,40 @@ test.describe('Supper Planner', () => {
         });
         return;
       }
+
+      // Default GET /api/schedule
+      const monday = currentMonday();
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        return {
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+          date: toDateStr(d),
+          ...(i === 0
+            ? {
+                recipe: {
+                  data: builders.scheduleRecipe({
+                    id: MOCK_IDS.RECIPE_LASAGNA,
+                    name: 'Homemade Lasagna',
+                    voteCount: 3,
+                    ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
+                  }),
+                },
+              }
+            : {}),
+        };
+      });
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: { weekOffset: 0, locked: isLocked, status: isLocked ? 2 : 0, days },
+          data: {
+            weekOffset: 0,
+            locked: isLocked,
+            status: isLocked ? 2 : 0,
+            days,
+          },
         }),
       });
     });

@@ -145,12 +145,10 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
         Assert.Equal(_factory.DefaultFamilyMemberId, recipe.AddedBy);
         Assert.NotEqual(default, recipe.CreatedAt);
 
-        // recipe.info written to disk with correct values
-        var infoPath = Path.Combine(_factory.TempRecipesRoot, recipeId.ToString(), "recipe.info");
-        Assert.True(File.Exists(infoPath), $"recipe.info not found at {infoPath}");
-        var info = System.Text.Json.JsonSerializer.Deserialize<RecipeInfo>(
-            await File.ReadAllTextAsync(infoPath),
-            JsonDefaults.CamelCase);
+        // recipe.info written to store with correct values
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        Assert.True(await store.InfoExistsAsync(recipeId), $"recipe.info not found in store for {recipeId}");
+        var info = await store.ReadInfoAsync(recipeId);
         Assert.NotNull(info);
         Assert.Equal(_factory.DefaultFamilyMemberId, info.AddedBy);
         Assert.Equal(0, info.ImageCount);
@@ -176,12 +174,10 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
         Assert.NotNull(recipe);
         Assert.Null(recipe.AddedBy);
 
-        // recipe.info exists with addedBy null
-        var infoPath = Path.Combine(_factory.TempRecipesRoot, recipeId.ToString(), "recipe.info");
-        Assert.True(File.Exists(infoPath), $"recipe.info not found at {infoPath}");
-        var info = System.Text.Json.JsonSerializer.Deserialize<RecipeInfo>(
-            await File.ReadAllTextAsync(infoPath),
-            JsonDefaults.CamelCase);
+        // recipe.info exists in store with addedBy null
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        Assert.True(await store.InfoExistsAsync(recipeId), $"recipe.info not found in store for {recipeId}");
+        var info = await store.ReadInfoAsync(recipeId);
         Assert.NotNull(info);
         Assert.Null(info.AddedBy);
     }

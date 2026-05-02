@@ -19,7 +19,7 @@ namespace RecipeApi.Tests.Infrastructure;
 /// <summary>
 /// Builds a real <see cref="WebApplication"/> backed by <see cref="TestServer"/>,
 /// wiring up the same services and middleware as Program.cs but using an
-/// in-memory EF Core database and a temporary directory for image storage.
+/// in-memory EF Core database and in-memory storage implementations.
 ///
 /// Use <see cref="CreateAsync"/> to start the server, then <see cref="CreateClient"/>
 /// to get an HttpClient wired to it.  Implements <see cref="IAsyncDisposable"/> —
@@ -27,9 +27,6 @@ namespace RecipeApi.Tests.Infrastructure;
 /// </summary>
 public sealed class TestWebApplicationFactory : IAsyncDisposable
 {
-    public string TempRecipesRoot { get; } =
-        Path.Combine(Path.GetTempPath(), $"recipes_test_{Guid.NewGuid():N}");
-
     public Guid DefaultFamilyMemberId { get; private set; }
 
     private WebApplication? _app;
@@ -49,9 +46,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         // ── Override config ──────────────────────────────────────────────────
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["RecipesRoot"]                          = TempRecipesRoot,
-            ["Serilog:MinimumLevel:Default"]         = "Warning",
-            ["Logging:LogLevel:Default"]             = "Warning",
+            ["Serilog:MinimumLevel:Default"]          = "Warning",
+            ["Logging:LogLevel:Default"]              = "Warning",
             ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning",
         });
 
@@ -97,6 +93,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddSingleton<DataRootResolver>();
         builder.Services.AddSingleton<RecipesRootResolver>();
         builder.Services.AddSingleton<WorkflowRootResolver>();
+        builder.Services.AddSingleton<IRecipeStore, InMemoryRecipeStore>();
 
         builder.Services.AddDbContext<RecipeDbContext>(opts =>
             opts.UseInMemoryDatabase(_dbName));
@@ -143,11 +140,5 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     {
         if (_app is not null)
             await _app.DisposeAsync();
-
-        if (Directory.Exists(TempRecipesRoot))
-        {
-            try { Directory.Delete(TempRecipesRoot, recursive: true); }
-            catch { /* best-effort cleanup */ }
-        }
     }
 }

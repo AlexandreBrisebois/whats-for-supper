@@ -11,7 +11,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
-import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
+import { assignRecipeToDay, getSchedule, isScheduleRecipe } from '@/lib/api/planner';
 import { ScheduleRecipeDto } from '@/lib/api/generated/models';
 import { getTodayString } from '@/lib/imageUtils';
 import { SolarLoader } from '../ui/SolarLoader';
@@ -29,9 +29,14 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   const [isSkipped, setIsSkipped] = useState(false);
   const [isCooked, setIsCooked] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
-  const [currentRecipe, setCurrentRecipe] = useState(todaysRecipe);
+  const [currentRecipe, setCurrentRecipe] = useState<ScheduleRecipeDto | null>(
+    isScheduleRecipe(todaysRecipe)
+      ? 'data' in todaysRecipe
+        ? (todaysRecipe.data as ScheduleRecipeDto)
+        : (todaysRecipe as ScheduleRecipeDto)
+      : null
+  );
   const [gotoRecipeStatus, setGotoRecipeStatus] = useState<'pending' | 'ready' | null>(null);
-  const [prevGotoId, setPrevGotoId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!todaysRecipe); // Show loader only when SSR had nothing
   const router = useRouter();
   const { loadSetting, saveSetting, familySettings } = useFamilyStore();
@@ -45,10 +50,11 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   const gotoDescription = gotoValue?.description ?? null;
   const gotoRecipeId = gotoValue?.recipeId ?? null;
 
-  // Reset status when ID changes (recommended pattern for state reset on prop change)
-  const currentGotoId = gotoRecipeId ?? null;
-  if (currentGotoId !== prevGotoId) {
-    setPrevGotoId(currentGotoId);
+  // Track previous GOTO ID to reset status during render pass (avoids cascading effect)
+  const [prevGotoId, setPrevGotoId] = useState<string | null>(gotoRecipeId);
+
+  if (gotoRecipeId !== prevGotoId) {
+    setPrevGotoId(gotoRecipeId);
     setGotoRecipeStatus(null);
   }
 
@@ -111,18 +117,17 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
           } else if (todaysEntry?.status === 3) {
             setIsSkipped(true);
             setSessionDone(true);
-          } else if (todaysEntry?.recipe) {
-            console.log('SYNC: setting recipe from API', todaysEntry.recipe.name);
-            setCurrentRecipe(todaysEntry.recipe);
+          } else if (isScheduleRecipe(todaysEntry?.recipe)) {
+            const recipe = todaysEntry.recipe;
+            const unwrapped = 'data' in recipe ? recipe.data : recipe;
+            setCurrentRecipe(unwrapped);
           } else {
-            console.log('SYNC: setting recipe to NULL');
             setCurrentRecipe(null);
           }
         } catch (error) {
           console.error("Failed to sync today's recipe:", error);
         } finally {
           if (mounted) {
-            console.log('SYNC: done, setIsLoading(false)');
             setIsLoading(false);
           }
         }
@@ -231,7 +236,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   return (
     <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto w-full px-6 sm:px-0">
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20">
+        <div className="flex flex-col items-center justify-center py-20" data-testid="home-loader">
           <SolarLoader label={t('home.aligningDay', 'Aligning your day...')} />
         </div>
       ) : (
@@ -267,21 +272,26 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
 
           {isCooked && <CookedSuccessCard onDismiss={() => setIsCooked(false)} />}
 
-          {currentRecipe && !isSkipped && !isCooked && !sessionDone && (
-            <TonightMenuCard
-              recipeId={currentRecipe.id!}
-              recipeName={currentRecipe.name!}
-              description={
-                currentRecipe.description ||
-                t('home.defaultDescription', 'A delicious meal planned for tonight.')
-              }
-              imageUrl={currentRecipe.image || undefined}
-              ingredients={currentRecipe.ingredients || []}
-              prepTime="30-45 mins"
-              onCookMode={handleCookMode}
-              onSkip={handleSkipTrigger}
-            />
-          )}
+          {currentRecipe &&
+            currentRecipe.id &&
+            currentRecipe.name &&
+            !isSkipped &&
+            !isCooked &&
+            !sessionDone && (
+              <TonightMenuCard
+                recipeId={currentRecipe.id!}
+                recipeName={currentRecipe.name!}
+                description={
+                  currentRecipe.description ||
+                  t('home.defaultDescription', 'A delicious meal planned for tonight.')
+                }
+                imageUrl={currentRecipe.image || undefined}
+                ingredients={currentRecipe.ingredients || []}
+                prepTime="30-45 mins"
+                onCookMode={handleCookMode}
+                onSkip={handleSkipTrigger}
+              />
+            )}
         </>
       )}
 
@@ -291,9 +301,9 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
         {showCooksMode && currentRecipe && (
           <CooksMode
             recipe={{
-              id: currentRecipe.id,
-              name: currentRecipe.name,
-              image: currentRecipe.image,
+              id: currentRecipe.id!,
+              name: currentRecipe.name || null,
+              image: currentRecipe.image!,
             }}
             onClose={() => setShowCooksMode(false)}
             onCooked={handleCookedMark}

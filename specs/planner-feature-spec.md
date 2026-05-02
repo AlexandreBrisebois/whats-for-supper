@@ -97,7 +97,7 @@ PlannerPage (page.tsx)
             1. "What's the backup plan?" -> **[🥡 Ordering In]** or **[🔄 Pick Something Else]**.
             2. If "Ordering In", ask: "What about tonight's recipe?" -> **[🗓️ Tomorrow]**, **[⏭️ Next Week]**, or **[🗑️ Drop It]**.
             3. **Mom Stays in Control**: If "Tomorrow" is occupied, prompt: "Drop tomorrow's meal?" or "Push tomorrow to the next empty slot?". (*Swap is excluded here to avoid placing a recipe into tonight's 'Order In' dead zone*).
-- **Smart Pivot**: If no meal is planned for today, the card is replaced by the `SmartPivotCard` offering "Quick Fixes".
+- **Tonight Pivot**: If no meal is planned for today, the card is replaced by the `TonightPivotCard` offering "Quick Fixes" and fallback options.
 ```
 
 ### 2.3 State Inventory (Zustand + Local React State)

@@ -9,18 +9,14 @@ namespace RecipeApi.Services;
 
 public class ManagementService(
     RecipeDbContext db,
-    RecipesRootResolver recipesRoot,
+    IRecipeStore recipeStore,
     DataRootResolver dataRoot,
     ILogger<ManagementService> logger)
 {
-    private string RecipesRoot => recipesRoot.Root;
     private string DataRoot => dataRoot.Root;
 
     public async Task<object> BackupAsync()
     {
-        var root = RecipesRoot;
-        if (!Directory.Exists(root)) Directory.CreateDirectory(root);
-
         // 1. Merge Family Members (Append only)
         var dbMembers = await db.FamilyMembers.ToListAsync();
         await MergeFamilyMembersAsync(dbMembers);
@@ -41,39 +37,27 @@ public class ManagementService(
                 continue;
             }
 
-            var recipeDir = Path.Combine(root, recipe.Id.ToString());
-            if (!Directory.Exists(recipeDir)) Directory.CreateDirectory(recipeDir);
-
-            var recipeJsonPath = Path.Combine(recipeDir, "recipe.json");
-            var recipeInfoPath = Path.Combine(recipeDir, "recipe.info");
-
-            // 1. Metadata always goes to recipe.info
-            if (File.Exists(recipeInfoPath))
+            // recipe.info — update if exists, create if missing
+            var existing = await recipeStore.ReadInfoAsync(recipe.Id);
+            if (existing != null)
             {
-                var json = await File.ReadAllTextAsync(recipeInfoPath);
-                var existing = JsonSerializer.Deserialize<RecipeInfo>(json, JsonDefaults.CamelCase);
-                if (existing != null)
-                {
-                    existing.Notes = recipe.Notes;
-                    existing.Rating = recipe.Rating;
-                    existing.Description = recipe.Description;
-                    existing.Name = recipe.Name;
-                    existing.Category = recipe.Category;
-                    existing.IsDiscoverable = recipe.IsDiscoverable;
-                    existing.IsHealthyChoice = recipe.IsHealthyChoice;
-                    existing.IsVegetarian = recipe.IsVegetarian;
-                    existing.Difficulty = recipe.Difficulty;
-                    existing.TotalTime = recipe.TotalTime;
-                    existing.LastCookedDate = recipe.LastCookedDate;
-                    existing.IsSynthesized = recipe.IsSynthesized;
-                    var updatedJson = JsonSerializer.Serialize(existing, JsonDefaults.CamelCase);
-                    await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
-                }
+                existing.Notes = recipe.Notes;
+                existing.Rating = recipe.Rating;
+                existing.Description = recipe.Description;
+                existing.Name = recipe.Name;
+                existing.Category = recipe.Category;
+                existing.IsDiscoverable = recipe.IsDiscoverable;
+                existing.IsHealthyChoice = recipe.IsHealthyChoice;
+                existing.IsVegetarian = recipe.IsVegetarian;
+                existing.Difficulty = recipe.Difficulty;
+                existing.TotalTime = recipe.TotalTime;
+                existing.LastCookedDate = recipe.LastCookedDate;
+                existing.IsSynthesized = recipe.IsSynthesized;
+                await recipeStore.WriteInfoAsync(existing);
             }
             else
             {
-                // Create missing recipe.info
-                var info = new RecipeInfo
+                await recipeStore.WriteInfoAsync(new RecipeInfo
                 {
                     Id = recipe.Id,
                     Notes = recipe.Notes,
@@ -91,26 +75,20 @@ public class ManagementService(
                     Difficulty = recipe.Difficulty,
                     TotalTime = recipe.TotalTime,
                     LastCookedDate = recipe.LastCookedDate
-                };
-                var json2 = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
-                await File.WriteAllTextAsync(recipeInfoPath, json2);
+                });
             }
 
-            // 2. Actual recipe content goes to recipe.json (AI metadata, ingredients)
-            if (File.Exists(recipeJsonPath))
+            // recipe.json — never overwrite; only write if missing and there is content
+            if (!await recipeStore.RecipeJsonExistsAsync(recipe.Id) &&
+                (!string.IsNullOrEmpty(recipe.RawMetadata) || !string.IsNullOrEmpty(recipe.Ingredients)))
             {
-                // We don't overwrite recipe.json if it exists, as it contains AI extracted data.
-                // Since Notes/Rating are [JsonIgnore] in Recipe model, they won't be written here
-                // if we were to serialize, but we just leave it alone during backup unless it's missing.
-            }
-            else if (!string.IsNullOrEmpty(recipe.RawMetadata) || !string.IsNullOrEmpty(recipe.Ingredients))
-            {
-                var recipeJson2 = JsonSerializer.Serialize(recipe, JsonDefaults.CamelCase);
-                await File.WriteAllTextAsync(recipeJsonPath, recipeJson2);
+                var recipeJson = JsonSerializer.Serialize(recipe, JsonDefaults.CamelCase);
+                await recipeStore.WriteRecipeJsonAsync(recipe.Id, recipeJson);
             }
 
             backedUpCount++;
         }
+
         // 3. Backup Weekly Plans
         var weeklyPlans = await db.WeeklyPlans.AsNoTracking().ToListAsync();
         if (weeklyPlans.Count > 0)
@@ -131,22 +109,15 @@ public class ManagementService(
             logger.LogInformation("Backed up {Count} calendar events to {Path}", calendarEvents.Count, eventsPath);
         }
 
-        logger.LogInformation("Updated/Created {Count} metadata files in {Root}", backedUpCount, root);
+        logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
     }
 
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)
     {
-        var root = RecipesRoot;
         var result = new SeedResult();
 
-        logger.LogInformation("Starting restore from RecipesRoot: {Root}", root);
-
-        if (!Directory.Exists(root))
-        {
-            logger.LogWarning("Restore requested but RecipesRoot {Root} does not exist.", root);
-            return result;
-        }
+        logger.LogInformation("Starting restore");
 
         // 1. Restore Family Members
         var membersPath = Path.Combine(DataRoot, "family-members.json");
@@ -181,27 +152,23 @@ public class ManagementService(
         }
 
         // 2. Scan Recipes for missing family members and restore recipes
-        var recipeDirs = Directory.GetDirectories(root);
-        logger.LogInformation("Found {Count} recipe directories in {Root}", recipeDirs.Length, root);
+        var recipeIds = await recipeStore.ListRecipeIdsAsync(ct);
+        logger.LogInformation("Found {Count} recipes in store", recipeIds.Count);
         var missingMemberIds = new HashSet<Guid>();
         var recipesToRestore = new List<Recipe>();
 
-        foreach (var dir in recipeDirs)
+        foreach (var recipeId in recipeIds)
         {
             if (ct.IsCancellationRequested) break;
 
-            var recipeName = Path.GetFileName(dir);
-            var infoPath = Path.Combine(dir, "recipe.info");
-            var jsonPath = Path.Combine(dir, "recipe.json");
+            var hasInfo = await recipeStore.InfoExistsAsync(recipeId, ct);
+            var hasJson = await recipeStore.RecipeJsonExistsAsync(recipeId, ct);
 
-            bool hasInfo = File.Exists(infoPath);
-            bool hasJson = File.Exists(jsonPath);
-
-            logger.LogDebug("Processing recipe directory {RecipeId}: hasInfo={HasInfo}, hasJson={HasJson}", recipeName, hasInfo, hasJson);
+            logger.LogDebug("Processing recipe {RecipeId}: hasInfo={HasInfo}, hasJson={HasJson}", recipeId, hasInfo, hasJson);
 
             if (!hasInfo && !hasJson)
             {
-                logger.LogDebug("Skipping recipe {RecipeId} - no recipe.info or recipe.json found", recipeName);
+                logger.LogDebug("Skipping recipe {RecipeId} - no recipe.info or recipe.json found", recipeId);
                 continue;
             }
 
@@ -209,19 +176,14 @@ public class ManagementService(
             {
                 Recipe? recipe = null;
 
-                // Load primary metadata from recipe.info if available
                 if (hasInfo)
                 {
-                    var json4 = await File.ReadAllTextAsync(infoPath, ct);
-                    var info = JsonSerializer.Deserialize<RecipeInfo>(json4, JsonDefaults.CamelCase);
+                    var info = await recipeStore.ReadInfoAsync(recipeId, ct);
                     if (info != null)
                     {
-                        logger.LogDebug("Loaded recipe.info for {RecipeId}: name={Name}", recipeName, info.Name);
-                        // Validate/Clamp Rating to prevent CK_recipes_rating violation
+                        logger.LogDebug("Loaded recipe.info for {RecipeId}: name={Name}", recipeId, info.Name);
                         if (!Enum.IsDefined(typeof(RecipeRating), info.Rating))
-                        {
                             info.Rating = RecipeRating.Unknown;
-                        }
 
                         recipe = new Recipe
                         {
@@ -246,64 +208,45 @@ public class ManagementService(
                     }
                 }
 
-                // Augment from recipe.json if available
                 if (hasJson)
                 {
-                    var json5 = await File.ReadAllTextAsync(jsonPath, ct);
+                    var json5 = await recipeStore.ReadRecipeJsonAsync(recipeId, ct);
 
                     // We avoid deserializing directly into the 'Recipe' model because properties like 'Ingredients'
                     // in local files are often arrays/objects, whereas in the EF model they are raw JSON strings (mapped to JSONB).
                     // This mismatch causes JsonException.
+                    if (json5 != null)
+                    {
+                        using var doc = JsonDocument.Parse(json5);
+                        var rootElement = doc.RootElement;
 
-                    using var doc = JsonDocument.Parse(json5);
-                    var rootElement = doc.RootElement;
+                        recipe ??= new Recipe { Id = recipeId };
 
-                    if (recipe == null)
-                    {
-                        recipe = new Recipe { Id = Guid.Parse(Path.GetFileName(dir)) };
-                    }
+                        logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeId);
 
-                    logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeName);
+                        recipe.RawMetadata = json5;
 
-                    // Map AI data (RawMetadata is the entire file for fidelity)
-                    recipe.RawMetadata = json5;
+                        if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+                            recipe.Ingredients = ingProp.GetRawText();
+                        else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
+                            recipe.Ingredients = legacyIngProp.GetRawText();
 
-                    // Extract ingredients from various possible keys (Schema.org vs older custom formats)
-                    if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
-                    {
-                        recipe.Ingredients = ingProp.GetRawText();
-                    }
-                    else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
-                    {
-                        recipe.Ingredients = legacyIngProp.GetRawText();
-                    }
-
-                    // Map Category and Difficulty if present
-                    if (string.IsNullOrEmpty(recipe.Category) && rootElement.TryGetProperty("category", out var catProp))
-                    {
-                        recipe.Category = catProp.GetString();
-                    }
-                    if (string.IsNullOrEmpty(recipe.Difficulty) && rootElement.TryGetProperty("difficulty", out var diffProp))
-                    {
-                        recipe.Difficulty = diffProp.GetString();
-                    }
-                    if (string.IsNullOrEmpty(recipe.Name) && rootElement.TryGetProperty("name", out var nameProp))
-                    {
-                        recipe.Name = nameProp.GetString();
-                    }
-                    if (string.IsNullOrEmpty(recipe.TotalTime) && rootElement.TryGetProperty("totalTime", out var timeProp))
-                    {
-                        recipe.TotalTime = timeProp.GetString();
-                    }
-                    if (recipe.ImageCount == 0 && rootElement.TryGetProperty("image_count", out var imgProp))
-                    {
-                        recipe.ImageCount = imgProp.GetInt32();
+                        if (string.IsNullOrEmpty(recipe.Category) && rootElement.TryGetProperty("category", out var catProp))
+                            recipe.Category = catProp.GetString();
+                        if (string.IsNullOrEmpty(recipe.Difficulty) && rootElement.TryGetProperty("difficulty", out var diffProp))
+                            recipe.Difficulty = diffProp.GetString();
+                        if (string.IsNullOrEmpty(recipe.Name) && rootElement.TryGetProperty("name", out var nameProp))
+                            recipe.Name = nameProp.GetString();
+                        if (string.IsNullOrEmpty(recipe.TotalTime) && rootElement.TryGetProperty("totalTime", out var timeProp))
+                            recipe.TotalTime = timeProp.GetString();
+                        if (recipe.ImageCount == 0 && rootElement.TryGetProperty("image_count", out var imgProp))
+                            recipe.ImageCount = imgProp.GetInt32();
                     }
                 }
 
                 if (recipe == null)
                 {
-                    logger.LogDebug("Recipe object is null for {RecipeId}, skipping", recipeName);
+                    logger.LogDebug("Recipe object is null for {RecipeId}, skipping", recipeId);
                     continue;
                 }
 
@@ -311,17 +254,15 @@ public class ManagementService(
                 {
                     var memberExists = await db.FamilyMembers.AnyAsync(m => m.Id == recipe.AddedBy.Value, ct);
                     if (!memberExists)
-                    {
                         missingMemberIds.Add(recipe.AddedBy.Value);
-                    }
                 }
 
-                logger.LogInformation("Queued recipe for restore: {RecipeId} ({Name})", recipeName, recipe.Name ?? "unknown");
+                logger.LogInformation("Queued recipe for restore: {RecipeId} ({Name})", recipeId, recipe.Name ?? "unknown");
                 recipesToRestore.Add(recipe);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error loading recipe from {Dir}", dir);
+                logger.LogError(ex, "Error loading recipe {RecipeId}", recipeId);
                 result.Errors++;
             }
         }
@@ -352,15 +293,7 @@ public class ManagementService(
         {
             try
             {
-                // Verify Images (case-insensitive check)
-                var recipeDir = Path.Combine(root, recipe.Id.ToString());
-                var originalDir = Path.Combine(recipeDir, "original");
-                var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-
-                bool hasImages = Directory.Exists(originalDir) &&
-                                 Directory.GetFiles(originalDir).Any(f =>
-                                     validExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()));
-
+                var hasImages = await recipeStore.HasOriginalImagesAsync(recipe.Id, ct);
                 if (!hasImages && !recipe.IsSynthesized)
                 {
                     logger.LogWarning("Skipping recipe {Id} ({Name}) - no images and not synthesized", recipe.Id, recipe.Name ?? "unknown");
@@ -492,10 +425,7 @@ public class ManagementService(
 
     public async Task<SeedResult> DisasterRecoveryAsync()
     {
-        var root = RecipesRoot;
         var result = new SeedResult();
-
-        if (!Directory.Exists(root)) return result;
 
         var membersPath = Path.Combine(DataRoot, "family-members.json");
         List<FamilyMember> existingMembers = [];
@@ -505,26 +435,24 @@ public class ManagementService(
             existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json6, JsonDefaults.CamelCase) ?? [];
         }
 
-        var recipeDirs = Directory.GetDirectories(root);
+        var recipeIds = await recipeStore.ListRecipeIdsAsync();
+        if (recipeIds.Count == 0) return result;
+
         var missingIds = new HashSet<Guid>();
 
-        foreach (var dir in recipeDirs)
+        foreach (var recipeId in recipeIds)
         {
-            var recipeJsonPath = Path.Combine(dir, "recipe.json");
-            var recipeInfoPath = Path.Combine(dir, "recipe.info");
-
             Guid? addedBy = null;
 
-            if (File.Exists(recipeJsonPath))
+            var recipeJson = await recipeStore.ReadRecipeJsonAsync(recipeId);
+            if (recipeJson != null)
             {
-                var json7 = await File.ReadAllTextAsync(recipeJsonPath);
-                var recipe = JsonSerializer.Deserialize<Recipe>(json7, JsonDefaults.CamelCase);
+                var recipe = JsonSerializer.Deserialize<Recipe>(recipeJson, JsonDefaults.CamelCase);
                 addedBy = recipe?.AddedBy;
             }
-            else if (File.Exists(recipeInfoPath))
+            else
             {
-                var json8 = await File.ReadAllTextAsync(recipeInfoPath);
-                var info = JsonSerializer.Deserialize<RecipeInfo>(json8, JsonDefaults.CamelCase);
+                var info = await recipeStore.ReadInfoAsync(recipeId);
                 addedBy = info?.AddedBy;
             }
 
@@ -548,9 +476,6 @@ public class ManagementService(
 
     private async Task<int> MergeFamilyMembersAsync(List<FamilyMember> sourceMembers)
     {
-        var root = RecipesRoot;
-        if (!Directory.Exists(root)) Directory.CreateDirectory(root);
-
         var membersPath = Path.Combine(DataRoot, "family-members.json");
         List<FamilyMember> existingMembers = [];
         if (File.Exists(membersPath))
