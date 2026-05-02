@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
@@ -39,6 +39,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   const [gotoRecipeStatus, setGotoRecipeStatus] = useState<'pending' | 'ready' | null>(null);
   const [gotoRecipeData, setGotoRecipeData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(!todaysRecipe); // Show loader only when SSR had nothing
+  const pendingConfirmRef = useRef(false);
   const router = useRouter();
   const { loadSetting, saveSetting, familySettings } = useFamilyStore();
 
@@ -129,7 +130,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
             const recipe = todaysEntry.recipe;
             const unwrapped = 'data' in recipe ? recipe.data : recipe;
             setCurrentRecipe(unwrapped);
-          } else {
+          } else if (!pendingConfirmRef.current) {
             setCurrentRecipe(null);
           }
         } catch (error) {
@@ -268,6 +269,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
                     ingredients: gotoRecipeData?.ingredients,
                   };
 
+                  pendingConfirmRef.current = true;
                   setCurrentRecipe(optimisticRecipe);
                   const dayIndex = (new Date().getDay() + 6) % 7;
                   assignRecipeToDay(0, dayIndex, {
@@ -276,7 +278,8 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
                     image: optimisticRecipe.image ?? '',
                   })
                     .then(() => router.refresh())
-                    .catch((err) => console.error('Failed to confirm GOTO:', err));
+                    .catch((err) => console.error('Failed to confirm GOTO:', err))
+                    .finally(() => { pendingConfirmRef.current = false; });
                 } else {
                   setShowQuickFind(true);
                 }
