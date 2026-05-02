@@ -1,0 +1,111 @@
+[WebServer] 
+[WebServer] > whats-for-supper-pwa@0.1.0 dev
+[WebServer] > next dev -p 3000 -H 127.0.0.1
+[WebServer] 
+[WebServer] [1m[38;2;173;127;168m▲ Next.js 16.2.4[39m[22m (Turbopack)
+[WebServer] - Local:         http://127.0.0.1:3000
+[WebServer] - Network:       http://127.0.0.1:3000
+[WebServer] - Environments: .env.local
+[WebServer] [32m[1m✓[22m[39m Ready in 230ms
+[WebServer] - Experiments (use with caution):
+[WebServer]   · serverActions
+[WebServer] 
+[WebServer]  GET / [32m200[39m in 255ms[2m (next.js: 168ms, application-code: 86ms)[22m
+
+Running 2 tests using 1 worker
+
+[WebServer]  GET /onboarding [32m200[39m in 23ms[2m (next.js: 5ms, application-code: 18ms)[22m
+[PAGE LOG] [HMR] connected
+[PAGE LOG] [IdentityValidator] On public or onboarding page. Ready.
+[PAGE LOG] [IdentityValidator] On public or onboarding page. Ready.
+[WebServer] [36m[browser][39m [33mService Worker registration blocked by Playwright[39m [2m(<anonymous>:3:87)[22m
+[WebServer]  GET /home [32m200[39m in 77ms[2m (next.js: 7ms, application-code: 70ms)[22m
+[PAGE LOG] [HMR] connected
+[PAGE LOG] [IdentityValidator] Loading family members...
+[WebServer] [36m[browser][39m [33mService Worker registration blocked by Playwright[39m [2m(<anonymous>:3:87)[22m
+[PAGE LOG] [IdentityValidator] Identity verified. Setting isReady=true
+[PAGE LOG] [IdentityValidator] Identity verified. Setting isReady=true
+[PAGE LOG] [IdentityValidator] Identity verified. Setting isReady=true
+[PAGE LOG] SYNC: setting recipe from API undefined
+[PAGE LOG] SYNC: done, setIsLoading(false)
+  ✘  1 [chromium] › e2e/home-race.spec.ts:68:7 › Home Command Center — Optimistic UI Race Fix › Selecting a recipe from QuickFind shows the menu card immediately (optimistic) (6.4s)
+[WebServer]  GET /onboarding [32m200[39m in 14ms[2m (next.js: 871µs, application-code: 13ms)[22m
+[PAGE LOG] [HMR] connected
+[PAGE LOG] [IdentityValidator] On public or onboarding page. Ready.
+[PAGE LOG] [IdentityValidator] On public or onboarding page. Ready.
+[WebServer] [36m[browser][39m [33mService Worker registration blocked by Playwright[39m [2m(<anonymous>:3:87)[22m
+[WebServer]  GET /home [32m200[39m in 31ms[2m (next.js: 931µs, application-code: 30ms)[22m
+[PAGE LOG] [HMR] connected
+[PAGE LOG] [IdentityValidator] Loading family members...
+[PAGE LOG] [IdentityValidator] Identity verified. Setting isReady=true
+[PAGE LOG] [IdentityValidator] Identity verified. Setting isReady=true
+[WebServer] [36m[browser][39m [33mService Worker registration blocked by Playwright[39m [2m(<anonymous>:3:87)[22m
+[PAGE LOG] [IdentityValidator] Identity verified. Setting isReady=true
+[PAGE LOG] SYNC: setting recipe from API undefined
+[PAGE LOG] SYNC: done, setIsLoading(false)
+  ✘  2 [chromium] › e2e/home-race.spec.ts:118:7 › Home Command Center — Optimistic UI Race Fix › Confirming GOTO shows the menu card immediately (optimistic) (6.3s)
+
+
+  1) [chromium] › e2e/home-race.spec.ts:68:7 › Home Command Center — Optimistic UI Race Fix › Selecting a recipe from QuickFind shows the menu card immediately (optimistic) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('tonight-pivot-card')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('tonight-pivot-card')[22m
+
+
+      76 |
+      77 |     // 2. Ensure Pivot Card is visible initially
+    > 78 |     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
+         |                                                          ^
+      79 |
+      80 |     // 3. Open QuickFind and select a recipe
+      81 |     await page.getByTestId('discover-btn').click();
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/home-race.spec.ts:78:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/home-race-Home-Command-Cen-cf43c-ard-immediately-optimistic--chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/home-race-Home-Command-Cen-cf43c-ard-immediately-optimistic--chromium/error-context.md
+
+  2) [chromium] › e2e/home-race.spec.ts:118:7 › Home Command Center — Optimistic UI Race Fix › Confirming GOTO shows the menu card immediately (optimistic) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('tonight-pivot-card')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('tonight-pivot-card')[22m
+
+
+      124 |
+      125 |     // 2. Ensure Pivot Card is visible with GOTO ready
+    > 126 |     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
+          |                                                          ^
+      127 |     const confirmBtn = page.getByTestId('confirm-goto-btn');
+      128 |     await expect(confirmBtn).toBeEnabled();
+      129 |
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/home-race.spec.ts:126:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/home-race-Home-Command-Cen-fb6a5-ard-immediately-optimistic--chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/home-race-Home-Command-Cen-fb6a5-ard-immediately-optimistic--chromium/error-context.md
+
+  2 failed
+    [chromium] › e2e/home-race.spec.ts:68:7 › Home Command Center — Optimistic UI Race Fix › Selecting a recipe from QuickFind shows the menu card immediately (optimistic) 
+    [chromium] › e2e/home-race.spec.ts:118:7 › Home Command Center — Optimistic UI Race Fix › Confirming GOTO shows the menu card immediately (optimistic) 
+
+  Serving HTML report at http://localhost:58986. Press Ctrl+C to quit.

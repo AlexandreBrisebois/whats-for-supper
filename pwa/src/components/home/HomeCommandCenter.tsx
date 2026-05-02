@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
+import { ScheduleRecipeDto } from '@/lib/api/generated/models';
 import { getTodayString } from '@/lib/imageUtils';
 import { SolarLoader } from '../ui/SolarLoader';
 import { useFamilyStore } from '@/store/familyStore';
@@ -74,14 +75,19 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
             setIsSkipped(true);
             setSessionDone(true);
           } else if (todaysEntry?.recipe) {
+            console.log('SYNC: setting recipe from API', todaysEntry.recipe.name);
             setCurrentRecipe(todaysEntry.recipe);
           } else {
+            console.log('SYNC: setting recipe to NULL');
             setCurrentRecipe(null);
           }
         } catch (error) {
           console.error("Failed to sync today's recipe:", error);
         } finally {
-          if (mounted) setIsLoading(false);
+          if (mounted) {
+            console.log('SYNC: done, setIsLoading(false)');
+            setIsLoading(false);
+          }
         }
       };
       syncRecipe();
@@ -172,11 +178,13 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   };
 
   const handleQuickFindSelect = async (recipe: any) => {
+    setCurrentRecipe(recipe as ScheduleRecipeDto);
+    console.log('OPTIMISTIC: handleQuickFindSelect start', recipe.name);
+    setIsSkipped(false);
+    setShowQuickFind(false);
     try {
       const dayIndex = (new Date().getDay() + 6) % 7;
       await assignRecipeToDay(0, dayIndex, recipe);
-      setShowQuickFind(false);
-      setIsSkipped(false); // Reset skipped state because we picked a new meal
       router.refresh();
     } catch (error) {
       console.error('Failed to assign quick find recipe:', error);
@@ -198,6 +206,11 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
               gotoStatus={gotoStatus}
               onConfirmGoto={() => {
                 if (gotoRecipeId) {
+                  setCurrentRecipe({
+                    id: gotoRecipeId,
+                    name: gotoDescription ?? '',
+                    image: '',
+                  } as ScheduleRecipeDto);
                   const dayIndex = (new Date().getDay() + 6) % 7;
                   assignRecipeToDay(0, dayIndex, {
                     id: gotoRecipeId,
