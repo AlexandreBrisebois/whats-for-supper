@@ -6,17 +6,14 @@ using RecipeApi.Workflow;
 namespace RecipeApi.Services.Processors;
 
 /// <summary>
-/// Ensures a recipe is marked as "ready" by the domain status logic.
+/// Validates that a recipe can transition to "ready" by the domain status logic.
 ///
 /// A recipe is "ready" when:
-///   1. Its Name is not null/empty.
-///   2. Its ImageCount is greater than 0.
+///   - Photo-upload path: Name != null AND ImageCount > 0
+///   - Describe path:     Name != null AND IsSynthesized = true (set by RecipeAgent)
 ///
-/// This processor:
-///   1. Sets recipe.image_count = 1 if it is 0 (required for status "ready").
-///   2. Logs a warning if Name is still missing (as it can't be "ready" without a name).
-///
-/// It no longer touches family_settings.
+/// This processor does NOT mutate ImageCount or IsSynthesized — those are set
+/// by the upstream processors (ImageService and RecipeAgent respectively).
 /// </summary>
 public class RecipeReadyProcessor(
     RecipeDbContext db,
@@ -43,26 +40,15 @@ public class RecipeReadyProcessor(
             return new { Message = $"Recipe {recipeId} not found — no-op" };
         }
 
-        bool changed = false;
+        // For synthesized recipes, IsSynthesized is set by RecipeAgent — nothing to do here.
+        // For photo-upload recipes, ImageCount is already > 0. No field manipulation needed.
+        var isReady = (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0)
+                   || (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.IsSynthesized);
 
-        // 1. Ensure ImageCount > 0
-        if (recipe.ImageCount == 0)
+        if (!isReady)
         {
-            recipe.ImageCount = 1;
-            recipe.UpdatedAt = DateTimeOffset.UtcNow;
-            changed = true;
-            logger.LogInformation("RecipeReady: bumped image_count to 1 for recipe {RecipeId}", recipeId);
-        }
-
-        // 2. Validate Name presence (warning only, don't throw)
-        if (string.IsNullOrWhiteSpace(recipe.Name))
-        {
-            logger.LogWarning("RecipeReady: recipe {RecipeId} still has no name — it will remain 'pending' in the UI", recipeId);
-        }
-
-        if (changed)
-        {
-            await db.SaveChangesAsync(ct);
+            logger.LogWarning("RecipeReady: recipe {RecipeId} is not ready — Name={Name}, ImageCount={ImageCount}, IsSynthesized={IsSynthesized}",
+                recipeId, recipe.Name, recipe.ImageCount, recipe.IsSynthesized);
         }
 
         return new { Message = $"Processed recipe {recipeId} readiness check." };

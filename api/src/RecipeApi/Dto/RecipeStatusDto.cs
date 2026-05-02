@@ -20,4 +20,7 @@ public record RecipeStatusDto
 
     [JsonPropertyName("imageCount")]
     public required int ImageCount { get; init; }
+
+    [JsonPropertyName("isSynthesized")]
+    public required bool IsSynthesized { get; init; }
 }

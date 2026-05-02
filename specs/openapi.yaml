@@ -207,12 +207,13 @@ components:
 
     RecipeStatusDto:
       type: object
-      required: [id, status, imageCount]
+      required: [id, status, imageCount, isSynthesized]
       properties:
         id: { type: string, format: uuid }
         name: { type: string, nullable: true }
-        status: { type: string, enum: [pending, ready], description: '"pending" while synthesis is in progress; "ready" once the recipe is fully synthesised and the hero image is generated' }
+        status: { type: string, enum: [pending, ready], description: '"pending" while synthesis is in progress; "ready" once Name is set and either ImageCount > 0 (photo-upload path) or IsSynthesized = true (describe path)' }
         imageCount: { type: integer }
+        isSynthesized: { type: boolean, description: 'true once the goto-synthesis workflow has completed successfully' }
 
     PreSelectedRecipeDto:
       type: object

@@ -48,7 +48,7 @@ sequenceDiagram
 |--------|-------------|-----------------|
 | `recipe.info` written | Immediately at upload | Immediately at POST /describe |
 | `ImageCount` at creation | `n` (actual image count) | `0` |
-| `ImageCount` after workflow | Unchanged (already > 0) | Set to `1` by RecipeReady ⚠️ (see describe-path.md) |
+| `ImageCount` after workflow | Unchanged (already > 0) | Stays `0` — readiness gated on `IsSynthesized` instead |
 | Workflow | `recipe-import` | `goto-synthesis` |
 | `recipe.json` | Written by SyncRecipe | Written by SyncRecipe |
 | Status path | Already ready if Name set | Pending until RecipeReady runs |

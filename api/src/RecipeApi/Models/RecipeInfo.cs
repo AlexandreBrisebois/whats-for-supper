@@ -9,6 +9,7 @@ public class RecipeInfo
     public Guid Id { get; set; }
     public int FinishedDishImageIndex { get; set; } = -1;
     public int ImageCount { get; set; }
+    public bool IsSynthesized { get; set; } = false;
     public Guid? AddedBy { get; set; }
     public string? Notes { get; set; }
     public string? Description { get; set; }

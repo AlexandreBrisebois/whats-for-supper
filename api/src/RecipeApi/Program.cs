@@ -101,6 +101,7 @@ try
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
+        sp.GetRequiredService<RecipeDbContext>(),
         "ExtractRecipe"));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
@@ -109,6 +110,7 @@ try
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
+        sp.GetRequiredService<RecipeDbContext>(),
         "GenerateDescription"));
 
     builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
@@ -119,6 +121,7 @@ try
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
+        sp.GetRequiredService<RecipeDbContext>(),
         "SynthesizeRecipe"));
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<RecipeService>();

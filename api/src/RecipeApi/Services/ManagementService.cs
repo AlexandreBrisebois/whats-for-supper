@@ -31,7 +31,8 @@ public class ManagementService(
         foreach (var recipe in recipes)
         {
             // Skip if recipe is not ready and has no payload worth persisting
-            var isReady = !string.IsNullOrEmpty(recipe.Name) && recipe.ImageCount > 0;
+            var isReady = (!string.IsNullOrEmpty(recipe.Name) && recipe.ImageCount > 0)
+                       || (!string.IsNullOrEmpty(recipe.Name) && recipe.IsSynthesized);
             if (!isReady &&
                 string.IsNullOrEmpty(recipe.RawMetadata) &&
                 string.IsNullOrEmpty(recipe.Notes) &&
@@ -64,6 +65,7 @@ public class ManagementService(
                     existing.Difficulty = recipe.Difficulty;
                     existing.TotalTime = recipe.TotalTime;
                     existing.LastCookedDate = recipe.LastCookedDate;
+                    existing.IsSynthesized = recipe.IsSynthesized;
                     var updatedJson = JsonSerializer.Serialize(existing, JsonDefaults.CamelCase);
                     await File.WriteAllTextAsync(recipeInfoPath, updatedJson);
                 }
@@ -80,6 +82,7 @@ public class ManagementService(
                     Name = recipe.Name,
                     AddedBy = recipe.AddedBy,
                     ImageCount = recipe.ImageCount,
+                    IsSynthesized = recipe.IsSynthesized,
                     CreatedAt = recipe.CreatedAt,
                     Category = recipe.Category,
                     IsDiscoverable = recipe.IsDiscoverable,
@@ -229,6 +232,7 @@ public class ManagementService(
                             Description = info.Description,
                             Name = info.Name,
                             ImageCount = info.ImageCount,
+                            IsSynthesized = info.IsSynthesized,
                             CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
                             UpdatedAt = DateTimeOffset.UtcNow,
                             Category = info.Category,
@@ -357,9 +361,9 @@ public class ManagementService(
                                  Directory.GetFiles(originalDir).Any(f =>
                                      validExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()));
 
-                if (!hasImages)
+                if (!hasImages && !recipe.IsSynthesized)
                 {
-                    logger.LogWarning("Skipping recipe {Id} ({Name}) - no images found in {Dir}", recipe.Id, recipe.Name ?? "unknown", originalDir);
+                    logger.LogWarning("Skipping recipe {Id} ({Name}) - no images and not synthesized", recipe.Id, recipe.Name ?? "unknown");
                     result.RecipesSkipped++;
                     continue;
                 }
@@ -383,6 +387,7 @@ public class ManagementService(
                     existing.Ingredients = recipe.Ingredients;
                     existing.RawMetadata = recipe.RawMetadata;
                     existing.ImageCount = recipe.ImageCount;
+                    existing.IsSynthesized = recipe.IsSynthesized;
                     existing.Category = recipe.Category;
                     existing.IsDiscoverable = recipe.IsDiscoverable;
                     existing.IsHealthyChoice = recipe.IsHealthyChoice;

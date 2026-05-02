@@ -71,22 +71,21 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
     // ── RecipeReadyProcessor — happy path ──────────────────────────────────
 
     [Fact]
-    public async Task RecipeReady_MatchingRecipe_SetsImageCount()
+    public async Task RecipeReady_PhotoUploadRecipe_DoesNotChangeImageCount()
     {
-        // Arrange: create a stub recipe
+        // Arrange: a photo-upload recipe already has ImageCount > 0 before RecipeReady runs
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe
         {
             Id = recipeId,
             Name = "Spaghetti",
-            ImageCount = 0,
+            ImageCount = 3,
             IsDiscoverable = false,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         });
         await _db.SaveChangesAsync();
 
-        // Act
         var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
         var task = new WorkflowTask
         {
@@ -103,9 +102,54 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
 
         await processor.ExecuteAsync(task, CancellationToken.None);
 
-        // Assert: recipe image_count = 1
+        // Assert: ImageCount is unchanged — processor never mutates it
         var recipe = await _db.Recipes.FindAsync(recipeId);
-        Assert.Equal(1, recipe!.ImageCount);
+        Assert.Equal(3, recipe!.ImageCount);
+    }
+
+    [Fact]
+    public async Task RecipeReady_DoesNotBumpImageCount_ForSynthesizedRecipe()
+    {
+        // Arrange: a synthesized recipe has ImageCount=0 and IsSynthesized=true
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Test Synthesized",
+            ImageCount = 0,
+            IsSynthesized = true,
+            IsDiscoverable = false,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = Guid.NewGuid(),
+            TaskName = "recipe_ready",
+            ProcessorName = "RecipeReady",
+            Payload = JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
+            Status = RecipeApi.Models.TaskStatus.Pending,
+            DependsOn = [],
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        await processor.ExecuteAsync(task, CancellationToken.None);
+
+        // Assert: ImageCount stays 0 and IsSynthesized stays true
+        var recipe = await _db.Recipes.FindAsync(recipeId);
+        Assert.Equal(0, recipe!.ImageCount);
+        Assert.True(recipe.IsSynthesized);
+
+        // Assert: GET /status returns "ready" for a synthesized recipe with no images
+        var statusResponse = await _client.GetAsync($"/api/recipes/{recipeId}/status");
+        Assert.Equal(System.Net.HttpStatusCode.OK, statusResponse.StatusCode);
+        var statusBody = await statusResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("ready", statusBody.GetProperty("data").GetProperty("status").GetString());
     }
 
     [Fact]

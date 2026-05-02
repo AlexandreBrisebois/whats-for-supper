@@ -266,16 +266,17 @@ public class RecipeService(
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
-        var status = !string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0
-            ? "ready"
-            : "pending";
+        var isReady = (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0)
+                   || (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.IsSynthesized);
+        var status = isReady ? "ready" : "pending";
 
         return new RecipeStatusDto
         {
             Id = recipe.Id,
             Name = recipe.Name,
             Status = status,
-            ImageCount = recipe.ImageCount
+            ImageCount = recipe.ImageCount,
+            IsSynthesized = recipe.IsSynthesized
         };
     }
 

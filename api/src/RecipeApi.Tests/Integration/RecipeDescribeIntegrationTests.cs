@@ -110,6 +110,7 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
         Assert.Equal(recipeId, data.GetProperty("id").GetString());
         Assert.Equal("pending", data.GetProperty("status").GetString());
         Assert.Equal(0, data.GetProperty("imageCount").GetInt32());
+        Assert.False(data.GetProperty("isSynthesized").GetBoolean());
     }
 
     [Fact]

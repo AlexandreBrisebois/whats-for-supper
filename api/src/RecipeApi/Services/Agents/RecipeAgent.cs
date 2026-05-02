@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Utils;
@@ -19,6 +20,7 @@ public class RecipeAgent(
     IPromptRepository promptRepository,
     IConfiguration configuration,
     ILogger<RecipeAgent> logger,
+    RecipeDbContext db,
     string processorName = "RecipeIntelligence") : IWorkflowProcessor
 {
     public string ProcessorName => processorName;
@@ -333,12 +335,21 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
 
         info.Name = recipe.Name;
         info.ImageCount = 0;
+        info.IsSynthesized = true;
         info.FinishedDishImageIndex = -1;
         if (!string.IsNullOrWhiteSpace(recipe.TotalTime))
             info.TotalTime = recipe.TotalTime;
 
         await recipeRepository.SaveInfoAsync(info, ct);
         logger.LogInformation("Saved recipe.info for {RecipeId} with name: {Name}", recipeId, recipe.Name);
+
+        var dbRecipe = await db.Recipes.FindAsync([recipeId], ct);
+        if (dbRecipe != null)
+        {
+            dbRecipe.IsSynthesized = true;
+            dbRecipe.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+        }
 
         // Automatic Description Generation as part of synthesis (to match extraction pattern)
         await GenerateDescriptionAsync(recipeId, ct);

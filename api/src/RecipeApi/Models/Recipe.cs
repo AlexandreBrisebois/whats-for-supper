@@ -45,6 +45,10 @@ public class Recipe
     [Column("image_count")]
     public int ImageCount { get; set; } = 0;
 
+    /// <summary>True once the goto-synthesis AI workflow has completed. Distinct from ImageCount which only counts user-uploaded originals.</summary>
+    [Column("is_synthesized")]
+    public bool IsSynthesized { get; set; } = false;
+
     [Column("is_discoverable")]
     public bool IsDiscoverable { get; set; } = false;
 

@@ -1,7 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
@@ -32,12 +34,18 @@ public class ExtractRecipeProcessorTests : IDisposable
         mockConfig.Setup(c => c.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
         mockSection.Setup(s => s.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
 
+        var dbOptions = new DbContextOptionsBuilder<RecipeDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var db = new RecipeDbContext(dbOptions);
+
         _agent = new RecipeAgent(
             _chatClientMock.Object,
             _recipeRepository,
             promptRepositoryMock.Object,
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
+            db,
             "ExtractRecipe");
     }
 

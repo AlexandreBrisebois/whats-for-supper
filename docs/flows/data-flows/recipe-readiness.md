@@ -1,71 +1,77 @@
 # Recipe Readiness — Data Flow
 
-How a recipe transitions from `pending` to `ready` in the What's For Supper system.
+How a recipe transitions from the moment of capture (image upload or text description) all the way to `ready`.
+
+## Domain definition
+
+A recipe is **ready** when the full capture-to-import pipeline has completed for its path:
+
+**Photo-upload path:**
+1. User uploads images → stored in `data/recipes/{id}/original/`, `recipe.info` written, DB row inserted (`ImageCount > 0`)
+2. `ExtractRecipe` — AI reads the images and produces `recipe.json`
+3. `GenerateHero` — hero image created
+4. `SyncRecipe` — `recipe.json` imported to DB (name, ingredients, metadata)
+5. `RecipeReady` — validates Name is set and `ImageCount > 0` → **ready**
+
+**Describe path:**
+1. User submits name + description → `recipe.info` written with description, DB row inserted (`ImageCount = 0`, `IsSynthesized = false`)
+2. `SynthesizeRecipe` — AI generates full `recipe.json` from description; sets `IsSynthesized = true`; description generated
+3. `GenerateHero` — hero image created
+4. `SyncRecipe` — `recipe.json` imported to DB (name, ingredients, metadata)
+5. `RecipeReady` — validates Name is set and `IsSynthesized = true` → **ready**
 
 ## Computed rule
 
-A recipe is **ready** when:
+The ready state is computed on every call to `GET /api/recipes/{id}/status`. It is **not stored** in the database.
 
 ```
-Name != null/empty  AND  ImageCount > 0
+Photo-upload:  Name != null/empty  AND  ImageCount > 0
+Describe:      Name != null/empty  AND  IsSynthesized = true
 ```
 
-This is **not stored** in the database. It is computed on every call to `GET /api/recipes/{id}/status` via `RecipeService.GetRecipeStatus()`.
+## Full flow — capture to ready
+
+```mermaid
+flowchart TD
+    A([User captures recipe]) --> B{Capture mode}
+
+    B -->|Photo upload| C[POST /api/recipes\nmultipart + images]
+    B -->|Text description| D[POST /api/recipes/describe\nname + description]
+
+    C --> C1[Images saved to disk\nrecipe.info written\nDB row: ImageCount = n]
+    D --> D1[recipe.info written with description\nDB row: ImageCount = 0\nIsSynthesized = false]
+
+    C1 --> G[recipe-import workflow triggered]
+    D1 --> H[goto-synthesis workflow triggered]
+
+    G --> G1[ExtractRecipe\nAI reads images → recipe.json]
+    G1 --> G2[GenerateHero\nhero image created]
+    G2 --> G3[SyncRecipe\nrecipe.json imported to DB]
+    G3 --> G4[RecipeReady\nName set AND ImageCount > 0]
+
+    H --> H1[SynthesizeRecipe\nAI generates recipe.json\nIsSynthesized = true\ndescription written]
+    H1 --> H2[GenerateHero\nhero image created]
+    H2 --> H3[SyncRecipe\nrecipe.json imported to DB]
+    H3 --> H4[RecipeReady\nName set AND IsSynthesized = true]
+
+    G4 --> R([Status: ready])
+    H4 --> R
+```
 
 ## RecipeReadyProcessor
 
 `api/src/RecipeApi/Services/Processors/RecipeReadyProcessor.cs`
 
-Invoked as the final step in both synthesis workflows:
-
-- `goto-synthesis` workflow (describe path)
-- `recipe-import` workflow (photo-upload path)
-
-```
-RecipeReadyProcessor.ExecuteAsync(task)
-  ├── If ImageCount == 0 → set ImageCount = 1, save  ⚠️ see note below
-  └── If Name is null/empty → log warning (recipe stays "pending")
-```
-
-> ⚠️ **Known issue:** Setting `ImageCount = 1` when it is 0 is incorrect for the describe path. `ImageCount` should reflect the number of original images uploaded by the user, not serve as a readiness flag. A describe-path recipe has no original images; its hero is AI-generated. This workaround should be replaced with a dedicated readiness signal. See [describe-path.md](describe-path.md) for full context.
-
-## The two paths to ready
-
-```mermaid
-flowchart TD
-    A([User action]) --> B{Capture mode}
-
-    B -->|Photo upload| C[POST /api/recipes\nmultipart + images]
-    B -->|Describe text| D[POST /api/recipes/describe\nname + description]
-
-    C --> E[RecipeService.CreateRecipe\nImageCount = n\nAddedBy set\nrecipe.info written immediately]
-    D --> F[RecipeService.DescribeRecipe\nImageCount = 0\nAddedBy set\nrecipe.info written immediately]
-
-    E --> G[recipe-import workflow triggered]
-    F --> H[goto-synthesis workflow triggered]
-
-    G --> G1[ImportRecipe processor\nAI extracts metadata]
-    G1 --> G2[GenerateHero processor\ncreates hero image]
-    G2 --> G3[SyncRecipe processor\nwrites recipe.json to disk\nsyncs DB ↔ disk]
-    G3 --> G4[RecipeReady processor\nensures ImageCount > 0\nvalidates Name]
-
-    H --> H1[SynthesizeRecipe processor\nAI generates full recipe]
-    H1 --> H2[GenerateHero processor]
-    H2 --> H3[SyncRecipe processor]
-    H3 --> H4[RecipeReady processor\nensures ImageCount > 0\nvalidates Name]
-
-    G4 --> R([Status: ready\nName != null AND ImageCount > 0])
-    H4 --> R
-```
+The final step in both workflows. It validates the upstream work is complete and logs a warning if not. It does **not** mutate any fields — `ImageCount` is set at upload time, `IsSynthesized` is set by `RecipeAgent.DoSynthesizeRecipeAsync`.
 
 ## Status query
 
 `GET /api/recipes/{id}/status` → `RecipeService.GetRecipeStatus()`
 
 ```csharp
-var status = !string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0
-    ? "ready"
-    : "pending";
+var isReady = (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0)
+           || (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.IsSynthesized);
+var status = isReady ? "ready" : "pending";
 ```
 
-Returns `RecipeStatusDto { Id, Status, ImageCount }`.
+Returns `RecipeStatusDto { Id, Name, Status, ImageCount, IsSynthesized }`.
