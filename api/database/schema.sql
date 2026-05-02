@@ -114,6 +114,3 @@ COALESCE(v.vote_count, 0) AS vote_count
 FROM recipes r
 LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id
 WHERE r.is_discoverable = true;
-
--- Migration: add is_synthesized column (run once on existing databases)
-ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_synthesized boolean DEFAULT false NOT NULL;
