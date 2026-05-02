@@ -145,9 +145,10 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
       assignCalled = true;
     });
 
-    // 2. Ensure Pivot Card is visible with GOTO ready
+    // 2. Ensure Pivot Card is visible with GOTO ready — button appears only when ready
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
     const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeVisible({ timeout: 10000 });
     await expect(confirmBtn).toBeEnabled();
 
     // 3. Click Confirm GOTO
@@ -155,7 +156,7 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
 
     // 4. VERIFY: TonightMenuCard should appear IMMEDIATELY
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 2000 });
-    await expect(page.getByText('Our Family Spaghetti').first()).toBeVisible();
+    await expect(page.getByText('Mock Recipe').first()).toBeVisible();
 
     // Also verify Pivot Card is gone
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
@@ -186,18 +187,17 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     // Reload to pick up the new mock
     await page.goto('/home');
 
-    // 2. Ensure initially disabled
+    // 2. Ensure button is hidden while pending
     await expect(
       page.getByText(/checking your goto/i).or(page.getByText(/your goto is being prepared/i))
     ).toBeVisible();
     const confirmBtn = page.getByTestId('confirm-goto-btn');
-    await expect(confirmBtn).toBeDisabled();
+    await expect(confirmBtn).not.toBeVisible();
 
-    // 3. Wait for polling to hit the 'ready' state (polls every 5s)
-    // We can speed up time or just wait. Since it's only 2 polls, it might take 10-15s.
-    // In Playwright, we can't easily speed up setInterval without injecting scripts.
-    // But we can wait for the button to become enabled.
-    await expect(confirmBtn).toBeEnabled({ timeout: 20000 });
-    await expect(page.getByText('Our Family Spaghetti').first()).toBeVisible();
+    // 3. Wait for polling to hit the 'ready' state — button should appear
+    // gotoRecipeData.name from the detail endpoint ("Mock Recipe") overrides gotoDescription
+    await expect(confirmBtn).toBeVisible({ timeout: 20000 });
+    await expect(confirmBtn).toBeEnabled();
+    await expect(page.getByText('Mock Recipe').first()).toBeVisible();
   });
 });

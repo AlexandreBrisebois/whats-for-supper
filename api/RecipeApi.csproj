@@ -60,7 +60,9 @@
     <Content Include="src/RecipeApi/Workflows/*.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <EmbeddedResource Include="src/RecipeApi/Prompts/*.md" />
+    <EmbeddedResource Include="src/RecipeApi/Prompts/*.md">
+      <LogicalName>RecipeApi.Prompts.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

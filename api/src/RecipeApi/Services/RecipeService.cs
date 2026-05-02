@@ -287,7 +287,7 @@ public class RecipeService(
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
         // 1. Delete physical files
-        images.DeleteRecipeFiles(id);
+        await images.DeleteRecipeFiles(id);
 
         // 2. Remove from DB (cascades to recipe_imports)
         db.Recipes.Remove(recipe);

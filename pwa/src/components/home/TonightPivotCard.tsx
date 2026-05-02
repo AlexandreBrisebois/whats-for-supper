@@ -1,11 +1,14 @@
 'use client';
 
-import { Utensils, ChevronRight } from 'lucide-react';
+import { Utensils } from 'lucide-react';
+import Image from 'next/image';
 import { TonightCardBase } from './TonightMenuCard';
+import { getImageUrl } from '@/lib/imageUtils';
 
 interface TonightPivotCardProps {
   gotoDescription: string | null;
   gotoRecipeId: string | null;
+  gotoImageUrl?: string | null;
   /** "ready" once synthesis is complete; "pending" while in progress; null/undefined = no GOTO set */
   gotoStatus?: string | null;
   onConfirmGoto: () => void;
@@ -16,6 +19,7 @@ interface TonightPivotCardProps {
 export function TonightPivotCard({
   gotoDescription,
   gotoRecipeId,
+  gotoImageUrl,
   gotoStatus,
   onConfirmGoto,
   onDiscover,
@@ -27,6 +31,10 @@ export function TonightPivotCard({
   const gotoReady = hasGoto && gotoStatus === 'ready';
   const gotoPending = hasGoto && gotoStatus === 'pending';
   const isFetching = hasGoto && gotoStatus === null;
+
+  // If we have an explicit image URL, use it.
+  // Otherwise, if the recipe is ready, use the standard hero endpoint.
+  const imageUrl = gotoImageUrl || (gotoReady ? `/api/recipes/${gotoRecipeId}/hero` : null);
 
   return (
     <TonightCardBase
@@ -43,9 +51,34 @@ export function TonightPivotCard({
         </span>
       </div>
 
-      {/* Image area — placeholder */}
+      {/* Image area */}
       <div className="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 bg-charcoal/5 flex items-center justify-center">
-        <Utensils size={48} className="text-charcoal/10" />
+        {imageUrl ? (
+          <Image
+            src={getImageUrl(imageUrl)}
+            alt={gotoDescription ?? 'Recipe image'}
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+          />
+        ) : hasGoto ? (
+          <Utensils size={48} className="text-charcoal/10" />
+        ) : (
+          <a
+            href="/profile/settings"
+            className="flex flex-col items-center justify-center gap-3 px-6 text-center"
+          >
+            <span className="flex items-center justify-center w-16 h-16 rounded-full bg-terracotta/10">
+              <Utensils size={28} className="text-terracotta" />
+            </span>
+            <span className="text-[11px] font-black uppercase tracking-widest text-terracotta leading-snug">
+              Add your family&apos;s
+              <br />
+              GOTO recipe
+            </span>
+          </a>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 via-transparent to-transparent opacity-60" />
       </div>
 
@@ -64,27 +97,19 @@ export function TonightPivotCard({
         ) : (
           <p className="text-charcoal/40 text-sm font-medium italic">Nothing planned yet</p>
         )}
-
-        {!hasGoto && (
-          <a
-            href="/profile/settings"
-            className="text-[10px] font-black uppercase tracking-widest text-terracotta flex items-center gap-1 mt-1"
-          >
-            Set your GOTO <ChevronRight size={12} />
-          </a>
-        )}
       </div>
 
       {/* Footer actions — layout depends on whether a ready GOTO exists */}
       <div className="flex flex-col gap-2 mt-auto">
-        <button
-          onClick={onConfirmGoto}
-          data-testid="confirm-goto-btn"
-          disabled={!gotoReady}
-          className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:active:scale-100"
-        >
-          Confirm GOTO
-        </button>
+        {gotoReady && (
+          <button
+            onClick={onConfirmGoto}
+            data-testid="confirm-goto-btn"
+            className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
+          >
+            Confirm GOTO
+          </button>
+        )}
         <div className={gotoReady ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}>
           <button
             onClick={onDiscover}

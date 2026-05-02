@@ -293,6 +293,7 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
         logger.LogInformation("Synthesizing recipe {RecipeId} from description: {Description}", recipeId, description);
 
         var agent = chatClient.AsAIAgent(name: "RecipeSynthesizer", instructions: promptRepository.GetPrompt(PromptType.RecipeSynthesis));
+
         var userMessage = new ChatMessage(ChatRole.User, $"Description: {description}");
 
         var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(), cancellationToken: ct);
@@ -392,11 +393,7 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
             ChatOptions = new ChatOptions
             {
                 Temperature = 0.1f,
-                MaxOutputTokens = configuration.GetValue<int?>("GEMINI_MAX_OUTPUT_TOKENS") ?? 8192,
-                AdditionalProperties = new AdditionalPropertiesDictionary
-                {
-                    ["num_ctx"] = configuration.GetValue<int>("GEMINI_CONTEXT_WINDOW", 32768)
-                }
+                MaxOutputTokens = configuration.GetValue<int?>("GEMINI_MAX_OUTPUT_TOKENS") ?? 8192
             }
         };
     }

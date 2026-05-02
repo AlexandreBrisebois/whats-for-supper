@@ -1371,6 +1371,124 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/recipes/describe': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create a stub recipe from a text description and trigger AI synthesis */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          /**
+           * @example {
+           *       "name": "Our family spaghetti",
+           *       "description": "Homemade tomato sauce with meatballs, slow-cooked for two hours"
+           *     }
+           */
+          'application/json': components['schemas']['DescribeRecipeDto'];
+        };
+      };
+      responses: {
+        /** @description OK — stub recipe created; synthesis workflow triggered */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "id": "660e8400-e29b-41d4-a716-446655440020",
+             *         "name": "Our family spaghetti",
+             *         "description": "Homemade tomato sauce with meatballs, slow-cooked for two hours",
+             *         "imageUrl": null,
+             *         "createdAt": "2026-04-30T12:00:00Z"
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: components['schemas']['RecipeDto'];
+            };
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/recipes/{id}/status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    /** Get the synthesis status of a recipe */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "id": "660e8400-e29b-41d4-a716-446655440020",
+             *         "name": "Our family spaghetti",
+             *         "status": "pending",
+             *         "imageCount": 0
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: components['schemas']['RecipeStatusDto'];
+            };
+          };
+        };
+        /** @description Recipe not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/workflows/{workflowId}/trigger': {
     parameters: {
       query?: never;
@@ -1641,6 +1759,105 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/settings/{key}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    /** Get a setting by key */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          key: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "key": "family_goto",
+             *         "value": {
+             *           "description": "Our Family Spaghetti",
+             *           "recipeId": "660e8400-e29b-41d4-a716-446655440010"
+             *         }
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: components['schemas']['SettingsDto'];
+            };
+          };
+        };
+        /** @description Setting not found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    /** Upsert a setting by key */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          key: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['SettingsDto'];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            /**
+             * @example {
+             *       "data": {
+             *         "key": "family_goto",
+             *         "value": {
+             *           "description": "Our Family Spaghetti",
+             *           "recipeId": "660e8400-e29b-41d4-a716-446655440010"
+             *         }
+             *       }
+             *     }
+             */
+            'application/json': {
+              data?: components['schemas']['SettingsDto'];
+            };
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1670,15 +1887,7 @@ export interface components {
       addedBy?: string | null;
       ingredients?: string[] | null;
       /** @description Parsed recipe instructions (string array or HowToStep objects) */
-      recipeInstructions?:
-        | (
-            | string[]
-            | {
-                name?: string;
-                text?: string;
-              }[]
-          )
-        | null;
+      recipeInstructions?: unknown[] | null;
       /** Format: date-time */
       createdAt: string;
     };
@@ -1736,7 +1945,9 @@ export interface components {
     ScheduleDayDto: {
       day: string;
       date: string;
-      recipe?: components['schemas']['ScheduleRecipeDto'];
+      recipe?: {
+        data?: components['schemas']['ScheduleRecipeDto'];
+      };
       /** @description 0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus */
       status?: number;
     };
@@ -1784,6 +1995,25 @@ export interface components {
       notes?: string | null;
       rating?: number | null;
     };
+    DescribeRecipeDto: {
+      /** @description Short name for the recipe (e.g. "Our family spaghetti") */
+      name: string;
+      /** @description Free-text description used to synthesize the full recipe via AI */
+      description: string;
+    };
+    RecipeStatusDto: {
+      /** Format: uuid */
+      id: string;
+      name?: string | null;
+      /**
+       * @description "pending" while synthesis is in progress; "ready" once Name is set and either ImageCount > 0 (photo-upload path) or IsSynthesized = true (describe path)
+       * @enum {string}
+       */
+      status: 'pending' | 'ready';
+      imageCount: number;
+      /** @description true once the goto-synthesis workflow has completed successfully */
+      isSynthesized: boolean;
+    };
     PreSelectedRecipeDto: {
       /** Format: uuid */
       recipeId: string;
@@ -1798,6 +2028,12 @@ export interface components {
     ValidationDto: {
       /** @description 1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus */
       status: number;
+    };
+    SettingsDto: {
+      key: string;
+      value: {
+        [key: string]: unknown;
+      };
     };
     HealthCheckResponse: {
       status: string;

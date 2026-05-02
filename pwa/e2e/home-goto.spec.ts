@@ -122,12 +122,14 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
     await page.goto('/home');
     const confirmBtn = page.getByTestId('confirm-goto-btn');
 
-    // Initially disabled (pending)
-    await expect(confirmBtn).toBeDisabled();
+    // Initially hidden while pending
+    await expect(confirmBtn).not.toBeVisible();
     await expect(page.getByText(/your goto is being prepared/i)).toBeVisible();
 
-    // Wait for poll and transition to ready
-    await expect(confirmBtn).toBeEnabled({ timeout: 10000 });
-    await expect(page.getByText(/slow goto/i)).toBeVisible();
+    // Wait for poll and transition to ready — button should appear
+    // gotoRecipeData.name from the detail endpoint ("Mock Recipe") overrides gotoDescription
+    await expect(confirmBtn).toBeVisible({ timeout: 10000 });
+    await expect(confirmBtn).toBeEnabled();
+    await expect(page.getByText(/mock recipe/i)).toBeVisible();
   });
 });

@@ -268,6 +268,13 @@ export async function setupCommonRoutes(page: Page) {
       body: JSON.stringify({ success: true }),
     });
   });
+  await page.route(/\/(?:backend\/)?api\/schedule\/move/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { message: 'Moved' } }),
+    });
+  });
   await page.route(/\/(?:backend\/)?api\/schedule\/fill-the-gap/, async (route) => {
     await route.fulfill({
       status: 200,

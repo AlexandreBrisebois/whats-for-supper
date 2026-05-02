@@ -13,6 +13,7 @@ const GOTO_KEY = 'family_goto';
 interface GotoValue {
   description: string;
   recipeId: string;
+  imageUrl?: string;
 }
 
 type RecipeStatus = 'pending' | 'ready' | null;
@@ -89,7 +90,7 @@ export function FamilyGOTOSettings() {
   const isPending = recipeStatus === 'pending';
   const isReady = recipeStatus === 'ready';
 
-  const handleRecipeSelect = async (recipe: { id: string; name: string }) => {
+  const handleRecipeSelect = async (recipe: any) => {
     setShowPicker(false);
     setShowSheet(false);
     setIsSaving(true);
@@ -98,6 +99,7 @@ export function FamilyGOTOSettings() {
       await saveSetting(GOTO_KEY, {
         description: recipe.name,
         recipeId: recipe.id,
+        imageUrl: recipe.image,
       });
       setRecipeStatus('ready'); // Library recipes are always ready
       setShowSaved(true);

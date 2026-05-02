@@ -37,18 +37,20 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
       : null
   );
   const [gotoRecipeStatus, setGotoRecipeStatus] = useState<'pending' | 'ready' | null>(null);
+  const [gotoRecipeData, setGotoRecipeData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(!todaysRecipe); // Show loader only when SSR had nothing
   const router = useRouter();
   const { loadSetting, saveSetting, familySettings } = useFamilyStore();
 
   // Extract GOTO fields from the stored setting value
   const gotoValue = familySettings['family_goto'] as
-    | { description?: string; recipeId?: string }
+    | { description?: string; recipeId?: string; imageUrl?: string }
     | null
     | undefined;
 
   const gotoDescription = gotoValue?.description ?? null;
   const gotoRecipeId = gotoValue?.recipeId ?? null;
+  const gotoImageUrl = gotoValue?.imageUrl ?? null;
 
   // Track previous GOTO ID to reset status during render pass (avoids cascading effect)
   const [prevGotoId, setPrevGotoId] = useState<string | null>(gotoRecipeId);
@@ -73,8 +75,14 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
         const status = response?.data?.status as 'pending' | 'ready';
         setGotoRecipeStatus(status);
 
-        if (status === 'ready' && pollInterval) {
-          clearInterval(pollInterval);
+        if (status === 'ready') {
+          if (pollInterval) clearInterval(pollInterval);
+
+          // Once ready, fetch the full recipe details to get the latest hero image and info
+          const recipeRes = await apiClient.api.recipes.byId(gotoRecipeId).get();
+          if (isMounted && recipeRes?.recipe) {
+            setGotoRecipeData(recipeRes.recipe);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch GOTO recipe status:', err);
@@ -178,9 +186,11 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
       if (!todayDate) return;
 
       if (action === 'order_in') {
-        await apiClient.api.schedule.day.byDate(todayDate).validate.post({
-          status: 3, // Skipped
-        });
+        if (currentRecipe) {
+          await apiClient.api.schedule.day.byDate(todayDate).validate.post({
+            status: 3, // Skipped
+          });
+        }
         setIsSkipped(true);
         setSessionDone(true);
       } else if (action === 'pick_else') {
@@ -243,21 +253,27 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
         <>
           {(!currentRecipe || isSkipped || sessionDone) && !isCooked && (
             <TonightPivotCard
-              gotoDescription={gotoDescription}
+              gotoDescription={gotoRecipeData?.name ?? gotoDescription}
               gotoRecipeId={gotoRecipeId}
+              gotoImageUrl={gotoRecipeData?.imageUrl ?? gotoImageUrl}
               gotoStatus={gotoRecipeStatus}
               onConfirmGoto={() => {
                 if (gotoRecipeId) {
-                  setCurrentRecipe({
+                  // Prefer API data, fall back to setting data for optimistic update
+                  const optimisticRecipe: ScheduleRecipeDto = {
                     id: gotoRecipeId,
-                    name: gotoDescription ?? '',
-                    image: '',
-                  } as ScheduleRecipeDto);
+                    name: gotoRecipeData?.name ?? gotoDescription ?? '',
+                    image: gotoRecipeData?.imageUrl ?? gotoImageUrl ?? '',
+                    description: gotoRecipeData?.description,
+                    ingredients: gotoRecipeData?.ingredients,
+                  };
+
+                  setCurrentRecipe(optimisticRecipe);
                   const dayIndex = (new Date().getDay() + 6) % 7;
                   assignRecipeToDay(0, dayIndex, {
                     id: gotoRecipeId,
-                    name: gotoDescription ?? '',
-                    image: '',
+                    name: optimisticRecipe.name ?? null,
+                    image: optimisticRecipe.image ?? '',
                   })
                     .then(() => router.refresh())
                     .catch((err) => console.error('Failed to confirm GOTO:', err));
