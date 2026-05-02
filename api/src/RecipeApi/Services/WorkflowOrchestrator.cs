@@ -12,7 +12,7 @@ namespace RecipeApi.Services;
 
 public class InvalidWorkflowException(string message) : Exception(message);
 
-public class WorkflowOrchestrator(WorkflowRootResolver rootResolver, RecipeDbContext dbContext) : IWorkflowOrchestrator
+public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeDbContext dbContext) : IWorkflowOrchestrator
 {
     private readonly RecipeDbContext _dbContext = dbContext;
 
@@ -20,20 +20,20 @@ public class WorkflowOrchestrator(WorkflowRootResolver rootResolver, RecipeDbCon
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .Build();
 
-    public WorkflowDefinition GetDefinition(string workflowId)
+    public async Task<WorkflowDefinition> GetDefinitionAsync(string workflowId)
     {
-        var filePath = Path.Combine(rootResolver.Root, $"{workflowId}.yaml");
-        if (!File.Exists(filePath))
-        {
-            throw new FileNotFoundException($"Workflow definition not found at {filePath}", filePath);
-        }
-
-        var yaml = File.ReadAllText(filePath);
+        var yaml = await workflowRepository.GetWorkflowYamlAsync(workflowId);
         var definition = _deserializer.Deserialize<WorkflowDefinition>(yaml);
 
         ValidateDefinition(definition);
 
         return definition;
+    }
+
+    public WorkflowDefinition GetDefinition(string workflowId)
+    {
+        // For synchronous compatibility, though async is preferred
+        return GetDefinitionAsync(workflowId).GetAwaiter().GetResult();
     }
 
     public async Task<WorkflowInstance> TriggerAsync(string workflowId, Dictionary<string, string> parameters)

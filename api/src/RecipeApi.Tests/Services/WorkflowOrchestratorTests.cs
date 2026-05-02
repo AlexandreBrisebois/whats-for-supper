@@ -17,33 +17,22 @@ namespace RecipeApi.Tests.Services;
 [Collection("WorkflowRootResolver")]
 public class WorkflowOrchestratorTests : IDisposable
 {
-    private readonly string _testRoot;
     private readonly RecipeDbContext _dbContext;
+    private readonly InMemoryStorageProvider _storage;
+    private readonly WorkflowRepository _workflowRepository;
     private readonly WorkflowOrchestrator _orchestrator;
 
     public WorkflowOrchestratorTests()
     {
-        _testRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(_testRoot);
-
-        var mockConfig = new Mock<IConfiguration>();
-        
-        // Override environment variable for testing
-        Environment.SetEnvironmentVariable("WORKFLOWS_ROOT", _testRoot);
-        
-        var dataRootResolver = new DataRootResolver(mockConfig.Object);
-        var rootResolver = new WorkflowRootResolver(dataRootResolver, mockConfig.Object);
         _dbContext = TestDbContextFactory.Create();
-        _orchestrator = new WorkflowOrchestrator(rootResolver, _dbContext);
+        _storage = new InMemoryStorageProvider();
+        _workflowRepository = new WorkflowRepository(_storage);
+        _orchestrator = new WorkflowOrchestrator(_workflowRepository, _dbContext);
     }
 
     public void Dispose()
     {
-        if (Directory.Exists(_testRoot))
-        {
-            Directory.Delete(_testRoot, true);
-        }
-        Environment.SetEnvironmentVariable("WORKFLOWS_ROOT", null);
+        _dbContext.Dispose();
     }
 
     [Fact]
@@ -58,7 +47,7 @@ tasks:
     processor: ExtractRecipe
     payload: { recipe_id: ""{{recipe_id}}"" }
 ";
-        File.WriteAllText(Path.Combine(_testRoot, "test_workflow.yaml"), yaml);
+        _storage.SaveAsync("workflows", "test_workflow.yaml", yaml).GetAwaiter().GetResult();
 
         // Act
         var definition = _orchestrator.GetDefinition("test_workflow");
@@ -85,7 +74,7 @@ tasks:
     depends_on: [a]
     processor: dummy
 ";
-        File.WriteAllText(Path.Combine(_testRoot, "circular.yaml"), yaml);
+        _storage.SaveAsync("workflows", "circular.yaml", yaml).GetAwaiter().GetResult();
 
         // Act & Assert
         var ex = Assert.Throws<InvalidWorkflowException>(() => _orchestrator.GetDefinition("circular"));
@@ -103,7 +92,7 @@ tasks:
     depends_on: [ghost]
     processor: dummy
 ";
-        File.WriteAllText(Path.Combine(_testRoot, "missing_dep.yaml"), yaml);
+        _storage.SaveAsync("workflows", "missing_dep.yaml", yaml).GetAwaiter().GetResult();
 
         // Act & Assert
         var ex = Assert.Throws<InvalidWorkflowException>(() => _orchestrator.GetDefinition("missing_dep"));
@@ -122,7 +111,7 @@ tasks:
     processor: dummy
     payload: { val: ""{{ghost}}"" }
 ";
-        File.WriteAllText(Path.Combine(_testRoot, "undefined_param.yaml"), yaml);
+        _storage.SaveAsync("workflows", "undefined_param.yaml", yaml).GetAwaiter().GetResult();
 
         // Act & Assert
         var ex = Assert.Throws<InvalidWorkflowException>(() => _orchestrator.GetDefinition("undefined_param"));
@@ -140,7 +129,7 @@ tasks:
   - name: a
     processor: dummy
 ";
-        File.WriteAllText(Path.Combine(_testRoot, "trigger_test.yaml"), yaml);
+        await _storage.SaveAsync("workflows", "trigger_test.yaml", yaml);
         var parameters = new Dictionary<string, string>();
 
         // Act & Assert
@@ -163,7 +152,7 @@ tasks:
     depends_on: [extract]
     payload: { recipe_id: ""{{recipe_id}}"" }
 ";
-        File.WriteAllText(Path.Combine(_testRoot, "recipe_import.yaml"), yaml);
+        await _storage.SaveAsync("workflows", "recipe_import.yaml", yaml);
         var recipeId = Guid.NewGuid().ToString();
         var parameters = new Dictionary<string, string> { { "recipe_id", recipeId } };
 

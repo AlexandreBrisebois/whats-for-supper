@@ -15,6 +15,7 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 | **6 — Polish** | Resilience | Offline-first, Performance, Final Aesthetics | 📝 Planned |
 | **7 — Ops** | Production Ready | Cloudflare Tunnel, Monitoring, Cleanup | 📝 Planned |
 | **9 — Workflows** | Extensions & Bulk | Bulk triggers, Dashboard, Retry UI | 🏃 Active |
+| **15 — Storage** | Cloud-Ready | Repository pattern, Blob Storage | 🏃 Active |
 
 ---
 
@@ -171,3 +172,21 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 - [x] **Automated Workflow Seeding**: Core workflows are now bundled in-project and synced to volumes on startup (ADR 020).
 - [ ] **Workflow Dashboard**: A dedicated PWA view to monitor active, paused, and failed workflow instances.
 - [ ] **Manual Retry UI**: One-tap task reset from the dashboard.
+
+---
+
+## Phase 15 — API Storage Evolution [ACTIVE]
+
+**Goal**: Complete the decoupling of the API from the physical file system by expanding the Repository pattern and supporting cloud providers.
+
+### Additions
+- [x] **Unified Storage Abstraction**: Implementation of `IStorageProvider` and `InMemoryStorageProvider` for durable testing.
+- [x] **Domain Repositories (Phase 1)**: `RecipeRepository`, `WorkflowRepository`, and `EmbeddedPromptRepository`.
+- [x] **Service Decoupling**: Refactored `SyncRecipeProcessor`, `RecipeAgent`, and `WorkflowOrchestrator`.
+- [ ] **Domain Repositories (Phase 2)**: Port `PlannerRepository` and `FamilyRepository` to the `IStorageProvider` pattern.
+- [ ] **Query Unification**: Move database queries (EF Core `DbContext` usage) from business services into the Repository layer to further decouple logic.
+- [ ] **Cloud Storage Support**: Implement `BlobStorageProvider` (Azure Blob Storage or S3) to support cloud deployments.
+
+### Definition of Done
+- All file system interactions in the API are mediated via `IStorageProvider`.
+- The API can run with zero local disk dependencies (using `InMemoryStorageProvider` or `BlobStorageProvider`).

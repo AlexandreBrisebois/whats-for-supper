@@ -80,6 +80,10 @@ try
     builder.Services.AddSingleton<DataRootResolver>();
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
+    builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
+    builder.Services.AddSingleton<IPromptRepository, EmbeddedPromptRepository>();
+    builder.Services.AddScoped<RecipeRepository>();
+    builder.Services.AddScoped<WorkflowRepository>();
     builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
     builder.Services.AddScoped<ManagementService>();
     builder.Services.AddScoped<RecipeImportBulkService>();
@@ -93,14 +97,16 @@ try
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipesRootResolver>(),
+        sp.GetRequiredService<RecipeRepository>(),
+        sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
         "ExtractRecipe"));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipesRootResolver>(),
+        sp.GetRequiredService<RecipeRepository>(),
+        sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
         "GenerateDescription"));
@@ -109,7 +115,8 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipesRootResolver>(),
+        sp.GetRequiredService<RecipeRepository>(),
+        sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
         "SynthesizeRecipe"));

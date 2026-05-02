@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
+using RecipeApi.Services;
 using RecipeApi.Services.Agents;
 using Xunit;
 
@@ -11,31 +12,30 @@ namespace RecipeApi.Tests.Services.Processors;
 
 public class ExtractRecipeProcessorTests : IDisposable
 {
-    private readonly string _testRoot;
     private readonly Mock<IChatClient> _chatClientMock;
+    private readonly InMemoryStorageProvider _storage;
+    private readonly RecipeRepository _recipeRepository;
     private readonly RecipeAgent _agent;
     private readonly Guid _recipeId = Guid.NewGuid();
 
     public ExtractRecipeProcessorTests()
     {
-        _testRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(_testRoot);
-
         _chatClientMock = new Mock<IChatClient>();
+        _storage = new InMemoryStorageProvider();
+        _recipeRepository = new RecipeRepository(_storage);
+        
+        var promptRepositoryMock = new Mock<IPromptRepository>();
+        promptRepositoryMock.Setup(p => p.GetPrompt(It.IsAny<PromptType>())).Returns("Extract prompt");
+
         var mockConfig = new Mock<IConfiguration>();
-        mockConfig.Setup(c => c["RecipesRoot"]).Returns(_testRoot);
         var mockSection = new Mock<IConfigurationSection>();
         mockConfig.Setup(c => c.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
         mockSection.Setup(s => s.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
-        
-        // Ensure env var doesn't override configuration
-        Environment.SetEnvironmentVariable("RECIPES_ROOT", null);
-        var dataRootResolver = new DataRootResolver(mockConfig.Object);
-        var recipesRootResolver = new RecipesRootResolver(dataRootResolver, mockConfig.Object);
 
         _agent = new RecipeAgent(
             _chatClientMock.Object,
-            recipesRootResolver,
+            _recipeRepository,
+            promptRepositoryMock.Object,
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
             "ExtractRecipe");
@@ -43,22 +43,15 @@ public class ExtractRecipeProcessorTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_testRoot))
-        {
-            Directory.Delete(_testRoot, true);
-        }
-        Environment.SetEnvironmentVariable("RECIPES_ROOT", null);
     }
 
     [Fact]
     public async Task ExecuteAsync_ValidPayload_ExtractsRecipe()
     {
         // Arrange
-        var recipeDir = Path.Combine(_testRoot, _recipeId.ToString());
-        var originalDir = Path.Combine(recipeDir, "original");
-        Directory.CreateDirectory(originalDir);
-        File.WriteAllText(Path.Combine(originalDir, "card1.jpg"), "dummy image data");
-        File.WriteAllText(Path.Combine(recipeDir, "recipe.info"), "{}");
+        var info = new RecipeInfo { Id = _recipeId, ImageCount = 1 };
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase));
+        await _storage.SaveAsync("recipes", $"{_recipeId}/original/0.jpg", "dummy image data");
 
         var task = new WorkflowTask
         {
@@ -76,9 +69,9 @@ public class ExtractRecipeProcessorTests : IDisposable
         await _agent.ExecuteAsync(task, CancellationToken.None);
 
         // Assert
-        var recipeJsonPath = Path.Combine(recipeDir, "recipe.json");
-        Assert.True(File.Exists(recipeJsonPath));
-        var savedJson = await File.ReadAllTextAsync(recipeJsonPath);
+        var exists = await _storage.LoadAsync("recipes", $"{_recipeId}/recipe.json");
+        Assert.NotNull(exists);
+        var savedJson = System.Text.Encoding.UTF8.GetString(exists);
         Assert.Contains("Test Recipe", savedJson);
     }
 
@@ -86,9 +79,6 @@ public class ExtractRecipeProcessorTests : IDisposable
     public async Task ExecuteAsync_MissingRecipeInfo_ThrowsFileNotFoundException()
     {
         // Arrange
-        var recipeDir = Path.Combine(_testRoot, _recipeId.ToString());
-        var originalDir = Path.Combine(recipeDir, "original");
-        Directory.CreateDirectory(originalDir);
         // recipe.info is missing
 
         var task = new WorkflowTask

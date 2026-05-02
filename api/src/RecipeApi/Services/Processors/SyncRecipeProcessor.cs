@@ -9,7 +9,7 @@ namespace RecipeApi.Services.Processors;
 
 public class SyncRecipeProcessor(
     RecipeDbContext db,
-    RecipesRootResolver recipesRoot,
+    RecipeRepository recipeRepository,
     DiscoveryService discoveryService,
     ILogger<SyncRecipeProcessor> logger) : IWorkflowProcessor
 {
@@ -35,37 +35,16 @@ public class SyncRecipeProcessor(
 
     private async Task SyncDiskToDb(Guid recipeId, CancellationToken ct)
     {
-        var recipeDir = Path.Combine(recipesRoot.Root, recipeId.ToString());
-        var recipeJsonPath = Path.Combine(recipeDir, "recipe.json");
-        var recipeInfoPath = Path.Combine(recipeDir, "recipe.info");
-
-        // Strictness: Must fail if recipe.info is missing
-        if (!File.Exists(recipeInfoPath))
-        {
-            throw new FileNotFoundException($"Recipe info file not found for sync: {recipeInfoPath}");
-        }
-
         // Read recipe.info first for strict validation
-        var recipeInfoJson = await File.ReadAllTextAsync(recipeInfoPath, ct);
-        var recipeInfo = JsonSerializer.Deserialize<RecipeInfo>(recipeInfoJson, JsonDefaults.CamelCase);
+        var recipeInfo = await recipeRepository.GetInfoAsync(recipeId, ct);
 
-        if (recipeInfo == null)
-        {
-            throw new InvalidDataException($"Failed to deserialize recipe.info for recipe {recipeId}.");
-        }
-
-        // Strictness: Must fail if ImageCount is invalid
-        if (recipeInfo.ImageCount <= 0)
+        // Strictness: Must fail if ImageCount is invalid (negative)
+        if (recipeInfo.ImageCount < 0)
         {
             throw new InvalidDataException($"Invalid ImageCount ({recipeInfo.ImageCount}) for recipe {recipeId}. Sync aborted.");
         }
 
-        if (!File.Exists(recipeJsonPath))
-        {
-            throw new FileNotFoundException($"Recipe JSON not found for sync: {recipeJsonPath}");
-        }
-
-        var recipeJsonContent = await File.ReadAllTextAsync(recipeJsonPath, ct);
+        var recipeJsonContent = await recipeRepository.GetRecipeJsonAsync(recipeId, ct);
 
         using var jsonDoc = JsonDocument.Parse(recipeJsonContent);
         var root = jsonDoc.RootElement;

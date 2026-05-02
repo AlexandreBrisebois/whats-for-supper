@@ -12,38 +12,26 @@ namespace RecipeApi.Tests.Services.Processors;
 
 public class SyncRecipeProcessorTests : IDisposable
 {
-    private readonly string _testRoot;
     private readonly RecipeDbContext _db;
     private readonly Mock<ILogger<SyncRecipeProcessor>> _loggerMock;
+    private readonly InMemoryStorageProvider _storage;
+    private readonly RecipeRepository _recipeRepository;
     private readonly SyncRecipeProcessor _processor;
     private readonly Guid _recipeId = Guid.NewGuid();
 
     public SyncRecipeProcessorTests()
     {
-        _testRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(_testRoot);
-
         _db = TestDbContextFactory.Create();
         _loggerMock = new Mock<ILogger<SyncRecipeProcessor>>();
+        _storage = new InMemoryStorageProvider();
+        _recipeRepository = new RecipeRepository(_storage);
         
-        var mockConfig = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
-        mockConfig.Setup(c => c["RecipesRoot"]).Returns(_testRoot);
-        var dataRootResolver = new DataRootResolver(mockConfig.Object);
-        var recipesRootResolver = new RecipesRootResolver(dataRootResolver, mockConfig.Object);
-        // Ensure env var doesn't override configuration
-        Environment.SetEnvironmentVariable("RECIPES_ROOT", null);
-
         var discoveryService = new DiscoveryService(_db);
-        _processor = new SyncRecipeProcessor(_db, recipesRootResolver, discoveryService, _loggerMock.Object);
+        _processor = new SyncRecipeProcessor(_db, _recipeRepository, discoveryService, _loggerMock.Object);
     }
 
     public void Dispose()
     {
-        if (Directory.Exists(_testRoot))
-        {
-            Directory.Delete(_testRoot, true);
-        }
-        Environment.SetEnvironmentVariable("RECIPES_ROOT", null);
         _db.Dispose();
     }
 
@@ -56,9 +44,7 @@ public class SyncRecipeProcessorTests : IDisposable
             Payload = $"{{\"recipeId\": \"{_recipeId}\"}}"
         };
         
-        var recipeDir = Path.Combine(_testRoot, _recipeId.ToString());
-        Directory.CreateDirectory(recipeDir);
-        // recipe.info is missing
+        // recipe.info is missing in _storage
 
         // Act & Assert
         await Assert.ThrowsAsync<FileNotFoundException>(() => _processor.ExecuteAsync(task, CancellationToken.None));
@@ -73,11 +59,9 @@ public class SyncRecipeProcessorTests : IDisposable
             Payload = $"{{\"recipeId\": \"{_recipeId}\"}}"
         };
         
-        var recipeDir = Path.Combine(_testRoot, _recipeId.ToString());
-        Directory.CreateDirectory(recipeDir);
-        
-        var info = new RecipeInfo { Id = _recipeId, ImageCount = 0 };
-        await File.WriteAllTextAsync(Path.Combine(recipeDir, "recipe.info"), System.Text.Json.JsonSerializer.Serialize(info));
+        var info = new RecipeInfo { Id = _recipeId, ImageCount = -1 };
+        var infoJson = System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", infoJson);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidDataException>(() => _processor.ExecuteAsync(task, CancellationToken.None));
@@ -93,14 +77,13 @@ public class SyncRecipeProcessorTests : IDisposable
             Payload = $"{{\"recipeId\": \"{_recipeId}\"}}"
         };
         
-        var recipeDir = Path.Combine(_testRoot, _recipeId.ToString());
-        Directory.CreateDirectory(recipeDir);
-        
         var info = new RecipeInfo { Id = _recipeId, ImageCount = 1, Name = "From Info", Description = "Desc from info" };
-        await File.WriteAllTextAsync(Path.Combine(recipeDir, "recipe.info"), System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase));
+        var infoJson = System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", infoJson);
         
         var recipeJson = new { name = "From Json", recipeIngredient = new[] { "Ing 1" }, totalTime = "PT30M" };
-        await File.WriteAllTextAsync(Path.Combine(recipeDir, "recipe.json"), System.Text.Json.JsonSerializer.Serialize(recipeJson));
+        var recipeJsonContent = System.Text.Json.JsonSerializer.Serialize(recipeJson);
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", recipeJsonContent);
 
         _db.Recipes.Add(new Recipe { Id = _recipeId, Name = "Original Name" });
         await _db.SaveChangesAsync();
