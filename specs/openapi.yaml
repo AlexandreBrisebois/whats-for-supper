@@ -1087,6 +1087,7 @@ paths:
 
   /api/recipes/describe:
     post:
+      security: [{ FamilyMemberId: [] }]
       summary: Create a stub recipe from a text description and trigger AI synthesis
       requestBody:
         required: true

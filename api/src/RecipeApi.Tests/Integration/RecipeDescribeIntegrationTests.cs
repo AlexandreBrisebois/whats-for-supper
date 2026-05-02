@@ -1,6 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using RecipeApi.Data;
+using RecipeApi.Infrastructure;
+using RecipeApi.Models;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 
@@ -15,15 +19,20 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
 {
     private TestWebApplicationFactory _factory = null!;
     private HttpClient _client = null!;
+    private IServiceScope _scope = null!;
+    private RecipeDbContext _db = null!;
 
     public async Task InitializeAsync()
     {
         _factory = await TestWebApplicationFactory.CreateAsync();
         _client = _factory.CreateClient();
+        _scope = _factory.Services.CreateScope();
+        _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
     }
 
     public async Task DisposeAsync()
     {
+        _scope.Dispose();
         _client.Dispose();
         await _factory.DisposeAsync();
     }
@@ -109,5 +118,70 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
         var unknownId = Guid.NewGuid();
         var response = await _client.GetAsync($"/api/recipes/{unknownId}/status");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    // ── addedBy and recipe.info persistence ──────────────────────────────────
+
+    [Fact]
+    public async Task Describe_WithFamilyMemberHeader_PopulatesAddedByAndWritesRecipeInfo()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/recipes/describe")
+        {
+            Content = JsonContent.Create(new { name = "Our family spaghetti", description = "Homemade tomato sauce with meatballs" })
+        };
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var idStr = body.GetProperty("data").GetProperty("id").GetString();
+        Assert.True(Guid.TryParse(idStr, out var recipeId));
+
+        // DB row has AddedBy populated
+        var recipe = await _db.Recipes.FindAsync(recipeId);
+        Assert.NotNull(recipe);
+        Assert.Equal(_factory.DefaultFamilyMemberId, recipe.AddedBy);
+        Assert.NotEqual(default, recipe.CreatedAt);
+
+        // recipe.info written to disk with correct values
+        var infoPath = Path.Combine(_factory.TempRecipesRoot, recipeId.ToString(), "recipe.info");
+        Assert.True(File.Exists(infoPath), $"recipe.info not found at {infoPath}");
+        var info = System.Text.Json.JsonSerializer.Deserialize<RecipeInfo>(
+            await File.ReadAllTextAsync(infoPath),
+            JsonDefaults.CamelCase);
+        Assert.NotNull(info);
+        Assert.Equal(_factory.DefaultFamilyMemberId, info.AddedBy);
+        Assert.Equal(0, info.ImageCount);
+        Assert.Equal("Our family spaghetti", info.Name);
+    }
+
+    [Fact]
+    public async Task Describe_WithoutFamilyMemberHeader_SucceedsWithNullAddedBy()
+    {
+        var response = await _client.PostAsJsonAsync("/api/recipes/describe", new
+        {
+            name = "Anonymous recipe",
+            description = "No family member context"
+        });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var idStr = body.GetProperty("data").GetProperty("id").GetString();
+        Assert.True(Guid.TryParse(idStr, out var recipeId));
+
+        // DB row has AddedBy = null
+        var recipe = await _db.Recipes.FindAsync(recipeId);
+        Assert.NotNull(recipe);
+        Assert.Null(recipe.AddedBy);
+
+        // recipe.info exists with addedBy null
+        var infoPath = Path.Combine(_factory.TempRecipesRoot, recipeId.ToString(), "recipe.info");
+        Assert.True(File.Exists(infoPath), $"recipe.info not found at {infoPath}");
+        var info = System.Text.Json.JsonSerializer.Deserialize<RecipeInfo>(
+            await File.ReadAllTextAsync(infoPath),
+            JsonDefaults.CamelCase);
+        Assert.NotNull(info);
+        Assert.Null(info.AddedBy);
     }
 }

@@ -199,7 +199,7 @@ public class RecipeService(
     /// Sets ImageCount = 0, IsDiscoverable = false.
     /// Triggers the goto-synthesis workflow to synthesise the full recipe via AI.
     /// </summary>
-    public async Task<RecipeDto> DescribeRecipe(DescribeRecipeDto dto)
+    public async Task<RecipeDto> DescribeRecipe(DescribeRecipeDto dto, Guid? familyMemberId = null)
     {
         var recipeId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
@@ -211,11 +211,21 @@ public class RecipeService(
             Description = dto.Description,
             ImageCount = 0,
             IsDiscoverable = false,
+            AddedBy = familyMemberId,
             CreatedAt = now,
             UpdatedAt = now
         };
 
         db.Recipes.Add(recipe);
+        await images.CreateRecipeInfo(new RecipeInfo
+        {
+            Id = recipeId,
+            Name = dto.Name,
+            Description = dto.Description,
+            ImageCount = 0,
+            AddedBy = familyMemberId,
+            CreatedAt = now
+        });
         await db.SaveChangesAsync();
 
         // Trigger the goto-synthesis workflow asynchronously.

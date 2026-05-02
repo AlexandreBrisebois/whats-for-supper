@@ -30,8 +30,10 @@ public class ManagementService(
         int backedUpCount = 0;
         foreach (var recipe in recipes)
         {
-            // Skip if no payload (not yet imported, no notes, and no rating)
-            if (string.IsNullOrEmpty(recipe.RawMetadata) &&
+            // Skip if recipe is not ready and has no payload worth persisting
+            var isReady = !string.IsNullOrEmpty(recipe.Name) && recipe.ImageCount > 0;
+            if (!isReady &&
+                string.IsNullOrEmpty(recipe.RawMetadata) &&
                 string.IsNullOrEmpty(recipe.Notes) &&
                 recipe.Rating == RecipeRating.Unknown)
             {

@@ -116,9 +116,11 @@ public class RecipeController(
     /// Triggers the goto-synthesis workflow (added in Phase C).
     /// </summary>
     [HttpPost("describe")]
-    public async Task<IActionResult> Describe([FromBody] DescribeRecipeDto dto)
+    public async Task<IActionResult> Describe(
+        [FromBody] DescribeRecipeDto dto,
+        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId = null)
     {
-        var result = await recipeService.DescribeRecipe(dto);
+        var result = await recipeService.DescribeRecipe(dto, familyMemberId);
         return Ok(result);
     }
 
