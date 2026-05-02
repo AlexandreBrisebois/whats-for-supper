@@ -31,6 +31,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
 
     private WebApplication? _app;
     private readonly string _dbName = $"TestDb_{Guid.NewGuid():N}";
+    private readonly string _dataRoot = Path.Combine(Path.GetTempPath(), $"wfs-test-{Guid.NewGuid():N}");
 
     public static async Task<TestWebApplicationFactory> CreateAsync()
     {
@@ -44,11 +45,14 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         var builder = WebApplication.CreateBuilder();
 
         // ── Override config ──────────────────────────────────────────────────
+        Directory.CreateDirectory(_dataRoot);
+
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Serilog:MinimumLevel:Default"]          = "Warning",
             ["Logging:LogLevel:Default"]              = "Warning",
             ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning",
+            ["DataRoot"]                              = _dataRoot,
         });
 
         // ── Services (mirrors Program.cs, minus Npgsql) ──────────────────────
@@ -140,5 +144,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     {
         if (_app is not null)
             await _app.DisposeAsync();
+
+        if (Directory.Exists(_dataRoot))
+            Directory.Delete(_dataRoot, recursive: true);
     }
 }
