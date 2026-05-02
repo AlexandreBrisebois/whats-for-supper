@@ -40,7 +40,7 @@ Follow these directives in order when the user signals the end of a session or w
 
 ### Directive 5: Session Compaction & Turn-End
 1.  **Active Pruning**: Ensure [HANDOVER.md](HANDOVER.md) contains ONLY the delta for the next session.
-2.  **Death Audit**: Use [death-audit](.agents/skills/death-audit.md) to prune temporary files, build prompts, or "zombie" code.
+2.  **Death Audit**: Use [death-audit](../death-audit/SKILL.md) to prune temporary files, build prompts, or "zombie" code.
 3.  **Next Steps**: Draft a sharp, 3-bullet plan for the next agent to resume immediately.
 
 ## 2. Integrity Check (Mandatory)

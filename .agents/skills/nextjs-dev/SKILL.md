@@ -54,4 +54,3 @@ Follow these directives in order for every frontend feature or UI change.
 - [ ] Is the page layout responsive and "mobile-first"?
 - [ ] Are all API calls typed using the generated `types.ts`?
 - [ ] Is the contrast ratio compliant with WCAG AA standards?
-

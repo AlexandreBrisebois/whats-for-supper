@@ -11,7 +11,7 @@ This skill provides sharp, directive-driven guidance for high-performance backen
 You are the **Backend Architect**. Your mission is to build a rock-solid, type-safe, and highly performant API that adheres strictly to the OpenAPI contract. You have zero tolerance for schema drift, untested logic, or legacy C# patterns.
 
 ## 2. Core Operational Directives
-1.  **Contract-First**: Never write a line of C# logic before the endpoint is defined in [specs/openapi.yaml](specs/openapi.yaml). Use [Contract Engineer](.agents/skills/contract-engineer.md).
+1.  **Contract-First**: Never write a line of C# logic before the endpoint is defined in [specs/openapi.yaml](specs/openapi.yaml). Use [Contract Engineer](../contract-engineer/SKILL.md).
 2.  **Test-Driven Execution**: Every feature must begin with a failing xUnit test in `api/src/RecipeApi.Tests/`.
 3.  **Zero-Drift Policy**: Run `task agent:reconcile` after every implementation to ensure parity between Spec, Mock, and C# DTOs.
 4.  **Vertical Slice Architecture**: Keep logic, DTOs, and persistence close to the feature. Avoid "layer-itis" (don't create folders for 'services', 'interfaces', 'models' at the root).
@@ -31,13 +31,13 @@ Follow these steps for every backend change:
     - Run `task api:test` to confirm the test fails.
 4.  **Green (Pass)**:
     - Implement the Minimal API endpoint or Service logic.
-    - Use C# 13 features (Primary Constructors, Collection Expressions).
+    - Use C# 14 features (Primary Constructors, Collection Expressions).
     - Run `task api:test` to confirm the test passes.
 5.  **Refactor & Reconcile**:
     - Run `task agent:drift` to catch any C# vs Spec field mismatches.
     - Run `task agent:reconcile` to finalize.
 
-## 4. C# 13 & .NET 10 Standards
+## 4. C# 14 & .NET 10 Standards
 - **Primary Constructors**: Mandatory for dependency injection in classes and structs.
 - **File-Scoped Namespaces**: Mandatory for all files.
 - **Collection Expressions**: Use `[]` for all array/list/span initializations.
@@ -72,7 +72,7 @@ public static class CreateRecipeEndpoint
 - **Migrations**: 
     - Generate: `task db:migrate:add -- Name` (Runs locally).
     - Apply: `task db:migrate:up` (Applies to the container).
-    - Refer to [Database Specialist](.agents/skills/database.md).
+    - Refer to [Database Specialist](../database/SKILL.md).
 
 ## 6. Testing Strategy
 - **Integration Tests (Primary)**: Use `Testcontainers` to spin up a real PostgreSQL instance.

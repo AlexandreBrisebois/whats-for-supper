@@ -10,7 +10,7 @@ description: Build and maintain "The Seams" (Mock APIs, Shared Types, Database S
 ## 1. Primary Operational Directives
 - **Contract-First Mandate**: Every API change MUST be defined in `specs/openapi.yaml` before a single line of implementation code is written.
 - **Zero-Tolerance Drift**: Any mismatch between the Spec, the Mock API, and the Real Backend implementation is a critical failure.
-- **Delegated Editing**: Define the *intent* of the seam, but delegate the physical editing of `openapi.yaml` to the [openapi-expert](.agents/skills/openapi-expert.md).
+- **Delegated Editing**: Define the *intent* of the seam, but delegate the physical editing of `openapi.yaml` to the [openapi-expert](../openapi-expert/SKILL.md).
 
 ## 2. Phase 1: Seam Discovery & Context Extraction
 Before proposing changes, you must extract the existing "DNA" of the API:
@@ -22,7 +22,7 @@ Before proposing changes, you must extract the existing "DNA" of the API:
 Define the interaction protocol:
 1.  **Draft the Change**: Define the path, methods, parameters, and response schemas.
 2.  **Ensure Naming Parity**: Use `camelCase` for all JSON properties to match PWA expectations.
-3.  **Handoff**: Switch to [openapi-expert](.agents/skills/openapi-expert.md) to apply the changes to `specs/openapi.yaml`.
+3.  **Handoff**: Switch to [openapi-expert](../openapi-expert/SKILL.md) to apply the changes to `specs/openapi.yaml`.
 
 ## 4. Phase 3: Synchronizing Types & Foundation (DDL)
 Once the spec is updated, solidify the other seams:

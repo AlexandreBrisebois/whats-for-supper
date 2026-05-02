@@ -25,7 +25,7 @@ Your job is not to solve the feature directly. Your job is to package the work s
 
 ### 1. Resolve ambiguity first
 
-If the task is underspecified, conflicting, or architecturally unclear, stop and use [shared-understanding](.agents/skills/shared-understanding.md) before generating Tasks.
+If the task is underspecified, conflicting, or architecturally unclear, stop and use [shared-understanding](../shared-understanding/SKILL.md) before generating Tasks.
 
 Do not emit workstreams for unresolved intent.
 
@@ -291,7 +291,7 @@ A bad Task:
 - mixes planning and implementation,
 - spans too many files,
 - hides contract decisions,
-- relies on “use judgment” wording,
+- relies on "use judgment" wording,
 - lacks test commands,
 - has no escalation boundary.
 

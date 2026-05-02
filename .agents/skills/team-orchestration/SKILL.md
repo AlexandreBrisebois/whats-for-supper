@@ -13,7 +13,7 @@ Before executing any directive, assess the task scope:
 
 - If coordinating **more than 2 workstreams**, this task is `LARGE_REQUIRED`. Stop and escalate to a larger model.
 - If **spawning sub-agents**, this task is `LARGE_REQUIRED`. Stop and escalate.
-- If the task requires **new contract or schema design**, defer to [contract-engineer](.agents/skills/contract-engineer.md) first.
+- If the task requires **new contract or schema design**, defer to [contract-engineer](../contract-engineer/SKILL.md) first.
 
 Only proceed if the task fits within 1–2 isolated workstreams with no contract changes.
 
@@ -24,11 +24,11 @@ Follow these directives in order for every complex feature or refactor.
 ### Directive 1: Plan & Initialize Context
 1.  **Read State**: Immediately read [HANDOVER.md](HANDOVER.md) and [ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
 2.  **Decompose**: Break the request into isolated workstreams (Database, API, Frontend, Tests).
-3.  **Map Workstreams**: Use [create-prompt](.agents/skills/create-prompt.md) to draft an execution plan. Do not start coding until the plan is approved. **Note: If a pre-prepared prompt is provided by the user, adopt it as the approved strategy and verify it against Directive 2 (The Seams) before execution.**
+3.  **Map Workstreams**: Use [create-prompt](../create-prompt/SKILL.md) to draft an execution plan. Do not start coding until the plan is approved. **Note: If a pre-prepared prompt is provided by the user, adopt it as the approved strategy and verify it against Directive 2 (The Seams) before execution.**
 
 ### Directive 2: Build the Seams (The Contract)
-1.  **Update API**: Use [openapi-expert](.agents/skills/openapi-expert.md) to update `specs/openapi.yaml`.
-2.  **Enforce Contracts**: Use [contract-engineer](.agents/skills/contract-engineer.md) to define database schemas or cross-component boundaries.
+1.  **Update API**: Use [openapi-expert](../openapi-expert/SKILL.md) to update `specs/openapi.yaml`.
+2.  **Enforce Contracts**: Use [contract-engineer](../contract-engineer/SKILL.md) to define database schemas or cross-component boundaries.
 3.  **Generate Clients**: Ensure the Kiota client or frontend models are regenerated BEFORE implementation begins.
 
 ### Directive 3: Execute Parallel Workstreams
@@ -43,8 +43,8 @@ Follow these directives in order for every complex feature or refactor.
 
 ### Directive 5: Verify Integrity & Handover
 1.  **The Integrity Gate**: Run `scripts/run-e2e-ci.sh` (or `task review`). 100% pass rate is mandatory.
-2.  **Death Audit**: Use [death-audit](.agents/skills/death-audit.md) to prune temporary scripts, build prompts, or zombie code.
-3.  **Turn-End Review**: Use [session-review](.agents/skills/session-review.md) to update [JOURNAL.md](JOURNAL.md) and [HANDOVER.md](HANDOVER.md).
+2.  **Death Audit**: Use [death-audit](../death-audit/SKILL.md) to prune temporary scripts, build prompts, or zombie code.
+3.  **Turn-End Review**: Use [session-review](../session-review/SKILL.md) to update [JOURNAL.md](JOURNAL.md) and [HANDOVER.md](HANDOVER.md).
 
 ## 2. Integrity Gate Checklist (Mandatory)
 
