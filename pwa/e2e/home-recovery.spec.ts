@@ -202,7 +202,8 @@ test.describe('Home Command Center — GOTO Flow', () => {
   // Call skipTonight() to reach TonightPivotCard.
   async function setupWithRecipe(
     page: Page,
-    gotoValue: { description: string; recipeId: string } | null = null
+    gotoValue: { description: string; recipeId: string } | null = null,
+    recipeStatus: 'ready' | 'pending' = 'ready'
   ) {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
@@ -304,6 +305,25 @@ test.describe('Home Command Center — GOTO Flow', () => {
         });
       }
     });
+
+    // Status mock
+    if (gotoValue?.recipeId) {
+      await page.route(
+        new RegExp(`/(?:backend/)?api/recipes/${gotoValue.recipeId}/status`),
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                id: gotoValue.recipeId,
+                status: recipeStatus,
+              },
+            }),
+          });
+        }
+      );
+    }
 
     await page.goto('/home');
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
@@ -394,7 +414,8 @@ test.describe('Home Command Center — GOTO Flow', () => {
 test.describe('Home Command Center — GOTO Status', () => {
   async function setupWithGotoStatus(
     page: Page,
-    gotoValue: { description: string; recipeId: string; status: 'pending' | 'ready' } | null
+    gotoValue: { description: string; recipeId: string } | null,
+    recipeStatus: 'ready' | 'pending' = 'ready'
   ) {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
@@ -483,10 +504,11 @@ test.describe('Home Command Center — GOTO Status', () => {
     // Settings mock
     await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
       if (gotoValue != null) {
+        const { status, ...valueWithoutStatus } = gotoValue as any;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: { key: 'family_goto', value: gotoValue } }),
+          body: JSON.stringify({ data: { key: 'family_goto', value: valueWithoutStatus } }),
         });
       } else {
         await route.fulfill({
@@ -496,6 +518,25 @@ test.describe('Home Command Center — GOTO Status', () => {
         });
       }
     });
+
+    // Status mock
+    if (gotoValue?.recipeId) {
+      await page.route(
+        new RegExp(`/(?:backend/)?api/recipes/${gotoValue.recipeId}/status`),
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                id: gotoValue.recipeId,
+                status: recipeStatus,
+              },
+            }),
+          });
+        }
+      );
+    }
 
     await page.goto('/home');
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
@@ -520,7 +561,6 @@ test.describe('Home Command Center — GOTO Status', () => {
     await setupWithGotoStatus(page, {
       description: 'Our Family Spaghetti',
       recipeId: MOCK_IDS.RECIPE_LASAGNA,
-      status: 'ready',
     });
     await skipTonight(page);
 
@@ -532,11 +572,14 @@ test.describe('Home Command Center — GOTO Status', () => {
 
   // F7 — Pending GOTO disables Confirm GOTO on home
   test('Pending GOTO disables Confirm GOTO button', async ({ page }) => {
-    await setupWithGotoStatus(page, {
-      description: 'Our Family Spaghetti',
-      recipeId: MOCK_IDS.RECIPE_LASAGNA,
-      status: 'pending',
-    });
+    await setupWithGotoStatus(
+      page,
+      {
+        description: 'Our Family Spaghetti',
+        recipeId: MOCK_IDS.RECIPE_LASAGNA,
+      } as any,
+      'pending'
+    );
     await skipTonight(page);
 
     const confirmBtn = page.getByTestId('confirm-goto-btn');

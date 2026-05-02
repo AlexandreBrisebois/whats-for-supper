@@ -93,7 +93,6 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
         await saveSetting('family_goto', {
           description: 'Your captured recipe',
           recipeId: id,
-          status: 'pending',
         });
       }
       setOnSuccess(true);
@@ -120,7 +119,6 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
         await saveSetting('family_goto', {
           description: describeName.trim(),
           recipeId: id,
-          status: 'pending',
         });
       }
       setOnSuccess(true);

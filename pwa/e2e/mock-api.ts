@@ -216,9 +216,9 @@ export async function setupCommonRoutes(page: Page) {
         body: JSON.stringify({
           data: {
             id,
-            name: null,
-            status: 'pending',
-            imageCount: 0,
+            name: 'Mock Recipe',
+            status: 'ready',
+            imageCount: 1,
           },
         }),
       });

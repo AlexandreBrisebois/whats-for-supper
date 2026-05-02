@@ -23,7 +23,6 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
             value: {
               description: 'Our Family Spaghetti',
               recipeId: MOCK_IDS.RECIPE_LASAGNA,
-              status: 'ready',
             },
           },
         }),
@@ -145,5 +144,43 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
 
     expect(assignCalled).toBe(true);
+  });
+
+  test('Pending GOTO polls until ready', async ({ page }) => {
+    // 1. Mock status API to return pending twice, then ready
+    let statusCalls = 0;
+    await page.route(
+      new RegExp(`/(?:backend/)?api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/status`),
+      async (route) => {
+        statusCalls++;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              status: statusCalls > 2 ? 'ready' : 'pending',
+            },
+          }),
+        });
+      }
+    );
+
+    // Reload to pick up the new mock
+    await page.goto('/home');
+
+    // 2. Ensure initially disabled
+    await expect(
+      page.getByText(/checking your goto/i).or(page.getByText(/your goto is being prepared/i))
+    ).toBeVisible();
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeDisabled();
+
+    // 3. Wait for polling to hit the 'ready' state (polls every 5s)
+    // We can speed up time or just wait. Since it's only 2 polls, it might take 10-15s.
+    // In Playwright, we can't easily speed up setInterval without injecting scripts.
+    // But we can wait for the button to become enabled.
+    await expect(confirmBtn).toBeEnabled({ timeout: 20000 });
+    await expect(page.getByText('Our Family Spaghetti').first()).toBeVisible();
   });
 });

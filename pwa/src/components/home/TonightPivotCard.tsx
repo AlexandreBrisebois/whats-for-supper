@@ -24,8 +24,9 @@ export function TonightPivotCard({
   // A GOTO is only actionable when it exists AND is ready.
   // Existing values without a status field (set before Phase 13) are treated as ready.
   const hasGoto = gotoRecipeId != null;
-  const gotoReady = hasGoto && (gotoStatus == null || gotoStatus === 'ready');
+  const gotoReady = hasGoto && gotoStatus === 'ready';
   const gotoPending = hasGoto && gotoStatus === 'pending';
+  const isFetching = hasGoto && gotoStatus === null;
 
   return (
     <TonightCardBase
@@ -58,6 +59,8 @@ export function TonightPivotCard({
           <p className="text-charcoal/40 text-sm font-medium italic">
             Your GOTO is being prepared…
           </p>
+        ) : isFetching ? (
+          <p className="text-charcoal/40 text-sm font-medium italic">Checking your GOTO…</p>
         ) : (
           <p className="text-charcoal/40 text-sm font-medium italic">Nothing planned yet</p>
         )}

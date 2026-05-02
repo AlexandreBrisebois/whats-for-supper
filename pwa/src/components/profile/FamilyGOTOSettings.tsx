@@ -6,15 +6,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useFamilyStore } from '@/store/familyStore';
 import { QuickFindModal } from '@/components/planner/QuickFindModal';
+import { apiClient } from '@/lib/api/api-client';
 
 const GOTO_KEY = 'family_goto';
 
 interface GotoValue {
   description: string;
   recipeId: string;
-  /** 'ready' once synthesis is complete; 'pending' while in progress; absent = treat as 'ready' (backward compat) */
-  status?: 'pending' | 'ready';
 }
+
+type RecipeStatus = 'pending' | 'ready' | null;
 
 function isGotoValue(v: unknown): v is GotoValue {
   return (
@@ -33,20 +34,60 @@ export function FamilyGOTOSettings() {
   const [showSaved, setShowSaved] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>(null);
+  const [prevRecipeId, setPrevRecipeId] = useState<string | null>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    loadSetting(GOTO_KEY);
-  }, [loadSetting]);
 
   const currentGoto = isGotoValue(familySettings[GOTO_KEY])
     ? (familySettings[GOTO_KEY] as GotoValue)
     : null;
 
-  // Backward compat: existing values without a status field are treated as 'ready'
-  const gotoStatus = currentGoto?.status ?? (currentGoto ? 'ready' : null);
-  const isPending = gotoStatus === 'pending';
-  const isReady = gotoStatus === 'ready';
+  // Reset status when ID changes (recommended pattern for state reset on prop change)
+  const currentId = currentGoto?.recipeId ?? null;
+  if (currentId !== prevRecipeId) {
+    setPrevRecipeId(currentId);
+    setRecipeStatus(null);
+  }
+
+  useEffect(() => {
+    loadSetting(GOTO_KEY);
+  }, [loadSetting]);
+
+  useEffect(() => {
+    if (!currentGoto?.recipeId) return;
+
+    let isMounted = true;
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    const fetchStatus = async () => {
+      try {
+        const response = await apiClient.api.recipes.byId(currentGoto.recipeId).status.get();
+        if (!isMounted) return;
+
+        const status = response?.data?.status as 'pending' | 'ready';
+        setRecipeStatus(status);
+
+        if (status === 'ready' && pollInterval) {
+          clearInterval(pollInterval);
+        }
+      } catch (err) {
+        console.error('Failed to fetch recipe status:', err);
+      }
+    };
+
+    fetchStatus();
+
+    // Poll every 5s if pending
+    pollInterval = setInterval(fetchStatus, 5000);
+
+    return () => {
+      isMounted = false;
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [currentGoto?.recipeId]);
+
+  const isPending = recipeStatus === 'pending';
+  const isReady = recipeStatus === 'ready';
 
   const handleRecipeSelect = async (recipe: { id: string; name: string }) => {
     setShowPicker(false);
@@ -57,8 +98,8 @@ export function FamilyGOTOSettings() {
       await saveSetting(GOTO_KEY, {
         description: recipe.name,
         recipeId: recipe.id,
-        status: 'ready',
       });
+      setRecipeStatus('ready'); // Library recipes are always ready
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2500);
     } finally {

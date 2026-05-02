@@ -30,22 +30,59 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
   const [isCooked, setIsCooked] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
   const [currentRecipe, setCurrentRecipe] = useState(todaysRecipe);
+  const [gotoRecipeStatus, setGotoRecipeStatus] = useState<'pending' | 'ready' | null>(null);
+  const [prevGotoId, setPrevGotoId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!todaysRecipe); // Show loader only when SSR had nothing
   const router = useRouter();
   const { loadSetting, saveSetting, familySettings } = useFamilyStore();
 
   // Extract GOTO fields from the stored setting value
   const gotoValue = familySettings['family_goto'] as
-    | { description?: string; recipeId?: string; status?: string }
+    | { description?: string; recipeId?: string }
     | null
     | undefined;
 
-  // Phase D4: pass status through to TonightPivotCard which gates the Confirm GOTO button.
-  // Backward compat: existing values without a status field are treated as 'ready'.
-  // We always pass recipeId/description so the pending state ("being prepared") is visible.
-  const gotoStatus = gotoValue?.status ?? null;
   const gotoDescription = gotoValue?.description ?? null;
   const gotoRecipeId = gotoValue?.recipeId ?? null;
+
+  // Reset status when ID changes (recommended pattern for state reset on prop change)
+  const currentGotoId = gotoRecipeId ?? null;
+  if (currentGotoId !== prevGotoId) {
+    setPrevGotoId(currentGotoId);
+    setGotoRecipeStatus(null);
+  }
+
+  // Poll recipe status if a GOTO is configured
+  useEffect(() => {
+    if (!gotoRecipeId) return;
+
+    let isMounted = true;
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    const fetchStatus = async () => {
+      try {
+        const response = await apiClient.api.recipes.byId(gotoRecipeId).status.get();
+        if (!isMounted) return;
+
+        const status = response?.data?.status as 'pending' | 'ready';
+        setGotoRecipeStatus(status);
+
+        if (status === 'ready' && pollInterval) {
+          clearInterval(pollInterval);
+        }
+      } catch (err) {
+        console.error('Failed to fetch GOTO recipe status:', err);
+      }
+    };
+
+    fetchStatus();
+    pollInterval = setInterval(fetchStatus, 5000);
+
+    return () => {
+      isMounted = false;
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [gotoRecipeId]);
 
   useEffect(() => {
     let mounted = true;
@@ -203,7 +240,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
             <TonightPivotCard
               gotoDescription={gotoDescription}
               gotoRecipeId={gotoRecipeId}
-              gotoStatus={gotoStatus}
+              gotoStatus={gotoRecipeStatus}
               onConfirmGoto={() => {
                 if (gotoRecipeId) {
                   setCurrentRecipe({

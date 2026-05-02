@@ -265,9 +265,9 @@ test.describe('Capture — GOTO intent', () => {
     const descBody = descReq.postDataJSON();
     expect(descBody.name).toBe('Our family spaghetti');
 
-    // POST /api/settings/family_goto was called with status: 'pending'
+    // POST /api/settings/family_goto was called without status (now domain-driven)
     const settBody = settReq.postDataJSON();
-    expect(settBody.value?.status).toBe('pending');
+    expect(settBody.value?.status).toBeUndefined();
     expect(settBody.value?.recipeId).toBe(MOCK_IDS.RECIPE_GOTO_STUB);
 
     // Success screen shows GOTO-specific message
@@ -293,7 +293,7 @@ test.describe('Capture — GOTO intent', () => {
 
     const settReq = await settingsRequest;
     const settBody = settReq.postDataJSON();
-    expect(settBody.value?.status).toBe('pending');
+    expect(settBody.value?.status).toBeUndefined();
     expect(settBody.value?.recipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
 
     // Success screen shows GOTO-specific message
@@ -339,12 +339,27 @@ test.describe('Settings — GOTO pending state', () => {
             value: {
               description: 'Our family spaghetti',
               recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
-              status: 'pending',
             },
           },
         }),
       });
     });
+
+    await page.route(
+      new RegExp(`/(?:backend/)?api/recipes/${MOCK_IDS.RECIPE_GOTO_STUB}/status`),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              id: MOCK_IDS.RECIPE_GOTO_STUB,
+              status: 'pending',
+            },
+          }),
+        });
+      }
+    );
 
     await page.goto('/profile/settings');
 

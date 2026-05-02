@@ -120,7 +120,7 @@ try
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
         "SynthesizeRecipe"));
-    builder.Services.AddScoped<IWorkflowProcessor, MarkGotoReadyProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<RecipeService>();
     builder.Services.AddScoped<RecipeImportService>();
 

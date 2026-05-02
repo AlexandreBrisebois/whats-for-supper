@@ -3,10 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using RecipeApi.Data;
 using RecipeApi.Models;
-using RecipeApi.Services;
 using RecipeApi.Services.Processors;
 using RecipeApi.Tests.Infrastructure;
 using RecipeApi.Workflow;
@@ -17,9 +15,8 @@ namespace RecipeApi.Tests.Integration;
 /// <summary>
 /// Integration tests for Phase 13 Phase C — workflow plumbing.
 ///   1. POST /api/recipes/describe triggers the goto-synthesis workflow.
-///   2. MarkGotoReadyProcessor flips status=ready and image_count=1.
-///   3. MarkGotoReadyProcessor is a no-op when no family_goto setting exists.
-///   4. MarkGotoReadyProcessor is a no-op when recipeId doesn't match.
+///   2. RecipeReadyProcessor ensures image_count=1 (so GET /status returns ready).
+///   3. RecipeReadyProcessor does NOT touch family_settings.
 /// </summary>
 public class GotoSynthesisIntegrationTests : IAsyncLifetime
 {
@@ -71,12 +68,12 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         Assert.Equal("Our family spaghetti", recipe.Name);
     }
 
-    // ── MarkGotoReadyProcessor — happy path ──────────────────────────────────
+    // ── RecipeReadyProcessor — happy path ──────────────────────────────────
 
     [Fact]
-    public async Task MarkGotoReady_MatchingRecipeId_SetsReadyAndImageCount()
+    public async Task RecipeReady_MatchingRecipe_SetsImageCount()
     {
-        // Arrange: create a stub recipe and a family_goto setting pointing to it
+        // Arrange: create a stub recipe
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe
         {
@@ -84,6 +81,43 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
             Name = "Spaghetti",
             ImageCount = 0,
             IsDiscoverable = false,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = Guid.NewGuid(),
+            TaskName = "recipe_ready",
+            ProcessorName = "RecipeReady",
+            Payload = JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
+            Status = RecipeApi.Models.TaskStatus.Pending,
+            DependsOn = [],
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        await processor.ExecuteAsync(task, CancellationToken.None);
+
+        // Assert: recipe image_count = 1
+        var recipe = await _db.Recipes.FindAsync(recipeId);
+        Assert.Equal(1, recipe!.ImageCount);
+    }
+
+    [Fact]
+    public async Task RecipeReady_DoesNotTouchFamilySettings()
+    {
+        // Arrange: create a recipe and a family_goto setting
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Spaghetti",
+            ImageCount = 0,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         });
@@ -100,13 +134,13 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        var processor = new MarkGotoReadyProcessor(_db, NullLogger<MarkGotoReadyProcessor>.Instance);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
             InstanceId = Guid.NewGuid(),
-            TaskName = "mark_goto_ready",
-            ProcessorName = "MarkGotoReady",
+            TaskName = "recipe_ready",
+            ProcessorName = "RecipeReady",
             Payload = JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
             Status = RecipeApi.Models.TaskStatus.Pending,
             DependsOn = [],
@@ -116,92 +150,34 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
 
         await processor.ExecuteAsync(task, CancellationToken.None);
 
-        // Assert: setting status = "ready"
+        // Assert: family_goto setting remains UNCHANGED (it still has the "status" field we are migrating away from)
         var setting = _db.FamilySettings.First(s => s.Key == "family_goto");
-        Assert.Equal("ready", setting.Value.GetProperty("status").GetString());
-
-        // Assert: recipe image_count = 1
-        var recipe = await _db.Recipes.FindAsync(recipeId);
-        Assert.Equal(1, recipe!.ImageCount);
+        Assert.Equal("pending", setting.Value.GetProperty("status").GetString());
     }
 
-    // ── MarkGotoReadyProcessor — no family_goto setting ──────────────────────
-
     [Fact]
-    public async Task MarkGotoReady_NoSetting_IsNoOp()
+    public async Task RecipeReady_AlreadyComplete_IsNoOp()
     {
         var recipeId = Guid.NewGuid();
+        var originalUpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-5);
         _db.Recipes.Add(new Recipe
         {
             Id = recipeId,
-            Name = "Orphan Recipe",
-            ImageCount = 0,
-            IsDiscoverable = false,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            Name = "Complete Recipe",
+            ImageCount = 5,
+            CreatedAt = originalUpdatedAt,
+            UpdatedAt = originalUpdatedAt
         });
         await _db.SaveChangesAsync();
 
-        var processor = new MarkGotoReadyProcessor(_db, NullLogger<MarkGotoReadyProcessor>.Instance);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
             InstanceId = Guid.NewGuid(),
-            TaskName = "mark_goto_ready",
-            ProcessorName = "MarkGotoReady",
+            TaskName = "recipe_ready",
+            ProcessorName = "RecipeReady",
             Payload = JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
-            Status = RecipeApi.Models.TaskStatus.Pending,
-            DependsOn = [],
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        // Should not throw
-        var result = await processor.ExecuteAsync(task, CancellationToken.None);
-
-        // Recipe image_count must remain 0
-        var recipe = await _db.Recipes.FindAsync(recipeId);
-        Assert.Equal(0, recipe!.ImageCount);
-    }
-
-    // ── MarkGotoReadyProcessor — recipeId mismatch ───────────────────────────
-
-    [Fact]
-    public async Task MarkGotoReady_RecipeIdMismatch_IsNoOp()
-    {
-        var gotoRecipeId = Guid.NewGuid();
-        var otherRecipeId = Guid.NewGuid();
-
-        _db.Recipes.Add(new Recipe
-        {
-            Id = otherRecipeId,
-            Name = "Other Recipe",
-            ImageCount = 0,
-            IsDiscoverable = false,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        });
-
-        // family_goto points to a DIFFERENT recipe
-        var settingValue = JsonDocument.Parse(
-            $$$"""{"description":"Spaghetti","recipeId":"{{{gotoRecipeId}}}","status":"pending"}"""
-        ).RootElement;
-        _db.FamilySettings.Add(new FamilySetting
-        {
-            Key = "family_goto",
-            Value = settingValue,
-            UpdatedAt = DateTimeOffset.UtcNow
-        });
-        await _db.SaveChangesAsync();
-
-        var processor = new MarkGotoReadyProcessor(_db, NullLogger<MarkGotoReadyProcessor>.Instance);
-        var task = new WorkflowTask
-        {
-            TaskId = Guid.NewGuid(),
-            InstanceId = Guid.NewGuid(),
-            TaskName = "mark_goto_ready",
-            ProcessorName = "MarkGotoReady",
-            Payload = JsonSerializer.Serialize(new { recipeId = otherRecipeId.ToString() }),
             Status = RecipeApi.Models.TaskStatus.Pending,
             DependsOn = [],
             CreatedAt = DateTimeOffset.UtcNow,
@@ -210,12 +186,9 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
 
         await processor.ExecuteAsync(task, CancellationToken.None);
 
-        // Setting status must remain "pending"
-        var setting = _db.FamilySettings.First(s => s.Key == "family_goto");
-        Assert.Equal("pending", setting.Value.GetProperty("status").GetString());
-
-        // Other recipe image_count must remain 0
-        var recipe = await _db.Recipes.FindAsync(otherRecipeId);
-        Assert.Equal(0, recipe!.ImageCount);
+        // Recipe image_count must remain 5 and UpdatedAt must remain unchanged
+        var recipe = await _db.Recipes.FindAsync(recipeId);
+        Assert.Equal(5, recipe!.ImageCount);
+        Assert.Equal(originalUpdatedAt, recipe.UpdatedAt);
     }
 }

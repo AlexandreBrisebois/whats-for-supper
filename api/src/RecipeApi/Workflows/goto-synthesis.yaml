@@ -20,8 +20,8 @@ tasks:
           - generate_hero
       payload:
           recipeId: "{{ recipeId }}"
-    - name: mark_goto_ready
-      processor: MarkGotoReady
+    - name: recipe_ready
+      processor: RecipeReady
       depends_on:
           - sync_recipe
       payload:
