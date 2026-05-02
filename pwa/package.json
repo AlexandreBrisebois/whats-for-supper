@@ -62,7 +62,7 @@
     "autoprefixer": "^10.5.0",
     "eslint": "9.39.4",
     "eslint-config-next": "^16.2.4",
-    "globals": "^17.5.0",
+    "globals": "^17.6.0",
     "postcss": "^8.5.13",
     "prettier": "^3.4.2",
     "sharp": "^0.34.5",
