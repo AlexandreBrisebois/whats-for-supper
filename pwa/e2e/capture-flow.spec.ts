@@ -22,7 +22,7 @@ test.describe('Capture Flow', () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     // Home page needs schedule + family intercepts
@@ -171,7 +171,7 @@ test.describe('Capture — initial state rendering', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
@@ -220,7 +220,7 @@ test.describe('Capture — describe link interaction', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
@@ -263,7 +263,7 @@ test.describe('Capture — describe form validation', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
@@ -315,7 +315,7 @@ test.describe('Capture — GOTO intent', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     // Settings — writable in-memory store

@@ -37,7 +37,7 @@ test.describe('Planner Social Coordination', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/family/, async (route) => {

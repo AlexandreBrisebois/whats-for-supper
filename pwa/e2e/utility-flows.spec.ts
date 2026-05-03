@@ -41,7 +41,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     const thisMonday = getThisWeekMonday();

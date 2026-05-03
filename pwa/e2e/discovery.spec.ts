@@ -25,7 +25,7 @@ test.describe('Discovery Flow', () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/discovery\/categories/, async (route) => {

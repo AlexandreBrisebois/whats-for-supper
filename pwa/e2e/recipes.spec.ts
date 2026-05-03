@@ -44,7 +44,7 @@ test.describe('Recipes Search Page', () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-    
+
     await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/recipes/, async (route) => {

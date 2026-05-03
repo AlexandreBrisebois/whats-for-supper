@@ -66,10 +66,10 @@ async function setupPlanner(page: Page, locked = false) {
       JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
     );
   }, MOCK_IDS.MEMBER_ALEX);
-  
-    await setupCommonRoutes(page);
 
-    const draftDays = buildDraftDays();
+  await setupCommonRoutes(page);
+
+  const draftDays = buildDraftDays();
   // Use explicit MOCK_IDS to ensure uniqueness and validity
   draftDays[0].recipe = builders.scheduleRecipe({
     id: MOCK_IDS.RECIPE_CARBONARA,
@@ -191,13 +191,16 @@ test.describe("Planner — Cook's Mode", () => {
 test.describe('Planner — Ordered-In State', () => {
   test('ordered-in day shows ordered-in-indicator and hides plan-meal-button', async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
     await page.addInitScript((id) => {
       localStorage.setItem(
         'family-storage',
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-  
+
     await setupCommonRoutes(page);
 
     const today = new Date().toISOString().split('T')[0];
