@@ -40,7 +40,7 @@ Refactor `pwa/src/components/capture/MinimalCapture.tsx` to remove the three-tab
     - Replace `await page.getByRole('button', { name: /describe/i }).click()` with `await page.getByRole('button', { name: /or describe it instead/i }).click()`
     - _Requirements: 2.5, 5.1, 5.2_
 
-  - [ ]* 5.2 Add rendering tests for initial state
+  - [x]* 5.2 Add rendering tests for initial state
     - Assert tab switcher is absent: `expect(page.getByRole('button', { name: /camera/i })).not.toBeVisible()` (or equivalent absence check)
     - Assert `Camera_Button` (`aria-label="Take a photo"`) is visible
     - Assert `Gallery_Link` (`Pick from Gallery`) is visible
@@ -48,14 +48,14 @@ Refactor `pwa/src/components/capture/MinimalCapture.tsx` to remove the three-tab
     - Assert `Describe_Form` (recipe name input) is NOT present
     - _Requirements: 1.1, 1.2, 2.1, 2.2, 3.4_
 
-  - [ ]* 5.3 Add interaction test: clicking `Describe_Link` reveals the form
+  - [x]* 5.3 Add interaction test: clicking `Describe_Link` reveals the form
     - Navigate to `/capture`, click `Or Describe It Instead`
     - Assert `Describe_Form` (recipe name input placeholder `our family spaghetti`) is visible
     - Assert `Capture_Box` (camera button) is still visible
     - Assert `Describe_Link` is no longer visible
     - _Requirements: 2.5, 3.1, 3.2, 3.3_
 
-  - [ ]* 5.4 Add describe form validation test
+  - [x]* 5.4 Add describe form validation test
     - Navigate to `/capture`, open form, click `Synthesize Recipe` with empty name
     - Assert validation error message is displayed, API is not called
     - _Requirements: 5.3_

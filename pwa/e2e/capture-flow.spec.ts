@@ -152,6 +152,144 @@ test.describe('Capture Flow', () => {
 });
 
 // ---------------------------------------------------------------------------
+// capture-describe-entry — structural / interaction / validation tests
+// ---------------------------------------------------------------------------
+
+test.describe('Capture — initial state rendering', () => {
+  test.beforeEach(async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+
+    await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
+  });
+
+  // 5.2 — Initial state: tab switcher absent, camera/gallery/describe-link visible, form not present
+  test('tab switcher is absent and capture controls are visible on load', async ({ page }) => {
+    await page.goto('/capture');
+
+    // Tab switcher (old pill bar) must not be present
+    await expect(page.getByRole('button', { name: /^camera$/i })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /^gallery$/i })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /^describe$/i })).not.toBeVisible();
+
+    // Camera_Button is visible
+    await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
+
+    // Gallery_Link is visible
+    await expect(page.getByRole('button', { name: /pick from gallery/i })).toBeVisible();
+
+    // Describe_Link is visible
+    await expect(page.getByRole('button', { name: /or describe it instead/i })).toBeVisible();
+
+    // Describe_Form (recipe name input) is NOT present
+    await expect(page.getByPlaceholder(/our family spaghetti/i)).not.toBeVisible();
+  });
+});
+
+test.describe('Capture — describe link interaction', () => {
+  test.beforeEach(async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+
+    await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
+  });
+
+  // 5.3 — Clicking "Or Describe It Instead" reveals form, hides link, hides camera box
+  test('clicking Describe_Link reveals the form and hides the link', async ({ page }) => {
+    await page.goto('/capture');
+
+    // Form is not visible before clicking
+    await expect(page.getByPlaceholder(/our family spaghetti/i)).not.toBeVisible();
+
+    await page.getByRole('button', { name: /or describe it instead/i }).click();
+
+    // Describe_Form is now visible
+    await expect(page.getByPlaceholder(/our family spaghetti/i)).toBeVisible();
+
+    // Describe_Link is no longer visible (hidden by !showDescribe guard)
+    await expect(page.getByRole('button', { name: /or describe it instead/i })).not.toBeVisible();
+  });
+});
+
+test.describe('Capture — describe form validation', () => {
+  test.beforeEach(async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+
+    await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
+  });
+
+  // 5.4 — Submit with empty name shows error, API not called
+  test('submitting with empty recipe name shows validation error and does not call API', async ({
+    page,
+  }) => {
+    let describeApiCalled = false;
+    await page.route(/\/(?:backend\/)?api\/recipes\/describe/, async (route) => {
+      describeApiCalled = true;
+      await route.continue();
+    });
+
+    await page.goto('/capture');
+    await page.getByRole('button', { name: /or describe it instead/i }).click();
+
+    // Synthesize button is disabled when name is empty (component guards on !describeName.trim())
+    const synthesizeBtn = page.getByRole('button', { name: /synthesize recipe/i });
+    await expect(synthesizeBtn).toBeDisabled();
+
+    // Confirm API was not called
+    expect(describeApiCalled).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Phase 13 — GOTO intent tests (F4, F8)
 // ---------------------------------------------------------------------------
 
