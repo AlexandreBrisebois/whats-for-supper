@@ -1,15 +1,17 @@
-# Design Document — planner-voting-ux (Requirements 1–4)
+# Design Document — planner-voting-ux (Requirements 1–6)
 
 ## Scope
 
-This document covers the design for Requirements 1, 2, 3, and 4 of the `planner-voting-ux` spec:
+This document covers the design for Requirements 1–6 of the `planner-voting-ux` spec:
 
 1. **PlannerDayCard fixed height** — eliminate layout shift from vote badge toggling and recipe name wrapping.
 2. **fill-the-gap deduplication** — exclude recipes already in the target week from Quick Find results.
 3. **Rotation sort** — apply `LastCookedDate ASC NULLS FIRST, VoteCount DESC` to both recipe pools in `FillTheGapAsync`.
 4. **VotingNudgeCard on Home** — session-dismissible card on HomeCommandCenter that surfaces active next-week voting.
+5. **weekStore digital twin** — new `pwa/src/store/weekStore.ts` that seeds status from the API and applies optimistic mutations with background reconciliation.
+6. **"Ask the Family" CTA availability** — show when `status === 0` and week is not in the past, removing the `plannedCount > 0` gate.
 
-Requirements 5–6 (weekStore) are out of scope for this session.
+Requirements 1–4 are covered in the sections below. Requirements 5–6 are added at the end of this document.
 
 ---
 
@@ -447,3 +449,305 @@ The `VotingNudgeCard` SHALL be rendered if and only if: the `GET /api/schedule?w
 
 ### P6 — VotingNudgeCard non-persistence invariant
 Dismissing the `VotingNudgeCard` SHALL NOT write to `localStorage`, `sessionStorage`, cookies, or any other persistent store. The dismissed state is held only in React component state.
+
+---
+
+## Requirement 5: weekStore Digital Twin
+
+### Problem
+
+The planner page currently manages voting/lock state through `plannerStore` boolean flags (`isVotingOpen`, `isLocked`) that are set imperatively after each API call. This creates several issues:
+
+- `setWeekOffset` in `plannerStore` resets both flags to `false` on every week navigation, causing a flash of incorrect state before the next `loadData` completes.
+- `isVotingOpen` and `isLocked` are stored as independent booleans rather than derived from the authoritative `status` integer, so they can drift out of sync.
+- There is no optimistic-write guard: a background `sync()` can overwrite local schedule state while a user-initiated mutation is still in-flight.
+- The planner page mixes schedule data (`useState<UILocalScheduleDay[]>`) with status flags from `plannerStore`, making the data flow hard to follow.
+
+### Solution
+
+Create `pwa/src/store/weekStore.ts` following the same digital-twin pattern as `todayStore`. The planner page consumes `weekStore` for `schedule`, `status`, `isVotingOpen`, and `isLocked`, and removes its local `useState` for schedule and its reads of `isVotingOpen`/`isLocked` from `plannerStore`.
+
+#### 5a. weekStore shape
+
+```ts
+export interface WeekState {
+  weekOffset: number;
+  schedule: UILocalScheduleDay[];
+  /** 0 = Draft, 1 = VotingOpen, 2 = Locked — seeded from WeeklyPlan.Status */
+  status: 0 | 1 | 2;
+  isLoading: boolean;
+  lastSyncedAt: number | null;
+  /**
+   * Timestamp (ms) of the most recent optimistic write.
+   * sync() will not overwrite schedule while this is within the 10-second window.
+   */
+  optimisticWriteAt: number | null;
+
+  // Derived (not stored)
+  // isVotingOpen = status === 1
+  // isLocked     = status === 2
+
+  // Actions
+  init: (weekOffset: number) => Promise<void>;
+  assignRecipe: (dayIndex: number, recipe: { id: string; name: string | null; image: string }) => void;
+  removeRecipe: (dayIndex: number, date: string) => void;
+  moveRecipe: (from: number, to: number) => void;
+  openVoting: () => Promise<void>;
+  closeVoting: () => Promise<void>;
+  lockWeek: () => Promise<void>;
+  sync: () => Promise<void>;
+}
+```
+
+`isVotingOpen` and `isLocked` are **not stored** — they are computed inline wherever needed:
+
+```ts
+const isVotingOpen = useWeekStore((s) => s.status === 1);
+const isLocked     = useWeekStore((s) => s.status === 2);
+```
+
+#### 5b. init(weekOffset)
+
+`init` is the entry point called whenever the planner navigates to a new week. It:
+
+1. Sets `isLoading = true` and `weekOffset = weekOffset`.
+2. Immediately exposes any previously cached state (the store retains the last loaded schedule in memory; if `weekOffset` matches, it is shown while the fetch runs).
+3. Fetches `GET /api/schedule?weekOffset={n}` in the background.
+4. On success: sets `schedule`, `status`, `lastSyncedAt`, `isLoading = false`.
+5. On failure: sets `isLoading = false`, retains any previously cached state (does not clear schedule).
+
+```ts
+init: async (weekOffset) => {
+  set({ weekOffset, isLoading: true });
+  try {
+    const data = await getSchedule(weekOffset);
+    if (!data) { set({ isLoading: false }); return; }
+    const mergedDays = buildScheduleDays(data);
+    const status = (data as any).status ?? 0;
+    set({ schedule: mergedDays, status, lastSyncedAt: Date.now(), isLoading: false });
+  } catch {
+    set({ isLoading: false });
+  }
+},
+```
+
+#### 5c. Optimistic mutations
+
+All three schedule mutations follow the same pattern: update local state immediately, fire the API call in the background, revert on failure.
+
+**assignRecipe(dayIndex, recipe)**
+
+```ts
+assignRecipe: (dayIndex, recipe) => {
+  const prev = get().schedule;
+  const next = prev.map((d, i) =>
+    i === dayIndex ? { ...d, recipe: { id: recipe.id, name: recipe.name ?? '', image: recipe.image } } : d
+  );
+  set({ schedule: next, optimisticWriteAt: Date.now() });
+  assignRecipeToDay(get().weekOffset, dayIndex, recipe).catch(() => set({ schedule: prev }));
+},
+```
+
+**removeRecipe(dayIndex, date)**
+
+```ts
+removeRecipe: (dayIndex, date) => {
+  const prev = get().schedule;
+  const next = prev.map((d, i) =>
+    i === dayIndex ? { ...d, recipe: undefined, _isPending: false, _userCleared: true } : d
+  );
+  set({ schedule: next, optimisticWriteAt: Date.now() });
+  removeRecipeFromDay(date).catch(() => set({ schedule: prev }));
+},
+```
+
+**moveRecipe(from, to)**
+
+```ts
+moveRecipe: (from, to) => {
+  const prev = get().schedule;
+  const next = [...prev];
+  // Swap recipes, keep day/date fixed at their indices
+  const fromRecipe = next[from].recipe;
+  next[from] = { ...next[from], recipe: next[to].recipe };
+  next[to]   = { ...next[to],   recipe: fromRecipe };
+  set({ schedule: next, optimisticWriteAt: Date.now() });
+  moveRecipeApi(get().weekOffset, from, to).catch(() => set({ schedule: prev }));
+},
+```
+
+#### 5d. Status mutations — openVoting() and lockWeek()
+
+Both follow the optimistic-revert pattern on the `status` field.
+
+**openVoting()**
+
+```ts
+openVoting: async () => {
+  const prev = get().status;
+  set({ status: 1 });
+  try {
+    await openVotingApi(get().weekOffset);
+  } catch {
+    set({ status: prev });
+  }
+},
+```
+
+**closeVoting() / lockWeek()**
+
+`closeVoting` maps to `POST /api/schedule/lock` (same endpoint as `handleFinalize`). `lockWeek` is the optimistic version:
+
+```ts
+lockWeek: async () => {
+  const prev = get().status;
+  set({ status: 2 });
+  try {
+    await lockSchedule(get().weekOffset);
+  } catch {
+    set({ status: prev });
+  }
+},
+```
+
+#### 5e. sync() — 10-second optimistic write guard
+
+Identical guard to `todayStore`:
+
+```ts
+sync: async () => {
+  set({ isLoading: true });
+  try {
+    const data = await getSchedule(get().weekOffset);
+    if (!data) return;
+    const { optimisticWriteAt } = get();
+    const optimisticIsRecent =
+      optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 10_000;
+    const status = (data as any).status ?? 0;
+    if (!optimisticIsRecent) {
+      set({ schedule: buildScheduleDays(data), status, lastSyncedAt: Date.now() });
+    } else {
+      // Protect optimistic schedule; still update status (authoritative)
+      set({ status, lastSyncedAt: Date.now() });
+    }
+  } catch {
+    // silent
+  } finally {
+    set({ isLoading: false });
+  }
+},
+```
+
+#### 5f. Planner page refactor
+
+The planner page changes are surgical — the goal is to replace the local `useState<UILocalScheduleDay[]>` and the `isVotingOpen`/`isLocked` reads from `plannerStore` with reads from `weekStore`, while keeping all other logic (smart defaults merge, poll interval, drag-reorder, cook mode, etc.) intact.
+
+**Reads replaced:**
+
+| Before | After |
+|--------|-------|
+| `const [schedule, setSchedule] = useState<UILocalScheduleDay[]>([])` | `const schedule = useWeekStore(s => s.schedule)` |
+| `const [isLoading, setIsLoading] = useState(true)` | `const isLoading = useWeekStore(s => s.isLoading)` |
+| `const { isVotingOpen, isLocked, setVotingOpen, setIsLocked } = usePlannerStore()` | `const status = useWeekStore(s => s.status)` + derived `isVotingOpen = status === 1`, `isLocked = status === 2` |
+
+**Writes replaced:**
+
+| Before | After |
+|--------|-------|
+| `setSchedule(mergedDays)` | `useWeekStore.getState().init(currentWeekOffset)` (init handles the fetch and merge) |
+| `setVotingOpen(status === 1)` | removed — status is set inside `weekStore.init` |
+| `setIsLocked(status === 2)` | removed — status is set inside `weekStore.init` |
+| `handleAskFamily` → `openVoting(offset)` then `setVotingOpen(true)` | `weekStore.openVoting()` |
+| `handleCloseVoting` → `lockSchedule(offset)` then `setVotingOpen(false); setIsLocked(true)` | `weekStore.lockWeek()` |
+| `handleQuickFindSelect` → `setSchedule(...)` then `assignRecipeToDay(...)` | `weekStore.assignRecipe(dayIndex, recipe)` |
+| `handleRemoveRecipe` → `removeRecipeFromDay(date)` then `setSchedule(...)` | `weekStore.removeRecipe(dayIndex, date)` |
+| `handleReorder` → `setSchedule(updatedSchedule)` then `moveRecipe(...)` | `weekStore.moveRecipe(from, to)` (reorder handler calls this) |
+
+**`setWeekOffset` in plannerStore** still exists for navigation (it owns `currentWeekOffset`, `activeTab`). The planner page calls `weekStore.init(newOffset)` inside a `useEffect` that watches `currentWeekOffset`:
+
+```ts
+useEffect(() => {
+  useWeekStore.getState().init(currentWeekOffset);
+}, [currentWeekOffset]);
+```
+
+This replaces the existing `loadData` effect.
+
+**Smart defaults merge** moves inside `weekStore.init` (or a helper `buildScheduleDays`). The poll interval (`updateVoteCounts`) is replaced by `weekStore.sync()` on the same 30-second interval.
+
+### Files Changed
+
+- `pwa/src/store/weekStore.ts` — new file
+- `pwa/src/app/(app)/planner/page.tsx` — consume weekStore, remove local schedule state and plannerStore boolean reads
+
+---
+
+## Requirement 6: "Ask the Family" CTA Availability
+
+### Problem
+
+The current condition for showing the "Ask the Family" CTA is:
+
+```tsx
+{!isVotingOpen && !isLocked && plannedCount > 0 && (
+  <Button onClick={handleAskFamily} ...>Ask the Family</Button>
+)}
+```
+
+The `plannedCount > 0` guard prevents the CTA from appearing on empty weeks. Per Req 6, the CTA should appear whenever `status === 0` and the week is not in the past — regardless of how many recipes are planned.
+
+### Solution
+
+Replace the condition with a `status`-based check plus a past-week guard:
+
+```tsx
+// Derived from weekStore
+const isVotingOpen = status === 1;
+const isLocked     = status === 2;
+
+// Past-week guard: week is in the past if the Sunday of that week is before today
+const weekIsPast = useMemo(() => {
+  if (schedule.length < 7) return false;
+  const sunday = new Date(schedule[6].date ?? '');
+  const today  = new Date(getTodayString());
+  return sunday < today;
+}, [schedule]);
+
+// CTA condition (Req 6)
+{status === 0 && !weekIsPast && (
+  <Button onClick={handleAskFamily} data-testid="ask-family-cta" ...>
+    Ask the Family
+  </Button>
+)}
+```
+
+The `plannedCount > 0` requirement is removed entirely. The past-week guard uses the Sunday date from the loaded schedule (index 6), comparing it to today's date string — consistent with how `getTodayString()` is used elsewhere in the planner.
+
+### Files Changed
+
+- `pwa/src/app/(app)/planner/page.tsx` — update CTA condition
+
+---
+
+## Correctness Properties (Requirements 5–6)
+
+### P7 — status seeding invariant
+After `weekStore.init(n)` completes, `status` must equal `WeeklyPlan.Status` from the API response for `weekOffset=n`. It must never be derived from local boolean flags.
+
+### P8 — isVotingOpen derivation invariant
+`isVotingOpen` must always equal `status === 1`. There must be no independent boolean `isVotingOpen` stored in `weekStore` or `plannerStore` that can diverge from `status`.
+
+### P9 — isLocked derivation invariant
+`isLocked` must always equal `status === 2`. Same constraint as P8.
+
+### P10 — openVoting optimistic revert
+If `POST /api/schedule/voting/open` fails, `status` must revert to its value before `openVoting()` was called.
+
+### P11 — lockWeek optimistic revert
+If `POST /api/schedule/lock` fails, `status` must revert to its value before `lockWeek()` was called.
+
+### P12 — sync guard invariant
+If `optimisticWriteAt` is set and `Date.now() - optimisticWriteAt < 10_000`, then `sync()` must not overwrite `schedule` with server data.
+
+### P13 — CTA availability invariant
+The "Ask the Family" CTA must be visible if and only if `status === 0` AND the week's Sunday date is not before today's date. The `plannedCount` must have no effect on CTA visibility.

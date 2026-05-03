@@ -1,16 +1,18 @@
-# Tasks — planner-voting-ux (Requirements 1–4)
+# Tasks — planner-voting-ux (Requirements 1–6)
 
 ## Overview
 
-Four groups of tasks covering Requirements 1–4. Requirements 5–6 are out of scope for this session.
+Six groups of tasks covering Requirements 1–6.
 
 - **Group A** — PlannerDayCard fixed height (PWA only, no contract changes)
 - **Group B** — fill-the-gap deduplication (API + OpenAPI + PWA)
 - **Group C** — Rotation sort fix (API only, same method as Group B)
 - **Group D** — Post-change tooling and validation
 - **Group E** — VotingNudgeCard on Home (PWA only, no contract changes)
+- **Group F** — weekStore digital twin (new store + planner page refactor)
+- **Group G** — "Ask the Family" CTA availability fix
 
-Tasks are ordered so Group C is implemented alongside Group B (same file, same method). Run tooling in Group D after Groups A–C. Execute Group E independently (PWA-only, no contract changes).
+Tasks are ordered so Group C is implemented alongside Group B (same file, same method). Run tooling in Group D after Groups A–C. Execute Group E independently (PWA-only, no contract changes). Groups F–G depend on each other and should be executed together.
 
 ---
 
@@ -132,3 +134,59 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
   - `plannedCount`: from `votingNudge.plannedCount`
 
 - [ ] E4. Run `task review` as final gate for Group E
+
+---
+
+## Group F — weekStore Digital Twin
+
+- [ ] F1. Create `pwa/src/store/weekStore.ts`
+  - New file following the `todayStore` digital-twin pattern
+  - State shape: `{ weekOffset, schedule: UILocalScheduleDay[], status: 0|1|2, isLoading, lastSyncedAt, optimisticWriteAt }`
+  - Import `UILocalScheduleDay` type from planner page (or extract to a shared types file)
+  - Import `getSchedule`, `assignRecipeToDay`, `removeRecipeFromDay`, `moveRecipe` (as `moveRecipeApi`), `openVoting` (as `openVotingApi`), `lockSchedule`, `isScheduleRecipe` from `@/lib/api/planner`
+  - Import `getSmartDefaults` from `@/lib/api/planner`
+  - Implement `buildScheduleDays(data, defaultsData?)` helper that merges smart defaults into schedule days (extract from planner page `loadData`)
+  - Implement `init(weekOffset)`: set `isLoading=true`, fetch `getSchedule(weekOffset)` + `getSmartDefaults(weekOffset)` (smart defaults only for weekOffset=0), call `buildScheduleDays`, set `schedule`, `status`, `lastSyncedAt`, `isLoading=false`; on failure set `isLoading=false` and retain cached state
+  - Implement `assignRecipe(dayIndex, recipe)`: optimistic update + background `assignRecipeToDay` + revert on failure; set `optimisticWriteAt`
+  - Implement `removeRecipe(dayIndex, date)`: optimistic update + background `removeRecipeFromDay` + revert on failure; set `optimisticWriteAt`
+  - Implement `moveRecipe(from, to)`: swap recipes in schedule (keep day/date fixed at indices) + background `moveRecipeApi` + revert on failure; set `optimisticWriteAt`
+  - Implement `openVoting()`: set `status=1` optimistically + `POST /api/schedule/voting/open` + revert to prev status on failure
+  - Implement `closeVoting()` / `lockWeek()`: set `status=2` optimistically + `lockSchedule(weekOffset)` + revert to prev status on failure
+  - Implement `sync()`: fetch `getSchedule(weekOffset)`, apply 10-second optimistic write guard (same as `todayStore`), update `status` always, update `schedule` only if guard allows
+  - Export `useWeekStore` (Zustand store)
+
+- [ ] F2. Refactor `pwa/src/app/(app)/planner/page.tsx` to consume `weekStore`
+  - Import `useWeekStore` from `@/store/weekStore`
+  - Replace `const [schedule, setSchedule] = useState<UILocalScheduleDay[]>([])` with `const schedule = useWeekStore(s => s.schedule)`
+  - Replace `const [isLoading, setIsLoading] = useState(true)` with `const isLoading = useWeekStore(s => s.isLoading)`
+  - Replace `isVotingOpen` and `isLocked` reads from `usePlannerStore()` with derived values: `const status = useWeekStore(s => s.status)`, `const isVotingOpen = status === 1`, `const isLocked = status === 2`
+  - Remove `setVotingOpen`, `setIsLocked` destructures from `usePlannerStore()` (keep `currentWeekOffset`, `activeTab`, `setWeekOffset`, `setActiveTab`, `setGroceryState`)
+  - Replace the `loadData` + `updateVoteCounts` `useEffect` with a single `useEffect` that calls `useWeekStore.getState().init(currentWeekOffset)` when `currentWeekOffset` changes
+  - Replace the 30-second poll interval with `useWeekStore.getState().sync()` on the same interval
+  - Replace `handleAskFamily` body: call `useWeekStore.getState().openVoting()` instead of `openVoting(offset)` + `setVotingOpen(true)`
+  - Replace `handleCloseVoting` body: call `useWeekStore.getState().lockWeek()` instead of `lockSchedule(offset)` + `setVotingOpen(false); setIsLocked(true)`
+  - Replace `handleQuickFindSelect` body: call `useWeekStore.getState().assignRecipe(dayIndex, recipe)` instead of `setSchedule(...)` + `assignRecipeToDay(...)`
+  - Replace `handleRemoveRecipe` body: call `useWeekStore.getState().removeRecipe(dayIndex, date)` instead of `removeRecipeFromDay(date)` + `setSchedule(...)`
+  - Replace `handleReorder` body: call `useWeekStore.getState().moveRecipe(from, to)` instead of `setSchedule(updatedSchedule)` + `moveRecipe(...)`
+  - Remove `isLockedRef` and its `useEffect` (no longer needed — `isLocked` is derived from `status` in the store)
+  - Remove `const [isLoading, setIsLoading] = useState(true)` and the `if (currentWeekOffset !== prevOffset)` block that called `setIsLoading(true)` (weekStore.init handles this)
+  - Keep `handleFinalize` as-is for now (it calls `lockSchedule` and `openVoting` directly; it can be migrated in a follow-up)
+  - Keep `useTodayStore` integration in `handleQuickFindSelect` for today's slot propagation
+
+---
+
+## Group G — "Ask the Family" CTA Availability
+
+- [ ] G1. Update "Ask the Family" CTA condition in `pwa/src/app/(app)/planner/page.tsx`
+  - Remove the `plannedCount > 0` guard from the CTA condition
+  - Add a `weekIsPast` derived value using `useMemo`: compare `schedule[6].date` (Sunday) to `getTodayString()`; if Sunday < today, `weekIsPast = true`
+  - New condition: `{status === 0 && !weekIsPast && ( <Button data-testid="ask-family-cta" ...> )}`
+  - The `isVotingOpen` and `isLocked` checks are implicit in `status === 0` (status 1 and 2 are excluded)
+
+---
+
+## Group H — Post-Change Validation (Requirements 5–6)
+
+- [ ] H1. Run `task agent:drift` to validate no schema drift after weekStore changes
+- [ ] H2. Run `task agent:test:impact` to identify and run tests affected by the weekStore refactor
+- [ ] H3. Run `task review` as final gate

@@ -1,5 +1,5 @@
 ---
-name: designer
+name: mere-designer
 description: Creative benchmarks and UX review protocols through the lens of a busy parent and senior UX strategist.
 ---
 

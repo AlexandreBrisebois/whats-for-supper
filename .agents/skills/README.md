@@ -18,3 +18,4 @@ Load skills on demand only — never globally. A skill is loaded when the active
 | `testing` | [testing/SKILL.md](testing/SKILL.md) | Setting up or restructuring the test strategy or QA pipeline | Adding tests within an already-established pattern |
 | `workflow-author` | [workflow-author/SKILL.md](workflow-author/SKILL.md) | Creating a new YAML workflow wired into the WorkflowOrchestrator | Editing existing workflow logic only |
 | `designer` | [designer/SKILL.md](designer/SKILL.md) | Making UI/UX or visual design decisions (Solar Earth aesthetic) | Non-visual backend or infra work |
+| `aws-architect` | [aws-architect/SKILL.md](aws-architect/SKILL.md) | Designing AWS infrastructure, choosing services, landing zone setup, cost decisions, or GitHub Actions CI/CD targeting AWS | No AWS infrastructure in scope |

@@ -145,7 +145,7 @@ Run task agent:reconcile after OpenAPI changes, then task agent:drift, task revi
 
 **Spec:** `.kiro/specs/planner-voting-ux/requirements.md` — Requirement 4
 **Effort:** Medium
-**Status:** [ ] Not started — design + tasks not yet written
+**Status:** [x] Not started — design + tasks not yet written
 **Depends on:** Session 1 complete (home page must be stable)
 
 **What it adds:**
@@ -184,7 +184,7 @@ Run task review when done.
 
 **Spec:** `.kiro/specs/planner-voting-ux/requirements.md` — Requirements 5 and 6
 **Effort:** Large
-**Status:** [ ] Not started — design + tasks not yet written
+**Status:** [x] Not started — design + tasks not yet written
 **Depends on:** Session 3 complete (todayStore pattern established)
 
 **What it fixes:**

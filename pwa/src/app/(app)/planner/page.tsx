@@ -1,51 +1,28 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
   Plus,
   GripVertical,
-  CheckCircle2,
-  Search,
   Users,
   Check,
   Calendar,
   ShoppingCart,
   Ban,
-  Lock,
   Sparkles,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useWeekStore } from '@/store/weekStore';
+import type { UILocalScheduleDay } from '@/store/weekStore';
 import Image from 'next/image';
-import {
-  getSchedule,
-  lockSchedule,
-  moveRecipe,
-  getSmartDefaults,
-  assignRecipeToDay,
-  openVoting,
-  removeRecipeFromDay,
-  isScheduleRecipe,
-  ScheduleDay,
-} from '@/lib/api/planner';
-import { ScheduleRecipeDto } from '@/lib/api/generated/models';
+import { lockSchedule, assignRecipeToDay, openVoting } from '@/lib/api/planner';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Spinner } from '@/components/ui/spinner';
 import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
-
-type UILocalScheduleDay = Omit<ScheduleDay, 'recipe'> & {
-  recipe?: ScheduleRecipeDto | null;
-  _uiId: string;
-  _isPending?: boolean;
-  _voteCount?: number | null;
-  _unanimousVote?: boolean | null;
-  _userCleared?: boolean;
-};
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { QuickFindModal } from '@/components/planner/QuickFindModal';
@@ -59,27 +36,17 @@ import { useTodayStore } from '@/store/todayStore';
 
 export default function PlannerPage() {
   const router = useRouter();
-  const {
-    currentWeekOffset,
-    activeTab,
-    setWeekOffset,
-    setActiveTab,
-    isVotingOpen,
-    isLocked,
-    setVotingOpen,
-    setIsLocked,
-    setGroceryState,
-  } = usePlannerStore();
-  const [schedule, setSchedule] = useState<UILocalScheduleDay[]>([]);
+  const { currentWeekOffset, activeTab, setWeekOffset, setActiveTab, setGroceryState } =
+    usePlannerStore();
+  const schedule = useWeekStore((s) => s.schedule);
+  const isLoading = useWeekStore((s) => s.isLoading);
+  const status = useWeekStore((s) => s.status);
+  const isVotingOpen = status === 1;
+  const isLocked = status === 2;
   const memoizedIngredients = useMemo(
     () => [...new Set(schedule.flatMap((day) => day.recipe?.ingredients ?? []))],
     [schedule]
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const isLockedRef = useRef(isLocked);
-  useEffect(() => {
-    isLockedRef.current = isLocked;
-  }, [isLocked]);
   const [showPivot, setShowPivot] = useState<{ dayIndex: number } | null>(null);
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [successDay, setSuccessDay] = useState<number | null>(null);
@@ -102,214 +69,28 @@ export default function PlannerPage() {
     }
   }, [isLoading]);
 
-  if (currentWeekOffset !== prevOffset) {
-    setPrevOffset(currentWeekOffset);
-    setIsLoading(true);
-  }
-
   useEffect(() => {
     setHasPendingCards(isVotingOpen);
   }, [isVotingOpen, setHasPendingCards]);
 
   useEffect(() => {
-    let ignore = false;
-    let pollInterval: NodeJS.Timeout | null = null;
+    useWeekStore.getState().init(currentWeekOffset);
+  }, [currentWeekOffset, successParam]);
 
-    const loadData = async () => {
-      try {
-        const [scheduleData, defaultsData] = await Promise.all([
-          getSchedule(currentWeekOffset),
-          currentWeekOffset === 0 ? getSmartDefaults(currentWeekOffset) : Promise.resolve(null),
-        ]);
+  // Update prevOffset during render for animation direction (not in effect to avoid lint warning)
+  if (currentWeekOffset !== prevOffset) {
+    setPrevOffset(currentWeekOffset);
+  }
 
-        if (!ignore) {
-          if (scheduleData && scheduleData.days) {
-            const defaultsByDayIndex = new Map(
-              defaultsData?.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
-            );
-            const mergedDays = scheduleData.days.map((day: any, index: number) => {
-              const generateUiId = () =>
-                typeof crypto !== 'undefined' && crypto.randomUUID
-                  ? crypto.randomUUID()
-                  : Math.random().toString(36).substring(7);
-
-              // Narrow the oneOf union — only treat as a recipe if it has an id
-              if (isScheduleRecipe(day.recipe)) {
-                const unwrapped = 'data' in day.recipe ? day.recipe.data : day.recipe;
-                return { ...day, recipe: unwrapped, _uiId: generateUiId() };
-              }
-
-              const smartDefault = defaultsByDayIndex.get(index);
-              if (smartDefault) {
-                return {
-                  ...day,
-                  recipe: {
-                    id: smartDefault.recipeId ?? '',
-                    name: smartDefault.name ?? '',
-                    image: smartDefault.heroImageUrl ?? '',
-                    voteCount: smartDefault.voteCount ?? 0,
-                  },
-                  _uiId: generateUiId(),
-                  _isPending: true,
-                  _voteCount: smartDefault.voteCount,
-                  _unanimousVote: smartDefault.unanimousVote,
-                };
-              }
-
-              return { ...day, recipe: undefined, _uiId: generateUiId() };
-            });
-
-            setSchedule(mergedDays);
-
-            // Use explicit status logic
-            const status = (scheduleData as any).status ?? 0;
-            setVotingOpen(status === 1);
-            setIsLocked(status === 2 || scheduleData.locked === true);
-
-            // Restore persisted grocery state from API if present
-            const serverGroceryState =
-              (scheduleData as any).groceryState ??
-              (scheduleData as any).additionalData?.groceryState;
-            if (serverGroceryState && typeof serverGroceryState === 'object') {
-              setGroceryState(serverGroceryState);
-            }
-          } else {
-            setIsLoading(false);
-          }
-          setIsLoading(false);
-        }
-      } catch (error: any) {
-        if (!ignore) {
-          console.error('[Planner] loadData: Failed to fetch schedule:', error?.message || error);
-          // Provide mock data so the UI can be experienced even if API is down
-          const mockDays = Array.from({ length: 7 }, (_, i) => {
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const date = new Date();
-            date.setDate(
-              date.getDate() -
-                (date.getDay() === 0 ? 6 : date.getDay() - 1) +
-                i +
-                currentWeekOffset * 7
-            );
-
-            return {
-              day: days[i],
-              date: date.toISOString().split('T')[0],
-              recipe: undefined,
-              _uiId:
-                typeof crypto !== 'undefined' && crypto.randomUUID
-                  ? crypto.randomUUID()
-                  : Math.random().toString(36).substring(7),
-            };
-          });
-          setSchedule(mockDays);
-          setIsLocked(false);
-          setIsLoading(false);
-        }
-      }
-    };
-
-    const updateVoteCounts = async () => {
-      try {
-        const [scheduleData, defaultsData] = await Promise.all([
-          getSchedule(currentWeekOffset),
-          currentWeekOffset === 0 ? getSmartDefaults(currentWeekOffset) : Promise.resolve(null),
-        ]);
-
-        if (!ignore && scheduleData && scheduleData.days) {
-          const defaultsByDayIndex = new Map(
-            defaultsData?.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
-          );
-
-          setSchedule((prevSchedule) => {
-            const updated = prevSchedule.map((day, idx) => {
-              if (day._isPending) {
-                const sd = defaultsByDayIndex.get(idx);
-                if (!sd || !day.recipe) return day;
-                return {
-                  ...day,
-                  recipe: { ...day.recipe, voteCount: sd.voteCount },
-                  _voteCount: sd.voteCount,
-                  _unanimousVote: sd.unanimousVote,
-                };
-              }
-              // Persisted slot: update voteCount from CalendarEvent
-              const newDay = scheduleData.days?.[idx];
-              const newDayRecipe = newDay?.recipe;
-              if (!day.recipe || !isScheduleRecipe(newDayRecipe)) return day;
-              const voteCount =
-                ('data' in newDayRecipe
-                  ? newDayRecipe.data?.voteCount
-                  : (newDayRecipe as any).voteCount) ?? 0;
-              return { ...day, recipe: { ...day.recipe, voteCount } };
-            });
-
-            // Add newly-reached consensus recipes to open slots
-            if (defaultsData?.preSelectedRecipes) {
-              const occupiedIndices = new Set(
-                updated.map((day, idx) => (day.recipe ? idx : null)).filter((idx) => idx !== null)
-              );
-
-              for (const recipe of defaultsData.preSelectedRecipes) {
-                const alreadyPlaced = updated.some((day) => day.recipe?.id === recipe.recipeId);
-                if (!alreadyPlaced) {
-                  // Find first open slot — skip slots the user explicitly cleared
-                  const openSlot = updated.findIndex(
-                    (day, idx) => !day.recipe && !occupiedIndices.has(idx) && !day._userCleared
-                  );
-                  if (openSlot !== -1) {
-                    const generateUiId = () =>
-                      typeof crypto !== 'undefined' && crypto.randomUUID
-                        ? crypto.randomUUID()
-                        : Math.random().toString(36).substring(7);
-
-                    updated[openSlot] = {
-                      ...updated[openSlot],
-                      recipe: {
-                        id: recipe.recipeId,
-                        name: recipe.name || '',
-                        image: recipe.heroImageUrl || '',
-                        voteCount: recipe.voteCount,
-                      },
-                      _isPending: true,
-                      _voteCount: recipe.voteCount,
-                      _unanimousVote: recipe.unanimousVote,
-                      _uiId: generateUiId(),
-                    };
-                    occupiedIndices.add(openSlot);
-                  }
-                }
-              }
-            }
-
-            return updated;
-          });
-
-          // Update status from polling
-          const status = (scheduleData as any).status ?? 0;
-          setVotingOpen(status === 1);
-          setIsLocked(status === 2 || scheduleData.locked === true);
-        }
-      } catch (error: any) {
-        // Silently fail polling to avoid console spam
-      }
-    };
-
-    loadData();
-
-    // Poll every 30 seconds (or 2s in test) for vote count updates while voting is open
+  useEffect(() => {
     const pollIntervalTime = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test' ? 60000 : 30000;
-    pollInterval = setInterval(() => {
-      if (!isLockedRef.current) {
-        updateVoteCounts();
+    const pollInterval = setInterval(() => {
+      if (useWeekStore.getState().status !== 2) {
+        useWeekStore.getState().sync();
       }
     }, pollIntervalTime);
-
-    return () => {
-      ignore = true;
-      if (pollInterval) clearInterval(pollInterval);
-    };
-  }, [currentWeekOffset, successParam, setGroceryState, setIsLocked, setVotingOpen]); // isLocked intentionally excluded — use ref to avoid re-triggering loadData on lock
+    return () => clearInterval(pollInterval);
+  }, []);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -340,13 +121,7 @@ export default function PlannerPage() {
   const handleNextWeek = () => setWeekOffset(currentWeekOffset + 1);
 
   const handleCloseVoting = async () => {
-    try {
-      await lockSchedule(currentWeekOffset);
-    } catch {
-      // non-fatal — clear client state regardless
-    }
-    setVotingOpen(false);
-    setIsLocked(true);
+    await useWeekStore.getState().lockWeek();
   };
 
   const handleFinalize = async () => {
@@ -374,7 +149,6 @@ export default function PlannerPage() {
         // non-fatal — next week voting can be opened manually
       }
 
-      setIsLocked(true);
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
@@ -383,7 +157,6 @@ export default function PlannerPage() {
       }, 2000);
     } catch (error: any) {
       console.warn('Failed to finalize:', error?.message || error);
-      setIsLocked(true);
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
@@ -394,16 +167,13 @@ export default function PlannerPage() {
 
   const handleQuickFindSelect = async (recipe: any) => {
     if (showPivot === null) return;
-    const newSchedule = [...schedule];
-    newSchedule[showPivot.dayIndex].recipe = {
+    useWeekStore.getState().assignRecipe(showPivot.dayIndex, {
       id: recipe.id,
-      name: recipe.name,
-      image: recipe.image,
-    };
-    setSchedule(newSchedule);
+      name: recipe.name ?? null,
+      image: recipe.image ?? '',
+    });
 
-    // C5: If the assigned slot is today, propagate to todayStore so HomeCommandCenter
-    // reflects the change immediately without navigation or router.refresh().
+    // Propagate to todayStore if this is today's slot
     const assignedDate = schedule[showPivot.dayIndex]?.date;
     if (currentWeekOffset === 0 && assignedDate === getTodayString()) {
       useTodayStore.getState().assignRecipe({
@@ -411,16 +181,6 @@ export default function PlannerPage() {
         name: recipe.name ?? null,
         image: recipe.image ?? '',
       });
-    }
-
-    try {
-      await assignRecipeToDay(currentWeekOffset, showPivot.dayIndex, {
-        id: recipe.id,
-        name: recipe.name,
-        image: recipe.image,
-      });
-    } catch (error: any) {
-      console.warn('Failed to save recipe:', error?.message || error);
     }
 
     setShowQuickFind(false);
@@ -434,8 +194,7 @@ export default function PlannerPage() {
 
   const handleAskFamily = async () => {
     try {
-      await openVoting(currentWeekOffset);
-      setVotingOpen(true);
+      await useWeekStore.getState().openVoting();
       setShowPivot(null);
     } catch (error: any) {
       console.warn('Failed to open voting:', error?.message || error);
@@ -447,25 +206,10 @@ export default function PlannerPage() {
     const dayIndex = showPivot.dayIndex;
     const date = schedule[dayIndex].date;
     if (!date) return;
-
-    try {
-      await removeRecipeFromDay(date);
-
-      // Update local state
-      const newSchedule = [...schedule];
-      newSchedule[dayIndex].recipe = undefined;
-      newSchedule[dayIndex]._isPending = false;
-      newSchedule[dayIndex]._userCleared = true;
-      setSchedule(newSchedule);
-
-      // Trigger success animation (Success Ring)
-      setSuccessDay(dayIndex);
-      setTimeout(() => setSuccessDay(null), 2000);
-
-      setShowPivot(null);
-    } catch (error: any) {
-      console.warn('Failed to remove recipe:', error?.message || error);
-    }
+    useWeekStore.getState().removeRecipe(dayIndex, date);
+    setSuccessDay(dayIndex);
+    setTimeout(() => setSuccessDay(null), 2000);
+    setShowPivot(null);
   };
 
   const handleReorder = (newSchedule: UILocalScheduleDay[]) => {
@@ -487,25 +231,17 @@ export default function PlannerPage() {
       }
     }
 
-    // Ensure days and dates remain fixed at their indices
-    const updatedSchedule = newSchedule.map((item, index) => ({
-      ...item,
-      day: schedule[index].day,
-      date: schedule[index].date,
-    }));
-
-    setSchedule(updatedSchedule);
-
-    // Fire API call asynchronously to avoid blocking UI and causing jitter
     if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
-      moveRecipe(currentWeekOffset, fromIndex, toIndex).catch((error: any) => {
-        console.warn('Failed to sync move:', error?.message || error);
-      });
+      useWeekStore.getState().moveRecipe(fromIndex, toIndex);
     }
   };
 
   const plannedCount = schedule.filter((d) => d.recipe && d.recipe.id).length;
   const isFinalized = isLocked;
+  const weekIsPast = useMemo(() => {
+    if (schedule.length < 7) return false;
+    return (schedule[6].date ?? '') < getTodayString();
+  }, [schedule]);
 
   return (
     <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
@@ -646,7 +382,7 @@ export default function PlannerPage() {
               )}
             </div>
 
-            {!isVotingOpen && !isLocked && plannedCount > 0 && (
+            {status === 0 && !weekIsPast && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
