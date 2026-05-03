@@ -1,27 +1,46 @@
 # Flow: No Planned Meal + GOTO Configured → Home State
 
-> ⚠️ **PARTIALLY STALE — Review pending after `home-today-sync` bugfix spec is implemented.**
+> ✅ **Updated for `home-command-center-hardening`.**
 >
-> Known drift from current implementation:
-> - E2E coverage table references `home-recovery.spec.ts` (deleted in `952d879`) — correct files are `home-goto.spec.ts` and `home-recipe.spec.ts`.
-> - State decision table claims "Confirm GOTO" button is "always rendered" — incorrect; it only renders when `gotoReady === true`.
-> - No mention of `pendingConfirmRef` race condition (Bug 1 in `home-today-sync` spec).
-> - "Current Model" section describes the Phase 13 stale-cache design — this is historical, not the live implementation.
+> This document reflects the corrected implementation after the hardening spec:
+> - `todayStore` is the single source of truth for today's recipe and status.
+> - The primary action button is labelled **"Make This Tonight"** (prop name `onConfirmGoto` is unchanged).
+> - Empty state shows an ochre CTA pill in the footer: **"Add your family's GOTO recipe"**.
+> - `router.refresh()` is no longer called from any action handler.
+> - Background sync uses a 10-second optimistic write protection window.
 >
-> See: [`.kiro/specs/home-today-sync/bugfix.md`](../../.kiro/specs/home-today-sync/bugfix.md)
+> Historical context (Phase 13 stale-cache model) is preserved in the [Historical Model](#historical-model--phase-13-stale-cache) section below.
 
-This document traces two models:
-
-1. **Historical model (Phase 13 as built)** — recipe readiness embedded in the `family_goto` settings value; goes stale after workflow completes. Replaced by ADR 033.
-2. **Current model (ADR 033)** — recipe readiness derived from `GET /api/recipes/{id}/status`; always current, polls until ready.
-
-Related specs: [phase-12-no-menu.md](../../.kiro/specs/phase-12-no-menu.md), [phase-13-goto-synthesis.md](../../.kiro/specs/phase-13-goto-synthesis.md), [phase-14-ux-hardening.md](../../.kiro/specs/phase-14-ux-hardening.md)  
-ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)  
-Build prompt: [recipe-readiness-domain-fix.md](../../specs/05_BUILD_PROMPTS/recipe-readiness-domain-fix.md)
+Related specs: [phase-12-no-menu.md](../../.kiro/specs/phase-12-no-menu.md), [phase-13-goto-synthesis.md](../../.kiro/specs/phase-13-goto-synthesis.md), [phase-14-ux-hardening.md](../../.kiro/specs/phase-14-ux-hardening.md), [home-command-center-hardening](../../.kiro/specs/home-command-center-hardening/)  
+ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)
 
 ---
 
-## Current Model — Stale Cache Race
+## Current Model — todayStore as State Owner
+
+`todayStore` (`pwa/src/store/todayStore.ts`) is the Zustand store that owns all today-scoped recipe and status state. `HomeCommandCenter` reads from it exclusively; it holds no local state for `currentRecipe`, `isCooked`, `isSkipped`, `sessionDone`, or `isLoading`.
+
+### State shape
+
+```ts
+interface TodayState {
+  currentRecipe: { id: string; name: string; image: string } | null;
+  status: 0 | 2 | 3;   // 0 = none, 2 = cooked, 3 = ordered-in / skipped
+  isLoading: boolean;
+  lastSyncedAt: number | null;
+  optimisticWriteAt: number | null;
+}
+```
+
+Derived flags in `HomeCommandCenter`:
+
+```ts
+const isCooked    = status === 2;
+const isSkipped   = status === 3;
+const sessionDone = status === 2 || status === 3;
+```
+
+### Mount sequence
 
 ```mermaid
 sequenceDiagram
@@ -30,139 +49,45 @@ sequenceDiagram
     actor User
     participant SSR as SSR (home/page.tsx)
     participant HCC as HomeCommandCenter
-    participant Store as familyStore
+    participant Store as todayStore
     participant PivotCard as TonightPivotCard
     participant Backend as Backend API
-    participant Worker as Background Workflow
 
-    %% ─── PAGE LOAD ───────────────────────────────────────────────────────────
     rect rgb(220, 235, 255)
-        note over SSR,Backend: SSR — Node.js server, not interceptable by page.route()
+        note over SSR,Backend: SSR — Node.js server
         SSR->>Backend: GET /api/schedule?weekOffset=0
-        Backend-->>SSR: { days: [] }
-        SSR->>HCC: render(todaysRecipe = null)
+        Backend-->>SSR: ScheduleDays
+        SSR->>HCC: render(todaysRecipe, todayStatus)
     end
 
-    %% ─── CLIENT MOUNT ────────────────────────────────────────────────────────
     rect rgb(220, 255, 220)
-        HCC->>Store: loadSetting('family_goto')
-        Store->>Backend: GET /api/settings/family_goto
-        Backend-->>Store: { description: 'Spaghetti', recipeId: uuid, status: 'pending' }
-        note over Store: status cached in familyStore — snapshot in time
-        Store->>HCC: gotoStatus = 'pending' → Confirm GOTO disabled ✗
-        HCC->>Backend: GET /api/schedule?weekOffset=0
-        Backend-->>HCC: { days: [] }
-        HCC->>HCC: setCurrentRecipe(null), setIsLoading(false)
-        HCC->>PivotCard: render(gotoStatus='pending')
-        PivotCard->>User: "Confirm GOTO" disabled — spinner shown
+        note over HCC: useEffect on mount
+        HCC->>Store: init(todaysRecipe, todayStatus)
+        note over Store: sets currentRecipe + status; clears optimisticWriteAt
+        HCC->>Backend: GET /api/settings/family_goto
+        Backend-->>HCC: { description, recipeId }
+        HCC->>Store: sync()  ← background, non-blocking
+        Store->>Backend: GET /api/schedule?weekOffset=0
+        Backend-->>Store: ScheduleDays
+        note over Store: reconciles — skips if optimisticWriteAt within 10 s
+        Store->>HCC: (Zustand subscription) currentRecipe, status updated
     end
 
-    %% ─── WORKFLOW COMPLETES (BACKGROUND) ─────────────────────────────────────
-    rect rgb(255, 245, 210)
-        note over Worker,Backend: RecipeReadyProcessor fires — workflow is done
-        Worker->>Backend: UPDATE recipes SET name=..., image_count=1 WHERE id=uuid
-        Worker->>Backend: UPDATE family_settings SET value.status='ready' WHERE key='family_goto'
-        note over HCC: ⚠️ HomeCommandCenter is NOT notified
-        note over HCC: familyStore still holds status='pending'
-        note over HCC: User still sees disabled "Confirm GOTO" — must hard refresh
-    end
-
-    %% ─── STALE STATE PERSISTS ────────────────────────────────────────────────
-    rect rgb(255, 220, 220)
-        PivotCard->>User: ⚠️ "Confirm GOTO" still disabled — recipe IS ready in DB
-        note over User: Hard refresh required to see correct state
-    end
+    HCC->>PivotCard: render — empty state (currentRecipe = null, status = 0)
+    PivotCard->>User: "What's for Supper?" header, ochre CTA in footer
 ```
 
-### Why the stale cache forms
+### Pivot card render condition
 
-| Step | What happens |
-|---|---|
-| Mount | `loadSetting` fetches and caches `status: 'pending'` in `familyStore` |
-| Workflow completes | `MarkGotoReadyProcessor` writes `status: 'ready'` to DB and `family_settings` |
-| HCC / Settings UI | Still reading from stale `familyStore` cache — no re-fetch triggered |
-| User experience | Spinner persists indefinitely; "Confirm GOTO" stays disabled |
+`TonightPivotCard` is shown when **all** of the following are true:
 
----
-
-## Fixed Model — Readiness from Recipe Domain (ADR 033)
-
-```mermaid
-sequenceDiagram
-    autonumber
-
-    actor User
-    participant SSR as SSR (home/page.tsx)
-    participant HCC as HomeCommandCenter
-    participant Store as familyStore
-    participant PivotCard as TonightPivotCard
-    participant MenuCard as TonightMenuCard
-    participant Backend as Backend API
-    participant Worker as Background Workflow
-
-    %% ─── PAGE LOAD ───────────────────────────────────────────────────────────
-    rect rgb(220, 235, 255)
-        note over SSR,Backend: SSR — Node.js server, not interceptable by page.route()
-        SSR->>Backend: GET /api/schedule?weekOffset=0
-        Backend-->>SSR: { days: [] }
-        SSR->>HCC: render(todaysRecipe = null)
-    end
-
-    %% ─── CLIENT MOUNT ────────────────────────────────────────────────────────
-    rect rgb(220, 255, 220)
-        HCC->>Store: loadSetting('family_goto')
-        Store->>Backend: GET /api/settings/family_goto
-        Backend-->>Store: { description: 'Spaghetti', recipeId: uuid }
-        note over Store: no status field — setting owns only description + recipeId
-        HCC->>Backend: GET /api/recipes/uuid/status
-        Backend-->>HCC: { status: 'pending', imageCount: 0 }
-        HCC->>HCC: gotoRecipeStatus = 'pending' → start 5s poll
-        HCC->>Backend: GET /api/schedule?weekOffset=0
-        Backend-->>HCC: { days: [] }
-        HCC->>HCC: setCurrentRecipe(null), setIsLoading(false)
-        HCC->>PivotCard: render(gotoStatus='pending')
-        PivotCard->>User: "Confirm GOTO" disabled — spinner shown
-    end
-
-    %% ─── POLLING LOOP ────────────────────────────────────────────────────────
-    rect rgb(240, 240, 255)
-        note over HCC: poll every 5s while gotoRecipeStatus === 'pending'
-        HCC->>Backend: GET /api/recipes/uuid/status
-        Backend-->>HCC: { status: 'pending' }
-        note over HCC: still pending — continue polling
-    end
-
-    %% ─── WORKFLOW COMPLETES (BACKGROUND) ─────────────────────────────────────
-    rect rgb(220, 255, 220)
-        note over Worker,Backend: RecipeReadyProcessor fires — workflow is done
-        Worker->>Backend: UPDATE recipes SET name=..., image_count=1 WHERE id=uuid
-        note over Worker: family_settings NOT touched — no status field to write
-    end
-
-    %% ─── POLL DETECTS READY ──────────────────────────────────────────────────
-    rect rgb(220, 255, 220)
-        HCC->>Backend: GET /api/recipes/uuid/status   [next poll tick]
-        Backend-->>HCC: { status: 'ready', name: 'Spaghetti', imageCount: 1 }
-        HCC->>HCC: gotoRecipeStatus = 'ready' → stop polling
-        HCC->>PivotCard: render(gotoStatus='ready')
-        PivotCard->>User: ✅ "Confirm GOTO" enabled — no refresh needed
-    end
-
-    %% ─── CONFIRM GOTO ────────────────────────────────────────────────────────
-    rect rgb(255, 245, 210)
-        User->>PivotCard: taps "Confirm GOTO"
-        PivotCard->>HCC: onConfirmGoto()
-        HCC->>HCC: setCurrentRecipe({ id: gotoRecipeId, name: gotoDescription }) [optimistic]
-        HCC->>MenuCard: render TonightMenuCard immediately ✅
-        HCC->>Backend: POST /api/schedule/assign
-        Backend-->>HCC: 200 OK
-        HCC->>SSR: router.refresh()
-    end
+```
+!currentRecipe && !isSkipped && !sessionDone && !isCooked
 ```
 
----
+Do not revert this condition. The previous `!currentRecipe || isSkipped || sessionDone` form was incorrect.
 
-## State Decision Table
+### View priority table
 
 `HomeCommandCenter` renders one of three views, in priority order:
 
@@ -170,25 +95,97 @@ sequenceDiagram
 |----------|-----------|------------|
 | 1 | `isLoading === true` | `SolarLoader` |
 | 2 | `isCooked === true` | `CookedSuccessCard` |
-| 3 | `!currentRecipe \|\| isSkipped \|\| sessionDone` AND `!isCooked` | `TonightPivotCard` |
+| 3 | `!currentRecipe && !isSkipped && !sessionDone && !isCooked` | `TonightPivotCard` |
 | 4 | `currentRecipe && currentRecipe.id && currentRecipe.name && !isSkipped && !isCooked && !sessionDone` | `TonightMenuCard` |
 
 Note: condition 4 requires both `id` and `name` to be non-null. A recipe with `name = null` (broken import state) falls through to `TonightPivotCard`. This is the Phase 14 D3 guard.
 
-`TonightPivotCard` — "Confirm GOTO" button state (fixed model):
+---
+
+## Empty State — No GOTO Configured
+
+When `gotoRecipeId` is null/falsy:
+
+- Header: **"What's for Supper?"**
+- Image area: centered `<Utensils>` icon only — no `<a>` tag, no gradient overlay
+- Footer: full-width ochre pill button (`h-12 rounded-[1.5rem]`, white text) linking to `/profile/settings` with label **"Add your family's GOTO recipe"**
+
+---
+
+## GOTO-Ready State — "Make This Tonight"
+
+When `gotoRecipeStatus === 'ready'`:
+
+- Header: **"Tonight's Menu"**
+- Prep-time badge: shown
+- Primary button: **"Make This Tonight"** (ochre, dominant)
+- Secondary buttons: **"Quick Find"** (ghost, `border border-indigo/30 bg-transparent`) and **"Order In"** (ghost, `border border-charcoal/20 bg-transparent`)
+
+The prop name `onConfirmGoto` is preserved across all callers — only the UI label changed.
+
+### "Make This Tonight" tap sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+
+    actor User
+    participant PivotCard as TonightPivotCard
+    participant HCC as HomeCommandCenter
+    participant Store as todayStore
+    participant MenuCard as TonightMenuCard
+    participant Backend as Backend API
+
+    User->>PivotCard: taps "Make This Tonight"
+    PivotCard->>HCC: onConfirmGoto()
+    HCC->>Store: assignRecipe({ id, name, image })
+    note over Store: sets currentRecipe + optimisticWriteAt = Date.now() synchronously
+    Store->>HCC: (subscription) currentRecipe populated
+    HCC->>MenuCard: TonightMenuCard renders immediately ✅
+    Store->>Backend: POST /api/schedule/assign  ← background, non-blocking
+    Backend-->>Store: 200 OK
+    note over Store: optimisticWriteAt remains set for 10-second protection window
+```
+
+No `router.refresh()` is called. The menu card appears immediately via the Zustand subscription.
+
+---
+
+## GOTO Pending State
+
+When `gotoRecipeStatus === 'pending'`:
+
+- "Make This Tonight" button is disabled; spinner shown
+- Polling continues every 5 s via `GET /api/recipes/{id}/status` until `status === 'ready'`
 
 | `gotoRecipeStatus` | `gotoRecipeId` | Button state |
 |---|---|---|
-| `'ready'` | non-null | ✅ Enabled |
+| `'ready'` | non-null | ✅ Enabled — "Make This Tonight" |
 | `'pending'` | non-null | ❌ Disabled — spinner shown |
-| `null` (fetch not complete yet) | non-null | ❌ Disabled — loading |
-| any | null | ❌ Disabled — "Set your GOTO →" |
+| `null` (fetch not complete) | non-null | ❌ Disabled — loading |
+| any | null | Footer CTA only — "Add your family's GOTO recipe" |
+
+---
+
+## Background Sync — Optimistic Write Protection
+
+`todayStore.sync()` is called on mount (non-blocking) and can be called at any time to reconcile with the server schedule.
+
+Reconciliation rules:
+
+| `optimisticWriteAt` | Elapsed since write | Sync behaviour |
+|---|---|---|
+| `null` | — | Always update `currentRecipe` from server |
+| set | < 10 000 ms | Skip update — protect the optimistic write |
+| set | ≥ 10 000 ms | Update `currentRecipe` from server |
+
+This prevents a background sync from clobbering an optimistic recipe assignment that hasn't yet been confirmed by the server.
 
 ---
 
 ## How GOTO is Set — Readiness by Input Path
 
-All capture-originated paths share the same `pending → ready` lifecycle via `RecipeReadyProcessor`. The input method only affects the first processor in the workflow chain.
+All capture-originated paths share the same `pending → ready` lifecycle via `RecipeReadyProcessor`.
 
 | How GOTO was set | Workflow first step | `recipeId` in setting when? | Recipe status journey |
 |---|---|---|---|
@@ -200,21 +197,36 @@ The `family_goto` setting stores `{ description, recipeId }` in all cases. Readi
 
 ---
 
-## E2E Test Coverage (Current Model — ADR 033)
+## E2E Test Coverage
 
 | Scenario | Test file | Status |
 |----------|-----------|--------|
-| No recipe → pivot card shown | `home-goto.spec.ts` | ✅ |
-| GOTO ready → Confirm GOTO enabled | `home-race.spec.ts` | ✅ |
-| Confirm GOTO → menu card immediately (optimistic) | `home-race.spec.ts` | ✅ |
-| Quick Find → menu card immediately (optimistic) | `home-race.spec.ts` | ✅ |
-| GOTO pending → Confirm GOTO disabled | `home-goto.spec.ts` | ✅ |
-| Pending GOTO polls until ready | `home-race.spec.ts` | ✅ |
-| Confirm GOTO survives post-refresh syncRecipe() race | `home-goto.spec.ts` | ✅ |
+| No recipe → pivot card shown, "What's for Supper?" header | `home-goto.spec.ts` | ✅ |
+| Empty state → ochre CTA in footer (not buried in image area) | `home-goto.spec.ts` | ✅ |
+| GOTO ready → "Make This Tonight" enabled | `home-goto.spec.ts` | ✅ |
+| "Make This Tonight" tap → menu card immediately (no network wait) | `home-goto.spec.ts` | ✅ |
+| Page reload after "Make This Tonight" → menu card still shown | `home-goto.spec.ts` | ✅ |
+| Quick Find → menu card immediately (optimistic) | `home-goto.spec.ts` | ✅ |
+| GOTO pending → "Make This Tonight" disabled, spinner shown | `home-goto.spec.ts` | ✅ |
+| "Order In" with no recipe → backend write, pivot hidden | `home-recipe.spec.ts` | ✅ |
+| "Order In" with recipe → `SkipRecoveryDialog` opens first | `home-recipe.spec.ts` | ✅ |
+| Page reload after "Order In" → pivot card not shown | `home-recipe.spec.ts` | ✅ |
 | SSR returns name=null → pivot card shown (not menu card) | — | ❌ Gap — needs unit test with null-name SSR prop |
 
-> **Note:** `home-recovery.spec.ts` was deleted in `952d879` and split into `home-goto.spec.ts` and `home-recipe.spec.ts`.
+> **Note:** `home-recovery.spec.ts` was deleted in `952d879` and split into `home-goto.spec.ts` and `home-recipe.spec.ts`. `home-race.spec.ts` covers polling and optimistic scenarios.
 
 ### SSR constraint (unchanged)
 
-SSR fetches go to `API_INTERNAL_URL` from the Node.js process — `page.route()` cannot intercept them. The "no recipe tonight" state is reached via the client-side reconciliation fetch returning `days: []`, not by mocking SSR. See [ADR 032](../../specs/decisions/032-ssr-bypass-e2e-testing-pattern.md) and [`.kiro/steering.md` §6](../../.kiro/steering.md).
+SSR fetches go to `API_INTERNAL_URL` from the Node.js process — `page.route()` cannot intercept them. The "no recipe tonight" state is reached via the client-side `sync()` call returning `days: []`, not by mocking SSR. See [ADR 032](../../specs/decisions/032-ssr-bypass-e2e-testing-pattern.md) and [`.kiro/steering.md` §6](../../.kiro/steering.md).
+
+---
+
+## Historical Model — Phase 13 Stale Cache
+
+> This section is preserved for archaeological context only. It describes the broken pre-fix behaviour.
+
+The Phase 13 model embedded recipe readiness in the `family_goto` settings value (`status: 'pending' | 'ready'`). This caused a stale-cache race: `HomeCommandCenter` cached the status at mount time and was never notified when `MarkGotoReadyProcessor` wrote `status: 'ready'` to the DB. The user had to hard-refresh to see the correct state.
+
+This was superseded by ADR 033 (readiness from recipe domain) and fully resolved by the `home-command-center-hardening` spec (todayStore + optimistic writes).
+
+The old "Current Model" sequence diagram and stale-cache table have been removed. See git history for the pre-fix version of this file.

@@ -176,20 +176,20 @@ Each task is independently shippable and has a clear seam. Tasks within a group 
 
 ### Group D — Documentation
 
-- [ ] D1. Update `docs/flows/user-flows/no-menu-goto-home-state.md`
+- [x] D1. Update `docs/flows/user-flows/no-menu-goto-home-state.md`
   - Remove or archive stale sections: Phase 13 "Current Model", incorrect E2E table references, incorrect "Confirm GOTO always rendered" claim
   - Update to reflect the corrected implementation: `todayStore` as the state owner, "Make This Tonight" as the button label, ochre CTA in footer for empty state
   - Fix any E2E table entries that reference the old broken behaviour
   - _Requirements: D2.1_
   - **Done when:** doc accurately describes the post-fix flow; no references to the old broken behaviour remain
 
-- [ ] D2. Update `docs/flows/user-flows/recipe-selection-to-home.md`
+- [x] D2. Update `docs/flows/user-flows/recipe-selection-to-home.md`
   - Remove or archive stale sections: "Race path" as a current risk, `router.refresh()` as the re-hydration mechanism
   - Update to reflect the corrected implementation: optimistic writes via `todayStore`, background sync with 10-second protection window
   - _Requirements: D2.2_
   - **Done when:** doc accurately describes the post-fix flow; no references to `router.refresh()` as the primary sync mechanism remain
 
-- [ ] D3. Final review — `task review`
+- [x] D3. Final review — `task review`
   - Run `task review` — formatting, linting, typecheck, full suite clean
   - Run `task agent:drift` — zero drift confirmed across all changes
   - Run `task agent:test:impact` — all tests pass
