@@ -24,8 +24,8 @@ repos:
         pass_filenames: false
 
       - id: pwa-review
-        name: PWA Review (Lint, Typecheck & Test)
+        name: PWA Review (Lint & Typecheck)
         language: system
-        entry: bash -c "cd pwa && npm run lint && npm run typecheck && npm run test"
+        entry: bash -c "cd pwa && npm run lint && npm run typecheck"
         files: ^pwa/
         pass_filenames: false

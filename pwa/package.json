@@ -28,7 +28,9 @@
     "agent:slice": "python3 ../scripts/agent/slice.py",
     "agent:drift": "python3 ../scripts/agent/drift.py",
     "agent:audit": "python3 ../scripts/agent/test_ops.py --audit",
-    "agent:test:impact": "python3 ../scripts/agent/test_ops.py --impact"
+    "agent:test:impact": "python3 ../scripts/agent/test_ops.py --impact",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:unit:watch": "vitest"
   },
   "dependencies": {
     "@microsoft/kiota-abstractions": "^1.0.0-preview.100",
@@ -67,6 +69,9 @@
     "prettier": "^3.4.2",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.2.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^3.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^26.0.0"
   }
 }

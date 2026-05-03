@@ -14,6 +14,7 @@
 ## Phase 3: Developer Experience (Completed)
 - [x] Introduce `task gate` for high-speed local validation
 - [x] Implement `dev:kill` and `test:kill` automation in `gate` and `review`
+- [x] Implement Task-Level Parallelization (run lint/typecheck/test in parallel)
 - [x] Update `testing` skill and `execution-harness.md` documentation
 
 ## Phase 4: Digital Twin Testing Utilities (Pending)

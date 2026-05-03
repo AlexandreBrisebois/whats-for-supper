@@ -105,7 +105,7 @@ Each task is independently shippable and has a clear seam. Tasks within a group 
 
 ### Group C — todayStore
 
-- [ ] C1. Create `pwa/src/store/todayStore.ts` with full state shape and all actions
+- [x] C1. Create `pwa/src/store/todayStore.ts` with full state shape and all actions
   - Create the file with the `TodayState` interface: `currentRecipe`, `status`, `isLoading`, `lastSyncedAt`, `optimisticWriteAt`
   - Implement all five actions: `init`, `assignRecipe`, `markCooked`, `markOrderedIn`, `sync`
   - `init(recipe, status)` — sets `currentRecipe`, `status`, clears `optimisticWriteAt`; idempotent
@@ -127,7 +127,7 @@ Each task is independently shippable and has a clear seam. Tasks within a group 
   - Minimum 100 iterations per property
   - _Requirements: C3, C4, C5, C6_
 
-- [ ] C3. Refactor `HomeCommandCenter` to consume `todayStore`
+- [x] C3. Refactor `HomeCommandCenter` to consume `todayStore`
   - Remove `useState` for: `currentRecipe`, `isCooked`, `isSkipped`, `sessionDone`, `isLoading`
   - Read `currentRecipe`, `status`, `isLoading` from `useTodayStore()`
   - Derive `isCooked = status === 2`, `isSkipped = status === 3`, `sessionDone = status === 2 || status === 3`
@@ -147,7 +147,7 @@ Each task is independently shippable and has a clear seam. Tasks within a group 
   - Minimum 100 iterations per property
   - _Requirements: B5, C8_
 
-- [ ] C5. Integrate planner page: call `todayStore.assignRecipe()` for today's slot
+- [x] C5. Integrate planner page: call `todayStore.assignRecipe()` for today's slot
   - In `pwa/src/app/(app)/planner/page.tsx`, inside `handleQuickFindSelect`, after the optimistic local state update, check if the assigned slot is today's date
   - If it is today, call `useTodayStore.getState().assignRecipe({ id, name, image })` to propagate the assignment to `HomeCommandCenter` without navigation
   - _Requirements: C8.1, C8.2_
@@ -158,7 +158,7 @@ Each task is independently shippable and has a clear seam. Tasks within a group 
   - No new file needed — re-run confirms no regression from the `HomeCommandCenter` refactor
   - _Requirements: A1, A2, A3_
 
-- [ ] C7. Typecheck and full E2E regression for Group C
+- [x] C7. Typecheck and full E2E regression for Group C
   - Run `task review` — zero TypeScript errors, zero lint errors
   - Update `pwa/e2e/home-goto.spec.ts`: "Make This Tonight" tap shows `TonightMenuCard` immediately (no network wait); page reload after "Make This Tonight" still shows `TonightMenuCard`
   - Update `pwa/e2e/home-recipe.spec.ts`: planner assignment for today reflects on home page without navigation; page reload after "Order In" does not show pivot card
@@ -167,7 +167,7 @@ Each task is independently shippable and has a clear seam. Tasks within a group 
   - _Requirements: C1–C8, B2–B6_
   - **Done when:** `task review`, `task agent:test:impact`, and `task agent:drift` all pass clean
 
-- [ ] C8. Checkpoint — Group C complete
+- [x] C8. Checkpoint — Group C complete
   - Ensure all tests pass, ask the user if questions arise.
   - `task agent:drift` — zero drift
   - `task review` — clean

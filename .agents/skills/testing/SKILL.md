@@ -42,3 +42,4 @@ Execute these commands from the project root using `task`.
 5.  **Regression Discipline**: Every bug fix must include a regression test that fails without the fix and passes with it.
 6.  **Ghost Protection**: The `gate` and `review` tasks automatically call `task dev:kill` and `task test:kill`. This clears zombie Playwright and dev server instances to ensure a clean, non-flaky execution environment.
 7.  **Impact-Aware Verification**: Prefer `task gate` during the implementation phase to keep the dev loop under 30 seconds. Use `task review` only before the final handover.
+8.  **Asynchronous Monitoring**: If `task gate` or `task review` exceeds the synchronous CLI timeout (120s), do not restart. Instead, use `command_status` to monitor the background execution until completion.

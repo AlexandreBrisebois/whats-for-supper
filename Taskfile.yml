@@ -134,6 +134,7 @@ tasks:
     desc: "🧪 Run all tests (API + PWA)"
     cmds:
       - task: test:api
+      - task: test:unit
       - task: test:pwa
       - echo ""
       - echo "✓ All tests passed!"
@@ -167,6 +168,12 @@ tasks:
     dir: pwa
     cmds:
       - npm run test:e2e:ci
+
+  test:unit:
+    desc: "🧪 Run PWA unit tests (Vitest)"
+    dir: pwa
+    cmds:
+      - npm run test:unit
 
   test:pwa:e2e:
     desc: "Run E2E suites in parallel using Playwright workers"
@@ -970,12 +977,18 @@ tasks:
     cmds:
       - task: dev:kill
       - task: test:kill
-      - task: lint
-      - task: typecheck
-      - task: agent:drift:schemas
-      - task: agent:test:impact
+      - task: gate:validate
       - echo ""
       - echo "✅ Gate passed! You're good to keep building."
+
+  gate:validate:
+    internal: true
+    deps:
+      - lint
+      - typecheck
+      - test:unit
+      - agent:drift:schemas
+      - agent:test:impact
 
   review:
     desc: "Pre-commit review: format + lint + test"
@@ -983,11 +996,17 @@ tasks:
       - task: dev:kill
       - task: test:kill
       - task: format
-      - task: lint
-      - task: typecheck
-      - task: test
+      - task: review:validate
       - echo ""
       - echo "✓ Ready to commit!"
+
+  review:validate:
+    internal: true
+    deps:
+      - lint
+      - typecheck
+      - test:unit
+      - test
 
   ship:
     desc: "Ship checklist: review + clean build + test"

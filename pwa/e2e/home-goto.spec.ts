@@ -402,3 +402,193 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
     await expect(page.getByText(/mock recipe/i)).toBeVisible();
   });
 });
+
+// ── Group C: todayStore integration ──────────────────────────────────────────
+
+test.describe('Home Command Center — todayStore (Group C)', () => {
+  test.beforeEach(async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await setupCommonRoutes(page);
+
+    // Hydrate store
+    await page.goto('/onboarding');
+    await page.evaluate((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({
+          state: {
+            selectedFamilyMemberId: id,
+            familyMembers: [{ id, name: 'Alex' }],
+            _hasHydrated: true,
+            hasLoaded: true,
+          },
+          version: 0,
+        })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+  });
+
+  // C7: "Make This Tonight" tap shows TonightMenuCard immediately (no network wait)
+  test('"Make This Tonight" shows TonightMenuCard immediately without waiting for network', async ({
+    page,
+  }) => {
+    // Mock GOTO setting
+    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            key: 'family_goto',
+            value: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            },
+          },
+        }),
+      });
+    });
+
+    // Mock GOTO status as ready
+    await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
+      });
+    });
+
+    // Mock assign to be slow (500ms) — menu card must appear before it resolves
+    // Use a raw Promise delay instead of page.waitForTimeout() to avoid "Test ended"
+    // errors when the route callback outlives the test's assertion phase.
+    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await page.goto('/home');
+
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeEnabled({ timeout: 10000 });
+    await confirmBtn.click();
+
+    // TonightMenuCard must appear immediately (optimistic) — well before the 500ms assign resolves
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 300 });
+    await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+
+    // Clean up any in-flight routes to avoid "Test ended" errors
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+  });
+
+  // C7: Page reload after "Make This Tonight" still shows TonightMenuCard
+  test('Page reload after "Make This Tonight" still shows TonightMenuCard', async ({ page }) => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Mock GOTO setting
+    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            key: 'family_goto',
+            value: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            },
+          },
+        }),
+      });
+    });
+
+    // Mock GOTO status as ready
+    await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
+      });
+    });
+
+    // Track whether assign has been called so we can return the recipe on reload
+    let assignDone = false;
+    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
+      assignDone = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    // After assign, schedule returns the recipe for today
+    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
+      if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
+        if (!assignDone) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+          });
+        } else {
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            const day = d.getUTCDay();
+            const offset = day === 0 ? -6 : 1 - day;
+            d.setUTCDate(d.getUTCDate() + offset + i);
+            const dateStr = d.toISOString().split('T')[0];
+            return {
+              date: dateStr,
+              status: 0,
+              recipe:
+                dateStr === today
+                  ? {
+                      data: builders.scheduleRecipe({
+                        id: MOCK_IDS.RECIPE_LASAGNA,
+                        name: 'Family GOTO',
+                        image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+                      }),
+                    }
+                  : null,
+            };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+          });
+        }
+      } else {
+        await route.continue();
+      }
+    });
+
+    await page.goto('/home');
+
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeEnabled({ timeout: 10000 });
+    await confirmBtn.click();
+
+    // Menu card appears optimistically
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 3000 });
+
+    // Wait for assign to complete
+    await expect.poll(() => assignDone).toBe(true);
+
+    // Reload — server now returns the recipe
+    await page.reload();
+    await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5000 });
+
+    // TonightMenuCard must still be visible after reload
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+    await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+  });
+});

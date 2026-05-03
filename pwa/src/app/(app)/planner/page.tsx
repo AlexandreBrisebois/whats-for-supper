@@ -52,9 +52,10 @@ import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
-import { getImageUrl } from '@/lib/imageUtils';
+import { getImageUrl, getTodayString } from '@/lib/imageUtils';
 import { GroceryList } from '@/components/planner/GroceryList';
 import { useDiscoveryStore } from '@/store/discoveryStore';
+import { useTodayStore } from '@/store/todayStore';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -400,6 +401,17 @@ export default function PlannerPage() {
       image: recipe.image,
     };
     setSchedule(newSchedule);
+
+    // C5: If the assigned slot is today, propagate to todayStore so HomeCommandCenter
+    // reflects the change immediately without navigation or router.refresh().
+    const assignedDate = schedule[showPivot.dayIndex]?.date;
+    if (currentWeekOffset === 0 && assignedDate === getTodayString()) {
+      useTodayStore.getState().assignRecipe({
+        id: recipe.id,
+        name: recipe.name ?? null,
+        image: recipe.image ?? '',
+      });
+    }
 
     try {
       await assignRecipeToDay(currentWeekOffset, showPivot.dayIndex, {

@@ -31,18 +31,19 @@ Before writing any UI code:
 2.  Run `task agent:slice -- /api/path` to understand the vertical slice from spec to backend.
 3.  Run `task types:sync` to ensure `pwa/src/lib/api/types.ts` is up-to-date.
 
-### 2. Tracer Bullet Test (Red Phase)
+### 2. Tracer Bullet & Unit Phase (Red Phase)
 1.  Run `task agent:reconcile` to ensure the mock API matches the spec.
-2.  Open or create a Playwright test in `pwa/e2e/`.
-3.  Define the exact `data-testid` you will click or assert against.
-4.  Write the E2E test. **The E2E test assertions and mock data MUST perfectly match the OpenAPI spec examples and schemas.**
-5.  Run it. It must fail.
+2.  **Logic First**: If implementing complex utility logic (e.g., date parsing, data transformation), create a unit test in `src/**/{name}.test.ts` and run `task test:unit`.
+3.  **UI Tracer**: Open or create a Playwright test in `pwa/e2e/`.
+4.  Define the exact `data-testid` you will click or assert against.
+5.  Write the E2E test. **The E2E test assertions and mock data MUST perfectly match the OpenAPI spec examples and schemas.**
+6.  Run it. It must fail.
 
 ### 3. Implement Minimum Logic (Green Phase)
 1.  Use the `app/` directory. Default to Server Components.
 2.  Use `"use client"` only at the leaf nodes for interactivity.
-3.  Write the minimal code needed to pass the tracer test.
-4.  Run the test. Make it pass.
+3.  Write the minimal code needed to pass the tests (Unit first, then E2E).
+4.  Run the tests. Make it pass.
 
 ### 4. Refactor & Apply Aesthetic
 1.  Ensure all states (Loading, Error, Success) are handled elegantly.

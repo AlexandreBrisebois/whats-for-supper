@@ -26,8 +26,9 @@ See [debugging-hydration.md](debugging-hydration.md) for dealing with race condi
 When invoked to investigate a failure or bug, follow this strict loop:
 
 ### 1. Reproduce & Isolate
-1.  Run the specific failing Playwright test locally: `npx playwright test pwa/e2e/path/to/test.spec.ts`.
-2.  If the test passes locally but fails in CI, you are likely dealing with a hydration race condition or a dirty mock state. Run the Integrity Gate locally: `task test:pwa:ci`.
+1.  **Unit Failures**: If a logic test fails, run `task test:unit` to identify the broken utility or component hook.
+2.  **E2E Failures**: Run the specific failing Playwright test locally: `npx playwright test pwa/e2e/path/to/test.spec.ts`.
+3.  If the test passes locally but fails in CI, you are likely dealing with a hydration race condition or a dirty mock state. Run the Integrity Gate locally: `task test:pwa:ci`.
 
 ### 2. Diagnose
 1.  Analyze the Playwright error output.

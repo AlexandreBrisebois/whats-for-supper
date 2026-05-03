@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
@@ -11,11 +11,12 @@ import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
-import { assignRecipeToDay, getSchedule, isScheduleRecipe } from '@/lib/api/planner';
+import { assignRecipeToDay, isScheduleRecipe } from '@/lib/api/planner';
 import { ScheduleRecipeDto } from '@/lib/api/generated/models';
 import { getTodayString } from '@/lib/imageUtils';
 import { SolarLoader } from '../ui/SolarLoader';
 import { useFamilyStore } from '@/store/familyStore';
+import { useTodayStore } from '@/store/todayStore';
 import { t } from '@/locales';
 
 interface HomeCommandCenterProps {
@@ -24,27 +25,22 @@ interface HomeCommandCenterProps {
 }
 
 export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCenterProps) {
+  // ── UI-only state (not domain state) ──────────────────────────────────────
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showQuickFind, setShowQuickFind] = useState(false);
-  const [isSkipped, setIsSkipped] = useState(todayStatus === 3);
-  const [isCooked, setIsCooked] = useState(todayStatus === 2);
-  const [sessionDone, setSessionDone] = useState(todayStatus === 2 || todayStatus === 3);
-  const [currentRecipe, setCurrentRecipe] = useState<ScheduleRecipeDto | null>(
-    isScheduleRecipe(todaysRecipe)
-      ? 'data' in todaysRecipe
-        ? (todaysRecipe.data as ScheduleRecipeDto)
-        : (todaysRecipe as ScheduleRecipeDto)
-      : null
-  );
-  const [gotoRecipeStatus, setGotoRecipeStatus] = useState<'pending' | 'ready' | null>(null);
-  const [gotoRecipeData, setGotoRecipeData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(!todaysRecipe); // Show loader only when SSR had nothing
-  const pendingConfirmRef = useRef(false);
-  const router = useRouter();
-  const { loadSetting, saveSetting, familySettings } = useFamilyStore();
 
-  // Extract GOTO fields from the stored setting value
+  // ── Domain state from todayStore ──────────────────────────────────────────
+  const { currentRecipe, status, isLoading, init, assignRecipe, markCooked, markOrderedIn, sync } =
+    useTodayStore();
+
+  const isCooked = status === 2;
+  const isSkipped = status === 3;
+  const sessionDone = status === 2 || status === 3;
+
+  // ── Family / GOTO settings ────────────────────────────────────────────────
+  const { loadSetting, familySettings } = useFamilyStore();
+
   const gotoValue = familySettings['family_goto'] as
     | { description?: string; recipeId?: string; imageUrl?: string }
     | null
@@ -54,6 +50,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const gotoRecipeId = gotoValue?.recipeId ?? null;
   const gotoImageUrl = gotoValue?.imageUrl ?? null;
 
+  // ── GOTO recipe status polling ────────────────────────────────────────────
+  const [gotoRecipeStatus, setGotoRecipeStatus] = useState<'pending' | 'ready' | null>(null);
+  const [gotoRecipeData, setGotoRecipeData] = useState<any>(null);
+
   // Track previous GOTO ID to reset status during render pass (avoids cascading effect)
   const [prevGotoId, setPrevGotoId] = useState<string | null>(gotoRecipeId);
 
@@ -62,7 +62,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     setGotoRecipeStatus(null);
   }
 
-  // Poll recipe status if a GOTO is configured
   useEffect(() => {
     if (!gotoRecipeId) return;
 
@@ -74,13 +73,12 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         const response = await apiClient.api.recipes.byId(gotoRecipeId).status.get();
         if (!isMounted) return;
 
-        const status = response?.data?.status as 'pending' | 'ready';
-        setGotoRecipeStatus(status);
+        const recipeStatus = response?.data?.status as 'pending' | 'ready';
+        setGotoRecipeStatus(recipeStatus);
 
-        if (status === 'ready') {
+        if (recipeStatus === 'ready') {
           if (pollInterval) clearInterval(pollInterval);
 
-          // Once ready, fetch the full recipe details to get the latest hero image and info
           const recipeRes = await apiClient.api.recipes.byId(gotoRecipeId).get();
           if (isMounted && recipeRes?.recipe) {
             setGotoRecipeData(recipeRes.recipe);
@@ -100,64 +98,26 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     };
   }, [gotoRecipeId]);
 
+  // ── Mount: seed store from SSR props, load settings, background sync ──────
   useEffect(() => {
-    let mounted = true;
+    // Resolve the SSR recipe to a plain ScheduleRecipeDto (or null)
+    const ssrRecipe: ScheduleRecipeDto | null = isScheduleRecipe(todaysRecipe)
+      ? 'data' in todaysRecipe
+        ? (todaysRecipe.data as ScheduleRecipeDto)
+        : (todaysRecipe as ScheduleRecipeDto)
+      : null;
 
-    // Load family GOTO setting (runs regardless of recipe state)
+    init(ssrRecipe, todayStatus ?? 0);
     loadSetting('family_goto');
 
-    // Always fetch on mount to reconcile stale SSR data.
-    // SSR prop is an optimistic initial value only — the client fetch is the source of truth.
-    // This fixes "Preparing recipe…" showing after a planner move.
-    if (!sessionDone && !isCooked) {
-      const syncRecipe = async () => {
-        // Only show spinner when SSR had nothing — otherwise reconcile silently
-        if (!todaysRecipe) setIsLoading(true);
-        try {
-          const schedule = await getSchedule(0);
-          if (!mounted) return;
+    // Background sync — non-blocking; reconciles stale SSR data
+    sync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-          const todayStr = getTodayString();
-          const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
+  // ── Action handlers ───────────────────────────────────────────────────────
 
-          // Only update if it's not already cooked or skipped
-          if (todaysEntry?.status === 2) {
-            setIsCooked(true);
-            setSessionDone(true);
-          } else if (todaysEntry?.status === 3) {
-            setIsSkipped(true);
-            setSessionDone(true);
-          } else if (isScheduleRecipe(todaysEntry?.recipe)) {
-            const recipe = todaysEntry.recipe;
-            const unwrapped = 'data' in recipe ? recipe.data : recipe;
-            setCurrentRecipe(unwrapped);
-          } else if (!pendingConfirmRef.current) {
-            setCurrentRecipe(null);
-          }
-        } catch (error) {
-          console.error("Failed to sync today's recipe:", error);
-        } finally {
-          if (mounted) {
-            setIsLoading(false);
-          }
-        }
-      };
-      syncRecipe();
-    } else {
-      // Defer state update to avoid cascading render error
-      const timer = setTimeout(() => {
-        if (mounted) setIsLoading(false);
-      }, 0);
-      return () => {
-        mounted = false;
-        clearTimeout(timer);
-      };
-    }
-
-    return () => {
-      mounted = false;
-    };
-  }, [todaysRecipe, sessionDone, isCooked, loadSetting]);
+  const router = useRouter();
 
   const handleCookMode = () => {
     setShowCooksMode(true);
@@ -167,18 +127,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     setShowRecovery(true);
   };
 
-  const handleCookedMark = async () => {
-    if (isCooked) return;
-    try {
-      const todayDate = DateOnly.parse(getTodayString());
-      if (!todayDate) return;
-      await apiClient.api.schedule.day.byDate(todayDate).validate.post({ status: 2 });
-      setIsCooked(true);
-      setSessionDone(true);
-      router.refresh();
-    } catch (error) {
-      console.error('Failed to mark recipe as cooked:', error);
-    }
+  const handleCookedMark = () => {
+    markCooked();
   };
 
   const handleRecoveryAction = async (action: string) => {
@@ -188,13 +138,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       if (!todayDate) return;
 
       if (action === 'order_in') {
-        if (currentRecipe) {
-          await apiClient.api.schedule.day.byDate(todayDate).validate.post({
-            status: 3, // Skipped
-          });
-        }
-        setIsSkipped(true);
-        setSessionDone(true);
+        markOrderedIn();
+        setShowRecovery(false);
       } else if (action === 'pick_else') {
         setShowRecovery(false);
         setShowQuickFind(true);
@@ -202,29 +147,27 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         // Global Domino Shift (Push tonight to tomorrow)
         await apiClient.api.schedule.move.post({
           weekOffset: 0,
-          fromIndex: (new Date().getDay() + 6) % 7, // Convert 0-6 (Sun-Sat) to 0-6 (Mon-Sun)
+          fromIndex: (new Date().getDay() + 6) % 7,
           toIndex: ((new Date().getDay() + 6) % 7) + 1,
           intent: 'push',
         });
         setShowRecovery(false);
-        setIsSkipped(true);
-        router.refresh();
+        // Sync store to reflect the move
+        sync();
       } else if (action === 'next_week') {
         await apiClient.api.schedule.move.post({
           weekOffset: 0,
           fromIndex: (new Date().getDay() + 6) % 7,
-          toIndex: 0, // First slot of next week
+          toIndex: 0,
           targetWeekOffset: 1,
           intent: 'push',
         });
         setShowRecovery(false);
-        setIsSkipped(true);
-        router.refresh();
+        sync();
       } else if (action === 'drop') {
         await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
         setShowRecovery(false);
-        setIsSkipped(true);
-        router.refresh();
+        sync();
       }
     } catch (error) {
       console.error('Failed recovery action:', error);
@@ -232,17 +175,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   };
 
   const handleQuickFindSelect = async (recipe: any) => {
-    setCurrentRecipe(recipe as ScheduleRecipeDto);
-    console.log('OPTIMISTIC: handleQuickFindSelect start', recipe.name);
-    setIsSkipped(false);
     setShowQuickFind(false);
-    try {
-      const dayIndex = (new Date().getDay() + 6) % 7;
-      await assignRecipeToDay(0, dayIndex, recipe);
-      router.refresh();
-    } catch (error) {
-      console.error('Failed to assign quick find recipe:', error);
-    }
+    assignRecipe({ id: recipe.id, name: recipe.name ?? null, image: recipe.image ?? '' });
   };
 
   return (
@@ -261,28 +195,11 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               gotoStatus={gotoRecipeStatus}
               onConfirmGoto={() => {
                 if (gotoRecipeId) {
-                  // Prefer API data, fall back to setting data for optimistic update
-                  const optimisticRecipe: ScheduleRecipeDto = {
+                  assignRecipe({
                     id: gotoRecipeId,
-                    name: gotoRecipeData?.name ?? gotoDescription ?? '',
+                    name: gotoRecipeData?.name ?? gotoDescription ?? null,
                     image: gotoRecipeData?.imageUrl ?? gotoImageUrl ?? '',
-                    description: gotoRecipeData?.description,
-                    ingredients: gotoRecipeData?.ingredients,
-                  };
-
-                  pendingConfirmRef.current = true;
-                  setCurrentRecipe(optimisticRecipe);
-                  const dayIndex = (new Date().getDay() + 6) % 7;
-                  assignRecipeToDay(0, dayIndex, {
-                    id: gotoRecipeId,
-                    name: optimisticRecipe.name ?? null,
-                    image: optimisticRecipe.image ?? '',
-                  })
-                    .then(() => router.refresh())
-                    .catch((err) => console.error('Failed to confirm GOTO:', err))
-                    .finally(() => {
-                      pendingConfirmRef.current = false;
-                    });
+                  });
                 } else {
                   setShowQuickFind(true);
                 }
@@ -290,16 +207,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               onDiscover={() => setShowQuickFind(true)}
               onOrderIn={async () => {
                 if (!currentRecipe) {
-                  // B5: No recipe — write status:3 unconditionally
-                  try {
-                    const todayDate = DateOnly.parse(getTodayString());
-                    if (!todayDate) return;
-                    await apiClient.api.schedule.day.byDate(todayDate).validate.post({ status: 3 });
-                    setIsSkipped(true);
-                    setSessionDone(true);
-                  } catch (error) {
-                    console.error('Failed to mark order in:', error);
-                  }
+                  // B5: No recipe — write status:3 unconditionally via store
+                  markOrderedIn();
                 } else {
                   // B6: Recipe exists — open recovery dialog first
                   setShowRecovery(true);
@@ -308,7 +217,14 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             />
           )}
 
-          {isCooked && <CookedSuccessCard onDismiss={() => setIsCooked(false)} />}
+          {isCooked && (
+            <CookedSuccessCard
+              onDismiss={() => {
+                // Dismiss collapses the card visually; domain status stays 2
+                // (Group E will refine this into a compact badge — for now just hide the card)
+              }}
+            />
+          )}
 
           {currentRecipe &&
             currentRecipe.id &&
