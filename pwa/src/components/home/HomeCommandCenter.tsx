@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Check } from 'lucide-react';
 import { QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
@@ -29,6 +30,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showQuickFind, setShowQuickFind] = useState(false);
+  const [cookedDismissed, setCookedDismissed] = useState(false);
 
   // ── Domain state from todayStore ──────────────────────────────────────────
   const { currentRecipe, status, isLoading, init, assignRecipe, markCooked, markOrderedIn, sync } =
@@ -114,6 +116,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     sync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Reset cookedDismissed when no longer cooked ───────────────────────────
+  // Note: cookedDismissed is only visually meaningful when isCooked is true.
+  // Both badge conditions already gate on isCooked, so no explicit reset effect is needed.
 
   // ── Action handlers ───────────────────────────────────────────────────────
 
@@ -217,13 +223,26 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             />
           )}
 
-          {isCooked && (
-            <CookedSuccessCard
-              onDismiss={() => {
-                // Dismiss collapses the card visually; domain status stays 2
-                // (Group E will refine this into a compact badge — for now just hide the card)
-              }}
-            />
+          {isCooked && !cookedDismissed && (
+            <CookedSuccessCard onDismiss={() => setCookedDismissed(true)} />
+          )}
+
+          {isCooked && cookedDismissed && (
+            <button
+              data-testid="cooked-compact-badge"
+              onClick={() => setShowCooksMode(true)}
+              className="flex items-center gap-3 w-full bg-sage/10 border border-sage/30 rounded-2xl px-5 py-4 transition-all active:scale-[0.98] hover:bg-sage/15"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sage/20 text-sage flex-shrink-0">
+                <Check size={20} strokeWidth={3} />
+              </div>
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="text-sm font-black text-sage leading-none">Cooked tonight!</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-sage/60">
+                  Tap to open Cook&apos;s Mode
+                </span>
+              </div>
+            </button>
           )}
 
           {currentRecipe &&

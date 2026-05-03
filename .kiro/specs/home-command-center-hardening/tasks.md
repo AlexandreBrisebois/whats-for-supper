@@ -200,14 +200,14 @@ Each task is independently shippable and has a clear seam. Tasks within a group 
 
 ### Group E — Cooked State UX Refinement
 
-- [ ] E1. Fix `CookedSuccessCard` dismiss behaviour
+- [x] E1. Fix `CookedSuccessCard` dismiss behaviour
   - Currently `onDismiss` calls `setIsCooked(false)` which drops back to the pivot card — wrong
   - Change dismiss to collapse `CookedSuccessCard` into a compact "cooked" badge/strip on the home page that remains visible for the rest of the day
   - The compact state must still allow re-entering Cook's Mode (tap the badge → opens `CooksMode` overlay) so the user can recover from an accidental "Done" tap
   - `todayStore.status === 2` remains true after dismiss — only the card's visual state collapses, not the domain state
   - **Done when:** dismissing the success card shows a compact cooked indicator; Cook's Mode is still accessible from it; `todayStore.status` stays `2`
 
-- [ ] E2. Restrict Cook Mode button in planner to today's slot only
+- [x] E2. Restrict Cook Mode button in planner to today's slot only
   - In `PlannerDayCard` (`pwa/src/app/(app)/planner/page.tsx`), the 👨‍🍳 button currently shows for every day in `currentWeekOffset === 0`
   - Change the condition to only show the button when `day.date === getTodayString()` (today's slot only)
   - All other days in the current week and all future weeks: no Cook Mode button

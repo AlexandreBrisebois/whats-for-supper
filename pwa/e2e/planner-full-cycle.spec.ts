@@ -9,8 +9,21 @@ import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 import { MOCK_IDS, builders, currentMonday, toDateStr } from './mock-api';
 
+/** Returns the Monday of the week containing today (UTC). */
+function thisWeekMonday() {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun, 1=Mon, …, 6=Sat
+  const diff = day === 0 ? -6 : 1 - day; // shift to Monday
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() + diff);
+  monday.setUTCHours(12, 0, 0, 0);
+  return monday;
+}
+
 function buildLockedDays() {
-  const monday = currentMonday();
+  // Use the current week's Monday so today's date is always in the mock.
+  // Cook Mode button (E2) only shows on today's card, so the test must find today.
+  const monday = thisWeekMonday();
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setUTCDate(monday.getUTCDate() + i);
@@ -136,7 +149,9 @@ async function setupPlanner(page: Page, locked = false) {
 
   await page.goto('/planner');
   if (locked) {
-    await expect(page.getByTestId('day-card-0').getByTestId('start-cook-mode')).toBeVisible({
+    // Cook Mode button only shows on today's card (E2 constraint).
+    const todayStr = new Date().toISOString().split('T')[0];
+    await expect(page.locator(`[data-date="${todayStr}"]`).getByTestId('start-cook-mode')).toBeVisible({
       timeout: 10_000,
     });
   } else {
@@ -168,9 +183,12 @@ test.describe("Planner — Cook's Mode", () => {
   test('opens Cook Mode and navigates steps for a locked week', async ({ page }) => {
     await setupPlanner(page, true);
 
-    const mondayCard = page.getByTestId('day-card-0');
-    await expect(mondayCard.getByTestId('start-cook-mode')).toBeVisible();
-    await mondayCard.getByTestId('start-cook-mode').click();
+    // Cook Mode button only shows on today's card (E2 constraint).
+    // Find today's card by data-date attribute rather than positional index.
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayCard = page.locator(`[data-date="${todayStr}"]`);
+    await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible({ timeout: 10_000 });
+    await todayCard.getByTestId('start-cook-mode').click();
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();

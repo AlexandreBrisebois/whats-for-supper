@@ -9,7 +9,17 @@ import { MOCK_IDS, builders, currentMonday, toDateStr } from './mock-api';
  */
 
 test.describe("Cook's Mode and Grocery Flows", () => {
-  const FIXED_MONDAY = '2026-04-27';
+  // Use today's date so the Cook Mode button (E2: today-only) is visible on the right card.
+  const TODAY = new Date().toISOString().split('T')[0];
+  // Derive the Monday of the current week for building the full 7-day mock.
+  const getThisWeekMonday = () => {
+    const now = new Date();
+    const day = now.getUTCDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setUTCDate(now.getUTCDate() + diff);
+    return monday.toISOString().split('T')[0];
+  };
 
   test.beforeEach(async ({ page }) => {
     // Set identity
@@ -32,9 +42,31 @@ test.describe("Cook's Mode and Grocery Flows", () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
+    const thisMonday = getThisWeekMonday();
+
     // Hardened Intercepts (ADR 029)
     await page.route(/\/(?:backend\/)?api\/schedule(?:\?|$|.*)/, async (route) => {
       if (route.request().method() === 'GET' && !route.request().url().includes('smart-defaults')) {
+        // Build 7 days from this week's Monday; put the recipe on today's date.
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(thisMonday);
+          d.setUTCDate(d.getUTCDate() + i);
+          const dateStr = d.toISOString().split('T')[0];
+          const isToday = dateStr === TODAY;
+          return {
+            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+            date: dateStr,
+            recipe: isToday
+              ? {
+                  data: builders.scheduleRecipe({
+                    id: MOCK_IDS.RECIPE_LASAGNA,
+                    name: 'Test Lasagna',
+                    ingredients: ['Pasta Sheets', 'Ground Beef', 'Tomato Sauce', 'Ricotta'],
+                  }),
+                }
+              : null,
+          };
+        });
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -43,28 +75,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
               weekOffset: 0,
               locked: true,
               status: 2,
-              days: [
-                {
-                  day: 'Mon',
-                  date: FIXED_MONDAY,
-                  recipe: {
-                    data: builders.scheduleRecipe({
-                      id: MOCK_IDS.RECIPE_LASAGNA,
-                      name: 'Test Lasagna',
-                      ingredients: ['Pasta Sheets', 'Ground Beef', 'Tomato Sauce', 'Ricotta'],
-                    }),
-                  },
-                },
-                ...Array.from({ length: 6 }, (_, i) => {
-                  const d = new Date(FIXED_MONDAY);
-                  d.setDate(d.getDate() + i + 1);
-                  return {
-                    day: ['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-                    date: d.toISOString().split('T')[0],
-                    recipe: null,
-                  };
-                }),
-              ],
+              days,
             },
           }),
         });
@@ -96,10 +107,11 @@ test.describe("Cook's Mode and Grocery Flows", () => {
   });
 
   test("Cook's mode shows parsed steps", async ({ page }) => {
-    const mondayCard = page.getByTestId('day-card-0');
-    await expect(mondayCard.getByTestId('start-cook-mode')).toBeVisible();
+    // Cook Mode button only shows on today's card (E2 constraint).
+    const todayCard = page.locator(`[data-date="${TODAY}"]`);
+    await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible();
 
-    await mondayCard.getByTestId('start-cook-mode').click();
+    await todayCard.getByTestId('start-cook-mode').click();
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
@@ -147,7 +159,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
               days: [
                 {
                   day: 'Mon',
-                  date: FIXED_MONDAY,
+                  date: TODAY,
                   recipe: {
                     data: builders.scheduleRecipe({
                       id: MOCK_IDS.RECIPE_LASAGNA,
@@ -167,7 +179,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     });
 
     await page.reload();
-    await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(`[data-date="${TODAY}"]`)).toBeVisible({ timeout: 15_000 });
     await page.getByTestId('grocery-tab').click();
     const refreshedItem = page.locator(
       `[data-testid="grocery-item-checkbox"][data-item-name="${itemName}"]`

@@ -720,7 +720,6 @@ export default function PlannerPage() {
                     key={day._uiId}
                     day={day}
                     index={index}
-                    currentWeekOffset={currentWeekOffset}
                     successDay={successDay}
                     onPivot={() => setShowPivot({ dayIndex: index })}
                     onCookMode={() => setActiveCookMode(day)}
@@ -838,7 +837,6 @@ export default function PlannerPage() {
 function PlannerDayCard({
   day,
   index,
-  currentWeekOffset,
   successDay,
   onPivot,
   onCookMode,
@@ -847,7 +845,6 @@ function PlannerDayCard({
 }: {
   day: UILocalScheduleDay;
   index: number;
-  currentWeekOffset: number;
   successDay: number | null;
   onPivot: () => void;
   onCookMode: () => void;
@@ -981,7 +978,7 @@ function PlannerDayCard({
                 </div>
                 <p className="text-[10px] text-charcoal/40 font-medium">Supper planned</p>
               </button>
-              {currentWeekOffset === 0 && day.recipe && (
+              {day.date === getTodayString() && day.recipe && (
                 <motion.button
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
