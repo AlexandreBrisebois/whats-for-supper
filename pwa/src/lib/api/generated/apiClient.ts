@@ -6,28 +6,45 @@ import { ApiRequestBuilderNavigationMetadata, type ApiRequestBuilder } from './a
 // @ts-ignore
 import { HealthRequestBuilderRequestsMetadata, type HealthRequestBuilder } from './health/index';
 // @ts-ignore
-import { apiClientProxifier, ParseNodeFactoryRegistry, SerializationWriterFactoryRegistry, type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata, type RequestAdapter } from '@microsoft/kiota-abstractions';
+import {
+  apiClientProxifier,
+  ParseNodeFactoryRegistry,
+  SerializationWriterFactoryRegistry,
+  type BaseRequestBuilder,
+  type KeysToExcludeForNavigationMetadata,
+  type NavigationMetadata,
+  type RequestAdapter,
+} from '@microsoft/kiota-abstractions';
 // @ts-ignore
-import { FormParseNodeFactory, FormSerializationWriterFactory } from '@microsoft/kiota-serialization-form';
+import {
+  FormParseNodeFactory,
+  FormSerializationWriterFactory,
+} from '@microsoft/kiota-serialization-form';
 // @ts-ignore
-import { JsonParseNodeFactory, JsonSerializationWriterFactory } from '@microsoft/kiota-serialization-json';
+import {
+  JsonParseNodeFactory,
+  JsonSerializationWriterFactory,
+} from '@microsoft/kiota-serialization-json';
 // @ts-ignore
 import { MultipartSerializationWriterFactory } from '@microsoft/kiota-serialization-multipart';
 // @ts-ignore
-import { TextParseNodeFactory, TextSerializationWriterFactory } from '@microsoft/kiota-serialization-text';
+import {
+  TextParseNodeFactory,
+  TextSerializationWriterFactory,
+} from '@microsoft/kiota-serialization-text';
 
 /**
  * The main entry point of the SDK, exposes the configuration and the fluent API.
  */
 export interface ApiClient extends BaseRequestBuilder<ApiClient> {
-    /**
-     * The api property
-     */
-    get api(): ApiRequestBuilder;
-    /**
-     * The health property
-     */
-    get health(): HealthRequestBuilder;
+  /**
+   * The api property
+   */
+  get api(): ApiRequestBuilder;
+  /**
+   * The health property
+   */
+  get health(): HealthRequestBuilder;
 }
 /**
  * Instantiates a new {@link ApiClient} and sets the default values.
@@ -35,48 +52,61 @@ export interface ApiClient extends BaseRequestBuilder<ApiClient> {
  */
 // @ts-ignore
 export function createApiClient(requestAdapter: RequestAdapter) {
-    if (requestAdapter === undefined) {
-        throw new Error("requestAdapter cannot be undefined");
-    }
-    const serializationWriterFactory = requestAdapter.getSerializationWriterFactory() as SerializationWriterFactoryRegistry;
-    const parseNodeFactoryRegistry = requestAdapter.getParseNodeFactory() as ParseNodeFactoryRegistry;
-    const backingStoreFactory = requestAdapter.getBackingStoreFactory();
-    
-    if (parseNodeFactoryRegistry.registerDefaultDeserializer) {
-        parseNodeFactoryRegistry.registerDefaultDeserializer(JsonParseNodeFactory, backingStoreFactory);
-        parseNodeFactoryRegistry.registerDefaultDeserializer(TextParseNodeFactory, backingStoreFactory);
-        parseNodeFactoryRegistry.registerDefaultDeserializer(FormParseNodeFactory, backingStoreFactory);
-    }
-    
-    if (serializationWriterFactory.registerDefaultSerializer) {
-        serializationWriterFactory.registerDefaultSerializer(JsonSerializationWriterFactory);
-        serializationWriterFactory.registerDefaultSerializer(TextSerializationWriterFactory);
-        serializationWriterFactory.registerDefaultSerializer(FormSerializationWriterFactory);
-        serializationWriterFactory.registerDefaultSerializer(MultipartSerializationWriterFactory);
-    }
-    
-    if (requestAdapter.baseUrl === undefined || requestAdapter.baseUrl === null || requestAdapter.baseUrl === "") {
-        requestAdapter.baseUrl = "http://api.wfs.localhost";
-    }
-    const pathParameters: Record<string, unknown> = {
-        "baseurl": requestAdapter.baseUrl,
-    };
-    return apiClientProxifier<ApiClient>(requestAdapter, pathParameters, ApiClientNavigationMetadata, undefined);
+  if (requestAdapter === undefined) {
+    throw new Error('requestAdapter cannot be undefined');
+  }
+  const serializationWriterFactory =
+    requestAdapter.getSerializationWriterFactory() as SerializationWriterFactoryRegistry;
+  const parseNodeFactoryRegistry = requestAdapter.getParseNodeFactory() as ParseNodeFactoryRegistry;
+  const backingStoreFactory = requestAdapter.getBackingStoreFactory();
+
+  if (parseNodeFactoryRegistry.registerDefaultDeserializer) {
+    parseNodeFactoryRegistry.registerDefaultDeserializer(JsonParseNodeFactory, backingStoreFactory);
+    parseNodeFactoryRegistry.registerDefaultDeserializer(TextParseNodeFactory, backingStoreFactory);
+    parseNodeFactoryRegistry.registerDefaultDeserializer(FormParseNodeFactory, backingStoreFactory);
+  }
+
+  if (serializationWriterFactory.registerDefaultSerializer) {
+    serializationWriterFactory.registerDefaultSerializer(JsonSerializationWriterFactory);
+    serializationWriterFactory.registerDefaultSerializer(TextSerializationWriterFactory);
+    serializationWriterFactory.registerDefaultSerializer(FormSerializationWriterFactory);
+    serializationWriterFactory.registerDefaultSerializer(MultipartSerializationWriterFactory);
+  }
+
+  if (
+    requestAdapter.baseUrl === undefined ||
+    requestAdapter.baseUrl === null ||
+    requestAdapter.baseUrl === ''
+  ) {
+    requestAdapter.baseUrl = 'http://api.wfs.localhost';
+  }
+  const pathParameters: Record<string, unknown> = {
+    baseurl: requestAdapter.baseUrl,
+  };
+  return apiClientProxifier<ApiClient>(
+    requestAdapter,
+    pathParameters,
+    ApiClientNavigationMetadata,
+    undefined
+  );
 }
 /**
  * Uri template for the request builder.
  */
-export const ApiClientUriTemplate = "{+baseurl}";
+export const ApiClientUriTemplate = '{+baseurl}';
 /**
  * Metadata for all the navigation properties in the request builder.
  */
-export const ApiClientNavigationMetadata: Record<Exclude<keyof ApiClient, KeysToExcludeForNavigationMetadata>, NavigationMetadata> = {
-    api: {
-        navigationMetadata: ApiRequestBuilderNavigationMetadata,
-    },
-    health: {
-        requestsMetadata: HealthRequestBuilderRequestsMetadata,
-    },
+export const ApiClientNavigationMetadata: Record<
+  Exclude<keyof ApiClient, KeysToExcludeForNavigationMetadata>,
+  NavigationMetadata
+> = {
+  api: {
+    navigationMetadata: ApiRequestBuilderNavigationMetadata,
+  },
+  health: {
+    requestsMetadata: HealthRequestBuilderRequestsMetadata,
+  },
 };
 /* tslint:enable */
 /* eslint-enable */

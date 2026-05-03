@@ -74,6 +74,7 @@ try
         });
 
     builder.Services.AddOpenApi();
+    builder.Services.AddHttpClient();
 
     // ── Application services ─────────────────────────────────────────────────
 

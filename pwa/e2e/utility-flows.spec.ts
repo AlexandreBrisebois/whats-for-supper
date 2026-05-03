@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, currentMonday, toDateStr } from './mock-api';
+import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
 
 /**
  * ADR 029: Deterministic E2E Testing Strategy
@@ -41,6 +41,8 @@ test.describe("Cook's Mode and Grocery Flows", () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     const thisMonday = getThisWeekMonday();
 

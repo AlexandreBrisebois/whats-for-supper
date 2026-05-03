@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders } from './mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
 const MOCK_CATEGORIES = ['Italian', 'Asian', 'Mexican'];
 
@@ -25,6 +25,8 @@ test.describe('Discovery Flow', () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/discovery\/categories/, async (route) => {
       await route.fulfill({

@@ -247,6 +247,11 @@ export function useScheduleStream() {
 
     source.addEventListener('connected', (e) => {
       const { schedule } = JSON.parse(e.data);
+      // On connect or reconnect, the server snapshot is authoritative.
+      // Clear any stale optimistic guards before applying — a reconnect after
+      // a network gap means the server state is ground truth regardless of
+      // how recent any local optimistic write was.
+      useTodayStore.getState().clearOptimisticGuard();
       // Seed weekStore with authoritative snapshot on connect
       useWeekStore.getState().applySnapshot(schedule);
     });
@@ -305,13 +310,16 @@ export function useScheduleStream() {
 
 ### 3.2 todayStore changes
 
-Add `applyServerUpdate()` — applies a server push without the optimistic write guard:
+Add `applyServerUpdate()`, `clearOptimisticGuard()`, and `skipCookedCelebration` flag:
 
 ```typescript
+// New state field:
+skipCookedCelebration: false,
+
 applyServerUpdate({ recipe, status }: { recipe: ScheduleRecipeDto | null; status: number }) {
-  // Server push is authoritative — always apply, even if optimistic write is recent
+  // Server push is authoritative — always apply, even if optimistic write is recent.
   // Exception: if optimisticWriteAt is within 2 seconds, the push may be echoing
-  // our own write back to us — skip to avoid flicker
+  // our own write back to us — skip to avoid flicker.
   const { optimisticWriteAt } = get();
   const isEcho = optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 2_000;
   if (isEcho) return;
@@ -320,9 +328,20 @@ applyServerUpdate({ recipe, status }: { recipe: ScheduleRecipeDto | null; status
     currentRecipe: recipe,
     status: status as 0 | 2 | 3,
     optimisticWriteAt: null, // clear optimistic guard — server is now authoritative
+    // For status:2 pushed from another family member's Cook's Mode completion,
+    // skip the CookedSuccessCard celebration — show compact badge directly.
+    // The person who cooked sees the card optimistically before this echo arrives.
+    skipCookedCelebration: status === 2,
   });
 },
+
+clearOptimisticGuard() {
+  // Called on SSE reconnect — server snapshot is authoritative regardless of age.
+  set({ optimisticWriteAt: null });
+},
 ```
+
+`HomeCommandCenter` reads `skipCookedCelebration` from the store and initialises `cookedDismissed` to `true` when it's set, so the compact badge renders immediately for family members who didn't do the cooking.
 
 ### 3.3 weekStore changes
 
@@ -341,6 +360,10 @@ applySnapshot(schedule: ScheduleDays) {
 
 applySlotUpdate({ date, recipe, status }: { date: string; recipe: any; status: number }) {
   const prev = get().schedule;
+  // Only apply if this date is within the currently-loaded week.
+  // If the date is outside the current week, it will be fetched fresh on next init().
+  const inCurrentWeek = prev.some((d) => d.date === date);
+  if (!inCurrentWeek) return;
   const next = prev.map((d) =>
     d.date === date
       ? { ...d, recipe: recipe ?? undefined, status }
@@ -597,7 +620,82 @@ useScheduleStream: fill_the_gap_invalidated handler
 
 ---
 
-### 4.4 Voting opened — pushed to all family members
+### 4.4 Cook's Mode completed — pushed to all family members
+
+```
+Alex completes Cook's Mode (steps through all steps, taps "Done")
+  │
+  ▼
+todayStore.markCooked()                        [optimistic — Alex sees CookedSuccessCard immediately]
+  │  sets status = 2
+  │  sets optimisticWriteAt = now
+  │
+  ▼
+POST /api/schedule/day/{today}/validate { status: 2 }
+  │
+  ▼
+.NET API: ValidateDayAsync(today, status=2)
+  │  sets CalendarEvent.Status = Cooked
+  │  sets Recipe.LastCookedDate = now
+  │
+  ▼
+IScheduleEventPublisher.PublishSlotUpdatedAsync(today, recipe, status: 2)
+  │
+  ▼ (all connected browsers receive this)
+useScheduleStream: slot_updated handler
+  │
+  ├─► todayStore.applyServerUpdate({ recipe, status: 2 })
+  │     Alex: echo suppressed (optimisticWriteAt within 2s) — CookedSuccessCard stays
+  │     Jordan: skipCookedCelebration = true → compact cooked badge renders directly
+  │     (no CookedSuccessCard for Jordan — Alex cooked, not Jordan)
+  │
+  └─► weekStore.applySlotUpdate({ date: today, recipe, status: 2 })
+        Planner: today's card reflects cooked state, cook mode button hidden
+```
+
+**Rendering contract for `status: 2` (Cooked):**
+
+| Surface | Who | Component | Renders |
+|---|---|---|---|
+| `/home` | Person who cooked | `HomeCommandCenter` | `CookedSuccessCard` → compact badge on dismiss |
+| `/home` | Everyone else | `HomeCommandCenter` | Compact cooked badge directly (no celebration card) |
+| `/planner` | All | `PlannerDayCard` | Cooked state, no cook mode button |
+
+---
+
+### 4.5 Recipe dropped from plan — slot cleared for all family members
+
+```
+Alex opens recovery dialog → taps "Drop" (remove from week plan)
+  │
+  ▼
+DELETE /api/schedule/day/{date}/remove
+  │
+  ▼
+.NET API: RemoveRecipeAsync(date)
+  │  deletes CalendarEvent — recipe returns to discoverable pool
+  │
+  ▼
+IScheduleEventPublisher.PublishSlotUpdatedAsync(date, recipe: null, status: 0)
+IScheduleEventPublisher.PublishFillTheGapInvalidatedAsync(weekOffset: 0)
+  │
+  ▼ (all connected browsers receive slot_updated)
+useScheduleStream: slot_updated handler
+  │
+  ├─► todayStore.applyServerUpdate({ recipe: null, status: 0 })
+  │     Jordan's /home: TonightMenuCard → TonightPivotCard (slot empty again)
+  │
+  └─► weekStore.applySlotUpdate({ date, recipe: null, status: 0 })
+        Planner: day card shows "Plan a meal" button
+
+  ▼ (all connected browsers receive fill_the_gap_invalidated)
+  └─► discoveryStore.invalidateFillTheGap(0)
+        Any open QuickFindModal refetches — dropped recipe reappears in the list
+```
+
+---
+
+### 4.6 Voting opened — pushed to all family members
 
 ```
 Mom taps "Ask the Family" on the planner
@@ -655,7 +753,7 @@ useScheduleStream: week_updated handler
 
 ---
 
-### 4.5 Voting closed — pushed to all family members
+### 4.7 Voting closed — pushed to all family members
 
 ```
 Mom taps "Close Voting" on the planner
@@ -698,7 +796,7 @@ useScheduleStream: week_updated handler
 
 ---
 
-### 4.6 Navigation: planner → home (with SSE)
+### 4.8 Navigation: planner → home (with SSE)
 
 ```
 User navigates /planner → /home
@@ -1026,3 +1124,35 @@ http:
 This is a non-breaking addition. The existing REST endpoints are unchanged. The existing polling in `useWeekStore` and `HomeCommandCenter` remains as a fallback while SSE is being built. Once SSE is stable and tested, the polling intervals are removed.
 
 The `today-slot-persistence` spec's skipped test is re-enabled as part of this spec's task list.
+
+---
+
+## 10. Known constraints and upgrade paths
+
+### 10.1 Single-process SSE (no horizontal scaling)
+
+`SseConnectionManager` uses an in-memory `ConcurrentDictionary`. All connected clients must be on the same API process instance. For a household deployment (one API container), this is sufficient and correct.
+
+**If horizontal scaling is ever needed:** Replace `SseConnectionManager` with a Redis pub/sub adapter. `SseEventPublisher` publishes to a Redis channel; each API instance subscribes and forwards to its local connections. The `IScheduleEventPublisher` interface is designed to make this swap transparent to `ScheduleService` — no service layer changes required.
+
+### 10.2 SSE auth via cookies only
+
+The browser's native `EventSource` API cannot set custom headers. The `X-Family-Member-Id` header used by all other API endpoints cannot be sent with an SSE connection.
+
+**Solution:** The `/api/stream` endpoint reads auth from cookies exclusively:
+- `x-family-member-id` — identifies the family member
+- `h_access` — Hearth session token, validates the session
+
+The `EventSource` is created with `withCredentials: true` to ensure cookies are sent cross-origin. Both cookies are set during onboarding and are already present in the browser when the SSE connection is established.
+
+All other REST endpoints continue using the `X-Family-Member-Id` header as before. This is SSE-specific behaviour, not a general auth change.
+
+### 10.3 Reconnect state gap
+
+`EventSource` reconnects automatically after a drop. On reconnect, the `StreamController` sends a fresh `connected` event with the current schedule snapshot. Events that fired during the disconnection window are not replayed — they are superseded by the snapshot.
+
+The `connected` handler clears `optimisticWriteAt` on both `todayStore` and `weekStore` before applying the snapshot, ensuring the server state is applied unconditionally regardless of any pending local optimistic writes.
+
+### 10.4 Next-week slot updates while viewing next week
+
+The `connected` event snapshot covers `weekOffset=0` (current week) only. If a user is viewing next week on the planner and a mutation occurs on a next-week slot, `applySlotUpdate` checks whether the incoming date falls within the currently-loaded week range. If it does, the update is applied live. If it doesn't (e.g. the user is on week 0 and a week 1 slot changes), the update is silently ignored — the correct data will be fetched on `weekStore.init(1)` when the user navigates to next week.

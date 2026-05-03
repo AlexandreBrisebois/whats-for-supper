@@ -551,14 +551,14 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             return {
               date: dateStr,
               status: 0,
-                      recipe:
-                        dateStr === today
-                          ? builders.scheduleRecipe({
-                              id: MOCK_IDS.RECIPE_LASAGNA,
-                              name: 'Family GOTO',
-                              image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
-                            })
-                          : null,
+              recipe:
+                dateStr === today
+                  ? builders.scheduleRecipe({
+                      id: MOCK_IDS.RECIPE_LASAGNA,
+                      name: 'Family GOTO',
+                      image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+                    })
+                  : null,
             };
           });
           await route.fulfill({

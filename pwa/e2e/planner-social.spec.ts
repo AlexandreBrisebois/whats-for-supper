@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, currentMonday, toDateStr } from './mock-api';
+import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
 
 // ADR-029: Compute the Monday of the current week at noon UTC — avoids timezone rollback
 
@@ -37,6 +37,8 @@ test.describe('Planner Social Coordination', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/family/, async (route) => {
       if (route.request().method() === 'GET') {

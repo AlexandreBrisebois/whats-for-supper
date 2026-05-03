@@ -46,10 +46,10 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             date: dateStr,
             status: 0,
             recipe: builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_LASAGNA,
-                name: 'Test Lasagna',
-                image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
-              }),
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: 'Test Lasagna',
+              image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+            }),
           };
         });
 
@@ -306,9 +306,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             date: dateStr,
             status: 0,
             recipe: builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_LASAGNA,
-                name: 'Test Lasagna',
-              }),
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: 'Test Lasagna',
+            }),
           };
         });
 

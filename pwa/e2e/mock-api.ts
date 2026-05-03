@@ -142,7 +142,9 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true }),
+      body: JSON.stringify({
+        data: builders.familyMember(),
+      }),
     });
   });
 
@@ -151,7 +153,7 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true }),
+      body: JSON.stringify({ data: { message: 'Vote recorded' } }),
     });
   });
 
@@ -160,7 +162,11 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: [], total: 0 }),
+      body: JSON.stringify({
+        recipes: [],
+        updatedAt: new Date().toISOString(),
+        pagination: { page: 1, limit: 20, total: 0 },
+      }),
     });
   });
   await page.route(/\/(?:backend\/)?api\/recipes\/recommendations/, async (route) => {
@@ -250,14 +256,14 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true }),
+      body: JSON.stringify({ data: { success: true } }),
     });
   });
   await page.route(/\/(?:backend\/)?api\/schedule\/lock/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true }),
+      body: JSON.stringify({ data: { success: true } }),
     });
   });
   await page.route(/\/(?:backend\/)?api\/schedule\/move/, async (route) => {
@@ -325,7 +331,7 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true }),
+      body: JSON.stringify({ data: { success: true } }),
     });
   });
   await page.route(/\/(?:backend\/)?api\/workflows\/active/, async (route) => {

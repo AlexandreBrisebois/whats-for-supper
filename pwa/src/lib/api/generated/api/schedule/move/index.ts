@@ -4,7 +4,17 @@
 // @ts-ignore
 import { serializeMoveScheduleDto, type MoveScheduleDto } from '../../../models/index';
 // @ts-ignore
-import { type AdditionalDataHolder, type BaseRequestBuilder, type Parsable, type ParsableFactory, type ParseNode, type RequestConfiguration, type RequestInformation, type RequestsMetadata, type SerializationWriter } from '@microsoft/kiota-abstractions';
+import {
+  type AdditionalDataHolder,
+  type BaseRequestBuilder,
+  type Parsable,
+  type ParsableFactory,
+  type ParseNode,
+  type RequestConfiguration,
+  type RequestInformation,
+  type RequestsMetadata,
+  type SerializationWriter,
+} from '@microsoft/kiota-abstractions';
 
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -12,8 +22,10 @@ import { type AdditionalDataHolder, type BaseRequestBuilder, type Parsable, type
  * @returns {MovePostResponse_data}
  */
 // @ts-ignore
-export function createMovePostResponse_dataFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoMovePostResponse_data;
+export function createMovePostResponse_dataFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoMovePostResponse_data;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -21,8 +33,10 @@ export function createMovePostResponse_dataFromDiscriminatorValue(parseNode: Par
  * @returns {MovePostResponse}
  */
 // @ts-ignore
-export function createMovePostResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoMovePostResponse;
+export function createMovePostResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoMovePostResponse;
 }
 /**
  * The deserialization information for the current model
@@ -30,10 +44,16 @@ export function createMovePostResponseFromDiscriminatorValue(parseNode: ParseNod
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoMovePostResponse(movePostResponse: Partial<MovePostResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "data": n => { movePostResponse.data = n.getObjectValue<MovePostResponse_data>(createMovePostResponse_dataFromDiscriminatorValue); },
-    }
+export function deserializeIntoMovePostResponse(
+  movePostResponse: Partial<MovePostResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    data: (n) => {
+      movePostResponse.data = n.getObjectValue<MovePostResponse_data>(
+        createMovePostResponse_dataFromDiscriminatorValue
+      );
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -41,41 +61,51 @@ export function deserializeIntoMovePostResponse(movePostResponse: Partial<MovePo
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoMovePostResponse_data(movePostResponse_data: Partial<MovePostResponse_data> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "message": n => { movePostResponse_data.message = n.getStringValue(); },
-    }
+export function deserializeIntoMovePostResponse_data(
+  movePostResponse_data: Partial<MovePostResponse_data> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      movePostResponse_data.message = n.getStringValue();
+    },
+  };
 }
 export interface MovePostResponse extends AdditionalDataHolder, Parsable {
-    /**
-     * The data property
-     */
-    data?: MovePostResponse_data | null;
+  /**
+   * The data property
+   */
+  data?: MovePostResponse_data | null;
 }
 export interface MovePostResponse_data extends AdditionalDataHolder, Parsable {
-    /**
-     * The message property
-     */
-    message?: string | null;
+  /**
+   * The message property
+   */
+  message?: string | null;
 }
 /**
  * Builds and executes requests for operations under /api/schedule/move
  */
 export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilder> {
-    /**
-     * Move a recipe in the schedule
-     * @param body The request body
-     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-     * @returns {Promise<MovePostResponse>}
-     */
-     post(body: MoveScheduleDto, requestConfiguration?: RequestConfiguration<object> | undefined) : Promise<MovePostResponse | undefined>;
-    /**
-     * Move a recipe in the schedule
-     * @param body The request body
-     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-     * @returns {RequestInformation}
-     */
-     toPostRequestInformation(body: MoveScheduleDto, requestConfiguration?: RequestConfiguration<object> | undefined) : RequestInformation;
+  /**
+   * Move a recipe in the schedule
+   * @param body The request body
+   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+   * @returns {Promise<MovePostResponse>}
+   */
+  post(
+    body: MoveScheduleDto,
+    requestConfiguration?: RequestConfiguration<object> | undefined
+  ): Promise<MovePostResponse | undefined>;
+  /**
+   * Move a recipe in the schedule
+   * @param body The request body
+   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+   * @returns {RequestInformation}
+   */
+  toPostRequestInformation(
+    body: MoveScheduleDto,
+    requestConfiguration?: RequestConfiguration<object> | undefined
+  ): RequestInformation;
 }
 /**
  * Serializes information the current object
@@ -84,10 +114,20 @@ export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilde
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeMovePostResponse(writer: SerializationWriter, movePostResponse: Partial<MovePostResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!movePostResponse || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<MovePostResponse_data>("data", movePostResponse.data, serializeMovePostResponse_data);
-    writer.writeAdditionalData(movePostResponse.additionalData);
+export function serializeMovePostResponse(
+  writer: SerializationWriter,
+  movePostResponse: Partial<MovePostResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!movePostResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<MovePostResponse_data>(
+    'data',
+    movePostResponse.data,
+    serializeMovePostResponse_data
+  );
+  writer.writeAdditionalData(movePostResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -96,28 +136,34 @@ export function serializeMovePostResponse(writer: SerializationWriter, movePostR
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeMovePostResponse_data(writer: SerializationWriter, movePostResponse_data: Partial<MovePostResponse_data> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!movePostResponse_data || isSerializingDerivedType) { return; }
-    writer.writeStringValue("message", movePostResponse_data.message);
-    writer.writeAdditionalData(movePostResponse_data.additionalData);
+export function serializeMovePostResponse_data(
+  writer: SerializationWriter,
+  movePostResponse_data: Partial<MovePostResponse_data> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!movePostResponse_data || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', movePostResponse_data.message);
+  writer.writeAdditionalData(movePostResponse_data.additionalData);
 }
 /**
  * Uri template for the request builder.
  */
-export const MoveRequestBuilderUriTemplate = "{+baseurl}/api/schedule/move";
+export const MoveRequestBuilderUriTemplate = '{+baseurl}/api/schedule/move';
 /**
  * Metadata for all the requests in the request builder.
  */
 export const MoveRequestBuilderRequestsMetadata: RequestsMetadata = {
-    post: {
-        uriTemplate: MoveRequestBuilderUriTemplate,
-        responseBodyContentType: "application/json",
-        adapterMethodName: "send",
-        responseBodyFactory:  createMovePostResponseFromDiscriminatorValue,
-        requestBodyContentType: "application/json",
-        requestBodySerializer: serializeMoveScheduleDto,
-        requestInformationContentSetMethod: "setContentFromParsable",
-    },
+  post: {
+    uriTemplate: MoveRequestBuilderUriTemplate,
+    responseBodyContentType: 'application/json',
+    adapterMethodName: 'send',
+    responseBodyFactory: createMovePostResponseFromDiscriminatorValue,
+    requestBodyContentType: 'application/json',
+    requestBodySerializer: serializeMoveScheduleDto,
+    requestInformationContentSetMethod: 'setContentFromParsable',
+  },
 };
 /* tslint:enable */
 /* eslint-enable */

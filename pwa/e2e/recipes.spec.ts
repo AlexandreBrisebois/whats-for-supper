@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders } from './mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
 const MOCK_RECIPES = {
   topPick: {
@@ -44,6 +44,8 @@ test.describe('Recipes Search Page', () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/recipes/, async (route) => {
       const url = route.request().url();

@@ -2,7 +2,16 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Camera, Image as ImageIcon, CheckCircle2, Loader2, X, Star, PenLine, Globe } from 'lucide-react';
+import {
+  Camera,
+  Image as ImageIcon,
+  CheckCircle2,
+  Loader2,
+  X,
+  Star,
+  PenLine,
+  Globe,
+} from 'lucide-react';
 import { useCapture } from '@/hooks/useCapture';
 import { useFamilyStore } from '@/store/familyStore';
 import { apiClient } from '@/lib/api/api-client';

@@ -14,9 +14,7 @@ export type PreSelectedRecipe = PreSelectedRecipeDto;
 export type SmartDefaultsResponse = SmartDefaultsDto;
 
 /** Narrows the oneOf recipe union to the concrete ScheduleRecipeDto, filtering out the null member. */
-export function isScheduleRecipe(
-  recipe: any | null | undefined
-): recipe is ScheduleRecipeDto {
+export function isScheduleRecipe(recipe: any | null | undefined): recipe is ScheduleRecipeDto {
   if (!recipe) return false;
   // Only treat as a valid schedule recipe if it has a string ID
   return typeof recipe.id === 'string' && recipe.id.length > 0;

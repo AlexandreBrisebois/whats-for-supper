@@ -1,6 +1,6 @@
 import path from 'path';
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders } from './mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
 const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 
@@ -22,6 +22,8 @@ test.describe('Capture Flow', () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     // Home page needs schedule + family intercepts
     await page.route(/\/(?:backend\/)?api\/schedule(?:\?|$|\/)/, async (route) => {
@@ -169,6 +171,8 @@ test.describe('Capture — initial state rendering', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
       await route.fulfill({
@@ -216,6 +220,8 @@ test.describe('Capture — describe link interaction', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
       await route.fulfill({
@@ -257,6 +263,8 @@ test.describe('Capture — describe form validation', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
       await route.fulfill({
@@ -307,6 +315,8 @@ test.describe('Capture — GOTO intent', () => {
         JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
       );
     }, MOCK_IDS.MEMBER_ALEX);
+    
+    await setupCommonRoutes(page);
 
     // Settings — writable in-memory store
     const settingsStore: Record<string, unknown> = {};

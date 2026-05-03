@@ -31,11 +31,7 @@ export default async function HomePage() {
   const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
   const isDone = todaysEntry?.status === 2 || todaysEntry?.status === 3;
   const rawRecipe = isDone ? null : todaysEntry?.recipe;
-  const todaysRecipe = isScheduleRecipe(rawRecipe)
-    ? 'data' in rawRecipe
-      ? rawRecipe.data
-      : rawRecipe
-    : null;
+  const todaysRecipe = isScheduleRecipe(rawRecipe) ? rawRecipe : null;
 
   const todayStatus: 0 | 2 | 3 = todaysEntry?.status === 2 ? 2 : todaysEntry?.status === 3 ? 3 : 0;
 
