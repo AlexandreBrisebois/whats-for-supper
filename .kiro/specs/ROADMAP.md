@@ -9,7 +9,7 @@ Sessions 1–4 are independently shippable. Sessions 3 and 6 are the large archi
 
 **Spec:** `.kiro/specs/home-command-center-hardening/tasks.md` — Groups A and B
 **Effort:** Medium
-**Status:** [ ] Not started
+**Status:** [x] Not started
 
 **What it fixes:**
 - Empty pivot card shows wrong header ("TONIGHT'S MENU") and a nonsensical prep-time badge
@@ -41,7 +41,7 @@ Key constraints:
 
 **Spec:** `.kiro/specs/home-command-center-hardening/tasks.md` — Group E
 **Effort:** Small
-**Status:** [ ] Not started
+**Status:** [X] Not started
 **Depends on:** Session 1 complete
 
 **What it fixes:**
@@ -67,7 +67,7 @@ Run task review when done.
 
 **Spec:** `.kiro/specs/home-command-center-hardening/tasks.md` — Group C
 **Effort:** Large
-**Status:** [ ] Not started
+**Status:** [x] Not started
 **Depends on:** Session 1 complete (B3 todayStatus prop must be in place)
 
 **What it fixes:**
@@ -102,7 +102,7 @@ Run task agent:drift, task agent:test:impact, and task review at C7.
 
 **Spec:** `.kiro/specs/planner-voting-ux/requirements.md` — Requirements 1, 2, 3
 **Effort:** Small–Medium
-**Status:** [ ] Not started — design + tasks not yet written
+**Status:** [-] Not started — design + tasks not yet written
 
 **What it fixes:**
 - `PlannerDayCard` height jumps when vote badge appears/disappears or a long recipe name is added

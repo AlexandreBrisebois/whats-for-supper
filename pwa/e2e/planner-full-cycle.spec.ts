@@ -151,7 +151,9 @@ async function setupPlanner(page: Page, locked = false) {
   if (locked) {
     // Cook Mode button only shows on today's card (E2 constraint).
     const todayStr = new Date().toISOString().split('T')[0];
-    await expect(page.locator(`[data-date="${todayStr}"]`).getByTestId('start-cook-mode')).toBeVisible({
+    await expect(
+      page.locator(`[data-date="${todayStr}"]`).getByTestId('start-cook-mode')
+    ).toBeVisible({
       timeout: 10_000,
     });
   } else {
