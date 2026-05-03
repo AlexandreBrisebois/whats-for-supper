@@ -36,20 +36,27 @@ export type RecommendationsResponse = {
   results: RecommendationResult[];
 };
 
-function mapToRecipe(dto: RecipeDto): Recipe {
-  const instructions = dto.recipeInstructions as any;
-  let recipeInstructions = undefined;
-  if (Array.isArray(instructions)) {
-    recipeInstructions = instructions;
-  } else if (instructions && typeof instructions.getValue === 'function') {
-    const rawValue = instructions.getValue();
-    if (Array.isArray(rawValue)) {
-      // Kiota UntypedArray returns an array of UntypedNodes
-      recipeInstructions = rawValue.map((v) =>
-        v && typeof v.getValue === 'function' ? v.getValue() : v
-      );
+function unwrapUntypedNode(node: any): any {
+  if (node && typeof node.getValue === 'function') {
+    const value = node.getValue();
+    if (Array.isArray(value)) {
+      return value.map(unwrapUntypedNode);
     }
+    if (typeof value === 'object' && value !== null) {
+      const result: any = {};
+      for (const [key, val] of Object.entries(value)) {
+        result[key] = unwrapUntypedNode(val);
+      }
+      return result;
+    }
+    return value;
   }
+  return node;
+}
+
+function mapToRecipe(dto: RecipeDto): Recipe {
+  const recipeInstructions = unwrapUntypedNode(dto.recipeInstructions);
+
   return {
     id: dto.id || '',
     name: dto.name || '',

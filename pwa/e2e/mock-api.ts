@@ -36,8 +36,14 @@ export const builders = {
             isHealthyChoice: false,
             ingredients: ['Ingredient 1', 'Ingredient 2'],
             recipeInstructions: [
-              'Real Step 1: Chop the onions',
-              'Real Step 2: Saute until golden',
+              {
+                name: 'Step 1: Prep',
+                text: 'Chop the onions and mince the garlic.',
+              },
+              {
+                name: 'Step 2: Cook',
+                text: 'Saute until golden and fragrant.',
+              },
             ] as any,
             createdAt: new Date(),
           };

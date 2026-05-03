@@ -213,12 +213,12 @@ test.describe('Supper Planner', () => {
     // Verify overlay
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
-    await expect(page.getByText(/Real Step 1: Chop the onions/i).first()).toBeVisible();
+    await expect(page.getByText(/Chop the onions and mince the garlic/i).first()).toBeVisible();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 1 of \d+/i);
 
     // Navigate steps
     await page.getByTestId('cooks-mode-step-next').click();
-    await expect(page.getByText(/Real Step 2: Saute until golden/i).first()).toBeVisible();
+    await expect(page.getByText(/Saute until golden and fragrant/i).first()).toBeVisible();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 2 of \d+/i);
 
     // Close overlay
