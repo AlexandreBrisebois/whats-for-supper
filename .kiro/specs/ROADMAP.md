@@ -102,7 +102,7 @@ Run task agent:drift, task agent:test:impact, and task review at C7.
 
 **Spec:** `.kiro/specs/planner-voting-ux/requirements.md` — Requirements 1, 2, 3
 **Effort:** Small–Medium
-**Status:** [-] Not started — design + tasks not yet written
+**Status:** [x] Not started — design + tasks not yet written
 
 **What it fixes:**
 - `PlannerDayCard` height jumps when vote badge appears/disappears or a long recipe name is added

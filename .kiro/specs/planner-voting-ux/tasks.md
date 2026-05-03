@@ -1,15 +1,16 @@
-# Tasks — planner-voting-ux (Requirements 1–3)
+# Tasks — planner-voting-ux (Requirements 1–4)
 
 ## Overview
 
-Three groups of tasks covering Requirements 1–3 only. Requirements 4–6 are out of scope for this session.
+Four groups of tasks covering Requirements 1–4. Requirements 5–6 are out of scope for this session.
 
 - **Group A** — PlannerDayCard fixed height (PWA only, no contract changes)
 - **Group B** — fill-the-gap deduplication (API + OpenAPI + PWA)
 - **Group C** — Rotation sort fix (API only, same method as Group B)
 - **Group D** — Post-change tooling and validation
+- **Group E** — VotingNudgeCard on Home (PWA only, no contract changes)
 
-Tasks are ordered so Group C is implemented alongside Group B (same file, same method). Run tooling in Group D after all code changes are complete.
+Tasks are ordered so Group C is implemented alongside Group B (same file, same method). Run tooling in Group D after Groups A–C. Execute Group E independently (PWA-only, no contract changes).
 
 ---
 
@@ -95,3 +96,39 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
 
 - [x] D3. Run `task review` as final gate
   - Address any issues surfaced before marking session complete
+
+---
+
+## Group E — VotingNudgeCard on Home
+
+- [ ] E1. Add `VotingNudgeCard` component to `HomeSections.tsx`
+  - File: `pwa/src/components/home/HomeSections.tsx`
+  - Import `X` from `lucide-react` (add to existing import); import `Vote` from `lucide-react` (use `Sparkles` as fallback if `Vote` is unavailable)
+  - Add `VotingNudgeCard` component with props: `plannedCount: number`, `onVote: () => void`, `onDismiss: () => void`
+  - Ochre accent: outer wrapper `bg-ochre/10 border border-ochre/20 rounded-[2.5rem]`
+  - Icon container: `bg-ochre/20 text-ochre rounded-2xl`
+  - Dismiss button: absolute top-right, `bg-ochre/10 text-ochre/60`, `aria-label="Dismiss"`, `data-testid="voting-nudge-dismiss"`
+  - Body text: "The family is voting on next week" (font-black) + `{plannedCount} recipe(s) to vote on` (ochre/70, uppercase tracking)
+  - CTA button: full-width, `bg-ochre text-white`, label "Vote Now →", `data-testid="voting-nudge-vote-now"`
+  - Root element: `data-testid="voting-nudge-card"`
+
+- [ ] E2. Add voting nudge state and fetch to `HomeCommandCenter.tsx`
+  - File: `pwa/src/components/home/HomeCommandCenter.tsx`
+  - Import `VotingNudgeCard` from `./HomeSections`
+  - Add state: `const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null)`
+  - Add state: `const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false)`
+  - Add `useEffect` (runs once after mount, separate from the existing mount effect):
+    - Fetch `apiClient.api.schedule.get({ queryParameters: { weekOffset: 1 } })`
+    - If `data?.status === 1` and `data.days` exists: compute `plannedCount = data.days.filter(d => d.recipe != null).length`, call `setVotingNudge({ plannedCount })`
+    - Catch block: swallow error silently (no error surfaced per AC8)
+    - Use `isMounted` guard to prevent state update after unmount
+
+- [ ] E3. Render `VotingNudgeCard` in `HomeCommandCenter` between tonight card and `QuickCaptureTrigger`
+  - File: `pwa/src/components/home/HomeCommandCenter.tsx`
+  - Inside the `!isLoading` block, after the tonight card section (TonightPivotCard / CookedSuccessCard / TonightMenuCard) and before `<QuickCaptureTrigger />`
+  - Condition: `{votingNudge && !votingNudgeDismissed && ( <VotingNudgeCard ... /> )}`
+  - `onVote`: `() => router.push('/discover')`
+  - `onDismiss`: `() => setVotingNudgeDismissed(true)`
+  - `plannedCount`: from `votingNudge.plannedCount`
+
+- [ ] E4. Run `task review` as final gate for Group E

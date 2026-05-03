@@ -1,14 +1,15 @@
-# Design Document — planner-voting-ux (Requirements 1–3)
+# Design Document — planner-voting-ux (Requirements 1–4)
 
 ## Scope
 
-This document covers the design for Requirements 1, 2, and 3 of the `planner-voting-ux` spec:
+This document covers the design for Requirements 1, 2, 3, and 4 of the `planner-voting-ux` spec:
 
 1. **PlannerDayCard fixed height** — eliminate layout shift from vote badge toggling and recipe name wrapping.
 2. **fill-the-gap deduplication** — exclude recipes already in the target week from Quick Find results.
 3. **Rotation sort** — apply `LastCookedDate ASC NULLS FIRST, VoteCount DESC` to both recipe pools in `FillTheGapAsync`.
+4. **VotingNudgeCard on Home** — session-dismissible card on HomeCommandCenter that surfaces active next-week voting.
 
-Requirements 4–6 (VotingNudgeCard, weekStore) are out of scope for this session.
+Requirements 5–6 (weekStore) are out of scope for this session.
 
 ---
 
@@ -276,3 +277,173 @@ For any two adjacent recipes `A` and `B` in the returned list from the same pool
 
 ### P4 — weekOffset passthrough
 The `weekOffset` value passed to `QuickFindModal` must equal the `weekOffset` query parameter sent to `GET /api/schedule/fill-the-gap`.
+
+---
+
+## Requirement 4: VotingNudgeCard on Home
+
+### Problem
+
+Family members have no signal on the home screen that next week's voting is open. They must navigate into the planner to discover it. This breaks the social voting loop — voting participation drops when the entry point is buried.
+
+### Solution
+
+Add a `VotingNudgeCard` component to `HomeSections.tsx` and integrate it into `HomeCommandCenter.tsx` via a non-blocking `useEffect` fetch.
+
+#### 4a. VotingNudgeCard component — `pwa/src/components/home/HomeSections.tsx`
+
+New exported component added to the existing `HomeSections.tsx` file. Uses ochre accent (voting = discovery = ochre), consistent with `QuickFindModal` and `Navigation` ochre usage.
+
+```tsx
+interface VotingNudgeCardProps {
+  plannedCount: number;
+  onVote: () => void;
+  onDismiss: () => void;
+}
+
+export function VotingNudgeCard({ plannedCount, onVote, onDismiss }: VotingNudgeCardProps) {
+  return (
+    <div
+      data-testid="voting-nudge-card"
+      className="relative w-full bg-ochre/10 border border-ochre/20 rounded-[2.5rem] p-6 flex flex-col gap-4 overflow-hidden"
+    >
+      {/* dismiss button */}
+      <button
+        data-testid="voting-nudge-dismiss"
+        onClick={onDismiss}
+        className="absolute top-4 right-4 h-8 w-8 rounded-full bg-ochre/10 flex items-center justify-center text-ochre/60 hover:bg-ochre/20 transition-colors"
+        aria-label="Dismiss"
+      >
+        <X size={14} />
+      </button>
+
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ochre/20 text-ochre flex-shrink-0">
+          <Vote size={20} />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-black text-charcoal leading-tight">
+            The family is voting on next week
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-ochre/70 mt-0.5">
+            {plannedCount} {plannedCount === 1 ? 'recipe' : 'recipes'} to vote on
+          </span>
+        </div>
+      </div>
+
+      <button
+        data-testid="voting-nudge-vote-now"
+        onClick={onVote}
+        className="w-full h-12 rounded-2xl bg-ochre text-white font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 hover:bg-ochre/90 shadow-lg shadow-ochre/20"
+      >
+        Vote Now →
+      </button>
+    </div>
+  );
+}
+```
+
+**Icon choice:** `Vote` from `lucide-react` (ballot/voting icon). Falls back to `Sparkles` if `Vote` is unavailable in the installed version.
+
+**Planned count:** The number of days in the `weekOffset=1` schedule that have a recipe assigned (`days.filter(d => d.recipe != null).length`).
+
+#### 4b. HomeCommandCenter integration
+
+Two additions to `HomeCommandCenter.tsx`:
+
+**State:**
+```tsx
+const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null);
+const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
+```
+
+**useEffect — fetch after mount, non-blocking:**
+```tsx
+useEffect(() => {
+  let isMounted = true;
+  const fetchVotingStatus = async () => {
+    try {
+      const result = await apiClient.api.schedule.get({ queryParameters: { weekOffset: 1 } });
+      const data = result?.data;
+      if (!isMounted) return;
+      if (data?.status === 1 && data.days) {
+        const plannedCount = data.days.filter((d: any) => d.recipe != null).length;
+        setVotingNudge({ plannedCount });
+      }
+    } catch {
+      // Req 4 AC8: fetch failure → no card, no error surfaced
+    }
+  };
+  fetchVotingStatus();
+  return () => { isMounted = false; };
+}, []);
+```
+
+**Render — below tonight card, above QuickCaptureTrigger:**
+
+The `VotingNudgeCard` is rendered inside the `!isLoading` block, after the tonight card section and before `<QuickCaptureTrigger />`:
+
+```tsx
+{votingNudge && !votingNudgeDismissed && (
+  <VotingNudgeCard
+    plannedCount={votingNudge.plannedCount}
+    onVote={() => router.push('/discover')}
+    onDismiss={() => setVotingNudgeDismissed(true)}
+  />
+)}
+
+<QuickCaptureTrigger />
+```
+
+The `router` instance is already available in `HomeCommandCenter` (`useRouter()`).
+
+#### 4c. Render position
+
+The full render order inside the `!isLoading` block becomes:
+
+1. `TonightPivotCard` (when no recipe and not done)
+2. `CookedSuccessCard` (when cooked and not dismissed)
+3. Compact cooked badge (when cooked and dismissed)
+4. `TonightMenuCard` (when recipe assigned and not done)
+5. **`VotingNudgeCard`** ← new, session-dismissible
+6. `QuickCaptureTrigger`
+
+### Files Changed
+
+- `pwa/src/components/home/HomeSections.tsx` — add `VotingNudgeCard` component
+- `pwa/src/components/home/HomeCommandCenter.tsx` — add state, useEffect, render
+
+---
+
+## Post-Change Tooling
+
+After OpenAPI changes (`specs/openapi.yaml`):
+
+1. Run `task agent:reconcile` — regenerates the Kiota PWA client from the updated spec.
+2. Run `task agent:drift` — validates no schema drift between contract, DTOs, and generated models.
+3. Run `task review` — final review gate.
+
+---
+
+## Correctness Properties
+
+### P1 — Card height invariant
+For any `PlannerDayCard` rendered with or without a recipe, with or without a vote count, the rendered height must equal 72px.
+
+### P2 — Deduplication invariant
+For any call to `FillTheGapAsync(weekOffset)`, no recipe ID in the returned list shall appear in `CalendarEvents` for the target week.
+
+### P3 — Sort order invariant
+For any two adjacent recipes `A` and `B` in the returned list from the same pool:
+- If `A.LastCookedDate == null` and `B.LastCookedDate != null`, then `A` comes before `B`.
+- If both have the same `LastCookedDate` (or both null), then the one with higher `VoteCount` comes first.
+- All `RecipeMatches` results appear before any `DiscoveryRecipes` result.
+
+### P4 — weekOffset passthrough
+The `weekOffset` value passed to `QuickFindModal` must equal the `weekOffset` query parameter sent to `GET /api/schedule/fill-the-gap`.
+
+### P5 — VotingNudgeCard visibility invariant
+The `VotingNudgeCard` SHALL be rendered if and only if: the `GET /api/schedule?weekOffset=1` fetch succeeded AND `status === 1` AND the card has not been dismissed in the current session.
+
+### P6 — VotingNudgeCard non-persistence invariant
+Dismissing the `VotingNudgeCard` SHALL NOT write to `localStorage`, `sessionStorage`, cookies, or any other persistent store. The dismissed state is held only in React component state.

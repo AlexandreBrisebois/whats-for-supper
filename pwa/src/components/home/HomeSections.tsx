@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Camera, ChevronRight } from 'lucide-react';
+import { Check, Camera, ChevronRight, X, Vote } from 'lucide-react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
 import { t } from '@/locales';
@@ -66,6 +66,52 @@ export function CookedSuccessCard({ onDismiss }: { onDismiss?: () => void }) {
         className="mt-2 px-8 h-12 rounded-2xl bg-white text-sage font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 hover:bg-white/90"
       >
         {t('home.dismiss', 'Dismiss')}
+      </button>
+    </div>
+  );
+}
+
+interface VotingNudgeCardProps {
+  plannedCount: number;
+  onVote: () => void;
+  onDismiss: () => void;
+}
+
+export function VotingNudgeCard({ plannedCount, onVote, onDismiss }: VotingNudgeCardProps) {
+  return (
+    <div
+      data-testid="voting-nudge-card"
+      className="relative w-full bg-ochre/10 border border-ochre/20 rounded-[2.5rem] p-6 flex flex-col gap-4 overflow-hidden"
+    >
+      <button
+        data-testid="voting-nudge-dismiss"
+        onClick={onDismiss}
+        className="absolute top-4 right-4 h-8 w-8 rounded-full bg-ochre/10 flex items-center justify-center text-ochre/60 hover:bg-ochre/20 transition-colors"
+        aria-label="Dismiss"
+      >
+        <X size={14} />
+      </button>
+
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ochre/20 text-ochre flex-shrink-0">
+          <Vote size={20} />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-black text-charcoal leading-tight">
+            The family is voting on next week
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-ochre/70 mt-0.5">
+            {plannedCount} {plannedCount === 1 ? 'recipe' : 'recipes'} to vote on
+          </span>
+        </div>
+      </div>
+
+      <button
+        data-testid="voting-nudge-vote-now"
+        onClick={onVote}
+        className="w-full h-12 rounded-2xl bg-ochre text-white font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 hover:bg-ochre/90 shadow-lg shadow-ochre/20"
+      >
+        Vote Now →
       </button>
     </div>
   );

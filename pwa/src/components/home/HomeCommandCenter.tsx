@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
-import { QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
+import { QuickCaptureTrigger, CookedSuccessCard, VotingNudgeCard } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
@@ -19,6 +19,7 @@ import { SolarLoader } from '../ui/SolarLoader';
 import { useFamilyStore } from '@/store/familyStore';
 import { useTodayStore } from '@/store/todayStore';
 import { t } from '@/locales';
+import { ROUTES } from '@/lib/constants/routes';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
@@ -31,6 +32,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [showRecovery, setShowRecovery] = useState(false);
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [cookedDismissed, setCookedDismissed] = useState(false);
+  const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null);
+  const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
 
   // ── Domain state from todayStore ──────────────────────────────────────────
   const { currentRecipe, status, isLoading, init, assignRecipe, markCooked, markOrderedIn, sync } =
@@ -121,7 +124,27 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   // Note: cookedDismissed is only visually meaningful when isCooked is true.
   // Both badge conditions already gate on isCooked, so no explicit reset effect is needed.
 
-  // ── Action handlers ───────────────────────────────────────────────────────
+  // ── Voting nudge: fetch next-week status after mount (non-blocking) ───────
+  useEffect(() => {
+    let isMounted = true;
+    const fetchVotingStatus = async () => {
+      try {
+        const result = await apiClient.api.schedule.get({ queryParameters: { weekOffset: 1 } });
+        const data = result?.data;
+        if (!isMounted) return;
+        if (data?.status === 1 && data.days) {
+          const plannedCount = data.days.filter((d: any) => d.recipe != null).length;
+          setVotingNudge({ plannedCount });
+        }
+      } catch {
+        // AC8: fetch failure → no card shown, no error surfaced
+      }
+    };
+    fetchVotingStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const router = useRouter();
 
@@ -266,6 +289,14 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               />
             )}
         </>
+      )}
+
+      {votingNudge && !votingNudgeDismissed && (
+        <VotingNudgeCard
+          plannedCount={votingNudge.plannedCount}
+          onVote={() => router.push(ROUTES.DISCOVERY as any)}
+          onDismiss={() => setVotingNudgeDismissed(true)}
+        />
       )}
 
       <QuickCaptureTrigger />
