@@ -15,8 +15,11 @@ export default defineConfig({
   // Retry failed tests once on CI, none locally
   retries: isCI ? 1 : 0,
 
-  // Parallelise across workers (reduce on CI/Local to stay within resource limits)
-  workers: isCI ? 2 : 1,
+  // Run tests in files in parallel
+  fullyParallel: true,
+
+  // Parallelise across workers
+  workers: isCI ? 2 : undefined,
 
   // Per-test timeout
   timeout: 30_000,

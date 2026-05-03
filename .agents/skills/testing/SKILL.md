@@ -28,13 +28,17 @@ Execute these commands from the project root using `task`.
 
 | Tier | Purpose | Command |
 | :--- | :--- | :--- |
-| **Frontend Dev Loop** | Runs formatting, linting, and E2E tests. | `task review` |
+| **High-Speed Loop** | Fast validation (impacted tests only) during build. | `task gate` |
+| **Frontend Dev Loop** | Comprehensive validation (all tests) before commit. | `task review` |
 | **Backend Verification** | Runs all .NET unit and integration tests. | `task api:test` |
 | **Integrity Gate** | Final CI-parity check for the full PWA suite. | `task test:pwa:ci` |
 | **Parity Check** | Validates Spec ↔ Mock ↔ API synchronization. | `task agent:reconcile` |
 
 ## 4. Operational Directives
 1.  **Contract-First Priority**: The OpenAPI specification is the "Source of Truth". E2E tests use `page.route()` intercepts; fixture data must match OpenAPI examples. The `contract-integrity-gate` CI job is the authoritative parity check (ADR 030).
-2.  **Zero Brittle Policy**: Use `data-testid` for all locators. Do not use fragile CSS selectors or volatile text-based matching.
-3.  **Regression Discipline**: Every bug fix must include a regression test that fails without the fix and passes with it.
-4.  **Stateful Mocking**: If the OpenAPI spec is insufficient for complex state, use specialized mocks in `pwa/e2e/` rather than relying on a global stateful mock file.
+2.  **Strict Isolation (Anti-Drift)**: Tests must never hit the real backend. Unmocked API calls are blocked by a global interceptor in `fixtures.ts` to prevent database pollution.
+3.  **Digital Twin Testing**: When testing features using `todayStore` or `weekStore`, assert state twice: once for the immediate optimistic update (0ms lag) and once for the reconciled state after background sync.
+4.  **Zero Brittle Policy**: Use `data-testid` for all locators. Do not use fragile CSS selectors or volatile text-based matching.
+5.  **Regression Discipline**: Every bug fix must include a regression test that fails without the fix and passes with it.
+6.  **Ghost Protection**: The `gate` and `review` tasks automatically call `task dev:kill` and `task test:kill`. This clears zombie Playwright and dev server instances to ensure a clean, non-flaky execution environment.
+7.  **Impact-Aware Verification**: Prefer `task gate` during the implementation phase to keep the dev loop under 30 seconds. Use `task review` only before the final handover.

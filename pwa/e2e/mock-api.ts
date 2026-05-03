@@ -95,8 +95,6 @@ export async function setupCommonRoutes(page: Page) {
           ],
         }),
       });
-    } else {
-      await route.continue();
     }
   });
 
@@ -136,8 +134,6 @@ export async function setupCommonRoutes(page: Page) {
           },
         }),
       });
-    } else {
-      await route.continue();
     }
   });
 
@@ -190,8 +186,6 @@ export async function setupCommonRoutes(page: Page) {
           }),
         }),
       });
-    } else {
-      await route.continue();
     }
   });
   // GET /api/recipes/{id}/status — returns pending by default; tests can override per-route
@@ -214,8 +208,6 @@ export async function setupCommonRoutes(page: Page) {
           },
         }),
       });
-    } else {
-      await route.continue();
     }
   });
   await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+(?:\?|$)/, async (route) => {

@@ -19,9 +19,9 @@ export function isScheduleRecipe(
 ): recipe is { data: ScheduleRecipeDto } | ScheduleRecipeDto {
   if (!recipe) return false;
   // Handle wrapped { data: ScheduleRecipeDto }
-  if (recipe.data && (recipe.data.id != null || 'id' in recipe.data)) return true;
+  if (recipe.data && typeof recipe.data.id === 'string' && recipe.data.id.length > 0) return true;
   // Handle direct ScheduleRecipeDto
-  if (recipe.id != null || 'id' in recipe) return true;
+  if (typeof recipe.id === 'string' && recipe.id.length > 0) return true;
   return false;
 }
 

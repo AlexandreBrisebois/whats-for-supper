@@ -4,17 +4,17 @@ import sys
 import re
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+E2E_DIR = os.path.join(ROOT, "pwa/e2e")
 
 def audit():
     print("🔍 Auditing tests for brittle selectors...")
-    test_dir = os.path.join(ROOT, "pwa/tests")
     brittle_count = 0
     
     # Pattern to find .locator() calls that don't use data-testid
     # matches .locator('div') but not .locator('[data-testid="foo"]')
     locator_pattern = r"\.locator\(['\"]([^'\"\[][^'\"]*)['\"]\)"
     
-    for root, dirs, files in os.walk(test_dir):
+    for root, dirs, files in os.walk(E2E_DIR):
         for file in files:
             if file.endswith(".spec.ts"):
                 path = os.path.join(root, file)
@@ -33,62 +33,107 @@ def audit():
 
 def get_impacted_tests():
     try:
-        diff = subprocess.check_output(["git", "diff", "--name-only", "main"], cwd=ROOT).decode("utf-8").splitlines()
+        # Check staged changes first
+        diff = subprocess.check_output(["git", "diff", "--name-only", "--cached"], cwd=ROOT).decode("utf-8").splitlines()
+        # Also check unstaged changes
+        diff += subprocess.check_output(["git", "diff", "--name-only"], cwd=ROOT).decode("utf-8").splitlines()
+        # Filter duplicates
+        diff = list(set(diff))
     except:
-        # Fallback to HEAD~1 if main is not available or we are on main
-        diff = subprocess.check_output(["git", "diff", "--name-only", "HEAD~1"], cwd=ROOT).decode("utf-8").splitlines()
+        diff = []
+
+    if not diff:
+        return []
 
     impacted = set()
+    run_all = False
+
     for file in diff:
-        # Backend change
+        # Global impact files
+        if any(x in file for x in ["openapi.yaml", "playwright.config.ts", "package.json", "Taskfile.yml", "fixtures.ts", "mock-api.ts"]):
+            run_all = True
+            break
+
+        # High-impact PWA files
+        if any(x in file for x in ["pwa/src/components/ui", "pwa/src/components/common", "pwa/src/lib/api", "pwa/src/store"]):
+            run_all = True
+            break
+
+        # Backend change -> Map Controller to E2E
         if "Controllers" in file:
             controller_name = os.path.basename(file).replace("Controller.cs", "").lower()
-            test_file = os.path.join(ROOT, f"pwa/tests/{controller_name}.spec.ts")
-            if os.path.exists(test_file):
-                impacted.add(test_file)
-        
-        # Frontend change
-        if "pwa/app" in file:
-            # Try to find a matching test file name
+            # Special mappings
+            if controller_name == "recipe":
+                impacted.add(os.path.join(E2E_DIR, "recipes.spec.ts"))
+                impacted.add(os.path.join(E2E_DIR, "home-recipe.spec.ts"))
+            else:
+                # Try to find a spec with the same name
+                for test_file in os.listdir(E2E_DIR):
+                    if test_file.startswith(controller_name) and test_file.endswith(".spec.ts"):
+                        impacted.add(os.path.join(E2E_DIR, test_file))
+
+        # Frontend App/Route changes
+        if "pwa/src/app" in file:
             parts = file.split("/")
-            if len(parts) > 2:
-                feature = parts[2]
-                test_file = os.path.join(ROOT, f"pwa/tests/{feature}.spec.ts")
-                if os.path.exists(test_file):
-                    impacted.add(test_file)
-        
-        # Spec change -> Run all
-        if "openapi.yaml" in file:
-            return [os.path.join(ROOT, "pwa/tests")]
+            # app/(app)/home/page.tsx -> parts[3] is 'home'
+            if "(app)" in parts:
+                idx = parts.index("(app)")
+                if len(parts) > idx + 1:
+                    feature = parts[idx + 1]
+                    for test_file in os.listdir(E2E_DIR):
+                        if test_file.startswith(feature) and test_file.endswith(".spec.ts"):
+                            impacted.add(os.path.join(E2E_DIR, test_file))
+            
+        # Frontend Component changes
+        if "pwa/src/components" in file:
+            parts = file.split("/")
+            if len(parts) > 3:
+                feature = parts[3]
+                for test_file in os.listdir(E2E_DIR):
+                    if test_file.startswith(feature) and test_file.endswith(".spec.ts"):
+                        impacted.add(os.path.join(E2E_DIR, test_file))
+
+        # Direct E2E test changes
+        if file.startswith("pwa/e2e/") and file.endswith(".spec.ts"):
+            impacted.add(os.path.join(ROOT, file))
+
+    if run_all:
+        print("🌍 High-impact changes detected. Running all E2E tests.")
+        return [E2E_DIR]
 
     return list(impacted)
 
 def run_impacted():
-    print("🎯 Identifying impacted tests...")
-    tests = get_impacted_tests()
+    if "--all" in sys.argv:
+        tests = [E2E_DIR]
+    else:
+        print("🎯 Identifying impacted tests...")
+        tests = get_impacted_tests()
+
     if not tests:
         print("✅ No impacted tests identified for this change.")
         return
 
-    print(f"🚀 Running {len(tests)} impacted test files...")
+    print(f"🚀 Running impacted tests...")
     for t in tests:
         print(f"  - {os.path.relpath(t, ROOT)}")
     
+    # Use playwright directly to leverage workers and config
     cmd = ["npx", "playwright", "test"] + tests
     try:
         subprocess.run(cmd, cwd=os.path.join(ROOT, "pwa"), check=True)
-        print("✅ Impacted tests passed!")
+        print("✅ Tests passed!")
     except subprocess.CalledProcessError:
-        print("❌ Some impacted tests failed.")
+        print("❌ Some tests failed.")
         sys.exit(1)
 
 def main():
     if "--audit" in sys.argv:
         audit()
-    elif "--impact" in sys.argv:
+    elif "--impact" in sys.argv or "--all" in sys.argv:
         run_impacted()
     else:
-        print("Usage: python3 test_ops.py [--audit | --impact]")
+        print("Usage: python3 test_ops.py [--audit | --impact | --all]")
 
 if __name__ == "__main__":
     main()

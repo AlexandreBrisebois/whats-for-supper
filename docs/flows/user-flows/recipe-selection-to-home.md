@@ -1,5 +1,16 @@
 # Flow: Recipe Selection → Home Page (Tonight's Supper)
 
+> ⚠️ **STALE — Review pending after `home-today-sync` bugfix spec is implemented.**
+>
+> Known drift from current implementation:
+> - "Race path" section describes the pre-fix grey card flash as a current risk — it was resolved in `863451d`; should be marked as historical.
+> - "GOTO Confirm Path" shows `image: ''` in the optimistic recipe — current code uses `gotoRecipeData?.imageUrl ?? gotoImageUrl`.
+> - `router.refresh()` is shown as the final step that re-hydrates `currentRecipe` — this is the broken assumption behind Bug 1 in `home-today-sync`. The doc presents it as working correctly when it is not.
+> - No mention of `pendingConfirmRef` or the post-refresh `syncRecipe()` race condition.
+> - References `home-race.spec.ts` for verification — file exists but the E2E coverage table in `no-menu-goto-home-state.md` references the deleted `home-recovery.spec.ts`.
+>
+> See: [`.kiro/specs/home-today-sync/bugfix.md`](../../.kiro/specs/home-today-sync/bugfix.md)
+
 This diagram traces the complete sequence of events when a user selects a recipe for today's supper and how it (should) appear on the home page as tonight's card.
 
 Two execution paths are shown:

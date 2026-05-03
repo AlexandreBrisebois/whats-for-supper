@@ -1,9 +1,19 @@
 # Flow: No Planned Meal + GOTO Configured → Home State
 
+> ⚠️ **PARTIALLY STALE — Review pending after `home-today-sync` bugfix spec is implemented.**
+>
+> Known drift from current implementation:
+> - E2E coverage table references `home-recovery.spec.ts` (deleted in `952d879`) — correct files are `home-goto.spec.ts` and `home-recipe.spec.ts`.
+> - State decision table claims "Confirm GOTO" button is "always rendered" — incorrect; it only renders when `gotoReady === true`.
+> - No mention of `pendingConfirmRef` race condition (Bug 1 in `home-today-sync` spec).
+> - "Current Model" section describes the Phase 13 stale-cache design — this is historical, not the live implementation.
+>
+> See: [`.kiro/specs/home-today-sync/bugfix.md`](../../.kiro/specs/home-today-sync/bugfix.md)
+
 This document traces two models:
 
-1. **Current model (Phase 13 as built)** — recipe readiness embedded in the `family_goto` settings value; goes stale after workflow completes.
-2. **Fixed model (ADR 033)** — recipe readiness derived from `GET /api/recipes/{id}/status`; always current, polls until ready.
+1. **Historical model (Phase 13 as built)** — recipe readiness embedded in the `family_goto` settings value; goes stale after workflow completes. Replaced by ADR 033.
+2. **Current model (ADR 033)** — recipe readiness derived from `GET /api/recipes/{id}/status`; always current, polls until ready.
 
 Related specs: [phase-12-no-menu.md](../../.kiro/specs/phase-12-no-menu.md), [phase-13-goto-synthesis.md](../../.kiro/specs/phase-13-goto-synthesis.md), [phase-14-ux-hardening.md](../../.kiro/specs/phase-14-ux-hardening.md)  
 ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)  
@@ -190,17 +200,20 @@ The `family_goto` setting stores `{ description, recipeId }` in all cases. Readi
 
 ---
 
-## E2E Test Coverage (Fixed Model)
+## E2E Test Coverage (Current Model — ADR 033)
 
 | Scenario | Test file | Status |
 |----------|-----------|--------|
-| No recipe → pivot card shown | `home-race.spec.ts` | ✅ |
-| GOTO ready → Confirm GOTO enabled | `home-race.spec.ts` | ✅ (updated — recipe status mock) |
+| No recipe → pivot card shown | `home-goto.spec.ts` | ✅ |
+| GOTO ready → Confirm GOTO enabled | `home-race.spec.ts` | ✅ |
 | Confirm GOTO → menu card immediately (optimistic) | `home-race.spec.ts` | ✅ |
 | Quick Find → menu card immediately (optimistic) | `home-race.spec.ts` | ✅ |
-| GOTO pending → Confirm GOTO disabled | `home-recovery.spec.ts` | ✅ (updated — recipe status mock) |
-| Pending GOTO polls until ready | `home-race.spec.ts` | ✅ (new — Phase C4) |
+| GOTO pending → Confirm GOTO disabled | `home-goto.spec.ts` | ✅ |
+| Pending GOTO polls until ready | `home-race.spec.ts` | ✅ |
+| Confirm GOTO survives post-refresh syncRecipe() race | `home-goto.spec.ts` | ✅ |
 | SSR returns name=null → pivot card shown (not menu card) | — | ❌ Gap — needs unit test with null-name SSR prop |
+
+> **Note:** `home-recovery.spec.ts` was deleted in `952d879` and split into `home-goto.spec.ts` and `home-recipe.spec.ts`.
 
 ### SSR constraint (unchanged)
 

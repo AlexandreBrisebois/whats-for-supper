@@ -106,6 +106,26 @@ tasks:
 
         echo "✓ Lingering processes cleaned up"
 
+  test:kill:
+    desc: "Kill zombie Playwright and npm test processes (use before running E2E to avoid port ghosts)"
+    cmds:
+      - |
+        echo "Killing zombie test processes..."
+
+        pkill -f "playwright test" 2>/dev/null || true
+        pkill -f "npm run test:e2e" 2>/dev/null || true
+        pkill -f "npm run test$" 2>/dev/null || true
+
+        # Kill anything still holding the PWA port
+        PORT_PIDS=$(lsof -ti:{{.PWA_PORT}} 2>/dev/null || true)
+        if [ -n "$PORT_PIDS" ]; then
+          echo "Killing processes on port {{.PWA_PORT}}: $PORT_PIDS"
+          echo "$PORT_PIDS" | xargs kill -9 2>/dev/null || true
+        fi
+
+        sleep 1
+        echo "✓ Zombie test processes cleared"
+
   # ============================================================================
   # TESTING
   # ============================================================================
@@ -149,14 +169,10 @@ tasks:
       - npm run test:e2e:ci
 
   test:pwa:e2e:
-    desc: "Run E2E suites sequentially (one file at a time to avoid cross-suite state)"
+    desc: "Run E2E suites in parallel using Playwright workers"
     dir: pwa
     cmds:
-      - npm run test:e2e:planner
-      - npm run test:e2e:planner-full-cycle
-      - npm run test:e2e:planner-social
-      - npm run test:e2e:utility
-      - npm run test:e2e:home
+      - npx playwright test
 
   test:smoke:
     desc: "💨 Docker Smoke Test (Local CI Parity)"
@@ -949,9 +965,23 @@ tasks:
         fi
 
 
+  gate:
+    desc: "🚀 Fast developer loop: lint + typecheck + drift:schemas + test:impact"
+    cmds:
+      - task: dev:kill
+      - task: test:kill
+      - task: lint
+      - task: typecheck
+      - task: agent:drift:schemas
+      - task: agent:test:impact
+      - echo ""
+      - echo "✅ Gate passed! You're good to keep building."
+
   review:
     desc: "Pre-commit review: format + lint + test"
     cmds:
+      - task: dev:kill
+      - task: test:kill
       - task: format
       - task: lint
       - task: typecheck

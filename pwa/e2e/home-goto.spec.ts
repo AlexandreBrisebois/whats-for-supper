@@ -89,6 +89,7 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
     const confirmBtn = page.getByTestId('confirm-goto-btn');
     await expect(confirmBtn).toBeEnabled();
+    await expect(confirmBtn).toHaveText('Make This Tonight');
     await confirmBtn.click();
 
     await expect.poll(() => assignCalled).toBe(true);
@@ -162,6 +163,204 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
     await page.waitForTimeout(2000);
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+  });
+
+  test('Empty state shows correct header and no badge', async ({ page }) => {
+    // Mock empty schedule
+    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
+      if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    // Mock family_goto setting to return 404 (no GOTO configured)
+    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
+
+    await page.goto('/home');
+
+    // Pivot card is visible
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
+
+    // Header shows "What's for Supper?" in empty state
+    await expect(page.getByRole('heading', { name: "What's for Supper?" })).toBeVisible();
+
+    // Prep-time badge is NOT visible in empty state
+    await expect(page.getByText('30-45 Mins')).not.toBeVisible();
+
+    // Ochre CTA button is visible in footer
+    await expect(page.getByTestId('add-goto-btn')).toBeVisible();
+  });
+
+  test('GOTO ready state shows Make This Tonight button with ghost secondary buttons', async ({
+    page,
+  }) => {
+    // Mock GOTO setting
+    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            key: 'family_goto',
+            value: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            },
+          },
+        }),
+      });
+    });
+
+    // Mock GOTO status as ready
+    await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
+      });
+    });
+
+    await page.goto('/home');
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
+
+    // Primary button has "Make This Tonight" label
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeVisible();
+    await expect(confirmBtn).toHaveText('Make This Tonight');
+
+    // Secondary buttons are ghost/outline — they should NOT have filled background classes
+    const discoverBtn = page.getByTestId('discover-btn');
+    const orderInBtn = page.getByTestId('order-in-btn');
+
+    await expect(discoverBtn).toBeVisible();
+    await expect(orderInBtn).toBeVisible();
+
+    // In GOTO-ready state, secondary buttons use border/transparent (ghost) not filled bg
+    const discoverClass = (await discoverBtn.getAttribute('class')) || '';
+    const orderInClass = (await orderInBtn.getAttribute('class')) || '';
+
+    const discoverClasses = discoverClass.split(' ');
+    const orderInClasses = orderInClass.split(' ');
+
+    expect(discoverClasses).not.toContain('bg-indigo/10');
+    expect(orderInClasses).not.toContain('bg-charcoal/10');
+  });
+
+  test('Empty state (default routes) shows correct header and no badge', async ({ page }) => {
+    // setupCommonRoutes already sets family_goto: null by default — no override needed
+    await page.goto('/home');
+
+    // Pivot card is visible
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
+
+    // Header shows "What's for Supper?" in empty state (not "Tonight's Menu")
+    const pivotCard = page.getByTestId('tonight-pivot-card');
+    await expect(pivotCard.locator('h2')).toContainText("What's for Supper?");
+
+    // Prep-time badge is NOT visible in empty state
+    await expect(page.getByText('30-45 Mins')).not.toBeVisible();
+  });
+
+  test('Empty state shows ochre CTA button in footer (not buried in image area)', async ({
+    page,
+  }) => {
+    // setupCommonRoutes already sets family_goto: null by default — no override needed
+    await page.goto('/home');
+
+    // Ochre CTA button is visible
+    const addGotoBtn = page.getByTestId('add-goto-btn');
+    await expect(addGotoBtn).toBeVisible();
+
+    // The button is wrapped in an <a> tag pointing to /profile/settings
+    const addGotoLink = page.locator('a[href="/profile/settings"]');
+    await expect(addGotoLink).toBeVisible();
+
+    // There is NO <a> tag inside the image area (rounded-[2.5rem] div)
+    const imageArea = page.getByTestId('tonight-pivot-card').locator('div.rounded-\\[2\\.5rem\\]');
+    await expect(imageArea.locator('a')).toHaveCount(0);
+  });
+
+  test('GOTO-ready state shows "Make This Tonight" button', async ({ page }) => {
+    // Mock GOTO setting with recipeId and status: 'ready'
+    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            key: 'family_goto',
+            value: { description: 'Family GOTO', recipeId: MOCK_IDS.RECIPE_LASAGNA },
+          },
+        }),
+      });
+    });
+    await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
+      });
+    });
+
+    await page.goto('/home');
+
+    // confirm-goto-btn is visible with text "Make This Tonight"
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeVisible();
+    await expect(confirmBtn).toHaveText('Make This Tonight');
+
+    // It does NOT have text "Confirm GOTO"
+    await expect(confirmBtn).not.toHaveText('Confirm GOTO');
+  });
+
+  test('GOTO-ready state — secondary buttons are ghost/outline style', async ({ page }) => {
+    // Mock GOTO setting with recipeId and status: 'ready'
+    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            key: 'family_goto',
+            value: { description: 'Family GOTO', recipeId: MOCK_IDS.RECIPE_LASAGNA },
+          },
+        }),
+      });
+    });
+    await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
+      });
+    });
+
+    await page.goto('/home');
+
+    // discover-btn is visible and does NOT have class bg-indigo/10 (should have border class)
+    const discoverBtn = page.getByTestId('discover-btn');
+    await expect(discoverBtn).toBeVisible();
+    const discoverClass = (await discoverBtn.getAttribute('class')) || '';
+    expect(discoverClass.split(' ')).not.toContain('bg-indigo/10');
+    expect(discoverClass).toContain('border');
+
+    // order-in-btn is visible and does NOT have class bg-charcoal/10
+    const orderInBtn = page.getByTestId('order-in-btn');
+    await expect(orderInBtn).toBeVisible();
+    const orderInClass = (await orderInBtn.getAttribute('class')) || '';
+    expect(orderInClass.split(' ')).not.toContain('bg-charcoal/10');
   });
 
   test('Pending GOTO polls until ready', async ({ page }) => {

@@ -44,11 +44,13 @@ export function TonightPivotCard({
       {/* Header */}
       <div className="flex justify-between items-center mb-5 px-1">
         <h2 className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-          Tonight&apos;s Menu
+          {hasGoto ? "Tonight's Menu" : "What's for Supper?"}
         </h2>
-        <span className="text-[10px] font-black text-terracotta bg-terracotta/10 px-3 py-1 rounded-full uppercase tracking-widest">
-          30-45 Mins
-        </span>
+        {hasGoto && (
+          <span className="text-[10px] font-black text-terracotta bg-terracotta/10 px-3 py-1 rounded-full uppercase tracking-widest">
+            30-45 Mins
+          </span>
+        )}
       </div>
 
       {/* Image area */}
@@ -62,24 +64,12 @@ export function TonightPivotCard({
             priority
             unoptimized
           />
-        ) : hasGoto ? (
-          <Utensils size={48} className="text-charcoal/10" />
         ) : (
-          <a
-            href="/profile/settings"
-            className="flex flex-col items-center justify-center gap-3 px-6 text-center"
-          >
-            <span className="flex items-center justify-center w-16 h-16 rounded-full bg-terracotta/10">
-              <Utensils size={28} className="text-terracotta" />
-            </span>
-            <span className="text-[11px] font-black uppercase tracking-widest text-terracotta leading-snug">
-              Add your family&apos;s
-              <br />
-              GOTO recipe
-            </span>
-          </a>
+          <Utensils size={48} className="text-charcoal/10" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 via-transparent to-transparent opacity-60" />
+        {hasGoto && (
+          <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 via-transparent to-transparent opacity-60" />
+        )}
       </div>
 
       {/* Body */}
@@ -107,21 +97,39 @@ export function TonightPivotCard({
             data-testid="confirm-goto-btn"
             className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
           >
-            Confirm GOTO
+            Make This Tonight
           </button>
+        )}
+        {!hasGoto && (
+          <a href="/profile/settings">
+            <button
+              data-testid="add-goto-btn"
+              className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white w-full shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
+            >
+              Add your family&apos;s GOTO recipe
+            </button>
+          </a>
         )}
         <div className={gotoReady ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}>
           <button
             onClick={onDiscover}
             data-testid="discover-btn"
-            className="flex items-center justify-center h-12 rounded-[1.5rem] bg-indigo/10 text-indigo transition-all active:scale-95 hover:bg-indigo/20 text-[10px] font-black uppercase tracking-widest"
+            className={
+              gotoReady
+                ? 'flex items-center justify-center h-12 rounded-[1.5rem] border border-indigo/30 bg-transparent text-indigo transition-all active:scale-95 hover:bg-indigo/10 text-[10px] font-black uppercase tracking-widest'
+                : 'flex items-center justify-center h-12 rounded-[1.5rem] bg-indigo/10 text-indigo transition-all active:scale-95 hover:bg-indigo/20 text-[10px] font-black uppercase tracking-widest'
+            }
           >
             Quick Find
           </button>
           <button
             onClick={onOrderIn}
             data-testid="order-in-btn"
-            className="flex items-center justify-center h-12 rounded-[1.5rem] bg-charcoal/10 text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/20 text-[10px] font-black uppercase tracking-widest"
+            className={
+              gotoReady
+                ? 'flex items-center justify-center h-12 rounded-[1.5rem] border border-charcoal/20 bg-transparent text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/10 text-[10px] font-black uppercase tracking-widest'
+                : 'flex items-center justify-center h-12 rounded-[1.5rem] bg-charcoal/10 text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/20 text-[10px] font-black uppercase tracking-widest'
+            }
           >
             Order In
           </button>

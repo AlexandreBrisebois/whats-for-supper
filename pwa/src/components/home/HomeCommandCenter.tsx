@@ -20,15 +20,16 @@ import { t } from '@/locales';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
+  todayStatus?: 0 | 2 | 3;
 }
 
-export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
+export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCenterProps) {
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showQuickFind, setShowQuickFind] = useState(false);
-  const [isSkipped, setIsSkipped] = useState(false);
-  const [isCooked, setIsCooked] = useState(false);
-  const [sessionDone, setSessionDone] = useState(false);
+  const [isSkipped, setIsSkipped] = useState(todayStatus === 3);
+  const [isCooked, setIsCooked] = useState(todayStatus === 2);
+  const [sessionDone, setSessionDone] = useState(todayStatus === 2 || todayStatus === 3);
   const [currentRecipe, setCurrentRecipe] = useState<ScheduleRecipeDto | null>(
     isScheduleRecipe(todaysRecipe)
       ? 'data' in todaysRecipe
@@ -252,7 +253,7 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
         </div>
       ) : (
         <>
-          {(!currentRecipe || isSkipped || sessionDone) && !isCooked && (
+          {!currentRecipe && !isSkipped && !sessionDone && !isCooked && (
             <TonightPivotCard
               gotoDescription={gotoRecipeData?.name ?? gotoDescription}
               gotoRecipeId={gotoRecipeId}
@@ -279,13 +280,31 @@ export function HomeCommandCenter({ todaysRecipe }: HomeCommandCenterProps) {
                   })
                     .then(() => router.refresh())
                     .catch((err) => console.error('Failed to confirm GOTO:', err))
-                    .finally(() => { pendingConfirmRef.current = false; });
+                    .finally(() => {
+                      pendingConfirmRef.current = false;
+                    });
                 } else {
                   setShowQuickFind(true);
                 }
               }}
               onDiscover={() => setShowQuickFind(true)}
-              onOrderIn={() => handleRecoveryAction('order_in')}
+              onOrderIn={async () => {
+                if (!currentRecipe) {
+                  // B5: No recipe — write status:3 unconditionally
+                  try {
+                    const todayDate = DateOnly.parse(getTodayString());
+                    if (!todayDate) return;
+                    await apiClient.api.schedule.day.byDate(todayDate).validate.post({ status: 3 });
+                    setIsSkipped(true);
+                    setSessionDone(true);
+                  } catch (error) {
+                    console.error('Failed to mark order in:', error);
+                  }
+                } else {
+                  // B6: Recipe exists — open recovery dialog first
+                  setShowRecovery(true);
+                }
+              }}
             />
           )}
 

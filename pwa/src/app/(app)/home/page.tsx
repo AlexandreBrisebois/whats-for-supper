@@ -37,10 +37,12 @@ export default async function HomePage() {
       : rawRecipe
     : null;
 
+  const todayStatus: 0 | 2 | 3 = todaysEntry?.status === 2 ? 2 : todaysEntry?.status === 3 ? 3 : 0;
+
   return (
     <>
       <StoreInitializer familyMembers={familyMembers} />
-      <HomeCommandCenter todaysRecipe={todaysRecipe} />
+      <HomeCommandCenter todaysRecipe={todaysRecipe} todayStatus={todayStatus} />
     </>
   );
 }

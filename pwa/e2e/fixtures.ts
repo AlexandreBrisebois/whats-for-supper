@@ -31,6 +31,26 @@ export const test = base.extend({
       window.localStorage.setItem('whats-for-supper-locale', 'en');
     });
 
+    // Strict Mocking: Block any unhandled API calls to prevent DB pollution
+    // We register this FIRST so it acts as the catch-all (last matched)
+    await page.route(/\/(?:backend\/)?api\//, async (route) => {
+      const request = route.request();
+      // Allow health checks
+      if (request.url().includes('/health')) {
+        return route.continue();
+      }
+      console.error(`❌ UNMOCKED API CALL DETECTED: ${request.method()} ${request.url()}`);
+      await route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: 'Unmocked API call detected. Tests must be isolated from the real backend.',
+          method: request.method(),
+          url: request.url(),
+        }),
+      });
+    });
+
     await use(page);
   },
 });
