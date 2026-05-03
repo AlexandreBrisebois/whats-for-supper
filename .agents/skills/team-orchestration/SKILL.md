@@ -23,18 +23,18 @@ Follow these directives in order for every complex feature or refactor.
 
 ### Directive 1: Plan & Initialize Context
 1.  **Read State**: Immediately read [HANDOVER.md](HANDOVER.md) and [ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
-2.  **Decompose**: Break the request into isolated workstreams (Database, API, Frontend, Tests).
-3.  **Map Workstreams**: Use [create-prompt](../create-prompt/SKILL.md) to draft an execution plan. Do not start coding until the plan is approved. **Note: If a pre-prepared prompt is provided by the user, adopt it as the approved strategy and verify it against Directive 2 (The Seams) before execution.**
+2.  **Decompose (Vertical Slicing)**: Break the request into vertical, end-to-end capabilities (e.g., "Build the Add Recipe vertical slice: Contract -> DB -> API -> Frontend -> Test"). **DO NOT slice horizontally** (e.g., Database, then API, then Frontend).
+3.  **Map Workstreams**: Use [create-prompt](../create-prompt/SKILL.md) to draft an execution plan for the vertical slices. Do not start coding until the plan is approved. **Note: If a pre-prepared prompt is provided by the user, adopt it as the approved strategy and verify it against Directive 2 (The Seams) before execution.**
 
 ### Directive 2: Build the Seams (The Contract)
 1.  **Update API**: Use [openapi-expert](../openapi-expert/SKILL.md) to update `specs/openapi.yaml`.
 2.  **Enforce Contracts**: Use [contract-engineer](../contract-engineer/SKILL.md) to define database schemas or cross-component boundaries.
 3.  **Generate Clients**: Ensure the Kiota client or frontend models are regenerated BEFORE implementation begins.
 
-### Directive 3: Execute Parallel Workstreams
-1.  **Isolate Logic**: Focus on one workstream at a time or prepare clean prompts for sub-agents. If you spawn sub-agents, you must tell me what they will work on, coordinate them and ensure they follow Directive 4.
-2.  **Verify Locally**: Each workstream MUST pass its own unit/component tests before reintegration.
-3.  **Micro-Handover**: Document exactly what changed in the workstream and which tests were passed.
+### Directive 3: Execute Vertical Slices
+1.  **Isolate Logic**: Focus on building one complete vertical slice at a time. If you spawn sub-agents, assign them specific vertical slices, coordinate them, and ensure they follow Directive 4.
+2.  **Verify Locally**: Each vertical slice MUST pass its own unit, component, and E2E tests before moving to the next capability.
+3.  **Micro-Handover**: Document exactly what changed in the slice and which E2E tests verify the capability.
 
 ### Directive 4: Reintegrate & Reconcile
 1.  **Sync Implementation**: Run `task agent:reconcile` to ensure the Backend matches the OpenAPI Spec.

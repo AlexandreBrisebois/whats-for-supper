@@ -17,7 +17,7 @@ Turn a vague or high-level implementation request into one or more **launch-read
 Your job is not to solve the feature directly. Your job is to package the work so another agent can execute it safely with minimal ambiguity.
 
 **Primary artifact:** an engine Task.  
-**Secondary artifact:** an optional markdown export of the same Task for `build-prompts/` or manual review.
+**Secondary artifact:** an optional markdown export of the same Task for `specs/prompts/` or manual review.
 
 ---
 
@@ -25,7 +25,7 @@ Your job is not to solve the feature directly. Your job is to package the work s
 
 ### 1. Resolve ambiguity first
 
-If the task is underspecified, conflicting, or architecturally unclear, stop and use [shared-understanding](../shared-understanding/SKILL.md) before generating Tasks.
+Use [shared-understanding](../shared-understanding/SKILL.md) before generating Tasks.
 
 Do not emit workstreams for unresolved intent.
 
@@ -104,7 +104,7 @@ Every generated work item must be expressed first as an **engine Task**.
 
 A markdown prompt file is optional and should be treated as:
 - a human-readable export,
-- a durable artifact in `build-prompts/`,
+- a durable artifact in `specs/prompts/`,
 - or a manual launch format for tools that do not consume Tasks directly.
 
 Do not make markdown the canonical form if the engine can accept a Task payload.
@@ -189,15 +189,15 @@ required_context:
   - <existing file + target zone>
   - <minimal seam/type reference>
 
-task:
-  - <bounded instruction>
-  - <bounded instruction>
-  - <bounded instruction>
-
 tdd_gate:
   - <write or update failing test first>
   - <confirm failure before implementation>
   - <implement until tests pass>
+
+task:
+  - <bounded instruction>
+  - <bounded instruction>
+  - <bounded instruction>
 
 verification:
   - <exact command>

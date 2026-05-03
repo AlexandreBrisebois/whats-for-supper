@@ -38,5 +38,5 @@ Use this table to locate resources without scanning the filesystem. Load only wh
 | OpenAPI spec | `specs/openapi.yaml` | Any contract, DTO, or route change |
 | ADRs | `specs/decisions/` | Task conflicts with or extends a past architectural decision |
 | Feature specs | `.kiro/specs/` | Active feature has a spec — read it before touching that feature |
-| Build prompts | `plans/` | Looking for a pre-written implementation prompt for the current task |
+| Build prompts | `specs/prompts` | Looking for a pre-written implementation prompt for the current task |
 | Mockups | `specs/mockups/` | UI work requiring design reference |

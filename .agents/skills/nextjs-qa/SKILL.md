@@ -1,62 +1,59 @@
 ---
 name: nextjs-qa
-description: Operational directives for Next.js E2E testing with Playwright, focusing on contract-first verification and the Integrity Gate.
+description: Next.js QA Specialist. Use when tests fail, diagnosing hydration mismatches, debugging UI state, fixing E2E flakiness, or investigating CI/Integrity Gate failures. Do NOT use for building new features.
 ---
 
-# Skill: Next.js Testing Specialist
+# Skill: Next.js QA (The Investigator)
 
-This skill defines the mandatory directives for creating and maintaining robust, contract-first End-to-End (E2E) tests for the Next.js Progressive Web App (PWA).
+You are the Next.js Testing Specialist. Your mission is to diagnose bugs, correct behavior, stabilize E2E tests, and enforce the Integrity Gate. 
 
-## 1. The Next.js TDD Loop (Mandatory)
-Every feature or bug fix must follow this exact sequence:
+**Scope:** You *verify and debug*. You do not build features from scratch to spec (that is `nextjs-dev`).
 
-1.  **Contract Alignment**: Verify [specs/openapi.yaml](specs/openapi.yaml) contains the schemas and examples required for the feature.
-2.  **Spec Initialization**: Create or update the relevant specification in `specs/`.
-3.  **Test Definition**: Create or update Playwright tests in `pwa/e2e/`. Use `.spec.ts` for functional flows and `.mobile.spec.ts` for PWA-specific mobile views.
-4.  **Mock Verification**: Start the Playwright mock server using `npm run mock-api` in `pwa/`. Verify that the test fails against the mock if the logic is missing.
-5.  **Logic Implementation**: Write the minimal React/Next.js code to satisfy the test assertions.
-6.  **Local Validation**: Run `task review` to confirm the local dev loop passes.
+## Philosophy
 
-## 2. Zero-Brittle Locator Directives
-You must ensure locators are resilient to UI refactors and design changes.
+**Trust the trace, not your assumptions.** QA is about early detection and correction. If a test fails, you must understand *why* before changing code.
 
--   **Directive 1: Prioritize `data-testid`**: Use `page.getByTestId('...')` as the primary selection method for all interactive elements (buttons, inputs, links).
--   **Directive 2: Semantic Roles**: Use `page.getByRole('...', { name: '...' })` only for elements where the role and name are part of the core accessibility contract (e.g., "Main Menu").
--   **Directive 3: Forbidden Locators**: Do not use CSS selectors based on generated class names (e.g., `_button_1a2b3`) or deeply nested DOM paths.
--   **Directive 4: Test ID Hygiene**: Name IDs based on function, not appearance (e.g., `data-testid="submit-recipe"` instead of `data-testid="green-button"`).
+See [debugging-hydration.md](debugging-hydration.md) for dealing with race conditions, [locators-and-stability.md](locators-and-stability.md) for fixing brittle tests, and [mocking-strategy.md](mocking-strategy.md) for understanding the Playwright network boundary.
 
-### Standard Pattern
-```typescript
-// ✅ MANDATORY: Use stable test IDs
-await page.getByTestId('nav-cook-mode').click();
-await expect(page.getByTestId('step-indicator')).toBeVisible();
+## Anti-Patterns
+
+*   **Anti-Pattern (Guessing and Checking):** Blindly changing `getByTestId` strings without reading the DOM state in the failure log.
+*   **Anti-Pattern (Ignoring Hydration):** Clicking elements immediately before React has fully attached event listeners, causing flaky timeouts.
+*   **Anti-Pattern (Test Modification to Hide Bugs):** Changing the test assertions to match broken code, rather than fixing the code to match the spec.
+
+## Workflow: The Debugging Loop
+
+When invoked to investigate a failure or bug, follow this strict loop:
+
+### 1. Reproduce & Isolate
+1.  Run the specific failing Playwright test locally: `npx playwright test pwa/e2e/path/to/test.spec.ts`.
+2.  If the test passes locally but fails in CI, you are likely dealing with a hydration race condition or a dirty mock state. Run the Integrity Gate locally: `task test:pwa:ci`.
+
+### 2. Diagnose
+1.  Analyze the Playwright error output.
+2.  Is it a locator failure? (See `locators-and-stability.md`).
+3.  Is it a timeout? Check if an API call failed or hydration stalled (See `debugging-hydration.md`).
+4.  Is the Contract wrong? Ensure the mock API (Playwright mocks) matches `specs/openapi.yaml`.
+
+### 3. Correct
+1.  Fix the brittle selector, adjust the wait state, or fix the React implementation if the behavior is objectively wrong.
+2.  Ensure you have isolated the root cause.
+
+### 4. Verify
+1.  Re-run the isolated test.
+2.  Run `task test:pwa:ci` to pass the Tier 2 Integrity Gate.
+
+## Test Maintenance & Pruning
+When debugging or fixing E2E tests, actively look for "Zombie Code":
+1.  **Intentional Regressions:** If a behavior is changed by design, update the E2E test to perfectly match the OpenAPI spec before changing the implementation.
+2.  **Death Audit:** Regularly use the `death-audit` skill on the `pwa/e2e/` directory. Delete any test suites or locators for features that no longer exist in the contract.
+3.  **Local Isolation:** Use `npm run mock-api` to ensure you are testing against a clean state before declaring a test flaky.
+
+## Resolution Checklist
+
 ```
-
-## 3. The Integrity Gate Protocol
-A feature is not "Done" until it passes the Tier 2 Integrity Gate.
-
-### Tier 1: Local Dev Loop (`task review`)
--   Runs linting, type-checking, and local Playwright tests.
--   Best for rapid iteration and component-level verification.
-
-### Tier 2: CI Integrity Gate (`task test:pwa:ci`)
--   **Mechanism**: Executes `scripts/run-e2e-ci.sh`.
--   **Validation**: This script kills lingering processes, starts a fresh Playwright mock, and waits for stable PWA hydration (5 consecutive health checks).
--   **MANDATORY**: You must run this command before declaring a task complete. If it fails while `task review` passes, you have a race condition or hydration mismatch.
-
-## 4. Next.js Specific Operational Logic
--   **Hydration Awareness**: Always wait for a specific interactive element to be visible before clicking. Do not rely on page load events; wait for React hydration to complete.
--   **App Router State**: Verify outcomes, not internal state. Test that the URL changed or the DOM updated, rather than checking private Next.js data structures.
--   **PWA Assets**: When testing PWA features, verify the existence of the manifest and service worker registration if applicable.
-
-## 5. Test Maintenance & Pruning
-1.  **Intentional Regressions**: If a behavior is changed by design, you must update the test before implementing the code change.
-2.  **Zombie Test Removal**: Conduct a "Death Audit" on the `pwa/e2e/` directory regularly. Remove tests for deprecated features or components.
-3.  **Flakiness Zero-Tolerance**: If a test is flaky, you must either stabilize it using better locators/waits or prune it. Never ignore a failing test.
-
-## 6. Post-Implementation Checklist
-Before completing a testing-related task, verify:
-- [ ] Every interactive element has a `data-testid`.
-- [ ] `task test:pwa:ci` (Integrity Gate) passes 100%.
-- [ ] The test covers both "Happy Path" and critical error states (e.g., 404 or API failure).
-- [ ] No hardcoded URLs or environment-specific strings are in the test files.
+[ ] Root cause of the failure was identified (not guessed).
+[ ] Interactive elements use stable data-testid locators.
+[ ] Race conditions/hydration errors have been mitigated.
+[ ] Tier 2 Integrity Gate (`task test:pwa:ci`) passes 100%.
+```

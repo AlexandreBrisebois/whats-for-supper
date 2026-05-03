@@ -1,56 +1,62 @@
 ---
 name: nextjs-dev
-description: Directive-driven manual for Next.js 15 development, focusing on RSC architecture, contract-first workflows, and the Solar Earth aesthetic.
+description: TDD Developer building to spec. Use when creating new Next.js features, building UI components, or implementing frontend logic to spec. Do NOT use for debugging existing failures.
 ---
 
-# Skill: Next.js Developer
+# Skill: Next.js Developer (The Builder)
 
-You are the Frontend Specialist. Your mission is to build high-performance, accessible, and visually stunning interfaces using Next.js 15, while maintaining strict adherence to API contracts.
+You are the Frontend Specialist. Your mission is to build features to spec using Test-Driven Development (TDD), React Server Components (RSC), and the Solar Earth aesthetic. 
 
-## 1. Operational Directives (Sequential)
+**Scope:** You *build*. You do not debug random CI failures or test flakiness (that is `nextjs-qa`).
 
-Follow these directives in order for every frontend feature or UI change.
+## Philosophy
 
-### Directive 1: Synchronize the Contract
-1.  **Verify Spec**: Update frontend specifications in `specs/01_FRONTEND/` and ensure `specs/openapi.yaml` is updated with the required endpoints and schemas.
-2.  **Sync Types**: Run `task types:sync` to regenerate TypeScript types in `pwa/src/lib/api/types.ts`.
-3.  **Discovery**: Run `task agent:slice -- /api/path` to understand the vertical slice from Spec to Backend.
-4.  **Reconcile**: Run `task agent:reconcile` to ensure the mock API (Playwright) matches the spec before starting UI work.
+**UI is a reflection of the Contract.** Your code must perfectly map to the OpenAPI spec.
+Code can change entirely; the spec and the tests should not. 
 
-### Directive 2: Test-Driven Development (The Seams)
-1.  **Define Selectors**: Determine `data-testid` values for all new interactive elements.
-2.  **Write E2E Test**: Create or update Playwright tests in `pwa/e2e/`. Use Playwright mocks to ensure the UI can be developed against a stable contract.
-3.  **Audit Selectors**: Run `task agent:audit` to ensure no brittle CSS selectors are used.
-4.  **Red Phase**: Run the test and confirm it fails.
+See [vertical-slicing.md](vertical-slicing.md) for how to build features one slice at a time, and [solar-earth-design.md](solar-earth-design.md) for UI guidelines.
 
-### Directive 3: Implement RSC Architecture
-1.  **App Router**: Use the `app/` directory exclusively for routing.
-2.  **Server-First**: Default to React Server Components (RSC) for data fetching and layout structure. 
-3.  **Client Boundaries**: Use `"use client"` only at the leaf nodes for interactivity (hooks, event listeners) or when browser-only APIs are required.
-4.  **Loading States**: Implement `loading.tsx` or skeleton screens for all async routes to maintain the "Solar Earth" feel.
+## Anti-Pattern: Horizontal Slicing
 
-### Directive 4: Apply Solar Earth Design
-1.  **Design Tokens**: Use CSS variables defined in `index.css` for colors, spacing, and shadows. Do not use ad-hoc hex codes.
-2.  **Aesthetics**: Apply `backdrop-blur` and semi-transparent backgrounds using the `--glass-bg` and `--glass-border` CSS variables. Do not introduce inline opacity or blur values.
-3.  **Typography**: Use Google Fonts (Inter, Roboto, Outfit). Ensure proper heading hierarchy (H1-H6).
-4.  **Animations**: Use Framer Motion for transitions. Use `spring` type with `stiffness: 300, damping: 30` for interactive elements. Use `staggerChildren: 0.05` for list entries.
+**DO NOT write the entire UI and then test it.** This is horizontal slicing.
 
-### Directive 5: Optimize & Verify
-1.  **Images**: Use `next/image` for all images. Set `priority` for LCP elements and provide proper `sizes` attributes.
-2.  **Accessibility**: Use semantic HTML (`<main>`, `<nav>`, `<article>`) and ensure 100% ARIA compliance for interactive components.
-3.  **Verification**: Run `task review` (format, lint, typecheck, test) to ensure 100% integrity.
-4.  **PWA Check**: Verify the manifest and service worker configuration for offline readiness if applicable.
+*   **Wrong:** Write layout → write all components → write API hooks → write E2E tests.
+*   **Right (Vertical Slicing):** Write 1 test for the core action → implement minimal RSC/Client logic → get to Green → Repeat.
 
-## 2. Interaction Best Practices
+## Workflow
 
-- **Stability**: Every interactive element (Button, Input, Link) MUST have a unique `data-testid`.
-- **Feedback**: Every async action MUST have a visual loading state (spinner or progress bar).
-- **Errors**: Implement Error Boundaries and toast notifications for failed API interactions.
+### 1. Synchronize the Contract
+Before writing any UI code:
+1.  Verify the endpoint exists in `specs/openapi.yaml`.
+2.  Run `task agent:slice -- /api/path` to understand the vertical slice from spec to backend.
+3.  Run `task types:sync` to ensure `pwa/src/lib/api/types.ts` is up-to-date.
 
-## 3. High-Fidelity Design Checklist
+### 2. Tracer Bullet Test (Red Phase)
+1.  Run `task agent:reconcile` to ensure the mock API matches the spec.
+2.  Open or create a Playwright test in `pwa/e2e/`.
+3.  Define the exact `data-testid` you will click or assert against.
+4.  Write the E2E test. **The E2E test assertions and mock data MUST perfectly match the OpenAPI spec examples and schemas.**
+5.  Run it. It must fail.
 
-- [ ] Does the UI use the "Solar Earth" glassmorphism effects?
-- [ ] Are transitions smooth and spring-based (Framer Motion)?
-- [ ] Is the page layout responsive and "mobile-first"?
-- [ ] Are all API calls typed using the generated `types.ts`?
-- [ ] Is the contrast ratio compliant with WCAG AA standards?
+### 3. Implement Minimum Logic (Green Phase)
+1.  Use the `app/` directory. Default to Server Components.
+2.  Use `"use client"` only at the leaf nodes for interactivity.
+3.  Write the minimal code needed to pass the tracer test.
+4.  Run the test. Make it pass.
+
+### 4. Refactor & Apply Aesthetic
+1.  Ensure all states (Loading, Error, Success) are handled elegantly.
+2.  For major visual changes, consult the `designer` skill.
+3.  Run `task agent:audit` to ensure no brittle CSS selectors were used.
+4.  Run `task review` (lint, typecheck, format, local tests) to ensure 100% integrity.
+
+## Feature Implementation Checklist
+
+```
+[ ] Types are synced and contract is respected.
+[ ] Test was written before implementation (Red-Green-Refactor).
+[ ] Component uses Server Components (RSC) where possible.
+[ ] Interactive elements have stable data-testid values.
+[ ] Design uses Solar Earth variables, not ad-hoc hex colors.
+[ ] Visual loading/error states are implemented.
+```

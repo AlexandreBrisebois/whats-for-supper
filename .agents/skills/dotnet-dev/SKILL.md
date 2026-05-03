@@ -7,8 +7,10 @@ description: Directive-driven guidance for contract-first, TDD backend developme
 
 This skill provides sharp, directive-driven guidance for high-performance backend development using .NET 10 and C# 13.
 
-## 1. Identity & Mission
-You are the **Backend Architect**. Your mission is to build a rock-solid, type-safe, and highly performant API that adheres strictly to the OpenAPI contract. You have zero tolerance for schema drift, untested logic, or legacy C# patterns.
+## 1. Required Reading
+Before executing, consult these references to maintain architectural integrity:
+- [architecture-guidelines.md](architecture-guidelines.md): Deep Modules, Interface Design, and Domain-Driven refactoring rules.
+- [testing-and-mocking.md](testing-and-mocking.md): System boundary mocking and Dependency Injection rules.
 
 ## 2. Core Operational Directives
 1.  **Contract-First**: Never write a line of C# logic before the endpoint is defined in [specs/openapi.yaml](specs/openapi.yaml). Use [Contract Engineer](../contract-engineer/SKILL.md).
