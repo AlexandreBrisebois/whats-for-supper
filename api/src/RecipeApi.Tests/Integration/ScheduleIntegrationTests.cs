@@ -37,6 +37,110 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     }
 
     // ──────────────────────────────────────────────────────────────────────────────
+    // Today Slot Persistence Tests (Tasks 1–3)
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AssignRecipe_CreatesCalendarEvent_WhenNoneExists()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var recipe = new Recipe { Id = recipeId, Name = "Test Recipe" };
+        _db.Recipes.Add(recipe);
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
+
+        // Assert: a CalendarEvent exists with the correct RecipeId and today's Monday date
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        var calendarEvent = _db.CalendarEvents.FirstOrDefault(e => e.RecipeId == recipeId);
+        Assert.NotNull(calendarEvent);
+        Assert.Equal(recipeId, calendarEvent.RecipeId);
+        Assert.Equal(monday, calendarEvent.Date);
+    }
+
+    [Fact]
+    public async Task AssignRecipe_UpdatesExistingCalendarEvent_WhenOneExists()
+    {
+        // Arrange: create two recipes and a CalendarEvent for today's Monday slot
+        var originalRecipeId = Guid.NewGuid();
+        var newRecipeId = Guid.NewGuid();
+
+        var originalRecipe = new Recipe { Id = originalRecipeId, Name = "Original Recipe" };
+        var newRecipe = new Recipe { Id = newRecipeId, Name = "New Recipe" };
+        _db.Recipes.AddRange(originalRecipe, newRecipe);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = originalRecipeId,
+            Date = monday,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act: assign a different recipe to the same slot
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, newRecipeId));
+
+        // Assert: still only one CalendarEvent for that date, with the new RecipeId
+        var eventsForDate = _db.CalendarEvents.Where(e => e.Date == monday).ToList();
+        Assert.Single(eventsForDate);
+        Assert.Equal(newRecipeId, eventsForDate[0].RecipeId);
+    }
+
+    [Fact]
+    public async Task ValidateDay_OrderedIn_WithNoExistingEvent_CreatesSkippedEvent()
+    {
+        // Arrange: no CalendarEvent for today
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Act: validate with status 3 (Skipped / Ordered In) — no event exists
+        // EXPECTED OUTCOME on unfixed code: throws "No meal planned for this date"
+        await _service.ValidateDayAsync(today.ToString("yyyy-MM-dd"), new ValidationDto(3));
+
+        // Assert: a CalendarEvent exists for today with Status == Skipped
+        var calendarEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == today);
+        Assert.NotNull(calendarEvent);
+        Assert.Equal(CalendarEventStatus.Skipped, calendarEvent.Status);
+    }
+
+    [Fact]
+    public async Task ValidateDay_OrderedIn_WithExistingEvent_MarksSkipped()
+    {
+        // Arrange: create a Recipe and a CalendarEvent for today with Status = Planned
+        var recipeId = Guid.NewGuid();
+        var recipe = new Recipe { Id = recipeId, Name = "Test Recipe" };
+        _db.Recipes.Add(recipe);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = today,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act: validate with status 3 (Ordered In / Skipped) — event already exists
+        await _service.ValidateDayAsync(today.ToString("yyyy-MM-dd"), new ValidationDto(3));
+
+        // Assert: the existing CalendarEvent has Status == Skipped
+        var calendarEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == today);
+        Assert.NotNull(calendarEvent);
+        Assert.Equal(CalendarEventStatus.Skipped, calendarEvent.Status);
+        Assert.Equal(recipeId, calendarEvent.RecipeId); // original recipe preserved
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
     // Phase 10 State Machine Tests
     // ──────────────────────────────────────────────────────────────────────────────
 

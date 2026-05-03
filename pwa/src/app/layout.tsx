@@ -18,13 +18,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "What's for Supper",
+  title: "What's for Supper?",
   description: 'Capture recipes, plan your week, discover what to cook next.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: "What's for Supper",
+    title: "What's for Supper?",
   },
   icons: {
     icon: '/favicon-32x32.png',

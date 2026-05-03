@@ -40,7 +40,14 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   const headerProps = getHeaderProps(pathname);
 
   // Hide header for main app routes, keep for Capture (modal)
-  const mainAppRoutes = [ROUTES.HOME, '/recipes', ROUTES.PLANNER, ROUTES.DISCOVERY, ROUTES.PROFILE];
+  const mainAppRoutes = [
+    ROUTES.HOME,
+    '/recipes',
+    ROUTES.PLANNER,
+    ROUTES.DISCOVERY,
+    ROUTES.PROFILE,
+    '/profile/settings',
+  ];
   const hideHeader = mainAppRoutes.includes(pathname as any);
 
   const isDiscovery = pathname === ROUTES.DISCOVERY;

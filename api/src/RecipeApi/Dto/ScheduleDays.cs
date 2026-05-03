@@ -14,7 +14,8 @@ public record ScheduleRecipeDto(
     [property: JsonPropertyName("image")] string Image,
     [property: JsonPropertyName("voteCount")] int? VoteCount = null,
     [property: JsonPropertyName("ingredients")] List<string>? Ingredients = null,
-    [property: JsonPropertyName("description")] string? Description = null);
+    [property: JsonPropertyName("description")] string? Description = null,
+    [property: JsonPropertyName("totalTime")] string? TotalTime = null);
 
 public record ScheduleDays(
     [property: JsonPropertyName("weekOffset")] int WeekOffset,

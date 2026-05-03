@@ -37,104 +37,101 @@ export function TonightPivotCard({
   const imageUrl = gotoImageUrl || (gotoReady ? `/api/recipes/${gotoRecipeId}/hero` : null);
 
   return (
-    <TonightCardBase
-      className="aspect-[4/5] w-full flex flex-col p-6"
+    <div
+      className="relative aspect-[4/5] w-full perspective-1000 group"
       data-testid="tonight-pivot-card"
     >
-      {/* Header */}
-      <div className="flex justify-between items-center mb-5 px-1">
-        <h2 className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-          {hasGoto ? "Tonight's Menu" : "What's for Supper?"}
-        </h2>
-        {hasGoto && (
-          <span className="text-[10px] font-black text-terracotta bg-terracotta/10 px-3 py-1 rounded-full uppercase tracking-widest">
-            30-45 Mins
-          </span>
-        )}
-      </div>
-
-      {/* Image area */}
-      <div className="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 bg-charcoal/5 flex items-center justify-center">
-        {imageUrl ? (
-          <Image
-            src={getImageUrl(imageUrl)}
-            alt={gotoDescription ?? 'Recipe image'}
-            fill
-            className="object-cover"
-            priority
-            unoptimized
-          />
-        ) : (
-          <Utensils size={48} className="text-charcoal/10" />
-        )}
-        {hasGoto && (
-          <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 via-transparent to-transparent opacity-60" />
-        )}
-      </div>
-
-      {/* Body */}
-      <div className="flex flex-col gap-2 px-1 mb-5">
-        {gotoReady && gotoDescription ? (
-          <h3 className="font-heading text-3xl font-black text-charcoal leading-none tracking-tighter">
-            {gotoDescription}
-          </h3>
-        ) : gotoPending ? (
-          <p className="text-charcoal/40 text-sm font-medium italic">
-            Your GOTO is being prepared…
-          </p>
-        ) : isFetching ? (
-          <p className="text-charcoal/40 text-sm font-medium italic">Checking your GOTO…</p>
-        ) : (
-          <p className="text-charcoal/40 text-sm font-medium italic">Nothing planned yet</p>
-        )}
-      </div>
-
-      {/* Footer actions — layout depends on whether a ready GOTO exists */}
-      <div className="flex flex-col gap-2 mt-auto">
-        {gotoReady && (
-          <button
-            onClick={onConfirmGoto}
-            data-testid="confirm-goto-btn"
-            className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
-          >
-            Make This Tonight
-          </button>
-        )}
-        {!hasGoto && (
-          <a href="/profile/settings">
-            <button
-              data-testid="add-goto-btn"
-              className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white w-full shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
-            >
-              Add your family&apos;s GOTO recipe
-            </button>
-          </a>
-        )}
-        <div className={gotoReady ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}>
-          <button
-            onClick={onDiscover}
-            data-testid="discover-btn"
-            className={
-              gotoReady
-                ? 'flex items-center justify-center h-12 rounded-[1.5rem] border border-indigo/30 bg-transparent text-indigo transition-all active:scale-95 hover:bg-indigo/10 text-[10px] font-black uppercase tracking-widest'
-                : 'flex items-center justify-center h-12 rounded-[1.5rem] bg-indigo/10 text-indigo transition-all active:scale-95 hover:bg-indigo/20 text-[10px] font-black uppercase tracking-widest'
-            }
-          >
-            Quick Find
-          </button>
-          <button
-            onClick={onOrderIn}
-            data-testid="order-in-btn"
-            className={
-              gotoReady
-                ? 'flex items-center justify-center h-12 rounded-[1.5rem] border border-charcoal/20 bg-transparent text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/10 text-[10px] font-black uppercase tracking-widest'
-                : 'flex items-center justify-center h-12 rounded-[1.5rem] bg-charcoal/10 text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/20 text-[10px] font-black uppercase tracking-widest'
-            }
-          >
-            Order In
-          </button>
+      <TonightCardBase className="absolute inset-0 flex flex-col p-6 backface-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-5 px-1">
+          <h2 className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40">
+            What&apos;s for Supper?
+          </h2>
         </div>
-      </div>
-    </TonightCardBase>
+
+        {/* Image area */}
+        <div className="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 bg-charcoal/5 flex items-center justify-center">
+          {imageUrl ? (
+            <Image
+              src={getImageUrl(imageUrl)}
+              alt={gotoDescription ?? 'Recipe image'}
+              fill
+              className="object-cover"
+              priority
+              unoptimized
+            />
+          ) : (
+            <Utensils size={48} className="text-charcoal/10" />
+          )}
+          {hasGoto && (
+            <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 via-transparent to-transparent opacity-60" />
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-col gap-2 px-1 mb-5">
+          {gotoReady && gotoDescription ? (
+            <h3 className="font-heading text-3xl font-black text-charcoal leading-none tracking-tighter">
+              {gotoDescription}
+            </h3>
+          ) : gotoPending ? (
+            <p className="text-charcoal/40 text-sm font-medium italic">
+              Your GOTO is being prepared…
+            </p>
+          ) : isFetching ? (
+            <p className="text-charcoal/40 text-sm font-medium italic">Checking your GOTO…</p>
+          ) : (
+            <p className="text-charcoal/40 text-sm font-medium italic">Nothing planned yet</p>
+          )}
+        </div>
+
+        {/* Footer actions — layout depends on whether a ready GOTO exists */}
+        <div className="flex flex-col gap-2 mt-auto">
+          {gotoReady && (
+            <button
+              onClick={onConfirmGoto}
+              data-testid="confirm-goto-btn"
+              className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
+            >
+              Make This Tonight
+            </button>
+          )}
+          {!hasGoto && (
+            <a href="/profile/settings">
+              <button
+                data-testid="add-goto-btn"
+                className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white w-full shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
+              >
+                Add your family&apos;s GOTO recipe
+              </button>
+            </a>
+          )}
+          <div className={gotoReady ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}>
+            <button
+              onClick={onDiscover}
+              data-testid="discover-btn"
+              className={
+                gotoReady
+                  ? 'flex items-center justify-center h-12 rounded-[1.5rem] border border-indigo/30 bg-transparent text-indigo transition-all active:scale-95 hover:bg-indigo/10 text-[10px] font-black uppercase tracking-widest'
+                  : 'flex items-center justify-center h-12 rounded-[1.5rem] bg-indigo/10 text-indigo transition-all active:scale-95 hover:bg-indigo/20 text-[10px] font-black uppercase tracking-widest'
+              }
+            >
+              Quick Find
+            </button>
+            <button
+              onClick={onOrderIn}
+              data-testid="order-in-btn"
+              className={
+                gotoReady
+                  ? 'flex items-center justify-center h-12 rounded-[1.5rem] border border-charcoal/20 bg-transparent text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/10 text-[10px] font-black uppercase tracking-widest'
+                  : 'flex items-center justify-center h-12 rounded-[1.5rem] bg-charcoal/10 text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/20 text-[10px] font-black uppercase tracking-widest'
+              }
+            >
+              Order In
+            </button>
+          </div>
+        </div>
+      </TonightCardBase>
+    </div>
   );
 }

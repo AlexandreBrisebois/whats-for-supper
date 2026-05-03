@@ -142,6 +142,22 @@ public class RecipeController(
         }
     }
 
+    /// <summary>
+    /// POST /api/recipes/capture-url — capture a recipe from a URL.
+    /// Triggers the url-import workflow.
+    /// </summary>
+    [HttpPost("capture-url")]
+    public async Task<IActionResult> CaptureUrl(
+        [FromBody] CaptureUrlDto dto,
+        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId = null)
+    {
+        if (familyMemberId is null)
+            return BadRequest(new { message = "X-Family-Member-Id header is required." });
+
+        var recipeId = await recipeService.CaptureUrl(dto, familyMemberId.Value);
+        return Accepted(new { data = new { id = recipeId } });
+    }
+
     /// <summary>GET /api/recipes/recommendations — mock recommendations (100% mocked data for development).</summary>
     [HttpGet("recommendations")]
     public IActionResult GetRecommendations()

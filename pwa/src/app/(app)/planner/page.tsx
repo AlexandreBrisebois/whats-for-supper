@@ -261,157 +261,159 @@ export default function PlannerPage() {
 
       {/* Header Section */}
       <header className="sticky top-0 z-30 px-6 pt-6 pb-6 glass-nav">
-        {/* Tab Switcher */}
-        <div className="flex bg-charcoal/5 p-1.5 rounded-[1.5rem] relative">
-          <button
-            onClick={() => setActiveTab('planner')}
-            data-testid="planner-tab"
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
-              activeTab === 'planner' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
-            )}
-          >
-            <Calendar size={14} /> {t('planner.planner', 'Planner')}
-          </button>
-          <button
-            onClick={() => setActiveTab('grocery')}
-            data-testid="grocery-tab"
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
-              activeTab === 'grocery' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
-            )}
-          >
-            <ShoppingCart size={14} /> {t('planner.groceryList', 'Grocery list')}
-          </button>
-        </div>
-
-        {/* Week Navigator */}
-        <div className="flex items-center justify-between">
-          <button
-            data-testid="prev-week"
-            onClick={handlePrevWeek}
-            className="p-2 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
-          >
-            <ChevronLeft className="text-charcoal/60" />
-          </button>
-
-          <div className="text-center">
-            <span
-              className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/30 text-center flex-1"
-              data-testid="week-range"
-            >
-              {currentWeekOffset === 0
-                ? t('planner.thisWeek', 'This week')
-                : currentWeekOffset === 1
-                  ? t('planner.nextWeek', 'Next week')
-                  : tWithVars('planner.weekX', `Week ${currentWeekOffset}`, {
-                      count: currentWeekOffset,
-                    })}
-            </span>
-            <h2 className="text-lg font-heading font-bold text-charcoal flex items-center justify-center">
-              {isVotingOpen && (
-                <span className="relative flex h-2 w-2 mr-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-ochre"></span>
-                </span>
+        <div className="max-w-sm mx-auto w-full">
+          {/* Tab Switcher */}
+          <div className="flex bg-charcoal/5 p-1.5 rounded-[1.5rem] relative">
+            <button
+              onClick={() => setActiveTab('planner')}
+              data-testid="planner-tab"
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
+                activeTab === 'planner' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
               )}
-              {schedule.length >= 7
-                ? (() => {
-                    const start = new Date(schedule[0].date ?? '');
-                    const end = new Date(schedule[6].date ?? '');
-                    const monthNames = [
-                      'Jan',
-                      'Feb',
-                      'Mar',
-                      'Apr',
-                      'May',
-                      'Jun',
-                      'Jul',
-                      'Aug',
-                      'Sep',
-                      'Oct',
-                      'Nov',
-                      'Dec',
-                    ];
-                    const startMonth = monthNames[start.getUTCMonth()];
-                    const endMonth = monthNames[end.getUTCMonth()];
-                    const startDate = start.getUTCDate();
-                    const endDate = end.getUTCDate();
+            >
+              <Calendar size={14} /> {t('planner.planner', 'Planner')}
+            </button>
+            <button
+              onClick={() => setActiveTab('grocery')}
+              data-testid="grocery-tab"
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
+                activeTab === 'grocery' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
+              )}
+            >
+              <ShoppingCart size={14} /> {t('planner.groceryList', 'Grocery list')}
+            </button>
+          </div>
 
-                    if (startMonth === endMonth) {
-                      return `${startMonth} ${startDate} — ${endDate}`;
-                    }
-                    return `${startMonth} ${startDate} — ${endMonth} ${endDate}`;
-                  })()
-                : t('messages.loading', 'Loading...')}
-            </h2>
-            <div className="flex items-center justify-center mt-2">
-              <div
-                data-testid="planned-count-badge"
-                className="flex items-center space-x-1 text-sage font-bold text-[9px] bg-sage/5 px-2 py-1 rounded-full border border-sage/10 uppercase tracking-widest"
+          {/* Week Navigator */}
+          <div className="flex items-center justify-between">
+            <button
+              data-testid="prev-week"
+              onClick={handlePrevWeek}
+              className="p-2 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+            >
+              <ChevronLeft className="text-charcoal/60" />
+            </button>
+
+            <div className="text-center">
+              <span
+                className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/30 text-center flex-1"
+                data-testid="week-range"
               >
-                <span className="relative flex h-1.5 w-1.5 mr-1">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sage opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sage"></span>
-                </span>
-                {tWithVars('planner.plannedCount', `${plannedCount}/7 Planned`, {
-                  current: plannedCount,
-                })}
-              </div>
-              {isVotingOpen && (
-                <div className="flex items-center gap-2 ml-2">
-                  <div
-                    data-testid="voting-status-badge"
-                    className="flex items-center space-x-1 text-ochre font-bold text-[9px] bg-ochre/5 px-2 py-1 rounded-full border border-ochre/10 uppercase tracking-widest"
-                  >
-                    <span className="relative flex h-1.5 w-1.5 mr-1">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-ochre"></span>
-                    </span>
-                    {t('planner.votingLive', 'Voting live')}
-                  </div>
-                  <button
-                    onClick={handleCloseVoting}
-                    data-testid="close-voting-btn"
-                    className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-terracotta bg-white shadow-sm px-4 py-1.5 rounded-full border border-terracotta/10 hover:bg-terracotta hover:text-white transition-all active:scale-95 shadow-lg shadow-terracotta/5"
-                  >
-                    <Ban size={10} />
-                    {t('planner.closeVoting', 'Close Voting')}
-                  </button>
+                {currentWeekOffset === 0
+                  ? t('planner.thisWeek', 'This week')
+                  : currentWeekOffset === 1
+                    ? t('planner.nextWeek', 'Next week')
+                    : tWithVars('planner.weekX', `Week ${currentWeekOffset}`, {
+                        count: currentWeekOffset,
+                      })}
+              </span>
+              <h2 className="text-lg font-heading font-bold text-charcoal flex items-center justify-center">
+                {isVotingOpen && (
+                  <span className="relative flex h-2 w-2 mr-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-ochre"></span>
+                  </span>
+                )}
+                {schedule.length >= 7
+                  ? (() => {
+                      const start = new Date(schedule[0].date ?? '');
+                      const end = new Date(schedule[6].date ?? '');
+                      const monthNames = [
+                        'Jan',
+                        'Feb',
+                        'Mar',
+                        'Apr',
+                        'May',
+                        'Jun',
+                        'Jul',
+                        'Aug',
+                        'Sep',
+                        'Oct',
+                        'Nov',
+                        'Dec',
+                      ];
+                      const startMonth = monthNames[start.getUTCMonth()];
+                      const endMonth = monthNames[end.getUTCMonth()];
+                      const startDate = start.getUTCDate();
+                      const endDate = end.getUTCDate();
+
+                      if (startMonth === endMonth) {
+                        return `${startMonth} ${startDate} — ${endDate}`;
+                      }
+                      return `${startMonth} ${startDate} — ${endMonth} ${endDate}`;
+                    })()
+                  : t('messages.loading', 'Loading...')}
+              </h2>
+              <div className="flex items-center justify-center mt-2">
+                <div
+                  data-testid="planned-count-badge"
+                  className="flex items-center space-x-1 text-sage font-bold text-[9px] bg-sage/5 px-2 py-1 rounded-full border border-sage/10 uppercase tracking-widest"
+                >
+                  <span className="relative flex h-1.5 w-1.5 mr-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sage opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sage"></span>
+                  </span>
+                  {tWithVars('planner.plannedCount', `${plannedCount}/7 Planned`, {
+                    current: plannedCount,
+                  })}
                 </div>
+                {isVotingOpen && (
+                  <div className="flex items-center gap-2 ml-2">
+                    <div
+                      data-testid="voting-status-badge"
+                      className="flex items-center space-x-1 text-ochre font-bold text-[9px] bg-ochre/5 px-2 py-1 rounded-full border border-ochre/10 uppercase tracking-widest"
+                    >
+                      <span className="relative flex h-1.5 w-1.5 mr-1">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-ochre"></span>
+                      </span>
+                      {t('planner.votingLive', 'Voting live')}
+                    </div>
+                    <button
+                      onClick={handleCloseVoting}
+                      data-testid="close-voting-btn"
+                      className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-terracotta bg-white shadow-sm px-4 py-1.5 rounded-full border border-terracotta/10 hover:bg-terracotta hover:text-white transition-all active:scale-95 shadow-lg shadow-terracotta/5"
+                    >
+                      <Ban size={10} />
+                      {t('planner.closeVoting', 'Close Voting')}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {status === 0 && !weekIsPast && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-center mt-4"
+                >
+                  <Button
+                    onClick={handleAskFamily}
+                    data-testid="ask-family-cta"
+                    className="bg-sage text-white text-[10px] font-bold uppercase tracking-widest h-8 px-6 rounded-full shadow-lg shadow-sage/20 active:scale-95 transition-all"
+                  >
+                    <Users size={12} className="mr-2" />
+                    {t('planner.askFamily', 'Ask the Family')}
+                  </Button>
+                </motion.div>
               )}
             </div>
 
-            {status === 0 && !weekIsPast && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex justify-center mt-4"
-              >
-                <Button
-                  onClick={handleAskFamily}
-                  data-testid="ask-family-cta"
-                  className="bg-sage text-white text-[10px] font-bold uppercase tracking-widest h-8 px-6 rounded-full shadow-lg shadow-sage/20 active:scale-95 transition-all"
-                >
-                  <Users size={12} className="mr-2" />
-                  {t('planner.askFamily', 'Ask the Family')}
-                </Button>
-              </motion.div>
-            )}
+            <button
+              data-testid="next-week"
+              onClick={handleNextWeek}
+              className="p-2 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+            >
+              <ChevronRight className="text-charcoal/60" />
+            </button>
           </div>
-
-          <button
-            data-testid="next-week"
-            onClick={handleNextWeek}
-            className="p-2 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
-          >
-            <ChevronRight className="text-charcoal/60" />
-          </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="px-6 py-8 overflow-x-hidden">
+      <main className="px-6 py-8 overflow-x-hidden max-w-sm mx-auto w-full">
         <AnimatePresence mode="wait">
           {isLoading ? (
             <motion.div
@@ -448,7 +450,7 @@ export default function PlannerPage() {
                 axis="y"
                 values={schedule}
                 onReorder={handleReorder}
-                className="space-y-4"
+                className="w-full space-y-4"
                 data-testid="reorder-group"
               >
                 {schedule.map((day, index) => (
@@ -612,7 +614,6 @@ function PlannerDayCard({
         scale: 1.02,
         opacity: 1,
         backgroundColor: '#ffffff',
-        backdropFilter: 'blur(0px)',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         borderColor: '#8a9a5b',
         borderWidth: '2px',
@@ -621,7 +622,7 @@ function PlannerDayCard({
         cursor: 'grabbing',
       }}
       className={cn(
-        'rounded-2xl overflow-hidden glass shadow-sm relative group transition-colors duration-500',
+        'w-full rounded-2xl overflow-hidden glass shadow-sm relative group transition-colors duration-500',
         successDay === index
           ? 'ring-4 ring-sage ring-offset-4 ring-offset-transparent'
           : 'border border-white/20'
@@ -743,6 +744,16 @@ function PlannerDayCard({
                   className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
                   size={20}
                 />
+              </div>
+            </div>
+          ) : day.status === 3 ? (
+            <div data-testid="ordered-in-indicator" className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-charcoal/5 flex items-center justify-center flex-shrink-0">
+                <span className="text-xl">🥡</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-charcoal/60">Ordered In</span>
+                <span className="text-[10px] text-charcoal/30 font-medium">No cook tonight</span>
               </div>
             </div>
           ) : (

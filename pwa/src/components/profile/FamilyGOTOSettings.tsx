@@ -121,7 +121,7 @@ export function FamilyGOTOSettings() {
 
   return (
     <>
-      <div className="w-full rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
+      <div className="w-full max-w-sm rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
         <div className="flex items-center gap-2 mb-6">
           <Sparkles className="h-4 w-4 text-ochre/60" />
           <h3 className="text-xs font-bold uppercase tracking-widest text-ochre/60">Family GOTO</h3>
@@ -200,7 +200,7 @@ export function FamilyGOTOSettings() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="relative w-full max-w-md bg-white rounded-t-[2.5rem] p-6 pb-10 shadow-2xl"
+              className="relative w-full max-w-sm bg-white rounded-t-[2.5rem] p-6 pb-10 shadow-2xl"
             >
               {/* Handle */}
               <div className="w-10 h-1 rounded-full bg-charcoal/20 mx-auto mb-6" />

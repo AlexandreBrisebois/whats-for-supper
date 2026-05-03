@@ -143,10 +143,7 @@ export const useTodayStore = create<TodayState>((set, get) => ({
       } else if (!optimisticIsRecent) {
         // Only reconcile currentRecipe when no optimistic write is in-flight
         if (isScheduleRecipe(todaysEntry?.recipe)) {
-          const recipe = todaysEntry!.recipe!;
-          const unwrapped: ScheduleRecipeDto =
-            'data' in recipe ? (recipe.data as ScheduleRecipeDto) : (recipe as ScheduleRecipeDto);
-          set({ currentRecipe: unwrapped, lastSyncedAt: Date.now() });
+          set({ currentRecipe: todaysEntry!.recipe, lastSyncedAt: Date.now() });
         } else {
           set({ currentRecipe: null, lastSyncedAt: Date.now() });
         }

@@ -20,6 +20,7 @@ export interface UseCaptureReturn {
   setNotes: (notes: string) => void;
   setRating: (rating: CaptureRating) => void;
   submitRecipe: () => Promise<string | null>;
+  submitUrl: (url: string) => Promise<string | null>;
   reset: () => void;
   clearError: () => void;
 }
@@ -143,6 +144,26 @@ export function useCapture(): UseCaptureReturn {
     }
   }, [images, rating, selectedDishPhotoIndex, notes]);
 
+  const submitUrl = useCallback(
+    async (url: string): Promise<string | null> => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        const { captureUrl } = await import('@/lib/api/recipes');
+        const result = await captureUrl(url, notes.trim() || undefined, rating);
+        return result.id;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to capture URL. Please try again.';
+        setError(message);
+        return null;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [rating, notes]
+  );
+
   const reset = useCallback(() => {
     setImages([]);
     setSelectedDishPhotoIndex(null);
@@ -165,6 +186,7 @@ export function useCapture(): UseCaptureReturn {
     setNotes,
     setRating,
     submitRecipe,
+    submitUrl,
     reset,
     clearError,
   };

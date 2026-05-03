@@ -14,6 +14,7 @@ import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { assignRecipeToDay, isScheduleRecipe } from '@/lib/api/planner';
 import { ScheduleRecipeDto } from '@/lib/api/generated/models';
+import { formatTotalTime } from '@/lib/formatTime';
 import { getTodayString } from '@/lib/imageUtils';
 import { SolarLoader } from '../ui/SolarLoader';
 import { useFamilyStore } from '@/store/familyStore';
@@ -209,7 +210,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   };
 
   return (
-    <div className="flex flex-col gap-8 pt-4 pb-12 max-w-md mx-auto w-full px-6 sm:px-0">
+    <div className="flex flex-col gap-8 pt-4 pb-12 max-w-sm mx-auto w-full px-6 sm:px-0">
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20" data-testid="home-loader">
           <SolarLoader label={t('home.aligningDay', 'Aligning your day...')} />
@@ -283,7 +284,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 }
                 imageUrl={currentRecipe.image || undefined}
                 ingredients={currentRecipe.ingredients || []}
-                prepTime="30-45 mins"
+                prepTime={formatTotalTime(currentRecipe.totalTime) ?? undefined}
                 onCookMode={handleCookMode}
                 onSkip={handleSkipTrigger}
               />

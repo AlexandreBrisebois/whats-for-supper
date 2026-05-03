@@ -94,7 +94,10 @@ try
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<RecipeHeroAgent>();
     builder.Services.AddScoped<RecipeAgent>();
+    builder.Services.AddScoped<WebAcquisitionAgent>();
     builder.Services.AddScoped<SyncRecipeProcessor>();
+
+    builder.Services.AddScoped<IWorkflowProcessor, WebAcquisitionAgent>();
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),

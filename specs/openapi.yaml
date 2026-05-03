@@ -140,10 +140,7 @@ components:
       properties:
         day: { type: string }
         date: { type: string }
-        recipe:
-          type: object
-          properties:
-            data: { $ref: '#/components/schemas/ScheduleRecipeDto' }
+        recipe: { $ref: '#/components/schemas/ScheduleRecipeDto' }
         status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
 
     ScheduleRecipeDto:
@@ -158,6 +155,7 @@ components:
           type: [array, 'null']
           items: { type: string }
         voteCount: { type: [integer, 'null'] }
+        totalTime: { type: [string, 'null'] }
 
     MoveScheduleDto:
       type: object
@@ -204,6 +202,14 @@ components:
       properties:
         name: { type: string, description: 'Short name for the recipe (e.g. "Our family spaghetti")' }
         description: { type: string, description: 'Free-text description used to synthesize the full recipe via AI' }
+
+    CaptureUrlDto:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri, description: 'The recipe URL to capture' }
+        notes: { type: [string, 'null'] }
+        rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
 
     RecipeStatusDto:
       type: object
@@ -1130,6 +1136,28 @@ paths:
                   description: 'Homemade tomato sauce with meatballs, slow-cooked for two hours'
                   imageUrl: null
                   createdAt: '2026-04-30T12:00:00Z'
+
+  /api/recipes/capture-url:
+    post:
+      summary: Capture a recipe from a URL
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CaptureUrlDto' }
+      responses:
+        '202':
+          description: Accepted (Capture workflow triggered)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
 
   /api/recipes/{id}/status:
     parameters:

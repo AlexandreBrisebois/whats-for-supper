@@ -21,6 +21,7 @@ export type UILocalScheduleDay = Omit<ScheduleDay, 'recipe'> & {
   _voteCount?: number | null;
   _unanimousVote?: boolean | null;
   _userCleared?: boolean;
+  status?: number;
 };
 
 export interface WeekState {
@@ -78,8 +79,7 @@ function buildScheduleDays(
   return scheduleData.days.map((day: any, index: number) => {
     // Narrow the oneOf union — only treat as a recipe if it has an id
     if (isScheduleRecipe(day.recipe)) {
-      const unwrapped = 'data' in day.recipe ? day.recipe.data : day.recipe;
-      return { ...day, recipe: unwrapped, _uiId: generateUiId() };
+      return { ...day, recipe: day.recipe, _uiId: generateUiId() };
     }
 
     const smartDefault = defaultsByDayIndex.get(index);
@@ -180,12 +180,27 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   // ── moveRecipe ────────────────────────────────────────────────────────────
   moveRecipe(from, to) {
     const prev = get().schedule;
+    if (from === to || from < 0 || to < 0) return;
+
     const next = [...prev];
-    // Swap recipes, keep day/date fixed at their indices
-    const fromRecipe = next[from].recipe;
-    next[from] = { ...next[from], recipe: next[to].recipe };
-    next[to] = { ...next[to], recipe: fromRecipe };
-    set({ schedule: next, optimisticWriteAt: Date.now() });
+    // 1. Physically move the item in the array so framer-motion's Reorder.Group
+    // sees the tracked _uiId move to the new position.
+    const [movedItem] = next.splice(from, 1);
+    next.splice(to, 0, movedItem);
+
+    // 2. Reconcile: the user wants to move the CONTENT (recipe) but the DAYS
+    // (Mon, Tue...) must remain fixed at their respective indices.
+    const reconciled = next.map((item, index) => ({
+      ...item,
+      day: prev[index].day,
+      date: prev[index].date,
+    }));
+
+    set({ schedule: reconciled, optimisticWriteAt: Date.now() });
+
+    // 3. API Call: Trigger the backend move. Note: if this fails, we revert to prev.
+    // In a high-perf scenario, we might debounce this, but for 7 items the
+    // local state update is the critical path for "buttery smooth" feel.
     moveRecipeApi(get().weekOffset, from, to).catch(() => set({ schedule: prev }));
   },
 

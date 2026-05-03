@@ -57,13 +57,11 @@ test.describe("Cook's Mode and Grocery Flows", () => {
             day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
             date: dateStr,
             recipe: isToday
-              ? {
-                  data: builders.scheduleRecipe({
-                    id: MOCK_IDS.RECIPE_LASAGNA,
-                    name: 'Test Lasagna',
-                    ingredients: ['Pasta Sheets', 'Ground Beef', 'Tomato Sauce', 'Ricotta'],
-                  }),
-                }
+              ? builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_LASAGNA,
+                  name: 'Test Lasagna',
+                  ingredients: ['Pasta Sheets', 'Ground Beef', 'Tomato Sauce', 'Ricotta'],
+                })
               : null,
           };
         });
@@ -160,13 +158,11 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                 {
                   day: 'Mon',
                   date: TODAY,
-                  recipe: {
-                    data: builders.scheduleRecipe({
-                      id: MOCK_IDS.RECIPE_LASAGNA,
-                      name: 'T1',
-                      ingredients: [itemName],
-                    }),
-                  },
+                  recipe: builders.scheduleRecipe({
+                    id: MOCK_IDS.RECIPE_LASAGNA,
+                    name: 'T1',
+                    ingredients: [itemName],
+                  }),
                 },
               ],
               groceryState: { [itemName]: true },

@@ -33,7 +33,7 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="relative w-full max-w-md bg-white rounded-[3rem] overflow-hidden shadow-2xl p-8"
+        className="relative w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-2xl p-8"
       >
         <div className="flex justify-between items-center mb-8">
           <h2

@@ -349,6 +349,9 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
     await page.goto('/home');
 
+    // Wait for GOTO to be ready — confirm-goto-btn only renders when gotoReady === true
+    await expect(page.getByTestId('confirm-goto-btn')).toBeVisible({ timeout: 10000 });
+
     // discover-btn is visible and does NOT have class bg-indigo/10 (should have border class)
     const discoverBtn = page.getByTestId('discover-btn');
     await expect(discoverBtn).toBeVisible();
@@ -548,16 +551,14 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             return {
               date: dateStr,
               status: 0,
-              recipe:
-                dateStr === today
-                  ? {
-                      data: builders.scheduleRecipe({
-                        id: MOCK_IDS.RECIPE_LASAGNA,
-                        name: 'Family GOTO',
-                        image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
-                      }),
-                    }
-                  : null,
+                      recipe:
+                        dateStr === today
+                          ? builders.scheduleRecipe({
+                              id: MOCK_IDS.RECIPE_LASAGNA,
+                              name: 'Family GOTO',
+                              image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+                            })
+                          : null,
             };
           });
           await route.fulfill({
@@ -590,5 +591,120 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     // TonightMenuCard must still be visible after reload
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+  });
+
+  test('"Make This Tonight" → navigating to planner shows recipe in today\'s slot', async ({
+    page,
+  }) => {
+    const today = new Date().toISOString().split('T')[0];
+    let assignDone = false;
+
+    // Mock GOTO setting
+    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            key: 'family_goto',
+            value: { description: 'Family GOTO', recipeId: MOCK_IDS.RECIPE_LASAGNA },
+          },
+        }),
+      });
+    });
+
+    // Mock GOTO status as ready
+    await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
+      });
+    });
+
+    // Stateful schedule mock: before assign → empty; after assign → today's slot has the recipe
+    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
+      if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
+        if (!assignDone) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days: [] } }),
+          });
+        } else {
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            const day = d.getUTCDay();
+            const offset = day === 0 ? -6 : 1 - day;
+            d.setUTCDate(d.getUTCDate() + offset + i);
+            const dateStr = d.toISOString().split('T')[0];
+            return {
+              day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+              date: dateStr,
+              recipe:
+                dateStr === today
+                  ? { id: MOCK_IDS.RECIPE_LASAGNA, name: 'Family GOTO', image: '' }
+                  : null,
+              status: 0,
+            };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+          });
+        }
+      } else if (route.request().url().includes('smart-defaults')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              familySize: 3,
+              consensusThreshold: 2,
+              preSelectedRecipes: [],
+              openSlots: [],
+              consensusRecipesCount: 0,
+            },
+          }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    // Mock assign endpoint with assignDone flag
+    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
+      assignDone = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    // 1. Navigate to /home, wait for confirm-goto-btn enabled
+    await page.goto('/home');
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeEnabled({ timeout: 10000 });
+
+    // 2. Click confirm-goto-btn
+    await confirmBtn.click();
+
+    // 3. Wait for assign to complete
+    await expect.poll(() => assignDone).toBe(true);
+
+    // 4. Navigate to /planner
+    await page.goto('/planner');
+
+    // 5. Wait for day-card-0
+    await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
+
+    // 6. Assert today's card contains recipe-name with 'Family GOTO'
+    const todayCard = page.locator(`[data-date="${today}"]`);
+    await expect(todayCard.getByTestId('recipe-name')).toContainText('Family GOTO', {
+      timeout: 5000,
+    });
   });
 });

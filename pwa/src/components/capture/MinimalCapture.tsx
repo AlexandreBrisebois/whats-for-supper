@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Camera, Image as ImageIcon, CheckCircle2, Loader2, X, Star, PenLine } from 'lucide-react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Camera, Image as ImageIcon, CheckCircle2, Loader2, X, Star, PenLine, Globe } from 'lucide-react';
 import { useCapture } from '@/hooks/useCapture';
 import { useFamilyStore } from '@/store/familyStore';
 import { apiClient } from '@/lib/api/api-client';
@@ -19,6 +19,7 @@ interface MinimalCaptureProps {
 
 export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { saveSetting } = useFamilyStore();
   const {
     images,
@@ -26,6 +27,7 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
     removeImage,
     isSubmitting,
     submitRecipe,
+    submitUrl,
     clearError,
     error,
     rating,
@@ -38,6 +40,15 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const saveAreaRef = useRef<HTMLDivElement>(null);
+
+  // Shared content from manifest
+  const sharedUrl = searchParams.get('url');
+  const sharedText = searchParams.get('text');
+
+  // URL-capture specific state
+  const [isUrlCapturing, setIsUrlCapturing] = useState(false);
+  const [urlCaptureError, setUrlCaptureError] = useState<string | null>(null);
+  const [wasUrlCaptured, setWasUrlCaptured] = useState(false);
 
   // Describe-it form state
   const [describeName, setDescribeName] = useState('');
@@ -58,6 +69,41 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
       return () => clearTimeout(timer);
     }
   }, [images.length]);
+
+  const handleUrlCapture = useCallback(
+    async (url: string) => {
+      setIsUrlCapturing(true);
+      setUrlCaptureError(null);
+      try {
+        const id = await submitUrl(url);
+        if (id) {
+          if (isGoto) {
+            await saveSetting('family_goto', {
+              description: 'Recipe from link',
+              recipeId: id,
+            });
+          }
+          setWasUrlCaptured(true);
+          setOnSuccess(true);
+        }
+      } catch (err) {
+        setUrlCaptureError(err instanceof Error ? err.message : 'Failed to capture link.');
+      } finally {
+        setIsUrlCapturing(false);
+      }
+    },
+    [submitUrl, isGoto, saveSetting]
+  );
+
+  useEffect(() => {
+    // If a URL is shared, trigger the capture immediately
+    const targetUrl = sharedUrl || (sharedText?.startsWith('http') ? sharedText : null);
+    if (targetUrl && !wasUrlCaptured && !isUrlCapturing) {
+      setTimeout(() => {
+        handleUrlCapture(targetUrl);
+      }, 0);
+    }
+  }, [sharedUrl, sharedText, wasUrlCaptured, isUrlCapturing, handleUrlCapture]);
 
   useEffect(() => {
     if (onSuccess) {
@@ -132,23 +178,31 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
 
   // ── Success screen ──────────────────────────────────────────────────────────
   if (onSuccess) {
-    const heading = isGoto ? 'Your GOTO is being prepared' : t('capture.captured', 'Captured!');
-    const subtext = isGoto
-      ? "We'll notify you when it's ready on the home screen."
-      : t('capture.savedInLibrary', 'Your recipe is safe in the library.');
+    const heading = wasUrlCaptured
+      ? 'Link Captured!'
+      : isGoto
+        ? 'Your GOTO is being prepared'
+        : t('capture.captured', 'Captured!');
+
+    const subtext = wasUrlCaptured
+      ? "We're fetching the recipe details from the link. It'll be ready in a moment."
+      : isGoto
+        ? "We'll notify you when it's ready on the home screen."
+        : t('capture.savedInLibrary', 'Your recipe is safe in the library.');
+
     const dest = isGoto ? ROUTES.PROFILE_SETTINGS : ROUTES.HOME;
     const btnLabel = isGoto ? 'Back to Settings' : t('capture.backToHome', 'Back to Home');
 
     return (
       <div className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500">
         <div className="flex h-24 w-24 items-center justify-center rounded-full bg-sage/10 text-sage ring-8 ring-sage/5">
-          <CheckCircle2 size={48} />
+          {wasUrlCaptured ? <Globe size={48} /> : <CheckCircle2 size={48} />}
         </div>
         <div className="flex flex-col gap-2">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
             {heading}
           </h2>
-          <p className="text-charcoal/60">{subtext}</p>
+          <p className="text-charcoal/60 px-4 max-w-sm">{subtext}</p>
         </div>
         <Button
           variant="primary"
@@ -163,6 +217,23 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* ── URL Capturing Overlay ─────────────────────────────────────────────── */}
+      {isUrlCapturing && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-cream/90 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="relative">
+            <div className="absolute inset-0 animate-ping rounded-full bg-terracotta/20" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-terracotta text-white shadow-xl">
+              <Globe size={32} className="animate-pulse" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1 text-center px-6">
+            <h3 className="font-heading text-xl font-bold text-charcoal">Capturing link...</h3>
+            <p className="text-sm text-charcoal/50">One moment while we fetch the recipe.</p>
+          </div>
+          <Loader2 className="animate-spin text-terracotta" size={24} />
+        </div>
+      )}
+
       {/* ── Camera / Gallery — hidden when describe form is active ───────────── */}
       {!showDescribe && (
         <div className="flex flex-col gap-10">

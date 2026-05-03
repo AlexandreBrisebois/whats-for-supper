@@ -16,13 +16,10 @@ export type SmartDefaultsResponse = SmartDefaultsDto;
 /** Narrows the oneOf recipe union to the concrete ScheduleRecipeDto, filtering out the null member. */
 export function isScheduleRecipe(
   recipe: any | null | undefined
-): recipe is { data: ScheduleRecipeDto } | ScheduleRecipeDto {
+): recipe is ScheduleRecipeDto {
   if (!recipe) return false;
-  // Handle wrapped { data: ScheduleRecipeDto }
-  if (recipe.data && typeof recipe.data.id === 'string' && recipe.data.id.length > 0) return true;
-  // Handle direct ScheduleRecipeDto
-  if (typeof recipe.id === 'string' && recipe.id.length > 0) return true;
-  return false;
+  // Only treat as a valid schedule recipe if it has a string ID
+  return typeof recipe.id === 'string' && recipe.id.length > 0;
 }
 
 export const getSchedule = async (weekOffset: number): Promise<ScheduleResponse | undefined> => {

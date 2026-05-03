@@ -4,17 +4,7 @@
 // @ts-ignore
 import { serializeValidationDto, type ValidationDto } from '../../../../../models/index';
 // @ts-ignore
-import {
-  type AdditionalDataHolder,
-  type BaseRequestBuilder,
-  type Parsable,
-  type ParsableFactory,
-  type ParseNode,
-  type RequestConfiguration,
-  type RequestInformation,
-  type RequestsMetadata,
-  type SerializationWriter,
-} from '@microsoft/kiota-abstractions';
+import { type AdditionalDataHolder, type BaseRequestBuilder, type Parsable, type ParsableFactory, type ParseNode, type RequestConfiguration, type RequestInformation, type RequestsMetadata, type SerializationWriter } from '@microsoft/kiota-abstractions';
 
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -22,10 +12,8 @@ import {
  * @returns {ValidatePostResponse_data}
  */
 // @ts-ignore
-export function createValidatePostResponse_dataFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoValidatePostResponse_data;
+export function createValidatePostResponse_dataFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoValidatePostResponse_data;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -33,10 +21,8 @@ export function createValidatePostResponse_dataFromDiscriminatorValue(
  * @returns {ValidatePostResponse}
  */
 // @ts-ignore
-export function createValidatePostResponseFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoValidatePostResponse;
+export function createValidatePostResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoValidatePostResponse;
 }
 /**
  * The deserialization information for the current model
@@ -44,16 +30,10 @@ export function createValidatePostResponseFromDiscriminatorValue(
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoValidatePostResponse(
-  validatePostResponse: Partial<ValidatePostResponse> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    data: (n) => {
-      validatePostResponse.data = n.getObjectValue<ValidatePostResponse_data>(
-        createValidatePostResponse_dataFromDiscriminatorValue
-      );
-    },
-  };
+export function deserializeIntoValidatePostResponse(validatePostResponse: Partial<ValidatePostResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "data": n => { validatePostResponse.data = n.getObjectValue<ValidatePostResponse_data>(createValidatePostResponse_dataFromDiscriminatorValue); },
+    }
 }
 /**
  * The deserialization information for the current model
@@ -61,14 +41,10 @@ export function deserializeIntoValidatePostResponse(
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoValidatePostResponse_data(
-  validatePostResponse_data: Partial<ValidatePostResponse_data> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    message: (n) => {
-      validatePostResponse_data.message = n.getStringValue();
-    },
-  };
+export function deserializeIntoValidatePostResponse_data(validatePostResponse_data: Partial<ValidatePostResponse_data> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "message": n => { validatePostResponse_data.message = n.getStringValue(); },
+    }
 }
 /**
  * Serializes information the current object
@@ -77,20 +53,10 @@ export function deserializeIntoValidatePostResponse_data(
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeValidatePostResponse(
-  writer: SerializationWriter,
-  validatePostResponse: Partial<ValidatePostResponse> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!validatePostResponse || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeObjectValue<ValidatePostResponse_data>(
-    'data',
-    validatePostResponse.data,
-    serializeValidatePostResponse_data
-  );
-  writer.writeAdditionalData(validatePostResponse.additionalData);
+export function serializeValidatePostResponse(writer: SerializationWriter, validatePostResponse: Partial<ValidatePostResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!validatePostResponse || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<ValidatePostResponse_data>("data", validatePostResponse.data, serializeValidatePostResponse_data);
+    writer.writeAdditionalData(validatePostResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -99,71 +65,59 @@ export function serializeValidatePostResponse(
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeValidatePostResponse_data(
-  writer: SerializationWriter,
-  validatePostResponse_data: Partial<ValidatePostResponse_data> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!validatePostResponse_data || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeStringValue('message', validatePostResponse_data.message);
-  writer.writeAdditionalData(validatePostResponse_data.additionalData);
+export function serializeValidatePostResponse_data(writer: SerializationWriter, validatePostResponse_data: Partial<ValidatePostResponse_data> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!validatePostResponse_data || isSerializingDerivedType) { return; }
+    writer.writeStringValue("message", validatePostResponse_data.message);
+    writer.writeAdditionalData(validatePostResponse_data.additionalData);
 }
 export interface ValidatePostResponse extends AdditionalDataHolder, Parsable {
-  /**
-   * The data property
-   */
-  data?: ValidatePostResponse_data | null;
+    /**
+     * The data property
+     */
+    data?: ValidatePostResponse_data | null;
 }
 export interface ValidatePostResponse_data extends AdditionalDataHolder, Parsable {
-  /**
-   * The message property
-   */
-  message?: string | null;
+    /**
+     * The message property
+     */
+    message?: string | null;
 }
 /**
  * Builds and executes requests for operations under /api/schedule/day/{date}/validate
  */
 export interface ValidateRequestBuilder extends BaseRequestBuilder<ValidateRequestBuilder> {
-  /**
-   * Validate a scheduled day (Cooked/Skipped)
-   * @param body The request body
-   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {Promise<ValidatePostResponse>}
-   */
-  post(
-    body: ValidationDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<ValidatePostResponse | undefined>;
-  /**
-   * Validate a scheduled day (Cooked/Skipped)
-   * @param body The request body
-   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {RequestInformation}
-   */
-  toPostRequestInformation(
-    body: ValidationDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
-  ): RequestInformation;
+    /**
+     * Validate a scheduled day (Cooked/Skipped)
+     * @param body The request body
+     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+     * @returns {Promise<ValidatePostResponse>}
+     */
+     post(body: ValidationDto, requestConfiguration?: RequestConfiguration<object> | undefined) : Promise<ValidatePostResponse | undefined>;
+    /**
+     * Validate a scheduled day (Cooked/Skipped)
+     * @param body The request body
+     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+     * @returns {RequestInformation}
+     */
+     toPostRequestInformation(body: ValidationDto, requestConfiguration?: RequestConfiguration<object> | undefined) : RequestInformation;
 }
 /**
  * Uri template for the request builder.
  */
-export const ValidateRequestBuilderUriTemplate = '{+baseurl}/api/schedule/day/{date}/validate';
+export const ValidateRequestBuilderUriTemplate = "{+baseurl}/api/schedule/day/{date}/validate";
 /**
  * Metadata for all the requests in the request builder.
  */
 export const ValidateRequestBuilderRequestsMetadata: RequestsMetadata = {
-  post: {
-    uriTemplate: ValidateRequestBuilderUriTemplate,
-    responseBodyContentType: 'application/json',
-    adapterMethodName: 'send',
-    responseBodyFactory: createValidatePostResponseFromDiscriminatorValue,
-    requestBodyContentType: 'application/json',
-    requestBodySerializer: serializeValidationDto,
-    requestInformationContentSetMethod: 'setContentFromParsable',
-  },
+    post: {
+        uriTemplate: ValidateRequestBuilderUriTemplate,
+        responseBodyContentType: "application/json",
+        adapterMethodName: "send",
+        responseBodyFactory:  createValidatePostResponseFromDiscriminatorValue,
+        requestBodyContentType: "application/json",
+        requestBodySerializer: serializeValidationDto,
+        requestInformationContentSetMethod: "setContentFromParsable",
+    },
 };
 /* tslint:enable */
 /* eslint-enable */

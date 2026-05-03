@@ -99,18 +99,45 @@ RULES:
 
     public async Task DoExtractRecipeAsync(Guid recipeId, CancellationToken ct)
     {
-        var imageFiles = await GetImageFilesAsync(recipeId, ct);
-        if (imageFiles.Count == 0)
+        string? rawHtml = null;
+        try
         {
-            logger.LogWarning("No images found for recipe {RecipeId}", recipeId);
+            var existingJson = await recipeRepository.GetRecipeJsonAsync(recipeId, ct);
+            using var doc = JsonDocument.Parse(existingJson);
+            if (doc.RootElement.TryGetProperty("rawHtml", out var htmlProp))
+            {
+                rawHtml = htmlProp.GetString();
+            }
+        }
+        catch { /* ignore missing or invalid recipe.json */ }
+
+        var imageFiles = await GetImageFilesAsync(recipeId, ct);
+        if (imageFiles.Count == 0 && string.IsNullOrEmpty(rawHtml))
+        {
+            logger.LogWarning("No images or HTML found for recipe {RecipeId}", recipeId);
             return;
         }
 
-        logger.LogInformation("Extracting recipe {RecipeId} from {Count} images.", recipeId, imageFiles.Count);
+        logger.LogInformation("Extracting recipe {RecipeId} (Images: {ImgCount}, HTML: {HasHtml}).", recipeId, imageFiles.Count, !string.IsNullOrEmpty(rawHtml));
 
         var agent = chatClient.AsAIAgent(name: "RecipeExtractor", instructions: GetExtractionPrompt(false));
-        var userMessage = new ChatMessage(ChatRole.User, "Please extract the recipe from these images as instructed.");
-        await AddImagesToMessageAsync(userMessage, recipeId, imageFiles, ct);
+
+        var userPrompt = "Please extract the recipe as instructed.";
+        if (imageFiles.Count > 0) userPrompt += " Context from images is provided.";
+        if (!string.IsNullOrEmpty(rawHtml)) userPrompt += " Context from the source webpage HTML is also provided.";
+
+        var userMessage = new ChatMessage(ChatRole.User, userPrompt);
+        if (imageFiles.Count > 0)
+        {
+            await AddImagesToMessageAsync(userMessage, recipeId, imageFiles, ct);
+        }
+
+        if (!string.IsNullOrEmpty(rawHtml))
+        {
+            // Truncate HTML to stay within safe token limits (approx 50k chars)
+            var htmlContent = rawHtml.Length > 50000 ? rawHtml[..50000] : rawHtml;
+            userMessage.Contents.Add(new TextContent($"SOURCE HTML:\n\n{htmlContent}"));
+        }
 
         var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(), cancellationToken: ct);
         var messages = response.Messages.ToList();

@@ -258,6 +258,61 @@ public class RecipeService(
     }
 
     /// <summary>
+    /// Enqueues a URL for background acquisition and extraction.
+    /// Triggers the url-import workflow.
+    /// </summary>
+    public async Task<Guid> CaptureUrl(CaptureUrlDto dto, Guid familyMemberId)
+    {
+        var recipeId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Name = "Captured Recipe", // Placeholder until extraction
+            Notes = dto.Notes,
+            Rating = (RecipeRating)(dto.Rating ?? 0),
+            ImageCount = 0,
+            IsDiscoverable = false,
+            AddedBy = familyMemberId,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        db.Recipes.Add(recipe);
+
+        await images.CreateRecipeInfo(new RecipeInfo
+        {
+            Id = recipeId,
+            Name = "Captured Recipe",
+            Notes = dto.Notes,
+            Rating = (RecipeRating)(dto.Rating ?? 0),
+            ImageCount = 0,
+            AddedBy = familyMemberId,
+            CreatedAt = now
+        });
+
+        await db.SaveChangesAsync();
+
+        // Trigger the url-import workflow
+        try
+        {
+            await orchestrator.TriggerAsync("url-import", new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.ToString(),
+                ["url"] = dto.Url
+            });
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail
+            _ = ex;
+        }
+
+        return recipeId;
+    }
+
+    /// <summary>
     /// Returns the synthesis status of a recipe.
     /// "ready" when Name is set and ImageCount > 0; "pending" otherwise.
     /// </summary>

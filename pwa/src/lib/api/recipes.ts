@@ -112,6 +112,21 @@ export async function deleteRecipe(id: string): Promise<void> {
   await apiClient.api.recipes.byId(id as any).delete();
 }
 
+export async function captureUrl(
+  url: string,
+  notes?: string,
+  rating?: number
+): Promise<{ id: string }> {
+  const result = await apiClient.api.recipes.captureUrl.post({
+    url,
+    notes,
+    rating,
+  });
+  return {
+    id: (result?.data as any)?.id || '',
+  };
+}
+
 export async function updateRecipe(
   id: string,
   updates: { notes?: string; rating?: number }

@@ -110,14 +110,12 @@ test.describe('Supper Planner', () => {
           date: toDateStr(d),
           ...(i === 0
             ? {
-                recipe: {
-                  data: builders.scheduleRecipe({
-                    id: MOCK_IDS.RECIPE_LASAGNA,
-                    name: 'Homemade Lasagna',
-                    voteCount: 3,
-                    ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
-                  }),
-                },
+                recipe: builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_LASAGNA,
+                  name: 'Homemade Lasagna',
+                  voteCount: 3,
+                  ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
+                }),
               }
             : {}),
         };

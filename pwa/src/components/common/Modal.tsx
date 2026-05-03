@@ -66,7 +66,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       {/* Panel */}
       <div
         ref={dialogRef}
-        className="relative z-10 w-full max-w-md rounded-t-3xl bg-lavender p-6 shadow-glass sm:rounded-3xl"
+        className="relative z-10 w-full max-w-sm rounded-t-3xl bg-lavender p-6 shadow-glass sm:rounded-3xl"
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           {title && (

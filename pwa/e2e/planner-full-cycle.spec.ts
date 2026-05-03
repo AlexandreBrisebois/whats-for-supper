@@ -30,14 +30,12 @@ function buildLockedDays() {
     return {
       day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
       date: toDateStr(d),
-      recipe: {
-        data: builders.scheduleRecipe({
-          id: MOCK_IDS.RECIPE_CARBONARA,
-          name: 'Pasta Carbonara',
-          voteCount: 3,
-          ingredients: ['Spaghetti', 'Eggs', 'Pancetta', 'Pecorino'],
-        }),
-      },
+      recipe: builders.scheduleRecipe({
+        id: MOCK_IDS.RECIPE_CARBONARA,
+        name: 'Pasta Carbonara',
+        voteCount: 3,
+        ingredients: ['Spaghetti', 'Eggs', 'Pancetta', 'Pecorino'],
+      }),
     };
   });
 }
@@ -73,33 +71,19 @@ async function setupPlanner(page: Page, locked = false) {
 
   const draftDays = buildDraftDays();
   // Use explicit MOCK_IDS to ensure uniqueness and validity
-  draftDays[0].recipe = {
-    data: builders.scheduleRecipe({
-      id: MOCK_IDS.RECIPE_CARBONARA,
-      name: 'Pasta Carbonara',
-    }),
-  };
-  draftDays[1].recipe = {
-    data: builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Lasagna' }),
-  };
-  draftDays[2].recipe = {
-    data: builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Chicken' }),
-  };
-  draftDays[3].recipe = {
-    data: builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_GNOCCHI, name: 'Gnocchi' }),
-  };
-  draftDays[4].recipe = {
-    data: builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Stir Fry' }),
-  };
-  draftDays[5].recipe = {
-    data: builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_TACOS, name: 'Tacos' }),
-  };
-  draftDays[6].recipe = {
-    data: builders.scheduleRecipe({
-      id: '660e8400-e29b-41d4-a716-446655440099',
-      name: 'Other',
-    }),
-  };
+  draftDays[0].recipe = builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_CARBONARA,
+    name: 'Pasta Carbonara',
+  });
+  draftDays[1].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Lasagna' });
+  draftDays[2].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Chicken' });
+  draftDays[3].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_GNOCCHI, name: 'Gnocchi' });
+  draftDays[4].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Stir Fry' });
+  draftDays[5].recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_TACOS, name: 'Tacos' });
+  draftDays[6].recipe = builders.scheduleRecipe({
+    id: '660e8400-e29b-41d4-a716-446655440099',
+    name: 'Other',
+  });
 
   // Stateful: POST/PUT (e.g. finalize) flips isLocked so the next GET reflects locked state
   let isLocked = locked;
@@ -204,6 +188,79 @@ test.describe("Planner — Cook's Mode", () => {
   });
 });
 
+test.describe('Planner — Ordered-In State', () => {
+  test('ordered-in day shows ordered-in-indicator and hides plan-meal-button', async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+
+    const today = new Date().toISOString().split('T')[0];
+    const monday = thisWeekMonday();
+
+    // Build 7 days with today's slot having status:3 and no recipe
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setUTCDate(monday.getUTCDate() + i);
+      const dateStr = toDateStr(d);
+      return {
+        day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+        date: dateStr,
+        recipe: null,
+        status: dateStr === today ? 3 : 0,
+      };
+    });
+
+    await page.route(/\/(?:backend\/)?api\/schedule/, async (route) => {
+      if (route.request().method() === 'GET' && !route.request().url().includes('smart-defaults')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+        });
+        return;
+      }
+      if (route.request().url().includes('smart-defaults')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              familySize: 3,
+              consensusThreshold: 2,
+              preSelectedRecipes: [],
+              openSlots: [],
+              consensusRecipesCount: 0,
+            },
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { message: 'ok' } }),
+      });
+    });
+
+    await page.goto('/planner');
+    await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
+
+    const todayCard = page.locator(`[data-date="${today}"]`);
+    // Assert ordered-in-indicator is visible
+    await expect(todayCard.getByTestId('ordered-in-indicator')).toBeVisible({ timeout: 3000 });
+    // Assert plan-meal-button is NOT visible
+    await expect(todayCard.getByTestId('plan-meal-button')).not.toBeVisible();
+  });
+});
+
 test.describe('Planner — Voting Flow', () => {
   test('Ask the Family opens voting and shows Nudge button in pivot sheet', async ({ page }) => {
     await setupPlanner(page, false);
@@ -229,13 +286,13 @@ test.describe('Planner — Voting Flow', () => {
             weekOffset: 0,
             locked: false,
             status: 1,
-            days: buildDraftDays({
-              data: builders.scheduleRecipe({
+            days: buildDraftDays(
+              builders.scheduleRecipe({
                 id: MOCK_IDS.RECIPE_CARBONARA,
                 name: 'Pasta Carbonara',
                 voteCount: 3,
-              }),
-            }),
+              })
+            ),
           },
         }),
       });

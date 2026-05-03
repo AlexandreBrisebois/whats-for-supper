@@ -1,0 +1,27 @@
+name: url-import
+description: "Workflow to fetch a recipe from a URL, extract its content, and generate a hero image."
+
+tasks:
+  - name: FetchUrlContent
+    description: "Fetch HTML and hero image from the URL"
+    processor: FetchUrlContent
+    next: ExtractRecipe
+
+  - name: ExtractRecipe
+    description: "Synthesize recipe data from the captured content"
+    processor: ExtractRecipe
+    next: GenerateHero
+
+  - name: GenerateHero
+    description: "Prepare the hero image for the recipe"
+    processor: GenerateHero
+    next: SyncRecipe
+
+  - name: SyncRecipe
+    description: "Synchronize recipe data to the main database"
+    processor: SyncRecipe
+    next: RecipeReady
+
+  - name: RecipeReady
+    description: "Mark the recipe as ready for use"
+    processor: RecipeReady

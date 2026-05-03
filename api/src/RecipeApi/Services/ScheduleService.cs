@@ -40,7 +40,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                     $"/api/recipes/{@event.Recipe.Id}/hero",
                     @event.VoteCount,
                     RecipeService.DeserializeIngredients(@event.Recipe.Ingredients),
-                    @event.Recipe.Description)
+                    @event.Recipe.Description,
+                    @event.Recipe.TotalTime)
                 : null;
 
             days.Add(new ScheduleDayDto(dayNames[i], date.ToString("yyyy-MM-dd"), recipe, (int)(@event?.Status ?? CalendarEventStatus.Planned)));
@@ -440,6 +441,20 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         if (@event == null)
         {
+            if (dto.Status == 3) // Ordered In / Skipped — no recipe required
+            {
+                var newEvent = new CalendarEvent
+                {
+                    Id = Guid.NewGuid(),
+                    RecipeId = Guid.Empty, // sentinel: no recipe for this ordered-in event
+                    Date = date,
+                    Status = CalendarEventStatus.Skipped,
+                };
+                _dbContext.CalendarEvents.Add(newEvent);
+                await _dbContext.SaveChangesAsync();
+                _logger.LogInformation("Created ordered-in CalendarEvent for date {Date} with no recipe", date);
+                return;
+            }
             throw new Exception("No meal planned for this date");
         }
 
