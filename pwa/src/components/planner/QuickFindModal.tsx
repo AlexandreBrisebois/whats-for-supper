@@ -13,9 +13,10 @@ import { getImageUrl } from '@/lib/imageUtils';
 interface QuickFindModalProps {
   onClose: () => void;
   onSelect: (recipe: any) => void;
+  weekOffset?: number;
 }
 
-export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
+export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindModalProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [recipes, setRecipes] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -24,7 +25,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const data = await getFillTheGap();
+        const data = await getFillTheGap(weekOffset);
         setRecipes(data || []);
       } catch (error) {
         console.error('Failed to fetch fill-the-gap recipes:', error);
@@ -33,7 +34,7 @@ export function QuickFindModal({ onClose, onSelect }: QuickFindModalProps) {
       }
     };
     fetchRecipes();
-  }, []);
+  }, [weekOffset]);
 
   const handleNext = () => {
     setIsFlipped(false);

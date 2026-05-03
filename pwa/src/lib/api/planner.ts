@@ -45,8 +45,10 @@ export const moveRecipe = async (weekOffset: number, fromIndex: number, toIndex:
   return result; // Move usually returns 204 or empty data
 };
 
-export const getFillTheGap = async () => {
-  const result = await apiClient.api.schedule.fillTheGap.get();
+export const getFillTheGap = async (weekOffset = 0) => {
+  const result = await apiClient.api.schedule.fillTheGap.get({
+    queryParameters: { weekOffset },
+  });
   const data = result?.data || result;
   return Array.isArray(data) ? data : [];
 };

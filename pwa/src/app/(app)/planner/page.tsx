@@ -801,6 +801,7 @@ export default function PlannerPage() {
           <QuickFindModal
             onClose={() => setShowQuickFind(false)}
             onSelect={handleQuickFindSelect}
+            weekOffset={currentWeekOffset}
           />
         )}
       </AnimatePresence>
@@ -906,7 +907,10 @@ function PlannerDayCard({
         )}
       </AnimatePresence>
 
-      <motion.div whileTap={{ scale: 0.98 }} className="flex items-center p-4 relative z-10">
+      <motion.div
+        whileTap={{ scale: 0.98 }}
+        className="flex items-center p-4 relative z-10 h-[72px]"
+      >
         <div className="flex flex-col items-center justify-center w-12 mr-4">
           <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
             {day.day}
@@ -954,27 +958,27 @@ function PlannerDayCard({
               >
                 <div className="flex flex-col gap-1.5">
                   <h4
-                    className="text-sm font-bold text-charcoal line-clamp-2"
+                    className="text-sm font-bold text-charcoal line-clamp-1"
                     data-testid="recipe-name"
                   >
                     {day.recipe.name}
                   </h4>
-                  {(day._voteCount != null || day.recipe?.voteCount != null) &&
-                    (() => {
-                      const count = day._voteCount ?? day.recipe?.voteCount;
-                      const isUnanimous = day._unanimousVote;
-                      return (
-                        <span
-                          data-testid="vote-count"
-                          className={cn(
-                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block mt-1',
-                            isUnanimous ? 'bg-sage/20 text-sage' : 'bg-ochre/20 text-ochre'
-                          )}
-                        >
-                          {count} voted
-                        </span>
-                      );
-                    })()}
+                  {(() => {
+                    const count = day._voteCount ?? day.recipe?.voteCount ?? null;
+                    const isUnanimous = day._unanimousVote;
+                    return (
+                      <span
+                        data-testid="vote-count"
+                        style={{ visibility: count != null ? 'visible' : 'hidden' }}
+                        className={cn(
+                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block mt-1',
+                          isUnanimous ? 'bg-sage/20 text-sage' : 'bg-ochre/20 text-ochre'
+                        )}
+                      >
+                        {count ?? 0} voted
+                      </span>
+                    );
+                  })()}
                 </div>
                 <p className="text-[10px] text-charcoal/40 font-medium">Supper planned</p>
               </button>

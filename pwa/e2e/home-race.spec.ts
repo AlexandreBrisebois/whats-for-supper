@@ -101,7 +101,7 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     });
 
     // 2. Mock recipes for QuickFind (fill-the-gap) - register BEFORE clicking discover
-    await page.route('**/api/schedule/fill-the-gap', async (route) => {
+    await page.route(/\/api\/schedule\/fill-the-gap/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

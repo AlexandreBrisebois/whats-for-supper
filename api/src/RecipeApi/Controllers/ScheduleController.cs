@@ -39,9 +39,9 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     }
 
     [HttpGet("fill-the-gap")]
-    public async Task<IActionResult> FillTheGap()
+    public async Task<IActionResult> FillTheGap([FromQuery] int weekOffset = 0)
     {
-        var recipes = await _scheduleService.FillTheGapAsync();
+        var recipes = await _scheduleService.FillTheGapAsync(weekOffset);
         return Ok(recipes);
     }
 

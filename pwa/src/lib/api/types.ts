@@ -885,10 +885,16 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get recipes to fill the gap */
+    /**
+     * Get recipes to fill the gap
+     * @description Returns up to 5 recipe suggestions for an empty planner slot. Recipes already assigned to CalendarEvents in the target week (identified by weekOffset) are excluded. Results are sorted by rotation sort: LastCookedDate ASC NULLS FIRST (never-cooked recipes first), then VoteCount DESC as a tiebreaker. RecipeMatches (family favourites) are returned before DiscoveryRecipes fallback results.
+     */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Week offset from the current week (0 = this week, 1 = next week, -1 = last week). Recipes already assigned to any day in the target week are excluded from results. */
+          weekOffset?: number;
+        };
         header?: never;
         path?: never;
         cookie?: never;

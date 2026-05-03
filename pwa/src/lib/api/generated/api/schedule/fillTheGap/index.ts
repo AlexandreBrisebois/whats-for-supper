@@ -59,21 +59,34 @@ export interface FillTheGapGetResponse extends AdditionalDataHolder, Parsable {
  */
 export interface FillTheGapRequestBuilder extends BaseRequestBuilder<FillTheGapRequestBuilder> {
   /**
-   * Get recipes to fill the gap
+   * Returns up to 5 recipe suggestions for an empty planner slot. Recipes already assigned to CalendarEvents in the target week (identified by weekOffset) are excluded. Results are sorted by rotation sort: LastCookedDate ASC NULLS FIRST (never-cooked recipes first), then VoteCount DESC as a tiebreaker. RecipeMatches (family favourites) are returned before DiscoveryRecipes fallback results.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<FillTheGapGetResponse>}
    */
   get(
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      | RequestConfiguration<FillTheGapRequestBuilderGetQueryParameters>
+      | undefined
   ): Promise<FillTheGapGetResponse | undefined>;
   /**
-   * Get recipes to fill the gap
+   * Returns up to 5 recipe suggestions for an empty planner slot. Recipes already assigned to CalendarEvents in the target week (identified by weekOffset) are excluded. Results are sorted by rotation sort: LastCookedDate ASC NULLS FIRST (never-cooked recipes first), then VoteCount DESC as a tiebreaker. RecipeMatches (family favourites) are returned before DiscoveryRecipes fallback results.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toGetRequestInformation(
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      | RequestConfiguration<FillTheGapRequestBuilderGetQueryParameters>
+      | undefined
   ): RequestInformation;
+}
+/**
+ * Returns up to 5 recipe suggestions for an empty planner slot. Recipes already assigned to CalendarEvents in the target week (identified by weekOffset) are excluded. Results are sorted by rotation sort: LastCookedDate ASC NULLS FIRST (never-cooked recipes first), then VoteCount DESC as a tiebreaker. RecipeMatches (family favourites) are returned before DiscoveryRecipes fallback results.
+ */
+export interface FillTheGapRequestBuilderGetQueryParameters {
+  /**
+   * Week offset from the current week (0 = this week, 1 = next week, -1 = last week). Recipes already assigned to any day in the target week are excluded from results.
+   */
+  weekOffset?: number;
 }
 /**
  * Serializes information the current object
@@ -100,7 +113,8 @@ export function serializeFillTheGapGetResponse(
 /**
  * Uri template for the request builder.
  */
-export const FillTheGapRequestBuilderUriTemplate = '{+baseurl}/api/schedule/fill-the-gap';
+export const FillTheGapRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/fill-the-gap{?weekOffset*}';
 /**
  * Metadata for all the requests in the request builder.
  */

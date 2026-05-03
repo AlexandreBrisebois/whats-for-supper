@@ -258,12 +258,21 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task<List<ScheduleRecipeDto>> FillTheGapAsync()
+    public async Task<List<ScheduleRecipeDto>> FillTheGapAsync(int weekOffset = 0)
     {
+        var (monday, sunday) = GetWeekBounds(weekOffset);
+
+        var assignedIds = await _dbContext.CalendarEvents
+            .Where(e => e.Date >= monday && e.Date <= sunday)
+            .Select(e => e.RecipeId)
+            .ToHashSetAsync();
+
         var results = await _dbContext.RecipeMatches
             .Join(_dbContext.Recipes, m => m.RecipeId, r => r.Id, (m, r) => new { Match = m, Recipe = r })
+            .Where(x => !assignedIds.Contains(x.Recipe.Id))
             .OrderBy(x => x.Recipe.LastCookedDate == null ? 0 : 1)
             .ThenBy(x => x.Recipe.LastCookedDate)
+            .ThenByDescending(x => x.Match.LikeCount)
             .Take(5)
             .ToListAsync();
 
@@ -283,10 +292,10 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             var usedIds = results.Select(x => x.Recipe.Id).ToHashSet();
 
             var fallback = await _dbContext.DiscoveryRecipes
-                .Where(r => !usedIds.Contains(r.Id))
-                .OrderByDescending(r => r.VoteCount)
-                .ThenBy(r => r.LastCookedDate == null ? 0 : 1)
+                .Where(r => !usedIds.Contains(r.Id) && !assignedIds.Contains(r.Id))
+                .OrderBy(r => r.LastCookedDate == null ? 0 : 1)
                 .ThenBy(r => r.LastCookedDate)
+                .ThenByDescending(r => r.VoteCount)
                 .Take(remaining)
                 .ToListAsync();
 
