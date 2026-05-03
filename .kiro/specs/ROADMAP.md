@@ -235,7 +235,7 @@ Run task agent:drift, task agent:test:impact, task review when done.
 
 **Spec:** `.kiro/specs/home-command-center-hardening/tasks.md` — Group D
 **Effort:** Small
-**Status:** [ ] Not started
+**Status:** [x] Not started
 **Depends on:** Sessions 1, 2, 3 complete
 
 **What it updates:**

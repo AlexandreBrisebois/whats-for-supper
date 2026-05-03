@@ -89,16 +89,20 @@ Do not revert this condition. The previous `!currentRecipe || isSkipped || sessi
 
 ### View priority table
 
-`HomeCommandCenter` renders one of three views, in priority order:
+`HomeCommandCenter` renders views in priority order. Multiple views can be visible simultaneously (e.g. a cooked badge alongside the voting nudge card).
 
 | Priority | Condition | View shown |
 |----------|-----------|------------|
-| 1 | `isLoading === true` | `SolarLoader` |
-| 2 | `isCooked === true` | `CookedSuccessCard` |
+| 1 | `isLoading === true` | `SolarLoader` (replaces all below) |
+| 2a | `isCooked && !cookedDismissed` | `CookedSuccessCard` (full card) |
+| 2b | `isCooked && cookedDismissed` | Compact cooked badge (tap → Cook's Mode) |
 | 3 | `!currentRecipe && !isSkipped && !sessionDone && !isCooked` | `TonightPivotCard` |
 | 4 | `currentRecipe && currentRecipe.id && currentRecipe.name && !isSkipped && !isCooked && !sessionDone` | `TonightMenuCard` |
 
-Note: condition 4 requires both `id` and `name` to be non-null. A recipe with `name = null` (broken import state) falls through to `TonightPivotCard`. This is the Phase 14 D3 guard.
+Notes:
+- `cookedDismissed` is UI-only local state in `HomeCommandCenter`. Dismissing `CookedSuccessCard` collapses it to the compact badge; `todayStore.status` remains `2`.
+- Condition 4 requires both `id` and `name` to be non-null. A recipe with `name = null` (broken import state) falls through to `TonightPivotCard`. This is the Phase 14 D3 guard.
+- The compact cooked badge (2b) taps into `CooksMode` so the user can recover from an accidental "Done" tap.
 
 ---
 
