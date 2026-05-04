@@ -33,7 +33,7 @@ export function setFamilyMemberIdCookie(id: string, days = 365) {
     expires = `; expires=${date.toUTCString()}`;
   }
 
-  // Set cookie with Path=/ so it's sent to all routes including /backend
+  // Set cookie with Path=/ so it's sent to all routes
   // SameSite=Lax is a good default for PWA identity.
   document.cookie = `${COOKIE_NAME}=${id}${expires}; path=/; SameSite=Lax`;
 }

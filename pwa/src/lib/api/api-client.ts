@@ -26,11 +26,8 @@ const authProvider = new FamilyMemberAuthProvider();
 // Create the request adapter using the custom auth provider
 export const requestAdapter = new FetchRequestAdapter(authProvider);
 
-// Set the base URL.
-// Production: Use relative /api (handled by Traefik)
-// Development: Use absolute http://localhost:9001/api (direct connection)
-const isProd = process.env.NODE_ENV === 'production';
-requestAdapter.baseUrl = isProd ? '/api' : 'http://localhost:9001/api';
+// Set the base URL from the environment variable, defaulting to /api (relative, same-origin via Traefik)
+requestAdapter.baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api';
 
 // Create and export the API client
 export const apiClient: ApiClient = createApiClient(requestAdapter);

@@ -1,6 +1,6 @@
 export function getImageUrl(path: string | null | undefined): string {
   if (!path) return '';
-  return path.startsWith('/api/') ? `/backend${path}` : path;
+  return path;
 }
 
 export function getTodayString(): string {

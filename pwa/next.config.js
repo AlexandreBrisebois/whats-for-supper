@@ -30,19 +30,6 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-
-  // Proxy /backend/* → API container so the browser only ever calls the PWA's
-  // own origin. Works on any device on the LAN without CORS or IP config.
-  // Kiota SDK paths already include /api/, so don't add it again.
-  async rewrites() {
-    const apiUrl = process.env.API_INTERNAL_URL ?? 'http://api:9001';
-    return [
-      {
-        source: '/backend/:path*',
-        destination: `${apiUrl}/:path*`,
-      },
-    ];
-  },
 };
 
 module.exports = nextConfig;

@@ -10,7 +10,7 @@ const IDENTITY_COOKIE = 'x-family-member-id';
  */
 export async function serverFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   // Use the internal URL to talk to the API container directly
-  const url = `${API_INTERNAL_URL}${endpoint.replace(/^\/backend/, '')}`;
+  const url = `${API_INTERNAL_URL}${endpoint}`;
 
   const headers = new Headers(options.headers);
 

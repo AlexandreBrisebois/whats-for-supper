@@ -1968,7 +1968,7 @@ export interface components {
       name: string;
       description: string;
       /**
-       * @description Relative path proxied through /backend
+       * @description Relative path served directly from /api
        * @example /api/recipes/550e8400-e29b-41d4-a716-446655440000/hero
        */
       imageUrl: string;
@@ -1981,7 +1981,7 @@ export interface components {
       name: string;
       time: string;
       /**
-       * @description Relative path proxied through /backend
+       * @description Relative path served directly from /api
        * @example /api/recipes/550e8400-e29b-41d4-a716-446655440001/hero
        */
       image: string;
@@ -2005,7 +2005,7 @@ export interface components {
       id: string;
       name: string | null;
       /**
-       * @description Relative path proxied through /backend
+       * @description Relative path served directly from /api
        * @example /api/recipes/550e8400-e29b-41d4-a716-446655440001/hero
        */
       image: string;
