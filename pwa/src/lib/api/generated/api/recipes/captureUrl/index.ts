@@ -4,55 +4,38 @@
 // @ts-ignore
 import { serializeCaptureUrlDto, type CaptureUrlDto } from '../../../models/index';
 // @ts-ignore
-import {
-  type AdditionalDataHolder,
-  type BaseRequestBuilder,
-  type Guid,
-  type Parsable,
-  type ParsableFactory,
-  type ParseNode,
-  type RequestConfiguration,
-  type RequestInformation,
-  type RequestsMetadata,
-  type SerializationWriter,
-} from '@microsoft/kiota-abstractions';
+import { type AdditionalDataHolder, type BaseRequestBuilder, type Guid, type Parsable, type ParsableFactory, type ParseNode, type RequestConfiguration, type RequestInformation, type RequestsMetadata, type SerializationWriter } from '@microsoft/kiota-abstractions';
 
 export interface CaptureUrlPostResponse extends AdditionalDataHolder, Parsable {
-  /**
-   * The data property
-   */
-  data?: CaptureUrlPostResponse_data | null;
+    /**
+     * The data property
+     */
+    data?: CaptureUrlPostResponse_data | null;
 }
 export interface CaptureUrlPostResponse_data extends AdditionalDataHolder, Parsable {
-  /**
-   * The id property
-   */
-  id?: Guid | null;
+    /**
+     * The id property
+     */
+    id?: Guid | null;
 }
 /**
  * Builds and executes requests for operations under /api/recipes/capture-url
  */
 export interface CaptureUrlRequestBuilder extends BaseRequestBuilder<CaptureUrlRequestBuilder> {
-  /**
-   * Capture a recipe from a URL
-   * @param body The request body
-   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {Promise<CaptureUrlPostResponse>}
-   */
-  post(
-    body: CaptureUrlDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<CaptureUrlPostResponse | undefined>;
-  /**
-   * Capture a recipe from a URL
-   * @param body The request body
-   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {RequestInformation}
-   */
-  toPostRequestInformation(
-    body: CaptureUrlDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
-  ): RequestInformation;
+    /**
+     * Capture a recipe from a URL
+     * @param body The request body
+     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+     * @returns {Promise<CaptureUrlPostResponse>}
+     */
+     post(body: CaptureUrlDto, requestConfiguration?: RequestConfiguration<object> | undefined) : Promise<CaptureUrlPostResponse | undefined>;
+    /**
+     * Capture a recipe from a URL
+     * @param body The request body
+     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+     * @returns {RequestInformation}
+     */
+     toPostRequestInformation(body: CaptureUrlDto, requestConfiguration?: RequestConfiguration<object> | undefined) : RequestInformation;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -60,10 +43,8 @@ export interface CaptureUrlRequestBuilder extends BaseRequestBuilder<CaptureUrlR
  * @returns {CaptureUrlPostResponse_data}
  */
 // @ts-ignore
-export function createCaptureUrlPostResponse_dataFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoCaptureUrlPostResponse_data;
+export function createCaptureUrlPostResponse_dataFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCaptureUrlPostResponse_data;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -71,10 +52,8 @@ export function createCaptureUrlPostResponse_dataFromDiscriminatorValue(
  * @returns {CaptureUrlPostResponse}
  */
 // @ts-ignore
-export function createCaptureUrlPostResponseFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoCaptureUrlPostResponse;
+export function createCaptureUrlPostResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCaptureUrlPostResponse;
 }
 /**
  * The deserialization information for the current model
@@ -82,16 +61,10 @@ export function createCaptureUrlPostResponseFromDiscriminatorValue(
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoCaptureUrlPostResponse(
-  captureUrlPostResponse: Partial<CaptureUrlPostResponse> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    data: (n) => {
-      captureUrlPostResponse.data = n.getObjectValue<CaptureUrlPostResponse_data>(
-        createCaptureUrlPostResponse_dataFromDiscriminatorValue
-      );
-    },
-  };
+export function deserializeIntoCaptureUrlPostResponse(captureUrlPostResponse: Partial<CaptureUrlPostResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "data": n => { captureUrlPostResponse.data = n.getObjectValue<CaptureUrlPostResponse_data>(createCaptureUrlPostResponse_dataFromDiscriminatorValue); },
+    }
 }
 /**
  * The deserialization information for the current model
@@ -99,14 +72,10 @@ export function deserializeIntoCaptureUrlPostResponse(
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoCaptureUrlPostResponse_data(
-  captureUrlPostResponse_data: Partial<CaptureUrlPostResponse_data> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    id: (n) => {
-      captureUrlPostResponse_data.id = n.getGuidValue();
-    },
-  };
+export function deserializeIntoCaptureUrlPostResponse_data(captureUrlPostResponse_data: Partial<CaptureUrlPostResponse_data> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "id": n => { captureUrlPostResponse_data.id = n.getGuidValue(); },
+    }
 }
 /**
  * Serializes information the current object
@@ -115,20 +84,10 @@ export function deserializeIntoCaptureUrlPostResponse_data(
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeCaptureUrlPostResponse(
-  writer: SerializationWriter,
-  captureUrlPostResponse: Partial<CaptureUrlPostResponse> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!captureUrlPostResponse || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeObjectValue<CaptureUrlPostResponse_data>(
-    'data',
-    captureUrlPostResponse.data,
-    serializeCaptureUrlPostResponse_data
-  );
-  writer.writeAdditionalData(captureUrlPostResponse.additionalData);
+export function serializeCaptureUrlPostResponse(writer: SerializationWriter, captureUrlPostResponse: Partial<CaptureUrlPostResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!captureUrlPostResponse || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<CaptureUrlPostResponse_data>("data", captureUrlPostResponse.data, serializeCaptureUrlPostResponse_data);
+    writer.writeAdditionalData(captureUrlPostResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -137,34 +96,28 @@ export function serializeCaptureUrlPostResponse(
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeCaptureUrlPostResponse_data(
-  writer: SerializationWriter,
-  captureUrlPostResponse_data: Partial<CaptureUrlPostResponse_data> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!captureUrlPostResponse_data || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeGuidValue('id', captureUrlPostResponse_data.id);
-  writer.writeAdditionalData(captureUrlPostResponse_data.additionalData);
+export function serializeCaptureUrlPostResponse_data(writer: SerializationWriter, captureUrlPostResponse_data: Partial<CaptureUrlPostResponse_data> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!captureUrlPostResponse_data || isSerializingDerivedType) { return; }
+    writer.writeGuidValue("id", captureUrlPostResponse_data.id);
+    writer.writeAdditionalData(captureUrlPostResponse_data.additionalData);
 }
 /**
  * Uri template for the request builder.
  */
-export const CaptureUrlRequestBuilderUriTemplate = '{+baseurl}/api/recipes/capture-url';
+export const CaptureUrlRequestBuilderUriTemplate = "{+baseurl}/api/recipes/capture-url";
 /**
  * Metadata for all the requests in the request builder.
  */
 export const CaptureUrlRequestBuilderRequestsMetadata: RequestsMetadata = {
-  post: {
-    uriTemplate: CaptureUrlRequestBuilderUriTemplate,
-    responseBodyContentType: 'application/json',
-    adapterMethodName: 'send',
-    responseBodyFactory: createCaptureUrlPostResponseFromDiscriminatorValue,
-    requestBodyContentType: 'application/json',
-    requestBodySerializer: serializeCaptureUrlDto,
-    requestInformationContentSetMethod: 'setContentFromParsable',
-  },
+    post: {
+        uriTemplate: CaptureUrlRequestBuilderUriTemplate,
+        responseBodyContentType: "application/json",
+        adapterMethodName: "send",
+        responseBodyFactory:  createCaptureUrlPostResponseFromDiscriminatorValue,
+        requestBodyContentType: "application/json",
+        requestBodySerializer: serializeCaptureUrlDto,
+        requestInformationContentSetMethod: "setContentFromParsable",
+    },
 };
 /* tslint:enable */
 /* eslint-enable */

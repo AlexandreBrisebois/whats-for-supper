@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Search, Users, Share2, Trash2, ChevronRight } from 'lucide-react';
+import { getVotingLink } from '@/lib/auth';
 
 interface PlanningPivotSheetProps {
   isOpen: boolean;
@@ -26,12 +27,16 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
   hasRecipe,
 }) => {
   const handleNudge = async () => {
+    const baseUrl = window.location.origin;
+    const votingLink = await getVotingLink(baseUrl);
+    const shareUrl = votingLink || baseUrl + '/discovery';
+
     if (navigator.share) {
       try {
         await navigator.share({
           title: "What's for Supper?",
           text: `Help us choose what's for supper! Vote here:`,
-          url: window.location.origin + '/discovery',
+          url: shareUrl,
         });
       } catch (error) {
         console.error('Error sharing:', error);
@@ -39,7 +44,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
     } else {
       // Fallback: copy to clipboard or just alert
       try {
-        await navigator.clipboard.writeText(window.location.origin + '/discovery');
+        await navigator.clipboard.writeText(shareUrl);
         alert('Link copied to clipboard!');
       } catch (err) {
         console.error('Failed to copy: ', err);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
+import { setFamilyMemberCookie } from '@/lib/auth';
 import { FamilySelector } from '@/components/identity/FamilySelector';
 import { useFamily } from '@/hooks/useFamily';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -20,7 +20,11 @@ export default function OnboardingPage() {
     void loadFamily();
   }, [loadFamily]);
 
-  function handleFamilyMemberSelected(familyMemberId: string) {
+  async function handleFamilyMemberSelected(familyMemberId: string) {
+    // Set cookie via Server Action for middleware awareness
+    await setFamilyMemberCookie(familyMemberId);
+
+    // Update client-side store
     selectFamilyMember(familyMemberId);
     completeOnboarding();
     router.replace(ROUTES.HOME);

@@ -9,41 +9,47 @@ test.describe('Onboarding', () => {
     const members = [builders.familyMember({ name: 'Alex' })];
 
     // Override the family mock to handle the stateful members list
-    await page.route(/\/api\/family/, async (route) => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: members }),
-        });
-      } else if (route.request().method() === 'POST') {
-        const body = route.request().postDataJSON() as { name?: string };
-        const newMember = builders.familyMember({
-          id: NEW_MEMBER_ID,
-          name: body.name ?? 'New Member',
-        });
-        members.push(newMember);
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: newMember }),
-        });
-      } else {
-        await route.continue();
+    await page.route(
+      (url) => url.pathname.includes('/api/family'),
+      async (route) => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: members }),
+          });
+        } else if (route.request().method() === 'POST') {
+          const body = route.request().postDataJSON() as { name?: string };
+          const newMember = builders.familyMember({
+            id: NEW_MEMBER_ID,
+            name: body.name ?? 'New Member',
+          });
+          members.push(newMember);
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: newMember }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
 
-    await page.route(/\/(?:backend\/)?api\/schedule/, async (route) => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { weekOffset: 0, locked: false, days: [], status: 0 } }),
-        });
-      } else {
-        await route.continue();
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, locked: false, days: [], status: 0 } }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
   });
 
   test('fresh user visiting / is redirected to /onboarding', async ({ page }) => {

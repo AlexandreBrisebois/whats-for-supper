@@ -1,53 +1,95 @@
-const ENCODER = new TextEncoder();
+'use server';
 
-async function hmacKey(secret: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    'raw',
-    ENCODER.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign', 'verify']
-  );
+import { cookies } from 'next/headers';
+import { generateSecretToken, validateSecretToken } from './auth-utils';
+
+// --- Server Actions ---
+
+/**
+ * Validates a Hearth Secret token (HMAC check)
+ */
+export async function validateHearthSecret(token: string): Promise<boolean> {
+  const secret = process.env.HEARTH_SECRET;
+  if (!secret || !token) return false;
+  return validateSecretToken(token, secret);
 }
 
-export async function generateSecretToken(secret: string): Promise<string> {
-  const key = await hmacKey(secret);
-  const timestamp = Date.now().toString();
-  const sig = await crypto.subtle.sign('HMAC', key, ENCODER.encode(timestamp));
-  const b64 = Buffer.from(sig).toString('base64url');
-  return `${timestamp}.${b64}`;
+/**
+ * Sets the h_access cookie with the provided token
+ */
+export async function setHearthCookie(token: string): Promise<void> {
+  const isSecure = process.env.NODE_ENV === 'production';
+  const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+  const maxAge = 60 * 60 * 24 * 365;
+
+  (await cookies()).set('h_access', token, {
+    maxAge,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isSecure,
+    path: '/',
+    ...(domain ? { domain } : {}),
+  });
 }
 
-export async function validateSecretToken(token: string, secret: string): Promise<boolean> {
-  const parts = token.split('.');
-  if (parts.length !== 2) return false;
-  const [timestamp, b64] = parts;
-  try {
-    const key = await hmacKey(secret);
-    const sigBytes = Buffer.from(b64, 'base64url');
-    return await crypto.subtle.verify('HMAC', key, sigBytes, ENCODER.encode(timestamp));
-  } catch {
-    return false;
+/**
+ * Clears the h_access cookie
+ */
+export async function clearAuth(): Promise<void> {
+  (await cookies()).delete('h_access');
+}
+
+/**
+ * Validates a raw passphrase and returns a signed token if valid
+ */
+export async function authenticateWithPassphrase(
+  passphrase: string
+): Promise<{ success: boolean; token?: string }> {
+  const secret = process.env.HEARTH_SECRET;
+  if (!secret) return { success: false };
+
+  if (passphrase.trim() === secret.trim()) {
+    const token = await generateSecretToken(secret);
+    return { success: true, token };
   }
+
+  return { success: false };
 }
 
-export async function generateInviteLink(
-  baseUrl: string,
-  secret: string,
-  memberId: string
-): Promise<string> {
+/**
+ * Generates a magic link for a specific family member
+ */
+export async function getInviteLink(baseUrl: string, memberId: string): Promise<string> {
+  const secret = process.env.HEARTH_SECRET;
+  if (!secret) return '';
   const token = await generateSecretToken(secret);
   return `${baseUrl}/invite?secret=${encodeURIComponent(token)}&memberId=${encodeURIComponent(memberId)}`;
 }
 
-export function cookieOptions(secure: boolean) {
+/**
+ * Generates a magic link for voting (redirects to discovery)
+ */
+export async function getVotingLink(baseUrl: string): Promise<string> {
+  const secret = process.env.HEARTH_SECRET;
+  if (!secret) return '';
+  const token = await generateSecretToken(secret);
+  return `${baseUrl}/invite?secret=${encodeURIComponent(token)}&redirect=${encodeURIComponent('/discovery')}`;
+}
+
+/**
+ * Sets the x-family-member-id cookie
+ */
+export async function setFamilyMemberCookie(id: string): Promise<void> {
+  const isSecure = process.env.NODE_ENV === 'production';
+  const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
   const maxAge = 60 * 60 * 24 * 365;
-  return {
-    name: 'h_access',
+
+  (await cookies()).set('x-family-member-id', id, {
     maxAge,
-    httpOnly: true,
-    sameSite: 'lax' as const,
-    secure,
+    httpOnly: false, // Must be accessible to client-side store/scripts
+    sameSite: 'lax',
+    secure: isSecure,
     path: '/',
-  };
+    ...(domain ? { domain } : {}),
+  });
 }

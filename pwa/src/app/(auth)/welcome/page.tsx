@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { authenticateWithPassphrase, setHearthCookie } from '@/lib/auth';
 import { t } from '@/locales';
 
 export default function WelcomePage() {
@@ -16,13 +17,10 @@ export default function WelcomePage() {
     setIsPending(true);
 
     try {
-      const res = await fetch('/api/auth/access', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passphrase }),
-      });
+      const result = await authenticateWithPassphrase(passphrase);
 
-      if (res.ok) {
+      if (result.success && result.token) {
+        await setHearthCookie(result.token);
         router.replace('/onboarding');
       } else {
         setError(

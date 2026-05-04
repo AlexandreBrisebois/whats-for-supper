@@ -120,6 +120,9 @@ public class RecipeController(
         [FromBody] DescribeRecipeDto dto,
         [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId = null)
     {
+        if (familyMemberId is null)
+            return BadRequest(new { message = "X-Family-Member-Id header is required." });
+
         var result = await recipeService.DescribeRecipe(dto, familyMemberId);
         return Ok(result);
     }

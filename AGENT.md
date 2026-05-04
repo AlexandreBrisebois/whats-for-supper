@@ -1,18 +1,18 @@
-# AGENT.md — Universal Agent Protocol
+# AGENT.md -- Universal Agent Protocol
 
-This document is the **constitution** for all human and AI agents working in the “What’s For Supper” (WFS) repository.  
+This document is the **constitution** for all human and AI agents working in the "What's For Supper" (WFS) repository.  
 It defines why this repo exists, how we build it, and where specialized instructions live.
 
-It does **not** attempt to restate every detail in the modular instruction files — it routes you to them.
+It does **not** attempt to restate every detail in the modular instruction files -- it routes you to them.
 
 ---
 
 ## 1. Purpose
 
-“What's For Supper” (WFS) is a **premium, high‑performance Meal Planning Progressive Web App (PWA)**.  
-The goal is to turn the dreaded “What’s for supper?” question into a high‑quality, reliable experience: planning, grocery lists, and execution feel **consistent and trustworthy**, not fragile.
+"What's For Supper" (WFS) is a **premium, high‑performance Meal Planning Progressive Web App (PWA)**.  
+The goal is to turn the dreaded "What's for supper?" question into a high‑quality, reliable experience: planning, grocery lists, and execution feel **consistent and trustworthy**, not fragile.
 
-This repo exists to ship and maintain that experience — not experiments, not throwaway code.
+This repo exists to ship and maintain that experience -- not experiments, not throwaway code.
 
 ---
 
@@ -35,7 +35,7 @@ All work in this repo is governed by the following non‑negotiable principles:
   - PWA types
 
 - **Premium Engineering Posture**  
-  No zombie code, no speculative abstractions, no “while I’m in here” refactors outside the current task’s scope.
+  No zombie code, no speculative abstractions, no "while I'm in here" refactors outside the current task's scope.
 
 For detailed doctrine, see:
 
@@ -53,12 +53,16 @@ When making any change, follow this authority chain:
    - Any other formal specs
 
 2. **Feature Spec (if present)**  
-   - `./.kiro/specs/<feature>.md`
+   - `specs/features/<feature>/design.md`
+   - `.kiro/specs/<feature>/tasks.md`
 
-3. **Tests**  
+3. **Implementation Plan (if active)**
+   - `specs/plans/YYYY-MM-DD-<feature>.md`
+
+4. **Tests**  
    - Unit, integration, and end‑to‑end tests that enforce the contract.
 
-4. **Implementation**  
+5. **Implementation**  
    - Backend, mock API, PWA code.
 
 **Never** implement logic that contradicts the contract or feature spec.  
@@ -68,7 +72,7 @@ If you find a mismatch:
 - then tests,  
 - then implementation.
 
-If a feature spec conflicts with the contract or core doctrine, the contract/doctrine wins. Flag the conflict; do not “fix” it locally.
+If a feature spec conflicts with the contract or core doctrine, the contract/doctrine wins. Flag the conflict; do not "fix" it locally.
 
 ---
 
@@ -79,12 +83,12 @@ If a `task` exists, use it instead of raw shell commands.
 
 Key commands (see `.agents/core/execution-harness.md` for details):
 
-- `task agent:reconcile` — keep contracts and generated clients in sync.
-- `task agent:drift` — detect schema drift across contracts, DTOs, mocks, and PWA.
-- `task agent:slice -- <route>` — load a vertical slice (Contract ↔ Backend ↔ Client).
-- `task agent:test:impact` — run only tests affected by your changes.
-- `task test` — run the full test suite.
-- `task review` — formatting, linting, type‑checking, and tests before merge.
+- `task agent:reconcile` -- keep contracts and generated clients in sync.
+- `task agent:drift` -- detect schema drift across contracts, DTOs, mocks, and PWA.
+- `task agent:slice -- <route>` -- load a vertical slice (Contract ↔ Backend ↔ Client).
+- `task agent:test:impact` -- run only tests affected by your changes.
+- `task test` -- run the full test suite.
+- `task review` -- formatting, linting, type‑checking, and tests before merge.
 
 Execution rules:
 
@@ -112,11 +116,11 @@ Principles:
   - the directly impacted code,
   - selective history (handover/journal) only when resolving ambiguity.
 
-- **Sequential over “load everything”**  
+- **Sequential over "load everything"**  
   Work one bounded task at a time. Decompose big work into smaller tasks rather than expanding context indefinitely.
 
 - **Summarize and narrow**  
-  Between steps, summarize what matters and drop what doesn’t, instead of carrying forward the whole repo.
+  Between steps, summarize what matters and drop what doesn't, instead of carrying forward the whole repo.
 
 For detailed rules, see `.agents/core/context-loading.md`.
 
@@ -140,23 +144,30 @@ This repo uses a **modular instruction system**. Shared doctrine lives in `.agen
 - `.agents/core/context-loading.md`  
   Context, scope, and atomic delegation discipline.
 
+- `.agents/skills/session-review.md`  
+  1. **Summarize Delta**: Identify every file changed and test passed in this session.
+  2. **Update Plans**: Ensure any active implementation plan is synchronized to `docs/plans/YYYY-MM-DD-<feature>.md`.
+  3. **Update Handover**: Revise [HANDOVER.md](HANDOVER.md) with technical precision. Focus ONLY on active tasks.
+  4. **Archive History**: Move completed session details from [HANDOVER.md](HANDOVER.md) to [JOURNAL.md](JOURNAL.md).
+  5. **Update Strategy**: If a milestone was reached, update [ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
+
 ### Tool‑specific adapters
 
 - **Gemini**  
-  - `.agents/adapters/gemini.md` — behavior for Gemini CLI / Antigravity agents.  
-  - `GEMINI.md` — Gemini‑native entrypoint.
+  - `.agents/adapters/gemini.md` -- behavior for Gemini CLI / Antigravity agents.  
+  - `GEMINI.md` -- Gemini‑native entrypoint.
 
 - **Claude Code**  
-  - `.agents/adapters/claude.md` — behavior for Claude Code (planning, overreach controls, completion gates).  
-  - `CLAUDE.md` — Claude‑native entrypoint.
+  - `.agents/adapters/claude.md` -- behavior for Claude Code (planning, overreach controls, completion gates).  
+  - `CLAUDE.md` -- Claude‑native entrypoint.
 
 - **GitHub Copilot**  
-  - `.agents/adapters/copilot.md` — behavior and limitations for Copilot (local completions, no architecture).  
-  - `.github/copilot-instructions.md` — GitHub‑native repository instructions.
+  - `.agents/adapters/copilot.md` -- behavior and limitations for Copilot (local completions, no architecture).  
+  - `.github/copilot-instructions.md` -- GitHub‑native repository instructions.
 
 - **Kiro**  
-  - `.kiro/steering.md` — steering rules for Kiro, bound to the core doctrine.  
-  - `.kiro/specs/README.md` — how to structure feature specs under `.kiro/specs/`.
+  - `.kiro/steering.md` -- steering rules for Kiro, bound to the core doctrine.  
+  - `.kiro/specs/README.md` -- how to structure feature specs under `.kiro/specs/`.
 
 **Rule:**  
 When there is a conflict between a local instruction and a core file, the core file wins.  
@@ -184,12 +195,12 @@ Use tool‑native shims to enter the system:
 
 Cross‑tool router:
 
-- `AGENTS.md` — standardized index for tools that recognize AGENTS.md.  
+- `AGENTS.md` -- standardized index for tools that recognize AGENTS.md.  
   It points here (`AGENT.md`) and to the core + adapters.
 
-**For humans and “full” agents (Claude, Gemini in chat, etc.):**
+**For humans and "full" agents (Claude, Gemini in chat, etc.):**
 
-1. Start with this `AGENT.md` to understand the repo’s philosophy and operating model.
+1. Start with this `AGENT.md` to understand the repo's philosophy and operating model.
 2. Then follow the links in the Instruction Map for detailed behavior.
 
 ---
@@ -205,21 +216,24 @@ When you start a piece of work:
 2. **Anchor in doctrine**  
    - Re‑read `.agents/core/contract-testing.md` and `.agents/core/execution-harness.md` if you are about to change contracts, tests, or execution paths.
 
-3. **Plan small**  
-   - Define a bounded task with a clear “done” state.  
-   - For multi‑file or cross‑cutting work, write a short plan and get explicit approval (for agents: emit a plan and wait).
+3. **Plan small (Vertical Slicing)**  
+   - Define a bounded task with a clear "done" state.  
+   - **Minimal footprint**: Before committing to a plan, ask what is the smallest change that achieves this goal. Reject any planned step that cannot be directly traced back to the task's stated outcome. Surface "while I'm in here" improvements separately rather than folding them in. See `.agents/core/context-loading.md §3`.
+   - **Mandatory**: For any multi-file or non-trivial work, use the **`prompt-planner`** skill to decompose the request.
+   - Decompose into **Vertical Slices** (Contract -> DB -> API -> UI -> Test) following the Kiro-inspired spec structure in `specs/features/`.
+   - Get explicit approval on the "Workstream Map" before launching prompts.
 
 4. **Execute with the harness**  
    - Use `task` commands, not raw shell, for build/test/lint/validation.
 
 5. **Validate & record**  
    - Run drift and impact tests, then `task review`.  
-   - Update the relevant Kiro spec’s **Tasks** and **Notes / Decisions** sections as you go.
+   - Update the relevant Kiro spec's **Tasks** and **Notes / Decisions** sections as you go.
 
-If at any point you’re unsure whether to act or ask: **ask**.  
+If at any point you're unsure whether to act or ask: **ask**.  
 When in doubt, propose options rather than making irreversible changes.
 
 ---
 
-This document is the **single place** that defines what “good” looks like in this repo.  
-All other instruction files exist to implement these principles for specific tools and workflows — not to replace them.
+This document is the **single place** that defines what "good" looks like in this repo.  
+All other instruction files exist to implement these principles for specific tools and workflows -- not to replace them.

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Share2, X } from 'lucide-react';
 
+import { getInviteLink } from '@/lib/auth';
+
 interface InviteLinkDialogProps {
   memberId: string;
   memberName: string;
@@ -15,16 +17,10 @@ export function InviteLinkDialog({ memberId, memberName, onClose }: InviteLinkDi
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/invite-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberId }),
-    })
-      .then((r) => r.json())
-      .then((data: { link?: string }) => {
-        if (data.link) setLink(data.link);
-      })
-      .catch(() => {});
+    const baseUrl = window.location.origin;
+    getInviteLink(baseUrl, memberId).then((newLink) => {
+      if (newLink) setLink(newLink);
+    });
   }, [memberId]);
 
   const handleCopy = async () => {

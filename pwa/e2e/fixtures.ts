@@ -31,25 +31,42 @@ export const test = base.extend({
       window.localStorage.setItem('whats-for-supper-locale', 'en');
     });
 
-    // Strict Mocking: Block any unhandled API calls to prevent DB pollution
-    // We register this FIRST so it acts as the catch-all (last matched)
-    await page.route(/\/(?:backend\/)?api\//, async (route) => {
-      const request = route.request();
-      // Allow health checks
-      if (request.url().includes('/health')) {
-        return route.continue();
+    page.on('request', (request) => {
+      if (request.url().includes('/api/')) {
+        console.log(`[REQUEST] ${request.method()} ${request.url()}`);
       }
-      console.error(`❌ UNMOCKED API CALL DETECTED: ${request.method()} ${request.url()}`);
-      await route.fulfill({
-        status: 403,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          error: 'Unmocked API call detected. Tests must be isolated from the real backend.',
-          method: request.method(),
-          url: request.url(),
-        }),
-      });
     });
+
+    page.on('requestfailed', (request) => {
+      console.log(
+        `[REQUEST FAILED] ${request.method()} ${request.url()} - ${request.failure()?.errorText}`
+      );
+    });
+
+    // Strict Mocking: Block any unhandled API calls to prevent DB pollution
+    await page.route(
+      (url) => url.pathname.includes('/api/'),
+      async (route) => {
+        const request = route.request();
+
+        // Allow health checks
+        if (request.url().includes('/health')) {
+          return route.continue();
+        }
+
+        console.error(`❌ UNMOCKED API CALL DETECTED: ${request.method()} ${request.url()}`);
+
+        await route.fulfill({
+          status: 403,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: 'Unmocked API call detected. Tests must be isolated from the real backend.',
+            method: request.method(),
+            url: request.url(),
+          }),
+        });
+      }
+    );
 
     await use(page);
   },

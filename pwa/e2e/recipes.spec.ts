@@ -47,44 +47,47 @@ test.describe('Recipes Search Page', () => {
 
     await setupCommonRoutes(page);
 
-    await page.route(/\/(?:backend\/)?api\/recipes/, async (route) => {
-      const url = route.request().url();
+    await page.route(
+      (url) => url.pathname.includes('/api/recipes'),
+      async (route) => {
+        const url = route.request().url();
 
-      if (url.includes('/recommendations')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              topPick: {
-                ...MOCK_RECIPES.topPick,
-                imageUrl: MOCK_RECIPES.topPick.image,
-                description: 'A classic favorite.',
-                prepTime: '45 min',
-                difficulty: 'Medium',
+        if (url.includes('/recommendations')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                topPick: {
+                  ...MOCK_RECIPES.topPick,
+                  imageUrl: MOCK_RECIPES.topPick.image,
+                  description: 'A classic favorite.',
+                  prepTime: '45 min',
+                  difficulty: 'Medium',
+                },
+                results: MOCK_RECIPES.secondary.map((r) => ({
+                  ...r,
+                  time: '20 min',
+                })),
               },
-              results: MOCK_RECIPES.secondary.map((r) => ({
-                ...r,
-                time: '20 min',
-              })),
-            },
-          }),
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: [
-              builders.recipe({ ...MOCK_RECIPES.topPick }),
-              builders.recipe({ ...MOCK_RECIPES.secondary[0] }),
-              builders.recipe({ ...MOCK_RECIPES.secondary[1] }),
-            ],
-            total: 3,
-          }),
-        });
+            }),
+          });
+        } else {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: [
+                builders.recipe({ ...MOCK_RECIPES.topPick }),
+                builders.recipe({ ...MOCK_RECIPES.secondary[0] }),
+                builders.recipe({ ...MOCK_RECIPES.secondary[1] }),
+              ],
+              total: 3,
+            }),
+          });
+        }
       }
-    });
+    );
   });
 
   test('should display search UI and mock data correctly', async ({ page }) => {

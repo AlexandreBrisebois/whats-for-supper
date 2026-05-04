@@ -23,8 +23,8 @@ Follow these directives in order for every complex feature or refactor.
 
 ### Directive 1: Plan & Initialize Context
 1.  **Read State**: Immediately read [HANDOVER.md](HANDOVER.md) and [ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
-2.  **Decompose (Vertical Slicing)**: Break the request into vertical, end-to-end capabilities (e.g., "Build the Add Recipe vertical slice: Contract -> DB -> API -> Frontend -> Test"). **DO NOT slice horizontally** (e.g., Database, then API, then Frontend).
-3.  **Map Workstreams**: Use [create-prompt](../create-prompt/SKILL.md) to draft an execution plan for the vertical slices. Do not start coding until the plan is approved. **Note: If a pre-prepared prompt is provided by the user, adopt it as the approved strategy and verify it against Directive 2 (The Seams) before execution.**
+2.  **Decompose (Vertical Slicing)**: Break the request into vertical, end-to-end capabilities. Use the [prompt-planner](../prompt-planner/SKILL.md) skill to review the plan, identify dead ends, and design the vertical slices. **DO NOT slice horizontally** (e.g., Database, then API, then Frontend).
+3.  **Map Workstreams**: Use the [prompt-planner](../prompt-planner/SKILL.md) skill to generate a "Workstream Map" and initialize the `specs/features/` directory. Do not start coding until the map is approved. **Note: If a pre-prepared prompt is provided by the user, adopt it as the approved strategy and verify it against Directive 2 (The Seams) before execution.**
 
 ### Directive 2: Build the Seams (The Contract)
 1.  **Update API**: Use [openapi-expert](../openapi-expert/SKILL.md) to update `specs/openapi.yaml`.

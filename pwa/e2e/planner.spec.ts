@@ -9,6 +9,29 @@ test.describe('Supper Planner', () => {
     await page.clock.setFixedTime(new Date('2026-05-04T12:00:00Z'));
 
     await setupCommonRoutes(page);
+
+    // Override recommendations to provide a non-null topPick — the shared mock returns null
+    // which prevents recipe-card-top-pick from rendering (RecipesPage guards on {topPick && ...})
+    await page.route('**/api/recipes/recommendations', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: builders.recipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: 'Homemade Lasagna',
+              description: 'A classic family lasagna.',
+              imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
+              totalTime: 'PT45M',
+              difficulty: 'Medium',
+            }),
+            results: [],
+          },
+        }),
+      });
+    });
+
     const baseUrl = baseURL || 'http://127.0.0.1:3000';
 
     await page
@@ -36,104 +59,107 @@ test.describe('Supper Planner', () => {
     let isLocked = false;
 
     // Single intercept covering all schedule calls — zero Prism dependency
-    await page.route(/\/(?:backend\/)?api\/schedule/, async (route) => {
-      const url = route.request().url();
-      const method = route.request().method();
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const url = route.request().url();
+        const method = route.request().method();
 
-      if (method !== 'GET') {
-        isLocked = true;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { message: 'ok' } }),
+        if (method !== 'GET') {
+          isLocked = true;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { message: 'ok' } }),
+          });
+          return;
+        }
+
+        if (url.includes('smart-defaults')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                familySize: 3,
+                consensusThreshold: 2,
+                preSelectedRecipes: [
+                  {
+                    recipeId: MOCK_IDS.RECIPE_CARBONARA,
+                    name: 'Zesty Lemon Chicken',
+                    heroImageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
+                    voteCount: 2,
+                    familySize: 3,
+                    unanimousVote: false,
+                    dayIndex: 3,
+                    isLocked: false,
+                  },
+                  {
+                    recipeId: MOCK_IDS.RECIPE_STIR_FRY,
+                    name: 'Ginger Beef Stir Fry',
+                    heroImageUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae',
+                    voteCount: 3,
+                    familySize: 3,
+                    unanimousVote: true,
+                    dayIndex: 4,
+                    isLocked: false,
+                  },
+                  {
+                    recipeId: MOCK_IDS.RECIPE_TACOS,
+                    name: 'Street Tacos',
+                    heroImageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47',
+                    voteCount: 2,
+                    familySize: 3,
+                    unanimousVote: false,
+                    dayIndex: 5,
+                    isLocked: false,
+                  },
+                ],
+                openSlots: [],
+                consensusRecipesCount: 1,
+                isVotingOpen: false,
+              },
+            }),
+          });
+          return;
+        }
+
+        // Default GET /api/schedule
+        const monday = currentMonday();
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(monday);
+          d.setUTCDate(monday.getUTCDate() + i);
+          return {
+            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+            date: toDateStr(d),
+            ...(i === 0
+              ? {
+                  recipe: builders.scheduleRecipe({
+                    id: MOCK_IDS.RECIPE_LASAGNA,
+                    name: 'Homemade Lasagna',
+                    voteCount: 3,
+                    ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
+                  }),
+                }
+              : {}),
+          };
         });
-        return;
-      }
 
-      if (url.includes('smart-defaults')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             data: {
               weekOffset: 0,
-              familySize: 3,
-              consensusThreshold: 2,
-              preSelectedRecipes: [
-                {
-                  recipeId: MOCK_IDS.RECIPE_CARBONARA,
-                  name: 'Zesty Lemon Chicken',
-                  heroImageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-                  voteCount: 2,
-                  familySize: 3,
-                  unanimousVote: false,
-                  dayIndex: 3,
-                  isLocked: false,
-                },
-                {
-                  recipeId: MOCK_IDS.RECIPE_STIR_FRY,
-                  name: 'Ginger Beef Stir Fry',
-                  heroImageUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae',
-                  voteCount: 3,
-                  familySize: 3,
-                  unanimousVote: true,
-                  dayIndex: 4,
-                  isLocked: false,
-                },
-                {
-                  recipeId: MOCK_IDS.RECIPE_TACOS,
-                  name: 'Street Tacos',
-                  heroImageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47',
-                  voteCount: 2,
-                  familySize: 3,
-                  unanimousVote: false,
-                  dayIndex: 5,
-                  isLocked: false,
-                },
-              ],
-              openSlots: [],
-              consensusRecipesCount: 1,
-              isVotingOpen: false,
+              locked: isLocked,
+              status: isLocked ? 2 : 0,
+              days,
             },
           }),
         });
-        return;
       }
-
-      // Default GET /api/schedule
-      const monday = currentMonday();
-      const days = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(monday);
-        d.setUTCDate(monday.getUTCDate() + i);
-        return {
-          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-          date: toDateStr(d),
-          ...(i === 0
-            ? {
-                recipe: builders.scheduleRecipe({
-                  id: MOCK_IDS.RECIPE_LASAGNA,
-                  name: 'Homemade Lasagna',
-                  voteCount: 3,
-                  ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
-                }),
-              }
-            : {}),
-        };
-      });
-
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            weekOffset: 0,
-            locked: isLocked,
-            status: isLocked ? 2 : 0,
-            days,
-          },
-        }),
-      });
-    });
+    );
 
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });

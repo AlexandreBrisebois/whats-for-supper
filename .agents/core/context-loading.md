@@ -6,20 +6,30 @@ Agents must load the minimum context required to safely and accurately complete 
 ## 2. Minimum necessary context
 Always prefer targeted, active task context over broad, repo-wide reads. Read only the files directly impacted by the current objective, their immediate dependencies, and the specific specifications governing those features. 
 
-## 3. Priority loading order
+## 3. Minimum necessary change
+Before finalising any plan, evaluate the smallest set of changes that achieves the goal. Apply the same minimality discipline to what you write as to what you read.
+
+Ask explicitly:
+- Can this be done by modifying one file instead of several?
+- Does this require a new abstraction, or can an existing one be extended or reused?
+- Is any planned step speculative — useful in the future but not required by the current task?
+
+Reject any planned change that cannot be directly traced back to the current task's stated goal. Scope creep in plans is as harmful as scope creep in execution. If a "while I'm in here" improvement is genuinely valuable, surface it separately rather than folding it into the current task.
+
+## 4. Priority loading order
 When establishing context for a task, load information in the following priority order:
 1. **Active Task State**: The current objective and immediate next steps.
 2. **Contract and Specs**: The OpenAPI specification or relevant roadmap documents governing the feature.
 3. **Targeted Code**: The specific vertical slice or directly impacted source files.
 4. **History (Selective)**: Handover, journal, or history files should be loaded only when resolving ambiguity regarding past decisions or active workflows, not reflexively on every turn.
 
-## 4. Escalation and decomposition
+## 5. Escalation and decomposition
 When a task involves high entropy, architectural ambiguity, or requires a context window that exceeds safe operational limits, do not attempt to load the entire project state. Instead, decompose the work. Use atomic delegation to break the task into smaller, highly focused build prompts or sequential turns with isolated context boundaries.
 
-## 5. Context hygiene
+## 6. Context hygiene
 Actively manage context throughout the session. Summarize findings, document decisions, and narrow the active context window rather than repeatedly loading the full project state across multiple turns. Discard irrelevant or outdated context when moving between discrete phases of a task.
 
-## 6. Skill loading
+## 7. Skill loading
 Skills in `.agents/skills/` are load-on-demand only.
 Load a skill only when:
 1. the active adapter instructs it for the current task type, or
@@ -28,7 +38,7 @@ Load a skill only when:
 Do not load skills globally by default.
 Use only the minimum subset of skills required for the current bounded task.
 
-## 7. Repository reference map
+## 8. Repository reference map
 
 Use this table to locate resources without scanning the filesystem. Load only what the current task requires.
 

@@ -44,13 +44,19 @@ export function TonightPivotCard({
       <TonightCardBase className="absolute inset-0 flex flex-col p-6 backface-hidden">
         {/* Header */}
         <div className="flex justify-between items-center mb-5 px-1">
-          <h2 className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40">
+          <h2
+            data-testid="pivot-card-header"
+            className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40"
+          >
             What&apos;s for Supper?
           </h2>
         </div>
 
         {/* Image area */}
-        <div className="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 bg-charcoal/5 flex items-center justify-center">
+        <div
+          data-testid="pivot-card-image-area"
+          className="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 bg-charcoal/5 flex items-center justify-center"
+        >
           {imageUrl ? (
             <Image
               src={getImageUrl(imageUrl)}

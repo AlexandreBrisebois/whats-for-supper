@@ -1,8 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -27,15 +29,34 @@ namespace RecipeApi.Tests.Infrastructure;
 /// </summary>
 public sealed class TestWebApplicationFactory : IAsyncDisposable
 {
+    /// <summary>Fixed secret used by <see cref="CreateWithAuthAsync"/> and auth-aware test clients.</summary>
+    public const string TestSecret = "test-hearth-secret";
+
     public Guid DefaultFamilyMemberId { get; private set; }
 
     private WebApplication? _app;
     private readonly string _dbName = $"TestDb_{Guid.NewGuid():N}";
     private readonly string _dataRoot = Path.Combine(Path.GetTempPath(), $"wfs-test-{Guid.NewGuid():N}");
+    private readonly bool _enableAuth;
 
+    private TestWebApplicationFactory(bool enableAuth = false) => _enableAuth = enableAuth;
+
+    /// <summary>Factory with auth disabled — for business-logic tests.</summary>
     public static async Task<TestWebApplicationFactory> CreateAsync()
     {
-        var factory = new TestWebApplicationFactory();
+        var factory = new TestWebApplicationFactory(enableAuth: false);
+        await factory.StartAsync();
+        return factory;
+    }
+
+    /// <summary>
+    /// Factory with full HearthSecret auth enforcement enabled — for auth contract tests.
+    /// Use <see cref="CreateAuthenticatedClient"/> to get a pre-credentialed client,
+    /// or <see cref="CreateClient"/> for an unauthenticated one.
+    /// </summary>
+    public static async Task<TestWebApplicationFactory> CreateWithAuthAsync()
+    {
+        var factory = new TestWebApplicationFactory(enableAuth: true);
         await factory.StartAsync();
         return factory;
     }
@@ -56,12 +77,32 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         });
 
         // ── Services (mirrors Program.cs, minus Npgsql) ──────────────────────
+        // Auth is omitted by default so business-logic tests are not coupled to
+        // credential plumbing. Pass enableAuth: true (via CreateWithAuthAsync) to
+        // get the full HearthSecret stack for auth contract tests.
         // AddApplicationPart is required because WebApplication.CreateBuilder()
         // in the test assembly only scans RecipeApi.Tests.dll by default.
+        if (_enableAuth)
+        {
+            builder.Services
+                .AddAuthentication(HearthAuthenticationOptions.DefaultScheme)
+                .AddScheme<HearthAuthenticationOptions, HearthAuthenticationHandler>(
+                    HearthAuthenticationOptions.DefaultScheme,
+                    opts => opts.Secret = TestSecret);
+            builder.Services.AddAuthorization();
+        }
+
         builder.Services
             .AddControllers(options =>
             {
                 options.Filters.Add<SuccessWrappingFilter>();
+                if (_enableAuth)
+                {
+                    var policy = new AuthorizationPolicyBuilder()
+                        .RequireAuthenticatedUser()
+                        .Build();
+                    options.Filters.Add(new AuthorizeFilter(policy));
+                }
             })
             .AddApplicationPart(typeof(RecipeApi.Controllers.HealthController).Assembly)
             .AddJsonOptions(opts =>
@@ -125,15 +166,32 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
 
         // ── Middleware & routing (mirrors Program.cs) ─────────────────────────
         _app.UseMiddleware<ErrorHandlingMiddleware>();
+        if (_enableAuth)
+        {
+            _app.UseAuthentication();
+            _app.UseAuthorization();
+        }
         _app.MapControllers();
 
         await _app.StartAsync();
     }
 
-    /// <summary>Returns an HttpClient connected to the test server.</summary>
+    /// <summary>Returns an unauthenticated HttpClient connected to the test server.</summary>
     public HttpClient CreateClient() =>
         _app?.GetTestClient()
         ?? throw new InvalidOperationException("Factory not started — call CreateAsync() first.");
+
+    /// <summary>
+    /// Returns an HttpClient pre-credentialed with <see cref="TestSecret"/> via
+    /// <c>X-Hearth-Secret</c>. Only meaningful when the factory was created via
+    /// <see cref="CreateWithAuthAsync"/>.
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient()
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Add("X-Hearth-Secret", TestSecret);
+        return client;
+    }
 
     /// <summary>Convenience accessor for the service provider.</summary>
     public IServiceProvider Services =>

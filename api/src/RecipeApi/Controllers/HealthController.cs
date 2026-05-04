@@ -9,6 +9,7 @@ namespace RecipeApi.Controllers;
 
 [ApiController]
 [SkipWrapping]
+[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public class HealthController(RecipeDbContext db) : ControllerBase
 {
     [HttpGet("/health")]

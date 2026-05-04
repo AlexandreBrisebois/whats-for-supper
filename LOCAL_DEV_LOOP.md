@@ -65,16 +65,17 @@ task
 | `task down` | Stop all modular services ⛔ |
 | `task dev:api` | Start API with hot reload |
 | `task dev:pwa` | Start PWA with hot reload |
+| `task gate` | ⚡ Fast dev loop: catch what changed |
+| `task review` | 🔒 Pre-commit gate: full coverage |
 | `task test` | Run all tests 🧪 |
 | `task test:smoke` | 💨 Docker Smoke Test (Local CI Parity) |
-| `task types:sync` | 🔄 Sync TypeScript types from OpenAPI spec |
+| `task gen:client` | 🔄 Regenerate Kiota API client from spec |
 | `task agent:drift` | 🤖 Check for schema drift (C# vs Spec) |
 | `task agent:api` | 🤖 View full API controller mapping |
 | `task agent:slice` | 🤖 Vertical Slice Viewer (Route Context) |
 | `task health` | Check if services are running 🏥 |
 | `task dev:db:sync` | 🔄 Full Docker DB refresh (Forces Rebuild) |
 | `task dev:clean:sync` | 🛑 Nuclear Reset (Wipe all + Rebuild) |
-| `task review` | 🧐 Pre-commit review (Format + Lint + Test) |
 | `task clean` | Clean everything up 🧹 |
 
 **Detailed usage:**
@@ -90,13 +91,13 @@ task dev:pwa           # PWA with hot reload
 task dev:db            # Only database (for local API/PWA dev)
 
 # Testing
-task test              # Run all tests
+task test              # Run all tests (API + PWA unit + E2E)
 task test:api          # API tests only
 task test:api:watch    # API tests in watch mode
-task test:pwa          # PWA tests only
-task test:pwa:watch    # PWA tests in watch mode
-task test:pwa:ci       # E2E tests in CI-parity mode
-task test:pwa:e2e      # E2E tests against live backend
+task test:unit         # PWA unit tests (Vitest — fast, no server)
+task test:unit:watch   # PWA unit tests in watch mode
+task test:e2e          # E2E tests (Playwright — requires running PWA)
+task test:e2e:ci       # E2E tests in CI-parity mode (build + test)
 task test:smoke        # 💨 Full Docker smoke test (CI Parity)
 
 # Building & Publishing
@@ -135,7 +136,8 @@ task shell:db          # psql in database
 task format            # Format all code
 task lint              # Lint all code
 task typecheck         # Type check TypeScript
-task types:sync        # Sync types from OpenAPI
+task gen:client        # Regenerate Kiota API client from spec
+task gen:client:check  # Verify Kiota client is up to date (CI guard)
 
 # Health & diagnostics
 task health            # Check all services
@@ -273,12 +275,14 @@ task work
 2. **Verify Drift**: Run `task agent:drift` to see the delta.
 3. **Align Backend**: Update C# DTOs/Controllers to match.
 4. **Verify Again**: `task agent:drift` should report "No schema drift detected!".
-5. **Regenerate Client**: Run `task types:sync` to update TypeScript types in the PWA.
+5. **Regenerate Client**: Run `task gen:client` to regenerate the Kiota TypeScript client.
+6. **Run Gate**: `task gate` — catches stale client and type errors immediately.
 
 **Integrity Checks:**
 - `task agent:drift`: Validates that backend DTOs match the OpenAPI contract (nullability, names, types).
 - `task agent:api`: Validates that all routes in the spec are actually implemented by a controller.
 - `task agent:slice`: Provides a unified view of a route across Spec, Backend, and Client.
+- `task gen:client:check`: Fails if the Kiota client is out of sync with the spec (used in `gate` and `review`).
 
 ---
 
@@ -337,8 +341,20 @@ cp pwa/.env.local.example pwa/.env.local
 ### 5. **Git Hooks (pre-commit)**
 We use the `pre-commit` framework to ensure code quality before every commit.
 - **Installation**: `task hooks:install`
-- **What it does**: Automatically runs formatting and linting on staged files.
+- **What it does**: Runs schema drift checks, Kiota client staleness check, lint, typecheck, unit tests, and API tests on staged files.
 - **Manual Run**: `pre-commit run --all-files`
+- **Full pre-commit equivalent**: `task review`
+
+### Dev Loop vs Pre-commit
+
+| | `task gate` | `task review` | pre-commit hook |
+|---|---|---|---|
+| **When** | During dev | Before commit | On `git commit` |
+| **Contracts** | Kiota + schema drift | Kiota + schema + mock drift | Kiota + schema + mock drift |
+| **Tests** | Unit + impact-only E2E | Unit + API (dotnet) | Unit + API (dotnet) |
+| **Format** | No | Yes (auto-fixes) | No (verify only) |
+| **E2E** | Impact-only | No | No |
+| **Speed** | Fast ⚡ | Medium | Medium |
 
 ### 6. **Know Your Workflows**
 Use Task's built-in workflows:
@@ -617,7 +633,10 @@ task agent:summary
 
 ### Testing before commit
 ```bash
-# Run pre-commit review (format + lint + test)
+# Fast inner loop — catch what changed
+task gate
+
+# Full pre-commit gate (format + lint + contracts + all tests)
 task review
 
 # If tests fail, check logs
@@ -783,5 +802,6 @@ See `docker/.env.example` for the full list.
 - [x] First run: `task init`
 - [x] Check if services are healthy: `task health`
 - [ ] Open http://pwa.wfs.localhost in browser
-- [ ] Before pushing: `task review`
+- [ ] During dev: `task gate` (fast loop)
+- [ ] Before pushing: `task review` (full gate)
 

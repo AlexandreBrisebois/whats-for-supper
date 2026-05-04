@@ -30,38 +30,41 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
   test('Shows tonight menu card when recipe is planned', async ({ page }) => {
     // 1. Mock schedule with a planned recipe for today
-    await page.route(/\/(?:backend\/)?api\/schedule\?weekOffset=0/, async (route) => {
-      if (route.request().method() === 'GET') {
-        const today = new Date().toISOString().split('T')[0];
-        // Use builders to ensure contract compliance
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date();
-          // Monday offset logic matching mock-api.ts
-          const day = d.getUTCDay();
-          const offset = day === 0 ? -6 : 1 - day;
-          d.setUTCDate(d.getUTCDate() + offset + i);
-          const dateStr = d.toISOString().split('T')[0];
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule') && url.searchParams.get('weekOffset') === '0',
+      async (route) => {
+        if (route.request().method() === 'GET') {
+          const today = new Date().toISOString().split('T')[0];
+          // Use builders to ensure contract compliance
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            // Monday offset logic matching mock-api.ts
+            const day = d.getUTCDay();
+            const offset = day === 0 ? -6 : 1 - day;
+            d.setUTCDate(d.getUTCDate() + offset + i);
+            const dateStr = d.toISOString().split('T')[0];
 
-          return {
-            date: dateStr,
-            status: 0,
-            recipe: builders.scheduleRecipe({
-              id: MOCK_IDS.RECIPE_LASAGNA,
-              name: 'Test Lasagna',
-              image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
-            }),
-          };
-        });
+            return {
+              date: dateStr,
+              status: 0,
+              recipe: builders.scheduleRecipe({
+                id: MOCK_IDS.RECIPE_LASAGNA,
+                name: 'Test Lasagna',
+                image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+              }),
+            };
+          });
 
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { weekOffset: 0, days } }),
-        });
-      } else {
-        await route.continue();
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
 
     await page.goto('/home');
 
@@ -76,28 +79,35 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   // B5: "Order In" with no recipe writes status:3 to backend and hides pivot card
   test('"Order In" with no recipe writes status:3 and hides pivot card', async ({ page }) => {
     // Empty schedule — no recipe for today
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
-      if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
-        });
-      } else {
-        await route.continue();
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const reqUrl = new URL(route.request().url());
+        if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
 
     // Capture validate call
     let validateBody: unknown = null;
-    await page.route(/\/(?:backend\/)?api\/schedule\/day\/.*\/validate/, async (route) => {
-      validateBody = route.request().postDataJSON();
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/day/') && url.pathname.endsWith('/validate'),
+      async (route) => {
+        validateBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
 
     await page.goto('/home');
 
@@ -118,46 +128,53 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   test('"Order In" with recipe opens SkipRecoveryDialog before committing', async ({ page }) => {
     // Schedule with a planned recipe for today
     const today = new Date().toISOString().split('T')[0];
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
-      if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date();
-          const day = d.getUTCDay();
-          const offset = day === 0 ? -6 : 1 - day;
-          d.setUTCDate(d.getUTCDate() + offset + i);
-          const dateStr = d.toISOString().split('T')[0];
-          return {
-            date: dateStr,
-            status: 0,
-            recipe:
-              dateStr === today
-                ? builders.scheduleRecipe({
-                    id: MOCK_IDS.RECIPE_LASAGNA,
-                    name: 'Test Lasagna',
-                  })
-                : null,
-          };
-        });
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { weekOffset: 0, days } }),
-        });
-      } else {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const reqUrl = new URL(route.request().url());
+        if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            const day = d.getUTCDay();
+            const offset = day === 0 ? -6 : 1 - day;
+            d.setUTCDate(d.getUTCDate() + offset + i);
+            const dateStr = d.toISOString().split('T')[0];
+            return {
+              date: dateStr,
+              status: 0,
+              recipe:
+                dateStr === today
+                  ? builders.scheduleRecipe({
+                      id: MOCK_IDS.RECIPE_LASAGNA,
+                      name: 'Test Lasagna',
+                    })
+                  : null,
+            };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+          });
+        } else {
+          await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        }
       }
-    });
+    );
 
     // Ensure validate is NOT called before dialog confirmation
     let validateCalled = false;
-    await page.route(/\/(?:backend\/)?api\/schedule\/day\/.*\/validate/, async (route) => {
-      validateCalled = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/day/') && url.pathname.endsWith('/validate'),
+      async (route) => {
+        validateCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
 
     await page.goto('/home');
 
@@ -189,44 +206,51 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Track whether "Order In" has been tapped so we can switch the schedule response
     let orderInDone = false;
 
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
-      if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
-        if (!orderInDone) {
-          // Before "Order In": empty schedule
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
-          });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const reqUrl = new URL(route.request().url());
+        if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
+          if (!orderInDone) {
+            // Before "Order In": empty schedule
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+            });
+          } else {
+            // After "Order In": return status:3 for today (simulates server state after write)
+            const days = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date();
+              const day = d.getUTCDay();
+              const offset = day === 0 ? -6 : 1 - day;
+              d.setUTCDate(d.getUTCDate() + offset + i);
+              const dateStr = d.toISOString().split('T')[0];
+              return { date: dateStr, status: dateStr === today ? 3 : 0, recipe: null };
+            });
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: { weekOffset: 0, days } }),
+            });
+          }
         } else {
-          // After "Order In": return status:3 for today (simulates server state after write)
-          const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            const day = d.getUTCDay();
-            const offset = day === 0 ? -6 : 1 - day;
-            d.setUTCDate(d.getUTCDate() + offset + i);
-            const dateStr = d.toISOString().split('T')[0];
-            return { date: dateStr, status: dateStr === today ? 3 : 0, recipe: null };
-          });
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
-          });
+          await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         }
-      } else {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
       }
-    });
+    );
 
-    await page.route(/\/(?:backend\/)?api\/schedule\/day\/.*\/validate/, async (route) => {
-      orderInDone = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/day/') && url.pathname.endsWith('/validate'),
+      async (route) => {
+        orderInDone = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
 
     await page.goto('/home');
 
@@ -250,26 +274,32 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     page,
   }) => {
     // Override fill-the-gap to return one recipe
-    await page.route(/\/(?:backend\/)?api\/schedule\/fill-the-gap/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: [{ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna', image: '' }],
-        }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/fill-the-gap'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: [{ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna', image: '' }],
+          }),
+        });
+      }
+    );
 
     // Track assign call
     let assignCalled = false;
-    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
-      assignCalled = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/assign'),
+      async (route) => {
+        assignCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
 
     await page.goto('/home');
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible({ timeout: 5000 });
@@ -292,46 +322,52 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
   test('Completing Cook Mode marks meal as cooked', async ({ page }) => {
     // 1. Mock schedule with planned recipe
-    await page.route(/\/api\/schedule/, async (route) => {
-      if (route.request().method() === 'GET') {
-        const today = new Date().toISOString().split('T')[0];
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date();
-          const day = d.getUTCDay();
-          const offset = day === 0 ? -6 : 1 - day;
-          d.setUTCDate(d.getUTCDate() + offset + i);
-          const dateStr = d.toISOString().split('T')[0];
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        if (route.request().method() === 'GET') {
+          const today = new Date().toISOString().split('T')[0];
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            const day = d.getUTCDay();
+            const offset = day === 0 ? -6 : 1 - day;
+            d.setUTCDate(d.getUTCDate() + offset + i);
+            const dateStr = d.toISOString().split('T')[0];
 
-          return {
-            date: dateStr,
-            status: 0,
-            recipe: builders.scheduleRecipe({
-              id: MOCK_IDS.RECIPE_LASAGNA,
-              name: 'Test Lasagna',
-            }),
-          };
-        });
+            return {
+              date: dateStr,
+              status: 0,
+              recipe: builders.scheduleRecipe({
+                id: MOCK_IDS.RECIPE_LASAGNA,
+                name: 'Test Lasagna',
+              }),
+            };
+          });
 
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { weekOffset: 0, days } }),
-        });
-      } else {
-        await route.continue();
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
 
     // 2. Mock validation API
     let validateCalled = false;
-    await page.route(/\/(?:backend\/)?api\/schedule\/day\/.*\/validate/, async (route) => {
-      validateCalled = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/day/') && url.pathname.endsWith('/validate'),
+      async (route) => {
+        validateCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
 
     await page.goto('/home');
     await page.getByTestId('tonight-menu-card').click();
@@ -398,95 +434,105 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
     let assignDone = false;
 
     // Stateful schedule mock: before assign → empty; after assign → today's slot has the recipe
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
-      if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
-        if (!assignDone) {
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const reqUrl = new URL(route.request().url());
+        if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
+          if (!assignDone) {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                data: {
+                  weekOffset: 0,
+                  locked: false,
+                  status: 0,
+                  days: Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date();
+                    const day = d.getUTCDay();
+                    const offset = day === 0 ? -6 : 1 - day;
+                    d.setUTCDate(d.getUTCDate() + offset + i);
+                    return {
+                      day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+                      date: d.toISOString().split('T')[0],
+                      recipe: null,
+                      status: 0,
+                    };
+                  }),
+                },
+              }),
+            });
+          } else {
+            const days = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date();
+              const day = d.getUTCDay();
+              const offset = day === 0 ? -6 : 1 - day;
+              d.setUTCDate(d.getUTCDate() + offset + i);
+              const dateStr = d.toISOString().split('T')[0];
+              return {
+                day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+                date: dateStr,
+                recipe:
+                  dateStr === today
+                    ? { data: { id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna', image: '' } }
+                    : null,
+                status: 0,
+              };
+            });
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+            });
+          }
+        } else if (route.request().url().includes('smart-defaults')) {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
-                locked: false,
-                status: 0,
-                days: Array.from({ length: 7 }, (_, i) => {
-                  const d = new Date();
-                  const day = d.getUTCDay();
-                  const offset = day === 0 ? -6 : 1 - day;
-                  d.setUTCDate(d.getUTCDate() + offset + i);
-                  return {
-                    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-                    date: d.toISOString().split('T')[0],
-                    recipe: null,
-                    status: 0,
-                  };
-                }),
+                familySize: 3,
+                consensusThreshold: 2,
+                preSelectedRecipes: [],
+                openSlots: [],
+                consensusRecipesCount: 0,
               },
             }),
           });
         } else {
-          const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            const day = d.getUTCDay();
-            const offset = day === 0 ? -6 : 1 - day;
-            d.setUTCDate(d.getUTCDate() + offset + i);
-            const dateStr = d.toISOString().split('T')[0];
-            return {
-              day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-              date: dateStr,
-              recipe:
-                dateStr === today
-                  ? { data: { id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna', image: '' } }
-                  : null,
-              status: 0,
-            };
-          });
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
-          });
+          await route.continue();
         }
-      } else if (route.request().url().includes('smart-defaults')) {
+      }
+    );
+
+    // Override fill-the-gap to return one recipe
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/fill-the-gap'),
+      async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              weekOffset: 0,
-              familySize: 3,
-              consensusThreshold: 2,
-              preSelectedRecipes: [],
-              openSlots: [],
-              consensusRecipesCount: 0,
-            },
+            data: [{ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna', image: '' }],
           }),
         });
-      } else {
-        await route.continue();
       }
-    });
-
-    // Override fill-the-gap to return one recipe
-    await page.route(/\/(?:backend\/)?api\/schedule\/fill-the-gap/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: [{ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna', image: '' }],
-        }),
-      });
-    });
+    );
 
     // Mock assign endpoint with assignDone flag
-    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
-      assignDone = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/assign'),
+      async (route) => {
+        assignDone = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
 
     // 1. Navigate to /planner, wait for day-card-0
     await page.goto('/planner');
@@ -530,42 +576,49 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
     const today = new Date().toISOString().split('T')[0];
     let orderInDone = false;
 
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
-      if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
-        if (!orderInDone) {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
-          });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const reqUrl = new URL(route.request().url());
+        if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
+          if (!orderInDone) {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+            });
+          } else {
+            const days = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date();
+              const day = d.getUTCDay();
+              const offset = day === 0 ? -6 : 1 - day;
+              d.setUTCDate(d.getUTCDate() + offset + i);
+              const dateStr = d.toISOString().split('T')[0];
+              return { date: dateStr, status: dateStr === today ? 3 : 0, recipe: null };
+            });
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: { weekOffset: 0, days } }),
+            });
+          }
         } else {
-          const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            const day = d.getUTCDay();
-            const offset = day === 0 ? -6 : 1 - day;
-            d.setUTCDate(d.getUTCDate() + offset + i);
-            const dateStr = d.toISOString().split('T')[0];
-            return { date: dateStr, status: dateStr === today ? 3 : 0, recipe: null };
-          });
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
-          });
+          await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         }
-      } else {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
       }
-    });
+    );
 
-    await page.route(/\/(?:backend\/)?api\/schedule\/day\/.*\/validate/, async (route) => {
-      orderInDone = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/day/') && url.pathname.endsWith('/validate'),
+      async (route) => {
+        orderInDone = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
 
     await page.goto('/home');
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5000 });

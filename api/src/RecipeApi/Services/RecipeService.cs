@@ -79,7 +79,7 @@ public class RecipeService(
         page = Math.Max(1, page);
         limit = Math.Clamp(limit, 1, 100);
 
-        var total = await db.Recipes.CountAsync();
+        var total = await db.Recipes.CountAsync(r => r.IsDiscoverable);
 
         var entities = await db.Recipes
             .OrderByDescending(r => r.CreatedAt)
@@ -235,7 +235,7 @@ public class RecipeService(
             await orchestrator.TriggerAsync("goto-synthesis", new Dictionary<string, string>
             {
                 ["recipeId"] = recipeId.ToString(),
-                ["description"] = dto.Description
+                ["description"] = dto.Description ?? string.Empty
             });
         }
         catch (Exception ex)

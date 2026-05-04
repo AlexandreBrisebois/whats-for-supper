@@ -63,4 +63,5 @@ public class HealthControllerTests : IAsyncLifetime
         Assert.Equal("healthy", checks.GetProperty("database").GetProperty("status").GetString());
         Assert.Equal("healthy", checks.GetProperty("schema").GetProperty("status").GetString());
     }
+
 }

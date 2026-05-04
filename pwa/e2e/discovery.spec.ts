@@ -28,30 +28,39 @@ test.describe('Discovery Flow', () => {
 
     await setupCommonRoutes(page);
 
-    await page.route(/\/(?:backend\/)?api\/discovery\/categories/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: MOCK_CATEGORIES }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/discovery/categories'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: MOCK_CATEGORIES }),
+        });
+      }
+    );
 
-    await page.route(/\/(?:backend\/)?api\/discovery(?:\?|$)/, async (route) => {
-      // The app might call /api/discovery or /api/discovery?category=...
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: MOCK_STACK }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.endsWith('/api/discovery'),
+      async (route) => {
+        // The app might call /api/discovery or /api/discovery?category=...
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: MOCK_STACK }),
+        });
+      }
+    );
 
-    await page.route(/\/(?:backend\/)?api\/discovery\/.*\/vote/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/discovery/') && url.pathname.endsWith('/vote'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
   });
 
   test('should fetch categories and then fetch the first category stack', async ({ page }) => {

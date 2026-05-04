@@ -13,9 +13,10 @@ Follow these directives in order when the user signals the end of a session or w
 
 ### Directive 1: Audit Work & Synchronize State
 1.  **Summarize Delta**: Identify every file changed and test passed in this session.
-2.  **Update Handover**: Revise [HANDOVER.md](HANDOVER.md) with technical precision. Focus ONLY on active tasks.
-3.  **Archive History**: Move completed session details from [HANDOVER.md](HANDOVER.md) to [JOURNAL.md](JOURNAL.md).
-4.  **Update Strategy**: If a milestone was reached, update [ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
+2.  **Update Plans**: Ensure any active implementation plan is synchronized to `specs/plans/YYYY-MM-DD-<feature>.md`.
+3.  **Update Handover**: Revise [HANDOVER.md](HANDOVER.md) with technical precision. Focus ONLY on active tasks.
+4.  **Archive History**: Move completed session details from [HANDOVER.md](HANDOVER.md) to [JOURNAL.md](JOURNAL.md).
+5.  **Update Strategy**: If a milestone was reached, update [ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
 
 ### Directive 2: Memorialize Technical Decisions (ADRs)
 1.  **Identify ADR Triggers**: Check if any change:

@@ -15,7 +15,6 @@ public record DescribeRecipeDto
     public required string Name { get; init; }
 
     /// <summary>Free-text description used to synthesize the full recipe via AI.</summary>
-    [Required]
     [JsonPropertyName("description")]
-    public required string Description { get; init; }
+    public string? Description { get; init; }
 }

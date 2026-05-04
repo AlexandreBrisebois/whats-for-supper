@@ -88,48 +88,51 @@ async function setupPlanner(page: Page, locked = false) {
   // Stateful: POST/PUT (e.g. finalize) flips isLocked so the next GET reflects locked state
   let isLocked = locked;
 
-  await page.route(/\/(?:backend\/)?api\/schedule/, async (route) => {
-    const url = route.request().url();
-    if (route.request().method() !== 'GET') {
-      isLocked = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { message: 'ok' } }),
-      });
-      return;
-    }
-    if (url.includes('smart-defaults')) {
+  await page.route(
+    (url) => url.pathname.includes('/api/schedule'),
+    async (route) => {
+      const url = route.request().url();
+      if (route.request().method() !== 'GET') {
+        isLocked = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { message: 'ok' } }),
+        });
+        return;
+      }
+      if (url.includes('smart-defaults')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              familySize: 3,
+              consensusThreshold: 2,
+              preSelectedRecipes: [],
+              openSlots: [],
+              consensusRecipesCount: 0,
+              isVotingOpen: false,
+            },
+          }),
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
             weekOffset: 0,
-            familySize: 3,
-            consensusThreshold: 2,
-            preSelectedRecipes: [],
-            openSlots: [],
-            consensusRecipesCount: 0,
-            isVotingOpen: false,
+            locked: isLocked,
+            status: isLocked ? 2 : 0,
+            days: isLocked ? buildLockedDays() : draftDays,
           },
         }),
       });
-      return;
     }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          weekOffset: 0,
-          locked: isLocked,
-          status: isLocked ? 2 : 0,
-          days: isLocked ? buildLockedDays() : draftDays,
-        },
-      }),
-    });
-  });
+  );
 
   await page.goto('/planner');
   if (locked) {
@@ -219,38 +222,44 @@ test.describe('Planner — Ordered-In State', () => {
       };
     });
 
-    await page.route(/\/(?:backend\/)?api\/schedule/, async (route) => {
-      if (route.request().method() === 'GET' && !route.request().url().includes('smart-defaults')) {
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        if (
+          route.request().method() === 'GET' &&
+          !route.request().url().includes('smart-defaults')
+        ) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+          });
+          return;
+        }
+        if (route.request().url().includes('smart-defaults')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                familySize: 3,
+                consensusThreshold: 2,
+                preSelectedRecipes: [],
+                openSlots: [],
+                consensusRecipesCount: 0,
+              },
+            }),
+          });
+          return;
+        }
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+          body: JSON.stringify({ data: { message: 'ok' } }),
         });
-        return;
       }
-      if (route.request().url().includes('smart-defaults')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              weekOffset: 0,
-              familySize: 3,
-              consensusThreshold: 2,
-              preSelectedRecipes: [],
-              openSlots: [],
-              consensusRecipesCount: 0,
-            },
-          }),
-        });
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { message: 'ok' } }),
-      });
-    });
+    );
 
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
@@ -275,38 +284,44 @@ test.describe('Planner — Voting Flow', () => {
     }
 
     // After clicking Ask the Family, subsequent GETs return VotingOpen
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?|$)/, async (route) => {
-      if (route.request().method() !== 'GET') {
-        await route.continue();
-        return;
+    await page.route(
+      (url) => url.pathname.endsWith('/api/schedule'),
+      async (route) => {
+        if (route.request().method() !== 'GET') {
+          await route.continue();
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              locked: false,
+              status: 1,
+              days: buildDraftDays(
+                builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_CARBONARA,
+                  name: 'Pasta Carbonara',
+                  voteCount: 3,
+                })
+              ),
+            },
+          }),
+        });
       }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            weekOffset: 0,
-            locked: false,
-            status: 1,
-            days: buildDraftDays(
-              builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_CARBONARA,
-                name: 'Pasta Carbonara',
-                voteCount: 3,
-              })
-            ),
-          },
-        }),
-      });
-    });
+    );
 
-    await page.route(/\/(?:backend\/)?api\/schedule\/.*\/smart-defaults/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { isVotingOpen: true } }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/') && url.pathname.endsWith('/smart-defaults'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { isVotingOpen: true } }),
+        });
+      }
+    );
 
     await askFamilyCta.click();
 

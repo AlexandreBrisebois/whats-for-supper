@@ -88,8 +88,8 @@ export const toDateStr = (d: Date) => d.toISOString().split('T')[0];
  * Setup common API routes with sane defaults.
  */
 export async function setupCommonRoutes(page: Page) {
-  // Family
-  await page.route(/\/(?:backend\/)?api\/family(?:\?|$)/, async (route) => {
+  // GET /api/family
+  await page.route('**/api/family', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
@@ -101,11 +101,40 @@ export async function setupCommonRoutes(page: Page) {
           ],
         }),
       });
+    } else if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: builders.familyMember() }),
+      });
+    } else {
+      await route.continue();
     }
   });
 
-  // Discovery Categories
-  await page.route(/\/(?:backend\/)?api\/discovery\/categories/, async (route) => {
+  // PUT /api/family/{id} and DELETE /api/family/{id}
+  await page.route('**/api/family/*', async (route) => {
+    if (route.request().method() === 'PUT') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: builders.familyMember() }),
+      });
+    } else if (route.request().method() === 'DELETE') {
+      await route.fulfill({ status: 204 });
+    } else if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: builders.familyMember() }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // GET /api/discovery/categories
+  await page.route('**/api/discovery/categories', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -113,9 +142,27 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
-  // Default Schedule (Empty)
-  await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
-    if (route.request().method() === 'GET' && !route.request().url().includes('smart-defaults')) {
+  // GET /api/discovery
+  await page.route('**/api/discovery', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+  });
+
+  // POST /api/discovery/{id}/vote
+  await page.route('**/api/discovery/*/vote', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { message: 'Vote recorded' } }),
+    });
+  });
+
+  // GET /api/schedule (default empty week)
+  await page.route('**/api/schedule', async (route) => {
+    if (route.request().method() === 'GET') {
       const monday = currentMonday();
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(monday);
@@ -127,7 +174,6 @@ export async function setupCommonRoutes(page: Page) {
           status: 0,
         };
       });
-
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -140,50 +186,43 @@ export async function setupCommonRoutes(page: Page) {
           },
         }),
       });
+    } else {
+      await route.continue();
     }
   });
 
-  // Single family member details
-  await page.route(/\/(?:backend\/)?api\/family\/[0-9a-f-]+(?:\?.*)?$/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: builders.familyMember(),
-      }),
-    });
+  // GET /api/recipes and POST /api/recipes
+  await page.route('**/api/recipes', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          recipes: [],
+          updatedAt: new Date().toISOString(),
+          pagination: { page: 1, limit: 20, total: 0 },
+        }),
+      });
+    }
   });
 
-  // Discovery Vote
-  await page.route(/\/(?:backend\/)?api\/discovery\/.*\/vote/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: { message: 'Vote recorded' } }),
-    });
-  });
-
-  // Recipes (Generic & Detail)
-  await page.route(/\/(?:backend\/)?api\/recipes(?:\?.*)?$/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        recipes: [],
-        updatedAt: new Date().toISOString(),
-        pagination: { page: 1, limit: 20, total: 0 },
-      }),
-    });
-  });
-  await page.route(/\/(?:backend\/)?api\/recipes\/recommendations/, async (route) => {
+  // GET /api/recipes/recommendations
+  await page.route('**/api/recipes/recommendations', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { topPick: null, results: [] } }),
     });
   });
-  // POST /api/recipes/describe — returns a stub RecipeDto; synthesis workflow is triggered server-side
-  await page.route(/\/(?:backend\/)?api\/recipes\/describe/, async (route) => {
+
+  // POST /api/recipes/describe
+  await page.route('**/api/recipes/describe', async (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as { name?: string; description?: string };
       await route.fulfill({
@@ -200,8 +239,27 @@ export async function setupCommonRoutes(page: Page) {
       });
     }
   });
-  // GET /api/recipes/{id}/status — returns pending by default; tests can override per-route
-  await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/status/, async (route) => {
+
+  // GET /api/recipes/import-status
+  await page.route('**/api/recipes/import-status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ importedCount: 0, queueCount: 0, failedCount: 0 }),
+    });
+  });
+
+  // POST /api/recipes/imports/bulk
+  await page.route('**/api/recipes/imports/bulk', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ queuedCount: 0, instanceIds: [] }),
+    });
+  });
+
+  // GET /api/recipes/{id}/status
+  await page.route('**/api/recipes/*/status', async (route) => {
     if (route.request().method() === 'GET') {
       const id =
         route
@@ -222,64 +280,87 @@ export async function setupCommonRoutes(page: Page) {
       });
     }
   });
-  await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+(?:\?|$)/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
-    });
-  });
-  await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/hero/, async (route) => {
+
+  // GET /api/recipes/{id}/hero
+  await page.route('**/api/recipes/*/hero', async (route) => {
     await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
-  await page.route(/\/(?:backend\/)?api\/recipes\/[0-9a-f-]+\/import/, async (route) => {
+
+  // GET /api/recipes/{id}/import and POST /api/recipes/{id}/import
+  await page.route('**/api/recipes/*/import', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ importId: MOCK_IDS.RECIPE_LASAGNA }),
     });
   });
-  await page.route(/\/(?:backend\/)?api\/recipes\/import-status/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ importedCount: 0, queueCount: 0, failedCount: 0 }),
-    });
-  });
-  await page.route(/\/(?:backend\/)?api\/recipes\/imports\/bulk/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ queuedCount: 0, instanceIds: [] }),
-    });
-  });
-  await page.route(/\/(?:backend\/)?api\/recipes\/.*\/original\/.*/, async (route) => {
+
+  // GET /api/recipes/{recipeId}/original/{photoIndex}
+  await page.route('**/api/recipes/*/original/*', async (route) => {
     await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
 
-  // Schedule Operations
-  await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
+  // GET /api/recipes/{id}, PATCH /api/recipes/{id}, DELETE /api/recipes/{id}
+  await page.route('**/api/recipes/*', async (route) => {
+    if (route.request().method() === 'DELETE') {
+      await route.fulfill({ status: 204 });
+    } else if (route.request().method() === 'PATCH') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
+      });
+    }
+  });
+
+  // POST /api/recipes/capture-url — registered AFTER the wildcard so LIFO gives it priority
+  await page.route('**/api/recipes/capture-url', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA } }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // POST /api/schedule/assign
+  await page.route('**/api/schedule/assign', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { success: true } }),
     });
   });
-  await page.route(/\/(?:backend\/)?api\/schedule\/lock/, async (route) => {
+
+  // POST /api/schedule/lock
+  await page.route('**/api/schedule/lock', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { success: true } }),
     });
   });
-  await page.route(/\/(?:backend\/)?api\/schedule\/move/, async (route) => {
+
+  // POST /api/schedule/move
+  await page.route('**/api/schedule/move', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { message: 'Moved' } }),
     });
   });
-  await page.route(/\/(?:backend\/)?api\/schedule\/fill-the-gap/, async (route) => {
+
+  // GET /api/schedule/fill-the-gap
+  await page.route('**/api/schedule/fill-the-gap', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -287,74 +368,132 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
-  // Management & Workflows (Specific mocks for parity)
-  await page.route(/\/(?:backend\/)?api\/management\/backup/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
-    });
-  });
-  await page.route(/\/(?:backend\/)?api\/management\/disaster-recovery/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
-    });
-  });
-  await page.route(/\/(?:backend\/)?api\/management\/seed/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
-    });
-  });
-  await page.route(/\/(?:backend\/)?api\/management\/status/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ status: 'Idle' }),
-    });
-  });
-  await page.route(
-    /\/(?:backend\/)?api\/workflows\/instances\/[0-9a-f-]+(?:\?|$)/,
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: MOCK_IDS.RECIPE_LASAGNA,
-          workflowId: 'recipe-import',
-          status: 'Completed',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          tasks: [],
-        }),
-      });
-    }
-  );
-  await page.route(/\/(?:backend\/)?api\/workflows\/tasks\/[0-9a-f-]+\/reset/, async (route) => {
+  // POST /api/schedule/voting/open
+  await page.route('**/api/schedule/voting/open', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { success: true } }),
     });
   });
-  await page.route(/\/(?:backend\/)?api\/workflows\/active/, async (route) => {
+
+  // DELETE /api/schedule/day/{date}/remove
+  await page.route('**/api/schedule/day/*/remove', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { success: true } }),
+    });
+  });
+
+  // POST /api/schedule/day/{date}/validate
+  await page.route('**/api/schedule/day/*/validate', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { valid: true } }),
+    });
+  });
+
+  // GET /api/schedule/{weekOffset}/smart-defaults
+  await page.route('**/api/schedule/*/smart-defaults', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: [] }),
     });
   });
-  await page.route(/\/(?:backend\/)?api\/workflows\/[0-9a-f-]+\/trigger/, async (route) => {
+
+  // PATCH /api/schedule/{weekOffset}/grocery
+  await page.route('**/api/schedule/*/grocery', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { success: true } }),
+    });
+  });
+
+  // POST /api/management/backup
+  await page.route('**/api/management/backup', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
+    });
+  });
+
+  // POST /api/management/disaster-recovery
+  await page.route('**/api/management/disaster-recovery', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
+    });
+  });
+
+  // POST /api/management/seed
+  await page.route('**/api/management/seed', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
+    });
+  });
+
+  // GET /api/management/status
+  await page.route('**/api/management/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'Idle' }),
+    });
+  });
+
+  // GET /api/workflows/instances/{instanceId}
+  await page.route('**/api/workflows/instances/*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: MOCK_IDS.RECIPE_LASAGNA,
+        workflowId: 'recipe-import',
+        status: 'Completed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        tasks: [],
+      }),
+    });
+  });
+
+  // POST /api/workflows/tasks/{taskId}/reset
+  await page.route('**/api/workflows/tasks/*/reset', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { success: true } }),
+    });
+  });
+
+  // GET /api/workflows/active
+  await page.route('**/api/workflows/active', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+  });
+
+  // POST /api/workflows/{workflowId}/trigger
+  await page.route('**/api/workflows/*/trigger', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ instanceId: MOCK_IDS.RECIPE_LASAGNA }),
     });
   });
-  await page.route(/\/(?:backend\/)?health/, async (route) => {
+
+  // GET /health
+  await page.route('**/health', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -362,11 +501,12 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
-  // Settings — per-test in-memory store (reset each time setupCommonRoutes is called in beforeEach)
+  // GET /api/settings/{key} and POST /api/settings/{key}
+  // Per-test in-memory store (reset each time setupCommonRoutes is called in beforeEach)
   const settingsStore: Record<string, unknown> = {
     family_goto: null, // default: no GOTO configured
   };
-  await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {
+  await page.route('**/api/settings/*', async (route) => {
     const key = new URL(route.request().url()).pathname.split('/').pop()!;
     if (route.request().method() === 'GET') {
       if (settingsStore[key] == null) {

@@ -8,6 +8,9 @@ servers:
     description: Development server (Traefik)
   - url: http://localhost:9001
     description: Local direct API
+security:
+  - HearthSecret: []
+  - HearthToken: []
 
 components:
   securitySchemes:
@@ -15,6 +18,14 @@ components:
       type: apiKey
       in: header
       name: X-Family-Member-Id
+    HearthSecret:
+      type: apiKey
+      in: header
+      name: X-Hearth-Secret
+    HearthToken:
+      type: http
+      scheme: bearer
+      bearerFormat: HMAC
 
   schemas:
     # --- Envelopes ---
@@ -198,10 +209,10 @@ components:
 
     DescribeRecipeDto:
       type: object
-      required: [name, description]
+      required: [name]
       properties:
         name: { type: string, description: 'Short name for the recipe (e.g. "Our family spaghetti")' }
-        description: { type: string, description: 'Free-text description used to synthesize the full recipe via AI' }
+        description: { type: [string, 'null'], description: 'Free-text description used to synthesize the full recipe via AI' }
 
     CaptureUrlDto:
       type: object
@@ -369,6 +380,7 @@ paths:
   /health:
     get:
       summary: Health check
+      security: []
       responses:
         '200':
           description: OK

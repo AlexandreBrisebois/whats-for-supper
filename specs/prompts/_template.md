@@ -1,59 +1,60 @@
-# Session Template
+# PROMPT_V2 Template
 
-Use this template when creating new session prompts for future phases.
-
----
-
-# Session N: [Title]
-
-**Artifact:** [Describe what will be created/output]
-
-**Context needed:** [What files/docs to read first]
-
-**What to build:**
-- [File 1 description]
-- [File 2 description]
-- [etc.]
-
-**Success:** 
-- [Success criterion 1]
-- [Success criterion 2]
-- [etc.]
+Use this template for all new workstream prompts. This format is optimized for "Vertical Slices" and "Contract-First" development.
 
 ---
 
-## Prompt
+# WORKSTREAM: [slug]
 
-```
-Task: [Clear, one-line task description]
+**Model-Label**: SMALL_SAFE | MEDIUM_REQUIRED | LARGE_REQUIRED
+**Why-This-Model**: [Justify the choice based on complexity and optimization]
+**Launch-Targets**: Kiro, Antigravity, Claude
+**Owner-Skill**: [e.g., nextjs-dev, dotnet-dev, designer]
 
-You are [context about what you're building and why].
+## Objective
+[Describe the single, exact outcome of this vertical slice]
 
-[Include all relevant requirements from specs]
+## Scope
 
-Deliverables:
-1. [First artifact and requirements]
-2. [Second artifact and requirements]
-3. [etc.]
+**TARGET**:
+- [file path]
+- [file path]
 
-[Include any specific rules, constraints, or guidelines]
+**FORBIDDEN**:
+- [Area that must not be touched to avoid drift/conflicts]
 
-Testing:
-- [How to verify this session's work]
-```
+## Required Context
+- **Spec Anchor**: [Link to specs/features/<slug>/design.md]
+- **Design Intent**: [Snippet of the specific requirement being implemented]
+- **Related Seams**: [Minimal type or contract reference needed]
 
 ---
 
-## What to Expect
+## Task
+1. [Bounded instruction]
+2. [Bounded instruction]
+3. [Bounded instruction]
 
-After this session:
-- ✅ [Artifact 1 ready]
-- ✅ [Artifact 2 ready]
-- ✅ [etc.]
+> [!IMPORTANT]
+> Implement ONLY this task. Do NOT refactor unrelated code.
 
-## Next Steps
+## TDD Gate
+- [ ] Add or update the failing test FIRST.
+- [ ] Confirm failure before implementation.
+- [ ] Implement until the test passes.
 
-1. [Verification step 1]
-2. Commit: `git commit -m "session N: [description]"`
-3. Move to Session N+1
+## Verification
+- `[exact command to run]`
+- `[exact command to run]`
 
+## Escalate If
+- More than 3 files need edits.
+- Contract/schema changes are required (and not in scope).
+- New ambiguity appears.
+- Unrelated tests fail.
+
+## Micro-Handover
+- [ ] Changed files
+- [ ] Tests run and results
+- [ ] Deviations from Task
+- [ ] Risks / drift discovered

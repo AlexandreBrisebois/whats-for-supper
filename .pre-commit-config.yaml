@@ -19,13 +19,20 @@ repos:
       - id: api-review
         name: API Review (Lint & Test)
         language: system
-        entry: bash -c "cd api && dotnet format --verify-no-changes && dotnet test"
+        entry: bash -c "cd api && dotnet format --verify-no-changes && dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj"
         files: ^api/
         pass_filenames: false
 
       - id: pwa-review
-        name: PWA Review (Lint & Typecheck)
+        name: PWA Review (Lint & Typecheck & Unit Tests)
         language: system
-        entry: bash -c "cd pwa && npm run lint && npm run typecheck"
+        entry: bash -c "cd pwa && npm run lint && npm run typecheck && npm run test:unit"
         files: ^pwa/
+        pass_filenames: false
+
+      - id: kiota-client-check
+        name: Kiota client up to date
+        language: system
+        entry: bash -c "task gen:client:check"
+        files: ^specs/openapi\.yaml$
         pass_filenames: false

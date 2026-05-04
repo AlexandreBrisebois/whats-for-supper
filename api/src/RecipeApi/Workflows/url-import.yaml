@@ -1,27 +1,41 @@
 name: url-import
 description: "Workflow to fetch a recipe from a URL, extract its content, and generate a hero image."
 
+parameters:
+    - recipeId
+    - url
+
 tasks:
-  - name: FetchUrlContent
-    description: "Fetch HTML and hero image from the URL"
-    processor: FetchUrlContent
-    next: ExtractRecipe
+    - name: fetch_url_content
+      processor: FetchUrlContent
+      payload:
+          recipeId: "{{ recipeId }}"
+          url: "{{ url }}"
 
-  - name: ExtractRecipe
-    description: "Synthesize recipe data from the captured content"
-    processor: ExtractRecipe
-    next: GenerateHero
+    - name: extract_recipe
+      processor: ExtractRecipe
+      depends_on:
+          - fetch_url_content
+      payload:
+          recipeId: "{{ recipeId }}"
 
-  - name: GenerateHero
-    description: "Prepare the hero image for the recipe"
-    processor: GenerateHero
-    next: SyncRecipe
+    - name: generate_hero
+      processor: GenerateHero
+      depends_on:
+          - extract_recipe
+      payload:
+          recipeId: "{{ recipeId }}"
 
-  - name: SyncRecipe
-    description: "Synchronize recipe data to the main database"
-    processor: SyncRecipe
-    next: RecipeReady
+    - name: sync_recipe
+      processor: SyncRecipe
+      depends_on:
+          - generate_hero
+      payload:
+          recipeId: "{{ recipeId }}"
 
-  - name: RecipeReady
-    description: "Mark the recipe as ready for use"
-    processor: RecipeReady
+    - name: recipe_ready
+      processor: RecipeReady
+      depends_on:
+          - sync_recipe
+      payload:
+          recipeId: "{{ recipeId }}"

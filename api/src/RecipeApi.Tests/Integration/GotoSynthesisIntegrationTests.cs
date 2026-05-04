@@ -48,11 +48,12 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         // The TestWebApplicationFactory mocks IWorkflowOrchestrator.
         // We verify the endpoint returns 200 (which means TriggerAsync was called
         // without throwing — the mock is set up to succeed for any workflow id).
-        var response = await _client.PostAsJsonAsync("/api/recipes/describe", new
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/recipes/describe")
         {
-            name = "Our family spaghetti",
-            description = "Homemade tomato sauce with meatballs"
-        });
+            Content = JsonContent.Create(new { name = "Our family spaghetti", description = "Homemade tomato sauce with meatballs" })
+        };
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+        var response = await _client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 

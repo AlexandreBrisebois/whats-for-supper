@@ -131,11 +131,11 @@ tasks:
   # ============================================================================
 
   test:
-    desc: "🧪 Run all tests (API + PWA)"
+    desc: "🧪 Run all tests (API unit/integration + PWA unit + E2E)"
     cmds:
       - task: test:api
       - task: test:unit
-      - task: test:pwa
+      - task: test:e2e
       - echo ""
       - echo "✓ All tests passed!"
 
@@ -151,35 +151,29 @@ tasks:
     cmds:
       - dotnet watch test
 
-  test:pwa:
-    desc: "Test PWA"
-    dir: pwa
-    cmds:
-      - npm run test
-
-  test:pwa:watch:
-    desc: "Test PWA in watch mode"
-    dir: pwa
-    cmds:
-      - npm run test -- --watch
-
-  test:pwa:ci:
-    desc: "Test PWA against production build (CI Parity)"
-    dir: pwa
-    cmds:
-      - npm run test:e2e:ci
-
   test:unit:
-    desc: "🧪 Run PWA unit tests (Vitest)"
+    desc: "🧪 Run PWA unit tests (Vitest — fast, no server needed)"
     dir: pwa
     cmds:
       - npm run test:unit
 
-  test:pwa:e2e:
-    desc: "Run E2E suites in parallel using Playwright workers"
+  test:unit:watch:
+    desc: "Run PWA unit tests in watch mode"
+    dir: pwa
+    cmds:
+      - npm run test:unit:watch
+
+  test:e2e:
+    desc: "🎭 Run E2E suites (Playwright — requires running PWA)"
     dir: pwa
     cmds:
       - npx playwright test
+
+  test:e2e:ci:
+    desc: "Run E2E against production build (CI parity: build + test)"
+    dir: pwa
+    cmds:
+      - npm run test:e2e:ci
 
   test:smoke:
     desc: "💨 Docker Smoke Test (Local CI Parity)"
@@ -252,6 +246,30 @@ tasks:
         else
           echo "✓ Version {{.TAG}} built locally"
         fi
+
+  # ============================================================================
+  # CODE GENERATION
+  # ============================================================================
+
+  gen:client:
+    desc: "🔄 Regenerate Kiota API client from specs/openapi.yaml"
+    dir: pwa
+    cmds:
+      - npm run api:generate
+
+  gen:client:check:
+    desc: "🔍 Verify Kiota client is up to date (fails if regeneration would produce changes)"
+    dir: pwa
+    cmds:
+      - npm run api:generate
+      - |
+        if ! git diff --quiet -- src/lib/api/generated; then
+          echo ""
+          echo "❌ Kiota client is out of date. Run 'task gen:client' and stage the result."
+          git diff --stat -- src/lib/api/generated
+          exit 1
+        fi
+        echo "✅ Kiota client is up to date"
 
   # ============================================================================
   # ASSET GENERATION
@@ -973,40 +991,58 @@ tasks:
 
 
   gate:
-    desc: "🚀 Fast developer loop: lint + typecheck + drift:schemas + test:impact"
+    desc: "⚡ Fast dev loop: catch what changed (lint + types + unit + impact)"
     cmds:
       - task: dev:kill
       - task: test:kill
+      - task: gate:contracts
       - task: gate:validate
       - echo ""
       - echo "✅ Gate passed! You're good to keep building."
 
+  gate:contracts:
+    desc: "Check contract integrity first (Kiota client + schema drift)"
+    internal: true
+    cmds:
+      - task: gen:client:check
+      - task: agent:drift:schemas
+
   gate:validate:
+    desc: "Parallel quality checks (lint + typecheck + unit tests + impact)"
     internal: true
     deps:
       - lint
       - typecheck
       - test:unit
-      - agent:drift:schemas
       - agent:test:impact
 
   review:
-    desc: "Pre-commit review: format + lint + test"
+    desc: "🔒 Pre-commit gate: full coverage (contracts + format + lint + all tests)"
     cmds:
       - task: dev:kill
       - task: test:kill
+      - task: review:contracts
       - task: format
       - task: review:validate
       - echo ""
       - echo "✓ Ready to commit!"
 
+  review:contracts:
+    desc: "Check all contract integrity (Kiota client + schema drift + mock compliance)"
+    internal: true
+    cmds:
+      - task: gen:client:check
+      - task: agent:drift:schemas
+      - task: agent:drift:mocks
+
   review:validate:
+    desc: "Parallel quality checks (lint + typecheck + unit tests + API tests)"
     internal: true
     deps:
       - lint
       - typecheck
       - test:unit
-      - test
+      - test:api
 
   ship:
     desc: "Ship checklist: review + clean build + test"
@@ -1021,13 +1057,6 @@ tasks:
   # ============================================================================
   # API & CONTRACTS
   # ============================================================================
-
-  types:sync:
-    desc: "🔄 Sync TypeScript types from OpenAPI spec"
-    dir: pwa
-    cmds:
-      - npx openapi-typescript ../specs/openapi.yaml -o src/lib/api/types.ts
-      - echo "✓ TypeScript types updated in pwa/src/lib/api/types.ts"
 
   agent:reconcile:
     desc: "🤖 Reconcile Spec vs Mock vs Real API"
@@ -1133,3 +1162,45 @@ tasks:
     desc: "Generate a document.cookie string for browser injection (Usage: task auth:cookie -- [secret])"
     cmds:
       - node scripts/generate-auth-token.mjs "{{.CLI_ARGS}}" cookie
+
+  check:auth:
+    desc: "Verify PWA and API both accept a HMAC token generated from HEARTH_SECRET"
+    vars:
+      SECRET: '{{.HEARTH_SECRET | default (env "HEARTH_SECRET")}}'
+      API_URL: '{{.API_URL | default "http://localhost:9001"}}'
+      PWA_URL: '{{.PWA_URL | default "http://localhost:3000"}}'
+    cmds:
+      - |
+        SECRET="{{.SECRET}}"
+        if [ -z "$SECRET" ]; then
+          echo "✗ HEARTH_SECRET is not set. Export it or pass HEARTH_SECRET=... to this task."
+          exit 1
+        fi
+
+        TOKEN=$(node scripts/generate-auth-token.mjs "$SECRET" token)
+        echo "  token: ${TOKEN:0:20}…"
+
+        # --- API check ---
+        API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          -H "Authorization: Bearer $TOKEN" \
+          "{{.API_URL}}/api/recipes")
+        if [ "$API_STATUS" = "200" ] || [ "$API_STATUS" = "204" ]; then
+          echo "✔ API  ({{.API_URL}}) accepted token — HTTP $API_STATUS"
+        else
+          echo "✗ API  ({{.API_URL}}) rejected token — HTTP $API_STATUS"
+          exit 1
+        fi
+
+        # --- PWA check (middleware HMAC gate on a protected page) ---
+        # A valid h_access cookie on / returns 200; an invalid one redirects to /welcome (307).
+        PWA_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-redirs 0 \
+          -H "Cookie: h_access=$TOKEN; x-family-member-id=check-auth-probe" \
+          "{{.PWA_URL}}/")
+        if [ "$PWA_STATUS" = "200" ]; then
+          echo "✔ PWA  ({{.PWA_URL}}) accepted token — HTTP $PWA_STATUS"
+        else
+          echo "✗ PWA  ({{.PWA_URL}}) rejected token — HTTP $PWA_STATUS (expected 200)"
+          exit 1
+        fi
+
+        echo "✔ check:auth passed — both services validated the same HEARTH_SECRET token"

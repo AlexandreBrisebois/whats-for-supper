@@ -1436,6 +1436,51 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/recipes/capture-url': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Capture a recipe from a URL */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['CaptureUrlDto'];
+        };
+      };
+      responses: {
+        /** @description Accepted (Capture workflow triggered) */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              data?: {
+                /** Format: uuid */
+                id?: string;
+              };
+            };
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/recipes/{id}/status': {
     parameters: {
       query?: never;
@@ -1951,9 +1996,7 @@ export interface components {
     ScheduleDayDto: {
       day: string;
       date: string;
-      recipe?: {
-        data?: components['schemas']['ScheduleRecipeDto'];
-      };
+      recipe?: components['schemas']['ScheduleRecipeDto'];
       /** @description 0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus */
       status?: number;
     };
@@ -1969,6 +2012,7 @@ export interface components {
       description?: string | null;
       ingredients?: string[] | null;
       voteCount?: number | null;
+      totalTime?: string | null;
     };
     MoveScheduleDto: {
       weekOffset: number;
@@ -2005,7 +2049,16 @@ export interface components {
       /** @description Short name for the recipe (e.g. "Our family spaghetti") */
       name: string;
       /** @description Free-text description used to synthesize the full recipe via AI */
-      description: string;
+      description?: string | null;
+    };
+    CaptureUrlDto: {
+      /**
+       * Format: uri
+       * @description The recipe URL to capture
+       */
+      url: string;
+      notes?: string | null;
+      rating?: number | null;
     };
     RecipeStatusDto: {
       /** Format: uuid */

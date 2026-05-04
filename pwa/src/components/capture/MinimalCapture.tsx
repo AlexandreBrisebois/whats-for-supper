@@ -24,9 +24,11 @@ interface MinimalCaptureProps {
   intent?: string;
   /** When 'describe', skips the camera box and opens the describe form directly */
   mode?: string;
+  /** URL passed from server component searchParams (more reliable than useSearchParams for initial load) */
+  initialUrl?: string;
 }
 
-export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
+export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCaptureProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { saveSetting } = useFamilyStore();
@@ -50,8 +52,8 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const saveAreaRef = useRef<HTMLDivElement>(null);
 
-  // Shared content from manifest
-  const sharedUrl = searchParams.get('url');
+  // Shared content from manifest or props
+  const sharedUrl = initialUrl || searchParams.get('url');
   const sharedText = searchParams.get('text');
 
   // URL-capture specific state
@@ -64,9 +66,11 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
   const [describeText, setDescribeText] = useState('');
   const [isDescribing, setIsDescribing] = useState(false);
   const [describeError, setDescribeError] = useState<string | null>(null);
+  const [urlInput, setUrlInput] = useState(sharedUrl || '');
 
   const [onSuccess, setOnSuccess] = useState(false);
   const [showDescribe, setShowDescribe] = useState(mode === 'describe');
+  const [showUrlReview, setShowUrlReview] = useState(!!sharedUrl);
 
   const isGoto = intent === 'goto';
 
@@ -91,9 +95,10 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
               description: 'Recipe from link',
               recipeId: id,
             });
+            router.push(ROUTES.PROFILE_SETTINGS as any);
+          } else {
+            router.push(ROUTES.HOME as any);
           }
-          setWasUrlCaptured(true);
-          setOnSuccess(true);
         }
       } catch (err) {
         setUrlCaptureError(err instanceof Error ? err.message : 'Failed to capture link.');
@@ -104,23 +109,15 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
     [submitUrl, isGoto, saveSetting]
   );
 
-  useEffect(() => {
-    // If a URL is shared, trigger the capture immediately
-    const targetUrl = sharedUrl || (sharedText?.startsWith('http') ? sharedText : null);
-    if (targetUrl && !wasUrlCaptured && !isUrlCapturing) {
-      setTimeout(() => {
-        handleUrlCapture(targetUrl);
-      }, 0);
-    }
-  }, [sharedUrl, sharedText, wasUrlCaptured, isUrlCapturing, handleUrlCapture]);
+  const capturedUrlRef = useRef<string | null>(null);
+
+  // REMOVED: Automatic URL capture on mount.
+  // We now use showUrlReview to let the user manually save.
 
   useEffect(() => {
     if (onSuccess) {
       const dest = isGoto ? ROUTES.PROFILE_SETTINGS : ROUTES.HOME;
-      const timer = setTimeout(() => {
-        router.push(dest as any);
-      }, 3000);
-      return () => clearTimeout(timer);
+      router.push(dest as any);
     }
   }, [onSuccess, router, isGoto]);
 
@@ -165,7 +162,7 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
     try {
       const response = await apiClient.api.recipes.describe.post({
         name: describeName.trim(),
-        description: describeText.trim() || undefined,
+        description: describeText.trim() || describeName.trim(),
       });
       const id = response?.data?.id ? String(response.data.id) : null;
       if (!id) throw new Error('No recipe ID returned.');
@@ -243,8 +240,8 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
         </div>
       )}
 
-      {/* ── Camera / Gallery — hidden when describe form is active ───────────── */}
-      {!showDescribe && (
+      {/* ── Camera / Gallery — hidden when describe or url review is active ───────────── */}
+      {!showDescribe && !showUrlReview && (
         <div className="flex flex-col gap-10">
           {/* Capture Area */}
           <div className="flex flex-col items-center gap-6 rounded-[3rem] bg-terracotta/[0.03] border-2 border-dashed border-terracotta/10 p-12 text-center transition-colors hover:bg-terracotta/[0.05]">
@@ -409,6 +406,95 @@ export default function MinimalCapture({ intent, mode }: MinimalCaptureProps) {
           {error && (
             <p className="px-4 text-center text-sm font-medium text-pink animate-in shake duration-300">
               {error}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── URL Review Form ─────────────────────────────────────────────────── */}
+      {showUrlReview && !onSuccess && (
+        <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex flex-col gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-terracotta/10 text-terracotta">
+              <Globe size={24} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <h2 className="font-heading text-2xl font-black text-charcoal tracking-tight">
+                Review your link
+              </h2>
+              <p className="text-sm text-charcoal/50">
+                We&apos;ll fetch the details once you save.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            {/* URL Display - Multi-line Textbox */}
+            <div className="flex flex-col gap-3 px-2">
+              <label className="text-sm font-bold text-charcoal/80">Link URL</label>
+              <textarea
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="Paste a recipe link here..."
+                className="w-full rounded-3xl border-2 border-charcoal/10 bg-white p-5 text-sm text-charcoal placeholder:text-charcoal/30 font-mono leading-relaxed resize-none min-h-[100px] focus:border-terracotta focus:outline-none focus:ring-4 focus:ring-terracotta/10 transition-all"
+              />
+            </div>
+
+            {/* Appreciation & Notes (Same as Photo Path) */}
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-3 px-2">
+                <label className="text-sm font-bold text-charcoal/80">
+                  {t('capture.appreciation', 'Appreciation')}
+                </label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 1, label: 'Not for me', icon: '👎' },
+                    { value: 2, label: 'It was OK', icon: '👍' },
+                    { value: 3, label: 'Loved it!', icon: '💚' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setRating(opt.value as any)}
+                      className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
+                    >
+                      <span className="text-2xl leading-none">{opt.icon}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider">
+                        {t(`capture.rating.${opt.value}`, opt.label)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 px-2">
+                <label className="text-sm font-bold text-charcoal/80">
+                  {t('capture.notes', 'Notes (Optional)')}
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={t('capture.notesPlaceholder', 'Any tweaks for next time?')}
+                  className="w-full rounded-3xl border-2 border-charcoal/10 bg-white p-5 text-sm text-charcoal placeholder:text-charcoal/30 focus:border-terracotta focus:outline-none focus:ring-4 focus:ring-terracotta/10 min-h-[120px] resize-none transition-all"
+                />
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              fullWidth
+              size="lg"
+              isLoading={isUrlCapturing}
+              onClick={() => handleUrlCapture(urlInput.trim())}
+              disabled={!urlInput.trim() || isUrlCapturing}
+              className="rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
+            >
+              Save Recipe
+            </Button>
+          </div>
+
+          {urlCaptureError && (
+            <p className="px-4 text-center text-sm font-medium text-pink animate-in shake duration-300">
+              {urlCaptureError}
             </p>
           )}
         </div>

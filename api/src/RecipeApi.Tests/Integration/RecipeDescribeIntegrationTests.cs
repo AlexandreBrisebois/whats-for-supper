@@ -42,22 +42,21 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Describe_ValidBody_Returns200WithRecipeId()
     {
-        var response = await _client.PostAsJsonAsync("/api/recipes/describe", new
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/recipes/describe")
         {
-            name = "Our family spaghetti",
-            description = "Homemade tomato sauce with meatballs, slow-cooked for two hours"
-        });
+            Content = JsonContent.Create(new { name = "Our family spaghetti", description = "Homemade tomato sauce with meatballs, slow-cooked for two hours" })
+        };
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+
+        var response = await _client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         var data = body.GetProperty("data");
 
-        // Must have a valid GUID id
         var id = data.GetProperty("id").GetString();
         Assert.True(Guid.TryParse(id, out _), $"Expected a valid GUID but got: {id}");
-
-        // Name must match what was sent
         Assert.Equal("Our family spaghetti", data.GetProperty("name").GetString());
     }
 
@@ -73,14 +72,18 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Describe_MissingDescription_Returns400()
+    public async Task Describe_MissingDescription_Returns200()
     {
-        var response = await _client.PostAsJsonAsync("/api/recipes/describe", new
+        // Per spec, `description` is optional (nullable) — omitting it is valid.
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/recipes/describe")
         {
-            name = "No description provided"
-        });
+            Content = JsonContent.Create(new { name = "No description provided" })
+        };
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     // ── GET /api/recipes/{id}/status ──────────────────────────────────────────
@@ -89,11 +92,12 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
     public async Task GetStatus_StubRecipe_ReturnsPending()
     {
         // First create a stub recipe
-        var createResponse = await _client.PostAsJsonAsync("/api/recipes/describe", new
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/recipes/describe")
         {
-            name = "Pending GOTO recipe",
-            description = "A recipe that has not been synthesised yet"
-        });
+            Content = JsonContent.Create(new { name = "Pending GOTO recipe", description = "A recipe that has not been synthesised yet" })
+        };
+        createRequest.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+        var createResponse = await _client.SendAsync(createRequest);
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
 
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -156,29 +160,13 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Describe_WithoutFamilyMemberHeader_SucceedsWithNullAddedBy()
+    public async Task Describe_WithoutFamilyMemberHeader_Returns400()
     {
         var response = await _client.PostAsJsonAsync("/api/recipes/describe", new
         {
             name = "Anonymous recipe",
             description = "No family member context"
         });
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var idStr = body.GetProperty("data").GetProperty("id").GetString();
-        Assert.True(Guid.TryParse(idStr, out var recipeId));
-
-        // DB row has AddedBy = null
-        var recipe = await _db.Recipes.FindAsync(recipeId);
-        Assert.NotNull(recipe);
-        Assert.Null(recipe.AddedBy);
-
-        // recipe.info exists in store with addedBy null
-        var store = _factory.Services.GetRequiredService<IRecipeStore>();
-        Assert.True(await store.InfoExistsAsync(recipeId), $"recipe.info not found in store for {recipeId}");
-        var info = await store.ReadInfoAsync(recipeId);
-        Assert.NotNull(info);
-        Assert.Null(info.AddedBy);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

@@ -1,6 +1,9 @@
 @baseUrl = http://localhost:5050
 
 ### @baseUrl = http://192.168.1.226:9101
+
+@baseUrl = https://api-wfs.srvrlss.dev
+
 @familyMemberId = 00000000-0000-0000-0000-000000000000
 @recipeId = 00000000-0000-0000-0000-000000000000
 @image1 = /absolute/path/to/recipe-photo-1.jpg

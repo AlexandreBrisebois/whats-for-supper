@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useFamily } from '@/hooks/useFamily';
 import { useOnboardingStore } from '@/store/onboardingStore';
 
+import { validateHearthSecret, setHearthCookie, setFamilyMemberCookie } from '@/lib/auth';
+
 export default function InvitePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -15,26 +17,37 @@ export default function InvitePage() {
   useEffect(() => {
     const secret = searchParams.get('secret');
     const memberId = searchParams.get('memberId');
-    if (!secret || !memberId) {
+    const redirect = (searchParams.get('redirect') as string) || '/home';
+
+    if (!secret) {
       setTimeout(() => setStatus('error'), 0);
       return;
     }
 
-    fetch('/api/auth/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret, memberId }),
-    })
-      .then(async (res) => {
-        if (res.ok) {
-          selectFamilyMember(memberId);
-          completeOnboarding();
-          router.replace('/home');
+    async function handleJoin() {
+      if (!secret) return;
+      try {
+        const isValid = await validateHearthSecret(secret);
+        if (isValid) {
+          // The 'secret' parameter in the URL is actually the signed token
+          await setHearthCookie(secret);
+
+          if (memberId) {
+            await setFamilyMemberCookie(memberId);
+            selectFamilyMember(memberId);
+            completeOnboarding();
+          }
+
+          router.replace(redirect as any);
         } else {
           setStatus('error');
         }
-      })
-      .catch(() => setStatus('error'));
+      } catch {
+        setStatus('error');
+      }
+    }
+
+    handleJoin();
   }, [searchParams, router, selectFamilyMember, completeOnboarding]);
 
   if (status === 'error') {

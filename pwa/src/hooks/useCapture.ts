@@ -150,7 +150,7 @@ export function useCapture(): UseCaptureReturn {
       setIsSubmitting(true);
       try {
         const { captureUrl } = await import('@/lib/api/recipes');
-        const result = await captureUrl(url, notes.trim() || undefined, rating);
+        const result = await captureUrl(url.trim(), notes.trim() || undefined, rating);
         return result.id;
       } catch (err: unknown) {
         const message =

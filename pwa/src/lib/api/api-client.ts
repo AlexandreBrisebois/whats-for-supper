@@ -26,9 +26,11 @@ const authProvider = new FamilyMemberAuthProvider();
 // Create the request adapter using the custom auth provider
 export const requestAdapter = new FetchRequestAdapter(authProvider);
 
-// Set the base URL to /backend. Kiota URI templates already include /api/, so /backend + /api/family = /backend/api/family
-// Next.js rewrites /backend/:path* to API_INTERNAL_URL/:path*, so /backend/api/family → http://localhost:9001/api/family
-requestAdapter.baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '/backend';
+// Set the base URL.
+// Production: Use relative /api (handled by Traefik)
+// Development: Use absolute http://localhost:9001/api (direct connection)
+const isProd = process.env.NODE_ENV === 'production';
+requestAdapter.baseUrl = isProd ? '/api' : 'http://localhost:9001/api';
 
 // Create and export the API client
 export const apiClient: ApiClient = createApiClient(requestAdapter);

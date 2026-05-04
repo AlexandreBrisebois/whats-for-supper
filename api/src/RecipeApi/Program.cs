@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using RecipeApi.Data;
@@ -17,6 +18,8 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Authorization;
 
 // Bootstrap logger for startup errors before full Serilog is configured.
 Log.Logger = new LoggerConfiguration()
@@ -65,6 +68,12 @@ try
     builder.Services.AddControllers(options =>
         {
             options.Filters.Add<SuccessWrappingFilter>();
+
+            // Enforce HearthSecret authentication globally
+            var policy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+            options.Filters.Add(new AuthorizeFilter(policy));
         })
         .AddJsonOptions(options =>
         {
@@ -89,16 +98,26 @@ try
     builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
     builder.Services.AddScoped<ManagementService>();
     builder.Services.AddScoped<RecipeImportBulkService>();
+    builder.Services.AddScoped<RecipeService>();
+    builder.Services.AddScoped<RecipeImportService>();
+    builder.Services.AddScoped<DiscoveryService>();
+    builder.Services.AddScoped<ScheduleService>();
+    builder.Services.AddScoped<SettingsService>();
 
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
-    builder.Services.AddScoped<RecipeHeroAgent>();
-    builder.Services.AddScoped<RecipeAgent>();
-    builder.Services.AddScoped<WebAcquisitionAgent>();
-    builder.Services.AddScoped<SyncRecipeProcessor>();
 
-    builder.Services.AddScoped<IWorkflowProcessor, WebAcquisitionAgent>();
+    // ── Workflow Processors Registration ─────────────────────────────────────
+    // Each IWorkflowProcessor handles a specific task type in YAML workflows.
+    // Some are registered multiple times with different names to handle multiple tasks.
+
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new WebAcquisitionAgent(
+        sp.GetRequiredService<IChatClient>(),
+        sp.GetRequiredService<RecipeRepository>(),
+        sp.GetRequiredService<IPromptRepository>(),
+        sp.GetRequiredService<HttpClient>(),
+        sp.GetRequiredService<ILogger<WebAcquisitionAgent>>()));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
@@ -118,8 +137,6 @@ try
         sp.GetRequiredService<RecipeDbContext>(),
         "GenerateDescription"));
 
-    builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
-    builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
         sp.GetRequiredService<RecipeRepository>(),
@@ -128,13 +145,10 @@ try
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
         sp.GetRequiredService<RecipeDbContext>(),
         "SynthesizeRecipe"));
-    builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
-    builder.Services.AddScoped<RecipeService>();
-    builder.Services.AddScoped<RecipeImportService>();
 
-    builder.Services.AddScoped<DiscoveryService>();
-    builder.Services.AddScoped<ScheduleService>();
-    builder.Services.AddScoped<SettingsService>();
+    builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
+    builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),
        "BackupDatabase"));
@@ -214,14 +228,48 @@ try
     });
 
     // ── CORS ─────────────────────────────────────────────────────────────────
-    var allowedOrigins =
-        builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+    // Support a single comma-separated string (CORS_ALLOWED_ORIGINS=http://a,http://b)
+    var rawAllowedOrigins = builder.Configuration["Cors:AllowedOrigins"] ?? "";
+    var allowedOrigins = rawAllowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     builder.Services.AddCors(options =>
         options.AddDefaultPolicy(policy =>
+        {
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
-                  .AllowAnyMethod()));
+                  .AllowAnyMethod();
+
+            if (allowedOrigins.Any() && !allowedOrigins.Contains("*"))
+            {
+                policy.AllowCredentials();
+            }
+        }));
+
+    // ── Authentication ───────────────────────────────────────────────────────
+    var hearthSecret = builder.Configuration["HEARTH_SECRET"];
+    if (string.IsNullOrWhiteSpace(hearthSecret))
+    {
+        Log.Warning("HEARTH_SECRET is not set. API protection will be degraded or disabled.");
+    }
+
+    builder.Services.AddAuthentication(HearthAuthenticationOptions.DefaultScheme)
+        .AddScheme<HearthAuthenticationOptions, HearthAuthenticationHandler>(
+            HearthAuthenticationOptions.DefaultScheme,
+            options =>
+            {
+                options.Secret = hearthSecret ?? "";
+            });
+
+    builder.Services.AddAuthorization();
+
+    // ── Forwarded Headers ─────────────────────────────────────────────────────
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        // Trust all networks/proxies in containerized environment behind Traefik
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
 
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
@@ -241,6 +289,8 @@ try
     WorkflowSeeder.SeedCoreWorkflows(workflowsDir, Log.Logger);
 
     // ── Middleware pipeline ───────────────────────────────────────────────────
+    app.UseForwardedHeaders();
+
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
@@ -254,6 +304,7 @@ try
     });
 
     app.UseCors();
+    app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
 

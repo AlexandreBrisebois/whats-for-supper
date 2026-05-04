@@ -34,47 +34,33 @@ def get_mock_endpoints(spec=None):
     mock_dir = os.path.join(ROOT, "pwa/e2e")
     if not os.path.exists(mock_dir):
         return []
-        
+
     endpoints = []
-    # Pattern to capture everything inside page.route(...)
-    # Handles whitespace and multi-line calls
-    route_pattern = r'page\.route\(\s*(?:\/|["\'])(.*?)(?:\/|["\'])\s*,'
-    
+    # Matches Playwright glob strings and plain strings:
+    #   page.route('**/api/foo/*/bar', ...)
+    #   page.route('/api/foo', ...)
+    route_pattern = r'page\.route\(\s*["\']([^"\']+)["\']'
+
     for root, dirs, files in os.walk(mock_dir):
         for file in files:
             if file.endswith(".spec.ts") or file == "mock-api.ts":
                 path = os.path.join(root, file)
                 with open(path, 'r') as f:
                     content = f.read()
-                    
-                matches = re.findall(route_pattern, content, re.DOTALL)
+
+                matches = re.findall(route_pattern, content)
                 for m in matches:
-                    # Normalize
-                    # 1. Remove optional backend prefix variants:
-                    #    \\/(?:backend\\/)?  or  \/(?:backend\/)?
-                    clean = re.sub(r'\\\/\(\?:backend\\\/\)\?', '', m)
-                    clean = re.sub(r'\/\(\?:backend\/\)\?', '', clean)
-                    # 2. Remove leading slashes/backslashes
-                    clean = clean.lstrip('\\/')
-                    # 3. Handle specific regex escapes
-                    clean = clean.replace('\\/', '/')
-                    # 4. Convert path-param capturing groups like (.+) or ([0-9a-f-]+) to {id}
-                    #    BEFORE splitting so they become path segments, not dropped.
-                    clean = re.sub(r'\((?!\?)[^)]*\)', '{id}', clean)    # (non-?: group) → {id}
-                    # 5. Strip trailing regex markers (anchors, non-capturing groups at end)
-                    clean = re.split(r'\(\?\:|(?<!\\)\$', clean)[0]
-                    # 6. Trim trailing slash
+                    # 1. Strip Playwright glob prefix (**/)
+                    clean = re.sub(r'^\*+/', '', m)
+                    # 2. Remove any remaining leading slashes
+                    clean = clean.lstrip('/')
+                    # 3. Convert glob wildcards (*) in path segments to {id}
+                    clean = re.sub(r'\*', '{id}', clean)
+                    # 4. Trim trailing slash
                     clean = clean.rstrip('/')
-                    # 7. Convert remaining wildcards and character classes to {id}
-                    clean = re.sub(r'\[[^\]]+\]\+?', '{id}', clean)      # [char-class]+ → {id}
-                    clean = re.sub(r'\.\*|\.\+', '{id}', clean)          # .* or .+ → {id}
-                    clean = re.sub(r'\{[^}]+\}', '{id}', clean)          # {existing-params} → {id}
-                    
+
                     full_p = f"/{clean}"
-                    # Ensure leading slash
-                    if not full_p.startswith('/'):
-                        full_p = f"/{full_p}"
-                        
+
                     if spec:
                         norm_full_p = normalize_path(full_p)
                         for se in get_spec_endpoints(spec):
@@ -83,7 +69,7 @@ def get_mock_endpoints(spec=None):
                                     'path': se['path'],
                                     'method': se['method']
                                 })
-    
+
     # De-duplicate
     unique_endpoints = []
     seen = set()
@@ -92,7 +78,7 @@ def get_mock_endpoints(spec=None):
         if key not in seen:
             unique_endpoints.append(e)
             seen.add(key)
-            
+
     return unique_endpoints
 
 def get_real_endpoints(include_method_name=False):
@@ -110,7 +96,6 @@ def get_real_endpoints(include_method_name=False):
                 base_route = base_route_match.group(1) if base_route_match else ""
                 base_route = base_route.replace("[controller]", file.replace("Controller.cs", "").lower())
                 
-                # Find methods
                 # Pattern: [HttpVerb("route")] followed by optional other attributes and then the method name
                 method_pattern = r'\[Http(Get|Post|Put|Delete|Patch)(?:\("([^"]*)"\))?\].*? (\w+)\('
                 # Use re.DOTALL to allow .* to match newlines between attribute and method name
@@ -150,7 +135,6 @@ def discovery():
     print("|------------|--------|-------|-----------|")
     
     endpoints = get_real_endpoints(include_method_name=True)
-    # Sort by controller then path
     endpoints.sort(key=lambda x: (x['controller'], x['path']))
     
     for e in endpoints:
@@ -193,11 +177,9 @@ def reconcile():
 
     issues = 0
     for p in all_paths:
-        # Check for each method
         methods = sorted(list(set([e['method'] for e in spec_endpoints + mock_endpoints + real_endpoints if e['path'] == p])))
         
         for m in methods:
-            # Match using normalized paths
             norm_p = normalize_path(p)
             
             in_spec = any(normalize_path(e['path']) == norm_p and e['method'] == m for e in spec_endpoints)
@@ -223,7 +205,6 @@ def reconcile():
                 issues += 1
                 print(f"{m:<8} {p:<45} | {status_spec:<6} | {status_mock:<6} | {status_real:<6} ⚠️")
             else:
-                # Only print non-issues if they are core or in spec
                 print(f"{m:<8} {p:<45} | {status_spec:<6} | {status_mock:<6} | {status_real:<6}")
 
     print("-" * 85)

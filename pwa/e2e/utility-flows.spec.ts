@@ -47,60 +47,69 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     const thisMonday = getThisWeekMonday();
 
     // Hardened Intercepts (ADR 029)
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?|$|.*)/, async (route) => {
-      if (route.request().method() === 'GET' && !route.request().url().includes('smart-defaults')) {
-        // Build 7 days from this week's Monday; put the recipe on today's date.
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(thisMonday);
-          d.setUTCDate(d.getUTCDate() + i);
-          const dateStr = d.toISOString().split('T')[0];
-          const isToday = dateStr === TODAY;
-          return {
-            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-            date: dateStr,
-            recipe: isToday
-              ? builders.scheduleRecipe({
-                  id: MOCK_IDS.RECIPE_LASAGNA,
-                  name: 'Test Lasagna',
-                  ingredients: ['Pasta Sheets', 'Ground Beef', 'Tomato Sauce', 'Ricotta'],
-                })
-              : null,
-          };
-        });
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              weekOffset: 0,
-              locked: true,
-              status: 2,
-              days,
-            },
-          }),
-        });
-      } else {
-        await route.continue();
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        if (
+          route.request().method() === 'GET' &&
+          !route.request().url().includes('smart-defaults')
+        ) {
+          // Build 7 days from this week's Monday; put the recipe on today's date.
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(thisMonday);
+            d.setUTCDate(d.getUTCDate() + i);
+            const dateStr = d.toISOString().split('T')[0];
+            const isToday = dateStr === TODAY;
+            return {
+              day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+              date: dateStr,
+              recipe: isToday
+                ? builders.scheduleRecipe({
+                    id: MOCK_IDS.RECIPE_LASAGNA,
+                    name: 'Test Lasagna',
+                    ingredients: ['Pasta Sheets', 'Ground Beef', 'Tomato Sauce', 'Ricotta'],
+                  })
+                : null,
+            };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                locked: true,
+                status: 2,
+                days,
+              },
+            }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
 
     // Specific route for smart-defaults
-    await page.route(/\/(?:backend\/)?api\/schedule\/.*\/smart-defaults/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: {
-          data: {
-            weekOffset: 0,
-            familySize: 3,
-            consensusThreshold: 2,
-            preSelectedRecipes: [],
-            openSlots: [],
-            consensusRecipesCount: 0,
-            isVotingOpen: false,
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/') && url.pathname.endsWith('/smart-defaults'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          json: {
+            data: {
+              weekOffset: 0,
+              familySize: 3,
+              consensusThreshold: 2,
+              preSelectedRecipes: [],
+              openSlots: [],
+              consensusRecipesCount: 0,
+              isVotingOpen: false,
+            },
           },
-        },
-      });
-    });
+        });
+      }
+    );
 
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 15_000 });
@@ -138,43 +147,52 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     await expect(firstItem).toBeVisible();
 
     // Mock update
-    await page.route(/\/(?:backend\/)?api\/schedule\/.*\/grocery/, async (route) => {
-      await route.fulfill({ status: 200, json: { success: true } });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/') && url.pathname.endsWith('/grocery'),
+      async (route) => {
+        await route.fulfill({ status: 200, json: { success: true } });
+      }
+    );
 
     await firstItem.click();
     await expect(firstItem).toHaveClass(/bg-sage/);
 
     // Update the GET mock
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?|$|.*)/, async (route) => {
-      if (route.request().method() === 'GET' && !route.request().url().includes('smart-defaults')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              weekOffset: 0,
-              locked: true,
-              status: 2,
-              days: [
-                {
-                  day: 'Mon',
-                  date: TODAY,
-                  recipe: builders.scheduleRecipe({
-                    id: MOCK_IDS.RECIPE_LASAGNA,
-                    name: 'T1',
-                    ingredients: [itemName],
-                  }),
-                },
-              ],
-              groceryState: { [itemName]: true },
-            },
-          }),
-        });
-      } else {
-        await route.continue();
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        if (
+          route.request().method() === 'GET' &&
+          !route.request().url().includes('smart-defaults')
+        ) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                locked: true,
+                status: 2,
+                days: [
+                  {
+                    day: 'Mon',
+                    date: TODAY,
+                    recipe: builders.scheduleRecipe({
+                      id: MOCK_IDS.RECIPE_LASAGNA,
+                      name: 'T1',
+                      ingredients: [itemName],
+                    }),
+                  },
+                ],
+                groceryState: { [itemName]: true },
+              },
+            }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
 
     await page.reload();
     await expect(page.locator(`[data-date="${TODAY}"]`)).toBeVisible({ timeout: 15_000 });

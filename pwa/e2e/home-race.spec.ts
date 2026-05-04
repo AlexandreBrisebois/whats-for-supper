@@ -13,25 +13,28 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     await setupCommonRoutes(page);
 
     // Mock family GOTO setting
-    await page.route(/\/(?:backend\/)?api\/settings\/family_goto/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            key: 'family_goto',
-            value: {
-              description: 'Our Family Spaghetti',
-              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+    await page.route(
+      (url) => url.pathname.includes('/api/settings/family_goto'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              key: 'family_goto',
+              value: {
+                description: 'Our Family Spaghetti',
+                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              },
             },
-          },
-        }),
-      });
-    });
+          }),
+        });
+      }
+    );
 
     // Mock GOTO status API
     await page.route(
-      new RegExp(`/(?:backend/)?api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/status`),
+      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
       async (route) => {
         await route.fulfill({
           status: 200,
@@ -47,26 +50,29 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     );
 
     // Mock initial schedule: Today is empty (shows pivot card)
-    await page.route(/\/(?:backend\/)?api\/schedule(?:\?.*)?$/, async (route) => {
-      const url = new URL(route.request().url());
-      const weekOffset = url.searchParams.get('weekOffset');
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const url = new URL(route.request().url());
+        const weekOffset = url.searchParams.get('weekOffset');
 
-      if (weekOffset === '0') {
-        const today = new Date().toISOString().split('T')[0];
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              weekOffset: 0,
-              days: [],
-            },
-          }),
-        });
-      } else {
-        await route.continue();
+        if (weekOffset === '0') {
+          const today = new Date().toISOString().split('T')[0];
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                days: [],
+              },
+            }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
 
     // Visit a page to initialize the domain context for localStorage
     await page.goto('/onboarding');
@@ -96,22 +102,28 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
   }) => {
     // 1. Mock assign API to NEVER resolve (simulate slow network)
     let assignCalled = false;
-    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
-      assignCalled = true;
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/assign'),
+      async (route) => {
+        assignCalled = true;
+      }
+    );
 
     // 2. Mock recipes for QuickFind (fill-the-gap) - register BEFORE clicking discover
-    await page.route(/\/api\/schedule\/fill-the-gap/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: [
-            builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Optimistic Chicken' }),
-          ],
-        }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/fill-the-gap'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: [
+              builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Optimistic Chicken' }),
+            ],
+          }),
+        });
+      }
+    );
 
     // 3. Ensure Pivot Card is visible initially
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
@@ -141,9 +153,12 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
   test('Confirming GOTO shows the menu card immediately (optimistic)', async ({ page }) => {
     // 1. Mock assign API to NEVER resolve
     let assignCalled = false;
-    await page.route(/\/(?:backend\/)?api\/schedule\/assign/, async (route) => {
-      assignCalled = true;
-    });
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/assign'),
+      async (route) => {
+        assignCalled = true;
+      }
+    );
 
     // 2. Ensure Pivot Card is visible with GOTO ready — button appears only when ready
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
@@ -168,7 +183,7 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     // 1. Mock status API to return pending twice, then ready
     let statusCalls = 0;
     await page.route(
-      new RegExp(`/(?:backend/)?api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/status`),
+      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
       async (route) => {
         statusCalls++;
         await route.fulfill({
