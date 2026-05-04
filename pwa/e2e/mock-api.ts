@@ -496,12 +496,16 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
-  // GET /health
-  await page.route('**/health', async (route) => {
+  // GET /api/health
+  await page.route('**/api/health', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ status: 'Healthy' }),
+      body: JSON.stringify({
+        status: 'Healthy',
+        timestamp: new Date().toISOString(),
+        checks: {},
+      }),
     });
   });
 
