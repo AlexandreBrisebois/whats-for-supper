@@ -6,7 +6,6 @@ import confetti from 'canvas-confetti';
 import { DiscoveryCard } from '@/components/discovery/DiscoveryCard';
 import { RefreshCcw, Loader2 } from 'lucide-react';
 import { getCategories, getDiscoveryStack, submitVote, DiscoveryRecipe } from '@/lib/api/discovery';
-import { API_BASE_URL } from '@/lib/constants/config';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useFamily } from '@/hooks/useFamily';
 import { t, tWithVars } from '@/locales';
@@ -29,7 +28,7 @@ export default function DiscoveryPage() {
       console.log('rawStack from API first item:', JSON.stringify(rawStack[0]));
       stack = rawStack.map((r) => ({
         ...r,
-        imageUrl: `${API_BASE_URL}/api/recipes/${r.id}/hero`,
+        imageUrl: `/api/recipes/${r.id}/hero`,
       }));
       console.log('mapped stack first item:', JSON.stringify(stack[0]));
     }
@@ -90,7 +89,7 @@ export default function DiscoveryPage() {
         console.log('loadNextCategory rawStack first:', JSON.stringify(stack[0]));
         const mappedStack = stack.map((r) => ({
           ...r,
-          imageUrl: `${API_BASE_URL}/api/recipes/${r.id}/hero`,
+          imageUrl: `/api/recipes/${r.id}/hero`,
         }));
         console.log('loadNextCategory mappedStack first:', JSON.stringify(mappedStack[0]));
         setRecipes(mappedStack);

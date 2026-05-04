@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -750,6 +751,614 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var queryDb2 = queryScope2.ServiceProvider.GetRequiredService<RecipeDbContext>();
         updatedD = await queryDb2.WorkflowTasks.FirstAsync(t => t.TaskId == taskD.TaskId);
         Assert.Equal(TaskStatus.Pending, updatedD.Status);
+    }
+
+    // -------------------------------------------------------------------------
+    // Bug Condition Exploration Tests (Task 1)
+    // These tests are EXPECTED TO FAIL on unfixed code.
+    // Failure confirms the bug: 429 exceptions land in the generic catch block
+    // and mark the task Failed instead of rescheduling it as Pending.
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Validates: Requirements 1.1, 1.3
+    /// Bug condition: HttpRequestException with status 429 and retries remaining
+    /// should reschedule the task as Pending (not mark it Failed).
+    /// EXPECTED TO FAIL on unfixed code — failure proves the bug exists.
+    /// </summary>
+    [Fact]
+    public async Task Worker_HttpRequestException429_WithRetriesRemaining_ShouldRetry()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "3"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"Http429ExplorationTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        var rateLimitEx = new HttpRequestException("Rate limited", null, HttpStatusCode.TooManyRequests);
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", rateLimitEx));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+
+        // Initialize throttles
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "http429-exploration",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 0,
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var taskId = task.TaskId;
+        var instanceId = instance.Id;
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: task should be rescheduled as Pending with RetryCount=1 and ScheduledAt ≈ now+2min
+        // ON UNFIXED CODE: task will be Failed and instance Paused — this assertion will FAIL
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskId);
+        Assert.Equal(TaskStatus.Pending, updatedTask.Status);   // BUG: will be Failed
+        Assert.Equal(1, updatedTask.RetryCount);                // BUG: will be 0
+        Assert.NotNull(updatedTask.ScheduledAt);
+        var expectedSchedule = now.AddMinutes(2);
+        Assert.True(Math.Abs((updatedTask.ScheduledAt!.Value - expectedSchedule).TotalMinutes) < 0.5,
+            $"ScheduledAt {updatedTask.ScheduledAt} not within 0.5 min of {expectedSchedule}");
+
+        var updatedInstance = await queryDb.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        Assert.Equal(WorkflowStatus.Processing, updatedInstance.Status); // BUG: will be Paused
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Validates: Requirements 1.2, 1.3
+    /// Bug condition: Message-based 429 exception ("high demand") with retries remaining
+    /// should reschedule the task as Pending (not mark it Failed).
+    /// EXPECTED TO FAIL on unfixed code — failure proves the bug exists.
+    /// </summary>
+    [Fact]
+    public async Task Worker_MessageBased429_WithRetriesRemaining_ShouldRetry()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "3"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"MessageBased429ExplorationTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        var highDemandEx = new Exception("This model is currently experiencing high demand");
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", highDemandEx));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+
+        // Initialize throttles
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "msgbased429-exploration",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 0,
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var taskId = task.TaskId;
+        var instanceId = instance.Id;
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: task should be rescheduled as Pending with RetryCount=1
+        // ON UNFIXED CODE: task will be Failed and instance Paused — this assertion will FAIL
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskId);
+        Assert.Equal(TaskStatus.Pending, updatedTask.Status);   // BUG: will be Failed
+        Assert.Equal(1, updatedTask.RetryCount);                // BUG: will be 0
+
+        var updatedInstance = await queryDb.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        Assert.Equal(WorkflowStatus.Processing, updatedInstance.Status); // BUG: will be Paused
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
+
+    // -------------------------------------------------------------------------
+    // Fix-Checking Tests (Task 3 — Property 1: Expected Behavior)
+    // These tests verify the fix is correct on FIXED code.
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Validates: Requirements 2.2, 2.3
+    /// Fix-checking: second retry uses correct exponential backoff (2^2 = 4 min).
+    /// RetryCount starts at 1 → should become 2, ScheduledAt ≈ now + 4 min.
+    /// </summary>
+    [Fact]
+    public async Task Worker_HttpRequestException429_SecondRetry_UsesCorrectBackoff()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "3"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"Http429SecondRetryTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        var rateLimitEx = new HttpRequestException("Rate limited", null, HttpStatusCode.TooManyRequests);
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", rateLimitEx));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "http429-second-retry",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        // RetryCount = 1 simulates a task that has already been retried once
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 1,
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var taskId = task.TaskId;
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: RetryCount = 2, ScheduledAt ≈ now + 4 min (2^2)
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskId);
+        Assert.Equal(TaskStatus.Pending, updatedTask.Status);
+        Assert.Equal(2, updatedTask.RetryCount);
+        Assert.NotNull(updatedTask.ScheduledAt);
+        var expectedSchedule = now.AddMinutes(4); // 2^2 = 4
+        Assert.True(Math.Abs((updatedTask.ScheduledAt!.Value - expectedSchedule).TotalMinutes) < 0.5,
+            $"ScheduledAt {updatedTask.ScheduledAt} not within 0.5 min of {expectedSchedule}");
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Validates: Requirements 2.3
+    /// Fix-checking: numeric "429" in message triggers retry path.
+    /// Exception("Error 429: quota exceeded") with RetryCount=0 → Pending, RetryCount=1.
+    /// </summary>
+    [Fact]
+    public async Task Worker_MessageBased429_Numeric_Retries()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "3"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"MessageBased429NumericTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        var numericEx = new Exception("Error 429: quota exceeded");
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", numericEx));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "msgbased429-numeric",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 0,
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var taskId = task.TaskId;
+        var instanceId = instance.Id;
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: task rescheduled as Pending, RetryCount=1
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskId);
+        Assert.Equal(TaskStatus.Pending, updatedTask.Status);
+        Assert.Equal(1, updatedTask.RetryCount);
+
+        var updatedInstance = await queryDb.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        Assert.Equal(WorkflowStatus.Processing, updatedInstance.Status);
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Validates: Requirement 2.4
+    /// Fix-checking: 429 exception with exhausted retries (RetryCount = _maxRetries = 3)
+    /// must permanently fail — same as any other exhausted transient error.
+    /// </summary>
+    [Fact]
+    public async Task Worker_429Exception_ExhaustedRetries_FailsPermanently()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "3"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"Http429ExhaustedRetriesTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        var rateLimitEx = new HttpRequestException("Rate limited", null, HttpStatusCode.TooManyRequests);
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", rateLimitEx));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "http429-exhausted",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        // RetryCount = 3 = _maxRetries — budget is exhausted
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 3,
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var taskId = task.TaskId;
+        var instanceId = instance.Id;
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: task is Failed, instance is Paused — retry budget exhausted
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskId);
+        Assert.Equal(TaskStatus.Failed, updatedTask.Status);
+        Assert.NotNull(updatedTask.ErrorMessage);
+
+        var updatedInstance = await queryDb.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        Assert.Equal(WorkflowStatus.Paused, updatedInstance.Status);
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
+
+    // -------------------------------------------------------------------------
+    // Preservation Tests (Task 3 — Property 2: Preservation)
+    // These tests confirm non-429 exceptions are completely unaffected by the fix.
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Validates: Requirements 3.1, 3.2
+    /// Preservation: ArgumentException whose message does NOT contain "429" or "high demand"
+    /// must still fail immediately — the fix must not widen the retry net.
+    /// </summary>
+    [Fact]
+    public async Task Worker_ArgumentException_StillFails()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "3"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"ArgumentExceptionPreservationTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        // Message deliberately contains no "429" or "high demand" text
+        var argEx = new ArgumentException("bad input");
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", argEx));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "argex-preservation",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 0,
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var taskId = task.TaskId;
+        var instanceId = instance.Id;
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: task is Failed immediately, instance is Paused — no retry
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskId);
+        Assert.Equal(TaskStatus.Failed, updatedTask.Status);
+        Assert.Equal(0, updatedTask.RetryCount); // RetryCount must NOT be incremented
+        Assert.NotNull(updatedTask.ErrorMessage);
+        Assert.Contains("bad input", updatedTask.ErrorMessage);
+
+        var updatedInstance = await queryDb.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        Assert.Equal(WorkflowStatus.Paused, updatedInstance.Status);
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
     }
 }
 

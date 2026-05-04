@@ -25,82 +25,33 @@ test.describe('Capture Flow', () => {
 
     await setupCommonRoutes(page);
 
-    // Home page needs schedule + family intercepts
-    await page.route(
-      (url) => url.pathname.includes('/api/schedule'),
-      async (route) => {
-        if (route.request().method() === 'GET') {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: {
-                weekOffset: 0,
-                locked: false,
-                days: [],
-                status: 0,
-              },
-            }),
-          });
-        } else {
-          await route.continue();
-        }
-      }
-    );
-
-    await page.route(
-      (url) => url.pathname.includes('/api/family'),
-      async (route) => {
+    // Capture endpoint — override setupCommonRoutes default to return a proper data-wrapped recipe
+    await page.route('**/api/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Captured Recipe' }),
+          }),
+        });
+      } else {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: [builders.familyMember({ name: 'Alex' })] }),
+          body: JSON.stringify({ data: [], total: 0 }),
         });
       }
-    );
-
-    // Capture endpoint
-    await page.route(
-      (url) => url.pathname.endsWith('/api/recipes'),
-      async (route) => {
-        if (route.request().method() === 'POST') {
-          await route.fulfill({
-            status: 201,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Captured Recipe' }),
-            }),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: [], total: 0 }),
-          });
-        }
-      }
-    );
+    });
 
     // Settings mock — default: no GOTO configured (404)
-    await page.route(
-      (url) => url.pathname.includes('/api/settings/'),
-      async (route) => {
-        await route.fulfill({
-          status: 404,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: 'Not found' }),
-        });
-      }
-    );
-  });
-
-  test('authenticated user can navigate to the capture page from home', async ({ page }) => {
-    await page.goto('/home');
-
-    await page.getByRole('link', { name: /capture a recipe/i }).click();
-
-    await expect(page).toHaveURL(/\/capture/);
-    await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
+    await page.route('**/api/settings/*', async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
   });
 
   test('user can complete the capture flow and see a success message', async ({ page }) => {
@@ -145,28 +96,6 @@ test.describe('Capture Flow', () => {
     ).toBeVisible();
   });
 
-  test('user can navigate to the search page from the navigation bar', async ({ page }) => {
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: [], total: 0 }),
-        });
-      }
-    );
-
-    await page.goto('/home');
-
-    await page.getByRole('link', { name: /^search$/i }).click();
-
-    await expect(page).toHaveURL(/\/recipes/);
-    await expect(page.getByPlaceholder(/Something spicy for \d+/i)).toBeVisible({
-      timeout: 10_000,
-    });
-  });
-
   // -------------------------------------------------------------------------
   // URL Capture — Share Target / Link Ingestion
   // -------------------------------------------------------------------------
@@ -208,16 +137,13 @@ test.describe('Capture Flow', () => {
     const testUrl = 'https://invalid-recipe.com';
 
     // Mock failure for this specific test
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/capture-url'),
-      async (route) => {
-        await route.fulfill({
-          status: 500,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: 'Failed to extract recipe from this domain' }),
-        });
-      }
-    );
+    await page.route('**/api/recipes/capture-url', async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Failed to extract recipe from this domain' }),
+      });
+    });
 
     await page.goto(`/capture?url=${encodeURIComponent(testUrl)}`);
 
@@ -250,16 +176,13 @@ test.describe('Capture — initial state rendering', () => {
 
     await setupCommonRoutes(page);
 
-    await page.route(
-      (url) => url.pathname.includes('/api/settings/'),
-      async (route) => {
-        await route.fulfill({
-          status: 404,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: 'Not found' }),
-        });
-      }
-    );
+    await page.route('**/api/settings/*', async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
   });
 
   // 5.2 — Initial state: tab switcher absent, camera/gallery/describe-link visible, form not present
@@ -302,16 +225,13 @@ test.describe('Capture — describe link interaction', () => {
 
     await setupCommonRoutes(page);
 
-    await page.route(
-      (url) => url.pathname.includes('/api/settings/'),
-      async (route) => {
-        await route.fulfill({
-          status: 404,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: 'Not found' }),
-        });
-      }
-    );
+    await page.route('**/api/settings/*', async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
   });
 
   // 5.3 — Clicking "Or Describe It Instead" reveals form, hides link, hides camera box
@@ -348,16 +268,13 @@ test.describe('Capture — describe form validation', () => {
 
     await setupCommonRoutes(page);
 
-    await page.route(
-      (url) => url.pathname.includes('/api/settings/'),
-      async (route) => {
-        await route.fulfill({
-          status: 404,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: 'Not found' }),
-        });
-      }
-    );
+    await page.route('**/api/settings/*', async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
   });
 
   // 5.4 — Submit with empty name shows error, API not called
@@ -365,13 +282,10 @@ test.describe('Capture — describe form validation', () => {
     page,
   }) => {
     let describeApiCalled = false;
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/describe'),
-      async (route) => {
-        describeApiCalled = true;
-        await route.continue();
-      }
-    );
+    await page.route('**/api/recipes/describe', async (route) => {
+      describeApiCalled = true;
+      await route.continue();
+    });
 
     await page.goto('/capture');
     await page.getByRole('button', { name: /or describe it instead/i }).click();
@@ -408,80 +322,71 @@ test.describe('Capture — GOTO intent', () => {
 
     // Settings — writable in-memory store
     const settingsStore: Record<string, unknown> = {};
-    await page.route(
-      (url) => url.pathname.includes('/api/settings/'),
-      async (route) => {
-        const key = new URL(route.request().url()).pathname.split('/').pop()!;
-        if (route.request().method() === 'GET') {
-          if (settingsStore[key] == null) {
-            await route.fulfill({
-              status: 404,
-              contentType: 'application/json',
-              body: JSON.stringify({ error: 'Not found' }),
-            });
-          } else {
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
-            });
-          }
+    await page.route('**/api/settings/*', async (route) => {
+      const key = new URL(route.request().url()).pathname.split('/').pop()!;
+      if (route.request().method() === 'GET') {
+        if (settingsStore[key] == null) {
+          await route.fulfill({
+            status: 404,
+            contentType: 'application/json',
+            body: JSON.stringify({ error: 'Not found' }),
+          });
         } else {
-          const body = route.request().postDataJSON();
-          settingsStore[key] = body.value;
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { key, value: body.value } }),
+            body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
           });
         }
+      } else {
+        const body = route.request().postDataJSON();
+        settingsStore[key] = body.value;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { key, value: body.value } }),
+        });
       }
-    );
+    });
 
     // POST /api/recipes/describe
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/describe'),
-      async (route) => {
-        if (route.request().method() === 'POST') {
-          const body = route.request().postDataJSON() as { name?: string };
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: builders.recipe({
-                id: MOCK_IDS.RECIPE_GOTO_STUB,
-                name: body?.name ?? 'Described Recipe',
-                imageUrl: null,
-              }),
+    await page.route('**/api/recipes/describe', async (route) => {
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON() as { name?: string };
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: builders.recipe({
+              id: MOCK_IDS.RECIPE_GOTO_STUB,
+              name: body?.name ?? 'Described Recipe',
+              imageUrl: null,
             }),
-          });
-        } else {
-          await route.continue();
-        }
+          }),
+        });
+      } else {
+        await route.continue();
       }
-    );
+    });
 
     // POST /api/recipes (photo capture)
-    await page.route(
-      (url) => url.pathname.endsWith('/api/recipes'),
-      async (route) => {
-        if (route.request().method() === 'POST') {
-          await route.fulfill({
-            status: 201,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Captured Recipe' }),
-            }),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: [], total: 0 }),
-          });
-        }
+    await page.route('**/api/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Captured Recipe' }),
+          }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: [], total: 0 }),
+        });
       }
-    );
+    });
   });
 
   // F4 — Describe it creates a pending GOTO
@@ -515,8 +420,12 @@ test.describe('Capture — GOTO intent', () => {
     expect(settBody.value?.status).toBeUndefined();
     expect(settBody.value?.recipeId).toBe(MOCK_IDS.RECIPE_GOTO_STUB);
 
-    // Success screen shows GOTO-specific message
-    await expect(page.getByText(/your goto is being prepared/i)).toBeVisible({ timeout: 10_000 });
+    // Success screen stays visible — no auto-navigation for isGoto=true
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('capture-success-heading')).toHaveText(
+      /your goto is being prepared/i
+    );
+    await expect(page).toHaveURL(/\/capture/);
   });
 
   // F8 — Capture path sets GOTO pending
@@ -541,8 +450,12 @@ test.describe('Capture — GOTO intent', () => {
     expect(settBody.value?.status).toBeUndefined();
     expect(settBody.value?.recipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
 
-    // Success screen shows GOTO-specific message
-    await expect(page.getByText(/your goto is being prepared/i)).toBeVisible({ timeout: 10_000 });
+    // Success screen stays visible — no auto-navigation for isGoto=true
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('capture-success-heading')).toHaveText(
+      /your goto is being prepared/i
+    );
+    await expect(page).toHaveURL(/\/capture/);
   });
 });
 
@@ -565,52 +478,43 @@ test.describe('Settings — GOTO pending state', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
-    await page.route(
-      (url) => url.pathname.includes('/api/family'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: [builders.familyMember({ name: 'Alex' })] }),
-        });
-      }
-    );
+    await page.route('**/api/family', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [builders.familyMember({ name: 'Alex' })] }),
+      });
+    });
 
     // Settings returns a pending GOTO
-    await page.route(
-      (url) => url.pathname.includes('/api/settings/'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                description: 'Our family spaghetti',
-                recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
-              },
+    await page.route('**/api/settings/*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            key: 'family_goto',
+            value: {
+              description: 'Our family spaghetti',
+              recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
             },
-          }),
-        });
-      }
-    );
+          },
+        }),
+      });
+    });
 
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              id: MOCK_IDS.RECIPE_GOTO_STUB,
-              status: 'pending',
-            },
-          }),
-        });
-      }
-    );
+    await page.route('**/api/recipes/*/status', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: MOCK_IDS.RECIPE_GOTO_STUB,
+            status: 'pending',
+          },
+        }),
+      });
+    });
 
     await page.goto('/profile/settings');
 

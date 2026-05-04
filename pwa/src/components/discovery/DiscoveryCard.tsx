@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import Image from 'next/image';
 import {
   motion,
   useMotionValue,
@@ -166,12 +165,11 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
     >
       <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
         <div className="relative h-[62%] w-full overflow-hidden">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={imageUrl}
             alt={name}
-            fill
-            priority={isFront}
-            className="object-cover select-none pointer-events-none"
+            className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />
 
           {/* Central Ghost Indicators */}

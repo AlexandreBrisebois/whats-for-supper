@@ -171,6 +171,27 @@ public class RecipeControllerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetHero_Returns_CacheControl_Header()
+    {
+        // Arrange: write a fake hero image into the factory's store (same MinimalJpeg bytes as GetHero_Returns_Hero_Image_When_Present)
+        var recipeId = Guid.NewGuid();
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        await store.SaveHeroImageAsync(recipeId, new MemoryStream(MinimalJpeg));
+
+        // Act
+        var response = await _client.GetAsync($"/api/recipes/{recipeId}/hero");
+
+        // Assert — Bug 2 exploration: this FAILS on unfixed code because Cache-Control is absent
+        // Counterexample: GET /api/recipes/{known-id}/hero → 200 OK, Cache-Control header → null
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(
+            response.Headers.TryGetValues("Cache-Control", out var values),
+            "Cache-Control header is absent — Bug 2 confirmed: hero endpoint does not set Cache-Control"
+        );
+        Assert.Equal("public, max-age=31536000, immutable", string.Join(", ", values!));
+    }
+
+    [Fact]
     public async Task GetHero_Returns_NotFound_Before_Import_Completes()
     {
         // A new recipe with no hero.jpg should return 404

@@ -160,36 +160,39 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
-  // GET /api/schedule (default empty week)
-  await page.route('**/api/schedule', async (route) => {
-    if (route.request().method() === 'GET') {
-      const monday = currentMonday();
-      const days = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(monday);
-        d.setUTCDate(monday.getUTCDate() + i);
-        return {
-          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-          date: toDateStr(d),
-          recipe: null,
-          status: 0,
-        };
-      });
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            weekOffset: 0,
-            locked: false,
+  // GET /api/schedule (default empty week) — predicate used to match URLs with query strings (e.g. ?weekOffset=0)
+  await page.route(
+    (url) => url.pathname === '/api/schedule',
+    async (route) => {
+      if (route.request().method() === 'GET') {
+        const monday = currentMonday();
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(monday);
+          d.setUTCDate(monday.getUTCDate() + i);
+          return {
+            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+            date: toDateStr(d),
+            recipe: null,
             status: 0,
-            days,
-          },
-        }),
-      });
-    } else {
-      await route.continue();
+          };
+        });
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              locked: false,
+              status: 0,
+              days,
+            },
+          }),
+        });
+      } else {
+        await route.continue();
+      }
     }
-  });
+  );
 
   // GET /api/recipes and POST /api/recipes
   await page.route('**/api/recipes', async (route) => {

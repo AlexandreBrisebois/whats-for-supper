@@ -18,6 +18,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
       GEMINI_ENDPOINT: ${GEMINI_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      HEARTH_SECRET: ${HEARTH_SECRET}
 
     depends_on:
       postgres:
@@ -33,9 +34,6 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.api.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.api.entrypoints=web"
-      - "traefik.http.services.api.loadbalancer.server.port=9001"
  
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -50,7 +48,7 @@ services:
     environment:
 
 
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://pwa.wfs.localhost}
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:9001}
       HEARTH_SECRET: ${HEARTH_SECRET}
     depends_on:

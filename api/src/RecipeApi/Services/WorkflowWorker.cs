@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
@@ -291,6 +292,19 @@ public class WorkflowWorker(
                 logger.LogError(saveEx, "Failed to save retry state for task {TaskId}", task.TaskId);
             }
         }
+        catch (Exception ex) when (Is429Exception(ex) && task.RetryCount < _maxRetries)
+        {
+            task.RetryCount++;
+            task.Status = TaskStatus.Pending;
+            task.ScheduledAt = DateTimeOffset.UtcNow.AddMinutes(Math.Pow(2, task.RetryCount));
+            task.ErrorMessage = ex.Message;
+            task.UpdatedAt = DateTimeOffset.UtcNow;
+            logger.LogWarning(ex,
+                "Rate-limit (429) on task {TaskId}, retry {Retry}/{Max}, next at {ScheduledAt}",
+                task.TaskId, task.RetryCount, _maxRetries, task.ScheduledAt);
+            try { await db.SaveChangesAsync(ct); }
+            catch (Exception saveEx) { logger.LogError(saveEx, "Failed to save 429 retry state for task {TaskId}", task.TaskId); }
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Fatal failure on task {TaskId}", task.TaskId);
@@ -400,4 +414,10 @@ public class WorkflowWorker(
         }
         base.Dispose();
     }
+
+    private static bool Is429Exception(Exception ex) =>
+        ex is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests }
+        || ex.Message.Contains("429", StringComparison.OrdinalIgnoreCase)
+        || ex.Message.Contains("high demand", StringComparison.OrdinalIgnoreCase)
+        || ex.Message.Contains("TooManyRequests", StringComparison.OrdinalIgnoreCase);
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Dto;
 using RecipeApi.Infrastructure;
@@ -199,6 +200,7 @@ public class RecipeController(
 
     /// <summary>GET /api/recipes/{id}/original/{photoIndex} — raw image binary.</summary>
     [HttpGet("{recipeId:guid}/original/{photoIndex:int}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetImage(Guid recipeId, int photoIndex)
     {
         var (stream, contentType) = await imageService.GetImage(recipeId, photoIndex);
@@ -208,11 +210,14 @@ public class RecipeController(
     /// <summary>
     /// GET /api/recipes/{id}/hero — AI-generated hero thumbnail (JPEG).
     /// Returns 404 until a recipe import has been completed.
+    /// Exempt from auth so Next.js Image Optimization can fetch it server-side.
     /// </summary>
     [HttpGet("{id:guid}/hero")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetHero(Guid id)
     {
         var (stream, contentType) = await imageService.GetHeroImage(id);
+        Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
         return File(stream, contentType);
     }
 

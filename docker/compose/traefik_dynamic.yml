@@ -1,15 +1,19 @@
 http:
   routers:
+    # API traffic: PathPrefix(/api) on the same host as the PWA.
+    # Higher priority ensures it matches before the catch-all pwa router.
     api:
-      rule: "Host(`api.wfs.localhost`)"
+      rule: "Host(`pwa.wfs.localhost`) && PathPrefix(`/api`)"
       service: api
       entryPoints:
         - web
+      priority: 10
     pwa:
       rule: "Host(`pwa.wfs.localhost`)"
       service: pwa
       entryPoints:
         - web
+      priority: 1
 
   services:
     api:

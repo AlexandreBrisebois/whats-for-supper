@@ -41,7 +41,7 @@ tasks:
         echo ""
         echo "✓ Ecosystem started:"
         echo "  - PWA:       http://pwa.wfs.localhost"
-        echo "  - API:       http://api.wfs.localhost"
+        echo "  - API:       http://pwa.wfs.localhost/api"
         echo "  - Dashboard: http://localhost:8080"
         echo ""
         echo "Stop all: task down"
@@ -315,12 +315,15 @@ tasks:
       PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
       CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
       NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
+      # Read NEXT_PUBLIC_API_BASE_URL from docker/.env.local (if present) then docker/.env
+      PWA_API_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default "http://api.wfs.localhost"}}'
     cmds:
       - echo "Building PWA {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
       - >
         docker buildx build
         {{.NOCACHE_FLAG}}
         --platform {{.PLATFORMS}}
+        --build-arg NEXT_PUBLIC_API_BASE_URL={{.PWA_API_URL}}
         -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:{{.TAG}}
         -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:latest
         ./pwa
@@ -441,9 +444,10 @@ tasks:
       - '{{.COMPOSE_CMD}} ps'
 
   restart:
-    desc: "Restart all containers"
+    desc: "Down, clean, build, and up the images. Docker Desktop."
     cmds:
       - task: down
+      - task: clean:images
       - task: up
 
   # ============================================================================

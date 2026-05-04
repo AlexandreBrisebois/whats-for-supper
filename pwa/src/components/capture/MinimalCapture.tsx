@@ -115,9 +115,8 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
   // We now use showUrlReview to let the user manually save.
 
   useEffect(() => {
-    if (onSuccess) {
-      const dest = isGoto ? ROUTES.PROFILE_SETTINGS : ROUTES.HOME;
-      router.push(dest as any);
+    if (onSuccess && !isGoto) {
+      router.push(ROUTES.HOME as any);
     }
   }, [onSuccess, router, isGoto]);
 
@@ -200,18 +199,25 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
     const btnLabel = isGoto ? 'Back to Settings' : t('capture.backToHome', 'Back to Home');
 
     return (
-      <div className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500">
+      <div
+        data-testid="capture-success-screen"
+        className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500"
+      >
         <div className="flex h-24 w-24 items-center justify-center rounded-full bg-sage/10 text-sage ring-8 ring-sage/5">
           {wasUrlCaptured ? <Globe size={48} /> : <CheckCircle2 size={48} />}
         </div>
         <div className="flex flex-col gap-2">
-          <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
+          <h2
+            data-testid="capture-success-heading"
+            className="font-heading text-3xl font-bold tracking-tight text-charcoal"
+          >
             {heading}
           </h2>
           <p className="text-charcoal/60 px-4 max-w-sm">{subtext}</p>
         </div>
         <Button
           variant="primary"
+          data-testid="capture-success-cta"
           onClick={() => router.push(dest as any)}
           className="rounded-2xl px-8"
         >
