@@ -27,7 +27,7 @@ public class HealthControllerTests : IAsyncLifetime
     [Fact]
     public async Task Health_Returns_Ok_With_Healthy_Status()
     {
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync("/api/health");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -39,7 +39,7 @@ public class HealthControllerTests : IAsyncLifetime
     [Fact]
     public async Task Health_Response_Includes_Required_Checks()
     {
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync("/api/health");
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
 
@@ -54,7 +54,7 @@ public class HealthControllerTests : IAsyncLifetime
     [Fact]
     public async Task Health_Checks_Report_Healthy_With_InMemory_Db()
     {
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync("/api/health");
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
 

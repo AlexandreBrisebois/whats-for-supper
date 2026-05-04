@@ -316,7 +316,7 @@ tasks:
       CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
       NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
       # Read NEXT_PUBLIC_API_BASE_URL from docker/.env.local (if present) then docker/.env
-      PWA_API_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default "http://api.wfs.localhost"}}'
+      PWA_API_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default "/api"}}'
     cmds:
       - echo "Building PWA {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
       - >
@@ -509,7 +509,7 @@ tasks:
       - |
         echo "🚀 Waiting for API to be healthy..."
         for i in $(seq 1 20); do
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: api.wfs.localhost" http://localhost/health)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: pwa.wfs.localhost" http://localhost/api/health)
           if [ "$STATUS" == "200" ]; then
             echo "✅ API is up!"
             break
@@ -522,7 +522,7 @@ tasks:
         echo "🚀 Triggering database seed..."
         # Retry the trigger itself a few times if proxy is still warm-up
         for i in $(seq 1 5); do
-          RESPONSE=$(curl -X POST -s -H "Host: api.wfs.localhost" http://localhost/api/management/seed)
+          RESPONSE=$(curl -X POST -s -H "Host: pwa.wfs.localhost" http://localhost/api/management/seed)
           # Try root first (SkipWrapping), then data (Default)
           TASK_ID=$(echo $RESPONSE | jq -r '.taskId // .data.taskId // empty')
           if [ -n "$TASK_ID" ] && [ "$TASK_ID" != "null" ]; then break; fi
@@ -538,7 +538,7 @@ tasks:
 
         # Poll status every 2 seconds
         for i in $(seq 1 30); do
-          STATUS_JSON=$(curl -s -H "Host: api.wfs.localhost" http://localhost/api/management/status)
+          STATUS_JSON=$(curl -s -H "Host: pwa.wfs.localhost" http://localhost/api/management/status)
           # Status endpoint is also [SkipWrapping]
           CURRENT_STATUS=$(echo $STATUS_JSON | jq -r '.status // .data.status')
           CURRENT_ID=$(echo $STATUS_JSON | jq -r '.workflowId // .data.workflowId')
@@ -575,7 +575,7 @@ tasks:
           echo "🔧 Using dev API at $API_BASE"
         else
           API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: api.wfs.localhost" "$@"; }
+          api_curl() { curl -s -H "Host: pwa.wfs.localhost" "$@"; }
         fi
         echo "🚀 Triggering bulk recipe import..."
         HTTP_CODE=$(api_curl -X POST -o /tmp/wfs_import.json -w "%{http_code}" "$API_BASE/api/management/bulk-import")
@@ -611,7 +611,7 @@ tasks:
           echo "🔧 Using dev API at $API_BASE"
         else
           API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: api.wfs.localhost" "$@"; }
+          api_curl() { curl -s -H "Host: pwa.wfs.localhost" "$@"; }
         fi
 
         for RECIPE_ID in $RECIPE_IDS; do
@@ -642,7 +642,7 @@ tasks:
           echo "🔧 Using dev API at $API_BASE"
         else
           API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: api.wfs.localhost" "$@"; }
+          api_curl() { curl -s -H "Host: pwa.wfs.localhost" "$@"; }
         fi
         HTTP_CODE=$(api_curl -o /tmp/wfs_status.json -w "%{http_code}" "$API_BASE/api/recipes/import-status")
         if [ "$HTTP_CODE" = "000" ]; then
@@ -771,10 +771,10 @@ tasks:
         echo "Checking services..."
         echo ""
         echo "API (Traefik Route):"
-        curl -s -H "Host: api.wfs.localhost" http://localhost/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ API running" || echo "  ✗ API not responding"
+        curl -s -H "Host: pwa.wfs.localhost" http://localhost/api/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ API running" || echo "  ✗ API not responding"
         echo ""
         echo "PWA (Traefik Route):"
-        curl -s -H "Host: pwa.wfs.localhost" http://localhost/api/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ PWA running" || echo "  ✗ PWA not responding"
+        curl -s -H "Host: pwa.wfs.localhost" http://localhost/api/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ PWA running (shared route)" || echo "  ✗ PWA not responding"
         echo ""
         echo "Database:"
         docker exec whats-for-supper-postgres pg_isready -U postgres 2>/dev/null && echo "  ✓ Database running" || echo "  ✗ Database not responding"

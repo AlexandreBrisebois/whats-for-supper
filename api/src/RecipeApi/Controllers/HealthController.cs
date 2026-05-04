@@ -8,11 +8,12 @@ using RecipeApi.Infrastructure;
 namespace RecipeApi.Controllers;
 
 [ApiController]
+[Route("api/health")]
 [SkipWrapping]
 [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public class HealthController(RecipeDbContext db) : ControllerBase
 {
-    [HttpGet("/health")]
+    [HttpGet]
     public async Task<IActionResult> Get()
     {
         var checks = new Dictionary<string, object>();

@@ -2,5 +2,17 @@
     "kiroAgent.configureMCP": "Disabled",
     "kiroAgent.enableCodebaseIndexing": true,
     "kiroAgent.enableTabAutocomplete": true,
-    "kiroAgent.enableDebugLogs": true
+    "kiroAgent.enableDebugLogs": true,
+    "rest-client.environmentVariables": {
+        "local": {
+            "baseUrl": "http://localhost:9001",
+            "hearthSecret": "our family loves cooking",
+            "familyMemberId": "4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7"
+        },
+        "nas": {
+            "baseUrl": "https://wfs.srvrlss.dev",
+            "hearthSecret": "our family loves cooking",
+            "familyMemberId": "4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7"
+        }
+    }
 }

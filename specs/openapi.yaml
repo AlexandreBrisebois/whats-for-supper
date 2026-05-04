@@ -4,8 +4,8 @@ info:
   description: API for the What's For Supper PWA, including recipe discovery, planning, and management.
   version: 0.1.0
 servers:
-  - url: http://api.wfs.localhost
-    description: Development server (Traefik)
+  - url: /api
+    description: Unified API (same origin)
   - url: http://localhost:9001
     description: Local direct API
 security:

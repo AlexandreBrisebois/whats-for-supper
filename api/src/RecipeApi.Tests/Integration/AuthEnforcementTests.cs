@@ -75,7 +75,7 @@ public class AuthEnforcementTests : IAsyncLifetime
         // GET /health is decorated [AllowAnonymous] — must remain accessible
         // without credentials even when auth enforcement is enabled.
         var client = _factory.CreateClient();
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/api/health");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }

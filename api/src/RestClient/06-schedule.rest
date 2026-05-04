@@ -1,9 +1,3 @@
-### @baseUrl = http://localhost:5050
-
-## @baseUrl = http://192.168.1.226:9101
-
-@baseUrl = http://localhost:9001
-
 @weekOffset = 0
 @dayIndex = 0
 @recipeId = 5df6b7da-4537-4b06-bae6-e8278ce2d1a9
@@ -13,6 +7,7 @@
 # weekOffset=0 is this week, 1 is next week, -1 is last week.
 GET {{baseUrl}}/api/schedule?weekOffset={{weekOffset}}
 Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 ### Lock the weekly schedule
 # Sets all calendar events for the week to 'Locked' status.
@@ -21,12 +16,14 @@ Accept: application/json
 #   - Updates last_cooked_date on all planned recipes
 POST {{baseUrl}}/api/schedule/lock?weekOffset={{weekOffset}}
 Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 ### Assign recipe to a day
 # Assigns (or updates) a recipe to a specific day in the week.
 # Creates a new CalendarEvent if none exists for that date.
 POST {{baseUrl}}/api/schedule/assign
 Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 {
   "weekOffset": {{weekOffset}},
@@ -41,6 +38,7 @@ Content-Type: application/json
 # fromIndex and toIndex are 0-6 (Mon-Sun).
 POST {{baseUrl}}/api/schedule/move
 Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 {
   "weekOffset": {{weekOffset}},
@@ -54,9 +52,11 @@ Content-Type: application/json
 # Locks are applied only for unanimous votes (all family members voted Like).
 GET {{baseUrl}}/api/schedule/{{weekOffset}}/smart-defaults
 Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 ### Fill the gap
 # Returns 5 recipes with high family interest that haven't been cooked recently.
 # Used to populate quick-pick recommendations.
 GET {{baseUrl}}/api/schedule/fill-the-gap
 Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}

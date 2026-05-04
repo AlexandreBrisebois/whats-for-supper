@@ -1,6 +1,3 @@
-@baseUrl = http://localhost:9001
-@baseUrl = http://192.168.1.226:9101
-
 @workflowId = recipe-extraction
 @recipeImportWorkflowId = recipe-import
 @recipeId = 0384639a-96e2-48d9-89fe-c30d55e06c98
@@ -12,6 +9,7 @@
 # Extract -> GenerateHero -> SyncRecipe
 POST {{baseUrl}}/api/workflows/{{recipeImportWorkflowId}}/trigger
 Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 {
   "parameters": {
@@ -23,6 +21,7 @@ Content-Type: application/json
 # Regenerates the AI-powered description from the existing recipe.json and finished dish image.
 POST {{baseUrl}}/api/workflows/recipe-description-regeneration/trigger
 Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 {
   "parameters": {
@@ -34,6 +33,7 @@ Content-Type: application/json
 # Triggers the recipe-extraction workflow with parameters.
 POST {{baseUrl}}/api/workflows/{{workflowId}}/trigger
 Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 {
   "parameters": {
@@ -45,13 +45,16 @@ Content-Type: application/json
 # Returns the instance metadata and all associated tasks.
 GET {{baseUrl}}/api/workflows/instances/{{instanceId}}
 Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 ### 3. Get all active workflows
 # Returns all Processing or Paused workflow instances.
 GET {{baseUrl}}/api/workflows/active
 Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 ### 4. Reset a failed task
 # Resets a failed task to Pending status and updates the workflow to Processing.
 POST {{baseUrl}}/api/workflows/tasks/{{taskId}}/reset
 Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
