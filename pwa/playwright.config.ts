@@ -74,7 +74,7 @@ export default defineConfig({
         env: {
           NEXT_PUBLIC_ENVIRONMENT: 'test',
           API_INTERNAL_URL: 'http://127.0.0.1:5001',
-          NEXT_PUBLIC_API_BASE_URL: '/api',
+          NEXT_PUBLIC_API_BASE_URL: '/',
           HEARTH_SECRET: process.env.HEARTH_SECRET || 'our family loves cooking',
         },
       },

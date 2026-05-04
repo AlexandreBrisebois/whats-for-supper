@@ -95,9 +95,8 @@ export async function getRecipe(id: string): Promise<Recipe> {
 export async function createRecipe(formData: FormData): Promise<{ id: string }> {
   // Use native fetch for multipart FormData to avoid Kiota serialization issues
   const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
-  const response = await fetch(`${baseUrl}/api/recipes`, {
+  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes`, {
     method: 'POST',
     body: formData,
     headers: {

@@ -8,9 +8,8 @@ export function useSchedule() {
       groceryState: Record<string, boolean>
     ): Promise<Record<string, boolean>> {
       const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
-      const response = await fetch(`${baseUrl}/api/schedule/${weekOffset}/grocery`, {
+      const response = await fetch(`${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
