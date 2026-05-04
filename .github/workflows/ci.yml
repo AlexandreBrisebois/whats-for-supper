@@ -299,7 +299,7 @@ jobs:
       - name: Wait for API health
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:9001/health; then echo "API healthy"; break; fi
+            if curl -sf http://127.0.0.1:9001/api/health; then echo "API healthy"; break; fi
             [ "$i" -eq 30 ] && echo "API failed health check" && exit 1
             sleep 3
           done
@@ -313,7 +313,7 @@ jobs:
           done
 
       - name: Verify API health endpoint
-        run: curl -s http://127.0.0.1:9001/health | python3 -m json.tool
+        run: curl -s http://127.0.0.1:9001/api/health | python3 -m json.tool
 
       - name: Schema drift — Tier 0 (generated endpoint diff)
         run: |

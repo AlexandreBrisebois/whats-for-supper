@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
 
 test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -559,7 +559,8 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
   test.skip('Page reload after "Make This Tonight" still shows TonightMenuCard', async ({
     page,
   }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const monday = currentMonday();
+    const today = toDateStr(monday);
 
     // Mock GOTO setting
     await page.route(
@@ -620,11 +621,9 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             });
           } else {
             const days = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date();
-              const day = d.getUTCDay();
-              const offset = day === 0 ? -6 : 1 - day;
-              d.setUTCDate(d.getUTCDate() + offset + i);
-              const dateStr = d.toISOString().split('T')[0];
+              const d = new Date(monday);
+              d.setUTCDate(monday.getUTCDate() + i);
+              const dateStr = toDateStr(d);
               return {
                 date: dateStr,
                 status: 0,
@@ -674,7 +673,8 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
   test('"Make This Tonight" → navigating to planner shows recipe in today\'s slot', async ({
     page,
   }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const monday = currentMonday();
+    const today = toDateStr(monday);
     let assignDone = false;
 
     // Mock GOTO setting
@@ -719,11 +719,9 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             });
           } else {
             const days = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date();
-              const day = d.getUTCDay();
-              const offset = day === 0 ? -6 : 1 - day;
-              d.setUTCDate(d.getUTCDate() + offset + i);
-              const dateStr = d.toISOString().split('T')[0];
+              const d = new Date(monday);
+              d.setUTCDate(monday.getUTCDate() + i);
+              const dateStr = toDateStr(d);
               return {
                 day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
                 date: dateStr,

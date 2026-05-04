@@ -4,8 +4,6 @@
 // @ts-ignore
 import { ApiRequestBuilderNavigationMetadata, type ApiRequestBuilder } from './api/index';
 // @ts-ignore
-import { HealthRequestBuilderRequestsMetadata, type HealthRequestBuilder } from './health/index';
-// @ts-ignore
 import { apiClientProxifier, ParseNodeFactoryRegistry, SerializationWriterFactoryRegistry, type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata, type RequestAdapter } from '@microsoft/kiota-abstractions';
 // @ts-ignore
 import { FormParseNodeFactory, FormSerializationWriterFactory } from '@microsoft/kiota-serialization-form';
@@ -24,10 +22,6 @@ export interface ApiClient extends BaseRequestBuilder<ApiClient> {
      * The api property
      */
     get api(): ApiRequestBuilder;
-    /**
-     * The health property
-     */
-    get health(): HealthRequestBuilder;
 }
 /**
  * Instantiates a new {@link ApiClient} and sets the default values.
@@ -55,9 +49,6 @@ export function createApiClient(requestAdapter: RequestAdapter) {
         serializationWriterFactory.registerDefaultSerializer(MultipartSerializationWriterFactory);
     }
     
-    if (requestAdapter.baseUrl === undefined || requestAdapter.baseUrl === null || requestAdapter.baseUrl === "") {
-        requestAdapter.baseUrl = "/api";
-    }
     const pathParameters: Record<string, unknown> = {
         "baseurl": requestAdapter.baseUrl,
     };
@@ -73,9 +64,6 @@ export const ApiClientUriTemplate = "{+baseurl}";
 export const ApiClientNavigationMetadata: Record<Exclude<keyof ApiClient, KeysToExcludeForNavigationMetadata>, NavigationMetadata> = {
     api: {
         navigationMetadata: ApiRequestBuilderNavigationMetadata,
-    },
-    health: {
-        requestsMetadata: HealthRequestBuilderRequestsMetadata,
     },
 };
 /* tslint:enable */

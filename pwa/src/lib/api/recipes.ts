@@ -14,7 +14,7 @@ export interface Recipe {
   ingredients?: string[];
   isVegetarian?: boolean;
   isHealthyChoice?: boolean;
-  recipeInstructions?: string[] | Array<{ name?: string; text?: string }>;
+  recipeInstructions?: unknown[];
 }
 
 export type RecommendationResult = {

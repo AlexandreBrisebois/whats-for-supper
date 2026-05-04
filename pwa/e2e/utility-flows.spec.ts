@@ -3,23 +3,14 @@ import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from 
 
 /**
  * ADR 029: Deterministic E2E Testing Strategy
- * - Fixed reference date: 2026-04-27 (Monday)
+ * - Fixed reference date: 2026-05-04 (Monday) via currentMonday() / toDateStr()
  * - regex-based matching for intercepts
  * - page.reload() for state sync
  */
 
 test.describe("Cook's Mode and Grocery Flows", () => {
-  // Use today's date so the Cook Mode button (E2: today-only) is visible on the right card.
-  const TODAY = new Date().toISOString().split('T')[0];
-  // Derive the Monday of the current week for building the full 7-day mock.
-  const getThisWeekMonday = () => {
-    const now = new Date();
-    const day = now.getUTCDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now);
-    monday.setUTCDate(now.getUTCDate() + diff);
-    return monday.toISOString().split('T')[0];
-  };
+  // Use the fixed test Monday as "today" so the Cook Mode button (E2: today-only) is visible.
+  const TODAY = toDateStr(currentMonday()); // fixed: 2026-05-04
 
   test.beforeEach(async ({ page }) => {
     // Set identity
@@ -44,7 +35,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     await setupCommonRoutes(page);
 
-    const thisMonday = getThisWeekMonday();
+    const thisMonday = currentMonday();
 
     // Hardened Intercepts (ADR 029)
     await page.route(
@@ -54,11 +45,11 @@ test.describe("Cook's Mode and Grocery Flows", () => {
           route.request().method() === 'GET' &&
           !route.request().url().includes('smart-defaults')
         ) {
-          // Build 7 days from this week's Monday; put the recipe on today's date.
+          // Build 7 days from the fixed Monday; put the recipe on today's date.
           const days = Array.from({ length: 7 }, (_, i) => {
             const d = new Date(thisMonday);
-            d.setUTCDate(d.getUTCDate() + i);
-            const dateStr = d.toISOString().split('T')[0];
+            d.setUTCDate(thisMonday.getUTCDate() + i);
+            const dateStr = toDateStr(d);
             const isToday = dateStr === TODAY;
             return {
               day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],

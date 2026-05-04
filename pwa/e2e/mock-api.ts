@@ -9,6 +9,7 @@ import {
   type FamilyGetResponse,
   type FamilyGetResponse_data,
 } from '../src/lib/api/generated/api/family/index';
+import { type UntypedNode } from '@microsoft/kiota-abstractions';
 import { REALISTIC_RECIPES, REALISTIC_SCHEDULE_RECIPES } from './realistic-recipes';
 
 import { MOCK_IDS } from './mock-ids';
@@ -37,14 +38,14 @@ export const builders = {
             ingredients: ['Ingredient 1', 'Ingredient 2'],
             recipeInstructions: [
               {
-                name: 'Step 1: Prep',
-                text: 'Chop the onions and mince the garlic.',
+                '@type': 'HowToSection',
+                name: 'Instructions',
+                itemListElement: [
+                  { '@type': 'HowToStep', text: 'Chop the onions and mince the garlic.' },
+                  { '@type': 'HowToStep', text: 'Saute until golden and fragrant.' },
+                ],
               },
-              {
-                name: 'Step 2: Cook',
-                text: 'Saute until golden and fragrant.',
-              },
-            ] as any,
+            ] as unknown as UntypedNode,
             createdAt: new Date(),
           };
     return { ...base, ...overrides };

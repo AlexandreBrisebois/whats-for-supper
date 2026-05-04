@@ -6,6 +6,8 @@ import { DiscoveryRequestBuilderNavigationMetadata, DiscoveryRequestBuilderReque
 // @ts-ignore
 import { FamilyRequestBuilderNavigationMetadata, FamilyRequestBuilderRequestsMetadata, type FamilyRequestBuilder } from './family/index';
 // @ts-ignore
+import { HealthRequestBuilderRequestsMetadata, type HealthRequestBuilder } from './health/index';
+// @ts-ignore
 import { ManagementRequestBuilderNavigationMetadata, type ManagementRequestBuilder } from './management/index';
 // @ts-ignore
 import { RecipesRequestBuilderNavigationMetadata, RecipesRequestBuilderRequestsMetadata, type RecipesRequestBuilder } from './recipes/index';
@@ -30,6 +32,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
      * The family property
      */
     get family(): FamilyRequestBuilder;
+    /**
+     * The health property
+     */
+    get health(): HealthRequestBuilder;
     /**
      * The management property
      */
@@ -66,6 +72,9 @@ export const ApiRequestBuilderNavigationMetadata: Record<Exclude<keyof ApiReques
     family: {
         requestsMetadata: FamilyRequestBuilderRequestsMetadata,
         navigationMetadata: FamilyRequestBuilderNavigationMetadata,
+    },
+    health: {
+        requestsMetadata: HealthRequestBuilderRequestsMetadata,
     },
     management: {
         navigationMetadata: ManagementRequestBuilderNavigationMetadata,

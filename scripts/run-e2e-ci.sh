@@ -20,7 +20,7 @@ echo "Mock API PID: $MOCK_API_PID"
 # Wait for Mock API to be ready
 echo "⏳ Waiting for Mock API to be ready..."
 for i in $(seq 1 30); do
-  if curl -sf http://127.0.0.1:5001/health > /dev/null 2>&1; then
+  if curl -sf http://127.0.0.1:5001/api/health > /dev/null 2>&1; then
     echo "✅ Mock API is ready"
     break
   fi

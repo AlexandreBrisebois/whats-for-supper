@@ -11,13 +11,7 @@ import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from 
 
 /** Returns the Monday of the week containing today (UTC). */
 function thisWeekMonday() {
-  const now = new Date();
-  const day = now.getUTCDay(); // 0=Sun, 1=Mon, …, 6=Sat
-  const diff = day === 0 ? -6 : 1 - day; // shift to Monday
-  const monday = new Date(now);
-  monday.setUTCDate(now.getUTCDate() + diff);
-  monday.setUTCHours(12, 0, 0, 0);
-  return monday;
+  return currentMonday();
 }
 
 function buildLockedDays() {
@@ -137,7 +131,7 @@ async function setupPlanner(page: Page, locked = false) {
   await page.goto('/planner');
   if (locked) {
     // Cook Mode button only shows on today's card (E2 constraint).
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = toDateStr(currentMonday());
     await expect(
       page.locator(`[data-date="${todayStr}"]`).getByTestId('start-cook-mode')
     ).toBeVisible({
@@ -174,7 +168,7 @@ test.describe("Planner — Cook's Mode", () => {
 
     // Cook Mode button only shows on today's card (E2 constraint).
     // Find today's card by data-date attribute rather than positional index.
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = toDateStr(currentMonday());
     const todayCard = page.locator(`[data-date="${todayStr}"]`);
     await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible({ timeout: 10_000 });
     await todayCard.getByTestId('start-cook-mode').click();
@@ -206,8 +200,8 @@ test.describe('Planner — Ordered-In State', () => {
 
     await setupCommonRoutes(page);
 
-    const today = new Date().toISOString().split('T')[0];
     const monday = thisWeekMonday();
+    const today = toDateStr(monday);
 
     // Build 7 days with today's slot having status:3 and no recipe
     const days = Array.from({ length: 7 }, (_, i) => {

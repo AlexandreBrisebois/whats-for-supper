@@ -46,15 +46,12 @@ test.describe('Supper Planner', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
-    const pinnedDates = [
-      '2026-05-04', // Mon
-      '2026-05-05', // Tue
-      '2026-05-06', // Wed
-      '2026-05-07', // Thu
-      '2026-05-08', // Fri
-      '2026-05-09', // Sat
-      '2026-05-10', // Sun
-    ];
+    const monday = currentMonday();
+    const pinnedDates = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setUTCDate(monday.getUTCDate() + i);
+      return toDateStr(d);
+    });
 
     let isLocked = false;
 

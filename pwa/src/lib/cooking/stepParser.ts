@@ -38,9 +38,7 @@ function isHowToSection(item: unknown): item is HowToSection {
   );
 }
 
-export function parseRecipeSteps(
-  recipeInstructions?: string[] | Array<{ name?: string; text?: string }>
-): CookingStep[] {
+export function parseRecipeSteps(recipeInstructions?: unknown[]): CookingStep[] {
   if (!recipeInstructions) return [];
 
   try {

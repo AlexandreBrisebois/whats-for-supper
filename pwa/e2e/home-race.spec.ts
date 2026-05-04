@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
 
 test.describe('Home Command Center — Optimistic UI Race Fix', () => {
   test.beforeEach(async ({ page }) => {
@@ -57,7 +57,6 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
         const weekOffset = url.searchParams.get('weekOffset');
 
         if (weekOffset === '0') {
-          const today = new Date().toISOString().split('T')[0];
           await route.fulfill({
             status: 200,
             contentType: 'application/json',

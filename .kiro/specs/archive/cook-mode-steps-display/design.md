@@ -32,9 +32,11 @@ No logic changes are required inside `parseRecipeSteps`. No changes are required
 
 The bug manifests when `parseRecipeSteps` is called with a value whose runtime shape is `HowToSection[]`. The TypeScript type of `Recipe.recipeInstructions` is `string[] | Array<{ name?: string; text?: string }>`, which does not include `HowToSection[]`. This means:
 
-1. TypeScript callers cannot pass a `HowToSection[]` without a cast.
-2. The `Recipe` interface itself cannot represent the actual runtime value.
-3. The `isHowToSection` branch inside `parseRecipeSteps` is unreachable without widening the parameter type.
+1. The `Recipe` interface cannot honestly represent the actual runtime value produced by `unwrapUntypedNode`.
+2. TypeScript callers cannot express or validate the `HowToSection[]` shape through the type system.
+3. The `as any` cast in the original test was a workaround that acknowledged the type was wrong — not because TypeScript would error without it (structural subtyping means `HowToSection[]` IS assignable to `Array<{ name?: string; text?: string }>`), but because the declared type was known to be inaccurate.
+
+**Investigation finding**: TypeScript's structural subtyping means `{ '@type': string; name: string; itemListElement: ...[]; }` IS assignable to `{ name?: string; text?: string; }` — the `name` property satisfies `name?: string` and extra properties are allowed. Therefore, removing `as any` from the test does NOT cause a TypeScript compilation error. The bug is a type-level representation gap, not a compile-time error.
 
 **Formal Specification:**
 
@@ -48,8 +50,8 @@ FUNCTION isBugCondition(input)
          AND input[0] IS Object
          AND 'itemListElement' IN input[0]
          AND Array.isArray(input[0].itemListElement)
-         AND TypeScript type of input does NOT include HowToSection[]
-         AND parseRecipeSteps(input) returns []
+         AND TypeScript type of Recipe.recipeInstructions does NOT include HowToSection[]
+         AND the type system cannot validate the HowToSection[] shape without `any`
 END FUNCTION
 ```
 
@@ -85,13 +87,13 @@ All inputs that do NOT match the `HowToSection[]` shape (i.e., where `isBugCondi
 
 The single root cause is a **type signature that is too narrow**:
 
-1. **`parseRecipeSteps` parameter type** — `string[] | Array<{ name?: string; text?: string }>` does not include `HowToSection[]`. TypeScript therefore rejects passing a `HowToSection[]` value without a cast, and the existing test for this case uses `as any` to work around it.
+1. **`parseRecipeSteps` parameter type** — `string[] | Array<{ name?: string; text?: string }>` does not include `HowToSection[]`. However, due to TypeScript's structural subtyping, `HowToSection[]` IS assignable to `Array<{ name?: string; text?: string }>` (the `name` property satisfies `name?: string` and extra properties like `itemListElement` are allowed). So TypeScript does NOT reject the call — but the declared type is still inaccurate and misleading.
 
 2. **`Recipe.recipeInstructions` field type** — Same narrow type on the `Recipe` interface. `mapToRecipe` assigns the result of `unwrapUntypedNode(dto.recipeInstructions)` (which is `any`) to this field, so TypeScript does not catch the mismatch. At runtime the value is `HowToSection[]`, but the declared type says it cannot be.
 
-3. **Consequence** — Because the declared type of `details.recipeInstructions` in `CooksMode.tsx` is `string[] | Array<{ name?: string; text?: string }>`, TypeScript would flag passing it to a widened `parseRecipeSteps` only if the types diverge. The fix must widen both the `Recipe` interface field and the `parseRecipeSteps` parameter together so the call site compiles cleanly.
+3. **Consequence** — The type system provides false confidence: it accepts `HowToSection[]` values (via structural subtyping) but cannot express or validate the actual runtime shape. The `as any` cast in the original test was a workaround that acknowledged the type was wrong. The fix widens both types to `unknown[]` to honestly represent the opaque JSON data from the API.
 
-There is no logic bug inside `parseRecipeSteps`. The `isHowToSection` guard, the section iteration, and the step extraction are all correct. The bug is purely a type-level gate that prevents the correct runtime path from being exercised.
+**Investigation finding**: The `isHowToSection` branch inside `parseRecipeSteps` IS reachable at runtime — the runtime logic already handles `HowToSection[]` correctly. The bug is purely a type-level representation gap, not a runtime logic error. The fix makes the type system honest about what the API actually returns.
 
 ---
 
@@ -161,20 +163,20 @@ The testing strategy follows a two-phase approach: first, surface counterexample
 
 ### Exploratory Bug Condition Checking
 
-**Goal**: Confirm that the existing `HowToSection` test in `step-parser.spec.ts` requires `as any` to compile, and that removing the cast causes a TypeScript error on unfixed code. This confirms the root cause is the type signature.
+**Goal**: Confirm that the existing `HowToSection` test in `step-parser.spec.ts` used `as any` as a workaround for the inaccurate type, and that removing the cast compiles fine (due to structural subtyping) while the runtime logic already works correctly.
 
-**Test Plan**: Attempt to call `parseRecipeSteps` with a `HowToSection[]` value without `as any` on the unfixed code. Observe the TypeScript error. This confirms the bug condition.
+**Investigation Finding**: TypeScript's structural subtyping means `HowToSection[]` IS assignable to `Array<{ name?: string; text?: string }>` — no compile error occurs when `as any` is removed. The `as any` cast was a workaround acknowledging the type was wrong, not a necessity. The runtime logic in `parseRecipeSteps` already handles `HowToSection[]` correctly via `isHowToSection`.
 
 **Test Cases**:
 
-1. **Type Error Without Cast** (will fail to compile on unfixed code): Call `parseRecipeSteps([{ '@type': 'HowToSection', name: 'Prep', itemListElement: [{ '@type': 'HowToStep', text: 'Chop onions' }] }])` without `as any` — TypeScript should reject this on unfixed code.
-2. **Runtime Returns Empty** (will fail on unfixed code if cast is removed): The existing test at line 41 uses `as any` — this is the counterexample. Without the cast, the value cannot be passed; with the cast, the runtime logic works but the type system is bypassed.
-3. **Real Recipe Shape** (will fail on unfixed code): Pass the exact shape from `data/recipes/3fe040b3.../recipe.json` — three `HowToSection` objects with nested `HowToStep` arrays — and assert 8 steps are returned.
+1. **Type Representation Gap** (confirmed): The `Recipe.recipeInstructions` field type `string[] | Array<{ name?: string; text?: string }>` cannot honestly represent `HowToSection[]`. The fix widens to `unknown[]` to match the actual runtime value from `unwrapUntypedNode`.
+2. **Runtime Works Correctly** (confirmed): The existing test with `as any` removed compiles and passes — `parseRecipeSteps` correctly handles `HowToSection[]` at runtime.
+3. **Real Recipe Shape** (confirmed): The test using the exact shape from `data/recipes/3fe040b3.../recipe.json` (3 sections, 8 steps) passes and asserts 8 steps are returned.
 
-**Expected Counterexamples**:
+**Documented Counterexample**:
 
-- TypeScript error: `Argument of type '{ "@type": string; name: string; itemListElement: ...; }[]' is not assignable to parameter of type 'string[] | { name?: string; text?: string; }[]'`
-- The existing test's `as any` cast is itself the documented counterexample.
+- The original `as any` cast in the test is the documented counterexample — it acknowledged the type was wrong even though TypeScript's structural subtyping would have accepted the call.
+- The type fix (`unknown[]`) makes the type system honest: it no longer claims to know the shape of the API's JSON data.
 
 ### Fix Checking
 

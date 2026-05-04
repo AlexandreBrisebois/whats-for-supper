@@ -4,7 +4,7 @@ info:
   description: API for the What's For Supper PWA, including recipe discovery, planning, and management.
   version: 0.1.0
 servers:
-  - url: /api
+  - url: /
     description: Unified API (same origin)
   - url: http://localhost:9001
     description: Local direct API
@@ -377,7 +377,7 @@ components:
         taskCount: { type: integer }
 
 paths:
-  /health:
+  /api/health:
     get:
       summary: Health check
       security: []

@@ -7,6 +7,9 @@ version: '3'
 set: [pipefail]
 shopt: [globstar]
 
+env:
+  DOTNET_ROLL_FORWARD: Major
+
 vars:
   API_PORT: '5050'
   PWA_PORT: '3000'
@@ -202,7 +205,7 @@ tasks:
         done
         # Verify API
         for i in $(seq 1 20); do
-          if curl -sf http://localhost:9001/health > /dev/null; then
+          if curl -sf http://localhost:9001/api/health > /dev/null; then
             echo "  ✓ API healthy (Port 9001)"
             break
           fi
@@ -901,6 +904,7 @@ tasks:
       - task: init:tools
       - task: init:env
       - task: init:dependencies
+      - task: gen:client
       - task: up
       - task: migrate
       - task: seed
@@ -932,28 +936,54 @@ tasks:
     desc: "Install all dependencies"
     cmds:
       - |
+        echo "Installing Global/Root dependencies..."
+        dotnet tool restore
+        echo ""
         echo "Installing API dependencies..."
-        cd api && dotnet restore
-        echo "✓ API dependencies installed"
+        cd api
+        dotnet restore RecipeApi.csproj
+        dotnet restore src/RecipeApi.Tests/RecipeApi.Tests.csproj
+        echo "✓ API dependencies and tools installed"
         echo ""
         echo "Installing PWA dependencies..."
-        cd ../pwa && npm install
-        echo "✓ PWA dependencies installed"
+        cd ../pwa
+        npm install
+        echo "Installing Playwright browsers..."
+        npx playwright install --with-deps
+        echo "✓ PWA dependencies and Playwright installed"
 
   init:tools:
     desc: "Install required development tools (pre-commit, etc.)"
     cmds:
       - |
+        # Check for core CLI tools
+        for tool in dotnet node npm python3 jq curl; do
+          if ! command -v $tool &> /dev/null; then
+            echo "❌ Missing required tool: $tool"
+            exit 1
+          fi
+          echo "✓ $tool found"
+        done
+
+        # Install/Check pre-commit
         if ! command -v pre-commit &> /dev/null; then
           echo "Installing pre-commit..."
           if command -v brew &> /dev/null; then
             brew install pre-commit
           else
-            pip3 install pre-commit || echo "⚠️ Failed to install pre-commit. Please install it manually: https://pre-commit.com/#install"
+            pip3 install pre-commit || echo "⚠️ Failed to install pre-commit automatically. Please install it manually: https://pre-commit.com/#install"
           fi
         else
-          echo "✓ pre-commit already installed"
+          echo "✓ pre-commit found"
         fi
+
+        # Check/Install Python dependencies for agent tools
+        echo "Checking Python dependencies..."
+        if ! python3 -c "import yaml" &> /dev/null; then
+          echo "Installing PyYAML..."
+          pip3 install PyYAML
+        fi
+        echo "✓ PyYAML found"
 
   # ============================================================================
   # GIT HOOKS (optional)

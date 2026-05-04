@@ -1,5 +1,6 @@
 import { MOCK_IDS } from './mock-ids';
 import { type RecipeDto, type ScheduleRecipeDto } from '../src/lib/api/generated/models/index';
+import { type UntypedNode } from '@microsoft/kiota-abstractions';
 
 /**
  * Realistic recipe data extracted from /data/recipes.
@@ -38,7 +39,7 @@ export const REALISTIC_RECIPES: Record<string, RecipeDto> = {
         name: '2. Cuire les galettes',
         text: "Dans une grande poêle, chauffer un filet d'huile à feu moyen-vif. Ajouter les galettes and cook 4-6 min per side.",
       },
-    ] as any,
+    ] as unknown as UntypedNode,
     createdAt: new Date('2026-05-01T12:00:00Z'),
   },
   [MOCK_IDS.RECIPE_CHICKEN]: {
@@ -68,7 +69,83 @@ export const REALISTIC_RECIPES: Record<string, RecipeDto> = {
         name: 'Instructions',
         text: 'Mix marinade, coat chicken, thread onto skewers and grill.',
       },
-    ] as any,
+    ] as unknown as UntypedNode,
+    createdAt: new Date('2026-05-01T12:00:00Z'),
+  },
+  [MOCK_IDS.RECIPE_SPAGHETTI]: {
+    id: MOCK_IDS.RECIPE_SPAGHETTI,
+    name: 'Spaghetti with Toasted Garlic Bread',
+    description: 'Classic spaghetti with marinara sauce served alongside toasted garlic bread.',
+    imageUrl: 'https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb',
+    totalTime: 'PT30M',
+    difficulty: 'Easy',
+    category: 'Italian',
+    rating: 4.7,
+    isVegetarian: true,
+    isHealthyChoice: false,
+    ingredients: [
+      '400 g spaghetti',
+      '500 ml marinara sauce',
+      '1 loaf Italian bread or baguette',
+      '60 g butter, softened',
+      '4 cloves garlic, minced',
+      '1 tsp dried oregano',
+      '2 tbsp olive oil',
+      'Salt and pepper to taste',
+      'Grated parmesan cheese for serving',
+    ],
+    recipeInstructions: [
+      {
+        '@type': 'HowToSection',
+        name: 'Spaghetti Preparation',
+        itemListElement: [
+          {
+            '@type': 'HowToStep',
+            text: 'Bring a large pot of salted water to a boil and cook the spaghetti according to package instructions until al dente.',
+          },
+          {
+            '@type': 'HowToStep',
+            text: 'While the pasta cooks, warm the marinara sauce in a large skillet over medium heat.',
+          },
+          {
+            '@type': 'HowToStep',
+            text: 'Drain the spaghetti and toss it directly into the skillet with the sauce until well coated.',
+          },
+        ],
+      },
+      {
+        '@type': 'HowToSection',
+        name: 'Garlic Bread Preparation',
+        itemListElement: [
+          {
+            '@type': 'HowToStep',
+            text: 'Preheat your oven to 200°C (400°F).',
+          },
+          {
+            '@type': 'HowToStep',
+            text: 'In a small bowl, mix the softened butter with minced garlic and dried oregano.',
+          },
+          {
+            '@type': 'HowToStep',
+            text: 'Slice the bread into thick rounds or lengthwise, and spread the garlic butter generously over the cut sides.',
+          },
+          {
+            '@type': 'HowToStep',
+            text: 'Place the bread on a baking sheet and toast in the oven for 5 to 8 minutes until the edges are golden brown and crispy.',
+          },
+        ],
+      },
+      {
+        '@type': 'HowToSection',
+        name: 'Serving',
+        itemListElement: [
+          {
+            '@type': 'HowToStep',
+            text: 'Serve the hot spaghetti in bowls topped with parmesan cheese, with the warm garlic bread on the side.',
+          },
+        ],
+      },
+    ] as unknown as UntypedNode,
     createdAt: new Date('2026-05-01T12:00:00Z'),
   },
 };

@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes, toDateStr } from './mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
 
 test.describe('Home Command Center — Planned Recipe Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -34,15 +34,12 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       (url) => url.pathname.includes('/api/schedule') && url.searchParams.get('weekOffset') === '0',
       async (route) => {
         if (route.request().method() === 'GET') {
-          const today = new Date().toISOString().split('T')[0];
+          const monday = currentMonday();
           // Use builders to ensure contract compliance
           const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            // Monday offset logic matching mock-api.ts
-            const day = d.getUTCDay();
-            const offset = day === 0 ? -6 : 1 - day;
-            d.setUTCDate(d.getUTCDate() + offset + i);
-            const dateStr = d.toISOString().split('T')[0];
+            const d = new Date(monday);
+            d.setUTCDate(monday.getUTCDate() + i);
+            const dateStr = toDateStr(d);
 
             return {
               date: dateStr,
@@ -127,18 +124,17 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   // B6: "Order In" with a recipe opens SkipRecoveryDialog before any state change
   test('"Order In" with recipe opens SkipRecoveryDialog before committing', async ({ page }) => {
     // Schedule with a planned recipe for today
-    const today = new Date().toISOString().split('T')[0];
+    const monday = currentMonday();
+    const today = toDateStr(monday);
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
         const reqUrl = new URL(route.request().url());
         if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
           const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            const day = d.getUTCDay();
-            const offset = day === 0 ? -6 : 1 - day;
-            d.setUTCDate(d.getUTCDate() + offset + i);
-            const dateStr = d.toISOString().split('T')[0];
+            const d = new Date(monday);
+            d.setUTCDate(monday.getUTCDate() + i);
+            const dateStr = toDateStr(d);
             return {
               date: dateStr,
               status: 0,
@@ -201,7 +197,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
   // B5 + reload: page reload after "Order In" (no recipe) does not show pivot card
   test('Page reload after "Order In" (no recipe) does not show pivot card', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const monday = currentMonday();
+    const today = toDateStr(monday);
 
     // Track whether "Order In" has been tapped so we can switch the schedule response
     let orderInDone = false;
@@ -221,11 +218,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           } else {
             // After "Order In": return status:3 for today (simulates server state after write)
             const days = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date();
-              const day = d.getUTCDay();
-              const offset = day === 0 ? -6 : 1 - day;
-              d.setUTCDate(d.getUTCDate() + offset + i);
-              const dateStr = d.toISOString().split('T')[0];
+              const d = new Date(monday);
+              d.setUTCDate(monday.getUTCDate() + i);
+              const dateStr = toDateStr(d);
               return { date: dateStr, status: dateStr === today ? 3 : 0, recipe: null };
             });
             await route.fulfill({
@@ -326,13 +321,11 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
         if (route.request().method() === 'GET') {
-          const today = new Date().toISOString().split('T')[0];
+          const monday = currentMonday();
           const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            const day = d.getUTCDay();
-            const offset = day === 0 ? -6 : 1 - day;
-            d.setUTCDate(d.getUTCDate() + offset + i);
-            const dateStr = d.toISOString().split('T')[0];
+            const d = new Date(monday);
+            d.setUTCDate(monday.getUTCDate() + i);
+            const dateStr = toDateStr(d);
 
             return {
               date: dateStr,
@@ -430,7 +423,8 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
   test.skip("Planner Quick Find for today's slot → navigating to home shows TonightMenuCard", async ({
     page,
   }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const monday = currentMonday();
+    const today = toDateStr(monday);
     let assignDone = false;
 
     // Stateful schedule mock: before assign → empty; after assign → today's slot has the recipe
@@ -449,13 +443,11 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
                   locked: false,
                   status: 0,
                   days: Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date();
-                    const day = d.getUTCDay();
-                    const offset = day === 0 ? -6 : 1 - day;
-                    d.setUTCDate(d.getUTCDate() + offset + i);
+                    const d = new Date(monday);
+                    d.setUTCDate(monday.getUTCDate() + i);
                     return {
                       day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-                      date: d.toISOString().split('T')[0],
+                      date: toDateStr(d),
                       recipe: null,
                       status: 0,
                     };
@@ -465,11 +457,9 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
             });
           } else {
             const days = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date();
-              const day = d.getUTCDay();
-              const offset = day === 0 ? -6 : 1 - day;
-              d.setUTCDate(d.getUTCDate() + offset + i);
-              const dateStr = d.toISOString().split('T')[0];
+              const d = new Date(monday);
+              d.setUTCDate(monday.getUTCDate() + i);
+              const dateStr = toDateStr(d);
               return {
                 day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
                 date: dateStr,
@@ -573,7 +563,8 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
   test('Page reload after "Order In" (no recipe) does not show pivot card — post-todayStore refactor', async ({
     page,
   }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const monday = currentMonday();
+    const today = toDateStr(monday);
     let orderInDone = false;
 
     await page.route(
@@ -589,11 +580,9 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
             });
           } else {
             const days = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date();
-              const day = d.getUTCDay();
-              const offset = day === 0 ? -6 : 1 - day;
-              d.setUTCDate(d.getUTCDate() + offset + i);
-              const dateStr = d.toISOString().split('T')[0];
+              const d = new Date(monday);
+              d.setUTCDate(monday.getUTCDate() + i);
+              const dateStr = toDateStr(d);
               return { date: dateStr, status: dateStr === today ? 3 : 0, recipe: null };
             });
             await route.fulfill({
