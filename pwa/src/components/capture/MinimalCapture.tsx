@@ -11,6 +11,7 @@ import {
   Star,
   PenLine,
   Globe,
+  ArrowLeft,
 } from 'lucide-react';
 import { useCapture } from '@/hooks/useCapture';
 import { useFamilyStore } from '@/store/familyStore';
@@ -430,6 +431,14 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
       {showUrlReview && !onSuccess && (
         <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col gap-4">
+            <button
+              type="button"
+              onClick={() => { setShowUrlReview(false); setUrlCaptureError(null); }}
+              className="flex w-fit items-center gap-1 text-sm font-bold uppercase tracking-widest text-charcoal/40 transition-colors hover:text-charcoal"
+            >
+              <ArrowLeft size={14} />
+              Back
+            </button>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-terracotta/10 text-terracotta">
               <Globe size={24} />
             </div>

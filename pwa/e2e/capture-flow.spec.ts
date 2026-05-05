@@ -152,6 +152,25 @@ test.describe('Capture Flow', () => {
     // Should show error message (the default one if extraction fails)
     await expect(page.getByText(/failed to capture url/i)).toBeVisible({ timeout: 10_000 });
   });
+
+  test('malformed 202 with missing recipe id shows error message', async ({ page }) => {
+    const testUrl = 'https://example.com/recipe';
+
+    // Mock a 202 response with no data.id (malformed but non-throwing from the API client)
+    await page.route('**/api/recipes/capture-url', async (route) => {
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: {} }),
+      });
+    });
+
+    await page.goto(`/capture?url=${encodeURIComponent(testUrl)}`);
+
+    await page.getByRole('button', { name: /save recipe/i }).click();
+
+    await expect(page.getByText(/failed to capture url/i)).toBeVisible({ timeout: 10_000 });
+  });
 });
 
 // ---------------------------------------------------------------------------
