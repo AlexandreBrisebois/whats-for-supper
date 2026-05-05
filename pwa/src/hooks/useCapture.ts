@@ -156,8 +156,7 @@ export function useCapture(): UseCaptureReturn {
         }
         return result.id;
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'Failed to capture URL. Please try again.';
+        const message = 'Failed to capture URL. Please try again.';
         setError(message);
         throw new Error(message);
       } finally {
