@@ -99,3 +99,4 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
           GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_API_BASE_URL: "/"

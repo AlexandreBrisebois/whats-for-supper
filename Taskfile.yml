@@ -238,11 +238,24 @@ tasks:
     desc: "🚀 Build images (local by default, set PUSH=true to push)"
     cmds:
       - task: publish:migration
-        vars: { NOCACHE: "{{.NOCACHE}}" }
+        vars:
+          NOCACHE: "{{.NOCACHE}}"
+          PUSH: "{{.PUSH}}"
+          TAG: "{{.TAG}}"
+          PLATFORMS: "{{.PLATFORMS}}"
       - task: publish:api
-        vars: { NOCACHE: "{{.NOCACHE}}" }
+        vars:
+          NOCACHE: "{{.NOCACHE}}"
+          PUSH: "{{.PUSH}}"
+          TAG: "{{.TAG}}"
+          PLATFORMS: "{{.PLATFORMS}}"
       - task: publish:pwa
-        vars: { NOCACHE: "{{.NOCACHE}}" }
+        vars:
+          NOCACHE: "{{.NOCACHE}}"
+          PUSH: "{{.PUSH}}"
+          TAG: "{{.TAG}}"
+          PLATFORMS: "{{.PLATFORMS}}"
+          NEXT_PUBLIC_API_BASE_URL: "{{.NEXT_PUBLIC_API_BASE_URL}}"
       - |
         if [ "{{.PUSH}}" == "true" ]; then
           echo "✓ Version {{.TAG}} pushed to {{.WFS_REGISTRY}}"
