@@ -207,23 +207,22 @@ export default function MinimalCapture({
 
   // ── Success screen ──────────────────────────────────────────────────────────
   if (onSuccess) {
-    const heading = wasUrlCaptured
-      ? t('capture.linkCaptured', 'Link Captured!')
-      : wasPhotoCaptured || wasDescribeCaptured
-        ? t('capture.processing', 'Processing your recipe...')
-        : isGoto
-          ? 'Your GOTO is being prepared'
+    const heading = isGoto
+      ? 'Your GOTO is being prepared'
+      : wasUrlCaptured
+        ? t('capture.linkCaptured', 'Link Captured!')
+        : wasPhotoCaptured || wasDescribeCaptured
+          ? t('capture.processing', 'Recipe captured! Processing...')
           : t('capture.captured', 'Captured!');
 
-    const subtext =
-      wasUrlCaptured || wasPhotoCaptured || wasDescribeCaptured
+    const subtext = isGoto
+      ? "We'll notify you when it's ready on the home screen."
+      : wasUrlCaptured || wasPhotoCaptured || wasDescribeCaptured
         ? t(
             'capture.processingSubtext',
             "We're extracting the ingredients and instructions. We'll notify you when it's ready."
           )
-        : isGoto
-          ? "We'll notify you when it's ready on the home screen."
-          : t('capture.savedInLibrary', 'Your recipe is safe in the library.');
+        : t('capture.savedInLibrary', 'Your recipe is safe in the library.');
 
     const dest = isGoto ? ROUTES.PROFILE_SETTINGS : ROUTES.HOME;
     const btnLabel = isGoto ? 'Back to Settings' : t('capture.backToHome', 'Back to Home');

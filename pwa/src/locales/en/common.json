@@ -41,7 +41,7 @@
     "cameraDenied": "Camera access denied",
     "choosePhotos": "Choose Photos",
     "linkCaptured": "Link Captured!",
-    "processing": "Processing your recipe...",
+    "processing": "Recipe captured! Processing...",
     "processingSubtext": "We're extracting the ingredients and instructions. We'll notify you when it's ready."
   },
   "profile": {

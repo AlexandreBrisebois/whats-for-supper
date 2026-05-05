@@ -262,6 +262,88 @@ components:
         key:   { type: string }
         value: { type: object, additionalProperties: true }
 
+    # --- SSE Stream Events ---
+    # Base discriminated union for all SSE event payloads.
+    # EventSource delivers these as JSON in the `data:` field of each SSE frame.
+    ScheduleStreamEvent:
+      type: object
+      required: [type]
+      discriminator:
+        propertyName: type
+        mapping:
+          connected: '#/components/schemas/ConnectedEvent'
+          slot_updated: '#/components/schemas/SlotUpdatedEvent'
+          week_updated: '#/components/schemas/WeekUpdatedEvent'
+          vote_updated: '#/components/schemas/VoteUpdatedEvent'
+          smart_defaults_updated: '#/components/schemas/SmartDefaultsUpdatedEvent'
+          fill_the_gap_invalidated: '#/components/schemas/FillTheGapInvalidatedEvent'
+          recipe_ready: '#/components/schemas/RecipeReadyEvent'
+      properties:
+        type: { type: string }
+
+    ConnectedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [schedule]
+          properties:
+            schedule: { $ref: '#/components/schemas/ScheduleDays' }
+
+    SlotUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [date, status]
+          properties:
+            date: { type: string, format: date }
+            recipe:
+              oneOf:
+                - $ref: '#/components/schemas/ScheduleRecipeDto'
+                - type: 'null'
+            status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped' }
+
+    WeekUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [schedule]
+          properties:
+            schedule: { $ref: '#/components/schemas/ScheduleDays' }
+
+    VoteUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [recipeId, voteCount]
+          properties:
+            recipeId: { type: string, format: uuid }
+            voteCount: { type: integer }
+
+    SmartDefaultsUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [weekOffset, defaults]
+          properties:
+            weekOffset: { type: integer }
+            defaults: { $ref: '#/components/schemas/SmartDefaultsDto' }
+
+    FillTheGapInvalidatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [weekOffset]
+          properties:
+            weekOffset: { type: integer }
+
+    RecipeReadyEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [recipeId]
+          properties:
+            recipeId: { type: string, format: uuid }
+
     # --- Health ---
     HealthCheckResponse:
       type: object
@@ -380,6 +462,53 @@ components:
         taskCount: { type: integer }
 
 paths:
+  /api/stream:
+    get:
+      summary: Server-Sent Events stream for real-time schedule updates
+      description: >
+        Establishes a persistent SSE connection. Sends a `connected` event with the current
+        schedule snapshot (weekOffset=0) immediately on connect, then pushes events for all
+        schedule mutations. Heartbeat comments (`: ping`) are sent every 15 seconds to prevent
+        proxy timeouts.
+
+        **Auth note**: `EventSource` cannot send custom request headers. Authentication uses
+        the `x-family-member-id` cookie (set during onboarding) and the `h_access` HMAC cookie
+        (validated by HearthAuthenticationHandler). Returns 400 if the `x-family-member-id`
+        cookie is absent.
+      parameters:
+        - name: x-family-member-id
+          in: cookie
+          required: true
+          description: >
+            Family member identity cookie. EventSource cannot send custom headers, so the
+            member ID must be present as a cookie (set during onboarding).
+          schema: { type: string, format: uuid }
+      security: [{ HearthSecret: [] }, { HearthToken: [] }]
+      responses:
+        '200':
+          description: >
+            SSE stream. The response body is a sequence of SSE frames. Each frame carries a
+            JSON payload in the `data:` field matching one of the ScheduleStreamEvent subtypes.
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/ScheduleStreamEvent'
+              examples:
+                connected:
+                  summary: Initial connection event with schedule snapshot
+                  value: "event: connected\ndata: {\"type\":\"connected\",\"schedule\":{\"weekOffset\":0,\"locked\":false,\"status\":0,\"days\":[]}}\n\n"
+                slot_updated:
+                  summary: A single slot was mutated
+                  value: "event: slot_updated\ndata: {\"type\":\"slot_updated\",\"date\":\"2026-05-05\",\"recipe\":null,\"status\":3}\n\n"
+                week_updated:
+                  summary: A week-level mutation (lock, voting open, move)
+                  value: "event: week_updated\ndata: {\"type\":\"week_updated\",\"schedule\":{\"weekOffset\":0,\"locked\":true,\"status\":2,\"days\":[]}}\n\n"
+                heartbeat:
+                  summary: Heartbeat comment to keep the connection alive
+                  value: ": ping\n\n"
+        '400':
+          description: Missing or invalid `x-family-member-id` cookie
+
   /api/health:
     get:
       summary: Health check

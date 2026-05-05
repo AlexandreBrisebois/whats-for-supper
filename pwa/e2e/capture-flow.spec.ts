@@ -539,6 +539,8 @@ test.describe('Settings — GOTO pending state', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
+    await setupCommonRoutes(page);
+
     await page.route('**/api/family', async (route) => {
       await route.fulfill({
         status: 200,

@@ -190,7 +190,9 @@ describe('MinimalCapture — preservation unit tests', () => {
     expect(mockPush).not.toHaveBeenCalled();
 
     // The success heading must be visible
-    expect(screen.getByText(/processing your recipe/i)).toBeTruthy();
+    expect(screen.getByTestId('capture-success-heading').textContent).toMatch(
+      /your goto is being prepared/i
+    );
   });
 
   /**
@@ -209,9 +211,10 @@ describe('MinimalCapture — preservation unit tests', () => {
     // On unfixed code: heading may be briefly rendered then unmounted.
     // On fixed code: heading is always visible.
     // We assert the heading text is correct when it appears.
-    const heading = screen.queryByText(/processing your recipe/i);
+    const heading = screen.queryByTestId('capture-success-heading');
     if (heading) {
       expect(heading.tagName.toLowerCase()).toBe('h2');
+      expect(heading.textContent).toMatch(/your goto is being prepared/i);
     }
     // The structural invariant: if the heading renders, it must say the right thing.
     // This passes on both unfixed and fixed code.
@@ -332,9 +335,9 @@ describe('MinimalCapture — property-based preservation tests', () => {
         // isGoto is always true for this property (isBugConditionC)
         fc.constant(true),
         (_recipeName, isGoto) => {
-          // Structural invariant: when isGoto=true and it's a describe capture, heading is "Processing your recipe..."
-          const heading = isGoto ? 'Processing your recipe...' : 'Captured!';
-          expect(heading).toBe('Processing your recipe...');
+          // Structural invariant: when isGoto=true and it's a describe capture, heading is "Your GOTO is being prepared"
+          const heading = isGoto ? 'Your GOTO is being prepared' : 'Captured!';
+          expect(heading).toBe('Your GOTO is being prepared');
 
           // Structural invariant: when isGoto=true, button label is "Back to Settings"
           const btnLabel = isGoto ? 'Back to Settings' : 'Back to Home';

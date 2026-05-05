@@ -38,7 +38,7 @@ These gaps were identified in a Tracer Bullet review before coding begins. Each 
 
 ### Group A — Contract & Infrastructure
 
-- [ ] 1. Add SSE event schemas and `/api/stream` endpoint to `specs/openapi.yaml`
+- [x] 1. Add SSE event schemas and `/api/stream` endpoint to `specs/openapi.yaml`
   - Add `ScheduleStreamEvent`, `SlotUpdatedEvent`, `WeekUpdatedEvent`, `VoteUpdatedEvent`, `SmartDefaultsUpdatedEvent`, `FillTheGapInvalidatedEvent`, `RecipeReadyEvent` to `components/schemas`
   - Add `GET /api/stream` path with `text/event-stream` response and `X-Family-Member-Id` cookie param (not header — EventSource cannot send custom headers)
   - Run `task agent:reconcile` — verify Kiota generates no breaking changes to existing types
