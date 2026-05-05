@@ -36,7 +36,7 @@ public class WorkflowOrchestratorTests : IDisposable
     }
 
     [Fact]
-    public void GetDefinition_ValidYaml_ReturnsDefinition()
+    public async Task GetDefinitionAsync_ValidYaml_ReturnsDefinition()
     {
         // Arrange
         var yaml = @"
@@ -47,10 +47,10 @@ tasks:
     processor: ExtractRecipe
     payload: { recipe_id: ""{{recipe_id}}"" }
 ";
-        _storage.SaveAsync("workflows", "test_workflow.yaml", yaml).GetAwaiter().GetResult();
+        await _storage.SaveAsync("workflows", "test_workflow.yaml", yaml);
 
         // Act
-        var definition = _orchestrator.GetDefinition("test_workflow");
+        var definition = await _orchestrator.GetDefinitionAsync("test_workflow");
 
         // Assert
         Assert.Equal("test_workflow", definition.Name);
@@ -61,7 +61,7 @@ tasks:
     }
 
     [Fact]
-    public void GetDefinition_CircularDependency_ThrowsInvalidWorkflowException()
+    public async Task GetDefinitionAsync_CircularDependency_ThrowsInvalidWorkflowException()
     {
         // Arrange
         var yaml = @"
@@ -74,15 +74,15 @@ tasks:
     depends_on: [a]
     processor: dummy
 ";
-        _storage.SaveAsync("workflows", "circular.yaml", yaml).GetAwaiter().GetResult();
+        await _storage.SaveAsync("workflows", "circular.yaml", yaml);
 
         // Act & Assert
-        var ex = Assert.Throws<InvalidWorkflowException>(() => _orchestrator.GetDefinition("circular"));
+        var ex = await Assert.ThrowsAsync<InvalidWorkflowException>(() => _orchestrator.GetDefinitionAsync("circular"));
         Assert.Contains("Circular dependency", ex.Message);
     }
 
     [Fact]
-    public void GetDefinition_MissingDependency_ThrowsInvalidWorkflowException()
+    public async Task GetDefinitionAsync_MissingDependency_ThrowsInvalidWorkflowException()
     {
         // Arrange
         var yaml = @"
@@ -92,15 +92,15 @@ tasks:
     depends_on: [ghost]
     processor: dummy
 ";
-        _storage.SaveAsync("workflows", "missing_dep.yaml", yaml).GetAwaiter().GetResult();
+        await _storage.SaveAsync("workflows", "missing_dep.yaml", yaml);
 
         // Act & Assert
-        var ex = Assert.Throws<InvalidWorkflowException>(() => _orchestrator.GetDefinition("missing_dep"));
+        var ex = await Assert.ThrowsAsync<InvalidWorkflowException>(() => _orchestrator.GetDefinitionAsync("missing_dep"));
         Assert.Contains("depends on non-existent task 'ghost'", ex.Message);
     }
 
     [Fact]
-    public void GetDefinition_UndefinedParameter_ThrowsInvalidWorkflowException()
+    public async Task GetDefinitionAsync_UndefinedParameter_ThrowsInvalidWorkflowException()
     {
         // Arrange
         var yaml = @"
@@ -111,10 +111,10 @@ tasks:
     processor: dummy
     payload: { val: ""{{ghost}}"" }
 ";
-        _storage.SaveAsync("workflows", "undefined_param.yaml", yaml).GetAwaiter().GetResult();
+        await _storage.SaveAsync("workflows", "undefined_param.yaml", yaml);
 
         // Act & Assert
-        var ex = Assert.Throws<InvalidWorkflowException>(() => _orchestrator.GetDefinition("undefined_param"));
+        var ex = await Assert.ThrowsAsync<InvalidWorkflowException>(() => _orchestrator.GetDefinitionAsync("undefined_param"));
         Assert.Contains("uses undefined parameter '{{ghost}}'", ex.Message);
     }
 

@@ -4,37 +4,47 @@
 // @ts-ignore
 import { RemoveRequestBuilderRequestsMetadata, type RemoveRequestBuilder } from './remove/index';
 // @ts-ignore
-import { type ValidateRequestBuilder, ValidateRequestBuilderRequestsMetadata } from './validate/index';
+import {
+  type ValidateRequestBuilder,
+  ValidateRequestBuilderRequestsMetadata,
+} from './validate/index';
 // @ts-ignore
-import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata } from '@microsoft/kiota-abstractions';
+import {
+  type BaseRequestBuilder,
+  type KeysToExcludeForNavigationMetadata,
+  type NavigationMetadata,
+} from '@microsoft/kiota-abstractions';
 
 /**
  * Builds and executes requests for operations under /api/schedule/day/{date}
  */
 export interface WithDateItemRequestBuilder extends BaseRequestBuilder<WithDateItemRequestBuilder> {
-    /**
-     * The remove property
-     */
-    get remove(): RemoveRequestBuilder;
-    /**
-     * The validate property
-     */
-    get validate(): ValidateRequestBuilder;
+  /**
+   * The remove property
+   */
+  get remove(): RemoveRequestBuilder;
+  /**
+   * The validate property
+   */
+  get validate(): ValidateRequestBuilder;
 }
 /**
  * Uri template for the request builder.
  */
-export const WithDateItemRequestBuilderUriTemplate = "{+baseurl}/api/schedule/day/{date}";
+export const WithDateItemRequestBuilderUriTemplate = '{+baseurl}/api/schedule/day/{date}';
 /**
  * Metadata for all the navigation properties in the request builder.
  */
-export const WithDateItemRequestBuilderNavigationMetadata: Record<Exclude<keyof WithDateItemRequestBuilder, KeysToExcludeForNavigationMetadata>, NavigationMetadata> = {
-    remove: {
-        requestsMetadata: RemoveRequestBuilderRequestsMetadata,
-    },
-    validate: {
-        requestsMetadata: ValidateRequestBuilderRequestsMetadata,
-    },
+export const WithDateItemRequestBuilderNavigationMetadata: Record<
+  Exclude<keyof WithDateItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
+  NavigationMetadata
+> = {
+  remove: {
+    requestsMetadata: RemoveRequestBuilderRequestsMetadata,
+  },
+  validate: {
+    requestsMetadata: ValidateRequestBuilderRequestsMetadata,
+  },
 };
 /* tslint:enable */
 /* eslint-enable */

@@ -132,6 +132,21 @@ test.describe('Capture Flow', () => {
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
   });
 
+  test('navigating with text param containing a URL should show the review form', async ({ page }) => {
+    const testUrl = 'https://www.seriouseats.com/recipes/2012/02/the-best-lasagna-recipe.html';
+    const sharedText = `Check out this recipe: ${testUrl}`;
+
+    // Navigate to capture with text (simulates some Android share behaviors)
+    await page.goto(`/capture?text=${encodeURIComponent(sharedText)}`);
+
+    // EXPECTATION: The app should recognize the URL in the text and show the review form
+    await expect(page.getByText('Review your link')).toBeVisible({ timeout: 5000 });
+
+    // Check the URL input specifically
+    const urlTextarea = page.getByPlaceholder(/paste a recipe link/i);
+    await expect(urlTextarea).toHaveValue(testUrl);
+  });
+
   test('failed URL capture shows error message', async ({ page }) => {
     const testUrl = 'https://invalid-recipe.com';
 

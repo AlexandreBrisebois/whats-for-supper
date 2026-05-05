@@ -9,7 +9,7 @@ function walkDir(dir, callback) {
   });
 }
 
-const targetDir = process.env.KIOTA_TARGET_DIR 
+const targetDir = process.env.KIOTA_TARGET_DIR
   ? path.resolve(process.env.KIOTA_TARGET_DIR)
   : path.resolve(__dirname, '../src/lib/api/generated');
 

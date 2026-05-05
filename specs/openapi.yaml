@@ -63,6 +63,9 @@ components:
         rating: { type: integer }
         isVegetarian: { type: boolean }
         isHealthyChoice: { type: boolean }
+        isDiscoverable: { type: boolean }
+        notes: { type: [string, 'null'] }
+        sourceUrl: { type: [string, 'null'] }
         addedBy: { type: [string, 'null'], format: uuid }
         ingredients:
           type: [array, 'null']

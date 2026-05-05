@@ -10,6 +10,9 @@ public class RecipeDto
     [JsonPropertyName("rating")]
     public int? Rating { get; set; }
 
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
+
     [JsonPropertyName("addedBy")]
     public Guid? AddedBy { get; set; }
 
@@ -29,6 +32,9 @@ public class RecipeDto
     [JsonPropertyName("totalTime")]
     public string? TotalTime { get; set; }
 
+    [JsonPropertyName("sourceUrl")]
+    public string? SourceUrl { get; set; }
+
     [JsonPropertyName("category")]
     public string? Category { get; set; }
 
@@ -40,6 +46,9 @@ public class RecipeDto
 
     [JsonPropertyName("isHealthyChoice")]
     public bool? IsHealthyChoice { get; set; }
+
+    [JsonPropertyName("isDiscoverable")]
+    public bool? IsDiscoverable { get; set; }
 
     [JsonPropertyName("ingredients")]
     public List<string>? Ingredients { get; set; }

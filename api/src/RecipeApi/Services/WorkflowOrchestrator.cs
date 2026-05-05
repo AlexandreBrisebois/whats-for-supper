@@ -25,20 +25,20 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
         var yaml = await workflowRepository.GetWorkflowYamlAsync(workflowId);
         var definition = _deserializer.Deserialize<WorkflowDefinition>(yaml);
 
+        if (definition == null)
+        {
+            throw new InvalidWorkflowException($"Workflow definition {workflowId}.yaml is empty or invalid.");
+        }
+
         ValidateDefinition(definition);
 
         return definition;
     }
 
-    public WorkflowDefinition GetDefinition(string workflowId)
-    {
-        // For synchronous compatibility, though async is preferred
-        return GetDefinitionAsync(workflowId).GetAwaiter().GetResult();
-    }
 
     public async Task<WorkflowInstance> TriggerAsync(string workflowId, Dictionary<string, string> parameters)
     {
-        var definition = GetDefinition(workflowId);
+        var definition = await GetDefinitionAsync(workflowId);
 
         // Validate that all required parameters are provided
         foreach (var param in definition.Parameters)

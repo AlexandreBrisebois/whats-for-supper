@@ -97,7 +97,16 @@ public class SyncRecipeProcessor(
             recipe.Name = recipeInfo.Name;
         }
 
+        // SourceUrl in recipe.info takes precedence
+        if (!string.IsNullOrWhiteSpace(recipeInfo.SourceUrl))
+        {
+            recipe.SourceUrl = recipeInfo.SourceUrl;
+        }
+
         recipe.Difficulty = discoveryService.InferDifficulty(recipeData);
+        recipe.ImageCount = recipeInfo.ImageCount;
+        recipe.IsSynthesized = recipeInfo.IsSynthesized;
+        recipe.IsDiscoverable = recipeInfo.IsDiscoverable;
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);

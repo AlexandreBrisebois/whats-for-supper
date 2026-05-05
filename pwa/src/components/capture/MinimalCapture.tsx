@@ -27,9 +27,25 @@ interface MinimalCaptureProps {
   mode?: string;
   /** URL passed from server component searchParams (more reliable than useSearchParams for initial load) */
   initialUrl?: string;
+  /** Title passed from server component searchParams */
+  initialTitle?: string;
+  /** Text passed from server component searchParams */
+  initialText?: string;
 }
 
-export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCaptureProps) {
+function extractUrl(text: string | null): string | null {
+  if (!text) return null;
+  const match = text.match(/https?:\/\/[^\s]+/);
+  return match ? match[0] : null;
+}
+
+export default function MinimalCapture({
+  intent,
+  mode,
+  initialUrl,
+  initialTitle,
+  initialText,
+}: MinimalCaptureProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { saveSetting } = useFamilyStore();
@@ -55,7 +71,11 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
 
   // Shared content from manifest or props
   const sharedUrl = initialUrl || searchParams.get('url');
-  const sharedText = searchParams.get('text');
+  const sharedText = initialText || searchParams.get('text');
+  const sharedTitle = initialTitle || searchParams.get('title');
+
+  // If no direct URL, try to extract one from text
+  const extractedUrl = sharedUrl || extractUrl(sharedText);
 
   // URL-capture specific state
   const [isUrlCapturing, setIsUrlCapturing] = useState(false);
@@ -67,11 +87,11 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
   const [describeText, setDescribeText] = useState('');
   const [isDescribing, setIsDescribing] = useState(false);
   const [describeError, setDescribeError] = useState<string | null>(null);
-  const [urlInput, setUrlInput] = useState(sharedUrl || '');
+  const [urlInput, setUrlInput] = useState(extractedUrl || '');
 
   const [onSuccess, setOnSuccess] = useState(false);
   const [showDescribe, setShowDescribe] = useState(mode === 'describe');
-  const [showUrlReview, setShowUrlReview] = useState(!!sharedUrl);
+  const [showUrlReview, setShowUrlReview] = useState(!!extractedUrl);
 
   const isGoto = intent === 'goto';
 

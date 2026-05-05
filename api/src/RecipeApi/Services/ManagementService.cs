@@ -53,6 +53,7 @@ public class ManagementService(
                 existing.TotalTime = recipe.TotalTime;
                 existing.LastCookedDate = recipe.LastCookedDate;
                 existing.IsSynthesized = recipe.IsSynthesized;
+                existing.SourceUrl = recipe.SourceUrl;
                 await recipeStore.WriteInfoAsync(existing);
             }
             else
@@ -74,7 +75,8 @@ public class ManagementService(
                     IsVegetarian = recipe.IsVegetarian,
                     Difficulty = recipe.Difficulty,
                     TotalTime = recipe.TotalTime,
-                    LastCookedDate = recipe.LastCookedDate
+                    LastCookedDate = recipe.LastCookedDate,
+                    SourceUrl = recipe.SourceUrl
                 });
             }
 
@@ -203,7 +205,8 @@ public class ManagementService(
                             IsVegetarian = info.IsVegetarian,
                             Difficulty = info.Difficulty,
                             TotalTime = info.TotalTime,
-                            LastCookedDate = info.LastCookedDate
+                            LastCookedDate = info.LastCookedDate,
+                            SourceUrl = info.SourceUrl
                         };
                     }
                 }
@@ -327,6 +330,7 @@ public class ManagementService(
                     existing.IsVegetarian = recipe.IsVegetarian;
                     existing.Difficulty = recipe.Difficulty;
                     existing.LastCookedDate = recipe.LastCookedDate;
+                    existing.SourceUrl = recipe.SourceUrl;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
                 }

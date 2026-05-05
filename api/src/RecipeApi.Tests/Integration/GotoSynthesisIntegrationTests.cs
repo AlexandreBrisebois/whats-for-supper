@@ -210,6 +210,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Complete Recipe",
             ImageCount = 5,
+            IsDiscoverable = true,
             CreatedAt = originalUpdatedAt,
             UpdatedAt = originalUpdatedAt
         });

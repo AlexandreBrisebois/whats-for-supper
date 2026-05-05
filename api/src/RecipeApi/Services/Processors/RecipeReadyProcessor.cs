@@ -45,12 +45,19 @@ public class RecipeReadyProcessor(
         var isReady = (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0)
                    || (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.IsSynthesized);
 
-        if (!isReady)
+        if (isReady && !recipe.IsDiscoverable)
+        {
+            recipe.IsDiscoverable = true;
+            recipe.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("RecipeReady: recipe {RecipeId} is now discoverable.", recipeId);
+        }
+        else
         {
             logger.LogWarning("RecipeReady: recipe {RecipeId} is not ready — Name={Name}, ImageCount={ImageCount}, IsSynthesized={IsSynthesized}",
                 recipeId, recipe.Name, recipe.ImageCount, recipe.IsSynthesized);
         }
 
-        return new { Message = $"Processed recipe {recipeId} readiness check." };
+        return new { Message = $"Processed recipe {recipeId} readiness check. Ready: {isReady}" };
     }
 }

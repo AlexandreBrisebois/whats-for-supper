@@ -24,6 +24,7 @@ CREATE TABLE recipes (
     description text,
     name text,
     total_time text,
+    source_url text,
     image_count integer DEFAULT 0 NOT NULL,
     is_synthesized boolean DEFAULT false NOT NULL,
     is_discoverable boolean NOT NULL,

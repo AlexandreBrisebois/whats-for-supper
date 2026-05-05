@@ -10,7 +10,8 @@ public class RecipeService(
     RecipeDbContext db,
     IValidationService validation,
     ImageService images,
-    IWorkflowOrchestrator orchestrator)
+    IWorkflowOrchestrator orchestrator,
+    ILogger<RecipeService> logger)
 {
     /// <summary>
     /// Creates a new recipe from a multipart upload.
@@ -91,9 +92,11 @@ public class RecipeService(
         {
             Id = r.Id,
             Rating = (int)r.Rating,
+            Notes = r.Notes,
             AddedBy = r.AddedBy,
             Name = r.Name,
             TotalTime = r.TotalTime,
+            SourceUrl = r.SourceUrl,
             Description = r.Description,
             Category = r.Category,
             Difficulty = r.Difficulty,
@@ -103,6 +106,7 @@ public class RecipeService(
             RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
             IsVegetarian = r.IsVegetarian,
             IsHealthyChoice = r.IsHealthyChoice,
+            IsDiscoverable = r.IsDiscoverable,
             CreatedAt = r.CreatedAt
         }).ToList();
 
@@ -132,9 +136,11 @@ public class RecipeService(
             {
                 Id = recipe.Id,
                 Rating = (int)recipe.Rating,
+                Notes = recipe.Notes,
                 AddedBy = recipe.AddedBy,
                 Name = recipe.Name,
                 TotalTime = recipe.TotalTime,
+                SourceUrl = recipe.SourceUrl,
                 Description = recipe.Description,
                 Category = recipe.Category,
                 Difficulty = recipe.Difficulty,
@@ -142,6 +148,9 @@ public class RecipeService(
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 Ingredients = DeserializeIngredients(recipe.Ingredients),
                 RecipeInstructions = ExtractRecipeInstructions(recipe.RawMetadata),
+                IsVegetarian = recipe.IsVegetarian,
+                IsHealthyChoice = recipe.IsHealthyChoice,
+                IsDiscoverable = recipe.IsDiscoverable,
                 CreatedAt = recipe.CreatedAt
             }
         };
@@ -181,9 +190,11 @@ public class RecipeService(
             {
                 Id = recipe.Id,
                 Rating = (int)recipe.Rating,
+                Notes = recipe.Notes,
                 AddedBy = recipe.AddedBy,
                 Name = recipe.Name,
                 TotalTime = recipe.TotalTime,
+                SourceUrl = recipe.SourceUrl,
                 Description = recipe.Description,
                 Category = recipe.Category,
                 Difficulty = recipe.Difficulty,
@@ -191,6 +202,9 @@ public class RecipeService(
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 Ingredients = DeserializeIngredients(recipe.Ingredients),
                 RecipeInstructions = ExtractRecipeInstructions(recipe.RawMetadata),
+                IsVegetarian = recipe.IsVegetarian,
+                IsHealthyChoice = recipe.IsHealthyChoice,
+                IsDiscoverable = recipe.IsDiscoverable,
                 CreatedAt = recipe.CreatedAt
             }
         };
@@ -242,19 +256,25 @@ public class RecipeService(
         }
         catch (Exception ex)
         {
-            // Log but don't fail the request — the caller can poll GET /status
-            // and the workflow can be re-triggered manually if needed.
-            _ = ex; // suppress unused-variable warning; real apps would log here
+            logger.LogError(ex, "Failed to trigger goto-synthesis workflow for recipe {RecipeId}", recipeId);
         }
 
         return new RecipeDto
         {
             Id = recipe.Id,
             Name = recipe.Name,
+            TotalTime = recipe.TotalTime,
+            SourceUrl = recipe.SourceUrl,
             Description = recipe.Description,
             ImageUrl = null,
             Images = [],
+            Ingredients = [],
+            RecipeInstructions = null,
             Rating = (int)recipe.Rating,
+            Notes = recipe.Notes,
+            IsVegetarian = recipe.IsVegetarian,
+            IsHealthyChoice = recipe.IsHealthyChoice,
+            IsDiscoverable = recipe.IsDiscoverable,
             CreatedAt = recipe.CreatedAt
         };
     }
@@ -273,6 +293,7 @@ public class RecipeService(
             Id = recipeId,
             Name = "Captured Recipe", // Placeholder until extraction
             Notes = dto.Notes,
+            SourceUrl = dto.Url,
             Rating = (RecipeRating)(dto.Rating ?? 0),
             ImageCount = 0,
             IsDiscoverable = false,
@@ -291,8 +312,10 @@ public class RecipeService(
             Rating = (RecipeRating)(dto.Rating ?? 0),
             ImageCount = 0,
             AddedBy = familyMemberId,
+            SourceUrl = dto.Url,
             CreatedAt = now
         });
+        logger.LogInformation("Wrote initial recipe.info for recipe {RecipeId} to disk.", recipeId);
 
         await db.SaveChangesAsync();
 
@@ -307,8 +330,7 @@ public class RecipeService(
         }
         catch (Exception ex)
         {
-            // Log but don't fail
-            _ = ex;
+            logger.LogError(ex, "Failed to trigger url-import workflow for recipe {RecipeId} (URL: {Url})", recipeId, dto.Url);
         }
 
         return recipeId;

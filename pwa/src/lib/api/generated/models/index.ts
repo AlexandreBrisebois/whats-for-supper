@@ -589,11 +589,14 @@ export function deserializeIntoRecipeDto(recipeDto: Partial<RecipeDto> | undefin
         "images": n => { recipeDto.images = n.getCollectionOfPrimitiveValues<number>(); },
         "imageUrl": n => { recipeDto.imageUrl = n.getStringValue(); },
         "ingredients": n => { recipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>(); },
+        "isDiscoverable": n => { recipeDto.isDiscoverable = n.getBooleanValue(); },
         "isHealthyChoice": n => { recipeDto.isHealthyChoice = n.getBooleanValue(); },
         "isVegetarian": n => { recipeDto.isVegetarian = n.getBooleanValue(); },
         "name": n => { recipeDto.name = n.getStringValue(); },
+        "notes": n => { recipeDto.notes = n.getStringValue(); },
         "rating": n => { recipeDto.rating = n.getNumberValue(); },
         "recipeInstructions": n => { recipeDto.recipeInstructions = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "sourceUrl": n => { recipeDto.sourceUrl = n.getStringValue(); },
         "totalTime": n => { recipeDto.totalTime = n.getStringValue(); },
     }
 }
@@ -1100,6 +1103,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
      */
     ingredients?: string[] | null;
     /**
+     * The isDiscoverable property
+     */
+    isDiscoverable?: boolean | null;
+    /**
      * The isHealthyChoice property
      */
     isHealthyChoice?: boolean | null;
@@ -1112,6 +1119,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
      */
     name?: string | null;
     /**
+     * The notes property
+     */
+    notes?: string | null;
+    /**
      * The rating property
      */
     rating?: number | null;
@@ -1119,6 +1130,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
      * Parsed recipe instructions (string array or HowToStep objects)
      */
     recipeInstructions?: UntypedNode | null;
+    /**
+     * The sourceUrl property
+     */
+    sourceUrl?: string | null;
     /**
      * The totalTime property
      */
@@ -1485,11 +1500,14 @@ export function serializeRecipeDto(writer: SerializationWriter, recipeDto: Parti
     writer.writeCollectionOfPrimitiveValues<number>("images", recipeDto.images);
     writer.writeStringValue("imageUrl", recipeDto.imageUrl);
     writer.writeCollectionOfPrimitiveValues<string>("ingredients", recipeDto.ingredients);
+    writer.writeBooleanValue("isDiscoverable", recipeDto.isDiscoverable);
     writer.writeBooleanValue("isHealthyChoice", recipeDto.isHealthyChoice);
     writer.writeBooleanValue("isVegetarian", recipeDto.isVegetarian);
     writer.writeStringValue("name", recipeDto.name);
+    writer.writeStringValue("notes", recipeDto.notes);
     writer.writeNumberValue("rating", recipeDto.rating);
     writer.writeObjectValue("recipeInstructions", recipeDto.recipeInstructions);
+    writer.writeStringValue("sourceUrl", recipeDto.sourceUrl);
     writer.writeStringValue("totalTime", recipeDto.totalTime);
     writer.writeAdditionalData(recipeDto.additionalData);
 }
