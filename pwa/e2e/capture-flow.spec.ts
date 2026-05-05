@@ -132,8 +132,7 @@ test.describe('Capture Flow', () => {
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
   });
 
-  // TODO: mock conflict with setupCommonRoutes capture-url route; revisit when URL capture SSE flow is implemented
-  test.skip('failed URL capture shows error message', async ({ page }) => {
+  test('failed URL capture shows error message', async ({ page }) => {
     const testUrl = 'https://invalid-recipe.com';
 
     // Mock failure for this specific test
@@ -151,7 +150,26 @@ test.describe('Capture Flow', () => {
     await page.getByRole('button', { name: /save recipe/i }).click();
 
     // Should show error message (the default one if extraction fails)
-    await expect(page.getByText(/failed to capture/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/failed to capture url/i)).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('malformed 202 with missing recipe id shows error message', async ({ page }) => {
+    const testUrl = 'https://example.com/recipe';
+
+    // Mock a 202 response with no data.id (malformed but non-throwing from the API client)
+    await page.route('**/api/recipes/capture-url', async (route) => {
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: {} }),
+      });
+    });
+
+    await page.goto(`/capture?url=${encodeURIComponent(testUrl)}`);
+
+    await page.getByRole('button', { name: /save recipe/i }).click();
+
+    await expect(page.getByText(/failed to capture url/i)).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -205,6 +223,32 @@ test.describe('Capture — initial state rendering', () => {
 
     // Describe_Form (recipe name input) is NOT present
     await expect(page.getByPlaceholder(/our family spaghetti/i)).not.toBeVisible();
+
+    // "Or add from a link" button is visible
+    await expect(page.getByRole('button', { name: /or add from a link/i })).toBeVisible();
+  });
+
+  test('clicking "Or add from a link" shows the URL review form', async ({ page }) => {
+    await page.goto('/capture');
+
+    await page.getByRole('button', { name: /or add from a link/i }).click();
+
+    await expect(page.getByText('Review your link')).toBeVisible();
+    await expect(page.getByPlaceholder(/paste a recipe link/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /save recipe/i })).toBeVisible();
+  });
+
+  test('clicking Back from URL review form returns to capture controls', async ({ page }) => {
+    await page.goto('/capture');
+
+    await page.getByRole('button', { name: /or add from a link/i }).click();
+    await expect(page.getByText('Review your link')).toBeVisible();
+
+    await page.getByRole('button', { name: /back/i }).click();
+
+    await expect(page.getByText('Review your link')).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /or add from a link/i })).toBeVisible();
   });
 });
 
