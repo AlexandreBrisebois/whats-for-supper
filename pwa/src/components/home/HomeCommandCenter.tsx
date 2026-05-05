@@ -33,6 +33,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [showRecovery, setShowRecovery] = useState(false);
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [recoveryIntent, setRecoveryIntent] = useState<'order_in' | 'pick_else' | null>(null);
+  const [pendingRecipe, setPendingRecipe] = useState<any>(null);
   const [cookedDismissed, setCookedDismissed] = useState(false);
   const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null);
   const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
@@ -176,7 +177,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           // Do NOT close recovery dialog; let Step 2 handle rescheduling
         } else if (action === 'pick_else') {
           setRecoveryIntent('pick_else');
-          // Do NOT close recovery dialog; let Step 2 handle rescheduling
+          setShowRecovery(false);
+          setShowQuickFind(true);
         } else if (action === 'tomorrow') {
           // Reschedule tonight's meal to tomorrow
           await apiClient.api.schedule.move.post({
@@ -186,13 +188,14 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             intent: 'push',
           });
 
-          setShowRecovery(false);
-          sync();
-
-          // If they intended to pick something else, open the tool now
-          if (recoveryIntent === 'pick_else') {
-            setShowQuickFind(true);
+          if (recoveryIntent === 'pick_else' && pendingRecipe) {
+            assignRecipe(pendingRecipe);
           }
+
+          setShowRecovery(false);
+          setRecoveryIntent(null);
+          setPendingRecipe(null);
+          sync();
         } else if (action === 'next_week') {
           await apiClient.api.schedule.move.post({
             weekOffset: 0,
@@ -201,29 +204,39 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             targetWeekOffset: 1,
             intent: 'push',
           });
-          setShowRecovery(false);
-          sync();
-          if (recoveryIntent === 'pick_else') {
-            setShowQuickFind(true);
+          if (recoveryIntent === 'pick_else' && pendingRecipe) {
+            assignRecipe(pendingRecipe);
           }
+          setShowRecovery(false);
+          setRecoveryIntent(null);
+          setPendingRecipe(null);
+          sync();
         } else if (action === 'drop') {
           await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
-          setShowRecovery(false);
-          sync();
-          if (recoveryIntent === 'pick_else') {
-            setShowQuickFind(true);
+          if (recoveryIntent === 'pick_else' && pendingRecipe) {
+            assignRecipe(pendingRecipe);
           }
+          setShowRecovery(false);
+          setRecoveryIntent(null);
+          setPendingRecipe(null);
+          sync();
         }
       } catch (error) {
         console.error('Failed recovery action:', error);
       }
     },
-    [markOrderedIn, sync, recoveryIntent]
+    [markOrderedIn, sync, recoveryIntent, pendingRecipe, assignRecipe]
   );
 
   const handleQuickFindSelect = async (recipe: any) => {
     setShowQuickFind(false);
-    assignRecipe({ id: recipe.id, name: recipe.name ?? null, image: recipe.image ?? '' });
+    if (!recipe) return;
+    if (recoveryIntent === 'pick_else') {
+      setPendingRecipe(recipe);
+      setShowRecovery(true);
+    } else {
+      assignRecipe({ id: recipe.id, name: recipe.name ?? null, image: recipe.image ?? '' });
+    }
   };
 
   return (
@@ -338,7 +351,12 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         {showRecovery && (
           <SkipRecoveryDialog
             isOpen={showRecovery}
-            onClose={() => setShowRecovery(false)}
+            initialStep={pendingRecipe ? 2 : 1}
+            onClose={() => {
+              setShowRecovery(false);
+              setRecoveryIntent(null);
+              setPendingRecipe(null);
+            }}
             onAction={handleRecoveryAction}
           />
         )}

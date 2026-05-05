@@ -4,35 +4,28 @@
 // @ts-ignore
 import { type VoteRequestBuilder, VoteRequestBuilderRequestsMetadata } from './vote/index';
 // @ts-ignore
-import {
-  type BaseRequestBuilder,
-  type KeysToExcludeForNavigationMetadata,
-  type NavigationMetadata,
-} from '@microsoft/kiota-abstractions';
+import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata } from '@microsoft/kiota-abstractions';
 
 /**
  * Builds and executes requests for operations under /api/discovery/{id}
  */
 export interface DiscoveryItemRequestBuilder extends BaseRequestBuilder<DiscoveryItemRequestBuilder> {
-  /**
-   * The vote property
-   */
-  get vote(): VoteRequestBuilder;
+    /**
+     * The vote property
+     */
+    get vote(): VoteRequestBuilder;
 }
 /**
  * Uri template for the request builder.
  */
-export const DiscoveryItemRequestBuilderUriTemplate = '{+baseurl}/api/discovery/{id}';
+export const DiscoveryItemRequestBuilderUriTemplate = "{+baseurl}/api/discovery/{id}";
 /**
  * Metadata for all the navigation properties in the request builder.
  */
-export const DiscoveryItemRequestBuilderNavigationMetadata: Record<
-  Exclude<keyof DiscoveryItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
-  NavigationMetadata
-> = {
-  vote: {
-    requestsMetadata: VoteRequestBuilderRequestsMetadata,
-  },
+export const DiscoveryItemRequestBuilderNavigationMetadata: Record<Exclude<keyof DiscoveryItemRequestBuilder, KeysToExcludeForNavigationMetadata>, NavigationMetadata> = {
+    vote: {
+        requestsMetadata: VoteRequestBuilderRequestsMetadata,
+    },
 };
 /* tslint:enable */
 /* eslint-enable */

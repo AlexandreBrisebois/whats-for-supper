@@ -20,6 +20,7 @@ export function StoreInitializer({ familyMembers }: StoreInitializerProps) {
     if (!initialized.current) {
       useFamilyStore.setState({
         familyMembers,
+        hasLoaded: true,
       });
       initialized.current = true;
     }

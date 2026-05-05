@@ -208,8 +208,8 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
                   ? 'bg-white/20 text-white/40 cursor-not-allowed'
                   : 'bg-white text-ochre shadow-ochre/40'
               )}
-              onClick={() => !isNudgeCard && onSelect(currentRecipe)}
-              disabled={isLoading || isNudgeCard}
+              onClick={() => !isNudgeCard && currentRecipe && onSelect(currentRecipe)}
+              disabled={isLoading || isNudgeCard || !currentRecipe}
               data-testid="quick-find-select"
             >
               Select

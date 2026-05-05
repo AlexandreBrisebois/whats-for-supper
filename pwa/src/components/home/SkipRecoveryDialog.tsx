@@ -11,10 +11,16 @@ interface SkipRecoveryDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onAction: (action: 'order_in' | 'pick_else' | 'tomorrow' | 'next_week' | 'drop') => void;
+  initialStep?: number;
 }
 
-export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDialogProps) {
-  const [step, setStep] = useState(1);
+export function SkipRecoveryDialog({
+  isOpen,
+  onClose,
+  onAction,
+  initialStep = 1,
+}: SkipRecoveryDialogProps) {
+  const [step, setStep] = useState(initialStep);
 
   if (!isOpen) return null;
 
@@ -51,7 +57,7 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
         </div>
 
         <div className="relative overflow-hidden">
-          <AnimatePresence initial={false}>
+          <AnimatePresence initial={false} mode="wait">
             {step === 1 ? (
               <motion.div
                 key="step1"

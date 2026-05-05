@@ -89,7 +89,7 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
     void verifyIdentity();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, selectedFamilyMemberId, _hasHydrated, familyMembers?.length]);
+  }, [pathname, selectedFamilyMemberId, _hasHydrated, hasLoaded, familyMembers?.length]);
 
   if (!isReady) {
     return null; // Prevent flicker while checking identity or performing client-side redirects

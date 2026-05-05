@@ -15,14 +15,16 @@ import { getTodayString } from '@/lib/imageUtils';
  * and hydrates the client-side store via StoreInitializer.
  */
 export default async function HomePage() {
-  let familyMembers: FamilyMember[] = [];
+  let familyMembers: FamilyMember[] | null = null;
   let schedule: ScheduleDays | null = null;
 
   try {
-    [familyMembers, schedule] = await Promise.all([
+    const [familyResult, scheduleResult] = await Promise.all([
       serverFetch<FamilyMember[]>('/api/family'),
       serverFetch<ScheduleDays>('/api/schedule?weekOffset=0'),
     ]);
+    familyMembers = familyResult;
+    schedule = scheduleResult;
   } catch (error) {
     console.error('Failed to fetch home data on server:', error);
   }
@@ -38,7 +40,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <StoreInitializer familyMembers={familyMembers} />
+      {familyMembers && <StoreInitializer familyMembers={familyMembers} />}
       <HomeCommandCenter todaysRecipe={todaysRecipe} todayStatus={todayStatus} />
     </>
   );

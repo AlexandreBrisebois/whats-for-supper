@@ -195,6 +195,109 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     expect(validateCalled).toBe(false);
   });
 
+  test('"Pick Something Else" flow opens Quick Find then Step 2', async ({ page }) => {
+    const monday = currentMonday();
+    const today = toDateStr(monday);
+
+    let moveCalled = false;
+    let assignCalled = false;
+
+    // Mock schedule with a planned recipe for today
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const method = request.method();
+
+      if (url.pathname.endsWith('/fill-the-gap')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: [
+              builders.scheduleRecipe({
+                id: MOCK_IDS.RECIPE_CHICKEN,
+                name: 'Test Chicken',
+                image: '/chicken.jpg',
+              }),
+            ],
+          }),
+        });
+      } else if (url.pathname.endsWith('/move') && method === 'POST') {
+        moveCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      } else if (url.pathname.endsWith('/assign') && method === 'POST') {
+        assignCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
+        const monday = currentMonday();
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(monday);
+          d.setUTCDate(monday.getUTCDate() + i);
+          const dateStr = toDateStr(d);
+          return {
+            date: dateStr,
+            status: 0,
+            recipe: builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna' }),
+          };
+        });
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { weekOffset: 0, days } }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    await page.goto('/home');
+    await expect(page.getByTestId('home-loader')).not.toBeVisible();
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+
+    // Flip the card and click skip
+    await page.getByTestId('tonight-menu-card').click();
+    await page.waitForTimeout(600);
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    // Click "Pick Something Else"
+    await page.getByTestId('recovery-action-pick-else').click();
+
+    // Dialog should close, Quick Find should open
+    await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+    await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+
+    // Select the recipe
+    await page.getByTestId('quick-find-select').click();
+
+    // Quick Find should close, Recovery Dialog should re-open at Step 2
+    await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
+    await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
+
+    // Click "Move to Tomorrow"
+    await page.getByTestId('recovery-action-tomorrow').click();
+
+    // Verify both APIs called
+    await expect.poll(() => moveCalled).toBe(true);
+    await expect.poll(() => assignCalled).toBe(true);
+
+    // Dialog should be closed
+    await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+  });
+
   // B5 + reload: page reload after "Order In" (no recipe) does not show pivot card
   test('Page reload after "Order In" (no recipe) does not show pivot card', async ({ page }) => {
     const monday = currentMonday();
