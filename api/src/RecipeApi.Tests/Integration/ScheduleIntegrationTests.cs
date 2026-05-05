@@ -1,11 +1,15 @@
 using RecipeApi.Data;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Services.Processors;
 using RecipeApi.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using RecipeApi.Dto;
+using Moq;
+using RecipeApi.Infrastructure;
 
 namespace RecipeApi.Tests.Integration;
 
@@ -20,6 +24,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     private IServiceScope _scope = null!;
     private RecipeDbContext _db = null!;
     private ScheduleService _service = null!;
+    private DiscoveryService _discoveryService = null!;
+    private Mock<IScheduleEventPublisher> _publisherMock = null!;
 
     public async Task InitializeAsync()
     {
@@ -27,7 +33,9 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
-        _service = new ScheduleService(_db, logger);
+        _publisherMock = new Mock<IScheduleEventPublisher>();
+        _service = new ScheduleService(_db, logger, _publisherMock.Object);
+        _discoveryService = new DiscoveryService(_db, _publisherMock.Object);
     }
 
     public async Task DisposeAsync()
@@ -432,6 +440,43 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         Assert.Contains("tomatoes", retrieved.GroceryState);
     }
 
+    [Fact]
+    public async Task UpdateGroceryState_PublishesGroceryUpdatedEvent()
+    {
+        // Arrange
+        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
+        var monday = date.AddDays(-daysToMonday);
+
+        var plan = new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = monday,
+            Status = WeeklyPlanStatus.Locked,
+            GroceryState = "{}",
+        };
+        _db.WeeklyPlans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        var groceryState = new Dictionary<string, bool>
+        {
+            { "tomatoes", true },
+            { "milk", false },
+        };
+
+        // Act
+        await _service.UpdateGroceryStateAsync(0, groceryState);
+
+        // Assert: grocery_updated published with weekOffset 0 and the grocery state
+        _publisherMock.Verify(
+            p => p.PublishGroceryUpdatedAsync(
+                0,
+                It.Is<Dictionary<string, bool>>(s =>
+                    s.ContainsKey("tomatoes") && s["tomatoes"] == true &&
+                    s.ContainsKey("milk") && s["milk"] == false)),
+            Times.Once);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────────
     // Consensus Workflow Tests
     // ──────────────────────────────────────────────────────────────────────────────
@@ -544,5 +589,275 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         // Verify event status updated
         var eventAfterCooked = _db.CalendarEvents.First();
         Assert.Equal(CalendarEventStatus.Cooked, eventAfterCooked.Status);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // SSE Publisher Integration Tests (Task 6)
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AssignRecipe_PublishesSlotUpdatedAndFillTheGapEvents()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var recipe = new Recipe { Id = recipeId, Name = "Lasagna" };
+        _db.Recipes.Add(recipe);
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
+
+        // Assert: slot_updated published with the recipe and Planned status
+        _publisherMock.Verify(
+            p => p.PublishSlotUpdatedAsync(
+                It.IsAny<DateOnly>(),
+                It.Is<ScheduleRecipeDto?>(r => r != null && r.Id == recipeId),
+                (int)CalendarEventStatus.Planned),
+            Times.Once);
+
+        // Assert: fill_the_gap_invalidated published for weekOffset 0
+        _publisherMock.Verify(
+            p => p.PublishFillTheGapInvalidatedAsync(0),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ValidateDay_PublishesSlotUpdatedEvent()
+    {
+        // Arrange: create a recipe and calendar event for today
+        var recipeId = Guid.NewGuid();
+        var recipe = new Recipe { Id = recipeId, Name = "Pasta" };
+        _db.Recipes.Add(recipe);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = today,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act: validate as Cooked (status = 2)
+        await _service.ValidateDayAsync(today.ToString("yyyy-MM-dd"), new ValidationDto(2));
+
+        // Assert: slot_updated published with status 2
+        _publisherMock.Verify(
+            p => p.PublishSlotUpdatedAsync(
+                today,
+                It.IsAny<ScheduleRecipeDto?>(),
+                2),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task LockSchedule_PublishesWeekUpdatedEvent()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var recipe = new Recipe { Id = recipeId, Name = "Stir Fry" };
+        _db.Recipes.Add(recipe);
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.LockScheduleAsync(0);
+
+        // Assert: week_updated published once
+        _publisherMock.Verify(
+            p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveRecipe_PublishesSlotUpdatedAndFillTheGapEvents()
+    {
+        // Arrange: create a recipe and calendar event for today
+        var recipeId = Guid.NewGuid();
+        var recipe = new Recipe { Id = recipeId, Name = "Tacos" };
+        _db.Recipes.Add(recipe);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = today,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.RemoveRecipeAsync(today);
+
+        // Assert: slot_updated published with null recipe and status 0
+        _publisherMock.Verify(
+            p => p.PublishSlotUpdatedAsync(
+                today,
+                null,
+                0),
+            Times.Once);
+
+        // Assert: fill_the_gap_invalidated published
+        _publisherMock.Verify(
+            p => p.PublishFillTheGapInvalidatedAsync(It.IsAny<int>()),
+            Times.Once);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // SSE Publisher Integration Tests (Task 7) — Vote events from DiscoveryService
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Vote_PublishesVoteUpdatedEvent()
+    {
+        // Arrange: one family member, one recipe
+        var memberId = Guid.NewGuid();
+        var recipeId = Guid.NewGuid();
+
+        _db.FamilyMembers.Add(new FamilyMember { Id = memberId, Name = "Alex" });
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Pasta" });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _discoveryService.SubmitVoteAsync(recipeId, memberId, VoteType.Like);
+
+        // Assert: vote_updated published with the recipe ID and like count of 1
+        _publisherMock.Verify(
+            p => p.PublishVoteUpdatedAsync(recipeId, 1),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task VoteThresholdCrossed_PublishesSmartDefaultsUpdatedEvent()
+    {
+        // Arrange: 2 family members → threshold = ceil((2+1)/2) = 2
+        // The threshold is crossed when the 2nd like vote is cast.
+        var member1 = Guid.NewGuid();
+        var member2 = Guid.NewGuid();
+        var recipeId = Guid.NewGuid();
+
+        _db.FamilyMembers.AddRange(
+            new FamilyMember { Id = member1, Name = "Alex" },
+            new FamilyMember { Id = member2, Name = "Jordan" });
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Lasagna" });
+
+        // First vote — count becomes 1, threshold is 2, so (1 == 2) is false and (1 == 1) is true
+        // → smart_defaults_updated IS published on the first vote (count == threshold - 1)
+        await _db.SaveChangesAsync();
+
+        // Act: cast first vote (count = 1, threshold - 1 = 1 → boundary hit)
+        await _discoveryService.SubmitVoteAsync(recipeId, member1, VoteType.Like);
+
+        _publisherMock.Verify(
+            p => p.PublishSmartDefaultsUpdatedAsync(0, It.IsAny<SmartDefaultsDto>()),
+            Times.Once);
+
+        // Reset mock to isolate the second vote assertion
+        _publisherMock.Reset();
+
+        // Act: cast second vote (count = 2, threshold = 2 → boundary hit again)
+        await _discoveryService.SubmitVoteAsync(recipeId, member2, VoteType.Like);
+
+        _publisherMock.Verify(
+            p => p.PublishSmartDefaultsUpdatedAsync(0, It.IsAny<SmartDefaultsDto>()),
+            Times.Once);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // SSE Publisher Integration Tests (Task 8) — recipe_ready from RecipeReadyProcessor
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RecipeReady_PublishesRecipeReadyEvent()
+    {
+        // Arrange: a synthesized recipe that is ready
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Spaghetti Carbonara",
+            ImageCount = 0,
+            IsSynthesized = true,
+            IsDiscoverable = false,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        var publisherMock = new Mock<IScheduleEventPublisher>();
+        var processor = new RecipeReadyProcessor(
+            _db,
+            NullLogger<RecipeReadyProcessor>.Instance,
+            publisherMock.Object);
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = Guid.NewGuid(),
+            TaskName = "recipe_ready",
+            ProcessorName = "RecipeReady",
+            Payload = System.Text.Json.JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
+            Status = RecipeApi.Models.TaskStatus.Pending,
+            DependsOn = [],
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        // Act
+        await processor.ExecuteAsync(task, CancellationToken.None);
+
+        // Assert: PublishRecipeReadyAsync called with the correct recipeId
+        publisherMock.Verify(
+            p => p.PublishRecipeReadyAsync(recipeId, It.IsAny<string>(), It.IsAny<string?>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RecipeReady_PublishesEnrichedPayload()
+    {
+        // Arrange: a recipe with a name and image
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Spaghetti Carbonara",
+            ImageCount = 2,
+            IsSynthesized = false,
+            IsDiscoverable = false,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        var publisherMock = new Mock<IScheduleEventPublisher>();
+        var processor = new RecipeReadyProcessor(
+            _db,
+            NullLogger<RecipeReadyProcessor>.Instance,
+            publisherMock.Object);
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = Guid.NewGuid(),
+            TaskName = "recipe_ready",
+            ProcessorName = "RecipeReady",
+            Payload = System.Text.Json.JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
+            Status = RecipeApi.Models.TaskStatus.Pending,
+            DependsOn = [],
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        // Act
+        await processor.ExecuteAsync(task, CancellationToken.None);
+
+        // Assert: enriched payload — name and imageUrl are included
+        publisherMock.Verify(
+            p => p.PublishRecipeReadyAsync(
+                recipeId,
+                "Spaghetti Carbonara",
+                $"/api/recipes/{recipeId}/image/0"),
+            Times.Once);
     }
 }

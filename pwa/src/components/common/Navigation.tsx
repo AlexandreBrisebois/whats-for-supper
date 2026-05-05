@@ -98,7 +98,9 @@ export function Navigation({ className = '' }: NavigationProps) {
             ].join(' ')}
             aria-current={active ? 'page' : undefined}
           >
-            <Icon size={24} strokeWidth={active ? 2.5 : 2} aria-hidden="true" />
+            <div className="relative">
+              <Icon size={24} strokeWidth={active ? 2.5 : 2} aria-hidden="true" />
+            </div>
             <span>{item.label}</span>
           </Link>
         );

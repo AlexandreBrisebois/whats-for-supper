@@ -1,6 +1,4 @@
 name: url-import
-description: "Workflow to fetch a recipe from a URL, extract its content, and generate a hero image."
-
 parameters:
     - recipeId
     - url

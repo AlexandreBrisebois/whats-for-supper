@@ -7,7 +7,14 @@
 
 import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
-import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  currentMonday,
+  toDateStr,
+  setupCommonRoutes,
+  mockSseWithSlotUpdate,
+} from './mock-api';
 
 /** Returns the Monday of the week containing today (UTC). */
 function thisWeekMonday() {
@@ -175,10 +182,11 @@ test.describe("Planner — Cook's Mode", () => {
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 1 of/i);
+    // Step indicator format is "1 / 2" (current / total)
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/1 \/ /i);
 
     await page.getByTestId('cooks-mode-step-next').click();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 2 of/i);
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/2 \/ /i);
 
     await page.getByTestId('close-cooks-mode').click();
     await expect(overlay).not.toBeVisible();
@@ -323,5 +331,108 @@ test.describe('Planner — Voting Flow', () => {
     await page.getByTestId('day-card-0').click();
     const nudgeBtn = page.getByTestId('pivot-nudge-family');
     await expect(nudgeBtn).toBeVisible({ timeout: 5_000 });
+  });
+});
+
+test.describe('Planner — SSE Live Updates', () => {
+  test('SSE slot_updated → planner day card shows recipe name without poll', async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+
+    await setupCommonRoutes(page);
+
+    // Build an initial empty week so the planner loads with no recipes assigned.
+    const monday = currentMonday();
+    const emptyDays = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setUTCDate(monday.getUTCDate() + i);
+      return {
+        day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+        date: toDateStr(d),
+        recipe: null,
+        status: 0,
+      };
+    });
+
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        if (
+          route.request().method() === 'GET' &&
+          !route.request().url().includes('smart-defaults')
+        ) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: { weekOffset: 0, locked: false, status: 0, days: emptyDays },
+            }),
+          });
+          return;
+        }
+        if (route.request().url().includes('smart-defaults')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                familySize: 3,
+                consensusThreshold: 2,
+                preSelectedRecipes: [],
+                openSlots: [],
+                consensusRecipesCount: 0,
+                isVotingOpen: false,
+              },
+            }),
+          });
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { message: 'ok' } }),
+        });
+      }
+    );
+
+    // Target Monday's slot — the first day card (index 0).
+    const targetDate = toDateStr(monday);
+    const pushedRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_CARBONARA,
+      name: 'Pasta Carbonara',
+    });
+
+    // Override the SSE stream to emit slot_updated for Monday after the connected snapshot.
+    // BS-10: route.fulfill() closes the connection; EventSource reconnects automatically.
+    // The test asserts on DOM state after the event is processed, not on connection state.
+    await mockSseWithSlotUpdate(page, {
+      date: targetDate,
+      recipe: pushedRecipe,
+      status: 0,
+    });
+
+    await page.goto('/planner');
+
+    // Wait for the planner to render the day cards.
+    await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
+
+    // Assert the recipe name appears on Monday's card via SSE push — no poll required.
+    // The SSE slot_updated event is processed by weekStore.applySlotUpdate, which updates
+    // the schedule in-place. The planner re-renders the card with the pushed recipe name.
+    const mondayCard = page.locator(`[data-date="${targetDate}"]`);
+    await expect(mondayCard.getByTestId('recipe-name')).toHaveText('Pasta Carbonara', {
+      timeout: 5_000,
+    });
   });
 });

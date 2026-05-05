@@ -2,7 +2,16 @@ import nextConfig from 'eslint-config-next/core-web-vitals';
 
 const eslintConfig = [
   {
-    ignores: ['.next/', 'node_modules/', 'dist/', 'build/', '.env*', 'src/lib/api/generated/**'],
+    ignores: [
+      '.next/',
+      'node_modules/',
+      'dist/',
+      'build/',
+      '.env*',
+      'src/lib/api/generated/**',
+      '.kiota-check/**',
+      'coverage/**',
+    ],
   },
   ...nextConfig,
   {

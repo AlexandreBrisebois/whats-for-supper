@@ -1,6 +1,12 @@
 import path from 'path';
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  setupCommonRoutes,
+  mockSseWithRecipeReadyEnriched,
+  mockSseWithRecipeFailed,
+} from './mock-api';
 
 const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 
@@ -86,7 +92,9 @@ test.describe('Capture Flow', () => {
     await expect(saveBtn).toBeEnabled();
     await saveBtn.click();
 
-    await expect(page.getByText(/captured/i)).toBeVisible({ timeout: 15_000 });
+    // Success screen shows "Recipe queued" (async processing) or "Synthesizing…"
+    // The old "Captured!" text was replaced by the honest async state (Task 31).
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
   });
 
   test('after successful capture, user can return to home', async ({ page }) => {
@@ -128,8 +136,10 @@ test.describe('Capture Flow', () => {
     expect(body.notes).toBe('Added from Serious Eats');
     expect(body.rating).toBe(3); // "Loved it" = 3
 
-    // 5. Verify it redirects to home immediately (or very quickly)
-    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    // 5. Verify the success screen appears (queued state — no auto-redirect)
+    // Task 31: The 4-second auto-redirect was removed. The success screen now shows
+    // "Recipe queued" with explicit "Add Another" and "Done" CTAs.
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
   });
 
   test('navigating with text param containing a URL should show the review form', async ({
@@ -583,5 +593,167 @@ test.describe('Settings — GOTO pending state', () => {
 
     // Spinner and "being prepared" message should be visible
     await expect(page.getByText(/your goto is being prepared/i)).toBeVisible({ timeout: 10_000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 2 — SSE-driven notifications: LibraryToast and RecipeFailureBanner
+// ---------------------------------------------------------------------------
+
+test.describe('Capture — SSE notifications (Phase 2)', () => {
+  test.beforeEach(async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+
+    await setupCommonRoutes(page);
+
+    await page.route('**/api/settings/*', async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    });
+  });
+
+  // ── Recipe queued state ──────────────────────────────────────────────────
+  // After a successful photo submit, the success screen shows "Recipe queued"
+  // (not "Captured!") because synthesis is async. The user sees a pending state
+  // with "Add Another" and "Done" CTAs — no auto-redirect.
+  test('photo submit shows recipe queued state with Add Another and Done CTAs', async ({
+    page,
+  }) => {
+    await page.route('**/api/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Captured Recipe' }),
+          }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: [], total: 0 }),
+        });
+      }
+    });
+
+    await page.goto('/capture');
+
+    const fileInput = page.locator('input[type="file"]').first();
+    await fileInput.setInputFiles(path.join(__dirname, 'fixtures', 'test-meal.jpg'));
+
+    await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await page.getByRole('button', { name: /loved it/i }).click();
+    await page.getByRole('button', { name: /save recipe/i }).click();
+
+    // Success screen shows "Recipe queued" (async processing)
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('capture-success-heading')).toContainText(/recipe queued/i);
+
+    // Explicit CTAs replace the old auto-redirect
+    await expect(page.getByTestId('capture-add-another-btn')).toBeVisible();
+    await expect(page.getByTestId('capture-done-btn')).toBeVisible();
+
+    // No auto-redirect — still on /capture
+    await expect(page).toHaveURL(/\/capture/);
+  });
+
+  // ── LibraryToast on recipe_ready ─────────────────────────────────────────
+  // When SSE fires `recipe_ready` for a recipe that was submitted in this
+  // session (captureStore has it), the LibraryToast appears at the bottom of
+  // the screen with the recipe name and a "Tap to add to your week" hint.
+  //
+  // Strategy: navigate to /home, then push a 'ready' notification directly to
+  // libraryStore via window.__libraryStore (exposed in non-production builds).
+  // This tests the LibraryToast UI rendering when a recipe_ready notification arrives.
+  test('SSE recipe_ready → LibraryToast appears with recipe name', async ({ page }) => {
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const recipeName = 'Test Lasagna';
+
+    // Navigate to /home — the layout mounts LibraryToast
+    await page.goto('/home');
+
+    // Wait for the layout to mount and expose the store on window
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
+
+    // Push a 'ready' notification to libraryStore to simulate what the SSE
+    // recipe_ready handler would do when captureStore has the recipe.
+    await page.evaluate(
+      ({ id, name }) => {
+        (window as any).__libraryStore.getState().pushNotification({
+          recipeId: id,
+          name,
+          type: 'ready',
+        });
+      },
+      { id: recipeId, name: recipeName }
+    );
+
+    // Wait for the LibraryToast to appear — it shows when libraryStore has a 'ready' notification
+    // The toast renders with role="status" and contains the recipe name
+    await expect(page.locator('[role="status"]').filter({ hasText: recipeName })).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.locator('[role="status"]').filter({ hasText: /is ready/i })).toBeVisible();
+  });
+
+  // ── RecipeFailureBanner on recipe_failed ─────────────────────────────────
+  // When SSE fires `recipe_failed` for a recipe that was submitted in this
+  // session, the RecipeFailureBanner appears with a retry CTA.
+  //
+  // Strategy: navigate to /home, then push a 'failed' notification directly to
+  // libraryStore via window.__libraryStore (exposed in non-production builds).
+  test('SSE recipe_failed → RecipeFailureBanner appears with retry CTA', async ({ page }) => {
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const recipeName = 'Test Lasagna';
+
+    // Navigate to /home — the layout mounts RecipeFailureBanner
+    await page.goto('/home');
+
+    // Wait for the layout to mount and expose the store on window
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
+
+    // Push a 'failed' notification to libraryStore to simulate what the SSE
+    // recipe_failed handler would do when captureStore has the recipe.
+    await page.evaluate(
+      ({ id, name }) => {
+        (window as any).__libraryStore.getState().pushNotification({
+          recipeId: id,
+          name,
+          type: 'failed',
+          errorMessage: 'AI extraction failed',
+          failedStep: 'recipe-extraction',
+        });
+      },
+      { id: recipeId, name: recipeName }
+    );
+
+    // Wait for the RecipeFailureBanner to appear
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toContainText(
+      /couldn't be saved/i
+    );
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toContainText(
+      /tap to try again/i
+    );
   });
 });

@@ -88,6 +88,8 @@ try
 
     // ── Application services ─────────────────────────────────────────────────
 
+    builder.Services.AddSingleton<SseConnectionManager>();
+    builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
     builder.Services.AddSingleton<DataRootResolver>();
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();

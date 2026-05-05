@@ -149,15 +149,24 @@ describe('MinimalCapture — preservation unit tests', () => {
    * Validates: Requirement 3.5
    * ¬isBugConditionC: isGoto = false
    *
-   * When onSuccess = true and isGoto = false, MinimalCapture MUST call
-   * router.push with ROUTES.HOME ('/home') automatically via useEffect.
+   * When onSuccess = true and isGoto = false, MinimalCapture shows explicit
+   * CTAs ("Add Another" primary, "Done" secondary). The "Done" button navigates
+   * to /home when clicked. No auto-navigation occurs.
    *
-   * This is the baseline non-GOTO auto-navigation behavior to preserve.
-   * MUST PASS on unfixed code.
+   * Task 31 removed the 4-second auto-redirect; explicit CTAs replace it.
    */
-  it('auto-navigates to /home when onSuccess=true and isGoto=false (non-GOTO path)', async () => {
+  it('shows Done button that navigates to /home when onSuccess=true and isGoto=false (non-GOTO path)', async () => {
     await renderAndTriggerSuccess(undefined); // no intent → isGoto = false
 
+    // No auto-navigation — explicit CTA required
+    expect(mockPush).not.toHaveBeenCalled();
+
+    // "Done" button is present and navigates to /home when clicked
+    const doneBtn = screen.getByTestId('capture-done-btn');
+    expect(doneBtn).toBeTruthy();
+    await act(async () => {
+      doneBtn.click();
+    });
     expect(mockPush).toHaveBeenCalledWith('/home');
     expect(mockPush).not.toHaveBeenCalledWith('/profile/settings');
   });
@@ -223,14 +232,19 @@ describe('MinimalCapture — preservation unit tests', () => {
   /**
    * Validates: Requirement 3.5
    *
-   * The success screen for isGoto=false must trigger auto-navigation to /home.
-   * MUST PASS on unfixed code.
+   * The success screen for isGoto=false shows "Add Another" (primary) and
+   * "Done" (secondary) CTAs. No auto-navigation occurs.
+   * Task 31 removed the auto-redirect; explicit CTAs replace it.
    */
-  it('auto-navigation to /home is triggered for isGoto=false success screen', async () => {
+  it('shows Add Another and Done CTAs for isGoto=false success screen (no auto-navigation)', async () => {
     await renderAndTriggerSuccess(undefined); // isGoto = false
 
-    // The useEffect fires and calls router.push('/home')
-    expect(mockPush).toHaveBeenCalledWith('/home');
+    // No auto-navigation
+    expect(mockPush).not.toHaveBeenCalled();
+
+    // Both CTAs are present
+    expect(screen.getByTestId('capture-add-another-btn')).toBeTruthy();
+    expect(screen.getByTestId('capture-done-btn')).toBeTruthy();
   });
 
   /**
@@ -258,15 +272,20 @@ describe('MinimalCapture — preservation unit tests', () => {
   /**
    * Validates: Requirement 3.5
    *
-   * For isGoto=false, the success screen button label is "Back to Home".
-   * Auto-navigation fires immediately, so we verify via router.push call.
-   * MUST PASS on unfixed code.
+   * For isGoto=false, the success screen shows explicit CTAs — no auto-navigation.
+   * Task 31 removed the 4-second auto-redirect; the "Done" button navigates to /home.
    */
-  it('calls router.push("/home") for non-GOTO success (Back to Home path)', async () => {
+  it('Done button navigates to /home for non-GOTO success (no auto-navigation)', async () => {
     await renderAndTriggerSuccess(undefined); // isGoto = false
 
-    // The useEffect auto-navigates to /home — this is the preserved behavior
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    // No auto-navigation — explicit CTA required
+    expect(mockPush).not.toHaveBeenCalled();
+
+    // "Done" button navigates to /home when clicked
+    const doneBtn = screen.getByTestId('capture-done-btn');
+    await act(async () => {
+      doneBtn.click();
+    });
     expect(mockPush).toHaveBeenCalledWith('/home');
   });
 });

@@ -12,13 +12,13 @@ import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
-import { assignRecipeToDay, isScheduleRecipe } from '@/lib/api/planner';
-import { ScheduleRecipeDto } from '@/lib/api/generated/models';
+import { assignRecipeToDay } from '@/lib/api/planner';
 import { formatTotalTime } from '@/lib/formatTime';
 import { getTodayString } from '@/lib/imageUtils';
 import { SolarLoader } from '../ui/SolarLoader';
 import { useFamilyStore } from '@/store/familyStore';
 import { useTodayStore } from '@/store/todayStore';
+import { useGotoStore } from '@/store/gotoStore';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 
@@ -39,7 +39,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
 
   // ── Domain state from todayStore ──────────────────────────────────────────
-  const { currentRecipe, status, isLoading, init, assignRecipe, markCooked, markOrderedIn, sync } =
+  // NOTE: init() is intentionally excluded here — TodayStoreInitializer is the sole initialiser.
+  const { currentRecipe, status, isLoading, assignRecipe, markCooked, markOrderedIn, sync } =
     useTodayStore();
 
   const isCooked = status === 2;
@@ -58,7 +59,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const gotoRecipeId = gotoValue?.recipeId ?? null;
   const gotoImageUrl = gotoValue?.imageUrl ?? null;
 
-  // ── GOTO recipe status polling ────────────────────────────────────────────
+  // ── GOTO recipe status — driven by SSE recipe_ready event ─────────────────
+  // useScheduleStream calls useGotoStore.getState().markReady(recipeId) when
+  // the recipe_ready SSE event arrives. We subscribe here and fetch the recipe
+  // detail once when the ID matches, then reset the store.
   const [gotoRecipeStatus, setGotoRecipeStatus] = useState<'pending' | 'ready' | null>(null);
   const [gotoRecipeData, setGotoRecipeData] = useState<any>(null);
 
@@ -70,52 +74,80 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     setGotoRecipeStatus(null);
   }
 
+  const { readyRecipeId } = useGotoStore();
+
+  // ── Priming read: check GOTO status once on mount ─────────────────────────
+  // SSE only fires recipe_ready for future transitions. If the recipe was
+  // already ready before this page load, we need a single status fetch to
+  // prime the initial state — otherwise the card shows "Checking your GOTO…"
+  // indefinitely until the next SSE event (which never comes for a ready recipe).
   useEffect(() => {
     if (!gotoRecipeId) return;
 
     let isMounted = true;
-    let pollInterval: NodeJS.Timeout | null = null;
 
-    const fetchStatus = async () => {
+    const checkInitialStatus = async () => {
       try {
-        const response = await apiClient.api.recipes.byId(gotoRecipeId).status.get();
+        const statusRes = await apiClient.api.recipes.byId(gotoRecipeId).status.get();
         if (!isMounted) return;
-
-        const recipeStatus = response?.data?.status as 'pending' | 'ready';
-        setGotoRecipeStatus(recipeStatus);
-
-        if (recipeStatus === 'ready') {
-          if (pollInterval) clearInterval(pollInterval);
-
+        const status = statusRes?.data?.status;
+        if (status === 'ready') {
           const recipeRes = await apiClient.api.recipes.byId(gotoRecipeId).get();
-          if (isMounted && recipeRes?.recipe) {
+          if (!isMounted) return;
+          if (recipeRes?.recipe) {
             setGotoRecipeData(recipeRes.recipe);
           }
+          setGotoRecipeStatus('ready');
+        } else if (status === 'pending') {
+          setGotoRecipeStatus('pending');
+          // SSE recipe_ready will drive the transition when synthesis completes
         }
-      } catch (err) {
-        console.error('Failed to fetch GOTO recipe status:', err);
+      } catch {
+        // Status check failed — leave as null (isFetching state), SSE will recover
       }
     };
 
-    fetchStatus();
-    pollInterval = setInterval(fetchStatus, 5000);
+    checkInitialStatus();
 
     return () => {
       isMounted = false;
-      if (pollInterval) clearInterval(pollInterval);
     };
   }, [gotoRecipeId]);
 
-  // ── Mount: seed store from SSR props, load settings, background sync ──────
+  // ── SSE-driven transition: recipe_ready event ─────────────────────────────
+  // Fires when synthesis completes after this page was already loaded.
+  // Fetches recipe detail and transitions from pending → ready.
   useEffect(() => {
-    // Resolve the SSR recipe to a plain ScheduleRecipeDto (or null)
-    const ssrRecipe: ScheduleRecipeDto | null = isScheduleRecipe(todaysRecipe)
-      ? 'data' in todaysRecipe
-        ? (todaysRecipe.data as ScheduleRecipeDto)
-        : (todaysRecipe as ScheduleRecipeDto)
-      : null;
+    if (!gotoRecipeId || readyRecipeId !== gotoRecipeId) return;
 
-    init(ssrRecipe, todayStatus ?? 0);
+    let isMounted = true;
+
+    const fetchReadyRecipe = async () => {
+      try {
+        const recipeRes = await apiClient.api.recipes.byId(gotoRecipeId).get();
+        if (!isMounted) return;
+        if (recipeRes?.recipe) {
+          setGotoRecipeData(recipeRes.recipe);
+        }
+        setGotoRecipeStatus('ready');
+      } catch (err) {
+        console.error('Failed to fetch GOTO recipe detail after recipe_ready:', err);
+        setGotoRecipeStatus('ready');
+      }
+    };
+
+    fetchReadyRecipe();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [gotoRecipeId, readyRecipeId]);
+
+  // ── Mount: load settings and background sync ─────────────────────────────
+  // NOTE: init() is intentionally NOT called here (BS-1 fix).
+  // TodayStoreInitializer (rendered by the home page server component) is the
+  // sole initialiser. Calling init() here would create a dual-init race.
+  useEffect(() => {
     loadSetting('family_goto');
 
     // Background sync — non-blocking; reconciles stale SSR data

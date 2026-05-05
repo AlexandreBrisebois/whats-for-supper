@@ -26,7 +26,8 @@ public class SyncRecipeProcessorTests : IDisposable
         _storage = new InMemoryStorageProvider();
         _recipeRepository = new RecipeRepository(_storage);
         
-        var discoveryService = new DiscoveryService(_db);
+        var publisherMock = new Mock<IScheduleEventPublisher>();
+        var discoveryService = new DiscoveryService(_db, publisherMock.Object);
         _processor = new SyncRecipeProcessor(_db, _recipeRepository, discoveryService, _loggerMock.Object);
     }
 

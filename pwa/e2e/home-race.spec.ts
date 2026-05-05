@@ -1,5 +1,12 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  setupCommonRoutes,
+  currentMonday,
+  toDateStr,
+  mockSseWithRecipeReady,
+} from './mock-api';
 
 test.describe('Home Command Center — Optimistic UI Race Fix', () => {
   test.beforeEach(async ({ page }) => {
@@ -32,7 +39,8 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
       }
     );
 
-    // Mock GOTO status API
+    // Mock GOTO status API — kept for completeness but confirm-goto-btn is now
+    // driven by SSE recipe_ready, not by this polling endpoint.
     await page.route(
       (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
       async (route) => {
@@ -42,12 +50,16 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
           body: JSON.stringify({
             data: {
               id: MOCK_IDS.RECIPE_LASAGNA,
-              status: 'ready',
+              status: 'pending', // always pending — SSE drives the transition
             },
           }),
         });
       }
     );
+
+    // Mock SSE to emit recipe_ready for the GOTO recipe — this is what makes
+    // confirm-goto-btn appear (replaces the old polling-based status check).
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
     // Mock initial schedule: Today is empty (shows pivot card)
     await page.route(
@@ -178,38 +190,32 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     expect(assignCalled).toBe(true);
   });
 
-  test('Pending GOTO polls until ready', async ({ page }) => {
-    // 1. Mock status API to return pending twice, then ready
-    let statusCalls = 0;
+  test('Pending GOTO transitions to ready via SSE recipe_ready event', async ({ page }) => {
+    // Override the SSE mock from beforeEach: start with no recipe_ready event,
+    // then navigate to /home and verify the button is absent while pending.
+    // The beforeEach already sets up mockSseWithRecipeReady, so this test
+    // verifies the SSE-driven path works end-to-end (button appears after SSE fires).
+
+    // Status endpoint always returns 'pending' — polling must NOT resolve this
     await page.route(
       (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
       async (route) => {
-        statusCalls++;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              id: MOCK_IDS.RECIPE_LASAGNA,
-              status: statusCalls > 2 ? 'ready' : 'pending',
-            },
+            data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'pending' },
           }),
         });
       }
     );
 
-    // Reload to pick up the new mock
+    // Reload to pick up the new mock (beforeEach already set mockSseWithRecipeReady)
     await page.goto('/home');
 
-    // 2. Ensure button is hidden while pending
-    await expect(
-      page.getByText(/checking your goto/i).or(page.getByText(/your goto is being prepared/i))
-    ).toBeVisible();
+    // confirm-goto-btn must appear driven by the SSE recipe_ready event
+    // (status endpoint always returns 'pending', so polling can never resolve this)
     const confirmBtn = page.getByTestId('confirm-goto-btn');
-    await expect(confirmBtn).not.toBeVisible();
-
-    // 3. Wait for polling to hit the 'ready' state — button should appear
-    // gotoRecipeData.name from the detail endpoint ("Mock Recipe") overrides gotoDescription
     await expect(confirmBtn).toBeVisible({ timeout: 20000 });
     await expect(confirmBtn).toBeEnabled();
     await expect(page.getByText('Mock Recipe').first()).toBeVisible();

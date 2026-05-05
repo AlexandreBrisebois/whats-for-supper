@@ -15,6 +15,45 @@ import { REALISTIC_RECIPES, REALISTIC_SCHEDULE_RECIPES } from './realistic-recip
 import { MOCK_IDS } from './mock-ids';
 export { MOCK_IDS };
 
+// ---------------------------------------------------------------------------
+// SSE helpers — internal
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a single SSE message frame.
+ * Format: "event: <type>\ndata: <json>\n\n"
+ */
+function buildSseFrame(eventType: string, payload: object): string {
+  return `event: ${eventType}\ndata: ${JSON.stringify(payload)}\n\n`;
+}
+
+/**
+ * Builds a full SSE response body from an array of pre-formatted frames.
+ */
+function buildSseBody(frames: string[]): string {
+  return frames.join('');
+}
+
+/**
+ * Builds the default `connected` event payload with a 7-day empty schedule
+ * anchored to the fixed test Monday (2026-05-04).
+ */
+function buildConnectedEvent(): string {
+  const monday = currentMonday();
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setUTCDate(monday.getUTCDate() + i);
+    return {
+      day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+      date: toDateStr(d),
+      recipe: null,
+      status: 0,
+    };
+  });
+  const schedule: ScheduleDays = { weekOffset: 0, locked: false, status: 0, days } as ScheduleDays;
+  return buildSseFrame('connected', { type: 'connected', schedule });
+}
+
 /**
  * Schema-compliant builders for mock data.
  * These ensure that mock objects match the generated API client models.
@@ -509,6 +548,28 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // GET /api/stream — SSE endpoint
+  //
+  // BS-10 NOTE: route.fulfill() closes the HTTP response immediately after the body is sent.
+  // This causes the browser's EventSource to see a dropped connection and automatically
+  // reconnect. The reconnect loop is harmless because every reconnect receives the same
+  // `connected` event with the same snapshot. Tests that assert on UI state MUST do so
+  // AFTER the `connected` event has been processed (use waitFor on the resulting DOM state,
+  // not on connection state). Do NOT assert on the EventSource being "open" — it will
+  // always be in a reconnecting state after fulfill() closes the response.
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([buildConnectedEvent()]),
+    });
+  });
+
   // GET /api/settings/{key} and POST /api/settings/{key}
   // Per-test in-memory store (reset each time setupCommonRoutes is called in beforeEach)
   const settingsStore: Record<string, unknown> = {
@@ -539,5 +600,342 @@ export async function setupCommonRoutes(page: Page) {
         body: JSON.stringify({ data: { key, value: body.value } }),
       });
     }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// SSE mock helpers — exported for per-test overrides
+// ---------------------------------------------------------------------------
+//
+// All helpers override the /api/stream route for the given page. They always
+// emit the `connected` event first (with the default 7-day empty schedule),
+// then the target event, in a single body string. This satisfies the
+// EventSource contract: the client receives the snapshot before any push.
+//
+// BS-10 REMINDER: route.fulfill() closes the connection. EventSource will
+// reconnect automatically. Tests must assert on DOM state (via waitFor),
+// not on connection state. The reconnect loop is harmless — every reconnect
+// receives the same `connected` event.
+
+/**
+ * Mocks the SSE stream to emit a `slot_updated` event after the initial
+ * `connected` snapshot. Use this to simulate a recipe being assigned or
+ * removed from a specific day slot.
+ *
+ * @param page - Playwright Page instance
+ * @param slotUpdate - The slot update payload: date (YYYY-MM-DD), recipe (or null), status
+ */
+export async function mockSseWithSlotUpdate(
+  page: Page,
+  slotUpdate: { date: string; recipe: ScheduleRecipeDto | null; status: number }
+): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('slot_updated', { type: 'slot_updated', ...slotUpdate }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit a `week_updated` event after the initial
+ * `connected` snapshot. Use this to simulate a full week snapshot push
+ * (e.g. after lock, voting open, or move).
+ *
+ * @param page - Playwright Page instance
+ * @param schedule - The full ScheduleDays snapshot to push
+ */
+export async function mockSseWithWeekUpdate(page: Page, schedule: ScheduleDays): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('week_updated', { type: 'week_updated', schedule }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit a `slot_updated` event representing an
+ * "Order In" action (recipe: null, status: 3) for the given date.
+ *
+ * @param page - Playwright Page instance
+ * @param date - The date string (YYYY-MM-DD) of the ordered-in slot
+ */
+export async function mockSseWithOrderIn(page: Page, date: string): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('slot_updated', { type: 'slot_updated', date, recipe: null, status: 3 }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit a `fill_the_gap_invalidated` event after the
+ * initial `connected` snapshot. Use this to simulate a recipe being assigned
+ * or removed, invalidating any open Quick Find modal's suggestion list.
+ *
+ * @param page - Playwright Page instance
+ * @param weekOffset - The week offset that was invalidated (defaults to 0)
+ */
+export async function mockSseWithFillTheGapInvalidated(page: Page, weekOffset = 0): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('fill_the_gap_invalidated', {
+          type: 'fill_the_gap_invalidated',
+          weekOffset,
+        }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit a `smart_defaults_updated` event after the
+ * initial `connected` snapshot. Use this to simulate the smart-defaults
+ * threshold being crossed and pre-selected recipes being pushed to clients.
+ *
+ * @param page - Playwright Page instance
+ * @param defaults - The SmartDefaultsDto payload to push
+ */
+export async function mockSseWithSmartDefaultsUpdated(
+  page: Page,
+  defaults: SmartDefaultsDto
+): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('smart_defaults_updated', {
+          type: 'smart_defaults_updated',
+          weekOffset: defaults.weekOffset ?? 0,
+          defaults,
+        }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit a `recipe_ready` event after the initial
+ * `connected` snapshot. Use this to simulate a GOTO recipe synthesis
+ * completing — replaces the polling-based GOTO status check.
+ *
+ * The `connected` event is emitted first so the store is seeded before the
+ * `recipe_ready` event arrives. Both frames are sent in a single body string
+ * (BS-10: route.fulfill() closes the connection; EventSource reconnects, but
+ * the UI state is already set from the first connection's events).
+ *
+ * @param page     - Playwright Page instance
+ * @param recipeId - The recipe ID that has finished synthesis
+ */
+export async function mockSseWithRecipeReady(page: Page, recipeId: string): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('recipe_ready', { type: 'recipe_ready', recipeId }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit a `vote_updated` event after the initial
+ * `connected` snapshot. Use this to simulate a family member voting on a
+ * discovery recipe — triggers `hasFamilyInterest` update and re-ranking in
+ * `discoveryStore.applyVoteUpdate`.
+ *
+ * @param page      - Playwright Page instance
+ * @param recipeId  - The recipe ID that received the vote
+ * @param voteCount - The new total vote count for the recipe
+ */
+export async function mockSseWithVoteUpdated(
+  page: Page,
+  recipeId: string,
+  voteCount: number
+): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('vote_updated', { type: 'vote_updated', recipeId, voteCount }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit a `grocery_updated` event after the initial
+ * `connected` snapshot. Use this to simulate a family member toggling a
+ * grocery item — triggers `plannerStore.setGroceryState` on all connected
+ * clients for the given week.
+ *
+ * @param page         - Playwright Page instance
+ * @param weekOffset   - The week offset the grocery state belongs to
+ * @param groceryState - Map of ingredient name → checked boolean
+ */
+export async function mockSseWithGroceryUpdated(
+  page: Page,
+  weekOffset: number,
+  groceryState: Record<string, boolean>
+): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('grocery_updated', { type: 'grocery_updated', weekOffset, groceryState }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit an enriched `recipe_ready` event (with name
+ * and imageUrl) after the initial `connected` snapshot.
+ *
+ * Use this to test the MinimalCapture success screen transition from "queued"
+ * to "ready" — the enriched payload is required so the screen can show
+ * "[Name] is ready!" and `captureStore.addPending` is matched by recipeId.
+ *
+ * @param page      - Playwright Page instance
+ * @param recipeId  - The recipe ID that has finished synthesis
+ * @param name      - The recipe name to display in the ready heading
+ * @param imageUrl  - Optional hero image URL
+ */
+export async function mockSseWithRecipeReadyEnriched(
+  page: Page,
+  recipeId: string,
+  name: string,
+  imageUrl?: string
+): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('recipe_ready', {
+          type: 'recipe_ready',
+          recipeId,
+          name,
+          imageUrl: imageUrl ?? null,
+        }),
+      ]),
+    });
+  });
+}
+
+/**
+ * Mocks the SSE stream to emit a `recipe_failed` event after the initial
+ * `connected` snapshot. Use this to test the RecipeFailureBanner appearing
+ * when a recipe synthesis workflow fails (all retries exhausted).
+ *
+ * The `recipe_failed` handler in `useScheduleStream` only pushes a notification
+ * if the recipe is in `captureStore.pendingRecipes`. Tests must seed the store
+ * via `page.evaluate` before navigating.
+ *
+ * @param page         - Playwright Page instance
+ * @param recipeId     - The recipe ID that failed synthesis
+ * @param errorMessage - Human-readable error description
+ * @param failedStep   - The workflow step that failed
+ * @param partialData  - Optional partial recipe data (name, imageUrl) recovered before failure
+ */
+export async function mockSseWithRecipeFailed(
+  page: Page,
+  recipeId: string,
+  errorMessage: string,
+  failedStep: string,
+  partialData?: { name?: string; imageUrl?: string }
+): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('recipe_failed', {
+          type: 'recipe_failed',
+          recipeId,
+          errorMessage,
+          failedStep,
+          partialData: partialData ?? null,
+        }),
+      ]),
+    });
   });
 }

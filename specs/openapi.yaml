@@ -146,6 +146,10 @@ components:
           minItems: 7
           maxItems: 7
           items: { $ref: '#/components/schemas/ScheduleDayDto' }
+        groceryState:
+          type: object
+          additionalProperties: { type: boolean }
+          nullable: true
 
 
     ScheduleDayDto:
@@ -278,6 +282,8 @@ components:
           smart_defaults_updated: '#/components/schemas/SmartDefaultsUpdatedEvent'
           fill_the_gap_invalidated: '#/components/schemas/FillTheGapInvalidatedEvent'
           recipe_ready: '#/components/schemas/RecipeReadyEvent'
+          recipe_failed: '#/components/schemas/RecipeFailedEvent'
+          grocery_updated: '#/components/schemas/GroceryUpdatedEvent'
       properties:
         type: { type: string }
 
@@ -340,9 +346,38 @@ components:
       allOf:
         - $ref: '#/components/schemas/ScheduleStreamEvent'
         - type: object
-          required: [recipeId]
+          required: [recipeId, name]
           properties:
             recipeId: { type: string, format: uuid }
+            name: { type: string }
+            imageUrl: { type: string, nullable: true }
+
+    RecipeFailedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [recipeId, errorMessage, failedStep]
+          properties:
+            recipeId: { type: string, format: uuid }
+            errorMessage: { type: string }
+            failedStep: { type: string }
+            partialData:
+              type: object
+              nullable: true
+              properties:
+                name: { type: string, nullable: true }
+                imageUrl: { type: string, nullable: true }
+
+    GroceryUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [weekOffset, groceryState]
+          properties:
+            weekOffset: { type: integer }
+            groceryState:
+              type: object
+              additionalProperties: { type: boolean }
 
     # --- Health ---
     HealthCheckResponse:

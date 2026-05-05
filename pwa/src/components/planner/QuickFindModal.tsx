@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Utensils } from 'lucide-react';
 import Image from 'next/image';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { getImageUrl } from '@/lib/imageUtils';
+import { useDiscoveryStore } from '@/store/discoveryStore';
 
 interface QuickFindModalProps {
   onClose: () => void;
@@ -22,19 +23,42 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  // BS-7: watch for fill-the-gap invalidation signals from SSE.
+  // When another client assigns a recipe, the version increments and we silently
+  // refetch so already-planned recipes disappear from the list.
+  const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
+
+  // Track whether the initial fetch has completed so the invalidation effect
+  // does not fire a redundant second fetch on mount (version 0 is the initial value).
+  const initialFetchDone = useRef(false);
+
+  const fetchSuggestions = async () => {
+    try {
+      const data = await getFillTheGap(weekOffset);
+      setRecipes(data || []);
+    } catch (error) {
+      console.error('Failed to fetch fill-the-gap recipes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial fetch on mount.
   useEffect(() => {
-    const fetchRecipes = async () => {
-      try {
-        const data = await getFillTheGap(weekOffset);
-        setRecipes(data || []);
-      } catch (error) {
-        console.error('Failed to fetch fill-the-gap recipes:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchRecipes();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchSuggestions().then(() => {
+      initialFetchDone.current = true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekOffset]);
+
+  // Refetch when another client assigns or removes a recipe (BS-7).
+  // Guard: only fire after the initial fetch has completed (modal is open and ready).
+  useEffect(() => {
+    if (!initialFetchDone.current) return;
+    fetchSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fillTheGapVersion]);
 
   const handleNext = () => {
     setIsFlipped(false);

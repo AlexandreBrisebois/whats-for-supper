@@ -6,9 +6,25 @@ import { ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { t } from '@/locales';
+import { useScheduleStream } from '@/hooks/useScheduleStream';
+import { WeekStoreInitializer } from '@/components/WeekStoreInitializer';
+import { LibraryToast } from '@/components/capture/LibraryToast';
+import { RecipeFailureBanner } from '@/components/capture/RecipeFailureBanner';
+import { useEffect } from 'react';
+import { useLibraryStore } from '@/store/libraryStore';
+import { useCaptureStore } from '@/store/captureStore';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+
+  // Mount SSE stream once at layout level — survives page navigation within the app shell
+  useScheduleStream();
+
+  // Expose stores on window for E2E test access (Playwright page.evaluate).
+  useEffect(() => {
+    (window as any).__libraryStore = useLibraryStore;
+    (window as any).__captureStore = useCaptureStore;
+  }, []);
 
   // Determine if we should hide navigation (e.g., for Capture flow)
   const isCapture = pathname.startsWith(ROUTES.CAPTURE);
@@ -53,16 +69,23 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   const isDiscovery = pathname === ROUTES.DISCOVERY;
 
   return (
-    <Layout
-      {...headerProps}
-      hideNavigation={isCapture}
-      hideHeader={hideHeader}
-      isFluid={isDiscovery || isCapture}
-      className={
-        pathname === ROUTES.HOME ? 'solar-earth-bg' : isDiscovery ? 'vibrant-discovery-bg' : ''
-      }
-    >
-      {children}
-    </Layout>
+    <>
+      {/* Pre-seed weekStore for weekOffset=0 on app load (BS-2 fix) */}
+      <WeekStoreInitializer />
+      {/* Notification layer — mounted at layout level, same as useScheduleStream */}
+      <LibraryToast />
+      <RecipeFailureBanner />
+      <Layout
+        {...headerProps}
+        hideNavigation={isCapture}
+        hideHeader={hideHeader}
+        isFluid={isDiscovery || isCapture}
+        className={
+          pathname === ROUTES.HOME ? 'solar-earth-bg' : isDiscovery ? 'vibrant-discovery-bg' : ''
+        }
+      >
+        {children}
+      </Layout>
+    </>
   );
 }

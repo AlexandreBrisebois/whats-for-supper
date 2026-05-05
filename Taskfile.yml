@@ -163,6 +163,12 @@ tasks:
     cmds:
       - npm run test:unit
 
+  test:unit:coverage:
+    desc: "🧪 Run PWA unit tests with coverage report (requires @vitest/coverage-v8)"
+    dir: pwa
+    cmds:
+      - npm run test:unit:coverage
+
   test:unit:watch:
     desc: "Run PWA unit tests in watch mode"
     dir: pwa
@@ -277,6 +283,7 @@ tasks:
     dir: pwa
     cmds:
       - npm run api:generate
+      - npx prettier --config .prettierrc.json --write src/lib/api/generated
 
   gen:client:sync:
     desc: "🔄 Regenerate Kiota client and stage changes (for local development)"

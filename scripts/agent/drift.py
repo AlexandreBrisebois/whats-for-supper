@@ -77,6 +77,31 @@ def run_endpoint_diff(verbose=True):
 # Tier 1 — DTO schema drift (spec schemas vs C# DTOs)
 # ---------------------------------------------------------------------------
 
+def _split_record_params(params_str):
+    """Split a record constructor parameter list by commas, respecting angle-bracket nesting.
+
+    Handles generic types like Dictionary<string, bool>? that contain commas.
+    """
+    params = []
+    depth = 0
+    current = []
+    for ch in params_str:
+        if ch == "<":
+            depth += 1
+            current.append(ch)
+        elif ch == ">":
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            params.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+    if current:
+        params.append("".join(current).strip())
+    return params
+
+
 def parse_cs_dto(file_path):
     with open(file_path, "r") as f:
         content = f.read()
@@ -110,7 +135,7 @@ def parse_cs_dto(file_path):
     # Record constructor parameters
     record_pattern = r"public\s+record\s+\w+\((.*?)\);"
     for rm in re.finditer(record_pattern, content, re.DOTALL):
-        for p in rm.group(1).split(","):
+        for p in _split_record_params(rm.group(1)):
             p = p.strip()
             jpn = re.search(r'JsonPropertyName\("([^"]+)"\)', p)
             if jpn:

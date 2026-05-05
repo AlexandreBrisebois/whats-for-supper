@@ -1,5 +1,12 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  setupCommonRoutes,
+  currentMonday,
+  toDateStr,
+  mockSseWithSlotUpdate,
+} from './mock-api';
 
 test.describe('Home Command Center — Planned Recipe Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -71,6 +78,69 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Verify Menu Card is shown
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Test Lasagna' }).first()).toBeVisible();
+  });
+
+  // SSE-16: slot_updated → TonightMenuCard appears without navigation or poll
+  // The schedule REST endpoint returns an EMPTY schedule (no recipe for today) so the
+  // store loads with no recipe. The SSE `slot_updated` push then assigns the recipe.
+  // The card must appear from the SSE event — not from a poll or a second REST fetch.
+  // Proof: the REST endpoint is a one-shot empty response; no subsequent GET is mocked
+  // to return a recipe, so any TonightMenuCard that appears must come from SSE alone.
+  test('SSE slot_updated for today → TonightMenuCard appears without navigation or poll', async ({
+    page,
+  }) => {
+    const monday = currentMonday();
+    const today = toDateStr(monday); // fixed test Monday: 2026-05-04
+
+    const recipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'SSE Lasagna',
+      image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+    });
+
+    // Override the SSE stream to emit connected (empty schedule) + slot_updated for today.
+    // Registered before setupCommonRoutes so LIFO gives this mock priority.
+    await mockSseWithSlotUpdate(page, { date: today, recipe, status: 0 });
+
+    // Return an empty schedule from REST — no recipe for today.
+    // This means the loader clears (isLoading → false) but TonightPivotCard renders,
+    // not TonightMenuCard. The SSE slot_updated then pushes the recipe, which must
+    // flip the card to TonightMenuCard without any further REST fetch.
+    await page.route(
+      (url) => url.pathname === '/api/schedule',
+      async (route) => {
+        if (route.request().method() === 'GET') {
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(monday);
+            d.setUTCDate(monday.getUTCDate() + i);
+            return {
+              day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+              date: toDateStr(d),
+              recipe: null,
+              status: 0,
+            };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+          });
+        } else {
+          await route.continue();
+        }
+      }
+    );
+
+    await page.goto('/home');
+
+    // Wait for the loader to clear — REST returned empty schedule, so isLoading → false.
+    await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5_000 });
+
+    // At this point TonightPivotCard is visible (no recipe from REST).
+    // The SSE slot_updated event fires and applyServerUpdate sets currentRecipe.
+    // TonightMenuCard must appear — driven by SSE, not by a poll or second REST fetch.
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: 'SSE Lasagna' }).first()).toBeVisible();
   });
 
   // B5: "Order In" with no recipe writes status:3 to backend and hides pivot card
@@ -523,88 +593,28 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
   });
 
   // C7: Planner Quick Find for today → navigating to home shows TonightMenuCard
-  // TODO: This test requires the SSE push model (live-schedule spec) to work reliably.
-  // page.goto('/home') resets Zustand store state — the menu card only appears if the
-  // client-side sync() fetch returns the recipe, which races against the loader dismissal.
-  // Commented out until the digital twin / SSE push model is implemented.
-  test.skip("Planner Quick Find for today's slot → navigating to home shows TonightMenuCard", async ({
+  // SSE makes this deterministic: the `slot_updated` event is baked into the mock SSE
+  // body and fires immediately on connect. By the time the user navigates to /home,
+  // todayStore already has the recipe — no poll, no sync() race.
+  test("Planner Quick Find for today's slot → navigating to home shows TonightMenuCard", async ({
     page,
   }) => {
     const monday = currentMonday();
     const today = toDateStr(monday);
-    let assignDone = false;
 
-    // Stateful schedule mock: before assign → empty; after assign → today's slot has the recipe
-    await page.route(
-      (url) => url.pathname.includes('/api/schedule'),
-      async (route) => {
-        const reqUrl = new URL(route.request().url());
-        if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
-          if (!assignDone) {
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({
-                data: {
-                  weekOffset: 0,
-                  locked: false,
-                  status: 0,
-                  days: Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date(monday);
-                    d.setUTCDate(monday.getUTCDate() + i);
-                    return {
-                      day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-                      date: toDateStr(d),
-                      recipe: null,
-                      status: 0,
-                    };
-                  }),
-                },
-              }),
-            });
-          } else {
-            const days = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date(monday);
-              d.setUTCDate(monday.getUTCDate() + i);
-              const dateStr = toDateStr(d);
-              return {
-                day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-                date: dateStr,
-                recipe:
-                  dateStr === today
-                    ? { data: { id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna', image: '' } }
-                    : null,
-                status: 0,
-              };
-            });
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
-            });
-          }
-        } else if (route.request().url().includes('smart-defaults')) {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: {
-                weekOffset: 0,
-                familySize: 3,
-                consensusThreshold: 2,
-                preSelectedRecipes: [],
-                openSlots: [],
-                consensusRecipesCount: 0,
-              },
-            }),
-          });
-        } else {
-          await route.continue();
-        }
-      }
-    );
+    const recipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Test Lasagna',
+      image: '',
+    });
 
-    // Override fill-the-gap to return one recipe
+    // SSE mock: emit connected (empty schedule) + slot_updated for today with the recipe.
+    // Registered before setupCommonRoutes so LIFO gives this mock priority over the
+    // default SSE route. The slot_updated event fires immediately on connect — before
+    // the user even navigates to /home — so todayStore is populated on arrival.
+    await mockSseWithSlotUpdate(page, { date: today, recipe, status: 0 });
+
+    // Override fill-the-gap to return one recipe for the Quick Find modal
     await page.route(
       (url) => url.pathname.includes('/api/schedule/fill-the-gap'),
       async (route) => {
@@ -618,11 +628,12 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
       }
     );
 
-    // Mock assign endpoint with assignDone flag
+    // Track assign call — confirms the REST write fired
+    let assignCalled = false;
     await page.route(
       (url) => url.pathname.includes('/api/schedule/assign'),
       async (route) => {
-        assignDone = true;
+        assignCalled = true;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -647,18 +658,16 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
     await expect(page.getByTestId('quick-find-modal')).toBeVisible({ timeout: 3000 });
     await page.getByTestId('quick-find-select').first().click();
 
-    // 5. Wait for assign to complete
-    await expect.poll(() => assignDone).toBe(true);
+    // 5. Confirm the assign REST call fired
+    await expect.poll(() => assignCalled).toBe(true);
 
-    // 6. Navigate to /home
+    // 6. Navigate to /home — SSE already delivered slot_updated, store is populated
     await page.goto('/home');
 
     // 7. Wait for home-loader to disappear
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5000 });
 
-    // 8. Assert tonight-menu-card visible
-    // sync() fires on mount and fetches the schedule (which now returns the recipe after assign).
-    // Give it up to 5s to complete and update the store.
+    // 8. TonightMenuCard must be visible — driven by SSE, not by sync() or a poll
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 5000 });
 
     // 9. Assert recipe name visible

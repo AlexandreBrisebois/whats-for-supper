@@ -26,6 +26,12 @@ export interface TodayState {
    * sync() will not overwrite currentRecipe while this is within the 20-second window.
    */
   optimisticWriteAt: number | null;
+  /**
+   * When true, skip the CookedSuccessCard celebration and show the compact cooked
+   * badge directly. Set by applyServerUpdate when status === 2 is pushed from
+   * another family member's Cook's Mode completion.
+   */
+  skipCookedCelebration: boolean;
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -61,6 +67,18 @@ export interface TodayState {
    * Sets lastSyncedAt on success.
    */
   sync: () => Promise<void>;
+
+  /**
+   * Apply a server-pushed slot_updated event. Authoritative — always applies,
+   * except when optimisticWriteAt is within 2 seconds (echo suppression).
+   */
+  applyServerUpdate: (update: { recipe: ScheduleRecipeDto | null; status: number }) => void;
+
+  /**
+   * Clear optimisticWriteAt unconditionally. Called on SSE reconnect so the
+   * server snapshot is treated as authoritative regardless of write age.
+   */
+  clearOptimisticGuard: () => void;
 }
 
 // ─── Store ──────────────────────────────────────────────────────────────────
@@ -71,6 +89,7 @@ export const useTodayStore = create<TodayState>((set, get) => ({
   isLoading: false,
   lastSyncedAt: null,
   optimisticWriteAt: null,
+  skipCookedCelebration: false,
 
   // ── init ──────────────────────────────────────────────────────────────────
   init(recipe, status) {
@@ -171,5 +190,31 @@ export const useTodayStore = create<TodayState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  // ── applyServerUpdate ─────────────────────────────────────────────────────
+  applyServerUpdate({ recipe, status }) {
+    // Server push is authoritative — always apply, even if optimistic write is recent.
+    // Exception: if optimisticWriteAt is within 2 seconds, the push may be echoing
+    // our own write back to us — skip to avoid flicker.
+    const { optimisticWriteAt } = get();
+    const isEcho = optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 2_000;
+    if (isEcho) return;
+
+    set({
+      currentRecipe: recipe,
+      status: status as 0 | 2 | 3,
+      optimisticWriteAt: null, // clear optimistic guard — server is now authoritative
+      // For status:2 pushed from another family member's Cook's Mode completion,
+      // skip the CookedSuccessCard celebration — show compact badge directly.
+      // The person who cooked sees the card optimistically before this echo arrives.
+      skipCookedCelebration: status === 2,
+    });
+  },
+
+  // ── clearOptimisticGuard ──────────────────────────────────────────────────
+  clearOptimisticGuard() {
+    // Called on SSE reconnect — server snapshot is authoritative regardless of age.
+    set({ optimisticWriteAt: null });
   },
 }));

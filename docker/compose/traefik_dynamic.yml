@@ -1,5 +1,36 @@
 http:
+  middlewares:
+    # SSE requires unbuffered responses — disable proxy buffering and caching.
+    sse-headers:
+      headers:
+        customResponseHeaders:
+          X-Accel-Buffering: "no"
+          Cache-Control: "no-cache"
+
   routers:
+    # Dedicated SSE router — must have higher priority than the generic api router
+    # so the sse-headers middleware is applied to /api/stream specifically.
+    # EventSource connects directly to api.wfs.localhost (bypasses /backend proxy).
+    api-stream:
+      rule: "Host(`api.wfs.localhost`) && Path(`/api/stream`)"
+      service: api
+      middlewares:
+        - sse-headers
+      entryPoints:
+        - web
+      priority: 20
+
+    # SSE route on pwa.wfs.localhost — same middleware, higher priority than generic api router.
+    # Covers the case where the PWA connects via the shared host (e.g. local dev without split DNS).
+    pwa-stream:
+      rule: "Host(`pwa.wfs.localhost`) && Path(`/api/stream`)"
+      service: api
+      middlewares:
+        - sse-headers
+      entryPoints:
+        - web
+      priority: 20
+
     # API traffic: PathPrefix(/api) on the same host as the PWA.
     # Higher priority ensures it matches before the catch-all pwa router.
     api:

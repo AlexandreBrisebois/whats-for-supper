@@ -2,16 +2,18 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using Microsoft.Extensions.Logging;
 using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger)
+public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
+    private readonly IScheduleEventPublisher _publisher = publisher;
 
     public async Task<ScheduleDays> GetScheduleAsync(int weekOffset)
     {
@@ -47,7 +49,11 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             days.Add(new ScheduleDayDto(dayNames[i], date.ToString("yyyy-MM-dd"), recipe, (int)(@event?.Status ?? CalendarEventStatus.Planned)));
         }
 
-        return new ScheduleDays(weekOffset, isLocked, status, days);
+        var groceryState = plan?.GroceryState != null
+            ? JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)
+            : null;
+
+        return new ScheduleDays(weekOffset, isLocked, status, days, groceryState);
     }
 
     public async Task OpenVotingAsync(int weekOffset)
@@ -73,6 +79,9 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         }
 
         await _dbContext.SaveChangesAsync();
+
+        var schedule = await GetScheduleAsync(weekOffset);
+        await _publisher.PublishWeekUpdatedAsync(schedule);
     }
 
     public async Task LockScheduleAsync(int weekOffset)
@@ -118,6 +127,9 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         _logger.LogInformation("Global Purge #1: Deleted {Count} votes from recipe_votes", votes.Count);
 
         await _dbContext.SaveChangesAsync();
+
+        var schedule = await GetScheduleAsync(weekOffset);
+        await _publisher.PublishWeekUpdatedAsync(schedule);
     }
 
     public async Task MoveScheduleEventAsync(MoveScheduleDto dto)
@@ -126,6 +138,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         if (targetWeekOffset != dto.WeekOffset)
         {
             await MoveCrossWeekAsync(dto, targetWeekOffset);
+            var crossWeekSchedule = await GetScheduleAsync(dto.WeekOffset);
+            await _publisher.PublishWeekUpdatedAsync(crossWeekSchedule);
             return;
         }
 
@@ -181,6 +195,9 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         }
 
         await _dbContext.SaveChangesAsync();
+
+        var schedule = await GetScheduleAsync(dto.WeekOffset);
+        await _publisher.PublishWeekUpdatedAsync(schedule);
     }
 
     private async Task MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset)
@@ -207,6 +224,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             _logger.LogWarning("No empty slot in target week {Offset}, cross-week move aborted", targetWeekOffset);
             return;
         }
+
+        await EnsureWeekPlanExistsAsync(targetMonday);
 
         fromEvent.Date = targetMonday.AddDays(targetIndex);
         await _dbContext.SaveChangesAsync();
@@ -239,6 +258,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         var (monday, _) = GetWeekBounds(dto.WeekOffset);
         var date = monday.AddDays(dto.DayIndex);
 
+        await EnsureWeekPlanExistsAsync(monday);
+
         var existingEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == date);
 
         if (existingEvent != null)
@@ -257,6 +278,27 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         }
 
         await _dbContext.SaveChangesAsync();
+
+        // Build the ScheduleRecipeDto for the assigned slot
+        var assignedEvent = await _dbContext.CalendarEvents
+            .Include(e => e.Recipe)
+            .FirstOrDefaultAsync(e => e.Date == date);
+
+        ScheduleRecipeDto? recipeDto = null;
+        if (assignedEvent?.Recipe != null)
+        {
+            recipeDto = new ScheduleRecipeDto(
+                assignedEvent.Recipe.Id,
+                assignedEvent.Recipe.Name,
+                $"/api/recipes/{assignedEvent.Recipe.Id}/hero",
+                assignedEvent.VoteCount,
+                RecipeService.DeserializeIngredients(assignedEvent.Recipe.Ingredients),
+                assignedEvent.Recipe.Description,
+                assignedEvent.Recipe.TotalTime);
+        }
+
+        await _publisher.PublishSlotUpdatedAsync(date, recipeDto, (int)CalendarEventStatus.Planned);
+        await _publisher.PublishFillTheGapInvalidatedAsync(dto.WeekOffset);
     }
 
     public async Task<List<ScheduleRecipeDto>> FillTheGapAsync(int weekOffset = 0)
@@ -318,9 +360,19 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         var @event = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == date);
         if (@event != null)
         {
+            // Determine weekOffset from the date before removing
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+            var thisMonday = today.AddDays(-daysToMonday);
+            var dateDayNumber = date.DayNumber;
+            var weekOffset = (dateDayNumber - thisMonday.DayNumber) / 7;
+
             _dbContext.CalendarEvents.Remove(@event);
             await _dbContext.SaveChangesAsync();
             _logger.LogInformation("Removed recipe from date {Date}", date);
+
+            await _publisher.PublishSlotUpdatedAsync(date, null, 0);
+            await _publisher.PublishFillTheGapInvalidatedAsync(weekOffset);
         }
     }
 
@@ -453,6 +505,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 _dbContext.CalendarEvents.Add(newEvent);
                 await _dbContext.SaveChangesAsync();
                 _logger.LogInformation("Created ordered-in CalendarEvent for date {Date} with no recipe", date);
+
+                await _publisher.PublishSlotUpdatedAsync(date, null, dto.Status);
                 return;
             }
             throw new Exception("No meal planned for this date");
@@ -476,6 +530,22 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         }
 
         await _dbContext.SaveChangesAsync();
+
+        // Build ScheduleRecipeDto for the slot (may be null for ordered-in)
+        ScheduleRecipeDto? recipeDto = null;
+        if (@event.Recipe != null && @event.RecipeId != Guid.Empty)
+        {
+            recipeDto = new ScheduleRecipeDto(
+                @event.Recipe.Id,
+                @event.Recipe.Name,
+                $"/api/recipes/{@event.Recipe.Id}/hero",
+                @event.VoteCount,
+                RecipeService.DeserializeIngredients(@event.Recipe.Ingredients),
+                @event.Recipe.Description,
+                @event.Recipe.TotalTime);
+        }
+
+        await _publisher.PublishSlotUpdatedAsync(date, recipeDto, dto.Status);
     }
 
     public async Task<Dictionary<string, bool>> UpdateGroceryStateAsync(
@@ -488,7 +558,29 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         weekPlan.GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryState);
         await _dbContext.SaveChangesAsync();
+        await _publisher.PublishGroceryUpdatedAsync(weekOffset, groceryState);
         return groceryState;
+    }
+
+    /// <summary>
+    /// Ensures a WeeklyPlan row exists for the given Monday.
+    /// Called by any operation that places a recipe onto a week — the plan must
+    /// exist before grocery state can be persisted against it.
+    /// </summary>
+    private async Task EnsureWeekPlanExistsAsync(DateOnly monday)
+    {
+        var exists = await _dbContext.WeeklyPlans.AnyAsync(p => p.WeekStartDate == monday);
+        if (!exists)
+        {
+            _dbContext.WeeklyPlans.Add(new WeeklyPlan
+            {
+                Id = Guid.NewGuid(),
+                WeekStartDate = monday,
+                Status = WeeklyPlanStatus.Draft
+            });
+            _logger.LogInformation("Created WeeklyPlan for week starting {Date}", monday);
+            await _dbContext.SaveChangesAsync();
+        }
     }
 
     private static (DateOnly Monday, DateOnly Sunday) GetWeekBounds(int weekOffset)

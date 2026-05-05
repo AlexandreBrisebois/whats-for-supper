@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useCapture } from '@/hooks/useCapture';
 import { useFamilyStore } from '@/store/familyStore';
+import { useCaptureStore } from '@/store/captureStore';
+import { useLibraryStore } from '@/store/libraryStore';
 import { apiClient } from '@/lib/api/api-client';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants/routes';
@@ -95,7 +97,29 @@ export default function MinimalCapture({
   const [showDescribe, setShowDescribe] = useState(mode === 'describe');
   const [showUrlReview, setShowUrlReview] = useState(!!extractedUrl);
 
+  // Track the pending recipe ID so we can detect when SSE recipe_ready fires
+  const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
+  // When SSE recipe_ready fires while user is still on this screen, transition to ready state
+  const [readyRecipeName, setReadyRecipeName] = useState<string | null>(null);
+
   const isGoto = intent === 'goto';
+
+  // Subscribe to libraryStore notifications — detect when our pending recipe becomes ready
+  const notifications = useLibraryStore((s) => s.notifications);
+  useEffect(() => {
+    if (!pendingRecipeId) return;
+    const notification = notifications.find(
+      (n) => n.recipeId === pendingRecipeId && n.type === 'ready'
+    );
+    if (notification) {
+      // Intentional synchronous state update — syncing from external store subscription,
+      // not a cascading render. eslint-disable-next-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReadyRecipeName(notification.name);
+      // Dismiss from the global queue — we're handling it inline on this screen
+      useLibraryStore.getState().dismissNotification(pendingRecipeId);
+    }
+  }, [notifications, pendingRecipeId]);
 
   useEffect(() => {
     if (images.length > 0) {
@@ -118,6 +142,10 @@ export default function MinimalCapture({
             recipeId: id,
           });
         }
+        if (id) {
+          useCaptureStore.getState().addPending({ recipeId: id });
+          setPendingRecipeId(id);
+        }
         setWasUrlCaptured(true);
         setOnSuccess(true);
       } catch (err) {
@@ -133,12 +161,6 @@ export default function MinimalCapture({
 
   // REMOVED: Automatic URL capture on mount.
   // We now use showUrlReview to let the user manually save.
-
-  useEffect(() => {
-    if (onSuccess && !isGoto) {
-      router.push(ROUTES.HOME as any);
-    }
-  }, [onSuccess, router, isGoto]);
 
   const handleCapture = () => {
     fileInputRef.current?.click();
@@ -167,6 +189,8 @@ export default function MinimalCapture({
           recipeId: id,
         });
       }
+      useCaptureStore.getState().addPending({ recipeId: id });
+      setPendingRecipeId(id);
       setOnSuccess(true);
     }
   };
@@ -195,6 +219,10 @@ export default function MinimalCapture({
             recipeId: id,
           });
         }
+        useCaptureStore
+          .getState()
+          .addPending({ recipeId: id, name: describeName.trim() || undefined });
+        setPendingRecipeId(id);
         setOnSuccess(true);
       }
     } catch (err) {
@@ -207,33 +235,92 @@ export default function MinimalCapture({
 
   // ── Success screen ──────────────────────────────────────────────────────────
   if (onSuccess) {
+    // ── Ready state: SSE recipe_ready fired while user is still on this screen ──
+    if (readyRecipeName) {
+      return (
+        <div
+          data-testid="capture-success-screen"
+          className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500"
+        >
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-sage/10 text-sage ring-8 ring-sage/5 animate-in zoom-in duration-300">
+            <CheckCircle2 size={48} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <h2
+              data-testid="capture-success-heading"
+              className="font-heading text-3xl font-bold tracking-tight text-charcoal"
+            >
+              {readyRecipeName} is ready!
+            </h2>
+            <p className="text-charcoal/60 px-4 max-w-sm">It&apos;s in your library.</p>
+          </div>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <Button
+              variant="primary"
+              data-testid="capture-add-to-week-btn"
+              onClick={() => router.push(ROUTES.PLANNER as any)}
+              className="rounded-2xl px-8"
+            >
+              Add to this week
+            </Button>
+            <Button
+              variant="ghost"
+              data-testid="capture-add-another-btn"
+              onClick={() => {
+                setOnSuccess(false);
+                setWasPhotoCaptured(false);
+                setWasUrlCaptured(false);
+                setWasDescribeCaptured(false);
+                setDescribeName('');
+                setDescribeText('');
+                setUrlInput('');
+                setShowDescribe(false);
+                setShowUrlReview(false);
+                setPendingRecipeId(null);
+                setReadyRecipeName(null);
+              }}
+              className="rounded-2xl px-8"
+            >
+              Add Another
+            </Button>
+            <Button
+              variant="ghost"
+              data-testid="capture-done-btn"
+              onClick={() => router.push(ROUTES.HOME as any)}
+              className="rounded-2xl px-8 text-charcoal/50"
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Queued state: recipe submitted, waiting for SSE recipe_ready ──────────
     const heading = isGoto
       ? 'Your GOTO is being prepared'
-      : wasUrlCaptured
-        ? t('capture.linkCaptured', 'Link Captured!')
-        : wasPhotoCaptured || wasDescribeCaptured
-          ? t('capture.processing', 'Recipe captured! Processing...')
-          : t('capture.captured', 'Captured!');
+      : wasDescribeCaptured
+        ? 'Synthesizing\u2026'
+        : 'Recipe queued';
 
     const subtext = isGoto
       ? "We'll notify you when it's ready on the home screen."
-      : wasUrlCaptured || wasPhotoCaptured || wasDescribeCaptured
-        ? t(
-            'capture.processingSubtext',
-            "We're extracting the ingredients and instructions. We'll notify you when it's ready."
-          )
-        : t('capture.savedInLibrary', 'Your recipe is safe in the library.');
+      : wasPhotoCaptured
+        ? "We're processing your photo. You'll get a notification when it's ready."
+        : wasUrlCaptured
+          ? "We're fetching the recipe from that link. You'll get a notification when it's ready."
+          : "We're building your recipe. Hang tight \u2014 it'll be ready shortly.";
 
-    const dest = isGoto ? ROUTES.PROFILE_SETTINGS : ROUTES.HOME;
-    const btnLabel = isGoto ? 'Back to Settings' : t('capture.backToHome', 'Back to Home');
+    // GOTO uses a different destination after success
+    const gotoDest = ROUTES.PROFILE_SETTINGS;
 
     return (
       <div
         data-testid="capture-success-screen"
         className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500"
       >
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-sage/10 text-sage ring-8 ring-sage/5">
-          {wasUrlCaptured ? <Globe size={48} /> : <CheckCircle2 size={48} />}
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-ochre/10 text-ochre ring-8 ring-ochre/5">
+          {isGoto ? <CheckCircle2 size={48} /> : <Loader2 size={48} className="animate-spin" />}
         </div>
         <div className="flex flex-col gap-2">
           <h2
@@ -244,14 +331,47 @@ export default function MinimalCapture({
           </h2>
           <p className="text-charcoal/60 px-4 max-w-sm">{subtext}</p>
         </div>
-        <Button
-          variant="primary"
-          data-testid="capture-success-cta"
-          onClick={() => router.push(dest as any)}
-          className="rounded-2xl px-8"
-        >
-          {btnLabel}
-        </Button>
+        {isGoto ? (
+          <Button
+            variant="primary"
+            data-testid="capture-success-cta"
+            onClick={() => router.push(gotoDest as any)}
+            className="rounded-2xl px-8"
+          >
+            Back to Settings
+          </Button>
+        ) : (
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <Button
+              variant="primary"
+              data-testid="capture-add-another-btn"
+              onClick={() => {
+                setOnSuccess(false);
+                setWasPhotoCaptured(false);
+                setWasUrlCaptured(false);
+                setWasDescribeCaptured(false);
+                setDescribeName('');
+                setDescribeText('');
+                setUrlInput('');
+                setShowDescribe(false);
+                setShowUrlReview(false);
+                setPendingRecipeId(null);
+                setReadyRecipeName(null);
+              }}
+              className="rounded-2xl px-8"
+            >
+              Add Another
+            </Button>
+            <Button
+              variant="ghost"
+              data-testid="capture-done-btn"
+              onClick={() => router.push(ROUTES.HOME as any)}
+              className="rounded-2xl px-8 text-charcoal/50"
+            >
+              Done
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

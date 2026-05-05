@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
 using RecipeApi.Dto;
+using Moq;
+using RecipeApi.Infrastructure;
 
 namespace RecipeApi.Tests.Services;
 
@@ -22,7 +24,8 @@ public class ScheduleServiceTests : IAsyncLifetime
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
-        _service = new ScheduleService(_db, logger);
+        var publisherMock = new Mock<IScheduleEventPublisher>();
+        _service = new ScheduleService(_db, logger, publisherMock.Object);
     }
 
     public async Task DisposeAsync()
@@ -172,5 +175,50 @@ public class ScheduleServiceTests : IAsyncLifetime
         // Assert
         var votes = _db.RecipeVotes.Where(v => v.RecipeId == recipeId).ToList();
         Assert.Empty(votes);
+    }
+
+    [Fact]
+    public async Task GetScheduleAsync_IncludesGroceryState()
+    {
+        // Arrange
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        var groceryMap = new Dictionary<string, bool>
+        {
+            { "Chicken", true },
+            { "Broccoli", false }
+        };
+
+        _db.WeeklyPlans.Add(new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = monday,
+            Status = WeeklyPlanStatus.Draft,
+            GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryMap)
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _service.GetScheduleAsync(0);
+
+        // Assert
+        Assert.NotNull(result.GroceryState);
+        Assert.Equal(2, result.GroceryState.Count);
+        Assert.True(result.GroceryState["Chicken"]);
+        Assert.False(result.GroceryState["Broccoli"]);
+    }
+
+    [Fact]
+    public async Task GetScheduleAsync_ReturnsNullGroceryState_WhenNoWeeklyPlan()
+    {
+        // Arrange — no WeeklyPlan row for this week
+
+        // Act
+        var result = await _service.GetScheduleAsync(0);
+
+        // Assert
+        Assert.Null(result.GroceryState);
     }
 }

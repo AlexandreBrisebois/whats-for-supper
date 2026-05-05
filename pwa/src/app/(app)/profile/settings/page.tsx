@@ -43,8 +43,8 @@ export default function SettingsPage() {
         {/* Language Selection */}
         <div className="w-full rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
           <div className="flex items-center gap-2 mb-6">
-            <Languages className="h-4 w-4 text-indigo/60" />
-            <h3 className="text-xs font-bold uppercase tracking-widest text-indigo/60">
+            <Languages className="h-4 w-4 text-indigo" />
+            <h3 className="text-xs font-bold uppercase tracking-widest text-indigo">
               {t('profile.language', 'Language')}
             </h3>
           </div>

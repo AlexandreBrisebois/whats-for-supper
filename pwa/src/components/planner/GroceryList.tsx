@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
@@ -26,7 +26,7 @@ const AISLE_ICONS: Record<AisleSection, string> = {
 export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListProps) {
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
   const { updateGroceryState } = useSchedule();
-  const [isSaving, setIsSaving] = useState(false);
+  const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
   const grouped = useMemo(() => groupIngredientsByAisle(ingredients), [ingredients]);
 
   useEffect(() => {
@@ -49,17 +49,23 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
 
     // Persist to API
     try {
-      setIsSaving(true);
       await updateGroceryState(weekOffset, {
         ...groceryState,
         [ingredientName]: newState,
       });
     } catch (error) {
       console.error('Failed to save grocery state:', error);
-      // Revert on error
+      // Revert the single toggled item only
       setGroceryItemToggle(ingredientName, !newState);
-    } finally {
-      setIsSaving(false);
+      // Show per-item error indicator, auto-clear after 3 seconds
+      setErrorItems((prev) => new Set(prev).add(ingredientName));
+      setTimeout(() => {
+        setErrorItems((prev) => {
+          const next = new Set(prev);
+          next.delete(ingredientName);
+          return next;
+        });
+      }, 3000);
     }
   };
 
@@ -150,11 +156,11 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                       <div className="divide-y divide-charcoal/5 p-4 space-y-2">
                         {aisleItems.map((item) => {
                           const isChecked = groceryState[item] ?? false;
+                          const hasError = errorItems.has(item);
                           return (
                             <motion.button
                               key={item}
                               onClick={() => handleToggle(item)}
-                              disabled={isSaving}
                               layout
                               className={`w-full flex items-center space-x-4 p-4 rounded-2xl transition-all ${
                                 isChecked
@@ -164,9 +170,7 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                               data-testid={`grocery-item-checkbox`}
                               data-item-name={item}
                             >
-                              {isSaving ? (
-                                <Loader2 size={20} className="animate-spin flex-shrink-0" />
-                              ) : isChecked ? (
+                              {isChecked ? (
                                 <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
                               ) : (
                                 <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
@@ -178,6 +182,13 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                               >
                                 {item}
                               </span>
+                              {hasError && (
+                                <AlertCircle
+                                  size={12}
+                                  className="text-terracotta flex-shrink-0 ml-1"
+                                  data-testid="grocery-item-error"
+                                />
+                              )}
                             </motion.button>
                           );
                         })}

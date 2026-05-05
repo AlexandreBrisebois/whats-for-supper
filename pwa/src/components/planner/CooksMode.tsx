@@ -9,6 +9,7 @@ import {
   Flame,
   UtensilsCrossed,
   CheckCircle2,
+  Circle,
   Sparkles,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -16,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { getRecipe, Recipe } from '@/lib/api/recipes';
 import { SolarLoader } from '@/components/ui/SolarLoader';
-import { t, tWithVars } from '@/locales';
+import { t } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { getImageUrl } from '@/lib/imageUtils';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -38,7 +39,7 @@ interface CooksModeProps {
 const getFallbackSteps = (): CookingStep[] => [
   {
     index: 1,
-    title: 'Check & Prep',
+    title: "Let's get everything together",
     instruction: 'Gather everything you need. Clear the counter and get ready to cook!',
   },
   {
@@ -63,6 +64,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [recipeDetails, setRecipeDetails] = useState<Recipe | null>(null);
   const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [gathered, setGathered] = useState<Record<string, boolean>>({});
+  const [showCelebration, setShowCelebration] = useState(false);
   const { cookProgress, setCookProgress } = usePlannerStore();
   const currentStep = cookProgress[initialRecipe.id] ?? 0;
 
@@ -93,9 +96,12 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     if (currentStep < steps.length - 1) {
       setCookProgress(initialRecipe.id, currentStep + 1);
     } else {
-      onCooked?.();
-      onClose();
-      router.push('/home');
+      setShowCelebration(true);
+      setTimeout(() => {
+        onCooked?.();
+        onClose();
+        router.push('/home');
+      }, 600);
     }
   };
 
@@ -121,8 +127,23 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       data-testid="cooks-mode-overlay"
-      className="fixed inset-0 z-[100] bg-cream flex flex-col"
+      className="fixed inset-0 z-[100] bg-cream flex flex-col relative"
     >
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 flex flex-col items-center justify-center bg-cream z-10"
+          >
+            <Sparkles size={48} className="text-ochre mb-4" />
+            <p className="font-heading text-3xl font-black text-charcoal">Supper&apos;s done!</p>
+            <p className="text-charcoal/60 mt-2 font-medium">Nice work.</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Header */}
       <div className="p-8 flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md">
         <div className="flex items-center space-x-4">
@@ -182,12 +203,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 data-testid="cooks-mode-step-indicator"
                 className="mb-8 inline-flex items-center space-x-2 text-terracotta bg-terracotta/5 px-6 py-3 rounded-full"
               >
-                <UtensilsCrossed size={20} />
                 <span className="text-sm font-black uppercase tracking-widest">
-                  {tWithVars('cook.stepXofY', `Step ${currentStep + 1} of ${steps.length}`, {
-                    current: currentStep + 1,
-                    total: steps.length,
-                  })}
+                  {`${currentStep + 1} / ${steps.length}`}
                 </span>
               </div>
 
@@ -196,52 +213,73 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               </h3>
 
               {currentStep === 0 ? (
-                <div className="mt-8 space-y-8">
-                  <p className="text-xl font-medium text-charcoal/60 leading-relaxed max-w-lg mx-auto">
+                <div className="mt-8 space-y-8 bg-terracotta/[0.02]">
+                  <p className="text-xl font-medium text-charcoal/80 leading-relaxed max-w-lg mx-auto">
                     {currentStepData.instruction}
                   </p>
 
-                  {/* Dietary High-Five */}
-                  <div className="flex items-center justify-center space-x-3 text-sage bg-sage/5 py-3 px-6 rounded-2xl border border-sage/10 w-fit mx-auto animate-bounce-subtle">
-                    <Sparkles size={18} />
-                    <span className="text-xs font-black uppercase tracking-widest">
-                      {initialRecipe.isVegetarian
-                        ? t('cook.plantPowered', 'Plant-Powered Choice!')
-                        : t('cook.healthyPick', 'Healthy Pick!')}
-                    </span>
-                  </div>
-
                   {/* Ingredients Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-                    {recipeDetails?.ingredients && recipeDetails.ingredients.length > 0 ? (
-                      recipeDetails.ingredients.map((ing, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 + idx * 0.05 }}
-                          className="flex items-center p-4 rounded-3xl bg-white border border-charcoal/5 shadow-sm"
-                        >
-                          <div className="h-8 w-8 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center mr-4 flex-shrink-0">
-                            <CheckCircle2 size={16} />
-                          </div>
-                          <span className="text-base font-bold text-charcoal/80">{ing}</span>
-                        </motion.div>
-                      ))
-                    ) : (
-                      <div className="col-span-full py-12 px-6 rounded-[2.5rem] bg-charcoal/5 border border-dashed border-charcoal/10">
-                        <p className="text-charcoal/40 font-medium">
-                          {t(
-                            'cook.extractionInProgress',
-                            "Extraction in progress... we're still identifying the exact quantities."
-                          )}
-                        </p>
+                  {recipeDetails?.ingredients && recipeDetails.ingredients.length > 0 ? (
+                    <>
+                      {/* Progress counter */}
+                      <p className="text-xs font-bold text-sage text-center">
+                        {Object.values(gathered).filter(Boolean).length} of{' '}
+                        {recipeDetails.ingredients.length} ready
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                        {recipeDetails.ingredients.map((ing, idx) => {
+                          const isChecked = !!gathered[ing];
+                          return (
+                            <motion.button
+                              key={idx}
+                              data-testid="ingredient-toggle"
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.1 + idx * 0.05 }}
+                              onClick={() =>
+                                setGathered((prev) => ({ ...prev, [ing]: !prev[ing] }))
+                              }
+                              className={`flex items-center p-4 rounded-3xl border-2 shadow-sm w-full text-left transition-all ${
+                                isChecked
+                                  ? 'bg-sage/10 border-sage/20 text-charcoal/40'
+                                  : 'bg-white border-charcoal/5'
+                              }`}
+                            >
+                              <div
+                                className={`h-8 w-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 transition-all ${
+                                  isChecked
+                                    ? 'bg-sage text-white'
+                                    : 'bg-terracotta/10 border-2 border-terracotta/20 text-terracotta/40'
+                                }`}
+                              >
+                                {isChecked ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                              </div>
+                              <span
+                                className={`text-base font-bold transition-all ${
+                                  isChecked ? 'line-through text-charcoal/40' : 'text-charcoal/80'
+                                }`}
+                              >
+                                {ing}
+                              </span>
+                            </motion.button>
+                          );
+                        })}
                       </div>
-                    )}
-                  </div>
+                    </>
+                  ) : (
+                    <div className="col-span-full py-12 px-6 rounded-[2.5rem] bg-charcoal/5 border border-dashed border-charcoal/10">
+                      <p className="text-charcoal/40 font-medium">
+                        {t(
+                          'cook.extractionInProgress',
+                          "Extraction in progress... we're still identifying the exact quantities."
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <p className="text-3xl font-medium text-charcoal/60 leading-relaxed">
+                <p className="text-3xl font-bold text-charcoal/80 leading-relaxed">
                   {currentStepData.instruction}
                 </p>
               )}
@@ -251,13 +289,13 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       </div>
 
       {/* Controls */}
-      <div className="p-8 grid grid-cols-2 gap-6 bg-white/50 backdrop-blur-md border-t border-charcoal/5">
+      <div className="p-8 grid grid-cols-[2fr_3fr] gap-4 bg-white/50 backdrop-blur-md border-t border-charcoal/5">
         <Button
           variant="secondary"
           disabled={currentStep === 0}
           onClick={prevStep}
           data-testid="cooks-mode-step-prev"
-          className="h-20 rounded-3xl border-charcoal/10 text-charcoal/40 text-xl font-bold flex items-center justify-center space-x-3 active:scale-95 transition-all"
+          className="h-20 rounded-3xl border-charcoal/10 text-charcoal/40 text-lg font-bold flex items-center justify-center space-x-3 active:scale-95 transition-all"
         >
           <ChevronLeft size={28} />
           <span>{t('cook.back', 'Back')}</span>
@@ -265,10 +303,14 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         <Button
           onClick={nextStep}
           data-testid="cooks-mode-step-next"
-          className="h-20 rounded-3xl bg-terracotta text-white text-xl font-bold flex items-center justify-center space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
+          className="h-20 rounded-3xl bg-terracotta text-white text-2xl font-black flex items-center justify-center space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
         >
           <span>
-            {currentStep === steps.length - 1 ? t('cook.done', 'Done') : t('cook.next', 'Next')}
+            {currentStep === steps.length - 1
+              ? t('cook.done', 'Done')
+              : currentStep === 0
+                ? t('cook.letsCook', "Let's Cook")
+                : t('cook.next', 'Next')}
           </span>
           <ChevronRight size={28} />
         </Button>

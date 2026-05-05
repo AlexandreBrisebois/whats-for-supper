@@ -1,5 +1,12 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  setupCommonRoutes,
+  currentMonday,
+  toDateStr,
+  mockSseWithRecipeReady,
+} from './mock-api';
 
 test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -70,17 +77,8 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       }
     );
 
-    // 2. Mock GOTO status
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
-        });
-      }
-    );
+    // 2. Mock SSE to emit recipe_ready — drives the ready transition (no polling)
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
     // 3. Mock assign API
     let assignCalled = false;
@@ -152,17 +150,8 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       }
     );
 
-    // 3. Mock GOTO status as ready
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
-        });
-      }
-    );
+    // 3. Mock SSE to emit recipe_ready — drives the ready transition (no polling)
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
     // 4. Mock assign to resolve immediately
     await page.route(
@@ -256,17 +245,8 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       }
     );
 
-    // Mock GOTO status as ready
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
-        });
-      }
-    );
+    // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
     await page.goto('/home');
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
@@ -345,16 +325,9 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
         });
       }
     );
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
-        });
-      }
-    );
+
+    // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
     await page.goto('/home');
 
@@ -384,16 +357,9 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
         });
       }
     );
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
-        });
-      }
-    );
+
+    // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
     await page.goto('/home');
 
@@ -414,21 +380,56 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
     expect(orderInClass.split(' ')).not.toContain('bg-charcoal/10');
   });
 
-  test('Pending GOTO polls until ready', async ({ page }) => {
-    let callCount = 0;
+  // Task 18: SSE recipe_ready → confirm-goto-btn appears (replaces polling test)
+  // GOTO status endpoint returns 'pending' throughout — the button must appear
+  // via the SSE recipe_ready event, not via the polling interval.
+  test('SSE recipe_ready event makes confirm-goto-btn appear without polling', async ({ page }) => {
+    // 1. Mock GOTO setting with a known recipe ID
     await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
+      (url) => url.pathname.includes('/api/settings/family_goto'),
       async (route) => {
-        callCount++;
-        const status = callCount >= 2 ? 'ready' : 'pending';
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status } }),
+          body: JSON.stringify({
+            data: {
+              key: 'family_goto',
+              value: {
+                description: 'Family GOTO',
+                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              },
+            },
+          }),
         });
       }
     );
 
+    // 2. Mock status endpoint to always return 'pending' — polling must NOT resolve this
+    await page.route(
+      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'pending' } }),
+        });
+      }
+    );
+
+    // 3. Mock SSE to emit recipe_ready for the GOTO recipe ID
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
+
+    await page.goto('/home');
+
+    // confirm-goto-btn must appear driven by the SSE event, not the polling interval
+    // (status endpoint always returns 'pending', so polling can never resolve this)
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeVisible({ timeout: 10000 });
+    await expect(confirmBtn).toBeEnabled();
+  });
+
+  test('Pending GOTO transitions to ready via SSE recipe_ready event', async ({ page }) => {
+    // Mock GOTO setting
     await page.route(
       (url) => url.pathname.includes('/api/settings/family_goto'),
       async (route) => {
@@ -445,17 +446,29 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       }
     );
 
+    // Status endpoint always returns 'pending' — SSE must drive the transition
+    await page.route(
+      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'pending' } }),
+        });
+      }
+    );
+
+    // Mock SSE to emit recipe_ready for the GOTO recipe ID
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
+
     await page.goto('/home');
     const confirmBtn = page.getByTestId('confirm-goto-btn');
 
-    // Initially hidden while pending
-    await expect(confirmBtn).not.toBeVisible();
-    await expect(page.getByText(/your goto is being prepared/i)).toBeVisible();
-
-    // Wait for poll and transition to ready — button should appear
-    // gotoRecipeData.name from the detail endpoint ("Mock Recipe") overrides gotoDescription
+    // Initially hidden while pending (no SSE event yet — but SSE fires immediately in mock)
+    // Wait for SSE-driven transition to ready
     await expect(confirmBtn).toBeVisible({ timeout: 10000 });
     await expect(confirmBtn).toBeEnabled();
+    // gotoRecipeData.name from the detail endpoint ("Mock Recipe") overrides gotoDescription
     await expect(page.getByText(/mock recipe/i)).toBeVisible();
   });
 });
@@ -513,17 +526,8 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
       }
     );
 
-    // Mock GOTO status as ready
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
-        });
-      }
-    );
+    // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
     // Mock assign to be slow (500ms) — menu card must appear before it resolves
     // Use a raw Promise delay instead of page.waitForTimeout() to avoid "Test ended"
@@ -694,17 +698,8 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
       }
     );
 
-    // Mock GOTO status as ready
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'ready' } }),
-        });
-      }
-    );
+    // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
     // Stateful schedule mock: before assign → empty; after assign → today's slot has the recipe
     await page.route(

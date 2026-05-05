@@ -1,10 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Loader2, Sparkles, ChevronRight, BookOpen, PenLine, Camera, X } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import {
+  Loader2,
+  Sparkles,
+  ChevronRight,
+  BookOpen,
+  PenLine,
+  Camera,
+  X,
+  CheckCircle2,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useFamilyStore } from '@/store/familyStore';
+import { useGotoStore } from '@/store/gotoStore';
 import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { apiClient } from '@/lib/api/api-client';
 
@@ -36,29 +46,34 @@ export function FamilyGOTOSettings() {
   const [showSheet, setShowSheet] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>(null);
-  const [prevRecipeId, setPrevRecipeId] = useState<string | null>(null);
+  // Flash state: show CheckCircle2 for 2s when recipe transitions to ready
+  const [showReadyFlash, setShowReadyFlash] = useState(false);
+  const prevStatusRef = useRef<RecipeStatus>(null);
+  const prevRecipeIdRef = useRef<string | null>(null);
   const router = useRouter();
 
   const currentGoto = isGotoValue(familySettings[GOTO_KEY])
     ? (familySettings[GOTO_KEY] as GotoValue)
     : null;
 
-  // Reset status when ID changes (recommended pattern for state reset on prop change)
+  // Reset status when recipe ID changes — render-body conditional setState is the
+  // React-recommended pattern for derived state reset on prop/value change.
   const currentId = currentGoto?.recipeId ?? null;
-  if (currentId !== prevRecipeId) {
-    setPrevRecipeId(currentId);
+  if (currentId !== prevRecipeIdRef.current) {
+    prevRecipeIdRef.current = currentId;
     setRecipeStatus(null);
+    // prevStatusRef is reset by its own useEffect on recipeStatus change
   }
 
   useEffect(() => {
     loadSetting(GOTO_KEY);
   }, [loadSetting]);
 
+  // Seed status on mount via a single fetch — no polling
   useEffect(() => {
     if (!currentGoto?.recipeId) return;
 
     let isMounted = true;
-    let pollInterval: NodeJS.Timeout | null = null;
 
     const fetchStatus = async () => {
       try {
@@ -67,10 +82,6 @@ export function FamilyGOTOSettings() {
 
         const status = response?.data?.status as 'pending' | 'ready';
         setRecipeStatus(status);
-
-        if (status === 'ready' && pollInterval) {
-          clearInterval(pollInterval);
-        }
       } catch (err) {
         console.error('Failed to fetch recipe status:', err);
       }
@@ -78,14 +89,32 @@ export function FamilyGOTOSettings() {
 
     fetchStatus();
 
-    // Poll every 5s if pending
-    pollInterval = setInterval(fetchStatus, 5000);
-
     return () => {
       isMounted = false;
-      if (pollInterval) clearInterval(pollInterval);
     };
   }, [currentGoto?.recipeId]);
+
+  // Subscribe to gotoStore — when recipe_ready fires for our recipeId, transition to ready
+  const readyRecipeId = useGotoStore((s) => s.readyRecipeId);
+  useEffect(() => {
+    if (!currentGoto?.recipeId) return;
+    if (readyRecipeId !== currentGoto.recipeId) return;
+
+    // Only flash if we're transitioning from pending → ready
+    const wasNotReady = prevStatusRef.current !== 'ready';
+    setRecipeStatus('ready'); // eslint-disable-line react-hooks/set-state-in-effect
+
+    if (wasNotReady) {
+      setShowReadyFlash(true);
+      const timer = setTimeout(() => setShowReadyFlash(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [readyRecipeId, currentGoto?.recipeId]);
+
+  // Track previous status for flash detection
+  useEffect(() => {
+    prevStatusRef.current = recipeStatus;
+  }, [recipeStatus]);
 
   const isPending = recipeStatus === 'pending';
   const isReady = recipeStatus === 'ready';
@@ -123,8 +152,8 @@ export function FamilyGOTOSettings() {
     <>
       <div className="w-full max-w-sm rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
         <div className="flex items-center gap-2 mb-6">
-          <Sparkles className="h-4 w-4 text-ochre/60" />
-          <h3 className="text-xs font-bold uppercase tracking-widest text-ochre/60">Family GOTO</h3>
+          <Sparkles className="h-4 w-4 text-ochre" />
+          <h3 className="text-xs font-bold uppercase tracking-widest text-ochre">Family GOTO</h3>
         </div>
 
         <p className="text-sm text-charcoal/60 mb-4">
@@ -139,30 +168,71 @@ export function FamilyGOTOSettings() {
           </div>
         ) : isPending ? (
           /* Pending state — synthesis in progress */
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Loader2 className="h-5 w-5 text-ochre animate-spin flex-shrink-0" />
-              <span className="text-sm font-medium text-charcoal/60">
-                Your GOTO is being prepared…
-              </span>
+          <div className="flex items-start justify-between gap-3" data-testid="goto-pending-state">
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex items-center gap-3">
+                <Loader2
+                  className="h-5 w-5 text-ochre animate-spin flex-shrink-0"
+                  data-testid="goto-pending-spinner"
+                />
+                <span className="text-sm font-medium text-charcoal/60">
+                  Your GOTO is being prepared…
+                </span>
+              </div>
+              {/* Subtitle: timing expectation */}
+              <p className="text-xs text-charcoal/40 pl-8" data-testid="goto-pending-subtitle">
+                Usually ready in under 10 seconds
+              </p>
+              {/* Description echo: confirms what was submitted */}
+              {currentGoto?.description && (
+                <p
+                  className="text-xs text-charcoal/40 pl-8 italic truncate"
+                  data-testid="goto-pending-description"
+                >
+                  {currentGoto.description}
+                </p>
+              )}
             </div>
             <button
               onClick={() => setShowSheet(true)}
-              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-terracotta hover:text-terracotta/80 transition-colors ml-3 flex-shrink-0"
+              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-terracotta hover:text-terracotta/80 transition-colors flex-shrink-0 mt-0.5"
+              data-testid="goto-change-btn"
             >
               Change <ChevronRight size={12} />
             </button>
           </div>
         ) : isReady && currentGoto ? (
-          /* Ready state — show recipe name */
+          /* Ready state — show CheckCircle2 flash for 2s, then recipe name */
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-charcoal">{currentGoto.description}</p>
-              {showSaved && <p className="text-xs text-sage font-medium mt-0.5">Saved ✓</p>}
-            </div>
+            <AnimatePresence mode="wait">
+              {showReadyFlash ? (
+                <motion.div
+                  key="ready-flash"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-2"
+                >
+                  <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
+                  <span className="text-sm font-medium text-sage">Ready!</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="recipe-name"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  data-testid="goto-recipe-name"
+                >
+                  <p className="text-sm font-bold text-charcoal">{currentGoto.description}</p>
+                  {showSaved && <p className="text-xs text-sage font-medium mt-0.5">Saved ✓</p>}
+                </motion.div>
+              )}
+            </AnimatePresence>
             <button
               onClick={() => setShowSheet(true)}
-              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-terracotta hover:text-terracotta/80 transition-colors"
+              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-terracotta hover:text-terracotta/80 transition-colors ml-3 flex-shrink-0"
             >
               Change <ChevronRight size={12} />
             </button>

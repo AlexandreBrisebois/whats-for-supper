@@ -1360,6 +1360,230 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Dispose();
         await db.DisposeAsync();
     }
+    /// <summary>
+    /// Validates: Task 25 — WorkflowFatalFailure_PublishesRecipeFailedEvent
+    /// When a workflow instance reaches WorkflowStatus.Failed (all retries exhausted),
+    /// the worker MUST publish a recipe_failed SSE event with the recipe's partial data.
+    /// </summary>
+    [Fact]
+    public async Task WorkflowFatalFailure_PublishesRecipeFailedEvent()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "3"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"FatalPublishesRecipeFailedTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        // Fatal exception — not transient, not 429 — exhausts retries immediately
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", new InvalidOperationException("AI pipeline exploded")));
+
+        // Capture published events via a mock publisher
+        var publishedEvents = new List<(Guid RecipeId, string ErrorMessage, string FailedStep, object? PartialData)>();
+        var mockPublisher = new CapturingEventPublisher(publishedEvents);
+        services.AddScoped<IScheduleEventPublisher>(_ => mockPublisher);
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+
+        // Initialize throttles
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var recipeId = Guid.NewGuid();
+
+        // Seed a Recipe row so partialData can be populated
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Name = "Spaghetti Bolognese",
+            ImageCount = 0,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.Recipes.Add(recipe);
+
+        // Instance with Parameters containing the recipeId (matches production TriggerAsync pattern)
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "recipe-import",
+            Status = WorkflowStatus.Processing,
+            Parameters = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.ToString()
+            }),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        // Task with RetryCount already at max — next failure is fatal
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "ExtractRecipe",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 3, // = _maxRetries — budget exhausted
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: instance is Paused (fatal path in ProcessTaskAsync sets Paused)
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var failedInstance = await queryDb.WorkflowInstances.FirstAsync(i => i.Id == instance.Id);
+        Assert.Equal(WorkflowStatus.Paused, failedInstance.Status);
+
+        // Assert: recipe_failed SSE event was published
+        Assert.Single(publishedEvents);
+        var evt = publishedEvents[0];
+        Assert.Equal(recipeId, evt.RecipeId);
+        Assert.Contains("AI pipeline exploded", evt.ErrorMessage);
+        Assert.Equal("ExtractRecipe", evt.FailedStep);
+        Assert.NotNull(evt.PartialData);
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Validates: Task 25 — WorkflowTransientFailure_DoesNotPublishRecipeFailedEvent
+    /// When a task fails transiently (retries remaining), the worker MUST NOT publish
+    /// a recipe_failed SSE event. The event is only for fatal instance-level failure.
+    /// </summary>
+    [Fact]
+    public async Task WorkflowTransientFailure_DoesNotPublishRecipeFailedEvent()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "3"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"TransientNoPublishTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        // Transient exception — retries remaining (RetryCount=0 < MaxRetries=3)
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe",
+                new TransientWorkflowException("Temporary network blip")));
+
+        // Capture published events — should remain empty
+        var publishedEvents = new List<(Guid RecipeId, string ErrorMessage, string FailedStep, object? PartialData)>();
+        var mockPublisher = new CapturingEventPublisher(publishedEvents);
+        services.AddScoped<IScheduleEventPublisher>(_ => mockPublisher);
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var recipeId = Guid.NewGuid();
+
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "recipe-import",
+            Status = WorkflowStatus.Processing,
+            Parameters = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.ToString()
+            }),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "ExtractRecipe",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 0, // retries remaining — transient path
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: task rescheduled as Pending (transient retry path)
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var rescheduledTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == task.TaskId);
+        Assert.Equal(TaskStatus.Pending, rescheduledTask.Status);
+        Assert.Equal(1, rescheduledTask.RetryCount);
+
+        // Assert: NO recipe_failed SSE event published
+        Assert.Empty(publishedEvents);
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
 }
 
 /// <summary>
@@ -1390,4 +1614,28 @@ public class ThrowingWorkflowProcessor(string processorName, Exception toThrow) 
         await Task.Yield();
         throw toThrow;
     }
+}
+
+/// <summary>
+/// Captures <see cref="IScheduleEventPublisher.PublishRecipeFailedAsync"/> calls for assertion in tests.
+/// All other publisher methods are no-ops.
+/// </summary>
+public class CapturingEventPublisher(
+    List<(Guid RecipeId, string ErrorMessage, string FailedStep, object? PartialData)> captured)
+    : IScheduleEventPublisher
+{
+    public Task PublishSlotUpdatedAsync(DateOnly date, RecipeApi.Dto.ScheduleRecipeDto? recipe, int status) => Task.CompletedTask;
+    public Task PublishWeekUpdatedAsync(RecipeApi.Dto.ScheduleDays schedule) => Task.CompletedTask;
+    public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount) => Task.CompletedTask;
+    public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, RecipeApi.Dto.SmartDefaultsDto defaults) => Task.CompletedTask;
+    public Task PublishFillTheGapInvalidatedAsync(int weekOffset) => Task.CompletedTask;
+    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl) => Task.CompletedTask;
+
+    public Task PublishRecipeFailedAsync(Guid recipeId, string errorMessage, string failedStep, object? partialData)
+    {
+        captured.Add((recipeId, errorMessage, failedStep, partialData));
+        return Task.CompletedTask;
+    }
+
+    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState) => Task.CompletedTask;
 }

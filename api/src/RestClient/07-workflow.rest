@@ -1,6 +1,6 @@
 @workflowId = recipe-extraction
 @recipeImportWorkflowId = recipe-import
-@recipeId = 0384639a-96e2-48d9-89fe-c30d55e06c98
+@recipeId = 4fb4626e-18d7-493d-930a-177ede01fb3d
 @instanceId = 207241a0-55c3-4374-a5c0-61fb40a5355b
 @taskId = 5042beb0-19d8-46ce-abc4-a8c85dae2ef5
 
@@ -14,6 +14,19 @@ X-Hearth-Secret: {{hearthSecret}}
 {
   "parameters": {
     "recipeId": "{{recipeId}}"
+  }
+}
+
+### 1aa. Trigger url-import workflow execution
+# Triggers the url-import workflow for a recipe with a SourceUrl.
+POST {{baseUrl}}/api/workflows/url-import/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {
+    "recipeId": "{{recipeId}}",
+    "url": "https://www.ricardocuisine.com/en/recipes/4725-honey-glazed-rack-of-lamb-"
   }
 }
 

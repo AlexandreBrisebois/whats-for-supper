@@ -330,6 +330,13 @@ public class WorkflowWorker(
             {
                 logger.LogError(saveEx, "Failed to save fatal error state for task {TaskId}", task.TaskId);
             }
+
+            // Publish recipe_failed SSE event — all retries exhausted, workflow is fatally failed.
+            // This fires on the fatal path only (not on transient retries or 429 retry paths above).
+            if (instance != null)
+            {
+                await PublishRecipeFailedEventAsync(instance, task, db, ct);
+            }
         }
     }
 
@@ -402,6 +409,79 @@ public class WorkflowWorker(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error handling task completion for instance {InstanceId}", instanceId);
+        }
+    }
+
+    /// <summary>
+    /// Publishes a <c>recipe_failed</c> SSE event when a workflow instance reaches
+    /// <see cref="WorkflowStatus.Failed"/>. Fetches partial recipe data (name, imageUrl)
+    /// from the DB to include in the payload so the client can show a meaningful retry prompt.
+    /// </summary>
+    private async Task PublishRecipeFailedEventAsync(
+        WorkflowInstance instance,
+        WorkflowTask failedTask,
+        RecipeDbContext db,
+        CancellationToken ct)
+    {
+        try
+        {
+            // Resolve the recipe ID from the workflow instance's parameters.
+            // Workflow instances store the recipe ID in their Parameters JSON.
+            Guid? recipeId = null;
+            if (!string.IsNullOrEmpty(instance.Parameters))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(instance.Parameters);
+                    if (doc.RootElement.TryGetProperty("recipeId", out var idProp) ||
+                        doc.RootElement.TryGetProperty("RecipeId", out idProp))
+                    {
+                        recipeId = idProp.GetGuid();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Could not parse recipeId from workflow instance {InstanceId} parameters", instance.Id);
+                }
+            }
+
+            if (recipeId is null)
+            {
+                logger.LogWarning("WorkflowFailed: no recipeId found in instance {InstanceId} — skipping recipe_failed SSE event", instance.Id);
+                return;
+            }
+
+            // Fetch partial recipe data for the client retry prompt
+            object? partialData = null;
+            var recipe = await db.Recipes.FindAsync([recipeId.Value], ct);
+            if (recipe != null)
+            {
+                // Build imageUrl from ImageCount — same convention used elsewhere in the API
+                string? imageUrl = recipe.ImageCount > 0
+                    ? $"/api/recipes/{recipe.Id}/image/0"
+                    : null;
+
+                partialData = new { name = recipe.Name, imageUrl };
+            }
+
+            // Resolve the scoped publisher via a new scope — WorkflowWorker is a singleton
+            using var publishScope = scopeFactory.CreateScope();
+            var publisher = publishScope.ServiceProvider.GetRequiredService<IScheduleEventPublisher>();
+
+            await publisher.PublishRecipeFailedAsync(
+                recipeId.Value,
+                failedTask.ErrorMessage ?? "Unknown error",
+                failedTask.TaskName,
+                partialData);
+
+            logger.LogInformation(
+                "Published recipe_failed SSE event for recipe {RecipeId}, failed step {FailedStep}",
+                recipeId.Value, failedTask.TaskName);
+        }
+        catch (Exception ex)
+        {
+            // Publishing failure must never crash the worker — log and continue
+            logger.LogError(ex, "Failed to publish recipe_failed SSE event for workflow instance {InstanceId}", instance.Id);
         }
     }
 

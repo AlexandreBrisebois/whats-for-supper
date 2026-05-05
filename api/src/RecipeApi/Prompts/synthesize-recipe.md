@@ -14,19 +14,42 @@ SCHEMA TEMPLATE (MUST FOLLOW EXACTLY):
 {
   "@context": "https://schema.org/",
   "@type": "Recipe",
-  "name": "Recipe Name",
+  "languageCode": "FR",
+  "name": "Recipe Title",
   "recipeYield": "4 portions",
-  "totalTime": "PT45M",
-  "recipeIngredient": ["250 ml tomato sauce", "400 g spaghetti"],
+  "totalTime": "PT35M",
+  "recipeIngredient": ["1 cup flour", "2 eggs"],
+  "supply": [
+    {
+      "@type": "HowToSupply",
+      "name": "Ingredient Name",
+      "requiredQuantity": {
+        "@type": "QuantitativeValue",
+        "value": 1.5,
+        "unitText": "tsp"
+      }
+    }
+  ],
   "recipeInstructions": [
     {
       "@type": "HowToSection",
-      "name": "Preparation",
+      "name": "Section Name (e.g. Setup)",
       "itemListElement": [
-        { "@type": "HowToStep", "text": "Boil salted water and cook pasta al dente." }
+        { "@type": "HowToStep", "text": "Step text..." }
       ]
     }
-  ]
+  ],
+  "nutrition": {
+    "@type": "NutritionInformation",
+    "calories": "500 kcal",
+    "fatContent": "20 g",
+    "saturatedFatContent": "5 g",
+    "sodiumContent": "500 mg",
+    "carbohydrateContent": "50 g",
+    "fiberContent": "5 g",
+    "sugarContent": "10 g",
+    "proteinContent": "30 g"
+  }
 }
 
 STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.

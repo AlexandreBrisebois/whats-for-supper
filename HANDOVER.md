@@ -30,6 +30,33 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 4. **Phase 5: Production Polish (Upcoming)**
    - Finalize environment variables and Traefik TLS settings for the unified domain.
 
+## Task 41 — Database Schema Audit (Completed)
+
+**Audit date:** Task 41 of `00-live-schedule` spec.
+
+**Static analysis results (Docker not running — live DB commands skipped):**
+
+| Table | Schema ↔ Model | Result |
+|---|---|---|
+| `weekly_plans` | `id`, `week_start_date`, `status`, `notified_at`, `grocery_state`, `created_at` | ✅ All columns match |
+| `calendar_events` | `id`, `recipe_id`, `date`, `meal_slot`, `status`, `vote_count`, `candidate_ids` | ✅ All columns match |
+| `recipes` | All 21 columns including `raw_metadata jsonb`, `ingredients jsonb` | ✅ All columns match |
+| `recipe_votes` | `recipe_id`, `family_member_id`, `vote`, `voted_at` | ✅ All columns match |
+| `workflow_instances` | `id`, `workflow_id`, `status`, `parameters`, `created_at`, `updated_at` | ✅ All columns match |
+| `workflow_tasks` | All 14 columns including `payload jsonb`, `result jsonb`, `depends_on text[]` | ✅ All columns match |
+
+**Drift found and fixed:**
+- `weekly_plans.grocery_state` was `jsonb DEFAULT '{}'::jsonb` (nullable) — updated to `jsonb NOT NULL DEFAULT '{}'::jsonb` in `api/database/schema.sql`. The C# model already had `[Column("grocery_state", TypeName = "jsonb")]` with default `= "{}"` — type was correct, only the NOT NULL constraint was missing from the schema file.
+
+**`WeeklyPlan.updated_at` note:**
+- The task checklist mentions verifying `updated_at` on `WeeklyPlan`. This column does NOT exist in either the schema or the model — by design. `weekly_plans` only has `created_at`. This is intentional (the table is append-only for the current week; grocery state is the only mutable field and is tracked via SSE events). No action needed.
+
+**`task agent:drift` result:** ✅ Zero drift (Tier 1 schema + mock compliance both pass).
+
+**Pending (requires Docker):** `task db:schema:push DRY_RUN=true` and `task migrate` to apply the `NOT NULL` constraint to the live database. Run these when Docker is available.
+
+---
+
 ## Standing Notes
 
 - **E2E Route Handler Pattern (ADR 035).** All `page.route()` handlers must use `new URL(route.request().url())` inside the handler body for query string inspection. The predicate `(url) => ...` is for pathname/host matching only. Use `.includes('/api/path')` not `.endsWith(...)`. Never close over the predicate's `url` param inside the handler.

@@ -15,6 +15,7 @@ using RecipeApi.Infrastructure;
 using RecipeApi.Middleware;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Services.Processors;
 
 namespace RecipeApi.Tests.Infrastructure;
 
@@ -112,6 +113,10 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                 opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
             });
 
+        builder.Services.AddSingleton<SseConnectionManager>();
+        builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
+        builder.Services.AddScoped<ScheduleService>();
+        builder.Services.AddScoped<DiscoveryService>();
         builder.Services.AddScoped<FamilyService>();
         builder.Services.AddScoped<IValidationService, ValidationService>();
         builder.Services.AddScoped<ImageService>();

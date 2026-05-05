@@ -107,3 +107,15 @@ GET {{baseUrl}}/api/recipes/import-status
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 X-Family-Member-Id: {{familyMemberId}}
+
+### Capture a new recipe from a URL
+POST {{baseUrl}}/api/recipes/capture-url
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
+
+{
+  "url": "https://example.com/recipe",
+  "notes": "Testing URL capture",
+  "rating": 2
+}

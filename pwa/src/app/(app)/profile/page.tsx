@@ -11,12 +11,16 @@ import { t } from '@/locales';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { selectFamilyMember } = useFamily();
+  const { selectFamilyMember, selectedFamilyMemberId, selectedMember } = useFamily();
   const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
 
   function handleFamilyMemberSelected(familyMemberId: string) {
     selectFamilyMember(familyMemberId);
     completeOnboarding();
+    router.push(ROUTES.HOME);
+  }
+
+  function handleContinue() {
     router.push(ROUTES.HOME);
   }
 
@@ -34,10 +38,10 @@ export default function ProfilePage() {
 
         <div className="text-center px-12">
           <h2 className="font-outfit text-3xl font-bold text-charcoal tracking-tight">
-            {t('profile.title', 'Family Profile')}
+            {t('profile.title', "Who's Eating?")}
           </h2>
           <p className="mt-2 text-sm font-medium text-charcoal-300">
-            {t('profile.subtitle', 'Switch active family member to see what they think.')}
+            {t('profile.subtitle', 'Pick a family member to get started.')}
           </p>
         </div>
       </div>
@@ -46,9 +50,21 @@ export default function ProfilePage() {
         <ProfileDropdown onSelect={handleFamilyMemberSelected} />
       </div>
 
-      <p className="max-w-[200px] text-center text-xs font-medium text-charcoal-300/60">
+      <p className="max-w-[200px] text-center text-xs font-medium text-charcoal/60">
         {t('profile.manageHint', 'Manage your family members and app language in settings.')}
       </p>
+
+      {selectedFamilyMemberId && (
+        <div className="w-full max-w-sm">
+          <button
+            data-testid="continue-as-member-btn"
+            onClick={handleContinue}
+            className="w-full rounded-2xl border border-terracotta/40 bg-transparent px-6 py-3 text-sm font-semibold text-terracotta hover:bg-terracotta/5 transition-colors active:scale-95"
+          >
+            {`Continue as ${selectedMember?.name ?? 'current member'}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

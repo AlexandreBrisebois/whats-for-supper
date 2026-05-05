@@ -21,4 +21,5 @@ public record ScheduleDays(
     [property: JsonPropertyName("weekOffset")] int WeekOffset,
     [property: JsonPropertyName("locked")] bool Locked,
     [property: JsonPropertyName("status")] int Status,
-    [property: JsonPropertyName("days")] List<ScheduleDayDto> Days);
+    [property: JsonPropertyName("days")] List<ScheduleDayDto> Days,
+    [property: JsonPropertyName("groceryState")] Dictionary<string, bool>? GroceryState = null);

@@ -1,4 +1,5 @@
 import { StoreInitializer } from '@/components/common/StoreInitializer';
+import { TodayStoreInitializer } from '@/components/TodayStoreInitializer';
 import { serverFetch } from '@/lib/api/server-client';
 import type { FamilyMember } from '@/types/domain';
 
@@ -41,6 +42,7 @@ export default async function HomePage() {
   return (
     <>
       {familyMembers && <StoreInitializer familyMembers={familyMembers} />}
+      <TodayStoreInitializer todaysRecipe={todaysRecipe} todayStatus={todayStatus} />
       <HomeCommandCenter todaysRecipe={todaysRecipe} todayStatus={todayStatus} />
     </>
   );

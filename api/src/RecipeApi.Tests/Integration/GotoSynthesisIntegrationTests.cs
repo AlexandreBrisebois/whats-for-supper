@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services.Processors;
 using RecipeApi.Tests.Infrastructure;
@@ -87,7 +89,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -125,7 +127,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -179,7 +181,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -216,7 +218,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),

@@ -146,6 +146,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
   return (
     <motion.div
+      layout
       style={{
         x,
         rotate,
@@ -163,7 +164,11 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       data-testid="discovery-card"
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
-      <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
+      <motion.div
+        className={`h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col${hasFamilyInterest ? ' ring-2 ring-sage' : ''}`}
+        animate={hasFamilyInterest ? { scale: [1, 1.03, 1] } : {}}
+        transition={{ duration: 1.5, repeat: Infinity }}
+      >
         <div className="relative h-[62%] w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -221,7 +226,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
             </span>
           </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };

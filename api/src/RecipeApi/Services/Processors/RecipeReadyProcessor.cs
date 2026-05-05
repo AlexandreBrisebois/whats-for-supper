@@ -1,5 +1,6 @@
 using System.Text.Json;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Workflow;
 
@@ -17,7 +18,8 @@ namespace RecipeApi.Services.Processors;
 /// </summary>
 public class RecipeReadyProcessor(
     RecipeDbContext db,
-    ILogger<RecipeReadyProcessor> logger) : IWorkflowProcessor
+    ILogger<RecipeReadyProcessor> logger,
+    IScheduleEventPublisher publisher) : IWorkflowProcessor
 {
     public string ProcessorName => "RecipeReady";
 
@@ -56,6 +58,13 @@ public class RecipeReadyProcessor(
         {
             logger.LogWarning("RecipeReady: recipe {RecipeId} is not ready — Name={Name}, ImageCount={ImageCount}, IsSynthesized={IsSynthesized}",
                 recipeId, recipe.Name, recipe.ImageCount, recipe.IsSynthesized);
+        }
+
+        if (isReady)
+        {
+            var name = recipe.Name ?? string.Empty;
+            var imageUrl = recipe.ImageCount > 0 ? $"/api/recipes/{recipe.Id}/image/0" : null;
+            await publisher.PublishRecipeReadyAsync(recipeId, name, imageUrl);
         }
 
         return new { Message = $"Processed recipe {recipeId} readiness check. Ready: {isReady}" };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { DiscoveryCard } from '@/components/discovery/DiscoveryCard';
@@ -12,13 +12,18 @@ import { t, tWithVars } from '@/locales';
 
 export default function DiscoveryPage() {
   const { setHasPendingCards } = useDiscoveryStore();
+  // Lift state to store — SSE can now update the stack without the page being mounted
+  const recipes = useDiscoveryStore((s) => s.discoveryStack);
+  const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
   const { selectedFamilyMemberId, _hasHydrated } = useFamily();
-  const [recipes, setRecipes] = useState<DiscoveryRecipe[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEureka, setIsEureka] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
+  // Micro-badge: "Just planned ✓" shown when a card is removed from the visible top 4
+  const [showJustPlannedBadge, setShowJustPlannedBadge] = useState(false);
+  const justPlannedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const performFetch = useCallback(async () => {
     const cats = await getCategories();
@@ -40,7 +45,7 @@ export default function DiscoveryPage() {
     try {
       const data = await performFetch();
       setCategories(data.cats);
-      setRecipes(data.stack);
+      useDiscoveryStore.getState().setStack(data.stack);
       setCurrentCategoryIndex(0);
     } catch (error) {
       console.error('Failed to fetch discovery data', error);
@@ -58,7 +63,7 @@ export default function DiscoveryPage() {
         const data = await performFetch();
         if (!ignore) {
           setCategories(data.cats);
-          setRecipes(data.stack);
+          useDiscoveryStore.getState().setStack(data.stack);
           setCurrentCategoryIndex(0);
         }
       } catch (error) {
@@ -80,6 +85,68 @@ export default function DiscoveryPage() {
     return () => setHasPendingCards(false);
   }, [recipes.length, setHasPendingCards]);
 
+  /**
+   * Silent refetch of the current category stack triggered by fill-the-gap
+   * invalidation SSE events. Diffs IDs against the current discoveryStack and
+   * removes any recipes that are no longer in the response (they were planned).
+   * Does NOT flash a loading state — existing cards stay visible until the diff
+   * is applied.
+   */
+  const refetchCurrentCategory = useCallback(async () => {
+    if (categories.length === 0) return;
+    try {
+      const currentCategory = categories[currentCategoryIndex];
+      const rawStack = await getDiscoveryStack(currentCategory);
+      const freshStack = rawStack.map((r) => ({
+        ...r,
+        imageUrl: `/api/recipes/${r.id}/hero`,
+      }));
+
+      const freshIds = new Set(freshStack.map((r) => r.id));
+      const currentStack = useDiscoveryStore.getState().discoveryStack;
+
+      // Determine which IDs were removed and whether any were in the visible top 4
+      const visibleTop4Ids = new Set(currentStack.slice(-4).map((r) => r.id));
+      let removedFromVisible = false;
+
+      for (const recipe of currentStack) {
+        if (!freshIds.has(recipe.id)) {
+          if (visibleTop4Ids.has(recipe.id)) {
+            removedFromVisible = true;
+          }
+          useDiscoveryStore.getState().removeFromStack(recipe.id);
+        }
+      }
+
+      // Show micro-badge if any visible card was removed
+      if (removedFromVisible) {
+        setShowJustPlannedBadge(true);
+        if (justPlannedTimerRef.current) clearTimeout(justPlannedTimerRef.current);
+        justPlannedTimerRef.current = setTimeout(() => {
+          setShowJustPlannedBadge(false);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Silent refetch of discovery category failed', error);
+    }
+  }, [categories, currentCategoryIndex]);
+
+  // Subscribe to fill-the-gap invalidation signal from SSE
+  useEffect(() => {
+    if (fillTheGapVersion === 0) return; // skip initial mount
+    // refetchCurrentCategory is a useCallback that calls setShowJustPlannedBadge internally.
+    // This is an intentional store-subscription pattern, not a cascading render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refetchCurrentCategory();
+  }, [fillTheGapVersion, refetchCurrentCategory]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (justPlannedTimerRef.current) clearTimeout(justPlannedTimerRef.current);
+    };
+  }, []);
+
   const loadNextCategory = useCallback(async () => {
     const nextIndex = currentCategoryIndex + 1;
     if (nextIndex < categories.length) {
@@ -92,7 +159,7 @@ export default function DiscoveryPage() {
           imageUrl: `/api/recipes/${r.id}/hero`,
         }));
         console.log('loadNextCategory mappedStack first:', JSON.stringify(mappedStack[0]));
-        setRecipes(mappedStack);
+        useDiscoveryStore.getState().setStack(mappedStack);
         setCurrentCategoryIndex(nextIndex);
       } catch (error) {
         console.error('Failed to fetch next category stack', error);
@@ -142,7 +209,7 @@ export default function DiscoveryPage() {
       recipe,
     });
     const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
-    setRecipes(updatedRecipes);
+    useDiscoveryStore.getState().setStack(updatedRecipes);
 
     if (recipe?.hasFamilyInterest) {
       console.log('Match found! Incrementing matchCount');
@@ -168,7 +235,7 @@ export default function DiscoveryPage() {
   const handleSwipeLeft = (recipeId: string) => {
     // Optimistic Update
     const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
-    setRecipes(updatedRecipes);
+    useDiscoveryStore.getState().setStack(updatedRecipes);
 
     // Background Vote
     submitVote(recipeId, 2).catch((error) => {
@@ -199,6 +266,23 @@ export default function DiscoveryPage() {
       <div className="flex-1 flex flex-col items-center justify-center w-full">
         {/* Card Arena */}
         <div className="relative z-10 w-full max-w-sm aspect-[3/4] md:aspect-auto md:h-[60vh] min-h-[400px]">
+          {/* Micro-badge: "Just planned ✓" — shown inline at top of card stack, 2s auto-fade */}
+          <AnimatePresence>
+            {showJustPlannedBadge && (
+              <motion.div
+                key="just-planned-badge"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                data-testid="just-planned-badge"
+                className="absolute -top-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full bg-sage/15 border border-sage/30 px-3 py-1 text-xs font-semibold text-sage whitespace-nowrap"
+              >
+                Just planned ✓
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence>
             {recipes.length > 0 ? (
               visibleRecipes.map((recipe, index) => {

@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Moq;
+using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -8,12 +11,15 @@ namespace RecipeApi.Tests.Services;
 
 public class DiscoveryServiceTests
 {
+    private static DiscoveryService MakeService(RecipeDbContext ctx)
+        => new(ctx, new Mock<IScheduleEventPublisher>().Object);
+
     [Fact]
     public async Task GetRecipesForDiscoveryAsync_Returns_Only_Unvoted_Recipes()
     {
         // Arrange
         await using var ctx = TestDbContextFactory.Create();
-        var service = new DiscoveryService(ctx);
+        var service = MakeService(ctx);
         var memberId = Guid.NewGuid();
 
         var recipe1 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, Category = "Italian" };
@@ -40,7 +46,7 @@ public class DiscoveryServiceTests
     {
         // Arrange
         await using var ctx = TestDbContextFactory.Create();
-        var service = new DiscoveryService(ctx);
+        var service = MakeService(ctx);
         var memberId = Guid.NewGuid();
 
         var recipe1 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true };
@@ -64,7 +70,7 @@ public class DiscoveryServiceTests
     {
         // Arrange
         await using var ctx = TestDbContextFactory.Create();
-        var service = new DiscoveryService(ctx);
+        var service = MakeService(ctx);
         var recipeId = Guid.NewGuid();
 
         var member1 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 1" };
@@ -91,7 +97,7 @@ public class DiscoveryServiceTests
     {
         // Arrange
         await using var ctx = TestDbContextFactory.Create();
-        var service = new DiscoveryService(ctx);
+        var service = MakeService(ctx);
         var recipeId = Guid.NewGuid();
 
         var member1 = new FamilyMember { Id = Guid.NewGuid(), Name = "Member 1" };
@@ -124,7 +130,7 @@ public class DiscoveryServiceTests
     public void InferDifficulty_Returns_Correct_Level(int ingredients, int time, string expected)
     {
         // Arrange
-        var service = new DiscoveryService(null!); // Context not needed for this logic
+        var service = new DiscoveryService(null!, new Mock<IScheduleEventPublisher>().Object); // Context not needed for this logic
 
         // Act
         var result = service.InferDifficulty(ingredients, time);
@@ -138,7 +144,7 @@ public class DiscoveryServiceTests
     {
         // Arrange
         await using var ctx = TestDbContextFactory.Create();
-        var service = new DiscoveryService(ctx);
+        var service = MakeService(ctx);
         var memberId = Guid.NewGuid();
 
         var recipe1 = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, Category = "Italian" };
@@ -170,7 +176,7 @@ public class DiscoveryServiceTests
     {
         // Arrange
         await using var ctx = TestDbContextFactory.Create();
-        var service = new DiscoveryService(ctx);
+        var service = MakeService(ctx);
         var memberId = Guid.NewGuid();
 
         var now = new DateTimeOffset(2026, 4, 23, 12, 0, 0, TimeSpan.Zero);

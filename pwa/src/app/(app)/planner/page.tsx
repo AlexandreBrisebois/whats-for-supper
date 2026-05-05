@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   ChevronLeft,
@@ -56,6 +56,7 @@ export default function PlannerPage() {
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -81,16 +82,6 @@ export default function PlannerPage() {
   if (currentWeekOffset !== prevOffset) {
     setPrevOffset(currentWeekOffset);
   }
-
-  useEffect(() => {
-    const pollIntervalTime = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test' ? 60000 : 30000;
-    const pollInterval = setInterval(() => {
-      if (useWeekStore.getState().status !== 2) {
-        useWeekStore.getState().sync();
-      }
-    }, pollIntervalTime);
-    return () => clearInterval(pollInterval);
-  }, []);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -232,7 +223,7 @@ export default function PlannerPage() {
     }
 
     if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
-      useWeekStore.getState().moveRecipe(fromIndex, toIndex);
+      useWeekStore.getState().reorderLocally(fromIndex, toIndex);
     }
   };
 
@@ -462,6 +453,7 @@ export default function PlannerPage() {
                     onPivot={() => setShowPivot({ dayIndex: index })}
                     onCookMode={() => setActiveCookMode(day)}
                     setDraggedId={setDraggedId}
+                    preDragSnapshotRef={preDragSnapshotRef}
                     hasAnimatedIn={hasAnimatedIn}
                   />
                 ))}
@@ -580,6 +572,7 @@ function PlannerDayCard({
   onPivot,
   onCookMode,
   setDraggedId,
+  preDragSnapshotRef,
   hasAnimatedIn,
 }: {
   day: UILocalScheduleDay;
@@ -588,6 +581,7 @@ function PlannerDayCard({
   onPivot: () => void;
   onCookMode: () => void;
   setDraggedId: (id: string | null) => void;
+  preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
   hasAnimatedIn: boolean;
 }) {
   const dragControls = useDragControls();
@@ -597,8 +591,21 @@ function PlannerDayCard({
       value={day}
       dragListener={false}
       dragControls={dragControls}
-      onDragStart={() => setDraggedId(day._uiId)}
-      onDragEnd={() => setDraggedId(null)}
+      onDragStart={() => {
+        preDragSnapshotRef.current = useWeekStore.getState().schedule;
+        setDraggedId(day._uiId);
+      }}
+      onDragEnd={() => {
+        const snapshot = preDragSnapshotRef.current;
+        const currentSchedule = useWeekStore.getState().schedule;
+        const finalFrom = snapshot ? snapshot.findIndex((d) => d._uiId === day._uiId) : -1;
+        const finalTo = currentSchedule.findIndex((d) => d._uiId === day._uiId);
+        if (finalFrom !== finalTo && snapshot !== null) {
+          useWeekStore.getState().commitMove(finalFrom, finalTo, snapshot);
+        }
+        preDragSnapshotRef.current = null;
+        setDraggedId(null);
+      }}
       initial={{ opacity: 0, y: 20 }}
       animate={{
         opacity: 1,
