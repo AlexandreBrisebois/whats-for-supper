@@ -23,7 +23,7 @@ export interface TodayState {
   lastSyncedAt: number | null;
   /**
    * Timestamp (ms) of the most recent optimistic write (assignRecipe).
-   * sync() will not overwrite currentRecipe while this is within the 10-second window.
+   * sync() will not overwrite currentRecipe while this is within the 20-second window.
    */
   optimisticWriteAt: number | null;
 
@@ -56,7 +56,7 @@ export interface TodayState {
 
   /**
    * Fetch GET /api/schedule?weekOffset=0, find today's entry, and reconcile:
-   * - If an optimistic write is in-flight (< 10 s old), keep currentRecipe as-is.
+   * - If an optimistic write is in-flight (< 20 s old), keep currentRecipe as-is.
    * - Otherwise, update currentRecipe and status from the server response.
    * Sets lastSyncedAt on success.
    */
@@ -74,11 +74,26 @@ export const useTodayStore = create<TodayState>((set, get) => ({
 
   // ── init ──────────────────────────────────────────────────────────────────
   init(recipe, status) {
-    set({
-      currentRecipe: recipe,
-      status,
-      optimisticWriteAt: null,
-    });
+    const { optimisticWriteAt, currentRecipe: existingRecipe, status: existingStatus } = get();
+    const optimisticIsRecent =
+      optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 20_000;
+
+    if (optimisticIsRecent) {
+      // Preserve optimistic state during client-side navigation if a write is recent.
+      // We keep the existing recipe, status, and the write timestamp.
+      set({
+        currentRecipe: existingRecipe,
+        status: existingStatus,
+        optimisticWriteAt,
+      });
+    } else {
+      // Fresh mount or optimistic window expired: use provided server data.
+      set({
+        currentRecipe: recipe,
+        status,
+        optimisticWriteAt: null,
+      });
+    }
   },
 
   // ── assignRecipe ──────────────────────────────────────────────────────────
@@ -134,7 +149,7 @@ export const useTodayStore = create<TodayState>((set, get) => ({
 
       const { optimisticWriteAt } = get();
       const optimisticIsRecent =
-        optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 10_000;
+        optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 20_000;
 
       if (todaysEntry?.status === 2) {
         set({ status: 2, lastSyncedAt: Date.now() });
