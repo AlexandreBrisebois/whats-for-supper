@@ -9,7 +9,9 @@ function walkDir(dir, callback) {
   });
 }
 
-const targetDir = path.resolve(__dirname, '../src/lib/api/generated');
+const targetDir = process.env.KIOTA_TARGET_DIR 
+  ? path.resolve(process.env.KIOTA_TARGET_DIR)
+  : path.resolve(__dirname, '../src/lib/api/generated');
 
 console.log(`🔧 Fixing Kiota imports in ${targetDir}...`);
 

@@ -279,7 +279,10 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
 
             <button
               type="button"
-              onClick={() => { setShowUrlReview(true); setUrlInput(''); }}
+              onClick={() => {
+                setShowUrlReview(true);
+                setUrlInput('');
+              }}
               className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/40 transition-colors hover:text-terracotta"
             >
               <Globe size={16} />
@@ -431,7 +434,10 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
           <div className="flex flex-col gap-4">
             <button
               type="button"
-              onClick={() => { setShowUrlReview(false); setUrlCaptureError(null); }}
+              onClick={() => {
+                setShowUrlReview(false);
+                setUrlCaptureError(null);
+              }}
               className="flex w-fit items-center gap-1 text-sm font-bold uppercase tracking-widest text-charcoal/40 transition-colors hover:text-charcoal"
             >
               <ArrowLeft size={14} />

@@ -278,16 +278,41 @@ tasks:
     cmds:
       - npm run api:generate
 
-  gen:client:check:
-    desc: "🔍 Verify Kiota client is up to date (fails if regeneration would produce changes)"
+  gen:client:sync:
+    desc: "🔄 Regenerate Kiota client and stage changes (for local development)"
     dir: pwa
     cmds:
-      - npm run api:generate
+      - task: gen:client
+      - git add src/lib/api/generated
+      - echo "✅ Kiota client regenerated and staged."
+
+  gen:client:check:
+    desc: "🔍 Verify Kiota client is up to date (non-destructive check)"
+    dir: pwa
+    cmds:
       - |
-        if ! git diff --quiet -- src/lib/api/generated; then
+        # Use a temporary directory for the check to avoid dirtying the workspace
+        CHECK_DIR=$(mktemp -d)
+        trap 'rm -rf "$CHECK_DIR"' EXIT
+        
+        echo "⏳ Checking Kiota client drift..."
+        
+        # 1. Generate into the temporary directory
+        # We need to use the full path to the spec because we are in 'pwa' dir
+        dotnet kiota generate -l typescript -c ApiClient -o "$CHECK_DIR" -d ../specs/openapi.yaml > /dev/null 2>&1
+        
+        # 2. Fix imports in the temporary directory
+        KIOTA_TARGET_DIR="$CHECK_DIR" node scripts/fix-kiota-imports.js > /dev/null 2>&1
+        
+        # 3. Compare the temporary directory with the actual generated client
+        # We exclude the lock file from comparison because it contains relative paths that depend on the output directory
+        if ! diff -r -x "kiota-lock.json" -x ".kiota.log" "$CHECK_DIR" src/lib/api/generated > /dev/null 2>&1; then
           echo ""
-          echo "❌ Kiota client is out of date. Run 'task gen:client' and stage the result."
-          git diff --stat -- src/lib/api/generated
+          echo "❌ Kiota client is out of date with specs/openapi.yaml."
+          echo "👉 Run 'task gen:client' to update it locally."
+          echo ""
+          # Show which files are different
+          diff -r -x "kiota-lock.json" -x ".kiota.log" --brief "$CHECK_DIR" src/lib/api/generated | sed 's|^|  |'
           exit 1
         fi
         echo "✅ Kiota client is up to date"

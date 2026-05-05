@@ -23,16 +23,16 @@ repos:
         files: ^api/
         pass_filenames: false
 
+      - id: kiota-client-sync
+        name: Kiota client sync (Auto-generate)
+        language: system
+        entry: bash -c "if [ \"$CI\" = \"true\" ] || [ \"$GITHUB_ACTIONS\" = \"true\" ]; then task gen:client:check; else task gen:client:sync; fi"
+        files: ^specs/openapi\.yaml$
+        pass_filenames: false
+
       - id: pwa-review
         name: PWA Review (Lint & Typecheck & Unit Tests)
         language: system
         entry: bash -c "cd pwa && npm run lint && npm run typecheck && npm run test:unit"
         files: ^pwa/
-        pass_filenames: false
-
-      - id: kiota-client-check
-        name: Kiota client up to date
-        language: system
-        entry: bash -c "task gen:client:check"
-        files: ^specs/openapi\.yaml$
         pass_filenames: false
