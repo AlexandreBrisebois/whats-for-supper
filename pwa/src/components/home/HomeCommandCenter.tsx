@@ -105,7 +105,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     };
   }, [gotoRecipeId]);
 
-
   // ── Mount: seed store from SSR props, load settings, background sync ──────
   useEffect(() => {
     // Resolve the SSR recipe to a plain ScheduleRecipeDto (or null)
@@ -164,61 +163,63 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     markCooked();
   };
 
+  const handleRecoveryAction = useCallback(
+    async (action: string) => {
+      try {
+        const todayStr = getTodayString();
+        const todayDate = DateOnly.parse(todayStr);
+        if (!todayDate) return;
 
-  const handleRecoveryAction = useCallback(async (action: string) => {
-    try {
-      const todayStr = getTodayString();
-      const todayDate = DateOnly.parse(todayStr);
-      if (!todayDate) return;
+        if (action === 'order_in') {
+          setRecoveryIntent('order_in');
+          markOrderedIn();
+          // Do NOT close recovery dialog; let Step 2 handle rescheduling
+        } else if (action === 'pick_else') {
+          setRecoveryIntent('pick_else');
+          // Do NOT close recovery dialog; let Step 2 handle rescheduling
+        } else if (action === 'tomorrow') {
+          // Reschedule tonight's meal to tomorrow
+          await apiClient.api.schedule.move.post({
+            weekOffset: 0,
+            fromIndex: (new Date().getDay() + 6) % 7,
+            toIndex: ((new Date().getDay() + 6) % 7) + 1,
+            intent: 'push',
+          });
 
-      if (action === 'order_in') {
-        setRecoveryIntent('order_in');
-        markOrderedIn();
-        // Do NOT close recovery dialog; let Step 2 handle rescheduling
-      } else if (action === 'pick_else') {
-        setRecoveryIntent('pick_else');
-        // Do NOT close recovery dialog; let Step 2 handle rescheduling
-      } else if (action === 'tomorrow') {
-        // Reschedule tonight's meal to tomorrow
-        await apiClient.api.schedule.move.post({
-          weekOffset: 0,
-          fromIndex: (new Date().getDay() + 6) % 7,
-          toIndex: ((new Date().getDay() + 6) % 7) + 1,
-          intent: 'push',
-        });
-        
-        setShowRecovery(false);
-        sync();
-        
-        // If they intended to pick something else, open the tool now
-        if (recoveryIntent === 'pick_else') {
-          setShowQuickFind(true);
+          setShowRecovery(false);
+          sync();
+
+          // If they intended to pick something else, open the tool now
+          if (recoveryIntent === 'pick_else') {
+            setShowQuickFind(true);
+          }
+        } else if (action === 'next_week') {
+          await apiClient.api.schedule.move.post({
+            weekOffset: 0,
+            fromIndex: (new Date().getDay() + 6) % 7,
+            toIndex: 0,
+            targetWeekOffset: 1,
+            intent: 'push',
+          });
+          setShowRecovery(false);
+          sync();
+          if (recoveryIntent === 'pick_else') {
+            setShowQuickFind(true);
+          }
+        } else if (action === 'drop') {
+          await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
+          setShowRecovery(false);
+          sync();
+          if (recoveryIntent === 'pick_else') {
+            setShowQuickFind(true);
+          }
         }
-      } else if (action === 'next_week') {
-        await apiClient.api.schedule.move.post({
-          weekOffset: 0,
-          fromIndex: (new Date().getDay() + 6) % 7,
-          toIndex: 0,
-          targetWeekOffset: 1,
-          intent: 'push',
-        });
-        setShowRecovery(false);
-        sync();
-        if (recoveryIntent === 'pick_else') {
-          setShowQuickFind(true);
-        }
-      } else if (action === 'drop') {
-        await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
-        setShowRecovery(false);
-        sync();
-        if (recoveryIntent === 'pick_else') {
-          setShowQuickFind(true);
-        }
+      } catch (error) {
+        console.error('Failed recovery action:', error);
       }
-    } catch (error) {
-      console.error('Failed recovery action:', error);
-    }
-  }, [markOrderedIn, sync, recoveryIntent]);
+    },
+    [markOrderedIn, sync, recoveryIntent]
+  );
 
   const handleQuickFindSelect = async (recipe: any) => {
     setShowQuickFind(false);

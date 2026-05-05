@@ -6,6 +6,9 @@ export type { Page, APIRequestContext };
 export const test = base.extend({
   // Extend the page fixture to clear cookies before each test and inject auth
   page: async ({ page }, use) => {
+    // Pin time to 2026-05-04 12:00:00 UTC (a Monday) to match ADR-029 fixed reference date
+    await page.clock.setFixedTime(new Date('2026-05-04T12:00:00Z'));
+
     await page.context().clearCookies();
 
     // Inject h_access cookie (Hearth Secret)

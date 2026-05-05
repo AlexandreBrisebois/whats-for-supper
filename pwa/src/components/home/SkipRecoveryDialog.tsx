@@ -15,7 +15,7 @@ interface SkipRecoveryDialogProps {
 
 export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDialogProps) {
   const [step, setStep] = useState(1);
-  
+
   if (!isOpen) return null;
 
   return (
@@ -131,7 +131,7 @@ export function SkipRecoveryDialog({ isOpen, onClose, onAction }: SkipRecoveryDi
                   <p className="text-sm text-charcoal/40 font-medium">
                     {t(
                       'home.tonightRecipeSubtitle',
-                      "We have the ingredients. When should we cook it?"
+                      'We have the ingredients. When should we cook it?'
                     )}
                   </p>
                 </div>

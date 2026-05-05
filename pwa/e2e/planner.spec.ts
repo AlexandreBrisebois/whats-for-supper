@@ -5,9 +5,6 @@ import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from 
 
 test.describe('Supper Planner', () => {
   test.beforeEach(async ({ page, baseURL }) => {
-    // Pin time to 2026-05-04 12:00:00 UTC (a Monday)
-    await page.clock.setFixedTime(new Date('2026-05-04T12:00:00Z'));
-
     await setupCommonRoutes(page);
 
     // Override recommendations to provide a non-null topPick — the shared mock returns null
