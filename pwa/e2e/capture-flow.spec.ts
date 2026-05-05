@@ -237,6 +237,19 @@ test.describe('Capture — initial state rendering', () => {
     await expect(page.getByPlaceholder(/paste a recipe link/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /save recipe/i })).toBeVisible();
   });
+
+  test('clicking Back from URL review form returns to capture controls', async ({ page }) => {
+    await page.goto('/capture');
+
+    await page.getByRole('button', { name: /or add from a link/i }).click();
+    await expect(page.getByText('Review your link')).toBeVisible();
+
+    await page.getByRole('button', { name: /back/i }).click();
+
+    await expect(page.getByText('Review your link')).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /or add from a link/i })).toBeVisible();
+  });
 });
 
 test.describe('Capture — describe link interaction', () => {

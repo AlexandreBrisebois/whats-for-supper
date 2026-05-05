@@ -90,16 +90,14 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
       setUrlCaptureError(null);
       try {
         const id = await submitUrl(url);
-        if (id) {
-          if (isGoto) {
-            await saveSetting('family_goto', {
-              description: 'Recipe from link',
-              recipeId: id,
-            });
-            router.push(ROUTES.PROFILE_SETTINGS as any);
-          } else {
-            router.push(ROUTES.HOME as any);
-          }
+        if (isGoto) {
+          await saveSetting('family_goto', {
+            description: 'Recipe from link',
+            recipeId: id,
+          });
+          router.push(ROUTES.PROFILE_SETTINGS as any);
+        } else {
+          router.push(ROUTES.HOME as any);
         }
       } catch (err) {
         setUrlCaptureError(err instanceof Error ? err.message : 'Failed to capture link.');

@@ -20,7 +20,7 @@ export interface UseCaptureReturn {
   setNotes: (notes: string) => void;
   setRating: (rating: CaptureRating) => void;
   submitRecipe: () => Promise<string | null>;
-  submitUrl: (url: string) => Promise<string | null>;
+  submitUrl: (url: string) => Promise<string>;
   reset: () => void;
   clearError: () => void;
 }
