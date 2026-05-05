@@ -215,14 +215,15 @@ export default function MinimalCapture({
           ? 'Your GOTO is being prepared'
           : t('capture.captured', 'Captured!');
 
-    const subtext = wasUrlCaptured || wasPhotoCaptured || wasDescribeCaptured
-      ? t(
-          'capture.processingSubtext',
-          "We're extracting the ingredients and instructions. We'll notify you when it's ready."
-        )
-      : isGoto
-        ? "We'll notify you when it's ready on the home screen."
-        : t('capture.savedInLibrary', 'Your recipe is safe in the library.');
+    const subtext =
+      wasUrlCaptured || wasPhotoCaptured || wasDescribeCaptured
+        ? t(
+            'capture.processingSubtext',
+            "We're extracting the ingredients and instructions. We'll notify you when it's ready."
+          )
+        : isGoto
+          ? "We'll notify you when it's ready on the home screen."
+          : t('capture.savedInLibrary', 'Your recipe is safe in the library.');
 
     const dest = isGoto ? ROUTES.PROFILE_SETTINGS : ROUTES.HOME;
     const btnLabel = isGoto ? 'Back to Settings' : t('capture.backToHome', 'Back to Home');

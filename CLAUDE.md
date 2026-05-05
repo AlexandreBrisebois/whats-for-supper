@@ -22,6 +22,8 @@ Read all of the following before acting. They define the repo's doctrine and Cla
 - **Use the Taskfile.** Run `task` commands for all build, test, lint, and agentic operations. Do not bypass them with ad-hoc shell commands when a `task` exists.
 - **Bound the task before acting.** If the task likely spans more than two files, touches the spec or a shared type, or is ambiguous — produce a short, numbered plan and wait for explicit approval before executing.
 - **No cross-cutting changes without an approved plan.** Do not refactor, rename, delete, or restructure anything outside the current task's scope.
+- **Atomic Sync.** Any change to a controller's signature or status code MUST be preceded by an update to `openapi.yaml` and followed by client regeneration (`api:generate`) in the same task.
+- **Multi-Layer Testing.** When a contract is touched, you MUST run unit tests on BOTH sides of the seam (API and PWA).
 - **Do not bypass drift checks or validation.** Run `task agent:drift` and `task review` (and `task agent:test:impact` where appropriate) before declaring any work complete.
 
 ## When blocked

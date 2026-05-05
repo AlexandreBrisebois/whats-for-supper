@@ -15,10 +15,13 @@
 
 ## 4. Data and mock discipline
 - **Mock Standardization**: E2E mocks MUST use `MOCK_IDS` (valid GUIDs) and schema-compliant `builders`.
+- **High-Fidelity Mocks**: Test factories (e.g., `TestWebApplicationFactory`) should prioritize mocks that preserve domain side-effects (e.g., persisting workflow instances to the DB) rather than "shallow" mocks that return empty success objects. This ensures vertical slice integration tests can verify system state correctly.
 - **Strict Typing**: Hardcoded string IDs (e.g., `"recipe-1"`) are strictly forbidden. Mock data must adhere strictly to the schema contract.
 
 ## 5. Definition of done
 - The OpenAPI specification accurately reflects the required changes.
+- **Atomic Sync**: Controller changes (signatures, status codes) are synchronized with the OpenAPI spec and client regeneration in a single atomic step.
 - Tests are written or updated before implementation code.
-- Validation and anti-drift checks have been executed and passed, confirming zero schema drift between the OpenAPI spec, Backend DTOs, Mock API, and PWA models.
+- **Multi-Layer Verification**: For contract-impacting changes, unit tests have been executed and passed on BOTH sides of the seam (e.g., `dotnet test` for the API AND `npm run test:unit` for the PWA).
+- Validation and anti-drift checks (`task agent:drift`) have been executed and passed, confirming zero schema drift between the OpenAPI spec, Backend DTOs, Mock API, and PWA models.
 - All logic changes are fully covered by passing tests.

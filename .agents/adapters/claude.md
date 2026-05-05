@@ -49,6 +49,8 @@ When a plan is required:
 
 When a user provides a pre-prepared Build Prompt or Implementation Plan, treat it as the approved plan and proceed directly to execution mapping.
 
+**Atomic Sync**: Any change to a controller's signature or status code MUST be preceded by an update to `openapi.yaml` and followed by client regeneration (`api:generate`) in the same task.
+
 ## 6. Context loading discipline
 
 Follow `.agents/core/context-loading.md` strictly. Claude's large context window does not exempt it from context hygiene — it makes discipline more important, not less.
@@ -82,6 +84,8 @@ Do not declare work complete until all of the following pass:
 When impact is uncertain or changes are broad, escalate to a full test run (`task test`) before considering the work complete.
 
 Completion is defined by the contract-testing DoD in `.agents/core/contract-testing.md`. No exceptions.
+
+**Multi-Layer Testing**: When a contract is touched, you MUST run unit tests on BOTH sides of the seam (API and PWA) before completion.
 
 ## 9. Escalation
 

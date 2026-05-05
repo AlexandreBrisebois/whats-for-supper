@@ -17,6 +17,8 @@ The following documents define the repository's doctrine and your specific opera
 - **Harness First**: Prefer `Taskfile.yml` commands over ad-hoc shell execution.
 - **Bound the Task**: Define a clear "Done" state and get alignment before acting.
 - **Targeted Context**: Load only what is necessary for the current vertical slice.
+- **Atomic Sync**: Contract, Code, and Client must remain in lock-step.
+- **Multi-Layer Testing**: Test BOTH sides of the seam (API and PWA).
 - **No Bypassing**: Never skip drift checks, validation, or review workflows.
 
 ## 3. When blocked

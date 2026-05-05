@@ -17,6 +17,7 @@ This adapter dictates behavior for both Gemini CLI usage and Gemini-based agents
 - **Clear Definition of Done**: You must turn vague requests into a single bounded task with a clear definition of done, reusing the contract and testing DoD where appropriate.
 - **Propose Plans**: When work spans multiple files or concepts, you must propose a short plan and wait for user confirmation before making large changes.
 - **Atomic Steps**: Always prefer atomic, sequential steps over massive, cross-cutting edits.
+- **Atomic Sync**: Any change to a controller's signature or status code MUST be preceded by an update to `openapi.yaml` and followed by client regeneration (`api:generate`) in the same task.
 
 ## 5. Execution behavior
 Bind tightly to the execution harness and do not bypass it. Prefer `task` commands over ad-hoc shell execution, and prefer the smallest sufficient validation loop first, escalating to broader checks only when needed.
@@ -26,7 +27,8 @@ Bind tightly to the execution harness and do not bypass it. Prefer `task` comman
 - **`task agent:slice -- <route>`**: Pick this to load targeted context for a vertical slice (Contract ↔ Backend ↔ Client) during planning or debugging.
 - **`task agent:test:impact`**: Pick this for rapid, targeted validation of tests affected by your active changes. Use this first before running the full suite.
 - **`task test`**: Pick this for full test suite verification when a broader validation loop is required.
-- **`task review`**: Pick this as a final step before declaring work ready for merge.
+- **task review**: Pick this as a final step before declaring work ready for merge.
+- **Multi-Layer Testing**: When a contract is touched, you MUST run unit tests on BOTH sides of the seam (API and PWA) before completion.
 
 **Never**:
 - Bypass Taskfile commands when they exist.
