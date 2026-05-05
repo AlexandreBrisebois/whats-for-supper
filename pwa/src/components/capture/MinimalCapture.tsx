@@ -99,8 +99,6 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
           } else {
             router.push(ROUTES.HOME as any);
           }
-        } else {
-          setUrlCaptureError('Failed to capture link. Please check the URL and try again.');
         }
       } catch (err) {
         setUrlCaptureError(err instanceof Error ? err.message : 'Failed to capture link.');

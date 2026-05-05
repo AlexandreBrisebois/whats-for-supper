@@ -150,7 +150,7 @@ test.describe('Capture Flow', () => {
     await page.getByRole('button', { name: /save recipe/i }).click();
 
     // Should show error message (the default one if extraction fails)
-    await expect(page.getByText(/failed to capture/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/failed to capture url/i)).toBeVisible({ timeout: 10_000 });
   });
 });
 
