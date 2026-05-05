@@ -132,6 +132,7 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
                               alt={currentRecipe.name}
                               fill
                               className="object-cover"
+                              unoptimized
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                           </>

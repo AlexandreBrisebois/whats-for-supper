@@ -6,9 +6,12 @@ services:
       HEARTH_SECRET: ${HEARTH_SECRET}
       CORS__ALLOWED_ORIGINS: https://wfs.srvrlss.dev
     labels:
-      traefik.http.routers.api.rule: "Host(`wfs.srvrlss.dev`) && PathPrefix(`/api`)"
-      traefik.http.routers.api.middlewares: "cf-proto-https"
-      traefik.http.middlewares.cf-proto-https.headers.customrequestheaders.X-Forwarded-Proto: "https"
+      # Browser calls wfs.srvrlss.dev/api/* directly — Traefik forwards to the API container as-is (no strip).
+      - "traefik.http.routers.api.rule=Host(`wfs.srvrlss.dev`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.api.middlewares=cf-proto-https"
+      # Inject X-Forwarded-Proto: https so ASP.NET UseForwardedHeaders() sees a secure request.
+      # Cloudflare terminates TLS and hits Traefik on HTTP/80; without this header the app sees plain HTTP.
+      - "traefik.http.middlewares.cf-proto-https.headers.customrequestheaders.X-Forwarded-Proto=https"
     ports:
       - "9101:9001"
 
@@ -18,8 +21,8 @@ services:
       HEARTH_SECRET: ${HEARTH_SECRET}
       NODE_ENV: production
     labels:
-      traefik.http.routers.pwa.rule: "Host(`wfs.srvrlss.dev`)"
-      traefik.http.routers.pwa.middlewares: "cf-proto-https"
+      - "traefik.http.routers.pwa.rule=Host(`wfs.srvrlss.dev`)"
+      - "traefik.http.routers.pwa.middlewares=cf-proto-https"
     ports:
       - "9102:3000"
 

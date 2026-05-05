@@ -790,7 +790,7 @@ tasks:
         curl -s -H "Host: pwa.wfs.localhost" http://localhost/api/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ API running" || echo "  ✗ API not responding"
         echo ""
         echo "PWA (Traefik Route):"
-        curl -s -I -H "Host: pwa.wfs.localhost" http://localhost/ | grep -q "200 OK" && echo "  ✓ PWA running" || echo "  ✗ PWA not responding"
+        curl -s -I -H "Host: pwa.wfs.localhost" http://localhost/api/health | grep -q "200 OK" && echo "  ✓ PWA running" || echo "  ✗ PWA not responding"
         echo ""
         echo "Database:"
         docker exec whats-for-supper-postgres pg_isready -U postgres 2>/dev/null && echo "  ✓ Database running" || echo "  ✗ Database not responding"

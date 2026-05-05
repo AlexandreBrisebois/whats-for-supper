@@ -23,8 +23,7 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci
 COPY . .
 # Accept build-time API base URL (browser-facing, baked into the JS bundle)
-# Defaulting to / enables same-origin relative calls, making the image portable across environments.
-ARG NEXT_PUBLIC_API_BASE_URL=/
+ARG NEXT_PUBLIC_API_BASE_URL=http://pwa.wfs.localhost
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
