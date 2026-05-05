@@ -239,6 +239,8 @@ tasks:
 
   publish:
     desc: "🚀 Build images (local by default, set PUSH=true to push)"
+    vars:
+      NEXT_PUBLIC_API_BASE_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default "/"}}'
     cmds:
       - task: publish:migration
         vars:
