@@ -121,23 +121,33 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<SettingsService>();
         builder.Services.AddScoped<ManagementService>();
 
-        // Mock IWorkflowOrchestrator — returns a new WorkflowInstance per TriggerAsync call
-        var mockOrchestrator = new Mock<IWorkflowOrchestrator>();
-        mockOrchestrator
-            .Setup(o => o.TriggerAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
-            .ReturnsAsync(() => new WorkflowInstance
-            {
-                Id = Guid.NewGuid(),
-                WorkflowId = "recipe-import",
-                Status = WorkflowStatus.Processing,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
-            });
-        builder.Services.AddScoped<IWorkflowOrchestrator>(_ => mockOrchestrator.Object);
+        builder.Services.AddScoped<IWorkflowOrchestrator>(sp =>
+        {
+            var mock = new Mock<IWorkflowOrchestrator>();
+            mock.Setup(o => o.TriggerAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                .ReturnsAsync((string workflowId, Dictionary<string, string> parameters) =>
+                {
+                    var instance = new WorkflowInstance
+                    {
+                        Id = Guid.NewGuid(),
+                        WorkflowId = workflowId,
+                        Status = WorkflowStatus.Processing,
+                        Parameters = System.Text.Json.JsonSerializer.Serialize(parameters),
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    var db = sp.GetRequiredService<RecipeDbContext>();
+                    db.WorkflowInstances.Add(instance);
+                    db.SaveChanges(); // Sync save is fine for mock
+                    return instance;
+                });
+            return mock.Object;
+        });
 
         builder.Services.AddSingleton<DataRootResolver>();
         builder.Services.AddSingleton<RecipesRootResolver>();
         builder.Services.AddSingleton<WorkflowRootResolver>();
+        builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
         builder.Services.AddSingleton<IRecipeStore, InMemoryRecipeStore>();
 
         builder.Services.AddDbContext<RecipeDbContext>(opts =>

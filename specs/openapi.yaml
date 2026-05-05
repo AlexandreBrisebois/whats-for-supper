@@ -615,8 +615,8 @@ paths:
                     format: binary
 
       responses:
-        '200':
-          description: OK
+        '202':
+          description: Accepted (Import workflow triggered)
           content:
             application/json:
               schema:
@@ -1136,8 +1136,8 @@ paths:
               name: 'Our family spaghetti'
               description: 'Homemade tomato sauce with meatballs, slow-cooked for two hours'
       responses:
-        '200':
-          description: OK — stub recipe created; synthesis workflow triggered
+        '202':
+          description: Accepted — stub recipe created; synthesis workflow triggered
           content:
             application/json:
               schema:

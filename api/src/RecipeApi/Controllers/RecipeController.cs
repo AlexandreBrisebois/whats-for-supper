@@ -26,7 +26,7 @@ public class RecipeController(
             return BadRequest(new { message = "X-Family-Member-Id header is required." });
 
         var recipeId = await recipeService.CreateRecipe(familyMemberId.Value, files, dto);
-        return Ok(new { id = recipeId });
+        return Accepted(new { id = recipeId });
     }
 
     /// <summary>GET /api/recipes — paginated list, newest first.</summary>

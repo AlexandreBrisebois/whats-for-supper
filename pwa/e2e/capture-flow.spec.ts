@@ -132,7 +132,9 @@ test.describe('Capture Flow', () => {
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
   });
 
-  test('navigating with text param containing a URL should show the review form', async ({ page }) => {
+  test('navigating with text param containing a URL should show the review form', async ({
+    page,
+  }) => {
     const testUrl = 'https://www.seriouseats.com/recipes/2012/02/the-best-lasagna-recipe.html';
     const sharedText = `Check out this recipe: ${testUrl}`;
 

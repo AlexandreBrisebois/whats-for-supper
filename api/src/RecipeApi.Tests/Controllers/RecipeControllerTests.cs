@@ -4,6 +4,7 @@ using System.Text.Json;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -68,20 +69,31 @@ public class RecipeControllerTests : IAsyncLifetime
     // ── POST /api/recipes — happy path ────────────────────────────────────────
 
     [Fact]
-    public async Task CreateRecipe_With_Valid_Data_Returns_Ok_With_RecipeId()
+    public async Task CreateRecipe_With_Valid_Data_Returns_Accepted_With_RecipeId()
     {
         var form    = BuildRecipeForm(rating: 2, cookedIndex: 0, includeImage: true);
         var request = BuildPostRequest(form, familyMemberId: _factory.DefaultFamilyMemberId);
 
         var response = await _client.SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
         var data = doc.RootElement.GetProperty("data");
         Assert.True(data.TryGetProperty("id", out var idProp));
-        Assert.NotEqual(Guid.Empty, idProp.GetGuid());
+        var recipeId = idProp.GetGuid();
+        Assert.NotEqual(Guid.Empty, recipeId);
+
+        // Verify that a 'recipe-import' workflow instance was queued
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var workflow = await db.WorkflowInstances
+                .FirstOrDefaultAsync(w => w.WorkflowId == "recipe-import" &&
+                                          w.Parameters.Contains(recipeId.ToString()));
+            Assert.NotNull(workflow);
+        }
     }
 
     // ── GET /api/recipes ──────────────────────────────────────────────────────
@@ -112,7 +124,7 @@ public class RecipeControllerTests : IAsyncLifetime
         var form    = BuildRecipeForm(rating: 3, cookedIndex: 0, includeImage: true);
         var create  = BuildPostRequest(form, familyMemberId: _factory.DefaultFamilyMemberId);
         var created = await _client.SendAsync(create);
-        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, created.StatusCode);
 
         var createJson = await created.Content.ReadAsStringAsync();
         using var createDoc = JsonDocument.Parse(createJson);

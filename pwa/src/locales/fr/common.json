@@ -39,7 +39,10 @@
     "photosAdded": "{{count}} photos ajoutées",
     "cameraUnavailable": "Aucune caméra trouvée",
     "cameraDenied": "Accès caméra refusé",
-    "choosePhotos": "Choisir des photos"
+    "choosePhotos": "Choisir des photos",
+    "linkCaptured": "Lien capturé !",
+    "processing": "Traitement de votre recette...",
+    "processingSubtext": "Nous extrayons les ingrédients et les instructions. Nous vous préviendrons quand ce sera prêt."
   },
   "profile": {
     "title": "Profil de famille",

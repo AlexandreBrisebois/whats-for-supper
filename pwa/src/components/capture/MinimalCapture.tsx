@@ -81,6 +81,8 @@ export default function MinimalCapture({
   const [isUrlCapturing, setIsUrlCapturing] = useState(false);
   const [urlCaptureError, setUrlCaptureError] = useState<string | null>(null);
   const [wasUrlCaptured, setWasUrlCaptured] = useState(false);
+  const [wasPhotoCaptured, setWasPhotoCaptured] = useState(false);
+  const [wasDescribeCaptured, setWasDescribeCaptured] = useState(false);
 
   // Describe-it form state
   const [describeName, setDescribeName] = useState('');
@@ -115,10 +117,9 @@ export default function MinimalCapture({
             description: 'Recipe from link',
             recipeId: id,
           });
-          router.push(ROUTES.PROFILE_SETTINGS as any);
-        } else {
-          router.push(ROUTES.HOME as any);
         }
+        setWasUrlCaptured(true);
+        setOnSuccess(true);
       } catch (err) {
         setUrlCaptureError(err instanceof Error ? err.message : 'Failed to capture link.');
       } finally {
@@ -157,6 +158,7 @@ export default function MinimalCapture({
   const handleSave = async () => {
     const id = await submitRecipe();
     if (id) {
+      setWasPhotoCaptured(true);
       if (isGoto) {
         // Use the first image's implied recipe name (we don't have a name from the photo path,
         // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
@@ -185,13 +187,16 @@ export default function MinimalCapture({
       const id = response?.data?.id ? String(response.data.id) : null;
       if (!id) throw new Error('No recipe ID returned.');
 
-      if (isGoto) {
-        await saveSetting('family_goto', {
-          description: describeName.trim(),
-          recipeId: id,
-        });
+      if (id) {
+        setWasDescribeCaptured(true);
+        if (isGoto) {
+          await saveSetting('family_goto', {
+            description: describeName.trim(),
+            recipeId: id,
+          });
+        }
+        setOnSuccess(true);
       }
-      setOnSuccess(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to submit. Please try again.';
       setDescribeError(message);
@@ -203,13 +208,18 @@ export default function MinimalCapture({
   // ── Success screen ──────────────────────────────────────────────────────────
   if (onSuccess) {
     const heading = wasUrlCaptured
-      ? 'Link Captured!'
-      : isGoto
-        ? 'Your GOTO is being prepared'
-        : t('capture.captured', 'Captured!');
+      ? t('capture.linkCaptured', 'Link Captured!')
+      : wasPhotoCaptured || wasDescribeCaptured
+        ? t('capture.processing', 'Processing your recipe...')
+        : isGoto
+          ? 'Your GOTO is being prepared'
+          : t('capture.captured', 'Captured!');
 
-    const subtext = wasUrlCaptured
-      ? "We're fetching the recipe details from the link. It'll be ready in a moment."
+    const subtext = wasUrlCaptured || wasPhotoCaptured || wasDescribeCaptured
+      ? t(
+          'capture.processingSubtext',
+          "We're extracting the ingredients and instructions. We'll notify you when it's ready."
+        )
       : isGoto
         ? "We'll notify you when it's ready on the home screen."
         : t('capture.savedInLibrary', 'Your recipe is safe in the library.');

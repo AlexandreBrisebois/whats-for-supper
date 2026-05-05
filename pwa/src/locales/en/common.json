@@ -39,7 +39,10 @@
     "photosAdded": "{{count}} photos added",
     "cameraUnavailable": "No camera found",
     "cameraDenied": "Camera access denied",
-    "choosePhotos": "Choose Photos"
+    "choosePhotos": "Choose Photos",
+    "linkCaptured": "Link Captured!",
+    "processing": "Processing your recipe...",
+    "processingSubtext": "We're extracting the ingredients and instructions. We'll notify you when it's ready."
   },
   "profile": {
     "title": "Family Profile",

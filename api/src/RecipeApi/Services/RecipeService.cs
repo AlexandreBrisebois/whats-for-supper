@@ -71,6 +71,21 @@ public class RecipeService(
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
 
+        // Trigger the recipe-import workflow asynchronously.
+        // This queues the background extraction (OCR/AI) of the recipe content from photos.
+        try
+        {
+            await orchestrator.TriggerAsync("recipe-import", new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.ToString()
+            });
+            logger.LogInformation("Triggered recipe-import workflow for recipe {RecipeId}", recipeId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to trigger recipe-import workflow for recipe {RecipeId}", recipeId);
+        }
+
         return recipeId;
     }
 
