@@ -69,16 +69,22 @@ A singleton that holds open response streams for all connected clients. When a p
 ```csharp
 public class SseConnectionManager
 {
-    private readonly ConcurrentDictionary<string, HttpResponse> _connections = new();
+    // Per-connection semaphore prevents concurrent writes from the heartbeat loop
+    // and from mutation-triggered BroadcastAsync calls corrupting the response body.
+    private readonly ConcurrentDictionary<string, (HttpResponse Response, SemaphoreSlim Lock)> _connections = new();
 
     public string AddConnection(HttpResponse response)
     {
         var id = Guid.NewGuid().ToString();
-        _connections[id] = response;
+        _connections[id] = (response, new SemaphoreSlim(1, 1));
         return id;
     }
 
-    public void RemoveConnection(string id) => _connections.TryRemove(id, out _);
+    public void RemoveConnection(string id)
+    {
+        if (_connections.TryRemove(id, out var entry))
+            entry.Lock.Dispose();
+    }
 
     public async Task BroadcastAsync(string eventType, object payload)
     {
@@ -86,17 +92,23 @@ public class SseConnectionManager
         var message = $"event: {eventType}\ndata: {data}\n\n";
         var bytes = Encoding.UTF8.GetBytes(message);
 
-        foreach (var (id, response) in _connections)
+        foreach (var (id, entry) in _connections)
         {
+            await entry.Lock.WaitAsync();
             try
             {
-                await response.Body.WriteAsync(bytes);
-                await response.Body.FlushAsync();
+                await entry.Response.Body.WriteAsync(bytes);
+                await entry.Response.Body.FlushAsync();
             }
             catch
             {
-                // Client disconnected — remove on next cleanup
-                _connections.TryRemove(id, out _);
+                // Client disconnected or response disposed — remove immediately (do not defer)
+                RemoveConnection(id);
+            }
+            finally
+            {
+                // Guard: semaphore may already be disposed if RemoveConnection was called above
+                try { entry.Lock.Release(); } catch (ObjectDisposedException) { }
             }
         }
     }
@@ -106,6 +118,8 @@ public class SseConnectionManager
 ### 2.3 StreamController
 
 A new controller that handles the SSE connection lifecycle.
+
+**Auth note**: `EventSource` cannot send custom request headers. `X-Family-Member-Id` cannot be used here. The controller reads the family member ID from `Request.Cookies["x-family-member-id"]`. Session auth continues to use the `h_access` cookie (already validated by `HearthAuthenticationHandler`). Returns `400` if the cookie is absent.
 
 ```csharp
 [ApiController]
@@ -118,6 +132,15 @@ public class StreamController : ControllerBase
     [HttpGet]
     public async Task Stream(CancellationToken cancellationToken)
     {
+        // EventSource cannot send custom headers — read member ID from cookie
+        if (!Request.Cookies.TryGetValue("x-family-member-id", out var memberIdStr)
+            || !Guid.TryParse(memberIdStr, out _))
+        {
+            Response.StatusCode = 400;
+            await Response.WriteAsync("x-family-member-id cookie is required", cancellationToken);
+            return;
+        }
+
         Response.Headers["Content-Type"] = "text/event-stream";
         Response.Headers["Cache-Control"] = "no-cache";
         Response.Headers["Connection"] = "keep-alive";
@@ -350,8 +373,28 @@ Add `applySnapshot()` and `applySlotUpdate()`:
 ```typescript
 applySnapshot(schedule: ScheduleDays) {
   const mergedDays = buildScheduleDays(schedule);
+  const prev = get().schedule;
+
+  // Preserve smart-defaults metadata for pending slots that the snapshot does not
+  // have a server-assigned recipe for. Without this, a reconnect strips all
+  // _isPending/_voteCount/_unanimousVote fields, causing visible flicker on the planner.
+  const preserved = mergedDays.map((day) => {
+    if (day.recipe) return day; // server has a real recipe — use it
+    const prevDay = prev.find((p) => p.date === day.date);
+    if (prevDay?._isPending) {
+      return {
+        ...day,
+        recipe: prevDay.recipe,
+        _isPending: prevDay._isPending,
+        _voteCount: prevDay._voteCount,
+        _unanimousVote: prevDay._unanimousVote,
+      };
+    }
+    return day;
+  });
+
   set({
-    schedule: mergedDays,
+    schedule: preserved,
     status: (schedule.status ?? 0) as 0 | 1 | 2,
     lastSyncedAt: Date.now(),
     optimisticWriteAt: null,

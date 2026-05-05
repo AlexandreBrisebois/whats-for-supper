@@ -206,59 +206,63 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
-      const request = route.request();
-      const url = new URL(request.url());
-      const method = request.method();
+        const request = route.request();
+        const url = new URL(request.url());
+        const method = request.method();
 
-      if (url.pathname.endsWith('/fill-the-gap')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: [
-              builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_CHICKEN,
-                name: 'Test Chicken',
-                image: '/chicken.jpg',
+        if (url.pathname.endsWith('/fill-the-gap')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: [
+                builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_CHICKEN,
+                  name: 'Test Chicken',
+                  image: '/chicken.jpg',
+                }),
+              ],
+            }),
+          });
+        } else if (url.pathname.endsWith('/move') && method === 'POST') {
+          moveCalled = true;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ success: true }),
+          });
+        } else if (url.pathname.endsWith('/assign') && method === 'POST') {
+          assignCalled = true;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ success: true }),
+          });
+        } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
+          const monday = currentMonday();
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(monday);
+            d.setUTCDate(monday.getUTCDate() + i);
+            const dateStr = toDateStr(d);
+            return {
+              date: dateStr,
+              status: 0,
+              recipe: builders.scheduleRecipe({
+                id: MOCK_IDS.RECIPE_LASAGNA,
+                name: 'Test Lasagna',
               }),
-            ],
-          }),
-        });
-      } else if (url.pathname.endsWith('/move') && method === 'POST') {
-        moveCalled = true;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
-        });
-      } else if (url.pathname.endsWith('/assign') && method === 'POST') {
-        assignCalled = true;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
-        });
-      } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
-        const monday = currentMonday();
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(monday);
-          d.setUTCDate(monday.getUTCDate() + i);
-          const dateStr = toDateStr(d);
-          return {
-            date: dateStr,
-            status: 0,
-            recipe: builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Test Lasagna' }),
-          };
-        });
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { weekOffset: 0, days } }),
-        });
-      } else {
-        await route.continue();
+            };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+          });
+        } else {
+          await route.continue();
+        }
       }
-    });
+    );
 
     await page.goto('/home');
     await expect(page.getByTestId('home-loader')).not.toBeVisible();

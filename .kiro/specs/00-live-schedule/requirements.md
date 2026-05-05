@@ -350,3 +350,216 @@ Once this spec is implemented:
 - Per-family-member filtering of events (all family members share the same schedule state)
 - Offline support / service worker caching of SSE events
 - Event replay / catch-up for reconnecting clients (the `connected` event provides current snapshot; full history is not needed)
+
+---
+
+## Extended Flows — Phase 2 (discovered in gap review)
+
+These flows were identified after the initial spec was written. They are part of this spec — same SSE infrastructure, same client hook, same backend publisher. They represent the full value of the SSE transition: not just schedule sync, but live feedback across every async operation the app performs.
+
+---
+
+### Flow 7: Recipe import failure → actionable retry with pre-filled form
+
+```
+User submits a URL/photo/describe recipe
+  → .NET API creates Recipe stub, queues workflow
+  → User sees success screen, navigates to /home
+  → WorkflowWorker processes tasks
+  → A task fails (e.g. AI extraction error, image download error)
+  → WorkflowWorker sets TaskStatus.Failed + ErrorMessage
+
+  Current state: user never knows. Recipe sits in limbo.
+
+  With SSE:
+  .NET API WorkflowWorker on fatal task failure
+    → publishes RecipeFailedEvent { recipeId, errorMessage, failedStep, partialData? }
+
+  User's browser (wherever they are)
+    ← receives SSE event
+    ← captureStore.handleRecipeFailed() stores the failure
+    ← toast notification appears: "We couldn't process your recipe. Tap to review."
+    ← user taps → navigates to /capture?recipeId={id}&mode=retry
+    ← capture form pre-filled with whatever partial data was recovered
+    ← user edits and resubmits → PATCH /api/recipes/{id} (updates existing, no new ID)
+```
+
+**Why this matters:** Today, failed recipes silently vanish. The user re-adds from scratch, creating duplicates. The retry-with-same-ID pattern prevents that and makes the library trustworthy.
+
+**R10 — Recipe failure SSE event**
+
+- The `WorkflowWorker` MUST publish a `recipe_failed` SSE event when a workflow instance transitions to `WorkflowStatus.Failed` (all retries exhausted)
+- Payload: `{ recipeId, errorMessage, failedStep, partialData: { name?, imageUrl? } }`
+- The PWA MUST handle `recipe_failed` in `useScheduleStream` and push the failure into a `captureStore` or notification queue
+- A non-blocking toast or banner MUST appear wherever the user is, with a CTA to review the failed recipe
+- The retry navigation MUST route to `/capture?recipeId={id}&mode=retry` and pre-fill the form with `partialData`
+- The retry submit MUST use `PATCH /api/recipes/{id}` — same ID, no new stub created
+
+---
+
+### Flow 8: Recipe synthesis complete → library notification toast
+
+```
+User submits a recipe (any path — photo, URL, describe)
+  → navigates away to /home or /planner
+  → WorkflowWorker completes synthesis
+  → RecipeReadyProcessor fires
+  → publishes RecipeReadyEvent { recipeId, name, imageUrl }
+
+  Current state: user never knows the recipe is ready until they visit /recipes.
+
+  With SSE:
+  User's browser (wherever they are)
+    ← receives recipe_ready event
+    ← toast appears: "✓ [Recipe Name] added to your library"
+    ← toast has optional CTA: "Add to this week" → opens QuickFindModal pre-filled
+```
+
+**Why this matters:** The success screen currently says "Your recipe is safe in the library" — that's a lie. It's queued, not saved. SSE lets us tell the truth: show a pending state, then a real confirmation when synthesis is done.
+
+**R11 — recipe_ready event enriched payload**
+
+- The existing `recipe_ready` event payload MUST be extended to include `{ recipeId, name, imageUrl }` (currently only `{ recipeId }`)
+- The PWA `useScheduleStream` handler MUST:
+  - Continue to call `useGotoStore.getState().markReady(recipeId)` for GOTO flow (existing R requirement)
+  - Also push a library notification: `useLibraryStore.getState().markReady({ recipeId, name, imageUrl })`
+- A `LibraryToast` component renders in the layout when `libraryStore.pendingNotifications` is non-empty
+- The toast auto-dismisses after 5 seconds; tapping "Add to this week" opens `QuickFindModal`
+
+---
+
+### Flow 9: Discovery stack — live removal when a recipe is planned
+
+```
+Jordan is swiping in Discovery
+  Alex (or Jordan on planner) assigns Recipe X to this week's plan
+  → POST /api/schedule/assign fires
+  → .NET API publishes fill_the_gap_invalidated
+
+  Current state: Jordan continues to see Recipe X in her discovery stack,
+  votes on it, but it's already planned — wasted swipe.
+
+  With SSE:
+  Jordan's browser (on /discovery)
+    ← receives fill_the_gap_invalidated
+    ← discoveryStore.invalidateFillTheGap() increments fillTheGapVersion
+    ← Discovery page watches fillTheGapVersion → triggers silent refetch of current category
+    ← server returns stack without Recipe X (already planned, filtered server-side)
+    ← Recipe X card slides out of Jordan's stack silently
+```
+
+**Why this matters:** Voting on already-planned recipes wastes the family's discovery bandwidth and inflates vote counts incorrectly.
+
+**R12 — Discovery stack invalidation on plan assignment**
+
+- The Discovery page (`pwa/src/app/(app)/discovery/page.tsx`) MUST subscribe to `useDiscoveryStore((s) => s.fillTheGapVersion)`
+- When `fillTheGapVersion` changes (SSE `fill_the_gap_invalidated` received), the Discovery page MUST refetch the current category's stack silently (no loading spinner — merge new results, removing newly-planned recipes from current local state by ID diff)
+- The API `GET /api/discovery/items?category={cat}` MUST filter out recipes that are currently assigned to any slot in `weekOffset=0` — this is the server-side responsibility; the client only needs to refetch
+- Do NOT flash an empty state during the refetch — keep current cards visible until new stack arrives, then diff
+
+---
+
+### Flow 10: Discovery stack — vote bubbling (live re-rank on incoming votes)
+
+```
+Jordan votes ♥ on Recipe X in her Discovery stack
+  → POST /api/discovery/{id}/vote
+  → .NET API publishes VoteUpdatedEvent { recipeId, voteCount }
+  → .NET API checks smart-defaults threshold → may publish SmartDefaultsUpdatedEvent
+
+  Alex is also on /discovery
+  Current state: Alex's stack order never changes.
+
+  With SSE:
+  Alex's browser (on /discovery)
+    ← receives vote_updated { recipeId, voteCount }
+    ← discoveryStore.applyVoteUpdate({ recipeId, voteCount })
+    ← if Recipe X is in Alex's current stack AND voteCount now indicates family interest,
+       move it toward the top (re-sort by family interest signal)
+    ← hasFamilyInterest flag updated on the card → card shows family interest indicator
+```
+
+**Why this matters:** The current stack is fetched once and never updated. When family members vote simultaneously, the person with the highest-interest recipe gets buried under unseen cards. Re-ranking bubbles consensus candidates to the top, accelerating the family decision.
+
+**R13 — Discovery vote bubbling**
+
+- `useDiscoveryStore` MUST add `applyVoteUpdate({ recipeId, voteCount })` action
+- `useScheduleStream` MUST also call `useDiscoveryStore.getState().applyVoteUpdate(...)` on `vote_updated` events (in addition to `weekStore.applyVoteUpdate`)
+- `applyVoteUpdate` updates `hasFamilyInterest` on the matching recipe in a local `discoveryStack` state field
+- When `hasFamilyInterest` transitions from `false` to `true`, the recipe MUST be moved toward the front of the stack (not necessarily position 0 — move up by 2 positions max to avoid jarring reorder while the user is swiping)
+- The Discovery card MUST visually indicate `hasFamilyInterest` (a small family indicator — design system choice)
+- Do NOT refetch the entire stack for a single vote — update in-place
+
+---
+
+### Flow 11: Multi-week planner SSE — live updates beyond week 0
+
+```
+User is viewing week 1 (next week's plan) on the planner
+  Alex assigns a recipe to week 1, day 3 from another device
+  → POST /api/schedule/assign (weekOffset=1)
+  → .NET API publishes slot_updated { date: "2026-05-12", recipe, status }
+
+  Current state with naïve weekStore SSE: applySlotUpdate checks if date is in
+  currently-loaded schedule. If user is on week 1, schedule has week 1 dates → update applied ✓.
+  BUT: applySlotUpdate also checks against weekStore.weekOffset — the SSE hook currently
+  only calls applySlotUpdate without knowing which week the user is viewing.
+
+  Two-source-of-truth gap: plannerStore.currentWeekOffset drives what week is rendered.
+  weekStore.weekOffset is set by weekStore.init(). They must stay in sync.
+```
+
+**Why this matters:** The planner lets users navigate weeks. SSE must work for any week the user is viewing, not just week 0. Dropping events for non-zero weeks silently breaks multi-week planning.
+
+**R14 — Multi-week SSE correctness**
+
+- `weekStore.weekOffset` MUST be the single source of truth for which week is loaded. `plannerStore.currentWeekOffset` drives navigation but MUST call `weekStore.init(weekOffset)` on change — this is already the case (planner page `useEffect` on `currentWeekOffset`).
+- `applySlotUpdate` checks `inCurrentWeek` against the loaded schedule dates — this naturally handles any offset, because `init(1)` loads week 1 dates into `schedule`.
+- When the user is on week 1 and receives `slot_updated` for a week 0 date → correctly silently ignored (week 0 data will be fresh on `init(0)`).
+- When the user is on week 1 and receives `slot_updated` for a week 1 date → correctly applied.
+- **New gap**: the `connected` event snapshot is week 0 only. If user navigates to week 1, they get no SSE snapshot for week 1 — `init(1)` REST fetch is the source of truth. SSE events keep it current after that. This is acceptable and MUST be documented as the intended behaviour.
+- **New requirement**: `useScheduleStream` MUST pass all `slot_updated` events to `weekStore.applySlotUpdate` regardless of offset — `applySlotUpdate`'s `inCurrentWeek` guard is the correct filter.
+
+---
+
+### Flow 12: Capture form success screen — honest async feedback
+
+```
+Current state:
+  User submits recipe → sees "Captured!" screen → redirected to /home in 4s.
+  Recipe is actually QUEUED, not ready. The success screen is a lie.
+
+  Better flow with SSE:
+  User submits recipe
+    → API returns { recipeId } immediately
+    → Success screen shows "Recipe queued — we'll notify you when it's ready"
+    → captureStore.setPendingRecipe({ recipeId, submittedAt })
+    → User navigates away
+    → SSE: recipe_ready → toast "✓ [Name] is ready in your library"
+    → SSE: recipe_failed → toast "Recipe couldn't be processed — tap to retry"
+```
+
+**R15 — Honest capture success state**
+
+- The capture success screen MUST distinguish between "queued" (immediately after submit) and "ready" (after `recipe_ready` SSE event)
+- The success screen for photo/URL paths MUST show: "Processing your recipe… we'll let you know when it's ready." with a dismiss/home CTA — not "Recipe saved!"
+- The describe path (synchronous synthesis) MAY show "Recipe saved!" if the API confirms synthesis inline — needs verification of response contract
+- `captureStore` MUST track `pendingRecipes: Array<{ recipeId, name?, submittedAt }>` so the SSE handler knows which `recipe_ready` events are relevant to this user's session
+- On `recipe_ready`: if `recipeId` is in `captureStore.pendingRecipes`, show the library toast (Flow 8 / R11) AND remove from pending
+- On `recipe_failed`: if `recipeId` is in `captureStore.pendingRecipes`, show the retry toast (Flow 7 / R10) AND remove from pending
+
+---
+
+## Revised event table (full set)
+
+| Event type | Payload | Trigger | New? |
+|---|---|---|---|
+| `connected` | `{ schedule: ScheduleDays }` | On SSE connect | Existing |
+| `slot_updated` | `{ date, recipe\|null, status }` | Any slot mutation | Existing |
+| `week_updated` | `{ schedule: ScheduleDays }` | Lock, voting open, move | Existing |
+| `vote_updated` | `{ recipeId, voteCount }` | Vote cast | Existing |
+| `smart_defaults_updated` | `{ weekOffset, defaults }` | Vote crosses threshold | Existing |
+| `fill_the_gap_invalidated` | `{ weekOffset }` | Slot assigned or removed | Existing |
+| `recipe_ready` | `{ recipeId, name, imageUrl }` | Synthesis/import complete | **Extended payload** |
+| `recipe_failed` | `{ recipeId, errorMessage, failedStep, partialData? }` | Workflow fatal failure | **New** |
+| `grocery_updated` | `{ weekOffset, groceryState: Record<string, boolean> }` | Any grocery PATCH | **New** |
