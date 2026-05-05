@@ -99,6 +99,8 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
           } else {
             router.push(ROUTES.HOME as any);
           }
+        } else {
+          setUrlCaptureError('Failed to capture link. Please check the URL and try again.');
         }
       } catch (err) {
         setUrlCaptureError(err instanceof Error ? err.message : 'Failed to capture link.');
@@ -276,6 +278,15 @@ export default function MinimalCapture({ intent, mode, initialUrl }: MinimalCapt
             >
               <PenLine size={16} />
               Or Describe It Instead
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setShowUrlReview(true); setUrlInput(''); }}
+              className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/40 transition-colors hover:text-terracotta"
+            >
+              <Globe size={16} />
+              Or add from a link
             </button>
 
             <input

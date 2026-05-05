@@ -132,8 +132,7 @@ test.describe('Capture Flow', () => {
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
   });
 
-  // TODO: mock conflict with setupCommonRoutes capture-url route; revisit when URL capture SSE flow is implemented
-  test.skip('failed URL capture shows error message', async ({ page }) => {
+  test('failed URL capture shows error message', async ({ page }) => {
     const testUrl = 'https://invalid-recipe.com';
 
     // Mock failure for this specific test
@@ -205,6 +204,19 @@ test.describe('Capture — initial state rendering', () => {
 
     // Describe_Form (recipe name input) is NOT present
     await expect(page.getByPlaceholder(/our family spaghetti/i)).not.toBeVisible();
+
+    // "Or add from a link" button is visible
+    await expect(page.getByRole('button', { name: /or add from a link/i })).toBeVisible();
+  });
+
+  test('clicking "Or add from a link" shows the URL review form', async ({ page }) => {
+    await page.goto('/capture');
+
+    await page.getByRole('button', { name: /or add from a link/i }).click();
+
+    await expect(page.getByText('Review your link')).toBeVisible();
+    await expect(page.getByPlaceholder(/paste a recipe link/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /save recipe/i })).toBeVisible();
   });
 });
 
