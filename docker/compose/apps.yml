@@ -32,8 +32,11 @@ services:
       - proxy
       - internal
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=wfs-proxy"
+      traefik.enable: "true"
+      traefik.docker.network: "wfs-proxy"
+      traefik.http.routers.api.rule: "PathPrefix(`/api`)"
+      traefik.http.routers.api.entrypoints: "web"
+      traefik.http.services.api.loadbalancer.server.port: "9001"
  
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -56,11 +59,11 @@ services:
     networks:
       - proxy
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.pwa.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`)"
-      - "traefik.http.routers.pwa.entrypoints=web"
-      - "traefik.http.services.pwa.loadbalancer.server.port=3000"
+      traefik.enable: "true"
+      traefik.docker.network: "wfs-proxy"
+      traefik.http.routers.pwa.rule: "PathPrefix(`/`)"
+      traefik.http.routers.pwa.entrypoints: "web"
+      traefik.http.services.pwa.loadbalancer.server.port: "3000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 10s
