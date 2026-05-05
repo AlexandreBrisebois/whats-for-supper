@@ -141,6 +141,7 @@ public class RecipeService(
                 ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 Ingredients = DeserializeIngredients(recipe.Ingredients),
+                RecipeInstructions = ExtractRecipeInstructions(recipe.RawMetadata),
                 CreatedAt = recipe.CreatedAt
             }
         };
@@ -189,6 +190,7 @@ public class RecipeService(
                 ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
                 Ingredients = DeserializeIngredients(recipe.Ingredients),
+                RecipeInstructions = ExtractRecipeInstructions(recipe.RawMetadata),
                 CreatedAt = recipe.CreatedAt
             }
         };

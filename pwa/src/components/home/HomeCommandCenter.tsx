@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Check } from 'lucide-react';
 import { QuickCaptureTrigger, CookedSuccessCard, VotingNudgeCard } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
@@ -32,6 +32,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showQuickFind, setShowQuickFind] = useState(false);
+  const [recoveryIntent, setRecoveryIntent] = useState<'order_in' | 'pick_else' | null>(null);
   const [cookedDismissed, setCookedDismissed] = useState(false);
   const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null);
   const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
@@ -104,6 +105,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     };
   }, [gotoRecipeId]);
 
+
   // ── Mount: seed store from SSR props, load settings, background sync ──────
   useEffect(() => {
     // Resolve the SSR recipe to a plain ScheduleRecipeDto (or null)
@@ -154,6 +156,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   };
 
   const handleSkipTrigger = () => {
+    setRecoveryIntent(null);
     setShowRecovery(true);
   };
 
@@ -161,29 +164,36 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     markCooked();
   };
 
-  const handleRecoveryAction = async (action: string) => {
+
+  const handleRecoveryAction = useCallback(async (action: string) => {
     try {
       const todayStr = getTodayString();
       const todayDate = DateOnly.parse(todayStr);
       if (!todayDate) return;
 
       if (action === 'order_in') {
+        setRecoveryIntent('order_in');
         markOrderedIn();
-        setShowRecovery(false);
+        // Do NOT close recovery dialog; let Step 2 handle rescheduling
       } else if (action === 'pick_else') {
-        setShowRecovery(false);
-        setShowQuickFind(true);
+        setRecoveryIntent('pick_else');
+        // Do NOT close recovery dialog; let Step 2 handle rescheduling
       } else if (action === 'tomorrow') {
-        // Global Domino Shift (Push tonight to tomorrow)
+        // Reschedule tonight's meal to tomorrow
         await apiClient.api.schedule.move.post({
           weekOffset: 0,
           fromIndex: (new Date().getDay() + 6) % 7,
           toIndex: ((new Date().getDay() + 6) % 7) + 1,
           intent: 'push',
         });
+        
         setShowRecovery(false);
-        // Sync store to reflect the move
         sync();
+        
+        // If they intended to pick something else, open the tool now
+        if (recoveryIntent === 'pick_else') {
+          setShowQuickFind(true);
+        }
       } else if (action === 'next_week') {
         await apiClient.api.schedule.move.post({
           weekOffset: 0,
@@ -194,15 +204,21 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         });
         setShowRecovery(false);
         sync();
+        if (recoveryIntent === 'pick_else') {
+          setShowQuickFind(true);
+        }
       } else if (action === 'drop') {
         await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
         setShowRecovery(false);
         sync();
+        if (recoveryIntent === 'pick_else') {
+          setShowQuickFind(true);
+        }
       }
     } catch (error) {
       console.error('Failed recovery action:', error);
     }
-  };
+  }, [markOrderedIn, sync, recoveryIntent]);
 
   const handleQuickFindSelect = async (recipe: any) => {
     setShowQuickFind(false);
@@ -241,6 +257,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                   markOrderedIn();
                 } else {
                   // B6: Recipe exists — open recovery dialog first
+                  setRecoveryIntent('order_in');
                   setShowRecovery(true);
                 }
               }}

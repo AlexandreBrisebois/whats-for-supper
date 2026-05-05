@@ -24,6 +24,9 @@ vars:
   TARGET_DB_HOST: '{{.TARGET_DB_HOST | default "localhost"}}'
   # CLI helper for docker compose
   COMPOSE_CMD: 'docker compose -p whats-for-supper --env-file docker/.env $([ -f docker/.env.local ] && echo "--env-file docker/.env.local") -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/dev-overrides.yml'
+  # Extract Hearth Secret for authenticated management calls
+  HEARTH_SECRET:
+    sh: (grep "^HEARTH_SECRET=" docker/.env.local 2>/dev/null || grep "^HEARTH_SECRET=" docker/.env 2>/dev/null || echo "HEARTH_SECRET=our family loves cooking") | cut -d'=' -f2-
 
 tasks:
   default:
@@ -525,7 +528,7 @@ tasks:
       - |
         echo "🚀 Waiting for API to be healthy..."
         for i in $(seq 1 20); do
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: pwa.wfs.localhost" http://localhost/api/health)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" http://localhost/api/health)
           if [ "$STATUS" == "200" ]; then
             echo "✅ API is up!"
             break
@@ -538,7 +541,7 @@ tasks:
         echo "🚀 Triggering database seed..."
         # Retry the trigger itself a few times if proxy is still warm-up
         for i in $(seq 1 5); do
-          RESPONSE=$(curl -X POST -s -H "Host: pwa.wfs.localhost" http://localhost/api/management/seed)
+          RESPONSE=$(curl -X POST -s -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" http://localhost/api/management/seed)
           # Try root first (SkipWrapping), then data (Default)
           TASK_ID=$(echo $RESPONSE | jq -r '.taskId // .data.taskId // empty')
           if [ -n "$TASK_ID" ] && [ "$TASK_ID" != "null" ]; then break; fi
@@ -554,7 +557,7 @@ tasks:
 
         # Poll status every 2 seconds
         for i in $(seq 1 30); do
-          STATUS_JSON=$(curl -s -H "Host: pwa.wfs.localhost" http://localhost/api/management/status)
+          STATUS_JSON=$(curl -s -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" http://localhost/api/management/status)
           # Status endpoint is also [SkipWrapping]
           CURRENT_STATUS=$(echo $STATUS_JSON | jq -r '.status // .data.status')
           CURRENT_ID=$(echo $STATUS_JSON | jq -r '.workflowId // .data.workflowId')
@@ -587,11 +590,11 @@ tasks:
       - |
         if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
           API_BASE="http://localhost:9001"
-          api_curl() { curl -s "$@"; }
+          api_curl() { curl -s -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
           echo "🔧 Using dev API at $API_BASE"
         else
           API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: pwa.wfs.localhost" "$@"; }
+          api_curl() { curl -s -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
         fi
         echo "🚀 Triggering bulk recipe import..."
         HTTP_CODE=$(api_curl -X POST -o /tmp/wfs_import.json -w "%{http_code}" "$API_BASE/api/management/bulk-import")
@@ -623,11 +626,11 @@ tasks:
         # Determine API Base
         if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
           API_BASE="http://localhost:9001"
-          api_curl() { curl -s "$@"; }
+          api_curl() { curl -s -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
           echo "🔧 Using dev API at $API_BASE"
         else
           API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: pwa.wfs.localhost" "$@"; }
+          api_curl() { curl -s -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
         fi
 
         for RECIPE_ID in $RECIPE_IDS; do
@@ -654,11 +657,11 @@ tasks:
       - |
         if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
           API_BASE="http://localhost:9001"
-          api_curl() { curl -s "$@"; }
+          api_curl() { curl -s -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
           echo "🔧 Using dev API at $API_BASE"
         else
           API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: pwa.wfs.localhost" "$@"; }
+          api_curl() { curl -s -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
         fi
         HTTP_CODE=$(api_curl -o /tmp/wfs_status.json -w "%{http_code}" "$API_BASE/api/recipes/import-status")
         if [ "$HTTP_CODE" = "000" ]; then
