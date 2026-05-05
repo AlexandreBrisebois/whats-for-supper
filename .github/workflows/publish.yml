@@ -95,8 +95,8 @@ jobs:
           echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
       - name: Publish Images
-        run: task publish PUSH=true TAG=${{ github.ref_name }} PLATFORMS=${{ needs.determine-runner.outputs.platforms }} NEXT_PUBLIC_API_BASE_URL="/"
+        run: task publish PUSH=true TAG=${{ github.ref_name }} PLATFORMS=${{ needs.determine-runner.outputs.platforms }} NEXT_PUBLIC_API_BASE_URL=""
         env:
           TAG: ${{ github.ref_name }}
           GITHUB_ACTIONS: "true"
-          NEXT_PUBLIC_API_BASE_URL: "/"
+          NEXT_PUBLIC_API_BASE_URL: ""

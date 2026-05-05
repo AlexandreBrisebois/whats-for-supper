@@ -26,9 +26,10 @@ const authProvider = new FamilyMemberAuthProvider();
 // Create the request adapter using the custom auth provider
 export const requestAdapter = new FetchRequestAdapter(authProvider);
 
-// Set the base URL from the environment variable, defaulting to / (relative, same-origin via Traefik)
+// Set the base URL from the environment variable, defaulting to "" (relative, same-origin via Traefik)
 // Note: API routes already include the /api prefix (e.g. /api/schedule), so the base URL should not add it again.
-requestAdapter.baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/';
+// Using "/" here would result in "//api/..." which browsers interpret as a protocol-relative URL to hostname "api".
+requestAdapter.baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 // Create and export the API client
 export const apiClient: ApiClient = createApiClient(requestAdapter);

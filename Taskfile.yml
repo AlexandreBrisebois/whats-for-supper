@@ -240,7 +240,7 @@ tasks:
   publish:
     desc: "🚀 Build images (local by default, set PUSH=true to push)"
     vars:
-      NEXT_PUBLIC_API_BASE_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default "/"}}'
+      NEXT_PUBLIC_API_BASE_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default ""}}'
     cmds:
       - task: publish:migration
         vars:
@@ -337,7 +337,7 @@ tasks:
       CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
       NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
       # Read NEXT_PUBLIC_API_BASE_URL from docker/.env.local (if present) then docker/.env
-      PWA_API_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default "/"}}'
+      PWA_API_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default ""}}'
     cmds:
       - echo "Building PWA {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
       - >
