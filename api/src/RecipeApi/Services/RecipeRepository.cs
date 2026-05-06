@@ -76,6 +76,28 @@ public class RecipeRepository(IStorageProvider storage)
         await storage.SaveAsync(Partition, $"{recipeId}/original/{index}{ext}", data);
     }
 
+    /// <summary>
+    /// Persists the raw HTML of a recipe webpage to original/content.html using UTF-8 encoding (no BOM).
+    /// </summary>
+    public async Task SaveContentHtmlAsync(Guid recipeId, string html, CancellationToken ct)
+    {
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        var bytes = encoding.GetBytes(html);
+        await storage.SaveAsync(Partition, $"{recipeId}/original/content.html", bytes);
+    }
+
+    /// <summary>
+    /// Returns the HTML string from original/content.html, or null if the file does not exist.
+    /// </summary>
+    public async Task<string?> GetContentHtmlAsync(Guid recipeId, CancellationToken ct)
+    {
+        var data = await storage.LoadAsync(Partition, $"{recipeId}/original/content.html");
+        if (data == null) return null;
+
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        return encoding.GetString(data);
+    }
+
     public async Task<bool> ExistsAsync(Guid recipeId, string relativePath)
     {
         var data = await storage.LoadAsync(Partition, $"{recipeId}/{relativePath}");

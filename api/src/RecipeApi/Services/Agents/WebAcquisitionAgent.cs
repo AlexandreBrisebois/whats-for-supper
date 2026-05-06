@@ -102,11 +102,12 @@ public class WebAcquisitionAgent(
             }
         }
 
-        // 5. Save HTML content as raw metadata for the next step (ExtractRecipe)
-        // We wrap the HTML in a property so ExtractRecipe (if updated) can find it.
-        var metadata = new { Name = context.Name, SourceUrl = url, RawHtml = html };
-        var normalizedJson = JsonSerializer.Serialize(metadata, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
-        await recipeRepository.SaveRecipeJsonAsync(recipeId, normalizedJson, ct);
+        // 5. Save HTML as a first-class artifact
+        await recipeRepository.SaveContentHtmlAsync(recipeId, html, ct);
+
+        // 6. Persist SourceUrl in recipe.info
+        info.SourceUrl = url;
+        await recipeRepository.SaveInfoAsync(info, ct);
 
         logger.LogInformation("Finished web acquisition for {RecipeId}", recipeId);
     }

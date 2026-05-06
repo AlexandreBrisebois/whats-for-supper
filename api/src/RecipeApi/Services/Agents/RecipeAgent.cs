@@ -99,32 +99,23 @@ RULES:
 
     public async Task DoExtractRecipeAsync(Guid recipeId, CancellationToken ct)
     {
-        string? rawHtml = null;
-        try
-        {
-            var existingJson = await recipeRepository.GetRecipeJsonAsync(recipeId, ct);
-            using var doc = JsonDocument.Parse(existingJson);
-            if (doc.RootElement.TryGetProperty("rawHtml", out var htmlProp))
-            {
-                rawHtml = htmlProp.GetString();
-            }
-        }
-        catch { /* ignore missing or invalid recipe.json */ }
-
+        var contentHtml = await recipeRepository.GetContentHtmlAsync(recipeId, ct);
         var imageFiles = await GetImageFilesAsync(recipeId, ct);
-        if (imageFiles.Count == 0 && string.IsNullOrEmpty(rawHtml))
+
+        if (contentHtml == null && imageFiles.Count == 0)
         {
-            logger.LogWarning("No images or HTML found for recipe {RecipeId}", recipeId);
+            logger.LogWarning("No artifacts found for recipe {RecipeId}", recipeId);
             return;
         }
 
-        logger.LogInformation("Extracting recipe {RecipeId} (Images: {ImgCount}, HTML: {HasHtml}).", recipeId, imageFiles.Count, !string.IsNullOrEmpty(rawHtml));
+        logger.LogInformation("Extracting recipe {RecipeId} (Images: {ImgCount}, HTML: {HasHtml}).", recipeId, imageFiles.Count, contentHtml != null);
 
-        var agent = chatClient.AsAIAgent(name: "RecipeExtractor", instructions: GetExtractionPrompt(false));
+        var promptType = contentHtml != null ? PromptType.WebRecipeExtraction : PromptType.RecipeExtraction;
+        var agent = chatClient.AsAIAgent(name: "RecipeExtractor", instructions: promptRepository.GetPrompt(promptType));
 
         var userPrompt = "Please extract the recipe as instructed.";
         if (imageFiles.Count > 0) userPrompt += " Context from images is provided.";
-        if (!string.IsNullOrEmpty(rawHtml)) userPrompt += " Context from the source webpage HTML is also provided.";
+        if (contentHtml != null) userPrompt += " Context from the source webpage HTML is also provided.";
 
         var userMessage = new ChatMessage(ChatRole.User, userPrompt);
         if (imageFiles.Count > 0)
@@ -132,10 +123,10 @@ RULES:
             await AddImagesToMessageAsync(userMessage, recipeId, imageFiles, ct);
         }
 
-        if (!string.IsNullOrEmpty(rawHtml))
+        if (contentHtml != null)
         {
             // Truncate HTML to stay within safe token limits (approx 50k chars)
-            var htmlContent = rawHtml.Length > 50000 ? rawHtml[..50000] : rawHtml;
+            var htmlContent = contentHtml.Length > 50000 ? contentHtml[..50000] : contentHtml;
             userMessage.Contents.Add(new TextContent($"SOURCE HTML:\n\n{htmlContent}"));
         }
 

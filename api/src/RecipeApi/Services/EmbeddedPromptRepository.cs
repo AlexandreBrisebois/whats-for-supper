@@ -17,7 +17,8 @@ public class EmbeddedPromptRepository : IPromptRepository
         { PromptType.RecipeExtraction, "RecipeApi.Prompts.extract-recipe.md" },
         { PromptType.DescriptionGeneration, "RecipeApi.Prompts.generate-description.md" },
         { PromptType.RecipeSynthesis, "RecipeApi.Prompts.synthesize-recipe.md" },
-        { PromptType.WebContextExtraction, "RecipeApi.Prompts.extract-web-context.md" }
+        { PromptType.WebContextExtraction, "RecipeApi.Prompts.extract-web-context.md" },
+        { PromptType.WebRecipeExtraction, "RecipeApi.Prompts.extract-web-recipe.md" }
     };
 
     public EmbeddedPromptRepository()

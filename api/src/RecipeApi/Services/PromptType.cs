@@ -8,5 +8,6 @@ public enum PromptType
     RecipeExtraction,
     DescriptionGeneration,
     RecipeSynthesis,
-    WebContextExtraction
+    WebContextExtraction,
+    WebRecipeExtraction
 }
