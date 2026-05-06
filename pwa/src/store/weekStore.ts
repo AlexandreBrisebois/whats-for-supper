@@ -98,8 +98,10 @@ function buildScheduleDays(
 
   return scheduleData.days.map((day: any, index: number) => {
     // Narrow the oneOf union — only treat as a recipe if it has an id
+    const stableUiId = day.date || `pending-${index}`;
+
     if (isScheduleRecipe(day.recipe)) {
-      return { ...day, recipe: day.recipe, _uiId: generateUiId() };
+      return { ...day, recipe: day.recipe, _uiId: stableUiId };
     }
 
     const smartDefault = defaultsByDayIndex.get(index);
@@ -112,14 +114,14 @@ function buildScheduleDays(
           image: smartDefault.heroImageUrl ?? '',
           voteCount: smartDefault.voteCount ?? 0,
         },
-        _uiId: generateUiId(),
+        _uiId: stableUiId,
         _isPending: true,
         _voteCount: smartDefault.voteCount,
         _unanimousVote: smartDefault.unanimousVote,
       };
     }
 
-    return { ...day, recipe: undefined, _uiId: generateUiId() };
+    return { ...day, recipe: undefined, _uiId: stableUiId };
   });
 }
 
@@ -351,6 +353,20 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
   // ── applySnapshot ─────────────────────────────────────────────────────────
   applySnapshot(schedule: ScheduleDays) {
+    const { optimisticWriteAt } = get();
+    const optimisticIsRecent =
+      optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 10_000;
+
+    // Authoritative status update (always apply)
+    const nextStatus = (schedule.status ?? 0) as 0 | 1 | 2;
+
+    // If we have a recent optimistic write, skip the schedule update to avoid
+    // clobbering the UI during or immediately after a drag/assign gesture.
+    if (optimisticIsRecent) {
+      set({ status: nextStatus, lastSyncedAt: Date.now() });
+      return;
+    }
+
     const mergedDays = buildScheduleDays(schedule);
     const prev = get().schedule;
 

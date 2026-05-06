@@ -20,7 +20,6 @@ export default function ProfilePage() {
     router.push(ROUTES.HOME);
   }
 
-
   return (
     <div className="flex flex-col gap-10 pt-4 pb-20 max-w-sm mx-auto w-full px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header with Settings Link */}
@@ -46,7 +45,6 @@ export default function ProfilePage() {
       <div className="w-full max-w-sm">
         <ProfileDropdown onSelect={handleFamilyMemberSelected} />
       </div>
-
     </div>
   );
 }

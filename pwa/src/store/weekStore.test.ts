@@ -122,13 +122,29 @@ describe('weekStore — applySnapshot', () => {
     expect(state.schedule[0]._isPending).toBeUndefined();
   });
 
-  it('clears optimisticWriteAt', () => {
-    useWeekStore.setState({ optimisticWriteAt: Date.now() });
+  it('clears optimisticWriteAt when not recent', () => {
+    useWeekStore.setState({ optimisticWriteAt: Date.now() - 20000 }); // 20s ago
 
     const snapshot = makeScheduleDays([]);
     useWeekStore.getState().applySnapshot(snapshot);
 
     expect(useWeekStore.getState().optimisticWriteAt).toBeNull();
+  });
+
+  it('preserves optimisticWriteAt and skips schedule update when recent', () => {
+    const now = Date.now();
+    const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
+    useWeekStore.setState({
+      optimisticWriteAt: now,
+      schedule: initialSchedule,
+    });
+
+    const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe: { id: 'new' } as any }]);
+    useWeekStore.getState().applySnapshot(snapshot);
+
+    const state = useWeekStore.getState();
+    expect(state.optimisticWriteAt).toBe(now);
+    expect(state.schedule).toBe(initialSchedule); // Should not have updated
   });
 
   it('applySnapshot sets groceryState atomically — same tick as schedule', () => {

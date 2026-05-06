@@ -24,5 +24,4 @@ test.describe('Profile Page', () => {
       timeout: 5000,
     });
   });
-
 });

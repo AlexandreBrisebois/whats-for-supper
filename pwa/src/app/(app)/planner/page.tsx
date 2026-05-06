@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, memo } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   ChevronLeft,
@@ -565,7 +565,7 @@ export default function PlannerPage() {
   );
 }
 
-function PlannerDayCard({
+const PlannerDayCard = memo(function PlannerDayCard({
   day,
   index,
   successDay,
@@ -784,4 +784,4 @@ function PlannerDayCard({
       </motion.div>
     </Reorder.Item>
   );
-}
+});
