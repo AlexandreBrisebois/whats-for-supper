@@ -46,6 +46,9 @@ public class DiscoveryRecipe
     [Column("vote_count")]
     public int VoteCount { get; set; }
 
+    [Column("dietary_profile", TypeName = "jsonb")]
+    public string? DietaryProfile { get; set; } = null;
+
     // Map to Recipe for easy conversion if needed
     public Recipe ToRecipe() => new()
     {

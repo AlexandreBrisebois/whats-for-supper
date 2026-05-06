@@ -11,6 +11,25 @@ Each task is a vertical slice: contract → tests → implementation. No task bu
 
 ---
 
+## Task Status Tracker
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 1 — New C# records and database columns | ✅ COMPLETE | All records, utilities, schema columns, and tests created |
+| Task 2 — OpenAPI contract + client regeneration | ✅ COMPLETE | Contract updated, client regenerated, drift check passed |
+| Task 3 — `ClassifyDietaryProfileProcessor` | ✅ COMPLETE | Processor implemented, 11 tests pass, all error paths handled |
+| Task 4 — Workflow standardization (all four workflows) | ✅ COMPLETE | All four workflows updated, 5 integration tests pass |
+| Task 5 — `WeeklyBalanceScorer` (pure logic) | ✅ COMPLETE | All 12 tests pass, pure logic verified, no regressions |
+| Task 6 — Wire balance scoring into `GroceryRecomputeService` | ✅ COMPLETE | Balance scoring integrated, 7 tests pass, SSE nudge emitted on target reach |
+| Task 7 — `GET /api/schedule` returns `balanceSummary` |  ✅ COMPLETE |
+| Task 8 — Discovery cuisine filter | ✅ COMPLETE | Awaiting execution |
+| Task 9 — Backup and restore for `dietary_profile` | ✅ COMPLETE | All tests pass, backup/restore logic implemented |
+| Task 10 — SSE `discovery_nudge` event (PWA side) | ✅ COMPLETE | Active category synced via store nudge |
+| Task 11 — PWA balance indicator | ✅ COMPLETE | Balance indicator implemented and wired |
+| Task 12 — Documentation | ✅ COMPLETE | User-facing and technical documentation created |
+
+---
+
 ## Task 1 — New C# records and database columns
 
 **What:** Add all new records (`RecipeDietaryProfile`, `WeeklyBalanceSummary`, `FopThresholds`, `FopFlags`, `FopWeekSummary`, `NutritionParser`) and the new database columns. No LLM. No behavior change.
@@ -85,7 +104,7 @@ public RecipeDietaryProfile? DietaryProfile { get; set; } = null;
 
 **Definition of done:** Schema applies via `task dev:clean:sync`. Round-trip tests pass. No other tests break.
 
-- [ ] Task 1 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -125,7 +144,7 @@ task agent:drift
 
 **Definition of done:** Drift check passes. TypeScript client builds. No existing tests break.
 
-- [ ] Task 2 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -161,7 +180,7 @@ Register in `api/src/RecipeApi/Program.cs` alongside `CategorizeIngredientsProce
 
 **Definition of done:** All 8 tests pass. `task review` passes.
 
-- [ ] Task 3 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -213,7 +232,7 @@ Add to the integration test project (new file or existing `RecipeWorkflowIntegra
 
 **Definition of done:** All 4 integration tests pass. `task agent:drift` passes. `task review` passes.
 
-- [ ] Task 4 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -247,7 +266,7 @@ Create `api/src/RecipeApi/Services/WeeklyBalanceScorer.cs`.
 
 **Definition of done:** All 9 tests pass. `task review` passes.
 
-- [ ] Task 5 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -302,7 +321,7 @@ See design.md § Modified C# service: `GroceryRecomputeService` for the exact st
 
 **Definition of done:** All 7 tests pass. Project compiles (all fakes updated). `task test:api` passes.
 
-- [ ] Task 6 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -345,11 +364,12 @@ See design.md § Modified service: `ScheduleService.GetScheduleAsync`. Deseriali
 
 **Definition of done:** All 3 integration tests pass. `task agent:drift` passes. `task review` passes.
 
-- [ ] Task 7 complete
+See Task Status Tracker above for completion status.
 
 ---
 
 ## Task 8 — Discovery cuisine filter
+Status: ✅ COMPLETED
 
 **What:** Add cuisine filtering to `GET /api/discovery`. This requires updating the database view, the model, the service, and the controller — in that order.
 
@@ -398,7 +418,7 @@ In `DiscoveryController.GetDiscoveryStack`, add `[FromQuery] string? cuisine` an
 
 **Definition of done:** All 5 tests pass. View applies via `task dev:clean:sync`. `task agent:drift` passes.
 
-- [ ] Task 8 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -431,7 +451,7 @@ Add step 9 after existing restore steps. See design.md § Modified service: `Man
 
 **Definition of done:** All 5 tests pass. `task test:api` passes.
 
-- [ ] Task 9 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -456,7 +476,7 @@ Add handler for `discovery_nudge` in the SSE listener alongside existing event h
 
 **Definition of done:** All 3 tests pass. `task test:unit` passes.
 
-- [ ] Task 10 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -486,7 +506,7 @@ Wire into the planner component so it receives `balanceSummary` from the schedul
 
 **Definition of done:** All 4 tests pass. `task test:unit` passes. `task review` passes.
 
-- [ ] Task 11 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -508,7 +528,7 @@ Wire into the planner component so it receives `balanceSummary` from the schedul
 
 **Definition of done:** File exists, all 6 sections present. Readable by a non-technical user. `task review` passes.
 
-- [ ] Task 12 complete
+See Task Status Tracker above for completion status.
 
 ---
 
@@ -518,3 +538,4 @@ Wire into the planner component so it receives `balanceSummary` from the schedul
 - **2026-05-06**: Spec authored. Key decisions: primary+secondary food groups with `wholeGrainConfident` guard; 6-value `ProteinSource` taxonomy for future family health profiles; `category` column now owned by this feature and set to `primaryFoodGroup`; `dietary_profile` persists to `recipe.info`, not `recipe.json`.
 - **2026-05-06**: Workflow standardization: all four recipe workflows updated (Task 4). `recipe-description-regeneration` uses `forceReclassify: true` and does NOT get `recipe_ready`. `url-import` and `goto-synthesis` gaps confirmed and closed.
 - **2026-05-06**: Seam paranoia review: `ScheduleDays` positional record order documented and guarded; `IScheduleEventPublisher` fake update required in Task 6; `vw_discovery_recipes` view and `DiscoveryRecipe` model must be updated together in Task 8; `forceReclassify` payload extension is backward-compatible (optional, default false).
+- **2026-05-06**: Added `classify-recipe.yaml` workflow to allow standalone dietary classification/re-classification without full re-import. Useful for batch processing unclassified recipes or forcing updates after profile logic changes.

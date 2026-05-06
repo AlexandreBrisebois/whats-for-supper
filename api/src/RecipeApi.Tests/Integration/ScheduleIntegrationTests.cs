@@ -861,4 +861,96 @@ public class ScheduleIntegrationTests : IAsyncLifetime
                 $"/api/recipes/{recipeId}/image/0"),
             Times.Once);
     }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // Task 7: GET /api/schedule returns balanceSummary
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetSchedule_AfterAssigningRecipeWithDietaryProfile_ReturnsBalanceSummary()
+    {
+        // Arrange: create a recipe with a known dietary_profile
+        var recipeId = Guid.NewGuid();
+        var dietaryProfile = new RecipeDietaryProfile(
+            PrimaryFoodGroup: "ProteinFoods",
+            SecondaryFoodGroups: new[] { "VegetablesAndFruits" },
+            ProteinSource: "Poultry",
+            CuisineType: "Canadian",
+            MealTypes: new[] { "Dinner" },
+            PrimaryMealType: "Dinner",
+            WholeGrainConfident: false,
+            Confidence: 0.95,
+            Source: "llm",
+            FopFlags: null
+        );
+
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Name = "Grilled Chicken",
+            DietaryProfile = System.Text.Json.JsonSerializer.Serialize(dietaryProfile)
+        };
+        _db.Recipes.Add(recipe);
+        await _db.SaveChangesAsync();
+
+        // Act: assign the recipe to the week
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
+
+        // Get the schedule
+        var schedule = await _service.GetScheduleAsync(0);
+
+        // Assert: balanceSummary is present with isBalanced field
+        Assert.NotNull(schedule.BalanceSummary);
+    }
+
+    [Fact]
+    public async Task GetSchedule_ForEmptyWeek_ReturnsNullBalanceSummary()
+    {
+        // Arrange: no recipes assigned to the week
+
+        // Act: get the schedule for week 0
+        var schedule = await _service.GetScheduleAsync(0);
+
+        // Assert: balanceSummary is null (no weekly plan exists yet)
+        Assert.Null(schedule.BalanceSummary);
+    }
+
+    [Fact]
+    public async Task GetSchedule_BalanceSummaryRecommendations_IsArrayNotNull()
+    {
+        // Arrange: create a recipe with dietary profile and assign it
+        var recipeId = Guid.NewGuid();
+        var dietaryProfile = new RecipeDietaryProfile(
+            PrimaryFoodGroup: "ProteinFoods",
+            SecondaryFoodGroups: new[] { "VegetablesAndFruits" },
+            ProteinSource: "Poultry",
+            CuisineType: "Canadian",
+            MealTypes: new[] { "Dinner" },
+            PrimaryMealType: "Dinner",
+            WholeGrainConfident: false,
+            Confidence: 0.95,
+            Source: "llm",
+            FopFlags: null
+        );
+
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Name = "Grilled Chicken",
+            DietaryProfile = System.Text.Json.JsonSerializer.Serialize(dietaryProfile)
+        };
+        _db.Recipes.Add(recipe);
+        await _db.SaveChangesAsync();
+
+        // Act: assign the recipe
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
+
+        // Get the schedule
+        var schedule = await _service.GetScheduleAsync(0);
+
+        // Assert: recommendations is an array (not null), even when isBalanced might be true or false
+        Assert.NotNull(schedule.BalanceSummary);
+        Assert.NotNull(schedule.BalanceSummary.Recommendations);
+        Assert.IsAssignableFrom<IEnumerable<string>>(schedule.BalanceSummary.Recommendations);
+    }
 }

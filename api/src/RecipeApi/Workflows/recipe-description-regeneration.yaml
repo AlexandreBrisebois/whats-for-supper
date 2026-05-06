@@ -12,3 +12,11 @@ tasks:
           - generate_description
       payload:
           recipeId: "{{ recipeId }}"
+
+    - name: classify_dietary_profile
+      processor: ClassifyDietaryProfile
+      depends_on:
+          - sync_recipe
+      payload:
+          recipeId: "{{ recipeId }}"
+          forceReclassify: true

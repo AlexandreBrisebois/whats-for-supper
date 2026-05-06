@@ -24,12 +24,13 @@ public class DiscoveryController(DiscoveryService discoveryService) : Controller
     [HttpGet]
     public async Task<IActionResult> GetDiscoveryStack(
         [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId,
-        [FromQuery] string? category)
+        [FromQuery] string? category,
+        [FromQuery] string? cuisine)
     {
         if (familyMemberId is null)
             return BadRequest(new { message = "X-Family-Member-Id header is required." });
 
-        var recipes = await _discoveryService.GetRecipesForDiscoveryAsync(familyMemberId.Value, category);
+        var recipes = await _discoveryService.GetRecipesForDiscoveryAsync(familyMemberId.Value, category, cuisine);
         return Ok(recipes);
     }
 

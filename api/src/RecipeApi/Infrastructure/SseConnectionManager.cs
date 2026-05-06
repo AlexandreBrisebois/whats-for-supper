@@ -27,7 +27,7 @@ public class SseConnectionManager
             entry.Lock.Dispose();
     }
 
-    public async Task BroadcastAsync(string eventType, object payload)
+    public async Task BroadcastAsync(string eventType, object payload, string? excludeConnectionId = null)
     {
         var data = JsonSerializer.Serialize(payload);
         var message = $"event: {eventType}\ndata: {data}\n\n";
@@ -35,6 +35,8 @@ public class SseConnectionManager
 
         foreach (var (id, entry) in _connections)
         {
+            if (id == excludeConnectionId) continue;
+
             await entry.Lock.WaitAsync();
             try
             {

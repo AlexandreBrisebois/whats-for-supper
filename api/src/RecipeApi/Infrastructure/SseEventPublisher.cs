@@ -16,38 +16,41 @@ public class SseEventPublisher : IScheduleEventPublisher
         _manager = manager;
     }
 
-    public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status)
+    public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("slot_updated", new
         {
             date = date.ToString("yyyy-MM-dd"),
             recipe,
             status
-        });
+        }, excludeConnectionId);
 
-    public Task PublishWeekUpdatedAsync(ScheduleDays schedule)
-        => _manager.BroadcastAsync("week_updated", new { schedule });
+    public Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("week_updated", new { schedule }, excludeConnectionId);
 
-    public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount)
-        => _manager.BroadcastAsync("vote_updated", new { recipeId, voteCount });
+    public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("vote_updated", new { recipeId, voteCount }, excludeConnectionId);
 
-    public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, SmartDefaultsDto defaults)
-        => _manager.BroadcastAsync("smart_defaults_updated", new { weekOffset, defaults });
+    public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, SmartDefaultsDto defaults, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("smart_defaults_updated", new { weekOffset, defaults }, excludeConnectionId);
 
-    public Task PublishFillTheGapInvalidatedAsync(int weekOffset)
-        => _manager.BroadcastAsync("fill_the_gap_invalidated", new { weekOffset });
+    public Task PublishFillTheGapInvalidatedAsync(int weekOffset, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("fill_the_gap_invalidated", new { weekOffset }, excludeConnectionId);
 
-    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl)
-        => _manager.BroadcastAsync("recipe_ready", new { recipeId, name, imageUrl });
+    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("recipe_ready", new { recipeId, name, imageUrl }, excludeConnectionId);
 
-    public Task PublishRecipeFailedAsync(Guid recipeId, string errorMessage, string failedStep, object? partialData)
+    public Task PublishRecipeFailedAsync(Guid recipeId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("recipe_failed", new
         {
             recipeId,
             errorMessage,
             failedStep,
             partialData
-        });
+        }, excludeConnectionId);
 
-    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState)
-        => _manager.BroadcastAsync("grocery_updated", new { weekOffset, groceryState });
+    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("grocery_updated", new { weekOffset, groceryState }, excludeConnectionId);
+
+    public Task PublishDiscoveryNudgeAsync(string? nextFoodGroup, string reason, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("discovery_nudge", new { nextFoodGroup, reason }, excludeConnectionId);
 }

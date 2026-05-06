@@ -54,11 +54,17 @@ public class ManagementService(
                 existing.LastCookedDate = recipe.LastCookedDate;
                 existing.IsSynthesized = recipe.IsSynthesized;
                 existing.SourceUrl = recipe.SourceUrl;
+
+                if (!string.IsNullOrEmpty(recipe.DietaryProfile))
+                {
+                    existing.DietaryProfile = JsonSerializer.Deserialize<RecipeDietaryProfile>(recipe.DietaryProfile, JsonDefaults.CamelCase);
+                }
+
                 await recipeStore.WriteInfoAsync(existing);
             }
             else
             {
-                await recipeStore.WriteInfoAsync(new RecipeInfo
+                var info = new RecipeInfo
                 {
                     Id = recipe.Id,
                     Notes = recipe.Notes,
@@ -77,7 +83,14 @@ public class ManagementService(
                     TotalTime = recipe.TotalTime,
                     LastCookedDate = recipe.LastCookedDate,
                     SourceUrl = recipe.SourceUrl
-                });
+                };
+
+                if (!string.IsNullOrEmpty(recipe.DietaryProfile))
+                {
+                    info.DietaryProfile = JsonSerializer.Deserialize<RecipeDietaryProfile>(recipe.DietaryProfile, JsonDefaults.CamelCase);
+                }
+
+                await recipeStore.WriteInfoAsync(info);
             }
 
             // recipe.json — never overwrite; only write if missing and there is content
@@ -214,14 +227,17 @@ public class ManagementService(
                             IsSynthesized = info.IsSynthesized,
                             CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
                             UpdatedAt = DateTimeOffset.UtcNow,
-                            Category = info.Category,
+                            Category = info.DietaryProfile?.PrimaryFoodGroup ?? info.Category,
                             IsDiscoverable = info.IsDiscoverable,
                             IsHealthyChoice = info.IsHealthyChoice,
                             IsVegetarian = info.IsVegetarian,
                             Difficulty = info.Difficulty,
                             TotalTime = info.TotalTime,
                             LastCookedDate = info.LastCookedDate,
-                            SourceUrl = info.SourceUrl
+                            SourceUrl = info.SourceUrl,
+                            DietaryProfile = info.DietaryProfile != null
+                                ? JsonSerializer.Serialize(info.DietaryProfile, JsonDefaults.CamelCase)
+                                : null
                         };
                     }
                 }
@@ -346,6 +362,7 @@ public class ManagementService(
                     existing.Difficulty = recipe.Difficulty;
                     existing.LastCookedDate = recipe.LastCookedDate;
                     existing.SourceUrl = recipe.SourceUrl;
+                    existing.DietaryProfile = recipe.DietaryProfile;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
                 }

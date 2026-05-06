@@ -110,7 +110,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, 0, 1, "swap"));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipe1Id, 1, "swap"));
 
         // Assert
         var e1 = _db.CalendarEvents.First(e => e.Date == monday);
@@ -139,7 +139,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act: Push Slot 0 (R1) to Slot 1. R2 should shift to Slot 2.
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, 0, 1, "push"));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, r1Id, 1, "push"));
 
         // Assert
         var e1 = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday);

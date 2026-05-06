@@ -5,12 +5,14 @@ interface PlannerState {
   activeTab: 'planner' | 'grocery';
   isVotingOpen: boolean;
   isLocked: boolean;
+  sseConnectionId: string | null;
   cookProgress: Record<string, number>;
   groceryState: Record<string, boolean>;
   setWeekOffset: (offset: number) => void;
   setActiveTab: (tab: 'planner' | 'grocery') => void;
   setVotingOpen: (open: boolean) => void;
   setIsLocked: (locked: boolean) => void;
+  setSseConnectionId: (id: string | null) => void;
   setCookProgress: (recipeId: string, stepIndex: number) => void;
   resetCookProgress: (recipeId: string) => void;
   setGroceryItemToggle: (ingredientName: string, isToggled: boolean) => void;
@@ -22,6 +24,7 @@ export const usePlannerStore = create<PlannerState>((set) => ({
   activeTab: 'planner',
   isVotingOpen: false,
   isLocked: false,
+  sseConnectionId: null,
   cookProgress: {},
   groceryState: {},
   setWeekOffset: (offset) =>
@@ -29,6 +32,7 @@ export const usePlannerStore = create<PlannerState>((set) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   setVotingOpen: (open) => set({ isVotingOpen: open }),
   setIsLocked: (locked) => set({ isLocked: locked }),
+  setSseConnectionId: (id) => set({ sseConnectionId: id }),
   setCookProgress: (recipeId, stepIndex) =>
     set((state) => {
       if (state.cookProgress[recipeId] === stepIndex) return state;

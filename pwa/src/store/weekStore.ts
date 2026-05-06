@@ -14,6 +14,7 @@ import type {
   GroceryLineItemDto,
   ScheduleRecipeDto,
   SmartDefaultsDto,
+  WeeklyBalanceSummaryDto,
 } from '@/lib/api/generated/models';
 import type { ScheduleDay } from '@/lib/api/planner';
 import type { ScheduleDays } from '@/lib/api/generated/models';
@@ -43,6 +44,8 @@ export interface WeekState {
    * sync() will not overwrite schedule while this is within the 10-second window.
    */
   optimisticWriteAt: number | null;
+  /** Summary of Canada's Food Guide balance for the week's dinner slots */
+  balanceSummary: WeeklyBalanceSummaryDto | null;
 
   // Derived (not stored):
   // isVotingOpen = status === 1
@@ -141,6 +144,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   isLoading: false,
   lastSyncedAt: null,
   optimisticWriteAt: null,
+  balanceSummary: null,
 
   // ── init ──────────────────────────────────────────────────────────────────
   async init(weekOffset) {
@@ -179,6 +183,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         schedule: mergedDays,
         groceryItems: scheduleData.groceryItems ?? [],
         status,
+        balanceSummary: scheduleData.balanceSummary ?? null,
         lastSyncedAt: Date.now(),
         isLoading: false,
       });
@@ -243,12 +248,14 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   commitMove(from, to, preDragSnapshot) {
     if (from === to || from < 0 || to < 0) return;
 
+    const recipeToMove = preDragSnapshot[from].recipe;
+    if (!recipeToMove?.id) return;
+
     // Apply the final local reorder using the authoritative from/to positions.
     get().reorderLocally(from, to);
 
-    // Fire the API exactly once. On failure, revert to the pre-drag snapshot
-    // (not the current intermediate schedule) so the user sees a clean rollback.
-    moveRecipeApi(get().weekOffset, from, to).catch(() =>
+    // BS-10: Deterministic Move API using RecipeId instead of fromIndex.
+    moveRecipeApi(get().weekOffset, recipeToMove.id, to).catch(() =>
       set({ schedule: preDragSnapshot, optimisticWriteAt: null })
     );
   },
@@ -259,14 +266,13 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     const prev = get().schedule;
     if (from === to || from < 0 || to < 0) return;
 
+    const recipeToMove = prev[from].recipe;
+    if (!recipeToMove?.id) return;
+
     const next = [...prev];
-    // 1. Physically move the item in the array so framer-motion's Reorder.Group
-    // sees the tracked _uiId move to the new position.
     const [movedItem] = next.splice(from, 1);
     next.splice(to, 0, movedItem);
 
-    // 2. Reconcile: the user wants to move the CONTENT (recipe) but the DAYS
-    // (Mon, Tue...) must remain fixed at their respective indices.
     const reconciled = next.map((item, index) => ({
       ...item,
       day: prev[index].day,
@@ -275,8 +281,8 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
     set({ schedule: reconciled, optimisticWriteAt: Date.now() });
 
-    // 3. API Call: Trigger the backend move. Note: if this fails, we revert to prev.
-    moveRecipeApi(get().weekOffset, from, to).catch(() => set({ schedule: prev }));
+    // BS-10: Deterministic Move API using RecipeId instead of fromIndex.
+    moveRecipeApi(get().weekOffset, recipeToMove.id, to).catch(() => set({ schedule: prev }));
   },
 
   // ── openVoting ────────────────────────────────────────────────────────────
@@ -350,7 +356,11 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         });
       } else {
         // Protect optimistic schedule; still update status (authoritative)
-        set({ status, lastSyncedAt: Date.now() });
+        set({
+          status,
+          balanceSummary: data.balanceSummary ?? null,
+          lastSyncedAt: Date.now(),
+        });
       }
     } catch {
       // silent
@@ -381,12 +391,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     // Preserve smart-defaults metadata for pending slots that the snapshot does not
     // have a server-assigned recipe for. Without this, a reconnect strips all
     // _isPending/_voteCount/_unanimousVote fields, causing visible flicker on the planner.
-    //
-    // Also preserve REST-loaded recipes when the SSE snapshot is empty (all recipe: null).
-    // The `connected` event sends a week-0 snapshot that may be empty if the SSE mock
-    // returns a blank schedule. If the store was already populated by a REST fetch, the
-    // SSE empty snapshot must not overwrite it — the REST data is more specific.
-    // Guard: only preserve if the incoming snapshot has NO recipes at all (all null).
     const snapshotIsEmpty = mergedDays.every((d) => !d.recipe);
 
     const preserved = mergedDays.map((day) => {
@@ -401,38 +405,25 @@ export const useWeekStore = create<WeekState>((set, get) => ({
           _unanimousVote: prevDay._unanimousVote,
         };
       }
-      // If the incoming snapshot is entirely empty but the store already has a recipe
-      // for this day (loaded via REST), keep the existing recipe. An empty SSE snapshot
-      // is a seed event, not an authoritative clear.
       if (snapshotIsEmpty && prevDay?.recipe) {
         return { ...day, recipe: prevDay.recipe, status: prevDay.status ?? day.status };
       }
       return day;
     });
 
-    // Extract grocery state from the typed field (AdditionalDataHolder pattern).
-    // Setting it here — in the same synchronous tick as schedule — eliminates the
-    // two-render gap that caused grocery-list jitter on SSE reconnect.
     const incomingGroceryState = schedule.groceryState?.additionalData as
       | Record<string, boolean>
       | undefined;
 
     set({
       schedule: preserved,
-      // If the incoming snapshot is entirely empty, preserve the existing status
-      // (e.g. locked=2) rather than resetting it to 0. An empty SSE snapshot is
-      // a seed event, not an authoritative state reset.
       status:
         snapshotIsEmpty && prev.length > 0 ? get().status : ((schedule.status ?? 0) as 0 | 1 | 2),
+      balanceSummary: schedule.balanceSummary ?? null,
       lastSyncedAt: Date.now(),
       optimisticWriteAt: null,
     });
 
-    // Apply grocery state atomically after the schedule update.
-    // weekStore and plannerStore are separate Zustand slices, so setGroceryState
-    // is called on plannerStore directly. Both updates happen synchronously in the
-    // same JS tick (no await, no setTimeout), so React batches them into a single
-    // render in concurrent mode — no two-render gap.
     if (incomingGroceryState && typeof incomingGroceryState === 'object') {
       usePlannerStore.getState().setGroceryState(incomingGroceryState);
     }
@@ -441,7 +432,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   // ── applySlotUpdate ───────────────────────────────────────────────────────
   applySlotUpdate({ date, recipe, status }: { date: string; recipe: any; status: number }) {
     const prev = get().schedule;
-    // If schedule is empty, silently return (pre-init SSE event drop case — BS-2)
     if (prev.length === 0) return;
     const inCurrentWeek = prev.some((d) => d.date === date);
     if (!inCurrentWeek) return;
@@ -462,15 +452,12 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
   // ── applySmartDefaultsUpdate ──────────────────────────────────────────────
   applySmartDefaultsUpdate(defaults: SmartDefaultsDto) {
-    // Only update slots that are still pending (no confirmed recipe assigned by a user).
-    // Confirmed slots (_isPending === false and recipe present) are left untouched.
     const prev = get().schedule;
     const defaultsByDayIndex = new Map(
       defaults.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
     );
 
     const next = prev.map((d, index) => {
-      // Never overwrite a user-confirmed slot
       if (d.recipe && !d._isPending) return d;
 
       const smartDefault = defaultsByDayIndex.get(index);
@@ -490,7 +477,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         };
       }
 
-      // Recipe dropped below threshold — clear the pending slot
       if (d._isPending) {
         return {
           ...d,

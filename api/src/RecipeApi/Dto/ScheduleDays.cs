@@ -23,4 +23,5 @@ public record ScheduleDays(
     [property: JsonPropertyName("status")] int Status,
     [property: JsonPropertyName("days")] List<ScheduleDayDto> Days,
     [property: JsonPropertyName("groceryState")] Dictionary<string, bool>? GroceryState = null,
-    [property: JsonPropertyName("groceryItems")] List<GroceryLineItemDto>? GroceryItems = null);
+    [property: JsonPropertyName("groceryItems")] List<GroceryLineItemDto>? GroceryItems = null,
+    [property: JsonPropertyName("balanceSummary")] WeeklyBalanceSummaryDto? BalanceSummary = null);

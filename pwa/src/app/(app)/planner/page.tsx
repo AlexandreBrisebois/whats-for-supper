@@ -31,6 +31,7 @@ import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
 import { getImageUrl, getTodayString } from '@/lib/imageUtils';
 import { GroceryList } from '@/components/planner/GroceryList';
+import { BalanceIndicator } from '@/components/planner/BalanceIndicator';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
 
@@ -38,6 +39,7 @@ export default function PlannerPage() {
   const router = useRouter();
   const { currentWeekOffset, activeTab, setWeekOffset, setActiveTab, setGroceryState } =
     usePlannerStore();
+  const balanceSummary = useWeekStore((s) => s.balanceSummary);
   const schedule = useWeekStore((s) => s.schedule);
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
@@ -126,7 +128,7 @@ export default function PlannerPage() {
           await assignRecipeToDay(currentWeekOffset, index, {
             id: day.recipe.id,
             name: day.recipe.name || null,
-            image: day.recipe.image,
+            image: day.recipe.image || '',
           });
         }
       }
@@ -437,6 +439,8 @@ export default function PlannerPage() {
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
+              <BalanceIndicator summary={balanceSummary} className="mb-6" />
+
               <Reorder.Group
                 axis="y"
                 values={schedule}
@@ -451,7 +455,9 @@ export default function PlannerPage() {
                     index={index}
                     successDay={successDay}
                     onPivot={() => setShowPivot({ dayIndex: index })}
-                    onCookMode={() => setActiveCookMode(day)}
+                    onCookMode={() => {
+                      setActiveCookMode(day);
+                    }}
                     setDraggedId={setDraggedId}
                     preDragSnapshotRef={preDragSnapshotRef}
                     hasAnimatedIn={hasAnimatedIn}
@@ -537,29 +543,26 @@ export default function PlannerPage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {activeCookMode &&
-          activeCookMode.recipe &&
-          activeCookMode.recipe.id &&
-          activeCookMode.recipe.image && (
-            <CooksMode
-              recipe={{
-                id: activeCookMode.recipe.id,
-                name: activeCookMode.recipe.name || null,
-                image: activeCookMode.recipe.image,
-              }}
-              onClose={() => setActiveCookMode(null)}
-              onCooked={async () => {
-                if (!activeCookMode.date) return;
-                try {
-                  await apiClient.api.schedule.day
-                    .byDate(DateOnly.parse(activeCookMode.date)!)
-                    .validate.post({ status: 2 });
-                } catch (err) {
-                  console.warn('Failed to mark cooked from planner:', err);
-                }
-              }}
-            />
-          )}
+        {activeCookMode && activeCookMode.recipe && activeCookMode.recipe.id && (
+          <CooksMode
+            recipe={{
+              id: activeCookMode.recipe.id,
+              name: activeCookMode.recipe.name || null,
+              image: activeCookMode.recipe.image || '',
+            }}
+            onClose={() => setActiveCookMode(null)}
+            onCooked={async () => {
+              if (!activeCookMode.date) return;
+              try {
+                await apiClient.api.schedule.day
+                  .byDate(DateOnly.parse(activeCookMode.date)!)
+                  .validate.post({ status: 2 });
+              } catch (err) {
+                console.warn('Failed to mark cooked from planner:', err);
+              }
+            }}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

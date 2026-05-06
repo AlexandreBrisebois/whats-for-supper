@@ -74,14 +74,16 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       try {
         const details = await getRecipe(initialRecipe.id);
         setRecipeDetails(details);
+
         const steps = parseRecipeSteps(details.recipeInstructions);
+
         if (steps.length > 0) {
           setParsedSteps(steps);
         } else {
           setParsedSteps(getFallbackSteps());
         }
       } catch (error) {
-        console.error('Failed to fetch recipe details:', error);
+        console.error('[CooksMode] Failed to fetch recipe details:', error);
         setParsedSteps(getFallbackSteps());
       } finally {
         setIsLoading(false);
@@ -113,7 +115,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-[110] bg-cream flex items-center justify-center">
+      <div
+        data-testid="cooks-mode-loading"
+        className="fixed inset-0 z-[110] bg-cream flex items-center justify-center"
+      >
         <SolarLoader label={t('cook.gettingReady', 'Getting your kitchen ready...')} />
       </div>
     );
@@ -147,14 +152,18 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       {/* Header */}
       <div className="p-8 flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md">
         <div className="flex items-center space-x-4">
-          <div className="h-14 w-14 rounded-2xl overflow-hidden relative border-2 border-white shadow-md">
-            <Image
-              src={getImageUrl(initialRecipe.image)}
-              alt={initialRecipe.name || 'Recipe'}
-              fill
-              className="object-cover"
-              unoptimized
-            />
+          <div className="h-14 w-14 rounded-2xl overflow-hidden relative border-2 border-white shadow-md bg-charcoal/5 flex items-center justify-center">
+            {initialRecipe.image ? (
+              <Image
+                src={getImageUrl(initialRecipe.image)}
+                alt={initialRecipe.name || 'Recipe'}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <UtensilsCrossed size={24} className="text-charcoal/20" />
+            )}
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-terracotta/60">

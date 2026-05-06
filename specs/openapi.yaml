@@ -56,6 +56,11 @@ components:
 
         totalTime: { type: [string, 'null'] }
         category: { type: [string, 'null'] }
+        dietaryProfile:
+          nullable: true
+          oneOf:
+            - { $ref: '#/components/schemas/RecipeDietaryProfileDto' }
+            - { type: 'null' }
         difficulty: { type: [string, 'null'] }
         images:
           type: array
@@ -132,6 +137,57 @@ components:
         time: { type: string }
         image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
 
+    # --- Dietary Profile ---
+    FopFlagsDto:
+      type: object
+      required: [highInSaturatedFat, highInSugars, highInSodium]
+      properties:
+        highInSaturatedFat: { type: boolean }
+        highInSugars:       { type: boolean }
+        highInSodium:       { type: boolean }
+
+    FopWeekSummaryDto:
+      type: object
+      required: [highInSaturatedFatDays, highInSugarsDays, highInSodiumDays]
+      properties:
+        highInSaturatedFatDays: { type: integer }
+        highInSugarsDays:       { type: integer }
+        highInSodiumDays:       { type: integer }
+
+    RecipeDietaryProfileDto:
+      type: object
+      required: [primaryFoodGroup, secondaryFoodGroups, proteinSource, cuisineType,
+                 mealTypes, primaryMealType, wholeGrainConfident, confidence, source]
+      properties:
+        primaryFoodGroup:    { type: string }
+        secondaryFoodGroups: { type: array, items: { type: string } }
+        proteinSource:       { type: string }
+        cuisineType:         { type: string }
+        mealTypes:           { type: array, items: { type: string } }
+        primaryMealType:     { type: string }
+        wholeGrainConfident: { type: boolean }
+        confidence:          { type: number }
+        source:              { type: string }
+        fopFlags:
+          nullable: true
+          oneOf:
+            - { $ref: '#/components/schemas/FopFlagsDto' }
+            - { type: 'null' }
+
+    WeeklyBalanceSummaryDto:
+      type: object
+      required: [proteinDays, veggieDays, grainDays, plantProteinDays, redMeatDays,
+                 maxConsecutiveSame, isBalanced, recommendations, fopWeekSummary]
+      properties:
+        proteinDays:        { type: integer }
+        veggieDays:         { type: integer }
+        grainDays:          { type: integer }
+        plantProteinDays:   { type: integer }
+        redMeatDays:        { type: integer }
+        maxConsecutiveSame: { type: integer }
+        isBalanced:         { type: boolean }
+        recommendations:    { type: array, items: { type: string } }
+        fopWeekSummary:     { $ref: '#/components/schemas/FopWeekSummaryDto' }
 
     # --- Schedule ---
     ScheduleDays:
@@ -154,6 +210,11 @@ components:
           type: [array, 'null']
           items: { $ref: '#/components/schemas/GroceryLineItemDto' }
           nullable: true
+        balanceSummary:
+          nullable: true
+          oneOf:
+            - { $ref: '#/components/schemas/WeeklyBalanceSummaryDto' }
+            - { type: 'null' }
 
 
     ScheduleDayDto:
@@ -181,10 +242,11 @@ components:
 
     MoveScheduleDto:
       type: object
-      required: [weekOffset, fromIndex, toIndex]
+      required: [weekOffset, recipeId, toIndex]
       properties:
         weekOffset: { type: integer }
-        fromIndex: { type: integer }
+        recipeId: { type: string, format: uuid }
+        fromIndex: { type: [integer, 'null'] }
         toIndex: { type: integer }
         intent: { type: string, enum: [swap, push], default: swap }
         targetWeekOffset: { type: [integer, 'null'] }
@@ -288,6 +350,7 @@ components:
           recipe_ready: '#/components/schemas/RecipeReadyEvent'
           recipe_failed: '#/components/schemas/RecipeFailedEvent'
           grocery_updated: '#/components/schemas/GroceryUpdatedEvent'
+          discovery_nudge: '#/components/schemas/DiscoveryNudgeEvent'
       properties:
         type: { type: string }
 
@@ -382,6 +445,15 @@ components:
             groceryState:
               type: object
               additionalProperties: { type: boolean }
+
+    DiscoveryNudgeEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [nextFoodGroup, reason]
+          properties:
+            nextFoodGroup: { type: [string, 'null'], description: 'The most under-represented food group, or null when isBalanced' }
+            reason: { type: string, description: 'Plain-language explanation of the nudge' }
 
     # --- Health ---
     HealthCheckResponse:
@@ -597,6 +669,9 @@ paths:
       security: [{ FamilyMemberId: [] }]
       parameters:
         - name: category
+          in: query
+          schema: { type: string }
+        - name: cuisine
           in: query
           schema: { type: string }
       responses:

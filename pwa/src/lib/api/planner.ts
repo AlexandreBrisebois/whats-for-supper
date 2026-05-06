@@ -35,8 +35,8 @@ export const lockSchedule = async (weekOffset: number) => {
   return result?.data || result;
 };
 
-export const moveRecipe = async (weekOffset: number, fromIndex: number, toIndex: number) => {
-  const result = await apiClient.api.schedule.move.post({ weekOffset, fromIndex, toIndex });
+export const moveRecipe = async (weekOffset: number, recipeId: string, toIndex: number) => {
+  const result = await apiClient.api.schedule.move.post({ weekOffset, recipeId, toIndex });
   return result; // Move usually returns 204 or empty data
 };
 

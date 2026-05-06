@@ -1961,18 +1961,19 @@ public class CapturingEventPublisher(
     List<(Guid RecipeId, string ErrorMessage, string FailedStep, object? PartialData)> captured)
     : IScheduleEventPublisher
 {
-    public Task PublishSlotUpdatedAsync(DateOnly date, RecipeApi.Dto.ScheduleRecipeDto? recipe, int status) => Task.CompletedTask;
-    public Task PublishWeekUpdatedAsync(RecipeApi.Dto.ScheduleDays schedule) => Task.CompletedTask;
-    public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount) => Task.CompletedTask;
-    public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, RecipeApi.Dto.SmartDefaultsDto defaults) => Task.CompletedTask;
-    public Task PublishFillTheGapInvalidatedAsync(int weekOffset) => Task.CompletedTask;
-    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl) => Task.CompletedTask;
+    public Task PublishSlotUpdatedAsync(DateOnly date, RecipeApi.Dto.ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishWeekUpdatedAsync(RecipeApi.Dto.ScheduleDays schedule, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, RecipeApi.Dto.SmartDefaultsDto defaults, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishFillTheGapInvalidatedAsync(int weekOffset, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null) => Task.CompletedTask;
 
-    public Task PublishRecipeFailedAsync(Guid recipeId, string errorMessage, string failedStep, object? partialData)
+    public Task PublishRecipeFailedAsync(Guid recipeId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
     {
         captured.Add((recipeId, errorMessage, failedStep, partialData));
         return Task.CompletedTask;
     }
 
-    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState) => Task.CompletedTask;
+    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishDiscoveryNudgeAsync(string? nextFoodGroup, string reason, string? excludeConnectionId = null) => Task.CompletedTask;
 }

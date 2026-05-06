@@ -38,6 +38,9 @@ public class RecipeDto
     [JsonPropertyName("category")]
     public string? Category { get; set; }
 
+    [JsonPropertyName("dietaryProfile")]
+    public RecipeDietaryProfileDto? DietaryProfile { get; set; }
+
     [JsonPropertyName("difficulty")]
     public string? Difficulty { get; set; }
 

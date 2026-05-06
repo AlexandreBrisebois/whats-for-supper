@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
@@ -158,6 +159,7 @@ public class RecipeService(
                 SourceUrl = recipe.SourceUrl,
                 Description = recipe.Description,
                 Category = recipe.Category,
+                DietaryProfile = DeserializeDietaryProfile(recipe.DietaryProfile),
                 Difficulty = recipe.Difficulty,
                 ImageUrl = $"/api/recipes/{recipe.Id}/hero",
                 Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
@@ -450,5 +452,31 @@ public class RecipeService(
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Deserializes the dietary_profile JSONB column to a RecipeDietaryProfileDto.
+    /// Returns null if the column is null or unparseable.
+    /// </summary>
+    private static RecipeDietaryProfileDto? DeserializeDietaryProfile(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+                Converters = { new JsonStringEnumConverter() }
+            };
+            return JsonSerializer.Deserialize<RecipeDietaryProfileDto>(json, options);
+        }
+        catch
+        {
+            // Silently return null if parsing fails
+            return null;
+        }
     }
 }

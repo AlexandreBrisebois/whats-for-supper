@@ -5,8 +5,10 @@ using FsCheck.Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 using RecipeApi.Data;
 using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -388,5 +390,392 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == monday);
             Assert.Equal(groceryStateJson, plan.GroceryState);
         }
+    }
+
+    // ── Task 6: Balance Scoring Tests ─────────────────────────────────────────
+
+    [Fact]
+    public async Task BalanceScoring_WritesBalanceSummaryToWeeklyPlan()
+    {
+        // Arrange: create a recipe with a dietary profile
+        var recipeId = Guid.NewGuid();
+        var profile = new RecipeDietaryProfile(
+            PrimaryFoodGroup: "ProteinFoods",
+            SecondaryFoodGroups: ["VegetablesAndFruits"],
+            ProteinSource: "Poultry",
+            CuisineType: "Canadian",
+            MealTypes: ["Dinner"],
+            PrimaryMealType: "Dinner",
+            WholeGrainConfident: false,
+            Confidence: 0.95,
+            Source: "llm",
+            FopFlags: null
+        );
+        var profileJson = JsonSerializer.Serialize(profile, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Test Recipe",
+            RawMetadata = BuildRawMetadata([("chicken", 200.0, "g")]),
+            DietaryProfile = profileJson,
+        });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = TestMonday,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        // Assert
+        var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        Assert.NotNull(plan.BalanceSummary);
+        var summary = JsonSerializer.Deserialize<WeeklyBalanceSummary>(plan.BalanceSummary,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        Assert.NotNull(summary);
+        Assert.False(summary.IsBalanced); // Only 1 recipe, not balanced
+    }
+
+    [Fact]
+    public async Task BalanceScoring_WithNullProfiles_ProducesUnbalancedSummary()
+    {
+        // Arrange: 7 recipes with null dietary_profile
+        for (int i = 0; i < 7; i++)
+        {
+            var recipeId = Guid.NewGuid();
+            _db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Name = $"Recipe {i}",
+                RawMetadata = BuildRawMetadata([("ingredient", 100.0, "g")]),
+                DietaryProfile = null,
+            });
+            _db.CalendarEvents.Add(new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = recipeId,
+                Date = TestMonday.AddDays(i),
+                Status = CalendarEventStatus.Planned,
+            });
+        }
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        // Assert
+        var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        Assert.NotNull(plan.BalanceSummary);
+        var summary = JsonSerializer.Deserialize<WeeklyBalanceSummary>(plan.BalanceSummary,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        Assert.NotNull(summary);
+        Assert.False(summary.IsBalanced);
+        Assert.Equal(0, summary.ProteinDays);
+        Assert.Equal(0, summary.VeggieDays);
+    }
+
+    [Fact]
+    public async Task BalanceScoring_WrittenInSameSaveAsGroceryItems()
+    {
+        // Arrange: recipe with dietary profile
+        var recipeId = Guid.NewGuid();
+        var profile = new RecipeDietaryProfile(
+            PrimaryFoodGroup: "ProteinFoods",
+            SecondaryFoodGroups: [],
+            ProteinSource: "Poultry",
+            CuisineType: "Canadian",
+            MealTypes: ["Dinner"],
+            PrimaryMealType: "Dinner",
+            WholeGrainConfident: false,
+            Confidence: 0.95,
+            Source: "llm",
+            FopFlags: null
+        );
+        var profileJson = JsonSerializer.Serialize(profile, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Test Recipe",
+            RawMetadata = BuildRawMetadata([("chicken", 200.0, "g")]),
+            DietaryProfile = profileJson,
+        });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = TestMonday,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        // Assert: both grocery_items and balance_summary are written
+        var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        Assert.NotNull(plan.GroceryItems);
+        Assert.NotNull(plan.BalanceSummary);
+    }
+
+    [Fact]
+    public async Task BalanceScoring_FirstRecompute_DoesNotEmitNudge()
+    {
+        // Arrange: mock publisher to capture calls
+        var publisherMock = new Mock<IScheduleEventPublisher>();
+        var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>();
+        var aisleMapper = new AisleMapper();
+        var service = new GroceryRecomputeService(_db, aisleMapper, logger, publisherMock.Object);
+
+        var recipeId = Guid.NewGuid();
+        var profile = new RecipeDietaryProfile(
+            PrimaryFoodGroup: "ProteinFoods",
+            SecondaryFoodGroups: [],
+            ProteinSource: "Poultry",
+            CuisineType: "Canadian",
+            MealTypes: ["Dinner"],
+            PrimaryMealType: "Dinner",
+            WholeGrainConfident: false,
+            Confidence: 0.95,
+            Source: "llm",
+            FopFlags: null
+        );
+        var profileJson = JsonSerializer.Serialize(profile, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Test Recipe",
+            RawMetadata = BuildRawMetadata([("chicken", 200.0, "g")]),
+            DietaryProfile = profileJson,
+        });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = TestMonday,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        // Assert: PublishDiscoveryNudgeAsync should NOT be called on first recompute
+        publisherMock.Verify(
+            p => p.PublishDiscoveryNudgeAsync(It.IsAny<string?>(), It.IsAny<string>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task BalanceScoring_GroupReachesTarget_EmitsNudge()
+    {
+        // Arrange: create a weekly plan with a previous balance_summary where proteinDays = 2
+        var previousSummary = new WeeklyBalanceSummary(
+            ProteinDays: 2,
+            VeggieDays: 0,
+            GrainDays: 0,
+            PlantProteinDays: 0,
+            RedMeatDays: 0,
+            MaxConsecutiveSame: 1,
+            IsBalanced: false,
+            Recommendations: ["Add more protein-rich meals this week (meat, fish, legumes, eggs)."],
+            FopWeekSummary: new FopWeekSummary(0, 0, 0)
+        );
+        var previousJson = JsonSerializer.Serialize(previousSummary, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        var plan = new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = TestMonday,
+            Status = WeeklyPlanStatus.Draft,
+            BalanceSummary = previousJson,
+        };
+        _db.WeeklyPlans.Add(plan);
+
+        // Add 3 protein recipes to reach the target
+        for (int i = 0; i < 3; i++)
+        {
+            var recipeId = Guid.NewGuid();
+            var profile = new RecipeDietaryProfile(
+                PrimaryFoodGroup: "ProteinFoods",
+                SecondaryFoodGroups: [],
+                ProteinSource: "Poultry",
+                CuisineType: "Canadian",
+                MealTypes: ["Dinner"],
+                PrimaryMealType: "Dinner",
+                WholeGrainConfident: false,
+                Confidence: 0.95,
+                Source: "llm",
+                FopFlags: null
+            );
+            var profileJson = JsonSerializer.Serialize(profile, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            _db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Name = $"Protein Recipe {i}",
+                RawMetadata = BuildRawMetadata([("chicken", 200.0, "g")]),
+                DietaryProfile = profileJson,
+            });
+            _db.CalendarEvents.Add(new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = recipeId,
+                Date = TestMonday.AddDays(i),
+                Status = CalendarEventStatus.Planned,
+            });
+        }
+        await _db.SaveChangesAsync();
+
+        // Mock the publisher
+        var publisherMock = new Mock<IScheduleEventPublisher>();
+        var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>();
+        var aisleMapper = new AisleMapper();
+        var service = new GroceryRecomputeService(_db, aisleMapper, logger, publisherMock.Object);
+
+        // Act
+        await service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        // Assert: PublishDiscoveryNudgeAsync should be called
+        publisherMock.Verify(
+            p => p.PublishDiscoveryNudgeAsync(It.IsAny<string?>(), It.IsAny<string>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task BalanceScoring_SummaryUnchanged_DoesNotEmitNudge()
+    {
+        // Arrange: create a weekly plan with a previous balance_summary
+        var previousSummary = new WeeklyBalanceSummary(
+            ProteinDays: 3,
+            VeggieDays: 4,
+            GrainDays: 2,
+            PlantProteinDays: 1,
+            RedMeatDays: 0,
+            MaxConsecutiveSame: 1,
+            IsBalanced: true,
+            Recommendations: [],
+            FopWeekSummary: new FopWeekSummary(0, 0, 0)
+        );
+        var previousJson = JsonSerializer.Serialize(previousSummary, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        var plan = new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = TestMonday,
+            Status = WeeklyPlanStatus.Draft,
+            BalanceSummary = previousJson,
+        };
+        _db.WeeklyPlans.Add(plan);
+
+        // Add recipes that produce the same summary
+        var profiles = new[]
+        {
+            new RecipeDietaryProfile("ProteinFoods", [], "Poultry", "Canadian", ["Dinner"], "Dinner", false, 0.95, "llm", null),
+            new RecipeDietaryProfile("ProteinFoods", [], "Poultry", "Canadian", ["Dinner"], "Dinner", false, 0.95, "llm", null),
+            new RecipeDietaryProfile("ProteinFoods", [], "Poultry", "Canadian", ["Dinner"], "Dinner", false, 0.95, "llm", null),
+            new RecipeDietaryProfile("VegetablesAndFruits", [], "None", "Canadian", ["Dinner"], "Dinner", false, 0.95, "llm", null),
+            new RecipeDietaryProfile("VegetablesAndFruits", [], "None", "Canadian", ["Dinner"], "Dinner", false, 0.95, "llm", null),
+            new RecipeDietaryProfile("VegetablesAndFruits", [], "None", "Canadian", ["Dinner"], "Dinner", false, 0.95, "llm", null),
+            new RecipeDietaryProfile("VegetablesAndFruits", ["WholeGrains"], "None", "Canadian", ["Dinner"], "Dinner", true, 0.95, "llm", null),
+        };
+
+        for (int i = 0; i < profiles.Length; i++)
+        {
+            var recipeId = Guid.NewGuid();
+            var profileJson = JsonSerializer.Serialize(profiles[i], new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            _db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Name = $"Recipe {i}",
+                RawMetadata = BuildRawMetadata([("ingredient", 100.0, "g")]),
+                DietaryProfile = profileJson,
+            });
+            _db.CalendarEvents.Add(new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = recipeId,
+                Date = TestMonday.AddDays(i),
+                Status = CalendarEventStatus.Planned,
+            });
+        }
+        await _db.SaveChangesAsync();
+
+        // Mock the publisher
+        var publisherMock = new Mock<IScheduleEventPublisher>();
+        var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>();
+        var aisleMapper = new AisleMapper();
+        var service = new GroceryRecomputeService(_db, aisleMapper, logger, publisherMock.Object);
+
+        // Act
+        await service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        // Assert: PublishDiscoveryNudgeAsync should NOT be called
+        publisherMock.Verify(
+            p => p.PublishDiscoveryNudgeAsync(It.IsAny<string?>(), It.IsAny<string>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task BalanceScoring_GroceryStateUnchanged()
+    {
+        // Arrange: create a weekly plan with a grocery_state
+        var groceryState = new Dictionary<string, bool> { ["Chicken"] = true, ["Broccoli"] = false };
+        var groceryStateJson = JsonSerializer.Serialize(groceryState);
+
+        var plan = new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = TestMonday,
+            Status = WeeklyPlanStatus.Draft,
+            GroceryState = groceryStateJson,
+            GroceryItems = "[]",
+        };
+        _db.WeeklyPlans.Add(plan);
+
+        var recipeId = Guid.NewGuid();
+        var profile = new RecipeDietaryProfile(
+            PrimaryFoodGroup: "ProteinFoods",
+            SecondaryFoodGroups: [],
+            ProteinSource: "Poultry",
+            CuisineType: "Canadian",
+            MealTypes: ["Dinner"],
+            PrimaryMealType: "Dinner",
+            WholeGrainConfident: false,
+            Confidence: 0.95,
+            Source: "llm",
+            FopFlags: null
+        );
+        var profileJson = JsonSerializer.Serialize(profile, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Test Recipe",
+            RawMetadata = BuildRawMetadata([("chicken", 200.0, "g")]),
+            DietaryProfile = profileJson,
+        });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = TestMonday,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        // Assert: grocery_state is unchanged
+        var updatedPlan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        Assert.Equal(groceryStateJson, updatedPlan.GroceryState);
     }
 }

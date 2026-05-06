@@ -20,21 +20,21 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     [HttpPost("lock")]
     public async Task<IActionResult> LockSchedule([FromQuery] int weekOffset = 0)
     {
-        await _scheduleService.LockScheduleAsync(weekOffset);
+        await _scheduleService.LockScheduleAsync(weekOffset, GetConnectionId());
         return Ok(new { message = "Schedule locked" });
     }
 
     [HttpPost("move")]
     public async Task<IActionResult> MoveRecipe([FromBody] MoveScheduleDto dto)
     {
-        await _scheduleService.MoveScheduleEventAsync(dto);
+        await _scheduleService.MoveScheduleEventAsync(dto, GetConnectionId());
         return Ok(new { message = "Recipe moved" });
     }
 
     [HttpPost("assign")]
     public async Task<IActionResult> AssignRecipe([FromBody] AssignScheduleDto dto)
     {
-        await _scheduleService.AssignRecipeAsync(dto);
+        await _scheduleService.AssignRecipeAsync(dto, GetConnectionId());
         return Ok(new { message = "Recipe assigned" });
     }
 
@@ -55,14 +55,14 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     [HttpPost("day/{date}/validate")]
     public async Task<IActionResult> ValidateDay(string date, [FromBody] ValidationDto dto)
     {
-        await _scheduleService.ValidateDayAsync(date, dto);
+        await _scheduleService.ValidateDayAsync(date, dto, GetConnectionId());
         return Ok(new { message = "Day validated" });
     }
 
     [HttpPost("voting/open")]
     public async Task<IActionResult> OpenVoting([FromQuery] int weekOffset = 0)
     {
-        await _scheduleService.OpenVotingAsync(weekOffset);
+        await _scheduleService.OpenVotingAsync(weekOffset, GetConnectionId());
         return Ok(new { message = "Voting opened" });
     }
 
@@ -70,7 +70,7 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     public async Task<IActionResult> RemoveRecipe(string date)
     {
         var d = DateOnly.Parse(date);
-        await _scheduleService.RemoveRecipeAsync(d);
+        await _scheduleService.RemoveRecipeAsync(d, GetConnectionId());
         return NoContent();
     }
 
@@ -79,7 +79,9 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         int weekOffset,
         [FromBody] Dictionary<string, bool> groceryState)
     {
-        var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState);
+        var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState, GetConnectionId());
         return Ok(new { data = result });
     }
+
+    private string? GetConnectionId() => Request.Headers["X-SSE-Connection-ID"].FirstOrDefault();
 }

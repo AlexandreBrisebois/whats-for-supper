@@ -46,7 +46,7 @@ public class StreamController(SseConnectionManager manager, ScheduleService sche
             // Send connected event with current schedule snapshot for weekOffset=0.
             var schedule = await _scheduleService.GetScheduleAsync(0);
             var connectedPayload = JsonSerializer.Serialize(
-                new { type = "connected", schedule },
+                new { type = "connected", schedule, connectionId },
                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             var connectedMessage = $"event: connected\ndata: {connectedPayload}\n\n";
             await Response.WriteAsync(connectedMessage, cancellationToken);

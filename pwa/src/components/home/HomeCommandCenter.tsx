@@ -366,14 +366,16 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       <QuickCaptureTrigger />
 
       <AnimatePresence>
-        {showCooksMode && currentRecipe && (
+        {showCooksMode && currentRecipe && currentRecipe.id && (
           <CooksMode
             recipe={{
-              id: currentRecipe.id!,
+              id: currentRecipe.id,
               name: currentRecipe.name || null,
-              image: currentRecipe.image!,
+              image: currentRecipe.image || '',
             }}
-            onClose={() => setShowCooksMode(false)}
+            onClose={() => {
+              setShowCooksMode(false);
+            }}
             onCooked={handleCookedMark}
           />
         )}

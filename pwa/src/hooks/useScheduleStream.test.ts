@@ -20,6 +20,7 @@ const mockApplyVoteUpdate = vi.fn();
 const mockApplySmartDefaultsUpdate = vi.fn();
 const mockInvalidateFillTheGap = vi.fn();
 const mockDiscoveryApplyVoteUpdate = vi.fn();
+const mockSetActiveCategory = vi.fn();
 const mockMarkReady = vi.fn();
 const mockSetGroceryState = vi.fn();
 
@@ -61,6 +62,7 @@ vi.mock('@/store/discoveryStore', () => ({
     getState: () => ({
       invalidateFillTheGap: mockInvalidateFillTheGap,
       applyVoteUpdate: mockDiscoveryApplyVoteUpdate,
+      setActiveCategory: mockSetActiveCategory,
     }),
   },
 }));
@@ -208,12 +210,12 @@ describe('URL resolution', () => {
 // ── connected event ──────────────────────────────────────────────────────────
 
 describe('connected event', () => {
-  it('calls clearOptimisticGuard on todayStore', () => {
+  it('does NOT call clearOptimisticGuard on todayStore (reconnect suppression)', () => {
     const { source } = setupHook();
 
     source.emit('connected', { schedule: { days: [] } });
 
-    expect(mockClearOptimisticGuard).toHaveBeenCalledOnce();
+    expect(mockClearOptimisticGuard).not.toHaveBeenCalled();
   });
 
   it('calls applySnapshot on weekStore with the schedule', () => {
@@ -510,6 +512,26 @@ describe('grocery_updated event', () => {
     source.emit('grocery_updated', { weekOffset: 1, groceryState });
 
     expect(mockSetGroceryState).not.toHaveBeenCalled();
+  });
+});
+
+// ── discovery_nudge event ─────────────────────────────────────────────────
+
+describe('discovery_nudge event', () => {
+  it('calls setActiveCategory on discoveryStore with nextFoodGroup', () => {
+    const { source } = setupHook();
+
+    source.emit('discovery_nudge', { nextFoodGroup: 'WholeGrains', reason: 'Balanced week' });
+
+    expect(mockSetActiveCategory).toHaveBeenCalledWith('WholeGrains');
+  });
+
+  it('calls setActiveCategory with null when nextFoodGroup is null', () => {
+    const { source } = setupHook();
+
+    source.emit('discovery_nudge', { nextFoodGroup: null, reason: 'Already balanced' });
+
+    expect(mockSetActiveCategory).toHaveBeenCalledWith(null);
   });
 });
 

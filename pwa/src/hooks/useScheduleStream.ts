@@ -53,12 +53,15 @@ export function useScheduleStream() {
 
     // ── connected ──────────────────────────────────────────────────────────
     // Server sends the current week-0 schedule snapshot on every connect or
-    // reconnect. Clear any stale optimistic guards first so the snapshot is
-    // treated as authoritative regardless of how recent any local write was.
+    // reconnect. We capture the connectionId for echo suppression (BS-11).
+    // Note: We no longer clear optimistic guards on every reconnect to prevent
+    // UI jitter during network flickers.
     source.addEventListener('connected', (e: MessageEvent) => {
       console.log('[SSE] Received "connected" event');
-      const { schedule } = JSON.parse(e.data);
-      useTodayStore.getState().clearOptimisticGuard();
+      const { schedule, connectionId } = JSON.parse(e.data);
+      if (connectionId) {
+        usePlannerStore.getState().setSseConnectionId(connectionId);
+      }
       useWeekStore.getState().applySnapshot(schedule);
     });
 
@@ -171,6 +174,16 @@ export function useScheduleStream() {
       if (weekOffset === useWeekStore.getState().weekOffset) {
         usePlannerStore.getState().setGroceryState(groceryState);
       }
+    });
+
+    // ── discovery_nudge ────────────────────────────────────────────────────
+    // A food group reached its target during plan recomputation.
+    // Update the active category filter in the discovery store to steer
+    // the user toward under-represented food groups.
+    source.addEventListener('discovery_nudge', (e: MessageEvent) => {
+      console.log('[SSE] Received "discovery_nudge" event');
+      const { nextFoodGroup } = JSON.parse(e.data);
+      useDiscoveryStore.getState().setActiveCategory(nextFoodGroup);
     });
 
     // ── cleanup ────────────────────────────────────────────────────────────

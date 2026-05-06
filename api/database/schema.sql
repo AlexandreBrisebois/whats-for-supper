@@ -34,6 +34,7 @@ CREATE TABLE recipes (
     is_healthy_choice boolean NOT NULL,
     raw_metadata jsonb,
     ingredients jsonb,
+    dietary_profile jsonb DEFAULT NULL,
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
     last_cooked_date timestamptz,
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
     notified_at timestamptz,
     grocery_state jsonb NOT NULL DEFAULT '{}'::jsonb,
     grocery_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+    balance_summary jsonb DEFAULT NULL,
     created_at timestamptz DEFAULT now() NOT NULL
 );
 
@@ -121,7 +123,7 @@ WHERE vote = 1
 GROUP BY recipe_id;
 
 CREATE OR REPLACE VIEW vw_discovery_recipes AS
-SELECT r.id, r.name, r.category, r.description, r.ingredients, r.image_count, r.difficulty, r.total_time, r.is_vegetarian, r.is_healthy_choice, r.last_cooked_date, r.created_at,
+SELECT r.id, r.name, r.category, r.description, r.ingredients, r.image_count, r.difficulty, r.total_time, r.is_vegetarian, r.is_healthy_choice, r.last_cooked_date, r.created_at, r.dietary_profile,
 COALESCE(v.vote_count, 0) AS vote_count
 FROM recipes r
 LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id

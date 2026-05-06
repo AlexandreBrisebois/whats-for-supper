@@ -38,9 +38,16 @@ tasks:
       payload:
           recipeId: "{{ recipeId }}"
 
+    - name: classify_dietary_profile
+      processor: ClassifyDietaryProfile
+      depends_on:
+          - categorize_ingredients
+      payload:
+          recipeId: "{{ recipeId }}"
+
     - name: recipe_ready
       processor: RecipeReady
       depends_on:
-          - categorize_ingredients
+          - classify_dietary_profile
       payload:
           recipeId: "{{ recipeId }}"

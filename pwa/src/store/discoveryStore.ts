@@ -37,6 +37,13 @@ interface DiscoveryState {
 
   /** Removes a recipe from the stack by ID. Called after fill-the-gap refetch diff. */
   removeFromStack: (recipeId: string) => void;
+
+  /**
+   * The current active category filter. Set by the Discovery page or by
+   * a discovery_nudge SSE event. When null, the first available category is used.
+   */
+  activeCategory: string | null;
+  setActiveCategory: (category: string | null) => void;
 }
 
 /**
@@ -100,4 +107,7 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
       discoveryStack: s.discoveryStack.filter((r) => r.id !== recipeId),
     }));
   },
+
+  activeCategory: null,
+  setActiveCategory: (category) => set({ activeCategory: category }),
 }));

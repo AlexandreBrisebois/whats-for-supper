@@ -11,7 +11,7 @@ import { useFamily } from '@/hooks/useFamily';
 import { t, tWithVars } from '@/locales';
 
 export default function DiscoveryPage() {
-  const { setHasPendingCards } = useDiscoveryStore();
+  const { setHasPendingCards, activeCategory, setActiveCategory } = useDiscoveryStore();
   // Lift state to store — SSE can now update the stack without the page being mounted
   const recipes = useDiscoveryStore((s) => s.discoveryStack);
   const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
@@ -25,34 +25,30 @@ export default function DiscoveryPage() {
   const [showJustPlannedBadge, setShowJustPlannedBadge] = useState(false);
   const justPlannedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const performFetch = useCallback(async () => {
-    const cats = await getCategories();
-    let stack: DiscoveryRecipe[] = [];
-    if (cats.length > 0) {
-      const rawStack = await getDiscoveryStack(cats[0]);
-      console.log('rawStack from API first item:', JSON.stringify(rawStack[0]));
-      stack = rawStack.map((r) => ({
-        ...r,
-        imageUrl: `/api/recipes/${r.id}/hero`,
-      }));
-      console.log('mapped stack first item:', JSON.stringify(stack[0]));
-    }
-    return { cats, stack };
-  }, []);
-
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await performFetch();
-      setCategories(data.cats);
-      useDiscoveryStore.getState().setStack(data.stack);
-      setCurrentCategoryIndex(0);
+      const cats = await getCategories();
+      setCategories(cats);
+
+      const targetCategory = cats[0];
+      if (targetCategory) {
+        setActiveCategory(targetCategory);
+        setCurrentCategoryIndex(0);
+        const stack = await getDiscoveryStack(targetCategory);
+        useDiscoveryStore.getState().setStack(
+          stack.map((r) => ({
+            ...r,
+            imageUrl: `/api/recipes/${r.id}/hero`,
+          }))
+        );
+      }
     } catch (error) {
       console.error('Failed to fetch discovery data', error);
     } finally {
       setIsLoading(false);
     }
-  }, [performFetch]);
+  }, [setActiveCategory]);
 
   useEffect(() => {
     if (!_hasHydrated || !selectedFamilyMemberId) return;
@@ -60,11 +56,26 @@ export default function DiscoveryPage() {
     let ignore = false;
     const initialize = async () => {
       try {
-        const data = await performFetch();
-        if (!ignore) {
-          setCategories(data.cats);
-          useDiscoveryStore.getState().setStack(data.stack);
-          setCurrentCategoryIndex(0);
+        const cats = await getCategories();
+        if (ignore) return;
+        setCategories(cats);
+
+        // Nudge priority: use activeCategory from store if set, otherwise first from API
+        const targetCategory = activeCategory ?? cats[0];
+        if (targetCategory) {
+          const index = cats.indexOf(targetCategory);
+          setCurrentCategoryIndex(index !== -1 ? index : 0);
+          setActiveCategory(targetCategory);
+
+          const stack = await getDiscoveryStack(targetCategory);
+          if (!ignore) {
+            useDiscoveryStore.getState().setStack(
+              stack.map((r) => ({
+                ...r,
+                imageUrl: `/api/recipes/${r.id}/hero`,
+              }))
+            );
+          }
         }
       } catch (error) {
         console.error('Initial discovery fetch failed', error);
@@ -77,7 +88,7 @@ export default function DiscoveryPage() {
     return () => {
       ignore = true;
     };
-  }, [performFetch, _hasHydrated, selectedFamilyMemberId]);
+  }, [activeCategory, setActiveCategory, _hasHydrated, selectedFamilyMemberId]);
 
   // Sync pending cards status to store
   useEffect(() => {
@@ -152,7 +163,8 @@ export default function DiscoveryPage() {
     if (nextIndex < categories.length) {
       setIsLoading(true);
       try {
-        const stack = await getDiscoveryStack(categories[nextIndex]);
+        const nextCategory = categories[nextIndex];
+        const stack = await getDiscoveryStack(nextCategory);
         console.log('loadNextCategory rawStack first:', JSON.stringify(stack[0]));
         const mappedStack = stack.map((r) => ({
           ...r,
@@ -161,13 +173,14 @@ export default function DiscoveryPage() {
         console.log('loadNextCategory mappedStack first:', JSON.stringify(mappedStack[0]));
         useDiscoveryStore.getState().setStack(mappedStack);
         setCurrentCategoryIndex(nextIndex);
+        setActiveCategory(nextCategory);
       } catch (error) {
         console.error('Failed to fetch next category stack', error);
       } finally {
         setIsLoading(false);
       }
     }
-  }, [categories, currentCategoryIndex]);
+  }, [categories, currentCategoryIndex, setActiveCategory]);
 
   const triggerEureka = useCallback(() => {
     const duration = 3 * 1000;

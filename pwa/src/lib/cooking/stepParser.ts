@@ -27,6 +27,7 @@ const GENERIC_SECTION_NAMES = new Set([
   'préparation',
   'instructions',
   'étapes',
+  'directions',
 ]);
 
 function isHowToSection(item: unknown): item is HowToSection {
@@ -38,19 +39,19 @@ function isHowToSection(item: unknown): item is HowToSection {
   );
 }
 
-export function parseRecipeSteps(recipeInstructions?: unknown[]): CookingStep[] {
+export function parseRecipeSteps(recipeInstructions?: unknown): CookingStep[] {
   if (!recipeInstructions) return [];
 
   try {
-    if (!Array.isArray(recipeInstructions) || recipeInstructions.length === 0) {
-      return [];
-    }
+    const instructions = Array.isArray(recipeInstructions) ? recipeInstructions : [];
 
-    const firstItem = recipeInstructions[0];
+    if (instructions.length === 0) return [];
+
+    const firstItem = instructions[0];
 
     // ── Branch 1: string array ["Step 1...", "Step 2..."] ───────────────────
     if (typeof firstItem === 'string') {
-      return recipeInstructions
+      return instructions
         .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
         .map((instruction, idx) => ({
           index: idx + 1,
@@ -66,7 +67,7 @@ export function parseRecipeSteps(recipeInstructions?: unknown[]): CookingStep[] 
       const steps: CookingStep[] = [];
       let globalIndex = 1;
 
-      for (const section of recipeInstructions as HowToSection[]) {
+      for (const section of instructions as HowToSection[]) {
         if (!isHowToSection(section)) continue;
 
         const sectionName = section.name?.trim() ?? '';
@@ -91,7 +92,7 @@ export function parseRecipeSteps(recipeInstructions?: unknown[]): CookingStep[] 
     }
 
     // ── Branch 3: flat HowToStep array [{name:"...", text:"..."}] ───────────
-    return (recipeInstructions as HowToStep[])
+    return (instructions as HowToStep[])
       .filter((item): item is HowToStep => typeof item === 'object' && item !== null)
       .map((step, idx) => {
         const text = step.text?.trim() || step.name?.trim() || '';

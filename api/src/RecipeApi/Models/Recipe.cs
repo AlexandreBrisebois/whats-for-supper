@@ -76,6 +76,10 @@ public class Recipe
     [Column("ingredients", TypeName = "jsonb")]
     public string? Ingredients { get; set; }
 
+    /// <summary>Dietary profile classification aligned with Canada's Food Guide (Phase 1).</summary>
+    [Column("dietary_profile", TypeName = "jsonb")]
+    public string? DietaryProfile { get; set; } = null;
+
     // Phase 3+: pgvector embedding — not mapped until vector extension is enabled
     // public Vector? Embedding { get; set; }
 

@@ -18,6 +18,7 @@ beforeEach(() => {
     hasPendingCards: false,
     fillTheGapVersion: 0,
     discoveryStack: [],
+    activeCategory: null,
   });
 });
 
@@ -154,5 +155,22 @@ describe('discoveryStore — removeFromStack', () => {
     useDiscoveryStore.getState().setStack([makeRecipe('r1')]);
     useDiscoveryStore.getState().removeFromStack('not-here');
     expect(useDiscoveryStore.getState().discoveryStack).toHaveLength(1);
+  });
+});
+
+describe('discoveryStore — activeCategory', () => {
+  it('starts null', () => {
+    expect(useDiscoveryStore.getState().activeCategory).toBe(null);
+  });
+
+  it('setActiveCategory updates the value', () => {
+    useDiscoveryStore.getState().setActiveCategory('ProteinFoods');
+    expect(useDiscoveryStore.getState().activeCategory).toBe('ProteinFoods');
+  });
+
+  it('can be set to null', () => {
+    useDiscoveryStore.getState().setActiveCategory('ProteinFoods');
+    useDiscoveryStore.getState().setActiveCategory(null);
+    expect(useDiscoveryStore.getState().activeCategory).toBe(null);
   });
 });

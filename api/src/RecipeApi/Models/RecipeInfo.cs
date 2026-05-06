@@ -25,4 +25,5 @@ public class RecipeInfo
     public string? TotalTime { get; set; }
     public DateTimeOffset? LastCookedDate { get; set; }
     public string? SourceUrl { get; set; }
+    public RecipeDietaryProfile? DietaryProfile { get; set; } = null;
 }

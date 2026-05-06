@@ -269,4 +269,62 @@ test.describe('Supper Planner', () => {
 
     await expect(page.getByTestId('finalized-status')).toBeVisible({ timeout: 15_000 });
   });
+
+  test('should SHOW Cook Mode button and OPEN even if recipe image is missing', async ({
+    page,
+  }) => {
+    // We must use a date that matches the browser's fixed clock (2026-05-04)
+    const todayStr = toDateStr(currentMonday());
+
+    await page.route(
+      (url) => url.pathname === '/api/schedule',
+      async (route) => {
+        const monday = currentMonday();
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(monday);
+          d.setUTCDate(monday.getUTCDate() + i);
+          const dateStr = toDateStr(d);
+          return {
+            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+            date: dateStr,
+            ...(dateStr === todayStr
+              ? {
+                  recipe: builders.scheduleRecipe({
+                    id: MOCK_IDS.RECIPE_LASAGNA,
+                    name: 'No Image Lasagna',
+                    image: '', // Missing image
+                  }),
+                }
+              : {}),
+          };
+        });
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              locked: false,
+              status: 0,
+              days,
+            },
+          }),
+        });
+      }
+    );
+
+    await page.goto('/planner');
+
+    // Find today's card (might not be index 2 depending on the current day)
+    const startCookButton = page.getByTestId('start-cook-mode');
+    await expect(startCookButton).toBeVisible();
+    await startCookButton.click();
+
+    // Wait for loader to disappear and overlay to appear
+    await expect(page.getByTestId('cooks-mode-loading')).not.toBeVisible({ timeout: 10_000 });
+    const overlay = page.getByTestId('cooks-mode-overlay');
+    await expect(overlay).toBeVisible();
+    await expect(overlay.getByText(/No Image Lasagna/i)).toBeVisible();
+  });
 });
