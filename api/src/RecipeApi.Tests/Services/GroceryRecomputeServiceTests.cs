@@ -176,7 +176,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         var flourItems = items.Where(i => i.NormalizedKey == "flour").ToList();
         Assert.Equal(2, flourItems.Count);
         Assert.Contains(flourItems, i => i.UnitText == "g" && i.Quantity == 200.0);
-        Assert.Contains(flourItems, i => i.UnitText == "cup" && i.Quantity == 1.0);
+        Assert.Contains(flourItems, i => i.UnitText == "ml" && i.Quantity == 240.0);
     }
 
     [Fact]
@@ -216,6 +216,79 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         Assert.Equal("Deli", items[0].Section);
     }
 
+    [Fact]
+    public async Task RecomputeForWeekAsync_SameUnitSameIngredient_SumsQuantity()
+    {
+        await SeedRecipeWithSupplyAsync(TestMonday,
+            [("flour", 200.0, "g")]);
+        await SeedRecipeWithSupplyAsync(TestMonday.AddDays(1),
+            [("flour", 200.0, "g")]);
+
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        var items = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(
+            plan.GroceryItems!, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        var flour = items.Single(i => i.NormalizedKey!.Contains("flour"));
+        Assert.Equal(400.0, flour.Quantity);
+        Assert.Equal("g", flour.UnitText);
+    }
+
+    [Fact]
+    public async Task RecomputeForWeekAsync_CrossUnitSameFamily_ConvertsAndSums()
+    {
+        await SeedRecipeWithSupplyAsync(TestMonday,
+            [("potato", 500.0, "g")]);
+        await SeedRecipeWithSupplyAsync(TestMonday.AddDays(1),
+            [("potato", 1.0, "kg")]);
+
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        var items = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(
+            plan.GroceryItems!, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        var potato = items.Single(i => i.NormalizedKey!.Contains("potato"));
+        Assert.Equal(1500.0, potato.Quantity!.Value, precision: 3);
+        Assert.Equal("g", potato.UnitText);
+    }
+
+    [Fact]
+    public async Task RecomputeForWeekAsync_UnknownUnit_KeptAsSeparateBucket()
+    {
+        await SeedRecipeWithSupplyAsync(TestMonday,
+            [("salt", 1.0, "pinch"), ("salt", 1.0, "pinch")]);
+
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        var items = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(
+            plan.GroceryItems!, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        var salt = items.Single(i => i.NormalizedKey!.Contains("salt"));
+        Assert.Equal("pinch", salt.UnitText);
+        Assert.Equal(2.0, salt.Quantity);
+    }
+
+    [Fact]
+    public async Task RecomputeForWeekAsync_NullUnit_GroupedUnderPiece()
+    {
+        for (int i = 0; i < 3; i++)
+            await SeedRecipeWithSupplyAsync(TestMonday.AddDays(i),
+                [("onion", 1.0, null)]);
+
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        var items = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(
+            plan.GroceryItems!, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        var onion = items.Single(i => i.NormalizedKey!.Contains("onion"));
+        Assert.Equal("piece", onion.UnitText);
+        Assert.Equal(3.0, onion.Quantity);
+    }
+
     // ── Property-Based Tests ──────────────────────────────────────────────────
     //
     // FsCheck 3.x does not support async property bodies. These tests use a
@@ -252,11 +325,14 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
 
             var items = await GetGroceryItemsAsync(monday);
             var normalizedName = IngredientNormalizer.Normalize(name);
-            var matching = items.Where(x => x.NormalizedKey == normalizedName && x.UnitText == unit).ToList();
+            var normalizedUnit = UnitNormalizer.Normalize(unit);
+            var expectedUnit = normalizedUnit?.CanonicalUnit ?? unit;
+            var expectedQuantity = (q1 + q2) * (normalizedUnit?.Factor ?? 1.0);
+            var matching = items.Where(x => x.NormalizedKey == normalizedName && x.UnitText == expectedUnit).ToList();
 
             Assert.Single(matching);
             Assert.NotNull(matching[0].Quantity);
-            Assert.Equal(q1 + q2, matching[0].Quantity!.Value, precision: 4);
+            Assert.Equal(expectedQuantity, matching[0].Quantity!.Value, precision: 4);
         }
     }
 
@@ -270,8 +346,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     {
         var unitPairs = new (string, string)[]
         {
-            ("g", "kg"), ("ml", "L"), ("cup", "tbsp"), ("tsp", "oz"),
-            ("pcs", "g"), ("kg", "cup"), ("L", "tsp"), ("oz", "ml"),
+            ("tsp", "oz"), ("pcs", "g"), ("kg", "cup"), ("oz", "ml"),
         };
         var rng = new Random(43);
         var baseDate = new DateOnly(2027, 1, 1);
@@ -295,11 +370,13 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             var items = await GetGroceryItemsAsync(monday);
             var normalizedName = IngredientNormalizer.Normalize(name);
             var matching = items.Where(x => x.NormalizedKey == normalizedName).ToList();
+            var expectedUnit1 = UnitNormalizer.Normalize(unit1)?.CanonicalUnit ?? unit1;
+            var expectedUnit2 = UnitNormalizer.Normalize(unit2)?.CanonicalUnit ?? unit2;
 
             Assert.Equal(2, matching.Count);
             var unitSet = matching.Select(x => x.UnitText).ToHashSet();
-            Assert.Contains(unit1, unitSet);
-            Assert.Contains(unit2, unitSet);
+            Assert.Contains(expectedUnit1, unitSet);
+            Assert.Contains(expectedUnit2, unitSet);
         }
     }
 

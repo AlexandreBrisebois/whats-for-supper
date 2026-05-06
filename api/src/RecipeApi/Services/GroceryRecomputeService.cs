@@ -114,21 +114,37 @@ public class GroceryRecomputeService(
             intermediate.Add((displayName, normalizedKey, section, quantity, unitText, recipeId));
         }
 
-        // 5. Group by (normalizedKey, unitText): sum quantities for same-unit pairs,
-        //    keep separate entries for different units.
+        // 5. Group by (normalizedKey, canonicalUnit): sum quantities after unit conversion.
+        //    Entries with unknown units stay in their own bucket keyed by the raw unitText.
         var grouped = intermediate
-            .GroupBy(item => (item.NormalizedKey, item.UnitText))
+            .GroupBy(item =>
+            {
+                var nu = UnitNormalizer.Normalize(item.UnitText);
+                var bucketUnit = nu?.CanonicalUnit ?? item.UnitText ?? string.Empty;
+                return (item.NormalizedKey, BucketUnit: bucketUnit);
+            })
             .Select(g =>
             {
                 var first = g.First();
 
-                // Sum quantities; if any entry has a null quantity, the aggregate is null.
+                var nu = UnitNormalizer.Normalize(first.UnitText);
+
+                // Sum quantities after conversion to canonical unit.
                 double? totalQuantity = null;
                 bool hasAnyQuantity = g.Any(x => x.Quantity.HasValue);
                 if (hasAnyQuantity)
                 {
-                    totalQuantity = g.Where(x => x.Quantity.HasValue).Sum(x => x.Quantity!.Value);
+                    totalQuantity = g
+                        .Where(x => x.Quantity.HasValue)
+                        .Sum(x =>
+                        {
+                            var entryNu = UnitNormalizer.Normalize(x.UnitText);
+                            return x.Quantity!.Value * (entryNu?.Factor ?? 1.0);
+                        });
                 }
+
+                // Emit canonical unit for known families; raw unit for unknowns.
+                var emittedUnit = nu?.CanonicalUnit ?? first.UnitText;
 
                 var recipeIds = g.Select(x => x.RecipeId).Distinct().ToList();
 
@@ -137,7 +153,7 @@ public class GroceryRecomputeService(
                     NormalizedKey: first.NormalizedKey,
                     Section: first.Section,
                     Quantity: totalQuantity,
-                    UnitText: first.UnitText,
+                    UnitText: emittedUnit,
                     RecipeIds: recipeIds);
             })
             .ToList();

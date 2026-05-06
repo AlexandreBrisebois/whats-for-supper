@@ -193,7 +193,7 @@ it('groups items by section from the DTO, not by keyword matching', () => {
 
 > **Why before the endpoint?** The endpoint triggers `RecomputeForIngredientAsync` (added in Slice 3). That method calls `RecomputeForWeekAsync`. If rollup is broken at that point, fixing it later would silently corrupt recomputed lists. Get the rollup right first.
 
-### Task 2.1 — Add UnitNormalizer
+### Task 2.1 [x] — Add UnitNormalizer
 
 **File:** `api/src/RecipeApi/Utils/UnitNormalizer.cs` (new file)
 
@@ -263,7 +263,7 @@ public static class UnitNormalizer
 
 ---
 
-### Task 2.2 — Write UnitNormalizer tests first
+### Task 2.2 [x] — Write UnitNormalizer tests first
 
 **File:** `api/src/RecipeApi.Tests/Utils/UnitNormalizerTests.cs` (new file)
 
@@ -328,7 +328,7 @@ public class UnitNormalizerTests
 
 ---
 
-### Task 2.3 — Wire UnitNormalizer into GroceryRecomputeService
+### Task 2.3 [x] — Wire UnitNormalizer into GroceryRecomputeService
 
 **File:** `api/src/RecipeApi/Services/GroceryRecomputeService.cs`
 
@@ -389,7 +389,7 @@ var grouped = intermediate
 
 ---
 
-### Task 2.4 — Add rollup tests to GroceryRecomputeServiceTests
+### Task 2.4 [x] — Add rollup tests to GroceryRecomputeServiceTests
 
 **File:** `api/src/RecipeApi.Tests/Services/GroceryRecomputeServiceTests.cs`
 

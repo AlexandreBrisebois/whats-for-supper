@@ -104,7 +104,13 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
                     var paramName = match.Groups[1].Value.Trim();
                     return parameters.GetValueOrDefault(paramName, match.Value);
                 });
-                substitutedPayload[entry.Key] = substitutedValue;
+
+                if (bool.TryParse(substitutedValue, out var b))
+                    substitutedPayload[entry.Key] = b;
+                else if (long.TryParse(substitutedValue, out var n))
+                    substitutedPayload[entry.Key] = n;
+                else
+                    substitutedPayload[entry.Key] = substitutedValue;
             }
             else
             {
