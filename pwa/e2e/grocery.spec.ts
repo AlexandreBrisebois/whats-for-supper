@@ -96,13 +96,9 @@ test.describe('Grocery List — PATCH failure behaviour', () => {
   test('PATCH failure → single item reverts, no global spinner', async ({ page }) => {
     await setupGroceryPage(page);
 
-    // Override the grocery PATCH endpoint to fail
-    await page.route('**/api/schedule/*/grocery', async (route) => {
-      if (route.request().method() === 'PATCH') {
-        await route.fulfill({ status: 500, body: 'Internal Server Error' });
-      } else {
-        await route.continue();
-      }
+    // Override the per-item grocery PATCH endpoint to fail
+    await page.route('**/api/schedule/*/grocery/item', async (route) => {
+      await route.fulfill({ status: 500, body: 'Internal Server Error' });
     });
 
     // Find the first grocery item checkbox

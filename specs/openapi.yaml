@@ -1304,6 +1304,33 @@ paths:
                       - dayIndex: 3
                     consensusRecipesCount: 1
 
+  /api/schedule/{weekOffset}/grocery/item:
+    patch:
+      summary: Toggle a single grocery item (checked/unchecked)
+      description: Merges a single item into the server-side grocery state atomically. Safe for concurrent use by multiple family members — each tap is an independent operation that cannot overwrite another member's simultaneous toggles.
+      parameters:
+        - name: weekOffset
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ingredientName, checked]
+              properties:
+                ingredientName:
+                  type: string
+                  example: 'Chicken Breast'
+                checked:
+                  type: boolean
+                  example: true
+      responses:
+        '204':
+          description: No Content
+
   /api/schedule/{weekOffset}/grocery:
     patch:
       summary: Update grocery checklist state for a week

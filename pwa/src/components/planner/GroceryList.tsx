@@ -31,7 +31,7 @@ const AISLE_ICONS: Record<GrocerySection, string> = {
 
 export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
-  const { updateGroceryState } = useSchedule();
+  const { toggleGroceryItem } = useSchedule();
   const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
   const grouped = useMemo(() => {
     const result: Partial<Record<GrocerySection, GroceryLineItemDto[]>> = {};
@@ -63,12 +63,11 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
     const newState = !groceryState[ingredientName];
     setGroceryItemToggle(ingredientName, newState);
 
-    // Persist to API
+    // Persist to API — single item only, merged server-side.
+    // Sending the full map would cause concurrent toggles by two family members
+    // to overwrite each other (last-writer-wins on the whole map).
     try {
-      await updateGroceryState(weekOffset, {
-        ...groceryState,
-        [ingredientName]: newState,
-      });
+      await toggleGroceryItem(weekOffset, ingredientName, newState);
     } catch (error) {
       console.error('Failed to save grocery state:', error);
       // Revert the single toggled item only

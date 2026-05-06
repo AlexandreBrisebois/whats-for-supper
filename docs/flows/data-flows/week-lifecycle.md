@@ -2,7 +2,7 @@
 
 **Spec:** `.kiro/specs/00-live-schedule` — R1, R3, R14 (multi-week SSE correctness)
 **Supersedes:** [`docs/flows/user-flows/planner-week-lifecycle.md`](../user-flows/planner-week-lifecycle.md) (pre-SSE version, preserved for historical context)
-**Related docs:** [`grocery-sse-sync.md`](./grocery-sse-sync.md), [`client-domain-model.md`](../client-domain-model.md)
+**Related docs:** [`grocery-sse-sync.md`](./grocery-sse-sync.md), [`planner-drag-sse.md`](./planner-drag-sse.md), [`client-domain-model.md`](../client-domain-model.md)
 
 ---
 

@@ -584,6 +584,30 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         return groceryState;
     }
 
+    public async Task ToggleGroceryItemAsync(
+        int weekOffset,
+        string ingredientName,
+        bool checked_,
+        string? excludeConnectionId = null)
+    {
+        var (monday, _) = GetWeekBounds(weekOffset);
+        var weekPlan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(wp => wp.WeekStartDate == monday)
+            ?? throw new KeyNotFoundException($"Weekly plan for week starting {monday} not found.");
+
+        // Deserialize current state, merge the single item, re-serialize.
+        // This is the atomic server-side merge that prevents concurrent toggles
+        // from overwriting each other (last-write-wins on the full map).
+        var current = string.IsNullOrEmpty(weekPlan.GroceryState)
+            ? new Dictionary<string, bool>()
+            : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(weekPlan.GroceryState)
+              ?? new Dictionary<string, bool>();
+
+        current[ingredientName] = checked_;
+        weekPlan.GroceryState = System.Text.Json.JsonSerializer.Serialize(current);
+        await _dbContext.SaveChangesAsync();
+        await _publisher.PublishGroceryUpdatedAsync(weekOffset, current, excludeConnectionId);
+    }
+
     /// <summary>
     /// Ensures a WeeklyPlan row exists for the given Monday.
     /// Called by any operation that places a recipe onto a week — the plan must

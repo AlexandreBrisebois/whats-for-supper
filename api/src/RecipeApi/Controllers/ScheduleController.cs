@@ -74,6 +74,15 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         return NoContent();
     }
 
+    [HttpPatch("{weekOffset}/grocery/item")]
+    public async Task<IActionResult> ToggleGroceryItem(
+        int weekOffset,
+        [FromBody] ToggleGroceryItemDto dto)
+    {
+        await _scheduleService.ToggleGroceryItemAsync(weekOffset, dto.IngredientName, dto.Checked, GetConnectionId());
+        return NoContent();
+    }
+
     [HttpPatch("{weekOffset}/grocery")]
     public async Task<IActionResult> UpdateGroceryState(
         int weekOffset,

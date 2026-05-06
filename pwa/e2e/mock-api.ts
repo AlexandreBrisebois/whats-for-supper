@@ -473,12 +473,17 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // PATCH /api/schedule/{weekOffset}/grocery/item
+  await page.route('**/api/schedule/*/grocery/item', async (route) => {
+    await route.fulfill({ status: 204 });
+  });
+
   // PATCH /api/schedule/{weekOffset}/grocery
   await page.route('**/api/schedule/*/grocery', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { success: true } }),
+      body: JSON.stringify({ data: {} }),
     });
   });
 
