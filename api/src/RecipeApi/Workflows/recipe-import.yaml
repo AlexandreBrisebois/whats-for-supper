@@ -18,9 +18,15 @@ tasks:
           - generate_hero
       payload:
           recipeId: "{{ recipeId }}"
+    - name: categorize_ingredients
+      processor: CategorizeIngredients
+      depends_on:
+          - sync_recipe
+      payload:
+          recipeId: "{{ recipeId }}"
     - name: recipe_ready
       processor: RecipeReady
       depends_on:
-          - sync_recipe
+          - categorize_ingredients
       payload:
           recipeId: "{{ recipeId }}"

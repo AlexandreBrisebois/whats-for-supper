@@ -9,11 +9,12 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher)
+public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
     private readonly IScheduleEventPublisher _publisher = publisher;
+    private readonly GroceryRecomputeService _groceryRecomputeService = groceryRecomputeService;
 
     public async Task<ScheduleDays> GetScheduleAsync(int weekOffset)
     {
@@ -53,7 +54,11 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             ? JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)
             : null;
 
-        return new ScheduleDays(weekOffset, isLocked, status, days, groceryState);
+        var groceryItems = plan?.GroceryItems != null
+            ? JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)
+            : null;
+
+        return new ScheduleDays(weekOffset, isLocked, status, days, groceryState, groceryItems);
     }
 
     public async Task OpenVotingAsync(int weekOffset)
@@ -279,6 +284,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         await _dbContext.SaveChangesAsync();
 
+        await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None);
+
         // Build the ScheduleRecipeDto for the assigned slot
         var assignedEvent = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
@@ -367,9 +374,15 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             var dateDayNumber = date.DayNumber;
             var weekOffset = (dateDayNumber - thisMonday.DayNumber) / 7;
 
+            // Derive the Monday of the week containing the removed event's date
+            var eventDaysToMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
+            var monday = date.AddDays(-eventDaysToMonday);
+
             _dbContext.CalendarEvents.Remove(@event);
             await _dbContext.SaveChangesAsync();
             _logger.LogInformation("Removed recipe from date {Date}", date);
+
+            await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None);
 
             await _publisher.PublishSlotUpdatedAsync(date, null, 0);
             await _publisher.PublishFillTheGapInvalidatedAsync(weekOffset);

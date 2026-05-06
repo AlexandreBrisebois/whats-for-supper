@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
     status smallint NOT NULL DEFAULT 0, -- 0=Draft, 1=VotingOpen, 2=Locked
     notified_at timestamptz,
     grocery_state jsonb NOT NULL DEFAULT '{}'::jsonb,
+    grocery_items jsonb NOT NULL DEFAULT '[]'::jsonb,
     created_at timestamptz DEFAULT now() NOT NULL
 );
 
@@ -92,6 +93,16 @@ CREATE TABLE family_settings (
     key         text UNIQUE NOT NULL,
     value       jsonb NOT NULL,
     updated_at  timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE TABLE ingredient_categories (
+    normalized_key text PRIMARY KEY,
+    grocery_section text NOT NULL,
+    confidence float NOT NULL DEFAULT 1.0,
+    source text NOT NULL DEFAULT 'llm',  -- 'llm' | 'manual' | 'keyword'
+    created_at timestamptz DEFAULT now() NOT NULL,
+    updated_at timestamptz DEFAULT now() NOT NULL,
+    CONSTRAINT ingredient_categories_source_check CHECK (source IN ('llm', 'manual', 'keyword'))
 );
 
 CREATE INDEX idx_calendar_events_recipe_id ON calendar_events (recipe_id);

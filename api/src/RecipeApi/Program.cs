@@ -88,6 +88,7 @@ try
 
     // ── Application services ─────────────────────────────────────────────────
 
+    builder.Services.AddSingleton<AisleMapper>();
     builder.Services.AddSingleton<SseConnectionManager>();
     builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
     builder.Services.AddSingleton<DataRootResolver>();
@@ -105,6 +106,7 @@ try
     builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddScoped<ScheduleService>();
+    builder.Services.AddScoped<GroceryRecomputeService>();
     builder.Services.AddScoped<SettingsService>();
 
     builder.Services.AddScoped<FamilyService>();
@@ -151,6 +153,7 @@ try
 
     builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
     builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, CategorizeIngredientsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),

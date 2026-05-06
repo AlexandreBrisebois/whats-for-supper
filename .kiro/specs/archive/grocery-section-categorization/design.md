@@ -93,7 +93,7 @@ public class AisleMapper
 
 public enum GrocerySection
 {
-    Produce, MeatAndSeafood, DairyAndEggs, Frozen,
+    Produce, Meat, Seafood, DairyAndEggs, Frozen,
     Bakery, Pantry, Beverages, Deli, Uncategorized
 }
 ```
@@ -103,7 +103,8 @@ Keyword sets (10 sections, English + French):
 | Section | Sample keywords (EN) | Sample keywords (FR) |
 |---|---|---|
 | Produce | lettuce, tomato, carrot, onion, garlic, apple, lemon, herb, ginger | laitue, tomate, carotte, oignon, ail, pomme, citron, herbe, gingembre |
-| Meat & Seafood | beef, chicken, pork, salmon, shrimp, turkey, lamb, tuna | boeuf, poulet, porc, saumon, crevette, dinde, agneau, thon |
+| Meat | beef, chicken, pork, turkey, lamb, duck, veal, venison | boeuf, poulet, porc, dinde, agneau, canard, veau, chevreuil |
+| Seafood | fish, salmon, cod, tuna, shrimp, prawn, scallop, crab, lobster | poisson, saumon, morue, thon, crevette, petoncle, crabe, homard |
 | Dairy & Eggs | milk, cream, butter, cheese, egg, yogurt, mozzarella, cheddar | lait, creme, beurre, fromage, oeuf, yaourt |
 | Frozen | frozen, ice cream, gelato, sorbet, edamame | surgele, glace |
 | Bakery | bread, baguette, croissant, tortilla, pita, naan, sourdough | pain, baguette, croissant, tortilla |
@@ -164,7 +165,7 @@ public class CategorizeIngredientsProcessor(
 {
   "ingredients": ["tomato sauce", "chicken breast", "heavy cream"],
   "task": "Assign each ingredient to exactly one grocery store section.",
-  "sections": ["Produce","Meat & Seafood","Dairy & Eggs","Frozen","Bakery","Pantry","Beverages","Deli","Uncategorized"]
+  "sections": ["Produce","Meat","Seafood","Dairy & Eggs","Frozen","Bakery","Pantry","Beverages","Deli","Uncategorized"]
 }
 ```
 
@@ -172,7 +173,7 @@ public class CategorizeIngredientsProcessor(
 ```json
 [
   { "normalizedKey": "tomato sauce", "section": "Pantry", "confidence": 0.95 },
-  { "normalizedKey": "chicken breast", "section": "Meat & Seafood", "confidence": 0.99 },
+  { "normalizedKey": "chicken breast", "section": "Meat", "confidence": 0.99 },
   { "normalizedKey": "heavy cream", "section": "Dairy & Eggs", "confidence": 0.98 }
 ]
 ```
@@ -192,9 +193,9 @@ public record GroceryLineItemDto(
 
 #### `aisleMapper.ts` — Updated
 - Rename `AisleSection` type to `GrocerySection`
-- Expand to 10 sections: `'Produce' | 'Meat & Seafood' | 'Dairy & Eggs' | 'Frozen' | 'Bakery' | 'Pantry' | 'Beverages' | 'Deli' | 'Uncategorized'`
+- Expand to 10 sections: `'Produce' | 'Meat' | 'Seafood' | 'Dairy & Eggs' | 'Frozen' | 'Bakery' | 'Pantry' | 'Beverages' | 'Deli' | 'Uncategorized'`
 - Rename `mapIngredientToAisle` → `mapIngredientToSection(name: string): GrocerySection`
-- Update keyword sets to match C# `AisleMapper`
+- Update keyword sets to match C# `AisleMapper` (Meat and Seafood as separate sections)
 - Remove `groupIngredientsByAisle` (no longer used)
 - Keep `mapIngredientToSection` as a display-only fallback
 
@@ -290,9 +291,10 @@ interface GroceryLineItemDto {
 **Example:**
 ```csv
 normalized_key,grocery_section,confidence,source,created_at
-chicken breast,Meat & Seafood,0.99,llm,2026-01-15T10:00:00Z
+chicken breast,Meat,0.99,llm,2026-01-15T10:00:00Z
 tomato sauce,Pantry,0.95,llm,2026-01-15T10:00:00Z
-boeuf hache,Meat & Seafood,0.98,llm,2026-01-15T10:00:00Z
+boeuf hache,Meat,0.98,llm,2026-01-15T10:00:00Z
+salmon fillet,Seafood,0.97,llm,2026-01-15T10:00:00Z
 ```
 
 **ManagementService changes:**
@@ -402,7 +404,7 @@ tasks:
 
 ### Property 1: Closed-set section assignment
 
-*For any* ingredient string, `mapIngredientToSection` SHALL return a value that is a member of the defined `GrocerySection` union type — never `undefined`, never an arbitrary string, never a value outside the 9-element set.
+*For any* ingredient string, `mapIngredientToSection` SHALL return a value that is a member of the defined `GrocerySection` union type — never `undefined`, never an arbitrary string, never a value outside the 10-element set.
 
 **Validates: Requirements 1.1, 1.4, 6.2**
 

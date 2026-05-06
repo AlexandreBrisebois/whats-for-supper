@@ -5,7 +5,8 @@ import { AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
-import { groupIngredientsByAisle, type AisleSection } from '@/lib/grocery/aisleMapper';
+import { mapIngredientToSection, type GrocerySection } from '@/lib/grocery/aisleMapper';
+import { AISLE_ORDER } from '@/lib/grocery/aisleOrder';
 import { useSchedule } from '@/lib/api/schedule';
 
 interface GroceryListProps {
@@ -14,20 +15,32 @@ interface GroceryListProps {
   onClose?: () => void;
 }
 
-const AISLE_ORDER: AisleSection[] = ['Vegetables', 'Meat', 'Dairy', 'Bakery', 'Pantry'];
-const AISLE_ICONS: Record<AisleSection, string> = {
-  Vegetables: '🥬',
-  Meat: '🍖',
-  Dairy: '🥛',
+const AISLE_ICONS: Record<GrocerySection, string> = {
+  Produce: '🥬',
+  Deli: '🥪',
   Bakery: '🍞',
+  Meat: '🍖',
+  Seafood: '🐟',
+  'Dairy & Eggs': '🥛',
+  Frozen: '🧊',
   Pantry: '🥫',
+  Beverages: '🧃',
+  Grocery: '🛒',
 };
 
 export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListProps) {
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
   const { updateGroceryState } = useSchedule();
   const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
-  const grouped = useMemo(() => groupIngredientsByAisle(ingredients), [ingredients]);
+  const grouped = useMemo(() => {
+    const result: Partial<Record<GrocerySection, string[]>> = {};
+    for (const ingredient of ingredients) {
+      const section = mapIngredientToSection(ingredient);
+      if (!result[section]) result[section] = [];
+      result[section]!.push(ingredient);
+    }
+    return result;
+  }, [ingredients]);
 
   useEffect(() => {
     // Initialize grocery state if not already set and we have ingredients
@@ -124,33 +137,56 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                       data-testid={`aisle-section-${aisle}`}
                     >
                       {/* Aisle Header */}
-                      <div className="px-6 py-4 bg-gradient-to-r from-charcoal/2 to-transparent border-b border-charcoal/5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-3xl">{AISLE_ICONS[aisle]}</span>
-                            <div>
-                              <h3 className="font-black text-charcoal text-lg">
-                                {t(`grocery.aisles.${aisle}`, aisle)}
-                              </h3>
-                              <p className="text-xs text-charcoal/40 font-medium">
-                                {tWithVars(
-                                  'grocery.itemsCount',
-                                  `${checkedCount}/${aisleItems.length} items`,
-                                  {
-                                    checked: checkedCount,
-                                    total: aisleItems.length,
-                                  }
+                      {(() => {
+                        const isComplete =
+                          aisleItems.length > 0 && checkedCount === aisleItems.length;
+                        return (
+                          <div
+                            className={`px-6 py-4 border-b border-charcoal/5 ${
+                              isComplete
+                                ? 'bg-sage/20'
+                                : 'bg-gradient-to-r from-charcoal/2 to-transparent'
+                            }`}
+                            data-testid={
+                              isComplete ? 'aisle-header-complete' : 'aisle-header-incomplete'
+                            }
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <span className="text-3xl">{AISLE_ICONS[aisle]}</span>
+                                <div>
+                                  <h3 className="font-black text-charcoal text-lg">
+                                    {t(`grocery.aisles.${aisle}`, aisle)}
+                                  </h3>
+                                  <p className="text-xs text-charcoal/40 font-medium">
+                                    {tWithVars(
+                                      'grocery.itemsCount',
+                                      `${checkedCount}/${aisleItems.length} items`,
+                                      {
+                                        checked: checkedCount,
+                                        total: aisleItems.length,
+                                      }
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="h-8 w-8 rounded-full bg-sage/10 flex items-center justify-center">
+                                {isComplete ? (
+                                  <CheckCircle2
+                                    size={18}
+                                    className="text-sage"
+                                    data-testid="section-complete-icon"
+                                  />
+                                ) : (
+                                  <span className="text-xs font-black text-sage">
+                                    {Math.round((checkedCount / aisleItems.length) * 100)}%
+                                  </span>
                                 )}
-                              </p>
+                              </div>
                             </div>
                           </div>
-                          <div className="h-8 w-8 rounded-full bg-sage/10 flex items-center justify-center">
-                            <span className="text-xs font-black text-sage">
-                              {Math.round((checkedCount / aisleItems.length) * 100)}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
 
                       {/* Items */}
                       <div className="divide-y divide-charcoal/5 p-4 space-y-2">

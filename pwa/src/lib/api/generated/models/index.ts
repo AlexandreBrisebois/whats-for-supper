@@ -97,6 +97,17 @@ export function createDescribeRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GroceryLineItemDto}
+ */
+// @ts-ignore
+export function createGroceryLineItemDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoGroceryLineItemDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {HealthCheckResponse_checks}
  */
 // @ts-ignore
@@ -580,6 +591,36 @@ export function deserializeIntoDescribeRecipeDto(
 }
 /**
  * The deserialization information for the current model
+ * @param GroceryLineItemDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGroceryLineItemDto(
+  groceryLineItemDto: Partial<GroceryLineItemDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    displayName: (n) => {
+      groceryLineItemDto.displayName = n.getStringValue();
+    },
+    normalizedKey: (n) => {
+      groceryLineItemDto.normalizedKey = n.getStringValue();
+    },
+    quantity: (n) => {
+      groceryLineItemDto.quantity = n.getNumberValue();
+    },
+    recipeIds: (n) => {
+      groceryLineItemDto.recipeIds = n.getCollectionOfPrimitiveValues<Guid>();
+    },
+    section: (n) => {
+      groceryLineItemDto.section = n.getStringValue();
+    },
+    unitText: (n) => {
+      groceryLineItemDto.unitText = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param HealthCheckResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -1042,6 +1083,11 @@ export function deserializeIntoScheduleDays(
         createScheduleDayDtoFromDiscriminatorValue
       );
     },
+    groceryItems: (n) => {
+      scheduleDays.groceryItems = n.getCollectionOfObjectValues<GroceryLineItemDto>(
+        createGroceryLineItemDtoFromDiscriminatorValue
+      );
+    },
     groceryState: (n) => {
       scheduleDays.groceryState = n.getObjectValue<ScheduleDays_groceryState>(
         createScheduleDays_groceryStateFromDiscriminatorValue
@@ -1431,6 +1477,32 @@ export function deserializeIntoWorkflowTriggerResponseDto(
     },
   };
 }
+export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The displayName property
+   */
+  displayName?: string | null;
+  /**
+   * The normalizedKey property
+   */
+  normalizedKey?: string | null;
+  /**
+   * The quantity property
+   */
+  quantity?: number | null;
+  /**
+   * The recipeIds property
+   */
+  recipeIds?: Guid[] | null;
+  /**
+   * The section property
+   */
+  section?: string | null;
+  /**
+   * The unitText property
+   */
+  unitText?: string | null;
+}
 export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
   /**
    * The checks property
@@ -1761,6 +1833,10 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    */
   days?: ScheduleDayDto[] | null;
   /**
+   * The groceryItems property
+   */
+  groceryItems?: GroceryLineItemDto[] | null;
+  /**
    * The groceryState property
    */
   groceryState?: ScheduleDays_groceryState | null;
@@ -1888,6 +1964,29 @@ export function serializeDescribeRecipeDto(
   writer.writeStringValue('description', describeRecipeDto.description);
   writer.writeStringValue('name', describeRecipeDto.name);
   writer.writeAdditionalData(describeRecipeDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GroceryLineItemDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGroceryLineItemDto(
+  writer: SerializationWriter,
+  groceryLineItemDto: Partial<GroceryLineItemDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!groceryLineItemDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('displayName', groceryLineItemDto.displayName);
+  writer.writeStringValue('normalizedKey', groceryLineItemDto.normalizedKey);
+  writer.writeNumberValue('quantity', groceryLineItemDto.quantity);
+  writer.writeCollectionOfPrimitiveValues<Guid>('recipeIds', groceryLineItemDto.recipeIds);
+  writer.writeStringValue('section', groceryLineItemDto.section);
+  writer.writeStringValue('unitText', groceryLineItemDto.unitText);
+  writer.writeAdditionalData(groceryLineItemDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -2322,6 +2421,11 @@ export function serializeScheduleDays(
     'days',
     scheduleDays.days,
     serializeScheduleDayDto
+  );
+  writer.writeCollectionOfObjectValues<GroceryLineItemDto>(
+    'groceryItems',
+    scheduleDays.groceryItems,
+    serializeGroceryLineItemDto
   );
   writer.writeObjectValue<ScheduleDays_groceryState>(
     'groceryState',

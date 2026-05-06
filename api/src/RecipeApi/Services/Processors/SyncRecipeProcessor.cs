@@ -11,6 +11,7 @@ public class SyncRecipeProcessor(
     RecipeDbContext db,
     RecipeRepository recipeRepository,
     DiscoveryService discoveryService,
+    GroceryRecomputeService groceryRecomputeService,
     ILogger<SyncRecipeProcessor> logger) : IWorkflowProcessor
 {
     public string ProcessorName => "SyncRecipe";
@@ -111,5 +112,8 @@ public class SyncRecipeProcessor(
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Synchronized recipe {RecipeId} from disk to database.", recipeId);
+
+        // Recompute grocery items for all week plans that include this recipe
+        await groceryRecomputeService.RecomputeForRecipeAsync(recipeId, ct);
     }
 }

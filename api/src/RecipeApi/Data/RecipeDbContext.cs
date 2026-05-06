@@ -17,6 +17,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
     public DbSet<WeeklyPlan> WeeklyPlans => Set<WeeklyPlan>();
     public DbSet<FamilySetting> FamilySettings => Set<FamilySetting>();
+    public DbSet<IngredientCategory> IngredientCategories => Set<IngredientCategory>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

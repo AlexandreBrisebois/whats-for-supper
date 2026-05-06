@@ -10,7 +10,11 @@ import {
   getSmartDefaults,
 } from '@/lib/api/planner';
 import { usePlannerStore } from '@/store/plannerStore';
-import type { ScheduleRecipeDto, SmartDefaultsDto } from '@/lib/api/generated/models';
+import type {
+  GroceryLineItemDto,
+  ScheduleRecipeDto,
+  SmartDefaultsDto,
+} from '@/lib/api/generated/models';
 import type { ScheduleDay } from '@/lib/api/planner';
 import type { ScheduleDays } from '@/lib/api/generated/models';
 
@@ -28,6 +32,8 @@ export type UILocalScheduleDay = Omit<ScheduleDay, 'recipe'> & {
 export interface WeekState {
   weekOffset: number;
   schedule: UILocalScheduleDay[];
+  /** Pre-computed grocery items from the API, grouped by section for display */
+  groceryItems: GroceryLineItemDto[];
   /** 0 = Draft, 1 = VotingOpen, 2 = Locked — seeded from WeeklyPlan.Status */
   status: 0 | 1 | 2;
   isLoading: boolean;
@@ -130,6 +136,7 @@ function buildScheduleDays(
 export const useWeekStore = create<WeekState>((set, get) => ({
   weekOffset: 0,
   schedule: [],
+  groceryItems: [],
   status: 0,
   isLoading: false,
   lastSyncedAt: null,
@@ -170,6 +177,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
       set({
         schedule: mergedDays,
+        groceryItems: scheduleData.groceryItems ?? [],
         status,
         lastSyncedAt: Date.now(),
         isLoading: false,

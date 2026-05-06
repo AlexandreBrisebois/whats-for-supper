@@ -1,7 +1,24 @@
-export type AisleSection = 'Vegetables' | 'Meat' | 'Dairy' | 'Bakery' | 'Pantry';
+// Feature: grocery-section-categorization
+// Updated to 10-section taxonomy matching C# AisleMapper
 
-const AISLE_KEYWORDS: Record<AisleSection, string[]> = {
-  Vegetables: [
+export type GrocerySection =
+  | 'Produce'
+  | 'Meat'
+  | 'Seafood'
+  | 'Dairy & Eggs'
+  | 'Frozen'
+  | 'Bakery'
+  | 'Pantry'
+  | 'Beverages'
+  | 'Deli'
+  | 'Grocery';
+
+// Keyword sets match C# AisleMapper (English + French)
+// Longest-match precedence: when a name matches keywords from multiple sections,
+// the section whose keyword produces the longest substring match wins.
+const SECTION_KEYWORDS: Record<GrocerySection, string[]> = {
+  Produce: [
+    // English
     'lettuce',
     'spinach',
     'kale',
@@ -22,20 +39,96 @@ const AISLE_KEYWORDS: Record<AisleSection, string[]> = {
     'cabbage',
     'cauliflower',
     'leek',
-    'chard',
-    'arugula',
-    'bean',
-    'pea',
-    'eggplant',
-    'artichoke',
-    'okra',
     'asparagus',
     'corn',
+    'mushroom',
+    'apple',
+    'banana',
+    'orange',
+    'lemon',
+    'lime',
+    'berry',
+    'strawberry',
+    'blueberry',
+    'grape',
+    'peach',
+    'pear',
+    'mango',
+    'avocado',
+    'herb',
+    'cilantro',
+    'parsley',
+    'basil',
+    'mint',
+    'dill',
+    'thyme',
+    'rosemary',
+    'chive',
+    'ginger',
+    'jalapeño',
+    'jalapeno',
+    'pepper',
+    'arugula',
+    'chard',
+    'bean sprout',
+    'artichoke',
+    'eggplant',
+    'okra',
     'green bean',
+    'pea',
+    // French
+    'laitue',
+    'epinard',
+    'chou frise',
+    'tomate',
+    'carotte',
+    'brocoli',
+    'oignon',
+    'ail',
+    'celeri',
+    'concombre',
+    'poivron',
+    'courgette',
+    'courge',
+    'radis',
+    'panais',
+    'pomme de terre',
+    'patate douce',
+    'chou',
+    'chou-fleur',
+    'poireau',
+    'asperge',
+    'mais',
+    'champignon',
+    'pomme',
+    'banane',
+    'orange',
+    'citron',
+    'lime',
+    'baie',
+    'fraise',
+    'bleuet',
+    'raisin',
+    'peche',
+    'poire',
+    'mangue',
+    'avocat',
+    'herbe',
+    'coriandre',
+    'persil',
+    'basilic',
+    'menthe',
+    'aneth',
+    'thym',
+    'romarin',
+    'ciboulette',
+    'gingembre',
+    'piment',
   ],
   Meat: [
-    'beef',
+    // English
     'ground beef',
+    'beef',
     'steak',
     'chuck',
     'brisket',
@@ -51,22 +144,63 @@ const AISLE_KEYWORDS: Record<AisleSection, string[]> = {
     'chop',
     'lamb',
     'mutton',
+    'turkey',
+    'duck',
+    'veal',
+    'venison',
+    'goose',
+    // French
+    'boeuf hache',
+    'boeuf',
+    'poulet',
+    'porc',
+    'jambon',
+    'lardons',
+    'saucisse',
+    'agneau',
+    'mouton',
+    'dinde',
+    'canard',
+    'veau',
+    'chevreuil',
+  ],
+  Seafood: [
+    // English
+    'smoked salmon',
     'fish',
     'salmon',
     'cod',
     'tuna',
+    'tilapia',
+    'halibut',
     'shrimp',
     'prawn',
-    'turkey',
-    'duck',
-    'goose',
+    'scallop',
+    'crab',
+    'lobster',
+    // French
+    'saumon fume',
+    'poisson',
+    'saumon',
+    'morue',
+    'thon',
+    'tilapia',
+    'flétan',
+    'fletan',
+    'crevette',
+    'pétoncle',
+    'petoncle',
+    'crabe',
+    'homard',
   ],
-  Dairy: [
+  'Dairy & Eggs': [
+    // English
     'milk',
     'cream',
     'butter',
     'cheese',
     'yogurt',
+    'yoghurt',
     'sour cream',
     'cottage cheese',
     'mozzarella',
@@ -77,12 +211,41 @@ const AISLE_KEYWORDS: Record<AisleSection, string[]> = {
     'brie',
     'gouda',
     'egg',
-    'eggs',
     'cream cheese',
+    'half-and-half',
+    'whipping cream',
+    'kefir',
+    // French
+    'lait',
+    'creme',
+    'beurre',
+    'fromage',
+    'yaourt',
+    'yogourt',
+    'creme sure',
+    'fromage cottage',
+    'oeuf',
+    'oeufs',
+  ],
+  Frozen: [
+    // English
+    'frozen',
+    'ice cream',
+    'gelato',
+    'sorbet',
+    'frozen peas',
+    'frozen corn',
+    'frozen berries',
+    'frozen pizza',
+    'edamame',
+    // French
+    'surgele',
+    'surgelé',
+    'glace',
   ],
   Bakery: [
+    // English
     'bread',
-    'flour',
     'baguette',
     'croissant',
     'pastry',
@@ -94,98 +257,172 @@ const AISLE_KEYWORDS: Record<AisleSection, string[]> = {
     'naan',
     'focaccia',
     'sourdough',
-    'rye',
+    'rye bread',
+    'brioche',
+    'muffin',
+    'scone',
+    // French
+    'pain',
+    'baguette',
+    'croissant',
+    'viennoiserie',
+    'bagel',
+    'petit pain',
+    'brioche',
+    'muffin',
+    'scone',
+  ],
+  Beverages: [
+    // English
+    'juice',
+    'wine',
+    'beer',
+    'broth',
+    'stock',
+    'coffee',
+    'tea',
+    'soda',
+    'sparkling water',
+    'coconut milk',
+    'almond milk',
+    'oat milk',
+    'cider',
+    // French
+    'jus',
+    'vin',
+    'biere',
+    'bière',
+    'bouillon',
+    'fond',
+    'cafe',
+    'café',
+    'the',
+    'thé',
+    'eau gazeuse',
+    'lait de coco',
+    'lait d amande',
+    'lait d avoine',
+    'cidre',
+  ],
+  Deli: [
+    // English
+    'deli',
+    'salami',
+    'pepperoni',
+    'prosciutto',
+    'mortadella',
+    'pastrami',
+    'smoked salmon',
+    'hummus',
+    'prepared salad',
+    'rotisserie',
+    // French
+    'charcuterie',
+    'salami',
+    'pepperoni',
+    'prosciutto',
+    'mortadelle',
+    'pastrami',
+    'saumon fume',
+    'houmous',
+    'salade preparee',
+    'poulet roti',
   ],
   Pantry: [
+    // English
     'oil',
     'olive oil',
     'salt',
-    'pepper',
     'sugar',
+    'flour',
+    'rice',
+    'pasta',
+    'sauce',
+    'vinegar',
     'spice',
     'paprika',
     'cumin',
     'cinnamon',
     'oregano',
-    'basil',
-    'thyme',
-    'rosemary',
-    'dill',
-    'parsley',
-    'rice',
-    'pasta',
-    'beans',
-    'lentil',
-    'chickpea',
-    'canned',
-    'sauce',
-    'broth',
-    'vinegar',
     'soy sauce',
     'sesame oil',
     'coconut oil',
-    'baking',
-    'powder',
-    'soda',
+    'baking powder',
+    'baking soda',
+    'lentil',
+    'chickpea',
+    'canned',
+    'tomato paste',
+    'mustard',
+    'honey',
+    'maple syrup',
+    'hot sauce',
+    'worcestershire',
+    'fish sauce',
+    'oyster sauce',
+    'tahini',
+    'miso',
+    'nutritional yeast',
+    // French
+    'huile',
+    'huile d olive',
+    'sel',
+    'sucre',
+    'farine',
+    'riz',
+    'pates',
+    'pâtes',
+    'sauce',
+    'vinaigre',
+    'epice',
+    'épice',
+    'paprika',
+    'cumin',
+    'cannelle',
+    'origan',
+    'sauce soja',
+    'huile de sesame',
+    'huile de coco',
+    'poudre a pate',
+    'bicarbonate',
+    'lentille',
+    'pois chiche',
+    'conserve',
+    'concentre de tomate',
+    'moutarde',
+    'miel',
+    'sirop d erable',
   ],
+  Grocery: [],
 };
 
-function stringSimilarity(a: string, b: string): number {
-  const aLower = a.toLowerCase();
-  const bLower = b.toLowerCase();
+/**
+ * Maps an ingredient name to a GrocerySection using longest-match keyword lookup.
+ * When a name matches keywords from multiple sections, the section whose keyword
+ * produces the longest substring match wins.
+ * Falls back to Grocery (not Pantry) when no keyword matches.
+ *
+ * Feature: grocery-section-categorization, Property 1: closed-set section assignment
+ * Feature: grocery-section-categorization, Property 2: idempotence of section mapping
+ */
+export function mapIngredientToSection(name: string): GrocerySection {
+  const lower = name.toLowerCase();
 
-  if (aLower === bLower) return 1;
-  if (aLower.includes(bLower) || bLower.includes(aLower)) return 0.8;
+  let bestSection: GrocerySection = 'Grocery';
+  let bestMatchLength = 0;
 
-  let matches = 0;
-  for (const char of aLower) {
-    if (bLower.includes(char)) matches++;
-  }
-  return matches / Math.max(aLower.length, bLower.length);
-}
-
-export function mapIngredientToAisle(ingredientName: string): AisleSection {
-  const lowerIngredient = ingredientName.toLowerCase();
-
-  // First, try exact or near-exact matches with keywords
-  for (const [aisle, keywords] of Object.entries(AISLE_KEYWORDS)) {
+  for (const [section, keywords] of Object.entries(SECTION_KEYWORDS) as [
+    GrocerySection,
+    string[],
+  ][]) {
+    if (section === 'Grocery') continue;
     for (const keyword of keywords) {
-      if (lowerIngredient.includes(keyword)) {
-        return aisle as AisleSection;
+      if (lower.includes(keyword) && keyword.length > bestMatchLength) {
+        bestMatchLength = keyword.length;
+        bestSection = section;
       }
     }
   }
 
-  // Fallback: use fuzzy matching to find best aisle
-  let bestAisle: AisleSection = 'Pantry';
-  let bestScore = 0;
-
-  for (const [aisle, keywords] of Object.entries(AISLE_KEYWORDS)) {
-    for (const keyword of keywords) {
-      const score = stringSimilarity(lowerIngredient, keyword);
-      if (score > bestScore && score > 0.6) {
-        bestScore = score;
-        bestAisle = aisle as AisleSection;
-      }
-    }
-  }
-
-  return bestAisle;
-}
-
-export function groupIngredientsByAisle(ingredients: string[]): Record<AisleSection, string[]> {
-  const aisles: Record<AisleSection, string[]> = {
-    Vegetables: [],
-    Meat: [],
-    Dairy: [],
-    Bakery: [],
-    Pantry: [],
-  };
-
-  for (const ingredient of ingredients) {
-    const aisle = mapIngredientToAisle(ingredient);
-    aisles[aisle].push(ingredient);
-  }
-
-  return aisles;
+  return bestSection;
 }

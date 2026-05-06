@@ -111,6 +111,21 @@ public class ManagementService(
             logger.LogInformation("Backed up {Count} calendar events to {Path}", calendarEvents.Count, eventsPath);
         }
 
+        // 5. Backup Ingredient Categories
+        var ingredientCategories = await db.IngredientCategories.AsNoTracking().ToListAsync();
+        var categoriesPath = Path.Combine(DataRoot, "ingredient-categories.csv");
+        var csvLines = new List<string>(ingredientCategories.Count + 1)
+        {
+            "normalized_key,grocery_section,confidence,source,created_at"
+        };
+        foreach (var cat in ingredientCategories)
+        {
+            var createdAt = cat.CreatedAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ");
+            csvLines.Add($"{EscapeCsvField(cat.NormalizedKey)},{EscapeCsvField(cat.GrocerySection)},{cat.Confidence},{EscapeCsvField(cat.Source)},{createdAt}");
+        }
+        await File.WriteAllLinesAsync(categoriesPath, csvLines);
+        logger.LogInformation("Backed up {Count} ingredient categories to {Path}", ingredientCategories.Count, categoriesPath);
+
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
     }
@@ -416,9 +431,160 @@ public class ManagementService(
             logger.LogInformation("Initialized {Count} missing weekly plans for forward compatibility.", initializedPlans);
         }
 
+        // 8. Restore Ingredient Categories
+        var categoriesPath = Path.Combine(DataRoot, "ingredient-categories.csv");
+        if (File.Exists(categoriesPath))
+        {
+            var lines = await File.ReadAllLinesAsync(categoriesPath, ct);
+            int categoriesUpserted = 0;
+            // Skip header row (index 0)
+            for (int i = 1; i < lines.Length; i++)
+            {
+                if (ct.IsCancellationRequested) break;
+                var line = lines[i];
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                try
+                {
+                    var fields = ParseCsvLine(line);
+                    if (fields.Length < 5)
+                    {
+                        logger.LogError("Malformed row at line {Line} in ingredient-categories.csv (expected 5 fields, got {Count}): {Row}",
+                            i + 1, fields.Length, line);
+                        continue;
+                    }
+
+                    var normalizedKey = fields[0];
+                    var grocerySection = fields[1];
+                    var confidenceStr = fields[2];
+                    var source = fields[3];
+                    var createdAtStr = fields[4];
+
+                    if (string.IsNullOrWhiteSpace(normalizedKey) || string.IsNullOrWhiteSpace(grocerySection))
+                    {
+                        logger.LogError("Malformed row at line {Line} in ingredient-categories.csv (empty required field): {Row}",
+                            i + 1, line);
+                        continue;
+                    }
+
+                    if (!double.TryParse(confidenceStr, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out var confidence))
+                    {
+                        logger.LogError("Malformed row at line {Line} in ingredient-categories.csv (invalid confidence '{Confidence}'): {Row}",
+                            i + 1, confidenceStr, line);
+                        continue;
+                    }
+
+                    if (!DateTimeOffset.TryParse(createdAtStr, null,
+                            System.Globalization.DateTimeStyles.RoundtripKind, out var createdAt))
+                    {
+                        logger.LogError("Malformed row at line {Line} in ingredient-categories.csv (invalid created_at '{CreatedAt}'): {Row}",
+                            i + 1, createdAtStr, line);
+                        continue;
+                    }
+
+                    var existing = await db.IngredientCategories.FindAsync(new object[] { normalizedKey }, ct);
+                    if (existing == null)
+                    {
+                        db.IngredientCategories.Add(new IngredientCategory
+                        {
+                            NormalizedKey = normalizedKey,
+                            GrocerySection = grocerySection,
+                            Confidence = confidence,
+                            Source = source,
+                            CreatedAt = createdAt,
+                            UpdatedAt = DateTimeOffset.UtcNow
+                        });
+                    }
+                    else
+                    {
+                        existing.GrocerySection = grocerySection;
+                        existing.Confidence = confidence;
+                        existing.Source = source;
+                        existing.UpdatedAt = DateTimeOffset.UtcNow;
+                    }
+                    categoriesUpserted++;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error processing row at line {Line} in ingredient-categories.csv: {Row}", i + 1, line);
+                }
+            }
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Restored {Count} ingredient categories from {Path}", categoriesUpserted, categoriesPath);
+        }
+        else
+        {
+            logger.LogWarning("Ingredient categories file not found at {Path}, skipping", categoriesPath);
+        }
+
         logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Errors: {Errors}",
             result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.Errors);
         return result;
+    }
+
+    /// <summary>
+    /// Parses a single CSV line, handling quoted fields (RFC 4180).
+    /// Returns an array of unescaped field values.
+    /// </summary>
+    private static string[] ParseCsvLine(string line)
+    {
+        var fields = new List<string>();
+        int pos = 0;
+        while (pos <= line.Length)
+        {
+            if (pos == line.Length)
+            {
+                fields.Add(string.Empty);
+                break;
+            }
+
+            if (line[pos] == '"')
+            {
+                // Quoted field
+                pos++; // skip opening quote
+                var sb = new System.Text.StringBuilder();
+                while (pos < line.Length)
+                {
+                    if (line[pos] == '"')
+                    {
+                        if (pos + 1 < line.Length && line[pos + 1] == '"')
+                        {
+                            // Escaped double-quote
+                            sb.Append('"');
+                            pos += 2;
+                        }
+                        else
+                        {
+                            pos++; // skip closing quote
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        sb.Append(line[pos]);
+                        pos++;
+                    }
+                }
+                fields.Add(sb.ToString());
+                // Skip comma separator
+                if (pos < line.Length && line[pos] == ',')
+                    pos++;
+            }
+            else
+            {
+                // Unquoted field — read until comma or end
+                int start = pos;
+                while (pos < line.Length && line[pos] != ',')
+                    pos++;
+                fields.Add(line[start..pos]);
+                if (pos < line.Length)
+                    pos++; // skip comma
+                else
+                    break;
+            }
+        }
+        return fields.ToArray();
     }
 
     private static DateOnly GetMonday(DateOnly date)
@@ -476,6 +642,17 @@ public class ManagementService(
 
         result.MembersAdded = await MergeFamilyMembersAsync(placeholders);
         return result;
+    }
+
+    /// <summary>
+    /// Escapes a CSV field value. If the value contains a comma, double-quote, or newline,
+    /// it is wrapped in double-quotes with any internal double-quotes doubled.
+    /// </summary>
+    private static string EscapeCsvField(string value)
+    {
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        return value;
     }
 
     private async Task<int> MergeFamilyMembersAsync(List<FamilyMember> sourceMembers)

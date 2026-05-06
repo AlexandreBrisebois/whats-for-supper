@@ -29,6 +29,9 @@ public class WeeklyPlan
     [Column("grocery_state", TypeName = "jsonb")]
     public string GroceryState { get; set; } = "{}";
 
+    [Column("grocery_items", TypeName = "jsonb")]
+    public string GroceryItems { get; set; } = "[]";
+
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

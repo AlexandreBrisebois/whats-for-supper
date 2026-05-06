@@ -28,7 +28,10 @@ public class SyncRecipeProcessorTests : IDisposable
         
         var publisherMock = new Mock<IScheduleEventPublisher>();
         var discoveryService = new DiscoveryService(_db, publisherMock.Object);
-        _processor = new SyncRecipeProcessor(_db, _recipeRepository, discoveryService, _loggerMock.Object);
+        var aisleMapper = new AisleMapper();
+        var groceryRecomputeService = new GroceryRecomputeService(
+            _db, aisleMapper, new Mock<ILogger<GroceryRecomputeService>>().Object);
+        _processor = new SyncRecipeProcessor(_db, _recipeRepository, discoveryService, groceryRecomputeService, _loggerMock.Object);
     }
 
     public void Dispose()

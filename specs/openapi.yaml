@@ -150,6 +150,10 @@ components:
           type: object
           additionalProperties: { type: boolean }
           nullable: true
+        groceryItems:
+          type: [array, 'null']
+          items: { $ref: '#/components/schemas/GroceryLineItemDto' }
+          nullable: true
 
 
     ScheduleDayDto:
@@ -495,6 +499,20 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         taskCount: { type: integer }
+
+    # --- Grocery ---
+    GroceryLineItemDto:
+      type: object
+      required: [displayName, normalizedKey, section, recipeIds]
+      properties:
+        displayName: { type: string }
+        normalizedKey: { type: string }
+        section: { type: string }
+        quantity: { type: [number, 'null'] }
+        unitText: { type: [string, 'null'] }
+        recipeIds:
+          type: array
+          items: { type: string, format: uuid }
 
 paths:
   /api/stream:

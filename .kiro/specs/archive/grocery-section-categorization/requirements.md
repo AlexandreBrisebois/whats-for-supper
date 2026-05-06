@@ -12,7 +12,7 @@ This feature replaces the static keyword mapper with an intelligent, extensible 
 
 - **Aisle_Mapper**: The client-side module (`pwa/src/lib/grocery/aisleMapper.ts`) responsible for assigning each ingredient string to a `GrocerySection`.
 - **Grocery_List**: The UI panel rendered when the user selects the "Grocery list" tab in the Planner page.
-- **GrocerySection**: A named grouping that corresponds to a physical section of a grocery store (e.g., Produce, Meat & Seafood, Dairy & Eggs, Frozen, Bakery, Pantry, Beverages, Deli).
+- **GrocerySection**: A named grouping that corresponds to a physical section of a grocery store (e.g., Produce, Meat, Seafood, Dairy & Eggs, Frozen, Bakery, Pantry, Beverages, Deli).
 - **Ingredient_String**: A raw text string extracted from a recipe's `recipeIngredient` array, typically in the format `"[Quantity] [Unit] [Ingredient]"` (e.g., `"250 ml tomato sauce"`, `"2 chicken breasts"`).
 - **Canonical_Name**: The ingredient portion of an Ingredient_String after quantity and unit tokens have been stripped (e.g., `"tomato sauce"`, `"chicken breasts"`).
 - **Categorization_Engine**: The logic within the Aisle_Mapper that maps a Canonical_Name to a GrocerySection.
@@ -33,7 +33,7 @@ This feature replaces the static keyword mapper with an intelligent, extensible 
 
 #### Acceptance Criteria
 
-1. THE Aisle_Mapper SHALL support the following GrocerySections: `Produce`, `Meat & Seafood`, `Dairy & Eggs`, `Frozen`, `Bakery`, `Pantry`, `Beverages`, `Deli`, `Uncategorized`.
+1. THE Aisle_Mapper SHALL support the following GrocerySections: `Produce`, `Meat`, `Seafood`, `Dairy & Eggs`, `Frozen`, `Bakery`, `Pantry`, `Beverages`, `Deli`, `Uncategorized`.
 2. THE Grocery_List SHALL display GrocerySections in the following Section_Order: Produce → Deli → Bakery → Meat → Seafood → Dairy & Eggs → Frozen → Pantry → Beverages → Uncategorized.
 3. WHEN a GrocerySection contains zero items for the current week, THE Grocery_List SHALL omit that section from the display entirely.
 4. THE Aisle_Mapper SHALL assign every Ingredient_String to exactly one GrocerySection.
@@ -81,7 +81,8 @@ This feature replaces the static keyword mapper with an intelligent, extensible 
 #### Acceptance Criteria
 
 1. WHEN the Canonical_Name contains a keyword from the `Produce` keyword set (including but not limited to: lettuce, spinach, kale, tomato, carrot, broccoli, onion, garlic, celery, cucumber, bell pepper, zucchini, potato, sweet potato, cabbage, cauliflower, leek, asparagus, corn, mushroom, apple, banana, orange, lemon, lime, berry, strawberry, blueberry, grape, peach, pear, mango, avocado, herb, cilantro, parsley, basil, mint, dill, thyme, rosemary, chive, ginger, jalapeño, pepper), THE Aisle_Mapper SHALL assign the ingredient to `Produce`.
-2. WHEN the Canonical_Name contains a keyword from the `Meat & Seafood` keyword set (including but not limited to: beef, ground beef, steak, chuck, brisket, chicken, breast, thigh, leg, wing, pork, ham, bacon, sausage, lamb, mutton, fish, salmon, cod, tuna, tilapia, halibut, shrimp, prawn, scallop, crab, lobster, turkey, duck, veal, venison), THE Aisle_Mapper SHALL assign the ingredient to `Meat & Seafood`.
+2. WHEN the Canonical_Name contains a keyword from the `Meat` keyword set (including but not limited to: beef, ground beef, steak, chuck, brisket, chicken, breast, thigh, leg, wing, pork, ham, bacon, sausage, lamb, mutton, turkey, duck, veal, venison), THE Aisle_Mapper SHALL assign the ingredient to `Meat`.
+2b. WHEN the Canonical_Name contains a keyword from the `Seafood` keyword set (including but not limited to: fish, salmon, cod, tuna, tilapia, halibut, shrimp, prawn, scallop, crab, lobster), THE Aisle_Mapper SHALL assign the ingredient to `Seafood`.
 3. WHEN the Canonical_Name contains a keyword from the `Dairy & Eggs` keyword set (including but not limited to: milk, cream, butter, cheese, yogurt, sour cream, cottage cheese, mozzarella, cheddar, parmesan, feta, ricotta, brie, gouda, egg, cream cheese, half-and-half, whipping cream, kefir), THE Aisle_Mapper SHALL assign the ingredient to `Dairy & Eggs`.
 4. WHEN the Canonical_Name contains a keyword from the `Frozen` keyword set (including but not limited to: frozen, ice cream, gelato, sorbet, frozen peas, frozen corn, frozen berries, frozen pizza, edamame), THE Aisle_Mapper SHALL assign the ingredient to `Frozen`.
 5. WHEN the Canonical_Name contains a keyword from the `Bakery` keyword set (including but not limited to: bread, baguette, croissant, pastry, bagel, roll, bun, tortilla, pita, naan, focaccia, sourdough, rye bread, brioche, muffin, scone), THE Aisle_Mapper SHALL assign the ingredient to `Bakery`.

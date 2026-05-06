@@ -113,8 +113,10 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                 opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
             });
 
+        builder.Services.AddSingleton<AisleMapper>();
         builder.Services.AddSingleton<SseConnectionManager>();
         builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
+        builder.Services.AddScoped<GroceryRecomputeService>();
         builder.Services.AddScoped<ScheduleService>();
         builder.Services.AddScoped<DiscoveryService>();
         builder.Services.AddScoped<FamilyService>();

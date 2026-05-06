@@ -34,7 +34,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         _publisherMock = new Mock<IScheduleEventPublisher>();
-        _service = new ScheduleService(_db, logger, _publisherMock.Object);
+        var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
+        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService);
         _discoveryService = new DiscoveryService(_db, _publisherMock.Object);
     }
 
