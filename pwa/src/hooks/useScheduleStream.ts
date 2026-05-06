@@ -39,7 +39,7 @@ export function useScheduleStream() {
     // relative path — EventSource accepts relative URLs in browser contexts.
     const url = baseUrl ? `${baseUrl}/api/stream` : '/api/stream';
     console.log('[SSE] Attempting connection to:', url);
-    
+
     let source: EventSource;
     try {
       source = new EventSource(url, { withCredentials: true });

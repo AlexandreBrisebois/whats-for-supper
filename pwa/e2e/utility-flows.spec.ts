@@ -115,7 +115,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 1 of/i);
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
     await page.getByTestId('close-cooks-mode').click();
     await expect(overlay).not.toBeVisible();

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
@@ -16,11 +17,13 @@ namespace RecipeApi.Services;
 /// </summary>
 public class WorkflowWorker(
     IServiceScopeFactory scopeFactory,
-    ILogger<WorkflowWorker> logger) : BackgroundService
+    ILogger<WorkflowWorker> logger,
+    IOptions<WorkflowRetryOptions> retryOptions) : BackgroundService
 {
     private readonly Dictionary<string, SemaphoreSlim> _processorThrottles = [];
+    private readonly RetryScheduler _retryScheduler = new RetryScheduler(retryOptions.Value);
+    private readonly int _maxRetries = retryOptions.Value.MaxRetries;
     private volatile bool _initialized = false;
-    private int _maxRetries = 3;
     private int _idleCount = 0;
     private const int MinDelayMs = 500;
     private const int MaxDelayMs = 60_000;
@@ -91,10 +94,24 @@ public class WorkflowWorker(
             _processorThrottles["GenerateHero"].CurrentCount,
             _processorThrottles["SyncRecipe"].CurrentCount);
 
-        // Initialize retry configuration
-        var retryConfig = configuration.GetSection("WorkflowRetry");
-        _maxRetries = retryConfig.GetValue<int>("MaxRetries", 3);
-        logger.LogInformation("WorkflowWorker retry policy initialized: MaxRetries={MaxRetries}", _maxRetries);
+        logger.LogInformation(
+            "WorkflowWorker retry schedule: [{Schedule}], MaxRetries={MaxRetries}, QuietWindow={Start}:00-{End}:00 UTC",
+            string.Join(", ", retryOptions.Value.RetryScheduleMinutes),
+            retryOptions.Value.MaxRetries,
+            retryOptions.Value.QuietWindowStartHour,
+            retryOptions.Value.QuietWindowEndHour);
+
+        var schedule = retryOptions.Value.RetryScheduleMinutes;
+        for (var i = 1; i < schedule.Length; i++)
+        {
+            if (schedule[i] < schedule[i - 1])
+            {
+                logger.LogWarning(
+                    "WorkflowRetry.RetryScheduleMinutes is not monotonically non-decreasing at index {Index}: {Prev} > {Curr}. Using as-is.",
+                    i, schedule[i - 1], schedule[i]);
+                break;
+            }
+        }
     }
 
     // Public method for testing
@@ -272,16 +289,21 @@ public class WorkflowWorker(
             logger.LogInformation("Completed task {TaskId} with processor {ProcessorName}",
                 task.TaskId, task.ProcessorName);
         }
-        catch (TransientWorkflowException ex) when (task.RetryCount < _maxRetries)
+        catch (Exception ex) when ((ex is TransientWorkflowException || Is429Exception(ex)) && task.RetryCount < _maxRetries)
         {
+            var failureType = ex is TransientWorkflowException ? "transient" : "rate-limit";
             task.RetryCount++;
             task.Status = TaskStatus.Pending;
-            task.ScheduledAt = DateTimeOffset.UtcNow.AddMinutes(Math.Pow(2, task.RetryCount));
+            task.ScheduledAt = _retryScheduler.ComputeNextScheduledAt(task.RetryCount, DateTimeOffset.UtcNow);
             task.ErrorMessage = ex.Message;
             task.UpdatedAt = DateTimeOffset.UtcNow;
 
-            logger.LogWarning(ex, "Transient failure on task {TaskId}, retry {Retry}/{Max}, next at {ScheduledAt}",
-                task.TaskId, task.RetryCount, _maxRetries, task.ScheduledAt);
+            var isQuietWindow = task.RetryCount > retryOptions.Value.RetryScheduleMinutes.Length;
+            var quietWindowLabel = isQuietWindow ? " [quiet-window]" : "";
+
+            logger.LogWarning(ex,
+                "Task {TaskId} ({ProcessorName}) {FailureType} failure, retry {Retry}/{Max}, next at {ScheduledAt}{QuietWindow}",
+                task.TaskId, task.ProcessorName, failureType, task.RetryCount, _maxRetries, task.ScheduledAt, quietWindowLabel);
 
             try
             {
@@ -292,22 +314,10 @@ public class WorkflowWorker(
                 logger.LogError(saveEx, "Failed to save retry state for task {TaskId}", task.TaskId);
             }
         }
-        catch (Exception ex) when (Is429Exception(ex) && task.RetryCount < _maxRetries)
-        {
-            task.RetryCount++;
-            task.Status = TaskStatus.Pending;
-            task.ScheduledAt = DateTimeOffset.UtcNow.AddMinutes(Math.Pow(2, task.RetryCount));
-            task.ErrorMessage = ex.Message;
-            task.UpdatedAt = DateTimeOffset.UtcNow;
-            logger.LogWarning(ex,
-                "Rate-limit (429) on task {TaskId}, retry {Retry}/{Max}, next at {ScheduledAt}",
-                task.TaskId, task.RetryCount, _maxRetries, task.ScheduledAt);
-            try { await db.SaveChangesAsync(ct); }
-            catch (Exception saveEx) { logger.LogError(saveEx, "Failed to save 429 retry state for task {TaskId}", task.TaskId); }
-        }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Fatal failure on task {TaskId}", task.TaskId);
+            logger.LogError(ex, "Fatal failure on task {TaskId} ({ProcessorName}), retries exhausted after {RetryCount}: {Message}",
+                task.TaskId, task.ProcessorName, task.RetryCount, ex.Message);
 
             task.Status = TaskStatus.Failed;
             task.ErrorMessage = ex.Message;

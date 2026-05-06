@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
@@ -37,7 +38,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
                 ["WorkflowThrottle:GenerateHero"] = "2",
                 ["WorkflowThrottle:Default"] = "5",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -67,7 +73,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var logger = loggerFactory.CreateLogger<WorkflowWorker>();
         var scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
-        _worker = new WorkflowWorker(scopeFactory, logger);
+        _worker = new WorkflowWorker(scopeFactory, logger, Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
     }
 
     public async Task InitializeAsync()
@@ -270,7 +282,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Worker_TransientError_RetriesWithExponentialBackoff()
+    public async Task Worker_TransientError_RetriesWithConfiguredSchedule()
     {
         // Arrange: Create separate ServiceCollection with throwing processor
         var services = new ServiceCollection();
@@ -279,7 +291,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -303,7 +320,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         // Initialize worker by starting and immediately cancelling
         var initCts = new CancellationTokenSource();
@@ -353,7 +376,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Equal(TaskStatus.Pending, updatedTask.Status);
         Assert.Equal(1, updatedTask.RetryCount);
         Assert.NotNull(updatedTask.ScheduledAt);
-        var expectedSchedule = now.AddMinutes(2);
+        var expectedSchedule = now.AddMinutes(1);
         Assert.True(Math.Abs((updatedTask.ScheduledAt.Value - expectedSchedule).TotalMinutes) < 0.1,
             $"ScheduledAt {updatedTask.ScheduledAt} not within 0.1 min of {expectedSchedule}");
 
@@ -372,7 +395,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Equal(TaskStatus.Pending, secondRetry.Status);
         Assert.Equal(2, secondRetry.RetryCount);
         Assert.NotNull(secondRetry.ScheduledAt);
-        var expectedSchedule2 = beforeSecondTry.AddMinutes(4);
+        var expectedSchedule2 = beforeSecondTry.AddMinutes(5);
         Assert.True(Math.Abs((secondRetry.ScheduledAt.Value - expectedSchedule2).TotalMinutes) < 0.1,
             $"ScheduledAt {secondRetry.ScheduledAt} not within 0.1 min of {expectedSchedule2}");
 
@@ -414,7 +437,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         // Initialize worker by starting and immediately cancelling
         var initCts = new CancellationTokenSource();
@@ -776,7 +805,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -798,7 +832,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         // Initialize throttles
         var initCts = new CancellationTokenSource();
@@ -850,7 +890,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Equal(TaskStatus.Pending, updatedTask.Status);   // BUG: will be Failed
         Assert.Equal(1, updatedTask.RetryCount);                // BUG: will be 0
         Assert.NotNull(updatedTask.ScheduledAt);
-        var expectedSchedule = now.AddMinutes(2);
+        var expectedSchedule = now.AddMinutes(1);
         Assert.True(Math.Abs((updatedTask.ScheduledAt!.Value - expectedSchedule).TotalMinutes) < 0.5,
             $"ScheduledAt {updatedTask.ScheduledAt} not within 0.5 min of {expectedSchedule}");
 
@@ -879,7 +919,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -901,7 +946,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         // Initialize throttles
         var initCts = new CancellationTokenSource();
@@ -982,7 +1033,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -1004,7 +1060,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);
@@ -1054,7 +1116,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Equal(TaskStatus.Pending, updatedTask.Status);
         Assert.Equal(2, updatedTask.RetryCount);
         Assert.NotNull(updatedTask.ScheduledAt);
-        var expectedSchedule = now.AddMinutes(4); // 2^2 = 4
+        var expectedSchedule = now.AddMinutes(5); // index 1 of [1,5,20,60,300]
         Assert.True(Math.Abs((updatedTask.ScheduledAt!.Value - expectedSchedule).TotalMinutes) < 0.5,
             $"ScheduledAt {updatedTask.ScheduledAt} not within 0.5 min of {expectedSchedule}");
 
@@ -1079,7 +1141,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -1101,7 +1168,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);
@@ -1175,7 +1248,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -1197,7 +1275,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);
@@ -1216,7 +1300,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         };
         db.WorkflowInstances.Add(instance);
 
-        // RetryCount = 3 = _maxRetries — budget is exhausted
+        // RetryCount = 10 = _maxRetries — budget is exhausted
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -1225,7 +1309,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             ScheduledAt = now.AddSeconds(-1),
-            RetryCount = 3,
+            RetryCount = 10,
             Instance = instance,
             CreatedAt = now,
             UpdatedAt = now
@@ -1277,7 +1361,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -1300,7 +1389,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);
@@ -1375,7 +1470,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -1402,7 +1502,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         // Initialize throttles
         var initCts = new CancellationTokenSource();
@@ -1449,7 +1555,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
             ScheduledAt = now.AddSeconds(-1),
-            RetryCount = 3, // = _maxRetries — budget exhausted
+            RetryCount = 10, // = _maxRetries — budget exhausted
             Instance = instance,
             CreatedAt = now,
             UpdatedAt = now
@@ -1496,7 +1602,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorkflowThrottle:ExtractRecipe"] = "1",
-                ["WorkflowRetry:MaxRetries"] = "3"
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -1524,7 +1635,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>());
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        }));
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);
@@ -1578,6 +1695,226 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         // Assert: NO recipe_failed SSE event published
         Assert.Empty(publishedEvents);
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Validates: Requirements 2.4
+    /// Confirms the unified catch block handles both failure types identically:
+    /// an HttpRequestException with status TooManyRequests and RetryCount=0
+    /// should produce the same ScheduledAt as a TransientWorkflowException at the same retry index.
+    /// </summary>
+    [Fact]
+    public async Task Worker_429Error_RetriesWithSameScheduleAsTransient()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"429SameScheduleAsTransientTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        var rateLimitEx = new HttpRequestException("Rate limited", null, HttpStatusCode.TooManyRequests);
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", rateLimitEx));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var retryOpts = Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        });
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), retryOpts);
+
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "429-same-schedule",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 0,
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var taskId = task.TaskId;
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: task is Pending, RetryCount=1, ScheduledAt ≈ now + 1 min (index 0 of schedule)
+        // Same as the transient path — confirms unified catch block
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskId);
+        Assert.Equal(TaskStatus.Pending, updatedTask.Status);
+        Assert.Equal(1, updatedTask.RetryCount);
+        Assert.NotNull(updatedTask.ScheduledAt);
+        var expectedSchedule = now.AddMinutes(1); // index 0 of [1,5,20,60,300]
+        Assert.True(Math.Abs((updatedTask.ScheduledAt!.Value - expectedSchedule).TotalMinutes) < 0.5,
+            $"ScheduledAt {updatedTask.ScheduledAt} not within 0.5 min of {expectedSchedule}");
+
+        // Cleanup
+        testWorker.Dispose();
+        initCts.Dispose();
+        await db.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Validates: Requirements 2.3
+    /// When RetryCount is already at MaxRetries, the next failure must permanently fail
+    /// the task (status=Failed) and pause the workflow instance (status=Paused).
+    /// </summary>
+    [Fact]
+    public async Task Worker_ExhaustedRetries_MarksTaskFailed()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:RetryScheduleMinutes:1"] = "5",
+                ["WorkflowRetry:RetryScheduleMinutes:2"] = "20",
+                ["WorkflowRetry:RetryScheduleMinutes:3"] = "60",
+                ["WorkflowRetry:RetryScheduleMinutes:4"] = "300",
+                ["WorkflowRetry:MaxRetries"] = "10"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"ExhaustedRetriesTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        var transientEx = new TransientWorkflowException("Persistent failure");
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", transientEx));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        await db.Database.EnsureCreatedAsync();
+
+        var retryOpts = Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1, 5, 20, 60, 300],
+            MaxRetries = 10,
+            QuietWindowStartHour = 1,
+            QuietWindowEndHour = 5
+        });
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), retryOpts);
+
+        var initCts = new CancellationTokenSource();
+        var initTask = testWorker.StartAsync(initCts.Token);
+        await Task.Delay(200);
+        initCts.Cancel();
+        try { await initTask; } catch (OperationCanceledException) { }
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "exhausted-retries",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+
+        // RetryCount = MaxRetries = 10 — budget is exhausted
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1),
+            RetryCount = 10, // = MaxRetries
+            Instance = instance,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var taskId = task.TaskId;
+        var instanceId = instance.Id;
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        await testWorker.ProcessPendingTasksAsync(cts.Token);
+
+        // Assert: task is Failed, instance is Paused
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskId);
+        Assert.Equal(TaskStatus.Failed, updatedTask.Status);
+        Assert.NotNull(updatedTask.ErrorMessage);
+        Assert.Contains("Persistent failure", updatedTask.ErrorMessage);
+
+        var updatedInstance = await queryDb.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        Assert.Equal(WorkflowStatus.Paused, updatedInstance.Status);
 
         // Cleanup
         testWorker.Dispose();

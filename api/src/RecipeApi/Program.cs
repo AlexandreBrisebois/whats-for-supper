@@ -163,6 +163,7 @@ try
        "DisasterRecovery"));
 
     builder.Services.AddHostedService<WorkflowWorker>();
+    builder.Services.Configure<WorkflowRetryOptions>(builder.Configuration.GetSection("WorkflowRetry"));
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────
     // ── AI Configuration ─────────────────────────────────────────────────────

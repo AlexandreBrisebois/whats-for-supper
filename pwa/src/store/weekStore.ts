@@ -271,12 +271,23 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
   // ── openVoting ────────────────────────────────────────────────────────────
   async openVoting() {
-    const prev = get().status;
+    const prevStatus = get().status;
+    const prevSchedule = get().schedule;
     set({ status: 1 });
     try {
       await openVotingApi(get().weekOffset);
+      // Fetch defaults immediately so they appear without waiting for the next sync
+      if (get().weekOffset === 0) {
+        const [scheduleData, defaultsData] = await Promise.all([
+          getSchedule(0),
+          getSmartDefaults(0),
+        ]);
+        if (scheduleData) {
+          set({ schedule: buildScheduleDays(scheduleData, defaultsData) });
+        }
+      }
     } catch {
-      set({ status: prev });
+      set({ status: prevStatus, schedule: prevSchedule });
       throw new Error('Failed to open voting');
     }
   },
@@ -320,7 +331,10 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
       if (!optimisticIsRecent) {
         set({
-          schedule: buildScheduleDays(data),
+          schedule: buildScheduleDays(
+            data,
+            get().weekOffset === 0 && status === 1 ? await getSmartDefaults(0) : undefined
+          ),
           status,
           lastSyncedAt: Date.now(),
         });

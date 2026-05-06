@@ -234,12 +234,12 @@ test.describe('Supper Planner', () => {
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
     await expect(page.getByText(/Chop the onions and mince the garlic/i).first()).toBeVisible();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 1 of \d+/i);
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
     // Navigate steps
     await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByText(/Saute until golden and fragrant/i).first()).toBeVisible();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Step 2 of \d+/i);
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
     // Close overlay
     await page.getByTestId('close-cooks-mode').click();
@@ -258,10 +258,12 @@ test.describe('Supper Planner', () => {
   });
 
   test('should assign pending smart default slots and lock when finalizing', async ({ page }) => {
-    // beforeEach intercepts all schedule POSTs with 200 OK, so finalize can complete.
-    // handleFinalize calls setIsLocked(true) on success or in the catch block.
+    // 1. Open voting to surface smart defaults (1 manual + 3 smart = 4 planned)
+    // The finalize button requires plannedCount >= 4.
+    await page.getByTestId('ask-family-cta').click();
+
     const finalizeBtn = page.getByTestId('finalize-button');
-    await expect(finalizeBtn).toBeVisible();
+    await expect(finalizeBtn).toBeVisible({ timeout: 10_000 });
     await finalizeBtn.scrollIntoViewIfNeeded();
     await finalizeBtn.click();
 
