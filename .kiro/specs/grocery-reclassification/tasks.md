@@ -1159,7 +1159,7 @@ import userEvent from '@testing-library/user-event';
 
 ## Slice 5 — Final gates
 
-### Task 5.1 — Drift check
+### Task 5.1 [x] — Drift check
 
 ```
 task agent:drift
@@ -1167,7 +1167,7 @@ task agent:drift
 
 Must report zero violations. Fix any before proceeding.
 
-### Task 5.2 — Full test suite
+### Task 5.2 [x] — Full test suite
 
 ```
 task test:api && task test:pwa
@@ -1175,7 +1175,7 @@ task test:api && task test:pwa
 
 All tests must pass.
 
-### Task 5.3 — Review
+### Task 5.3 [x] — Review
 
 ```
 task review

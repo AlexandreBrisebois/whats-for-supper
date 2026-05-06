@@ -601,6 +601,15 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // PATCH /api/ingredients/{normalizedKey}/category
+  await page.route('**/api/ingredients/*/category', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.fulfill({ status: 204 });
+    } else {
+      await route.continue();
+    }
+  });
+
   // GET /api/settings/{key} and POST /api/settings/{key}
   // Per-test in-memory store (reset each time setupCommonRoutes is called in beforeEach)
   const settingsStore: Record<string, unknown> = {
