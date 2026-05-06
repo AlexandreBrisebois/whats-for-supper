@@ -57,7 +57,6 @@ export default function PlannerPage() {
   const searchParams = useSearchParams();
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
   const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -205,29 +204,9 @@ export default function PlannerPage() {
     setShowPivot(null);
   };
 
-  const handleReorder = (newSchedule: UILocalScheduleDay[]) => {
-    let fromIndex = -1;
-    let toIndex = -1;
-
-    if (draggedId) {
-      fromIndex = schedule.findIndex((d) => d._uiId === draggedId);
-      toIndex = newSchedule.findIndex((d) => d._uiId === draggedId);
-    } else {
-      const oldRecipes = schedule.map((d) => d.recipe?.id);
-      const newRecipes = newSchedule.map((d) => d.recipe?.id);
-      for (let i = 0; i < oldRecipes.length; i++) {
-        if (oldRecipes[i] !== newRecipes[i]) {
-          fromIndex = i;
-          toIndex = newRecipes.indexOf(oldRecipes[i]);
-          break;
-        }
-      }
-    }
-
-    if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
-      useWeekStore.getState().reorderLocally(fromIndex, toIndex);
-    }
-  };
+  // Framer Motion calls onReorder on every pointer move during drag.
+  // We let it manage the visual order itself — store updates happen once in onDragEnd via commitMove.
+  const handleReorder = (_newSchedule: UILocalScheduleDay[]) => {};
 
   const plannedCount = schedule.filter((d) => d.recipe && d.recipe.id).length;
   const isFinalized = isLocked;
@@ -458,7 +437,6 @@ export default function PlannerPage() {
                     onCookMode={() => {
                       setActiveCookMode(day);
                     }}
-                    setDraggedId={setDraggedId}
                     preDragSnapshotRef={preDragSnapshotRef}
                     hasAnimatedIn={hasAnimatedIn}
                   />
@@ -574,7 +552,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
   successDay,
   onPivot,
   onCookMode,
-  setDraggedId,
   preDragSnapshotRef,
   hasAnimatedIn,
 }: {
@@ -583,7 +560,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
   successDay: number | null;
   onPivot: () => void;
   onCookMode: () => void;
-  setDraggedId: (id: string | null) => void;
   preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
   hasAnimatedIn: boolean;
 }) {
@@ -596,7 +572,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
       dragControls={dragControls}
       onDragStart={() => {
         preDragSnapshotRef.current = useWeekStore.getState().schedule;
-        setDraggedId(day._uiId);
       }}
       onDragEnd={() => {
         const snapshot = preDragSnapshotRef.current;
@@ -607,7 +582,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
           useWeekStore.getState().commitMove(finalFrom, finalTo, snapshot);
         }
         preDragSnapshotRef.current = null;
-        setDraggedId(null);
       }}
       initial={{ opacity: 0, y: 20 }}
       animate={{
