@@ -36,6 +36,13 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
 
   // Override schedule to return a week with one recipe that has known ingredients
   const monday = currentMonday();
+  const GROCERY_INGREDIENTS = ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'];
+  const GROCERY_SECTION_MAP: Record<string, string> = {
+    Pasta: 'Pantry',
+    Beef: 'Meat',
+    'Tomato Sauce': 'Pantry',
+    Cheese: 'Dairy & Eggs',
+  };
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setUTCDate(monday.getUTCDate() + i);
@@ -47,7 +54,7 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
           ? builders.scheduleRecipe({
               id: MOCK_IDS.RECIPE_LASAGNA,
               name: 'Homemade Lasagna',
-              ingredients: ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'],
+              ingredients: GROCERY_INGREDIENTS,
             })
           : null,
       status: 0,
@@ -62,7 +69,13 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: { weekOffset: 0, locked: false, status: 0, days },
+            data: {
+              weekOffset: 0,
+              locked: false,
+              status: 0,
+              days,
+              groceryItems: builders.groceryItems(GROCERY_INGREDIENTS, GROCERY_SECTION_MAP),
+            },
           }),
         });
       } else {
@@ -154,6 +167,13 @@ test.describe('Grocery List — SSE sync', () => {
 
     // Override schedule to return a week with one recipe that has known ingredients
     const monday = currentMonday();
+    const GROCERY_INGREDIENTS_SSE = ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'];
+    const GROCERY_SECTION_MAP_SSE: Record<string, string> = {
+      Pasta: 'Pantry',
+      Beef: 'Meat',
+      'Tomato Sauce': 'Pantry',
+      Cheese: 'Dairy & Eggs',
+    };
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setUTCDate(monday.getUTCDate() + i);
@@ -165,7 +185,7 @@ test.describe('Grocery List — SSE sync', () => {
             ? builders.scheduleRecipe({
                 id: MOCK_IDS.RECIPE_LASAGNA,
                 name: 'Homemade Lasagna',
-                ingredients: ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'],
+                ingredients: GROCERY_INGREDIENTS_SSE,
               })
             : null,
         status: 0,
@@ -180,7 +200,16 @@ test.describe('Grocery List — SSE sync', () => {
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
-              data: { weekOffset: 0, locked: false, status: 0, days },
+              data: {
+                weekOffset: 0,
+                locked: false,
+                status: 0,
+                days,
+                groceryItems: builders.groceryItems(
+                  GROCERY_INGREDIENTS_SSE,
+                  GROCERY_SECTION_MAP_SSE
+                ),
+              },
             }),
           });
         } else {
@@ -225,6 +254,13 @@ test.describe('Grocery List — SSE sync', () => {
     }, MOCK_IDS.MEMBER_ALEX);
 
     const monday = currentMonday();
+    const GROCERY_INGREDIENTS_WEEK = ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'];
+    const GROCERY_SECTION_MAP_WEEK: Record<string, string> = {
+      Pasta: 'Pantry',
+      Beef: 'Meat',
+      'Tomato Sauce': 'Pantry',
+      Cheese: 'Dairy & Eggs',
+    };
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setUTCDate(monday.getUTCDate() + i);
@@ -236,7 +272,7 @@ test.describe('Grocery List — SSE sync', () => {
             ? builders.scheduleRecipe({
                 id: MOCK_IDS.RECIPE_LASAGNA,
                 name: 'Homemade Lasagna',
-                ingredients: ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'],
+                ingredients: GROCERY_INGREDIENTS_WEEK,
               })
             : null,
         status: 0,
@@ -273,7 +309,16 @@ test.describe('Grocery List — SSE sync', () => {
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
-              data: { weekOffset: 0, locked: false, status: 0, days },
+              data: {
+                weekOffset: 0,
+                locked: false,
+                status: 0,
+                days,
+                groceryItems: builders.groceryItems(
+                  GROCERY_INGREDIENTS_WEEK,
+                  GROCERY_SECTION_MAP_WEEK
+                ),
+              },
             }),
           });
         } else {

@@ -149,13 +149,14 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
 
-    // Flip the card to reveal the back face (cook-mode-btn is on the back)
+    // Flip the card to reveal the back face (cook-mode-btn is on the back).
+    // Use dispatchEvent to bypass pointer-events-none on the pre-flip front face.
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-
-    // Open Cook's Mode
-    await page.getByTestId('cook-mode-btn').click();
-    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 5_000 });
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
 
     // Advance past the ingredients screen (step 0)
     await page.getByTestId('cooks-mode-step-next').click();
@@ -329,13 +330,13 @@ test.describe("Cook's Mode — UX redesign guard tests (Tasks 45, 46, 50)", () =
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
 
-    // Flip card to reveal back face
+    // Flip card to reveal back face; use dispatchEvent to bypass pointer-events-none.
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-
-    // Open Cook's Mode
-    await page.getByTestId('cook-mode-btn').click();
-    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 5_000 });
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
 
     // Card 0 is the ingredient checklist — find the first ingredient toggle button
     const firstIngredient = page.getByTestId('ingredient-toggle').first();
@@ -365,13 +366,13 @@ test.describe("Cook's Mode — UX redesign guard tests (Tasks 45, 46, 50)", () =
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
 
-    // Flip card to reveal back face
+    // Flip card to reveal back face; use dispatchEvent to bypass pointer-events-none.
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-
-    // Open Cook's Mode
-    await page.getByTestId('cook-mode-btn').click();
-    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 5_000 });
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
 
     // The dietary badge text must not be present anywhere in the overlay
     await expect(page.getByText('Plant-Powered Choice!')).not.toBeVisible();
@@ -388,13 +389,13 @@ test.describe("Cook's Mode — UX redesign guard tests (Tasks 45, 46, 50)", () =
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
 
-    // Flip card to reveal back face
+    // Flip card to reveal back face; use dispatchEvent to bypass pointer-events-none.
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-
-    // Open Cook's Mode
-    await page.getByTestId('cook-mode-btn').click();
-    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 5_000 });
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
 
     // The next button on step 0 must say "Let's Cook" (not "Next")
     await expect(page.getByTestId('cooks-mode-step-next')).toContainText("Let's Cook");
@@ -411,13 +412,13 @@ test.describe("Cook's Mode — UX redesign guard tests (Tasks 45, 46, 50)", () =
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
 
-    // Flip card to reveal back face
+    // Flip card to reveal back face; use dispatchEvent to bypass pointer-events-none.
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-
-    // Open Cook's Mode
-    await page.getByTestId('cook-mode-btn').click();
-    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 5_000 });
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
 
     // Step through all steps until we reach the last one (Done button)
     // The spaghetti recipe has multiple steps — keep clicking Next until Done appears

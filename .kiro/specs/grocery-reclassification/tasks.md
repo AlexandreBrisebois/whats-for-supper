@@ -482,7 +482,7 @@ public async Task RecomputeForWeekAsync_NullUnit_GroupedUnderPiece()
 
 ## Slice 3 — API: reclassify endpoint
 
-### Task 3.1 — Add PATCH path to openapi.yaml
+### Task 3.1 [x] — Add PATCH path to openapi.yaml
 
 **File:** `specs/openapi.yaml`
 
@@ -542,7 +542,7 @@ Add the request body schema inside `components/schemas:`:
 
 ---
 
-### Task 3.2 — Regenerate Kiota client
+### Task 3.2 [x] — Regenerate Kiota client
 
 **Run:**
 ```
@@ -555,7 +555,7 @@ Verify that a new generated path for `/api/ingredients/{normalizedKey}/category`
 
 ---
 
-### Task 3.3 — Add RecomputeForIngredientAsync to GroceryRecomputeService
+### Task 3.3 [x] — Add RecomputeForIngredientAsync to GroceryRecomputeService
 
 **File:** `api/src/RecipeApi/Services/GroceryRecomputeService.cs`
 
@@ -601,7 +601,7 @@ public async Task RecomputeForIngredientAsync(string normalizedKey, Cancellation
 
 ---
 
-### Task 3.4 — Add IngredientCategoryService
+### Task 3.4 [x] — Add IngredientCategoryService
 
 **File:** `api/src/RecipeApi/Services/IngredientCategoryService.cs` (new file)
 
@@ -669,7 +669,7 @@ builder.Services.AddScoped<IngredientCategoryService>();
 
 ---
 
-### Task 3.5 — Write IngredientCategoryService tests first
+### Task 3.5 [x] — Write IngredientCategoryService tests first
 
 **File:** `api/src/RecipeApi.Tests/Services/IngredientCategoryServiceTests.cs` (new file)
 
@@ -788,7 +788,7 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
 
 ---
 
-### Task 3.6 — Add IngredientsController
+### Task 3.6 [x] — Add IngredientsController
 
 **File:** `api/src/RecipeApi/Controllers/IngredientsController.cs` (new file)
 
@@ -842,7 +842,7 @@ public record ReclassifyIngredientDto(string GrocerySection);
 
 ---
 
-### Task 3.7 — Write integration tests for the PATCH endpoint
+### Task 3.7 [x] — Write integration tests for the PATCH endpoint
 
 **File:** `api/src/RecipeApi.Tests/Integration/IngredientCategoryIntegrationTests.cs` (new file)
 

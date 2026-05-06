@@ -38,6 +38,14 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     const thisMonday = currentMonday();
 
     // Hardened Intercepts (ADR 029)
+    const UTILITY_GROCERY_INGREDIENTS = ['Pasta Sheets', 'Ground Beef', 'Tomato Sauce', 'Ricotta'];
+    const UTILITY_GROCERY_SECTION_MAP: Record<string, string> = {
+      'Pasta Sheets': 'Pantry',
+      'Ground Beef': 'Meat',
+      'Tomato Sauce': 'Pantry',
+      Ricotta: 'Dairy & Eggs',
+    };
+
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
@@ -58,7 +66,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                 ? builders.scheduleRecipe({
                     id: MOCK_IDS.RECIPE_LASAGNA,
                     name: 'Test Lasagna',
-                    ingredients: ['Pasta Sheets', 'Ground Beef', 'Tomato Sauce', 'Ricotta'],
+                    ingredients: UTILITY_GROCERY_INGREDIENTS,
                   })
                 : null,
             };
@@ -72,6 +80,10 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                 locked: true,
                 status: 2,
                 days,
+                groceryItems: builders.groceryItems(
+                  UTILITY_GROCERY_INGREDIENTS,
+                  UTILITY_GROCERY_SECTION_MAP
+                ),
               },
             }),
           });
@@ -176,6 +188,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                   },
                 ],
                 groceryState: { [itemName]: true },
+                groceryItems: builders.groceryItems([itemName], { [itemName]: 'Pantry' }),
               },
             }),
           });

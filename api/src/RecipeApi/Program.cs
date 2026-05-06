@@ -107,6 +107,7 @@ try
     builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddScoped<ScheduleService>();
     builder.Services.AddScoped<GroceryRecomputeService>();
+    builder.Services.AddScoped<IngredientCategoryService>();
     builder.Services.AddScoped<SettingsService>();
 
     builder.Services.AddScoped<FamilyService>();

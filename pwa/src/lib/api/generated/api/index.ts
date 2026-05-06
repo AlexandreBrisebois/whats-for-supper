@@ -17,6 +17,11 @@ import {
 import { HealthRequestBuilderRequestsMetadata, type HealthRequestBuilder } from './health/index';
 // @ts-ignore
 import {
+  IngredientsRequestBuilderNavigationMetadata,
+  type IngredientsRequestBuilder,
+} from './ingredients/index';
+// @ts-ignore
+import {
   ManagementRequestBuilderNavigationMetadata,
   type ManagementRequestBuilder,
 } from './management/index';
@@ -68,6 +73,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
    */
   get health(): HealthRequestBuilder;
   /**
+   * The ingredients property
+   */
+  get ingredients(): IngredientsRequestBuilder;
+  /**
    * The management property
    */
   get management(): ManagementRequestBuilder;
@@ -113,6 +122,9 @@ export const ApiRequestBuilderNavigationMetadata: Record<
   },
   health: {
     requestsMetadata: HealthRequestBuilderRequestsMetadata,
+  },
+  ingredients: {
+    navigationMetadata: IngredientsRequestBuilderNavigationMetadata,
   },
   management: {
     navigationMetadata: ManagementRequestBuilderNavigationMetadata,

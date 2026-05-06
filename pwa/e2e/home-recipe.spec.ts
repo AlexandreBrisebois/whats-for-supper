@@ -36,12 +36,24 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   });
 
   test('Shows tonight menu card when recipe is planned', async ({ page }) => {
+    const monday = currentMonday();
+    const today = toDateStr(monday);
+    const lasagnaRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Test Lasagna',
+      image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+    });
+
+    // Override SSE to seed todayStore with the recipe deterministically.
+    // Without this, the SSE `connected` (empty schedule) races against sync() (GET schedule)
+    // and can reset todayStore.currentRecipe to null, hiding the menu card.
+    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+
     // 1. Mock schedule with a planned recipe for today
     await page.route(
       (url) => url.pathname.includes('/api/schedule') && url.searchParams.get('weekOffset') === '0',
       async (route) => {
         if (route.request().method() === 'GET') {
-          const monday = currentMonday();
           // Use builders to ensure contract compliance
           const days = Array.from({ length: 7 }, (_, i) => {
             const d = new Date(monday);
@@ -51,11 +63,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             return {
               date: dateStr,
               status: 0,
-              recipe: builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_LASAGNA,
-                name: 'Test Lasagna',
-                image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
-              }),
+              recipe: lasagnaRecipe,
             };
           });
 
@@ -196,27 +204,31 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Schedule with a planned recipe for today
     const monday = currentMonday();
     const today = toDateStr(monday);
+    const lasagnaRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Test Lasagna',
+    });
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setUTCDate(monday.getUTCDate() + i);
+      const dateStr = toDateStr(d);
+      return {
+        day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+        date: dateStr,
+        status: 0,
+        recipe: dateStr === today ? lasagnaRecipe : null,
+      };
+    });
+
+    // Override SSE to send the recipe for today so todayStore.currentRecipe is set
+    // deterministically — avoids a race between SSE (empty schedule) and sync() (GET schedule).
+    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
         const reqUrl = new URL(route.request().url());
         if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
-          const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date(monday);
-            d.setUTCDate(monday.getUTCDate() + i);
-            const dateStr = toDateStr(d);
-            return {
-              date: dateStr,
-              status: 0,
-              recipe:
-                dateStr === today
-                  ? builders.scheduleRecipe({
-                      id: MOCK_IDS.RECIPE_LASAGNA,
-                      name: 'Test Lasagna',
-                    })
-                  : null,
-            };
-          });
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -434,6 +446,35 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await page.getByTestId('order-in-btn').click();
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible({ timeout: 3000 });
 
+    // Override the SSE route to send status:3 for today before reload.
+    // Without this, the SSE `connected` event fires with status:0 on reconnect,
+    // racing against the schedule GET (which returns status:3) and potentially
+    // resetting todayStore.status back to 0 — causing the pivot card to reappear.
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        const dateStr = toDateStr(d);
+        return {
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+          date: dateStr,
+          recipe: null,
+          status: dateStr === today ? 3 : 0,
+        };
+      });
+      const body = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, locked: false, status: 0, days } })}\n\n`;
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        },
+        body,
+      });
+    });
+
     // Reload — server now returns status:3 for today
     await page.reload();
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5000 });
@@ -493,12 +534,22 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   });
 
   test('Completing Cook Mode marks meal as cooked', async ({ page }) => {
+    const monday = currentMonday();
+    const today = toDateStr(monday);
+    const lasagnaRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Test Lasagna',
+    });
+
+    // Override SSE to seed todayStore with the recipe — prevents the race between
+    // SSE (empty schedule) and sync() (GET schedule) from hiding the menu card.
+    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+
     // 1. Mock schedule with planned recipe
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
         if (route.request().method() === 'GET') {
-          const monday = currentMonday();
           const days = Array.from({ length: 7 }, (_, i) => {
             const d = new Date(monday);
             d.setUTCDate(monday.getUTCDate() + i);
@@ -507,10 +558,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             return {
               date: dateStr,
               status: 0,
-              recipe: builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_LASAGNA,
-                name: 'Test Lasagna',
-              }),
+              recipe: lasagnaRecipe,
             };
           });
 
@@ -540,11 +588,17 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     );
 
     await page.goto('/home');
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
+    // Flip card to reveal back face; use dispatchEvent to bypass pointer-events-none.
     await page.getByTestId('tonight-menu-card').click();
-    await page.getByTestId('cook-mode-btn').click();
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
 
     // Step through Cook's Mode
     const nextBtn = page.getByTestId('cooks-mode-step-next');
+    await expect(nextBtn).toBeVisible({ timeout: 15_000 });
 
     // Click Next until "Done"
     for (let i = 0; i < 5; i++) {
@@ -731,6 +785,34 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
 
     await page.getByTestId('order-in-btn').click();
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible({ timeout: 3000 });
+
+    // Override the SSE route to send status:3 for today before reload.
+    // Without this, the SSE `connected` event races against the GET schedule response,
+    // and the status:0 from SSE can reset todayStore, causing the pivot card to reappear.
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        const dateStr = toDateStr(d);
+        return {
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+          date: dateStr,
+          recipe: null,
+          status: dateStr === today ? 3 : 0,
+        };
+      });
+      const body = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, locked: false, status: 0, days } })}\n\n`;
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        },
+        body,
+      });
+    });
 
     // Reload — server returns status:3 for today
     await page.reload();

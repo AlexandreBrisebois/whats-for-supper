@@ -350,6 +350,17 @@ export function createRecipeStatusDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ReclassifyIngredientRequest}
+ */
+// @ts-ignore
+export function createReclassifyIngredientRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoReclassifyIngredientRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecommendationResultDto}
  */
 // @ts-ignore
@@ -1263,6 +1274,24 @@ export function deserializeIntoRecipeStatusDto(
     },
     status: (n) => {
       recipeStatusDto.status = n.getEnumValue<RecipeStatusDto_status>(RecipeStatusDto_statusObject);
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param ReclassifyIngredientRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoReclassifyIngredientRequest(
+  reclassifyIngredientRequest: Partial<ReclassifyIngredientRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    grocerySection: (n) => {
+      reclassifyIngredientRequest.grocerySection =
+        n.getEnumValue<ReclassifyIngredientRequest_grocerySection>(
+          ReclassifyIngredientRequest_grocerySectionObject
+        );
     },
   };
 }
@@ -2216,6 +2245,14 @@ export interface RecipeStatusDto extends AdditionalDataHolder, Parsable {
 }
 export type RecipeStatusDto_status =
   (typeof RecipeStatusDto_statusObject)[keyof typeof RecipeStatusDto_statusObject];
+export interface ReclassifyIngredientRequest extends AdditionalDataHolder, Parsable {
+  /**
+   * The grocerySection property
+   */
+  grocerySection?: ReclassifyIngredientRequest_grocerySection | null;
+}
+export type ReclassifyIngredientRequest_grocerySection =
+  (typeof ReclassifyIngredientRequest_grocerySectionObject)[keyof typeof ReclassifyIngredientRequest_grocerySectionObject];
 export interface RecommendationResultDto extends AdditionalDataHolder, Parsable {
   /**
    * The id property
@@ -2930,6 +2967,27 @@ export function serializeRecipeStatusDto(
   writer.writeStringValue('name', recipeStatusDto.name);
   writer.writeEnumValue<RecipeStatusDto_status>('status', recipeStatusDto.status);
   writer.writeAdditionalData(recipeStatusDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ReclassifyIngredientRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeReclassifyIngredientRequest(
+  writer: SerializationWriter,
+  reclassifyIngredientRequest: Partial<ReclassifyIngredientRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!reclassifyIngredientRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeEnumValue<ReclassifyIngredientRequest_grocerySection>(
+    'grocerySection',
+    reclassifyIngredientRequest.grocerySection
+  );
+  writer.writeAdditionalData(reclassifyIngredientRequest.additionalData);
 }
 /**
  * Serializes information the current object
@@ -3757,6 +3815,18 @@ export const MoveScheduleDto_intentObject = {
 export const RecipeStatusDto_statusObject = {
   Pending: 'pending',
   Ready: 'ready',
+} as const;
+export const ReclassifyIngredientRequest_grocerySectionObject = {
+  Produce: 'Produce',
+  Meat: 'Meat',
+  Seafood: 'Seafood',
+  DairyEggs: 'Dairy & Eggs',
+  Frozen: 'Frozen',
+  Bakery: 'Bakery',
+  Pantry: 'Pantry',
+  Beverages: 'Beverages',
+  Deli: 'Deli',
+  Grocery: 'Grocery',
 } as const;
 export const WorkflowInstanceDetailDto_statusObject = {
   Pending: 'Pending',

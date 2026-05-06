@@ -330,6 +330,58 @@ public class GroceryRecomputeService(
         }
     }
 
+    /// <summary>
+    /// Finds all weeks whose pre-computed grocery list contains <paramref name="normalizedKey"/>
+    /// and recomputes each affected week.
+    /// Called after a human reclassification to propagate the corrected section.
+    /// </summary>
+    public virtual async Task RecomputeForIngredientAsync(string normalizedKey, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedKey))
+        {
+            logger.LogDebug("Skipping ingredient recompute because normalizedKey is empty");
+            return;
+        }
+
+        List<DateOnly> affectedMondays;
+
+        // EF InMemory provider does not support JsonContains. Use string contains fallback in tests.
+        if ((db.Database.ProviderName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase)).GetValueOrDefault())
+        {
+            affectedMondays = await db.WeeklyPlans
+                .Where(p => p.GroceryItems != null && p.GroceryItems.Contains(normalizedKey))
+                .Select(p => p.WeekStartDate)
+                .Distinct()
+                .ToListAsync(ct);
+        }
+        else
+        {
+            var containsPayload = JsonSerializer.Serialize(new[] { new { normalizedKey } });
+            affectedMondays = await db.WeeklyPlans
+                .Where(p => p.GroceryItems != null && EF.Functions.JsonContains(p.GroceryItems, containsPayload))
+                .Select(p => p.WeekStartDate)
+                .Distinct()
+                .ToListAsync(ct);
+        }
+
+        if (affectedMondays.Count == 0)
+        {
+            logger.LogDebug(
+                "Ingredient '{Key}' is not in any weekly grocery list - no recompute needed",
+                normalizedKey);
+            return;
+        }
+
+        logger.LogInformation(
+            "Reclassifying ingredient '{Key}' - recomputing {Count} affected week(s)",
+            normalizedKey, affectedMondays.Count);
+
+        foreach (var monday in affectedMondays)
+        {
+            await RecomputeForWeekAsync(monday, ct);
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// <summary>

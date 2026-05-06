@@ -140,7 +140,7 @@ public class ClassifyDietaryProfileProcessor(
         var (supplyNames, nutrition) = ExtractSupplyAndNutrition(recipe.RawMetadata, recipeId);
         if (supplyNames.Count == 0)
         {
-            logger.LogDebug("ClassifyDietaryProfile: recipe {RecipeId} has no supply[] entries — skipping", recipeId);
+            logger.LogDebug("ClassifyDietaryProfile: recipe {RecipeId} has no supply[] or recipeIngredient[] entries — skipping", recipeId);
             return;
         }
 
@@ -207,7 +207,7 @@ public class ClassifyDietaryProfileProcessor(
             return (supplyNames, nutrition);
         }
 
-        // Extract supply array
+        // Extract supply array, fall back to recipeIngredient strings if supply is absent
         var supplyArray = root?["supply"]?.AsArray();
         if (supplyArray != null && supplyArray.Count > 0)
         {
@@ -217,6 +217,20 @@ public class ClassifyDietaryProfileProcessor(
                 var name = item["name"]?.GetValue<string>();
                 if (!string.IsNullOrWhiteSpace(name))
                     supplyNames.Add(name);
+            }
+        }
+        else
+        {
+            var ingredientArray = root?["recipeIngredient"]?.AsArray();
+            if (ingredientArray != null)
+            {
+                foreach (var item in ingredientArray)
+                {
+                    if (item == null) continue;
+                    var text = item.GetValue<string>();
+                    if (!string.IsNullOrWhiteSpace(text))
+                        supplyNames.Add(text);
+                }
             }
         }
 

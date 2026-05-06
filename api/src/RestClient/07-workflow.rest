@@ -1,7 +1,7 @@
 @workflowId = classify-recipe
 @recipeImportWorkflowId = classify-recipe
 
-#@recipeId = 2a801596-60e6-463d-90fc-28547537133e
+@recipeId = 2a801596-60e6-463d-90fc-28547537133e
 #@recipeId = 0384639a-96e2-48d9-89fe-c30d55e06c98
 #@recipeId = 06726f44-ff99-4d62-a4b8-20ef165476f5
 #@recipeId = 0732fd95-15ab-4ac2-8f68-3f42e811d6f0

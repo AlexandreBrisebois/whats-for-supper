@@ -111,6 +111,32 @@ export const builders = {
     updatedAt: new Date(),
     ...overrides,
   }),
+
+  /**
+   * Converts a list of ingredient display names into GroceryLineItemDto objects.
+   * Each ingredient defaults to the 'Pantry' section unless a section map is provided.
+   * Use this to populate `groceryItems` on mock schedule responses so that
+   * `weekStore.groceryItems` is populated and `GroceryList` renders items.
+   */
+  groceryItems: (
+    names: string[],
+    sectionMap: Record<string, string> = {}
+  ): Array<{
+    displayName: string;
+    normalizedKey: string;
+    section: string;
+    quantity: number | null;
+    unitText: string | null;
+    recipeIds: string[];
+  }> =>
+    names.map((name) => ({
+      displayName: name,
+      normalizedKey: name.toLowerCase().replace(/\s+/g, '_'),
+      section: sectionMap[name] ?? 'Pantry',
+      quantity: null,
+      unitText: null,
+      recipeIds: [],
+    })),
 };
 
 /**
