@@ -42,13 +42,16 @@ stateDiagram-v2
 ```
 POST /api/schedule/assign
   → DB: INSERT CalendarEvent
+  → GroceryRecomputeService: recompute grocery + balance_summary
   → SSE: slot_updated { date, recipe, status: 0 }
   → SSE: fill_the_gap_invalidated { weekOffset }
+  → SSE: discovery_nudge { nextFoodGroup, reason } (conditional — only when a group newly hits its target)
 ```
 
 **Stores updated:**
 - `weekStore.applySlotUpdate({ date, recipe, status })` — updates the day card
 - `discoveryStore.invalidateFillTheGap(weekOffset)` — triggers Discovery page silent refetch
+- `discoveryStore.setActiveCategory(nextFoodGroup)` — on `discovery_nudge`, steers the discovery stack toward the most under-represented food group
 
 ### Draft → Slot Removed
 
@@ -302,8 +305,16 @@ The planner lets users navigate between weeks. SSE must work correctly for any w
 | `smart_defaults_updated` | `applySmartDefaultsUpdate` | — | — | — |
 | `fill_the_gap_invalidated` | — | — | `invalidateFillTheGap` | — |
 | `grocery_updated` | — | — | — | `setGroceryState` |
+| `discovery_nudge` | — | — | `setActiveCategory(nextFoodGroup)` | — |
 | `recipe_ready` | — | — | — | — (→ `gotoStore.markReady`, `libraryStore.pushNotification`) |
 | `recipe_failed` | — | — | — | — (→ `captureStore.removePending`, `libraryStore.pushNotification`) |
+
+### When `discovery_nudge` fires
+
+`discovery_nudge` is emitted by `GroceryRecomputeService` at the end of `RecomputeForWeekAsync` — which runs on every recipe assign/remove. It fires **only** when a food group's count newly crosses its CFG weekly target (e.g. `proteinDays` went from 2 → 3). It does **not** fire on the first recompute (no previous summary to compare against) and does **not** fire when nothing changed.
+
+Payload: `{ nextFoodGroup: "WholeGrains" | "VegetablesAndFruits" | "ProteinFoods" | null, reason: string }`
+- `nextFoodGroup` is the most under-represented group still below its target, or `null` when `isBalanced = true`.
 
 ---
 

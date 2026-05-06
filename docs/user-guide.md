@@ -36,11 +36,30 @@ The planner saves you from the Sunday-night panic of figuring out five dinners f
 
 ---
 
+## Balanced Meals
+
+At the top of the weekly planner, you'll see a **balance indicator**. It tracks whether your week's dinners cover the key food groups from Canada's Food Guide:
+
+- **Protein** (meat, fish, legumes, eggs) — at least 3 nights
+- **Vegetables & fruit** — at least 4 nights
+- **Whole grains** (brown rice, quinoa, oats) — at least 2 nights
+- **Plant-based protein** (beans, lentils, tofu) — at least once
+
+When your week is balanced, the indicator turns green. If it isn't, it shows one helpful suggestion — like "Try to include vegetables or fruit in at least 4 dinners."
+
+The indicator is informational only — it never blocks you from assigning whatever you want. Think of it as a quiet co-planner, not a food critic.
+
+Every recipe is classified automatically when you add it. This happens once in the background and is remembered forever — the app never re-analyses the same recipe twice.
+
+---
+
 ## Discovering New Recipes
 
 Swipe through recipe cards like a family vote. Heart the ones you love, pass on the rest.
 
 When enough family members like the same recipe, it rises to the top of the planner suggestions. No group chat needed.
+
+As you fill your weekly plan, the discovery stack quietly adjusts to surface recipes from food groups you haven't covered yet. If you've already got plenty of protein, you'll start seeing more vegetable-forward recipes — without having to filter anything yourself.
 
 Discovery saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
 
@@ -66,4 +85,7 @@ Everything in the app is shared and live. When Alex assigns a recipe on the plan
 
 The grocery list works the same way. Two people in the same store, checking things off together in real time.
 
+The discovery stack adapts in real time too — as the week fills up, the cards shift toward whatever food group the family still needs most.
+
 This saves you from the classic "I already bought that" text message.
+
