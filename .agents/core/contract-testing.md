@@ -18,7 +18,34 @@
 - **High-Fidelity Mocks**: Test factories (e.g., `TestWebApplicationFactory`) should prioritize mocks that preserve domain side-effects (e.g., persisting workflow instances to the DB) rather than "shallow" mocks that return empty success objects. This ensures vertical slice integration tests can verify system state correctly.
 - **Strict Typing**: Hardcoded string IDs (e.g., `"recipe-1"`) are strictly forbidden. Mock data must adhere strictly to the schema contract.
 
-## 5. Definition of done
+## 5. SSE and async React patterns in E2E tests
+
+### The `pendingRef` anti-pattern
+Do **not** coordinate SSE-driven side effects using a boolean "pending flag" ref that one async path sets and another async path reads. The two paths (SSE effect and `initialize()`) interleave non-deterministically in CI, causing the flag to be consumed by the wrong path or missed entirely.
+
+### Correct pattern: `recipes.length` dep + version guard
+When a `useEffect` must react to an SSE signal that may arrive before or after async data is ready:
+
+1. Include the data-readiness signal (e.g., `recipes.length`) as a dep alongside the SSE version counter.
+2. Guard against early firing with `if (!stackIsLoadedRef.current || recipes.length === 0) return`.
+3. Track the last-handled version in a ref (`lastHandledFillTheGapVersionRef`) to prevent the effect from re-firing for the same SSE event when `recipes.length` changes later (e.g., user swipes).
+
+```ts
+useEffect(() => {
+  if (fillTheGapVersion === 0) return;
+  if (!stackIsLoadedRef.current || recipes.length === 0) return;
+  if (fillTheGapVersion <= lastHandledVersionRef.current) return;
+  lastHandledVersionRef.current = fillTheGapVersion;
+  refetchCurrentCategory();
+}, [fillTheGapVersion, refetchCurrentCategory, recipes.length]);
+```
+
+This eliminates the race entirely: when the stack loads the effect re-fires automatically, and the version guard prevents double-processing.
+
+### SSE mock reconnection (BS-10)
+`route.fulfill()` closes the HTTP connection. EventSource auto-reconnects (~3 s). Every reconnect replays the entire mock body, incrementing the SSE version counter again. The version guard above absorbs these duplicate events safely.
+
+## 6. Definition of done
 - The OpenAPI specification accurately reflects the required changes.
 - **Atomic Sync**: Controller changes (signatures, status codes) are synchronized with the OpenAPI spec and client regeneration in a single atomic step.
 - Tests are written or updated before implementation code.

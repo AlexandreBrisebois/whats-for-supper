@@ -78,6 +78,7 @@ docker/docker-compose.prod.yml
 
 # User-specific files (MacOS)
 .DS_Store
+http-client.env.json
 
 # Node / Next.js
 node_modules/
@@ -98,3 +99,4 @@ pwa/e2e-screenshots
 /api/data
 docker/compose/data/
 api/appsettings.Development.json
+.vscode/settings.json

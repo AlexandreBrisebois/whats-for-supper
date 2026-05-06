@@ -21,6 +21,13 @@ export default function DiscoveryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEureka, setIsEureka] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
+  const categoriesRef = useRef<string[]>([]);
+  const categoryIndexRef = useRef(0);
+  // Tracks the last fillTheGapVersion we already handled (prevents double-refetch
+  // when recipes.length dep re-fires the effect after the stack loads).
+  const lastHandledFillTheGapVersionRef = useRef(0);
+  // Tracks whether the initial stack has been committed to the store
+  const stackIsLoadedRef = useRef(false);
   // Micro-badge: "Just planned ✓" shown when a card is removed from the visible top 4
   const [showJustPlannedBadge, setShowJustPlannedBadge] = useState(false);
   const justPlannedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,11 +37,13 @@ export default function DiscoveryPage() {
     try {
       const cats = await getCategories();
       setCategories(cats);
+      categoriesRef.current = cats;
 
       const targetCategory = cats[0];
       if (targetCategory) {
         setActiveCategory(targetCategory);
         setCurrentCategoryIndex(0);
+        categoryIndexRef.current = 0;
         const stack = await getDiscoveryStack(targetCategory);
         useDiscoveryStore.getState().setStack(
           stack.map((r) => ({
@@ -59,12 +68,17 @@ export default function DiscoveryPage() {
         const cats = await getCategories();
         if (ignore) return;
         setCategories(cats);
+        categoriesRef.current = cats;
 
-        // Nudge priority: use activeCategory from store if set, otherwise first from API
-        const targetCategory = activeCategory ?? cats[0];
+        // Nudge priority: read activeCategory from store at call-time (not from
+        // the closure dep) so we don't re-trigger this effect when we set it below.
+        const storedCategory = useDiscoveryStore.getState().activeCategory;
+        const targetCategory = storedCategory ?? cats[0];
         if (targetCategory) {
           const index = cats.indexOf(targetCategory);
-          setCurrentCategoryIndex(index !== -1 ? index : 0);
+          const resolvedIndex = index !== -1 ? index : 0;
+          setCurrentCategoryIndex(resolvedIndex);
+          categoryIndexRef.current = resolvedIndex;
           setActiveCategory(targetCategory);
 
           const stack = await getDiscoveryStack(targetCategory);
@@ -75,6 +89,9 @@ export default function DiscoveryPage() {
                 imageUrl: `/api/recipes/${r.id}/hero`,
               }))
             );
+            stackIsLoadedRef.current = true;
+            // The fillTheGapVersion effect has recipes.length as a dep — it will
+            // re-fire now that the stack is populated and handle any pending SSE.
           }
         }
       } catch (error) {
@@ -88,7 +105,11 @@ export default function DiscoveryPage() {
     return () => {
       ignore = true;
     };
-  }, [activeCategory, setActiveCategory, _hasHydrated, selectedFamilyMemberId]);
+    // activeCategory is intentionally NOT a dep — we read it from the store at call-time
+    // inside initialize() to avoid re-triggering this effect when we call setActiveCategory.
+    // A separate effect below handles nudge-driven category switches.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_hasHydrated, selectedFamilyMemberId, setActiveCategory]);
 
   // Sync pending cards status to store
   useEffect(() => {
@@ -102,11 +123,16 @@ export default function DiscoveryPage() {
    * removes any recipes that are no longer in the response (they were planned).
    * Does NOT flash a loading state — existing cards stay visible until the diff
    * is applied.
+   *
+   * Uses refs for categories/index so it never needs to be recreated and avoids
+   * stale closure issues.
    */
   const refetchCurrentCategory = useCallback(async () => {
-    if (categories.length === 0) return;
+    const cats = categoriesRef.current;
+    const idx = categoryIndexRef.current;
+    if (cats.length === 0) return;
     try {
-      const currentCategory = categories[currentCategoryIndex];
+      const currentCategory = cats[idx];
       const rawStack = await getDiscoveryStack(currentCategory);
       const freshStack = rawStack.map((r) => ({
         ...r,
@@ -140,16 +166,20 @@ export default function DiscoveryPage() {
     } catch (error) {
       console.error('Silent refetch of discovery category failed', error);
     }
-  }, [categories, currentCategoryIndex]);
+  }, []); // stable — reads from refs, no closure deps
 
-  // Subscribe to fill-the-gap invalidation signal from SSE
+  // Subscribe to fill-the-gap invalidation signal from SSE.
+  // recipes.length is included so the effect re-fires once the stack loads,
+  // handling SSE events that arrived before the initial fetch completed.
+  // lastHandledFillTheGapVersionRef prevents double-processing the same version
+  // when recipes.length changes for other reasons (e.g. a swipe).
   useEffect(() => {
     if (fillTheGapVersion === 0) return; // skip initial mount
-    // refetchCurrentCategory is a useCallback that calls setShowJustPlannedBadge internally.
-    // This is an intentional store-subscription pattern, not a cascading render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!stackIsLoadedRef.current || recipes.length === 0) return; // stack not ready yet
+    if (fillTheGapVersion <= lastHandledFillTheGapVersionRef.current) return; // already handled
+    lastHandledFillTheGapVersionRef.current = fillTheGapVersion;
     refetchCurrentCategory();
-  }, [fillTheGapVersion, refetchCurrentCategory]);
+  }, [fillTheGapVersion, refetchCurrentCategory, recipes.length]);
 
   // Cleanup timer on unmount
   useEffect(() => {
