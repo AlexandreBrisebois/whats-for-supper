@@ -251,6 +251,7 @@ export async function setupCommonRoutes(page: Page) {
               locked: false,
               status: 0,
               days,
+              groceryState: {},
             },
           }),
         });

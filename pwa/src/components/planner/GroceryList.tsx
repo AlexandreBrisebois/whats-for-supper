@@ -258,8 +258,9 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                   className="flex items-center space-x-4 flex-1 text-left"
                                   data-testid="grocery-item-checkbox"
                                   data-item-name={key}
+                                  data-state={isChecked ? 'checked' : 'unchecked'}
                                   role="checkbox"
-                                  aria-checked={isChecked}
+                                  aria-checked={isChecked ? 'true' : 'false'}
                                 >
                                   {isChecked ? (
                                     <CheckCircle2 size={20} className="text-sage flex-shrink-0" />

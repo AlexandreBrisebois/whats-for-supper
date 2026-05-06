@@ -80,6 +80,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                 locked: true,
                 status: 2,
                 days,
+                groceryState: {},
                 groceryItems: builders.groceryItems(
                   UTILITY_GROCERY_INGREDIENTS,
                   UTILITY_GROCERY_SECTION_MAP
@@ -151,14 +152,18 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     // Mock update
     await page.route(
-      (url) => url.pathname.includes('/api/schedule/') && url.pathname.endsWith('/grocery'),
+      (url) => url.pathname.includes('/api/schedule/') && url.pathname.endsWith('/grocery/item'),
       async (route) => {
-        await route.fulfill({ status: 200, json: { success: true } });
+        await route.fulfill({ status: 204 });
       }
     );
 
-    await firstItem.click();
+    await expect(firstItem).toHaveAttribute('aria-checked', 'false');
+    await expect(firstItem).toHaveAttribute('data-state', 'unchecked');
+
+    await firstItem.click({ delay: 100 });
     await expect(firstItem).toBeChecked();
+    await expect(firstItem).toHaveAttribute('aria-checked', 'true');
 
     // Update the GET mock
     await page.route(
@@ -205,6 +210,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
       `[data-testid="grocery-item-checkbox"][data-item-name="${itemName}"]`
     );
     await expect(refreshedItem).toBeChecked();
+    await expect(refreshedItem).toHaveAttribute('aria-checked', 'true');
   });
 
   test('Grocery items grouped by aisle sections', async ({ page }) => {
