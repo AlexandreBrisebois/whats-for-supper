@@ -20,9 +20,6 @@ export default function ProfilePage() {
     router.push(ROUTES.HOME);
   }
 
-  function handleContinue() {
-    router.push(ROUTES.HOME);
-  }
 
   return (
     <div className="flex flex-col gap-10 pt-4 pb-20 max-w-sm mx-auto w-full px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -50,21 +47,6 @@ export default function ProfilePage() {
         <ProfileDropdown onSelect={handleFamilyMemberSelected} />
       </div>
 
-      <p className="max-w-[200px] text-center text-xs font-medium text-charcoal/60">
-        {t('profile.manageHint', 'Manage your family members and app language in settings.')}
-      </p>
-
-      {selectedFamilyMemberId && (
-        <div className="w-full max-w-sm">
-          <button
-            data-testid="continue-as-member-btn"
-            onClick={handleContinue}
-            className="w-full rounded-2xl border border-terracotta/40 bg-transparent px-6 py-3 text-sm font-semibold text-terracotta hover:bg-terracotta/5 transition-colors active:scale-95"
-          >
-            {`Continue as ${selectedMember?.name ?? 'current member'}`}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
