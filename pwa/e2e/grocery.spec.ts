@@ -141,15 +141,16 @@ test.describe('Grocery List — SSE sync', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
-    // Mock SSE to emit grocery_updated with Pasta checked
+    await setupCommonRoutes(page);
+
+    // Mock SSE to emit grocery_updated with Pasta checked — registered AFTER
+    // setupCommonRoutes so LIFO gives this handler priority over the default stream route.
     await mockSseWithGroceryUpdated(page, 0, {
       Pasta: true,
       Beef: false,
       'Tomato Sauce': false,
       Cheese: false,
     });
-
-    await setupCommonRoutes(page);
 
     // Override schedule to return a week with one recipe that has known ingredients
     const monday = currentMonday();
@@ -255,13 +256,14 @@ test.describe('Grocery List — SSE sync', () => {
       },
     };
 
-    // Mock SSE to emit week_updated with the grocery state embedded
+    await setupCommonRoutes(page);
+
+    // Mock SSE to emit week_updated with the grocery state embedded — registered AFTER
+    // setupCommonRoutes so LIFO gives this handler priority over the default stream route.
     await mockSseWithWeekUpdate(
       page,
       scheduleWithGrocery as Parameters<typeof mockSseWithWeekUpdate>[1]
     );
-
-    await setupCommonRoutes(page);
 
     await page.route(
       (url) => url.pathname === '/api/schedule',

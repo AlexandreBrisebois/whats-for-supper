@@ -50,6 +50,8 @@ export function useScheduleStream() {
 
     source.onopen = () => console.log('[SSE] Connection opened successfully');
     source.onerror = (e) => console.error('[SSE] Connection error:', e);
+    // Expose for E2E tests that need to trigger a reconnect after swapping the route mock.
+    if (typeof window !== 'undefined') (window as any).__sseSource = source;
 
     // ── connected ──────────────────────────────────────────────────────────
     // Server sends the current week-0 schedule snapshot on every connect or

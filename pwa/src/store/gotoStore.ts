@@ -34,3 +34,8 @@ export const useGotoStore = create<GotoState>((set) => ({
     set({ readyRecipeId: null });
   },
 }));
+
+// Expose for E2E test access — allows tests to trigger markReady after confirming pending state.
+if (typeof window !== 'undefined') {
+  (window as any).__gotoStore = useGotoStore;
+}

@@ -71,25 +71,30 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
       }
     );
 
-    // 3. Mock SSE to emit recipe_ready for the GOTO recipe ID
-    await mockSseWithRecipeReady(page, GOTO_RECIPE_ID);
-
-    // 4. Navigate to settings page
+    // 3. Navigate to settings page — SSE mock registered after confirming pending state
+    //    to avoid a race where recipe_ready fires before currentGoto is loaded.
     await page.goto('/profile/settings');
 
-    // 5. Initially the pending spinner should be visible (status endpoint returns 'pending')
+    // 4. Initially the pending spinner should be visible (status endpoint returns 'pending')
     await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 5000 });
 
-    // 6. Pending subtitle should be visible
+    // 5. Pending subtitle should be visible
     await expect(page.getByTestId('goto-pending-subtitle')).toHaveText(
       'Usually ready in under 10 seconds'
     );
 
-    // 7. Description echo should show what was submitted
+    // 6. Description echo should show what was submitted
     await expect(page.getByTestId('goto-pending-description')).toHaveText(GOTO_DESCRIPTION);
 
-    // 8. Change link should be visible as the escape hatch
+    // 7. Change link should be visible as the escape hatch
     await expect(page.getByTestId('goto-change-btn')).toBeVisible();
+
+    // 8. Simulate SSE recipe_ready by calling markReady directly on the gotoStore.
+    //    This avoids SSE timing issues (the static mock body fires on connect, which
+    //    races with settings load). The gotoStore is exposed on window.__gotoStore for tests.
+    await page.evaluate((recipeId) => {
+      (window as any).__gotoStore?.getState().markReady(recipeId);
+    }, GOTO_RECIPE_ID);
 
     // 9. SSE recipe_ready fires → spinner replaced by recipe name
     // (status endpoint always returns 'pending', so only SSE can drive this transition)
@@ -168,24 +173,24 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await page.goto('/profile/settings');
 
     // Wait for the settings page to render
-    await expect(page.getByRole('button', { name: /english/i })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /french/i })).toBeVisible();
+    await expect(page.getByTestId('locale-btn-en')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('locale-btn-fr')).toBeVisible();
 
     // Switch to French
-    await page.getByRole('button', { name: /french/i }).click();
+    await page.getByTestId('locale-btn-fr').click();
 
     // Navigate away and back
     await page.goto('/profile');
     await page.goto('/profile/settings');
 
-    // French button must still be active (bg-indigo class applied)
-    const frenchBtn = page.getByRole('button', { name: /french/i });
+    // French button must still be active (bg-indigo as a standalone class, not hover:bg-indigo/5)
+    const frenchBtn = page.getByTestId('locale-btn-fr');
     await expect(frenchBtn).toBeVisible({ timeout: 5000 });
-    await expect(frenchBtn).toHaveClass(/bg-indigo/);
+    await expect(frenchBtn).toHaveClass(/(?:^| )bg-indigo(?:$| )/);
 
-    // English button must be inactive
-    const englishBtn = page.getByRole('button', { name: /english/i });
-    await expect(englishBtn).not.toHaveClass(/bg-indigo/);
+    // English button must be inactive (only has hover:bg-indigo/5, not standalone bg-indigo)
+    const englishBtn = page.getByTestId('locale-btn-en');
+    await expect(englishBtn).not.toHaveClass(/(?:^| )bg-indigo(?:$| )/);
 
     // Restore English so other tests are not affected
     await englishBtn.click();

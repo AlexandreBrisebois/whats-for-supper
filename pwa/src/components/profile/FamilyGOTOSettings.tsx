@@ -81,7 +81,9 @@ export function FamilyGOTOSettings() {
         if (!isMounted) return;
 
         const status = response?.data?.status as 'pending' | 'ready';
-        setRecipeStatus(status);
+        // Don't overwrite 'ready' — SSE may have already transitioned us while
+        // this fetch was in-flight. The SSE is authoritative.
+        setRecipeStatus((prev) => (prev === 'ready' ? 'ready' : status));
       } catch (err) {
         console.error('Failed to fetch recipe status:', err);
       }

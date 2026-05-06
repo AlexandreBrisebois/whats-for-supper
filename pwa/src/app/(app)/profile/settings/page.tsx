@@ -51,6 +51,7 @@ export default function SettingsPage() {
 
           <div className="flex gap-2">
             <button
+              data-testid="locale-btn-en"
               onClick={() => setCurrentLocale('en')}
               className={[
                 'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
@@ -62,6 +63,7 @@ export default function SettingsPage() {
               {t('profile.english', 'English')}
             </button>
             <button
+              data-testid="locale-btn-fr"
               onClick={() => setCurrentLocale('fr')}
               className={[
                 'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',

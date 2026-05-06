@@ -25,7 +25,9 @@ const FIRST_STEP_TEXT = 'Bring a large pot of salted water to a boil';
  */
 function buildSpaghettiSchedule() {
   const monday = currentMonday();
-  const todayStr = toDateStr(monday); // fixed: 2026-05-04
+  // Uses the pinned test Monday (2026-05-04). Tests that use this function must
+  // call page.clock.setFixedTime('2026-05-04T12:00:00Z') so getTodayString() matches.
+  const todayStr = toDateStr(monday);
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setUTCDate(monday.getUTCDate() + i);
@@ -55,6 +57,10 @@ function buildSpaghettiSchedule() {
 
 test.describe('Cook Mode — HowToSection[] steps display', () => {
   test.beforeEach(async ({ page }) => {
+    // Pin the browser clock to the fixed test Monday so getTodayString() matches
+    // the date used in buildSpaghettiSchedule() — 2026-05-04 (Monday).
+    await page.clock.setFixedTime(new Date('2026-05-04T12:00:00Z'));
+
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
     await page
       .context()
@@ -77,6 +83,22 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     }, MOCK_IDS.MEMBER_ALEX);
 
     await setupCommonRoutes(page);
+
+    // Override the SSE stream to emit a slot_updated event for 2026-05-04 (today in the
+    // pinned clock). This updates todayStore.currentRecipe, which the home page server
+    // component cannot set (server-side fetches are not intercepted by page.route()).
+    // Registered AFTER setupCommonRoutes so LIFO gives this handler priority.
+    const spaghettiRecipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_SPAGHETTI, name: 'Spaghetti with Toasted Garlic Bread' });
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      const connected = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, locked: false, status: 0, days: buildSpaghettiSchedule().data.days } })}\n\n`;
+      const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiRecipe, status: 0 })}\n\n`;
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: { 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' },
+        body: connected + slotUpdated,
+      });
+    });
 
     // Register the spaghetti recipe detail override AFTER setupCommonRoutes so LIFO
     // gives this handler priority over the default **/api/recipes/* wildcard.
@@ -209,6 +231,11 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
 
 test.describe("Cook's Mode — UX redesign guard tests (Tasks 45, 46, 50)", () => {
   test.beforeEach(async ({ page }) => {
+    // Pin the browser clock to the fixed test Monday so getTodayString() matches
+    // the schedule mock date (2026-05-04). Without this, start-cook-mode is not
+    // shown and currentRecipe is null (server returns a different day's recipe).
+    await page.clock.setFixedTime(new Date('2026-05-04T12:00:00Z'));
+
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
     await page
       .context()
@@ -260,6 +287,20 @@ test.describe("Cook's Mode — UX redesign guard tests (Tasks 45, 46, 50)", () =
         }
       }
     );
+
+    // Override the SSE stream to emit slot_updated for 2026-05-04 so that todayStore
+    // picks up the recipe even though the home page server component can't be intercepted.
+    const spaghettiScheduleRecipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_SPAGHETTI, name: 'Spaghetti with Toasted Garlic Bread' });
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      const connected = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: buildSpaghettiSchedule().data })}\n\n`;
+      const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiScheduleRecipe, status: 0 })}\n\n`;
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: { 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' },
+        body: connected + slotUpdated,
+      });
+    });
   });
 
   /**
