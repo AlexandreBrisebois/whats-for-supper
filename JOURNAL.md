@@ -4,6 +4,29 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-06] SSE fill_the_gap_invalidated Race Condition Fix
+**Status**: COMPLETED ✅
+
+**Objective**: Fix a flaky CI failure in `discovery.spec.ts` — the `just-planned-badge` element was never found after a `fill_the_gap_invalidated` SSE event.
+
+**Root cause**
+The discovery page used a `pendingInvalidationRef` boolean to coordinate between two competing async paths:
+
+- The `fillTheGapVersion` effect: fired when SSE arrived, set the flag if the stack wasn't loaded yet.
+- `initialize()`: checked and consumed the flag after the stack fetch completed.
+
+In CI (production build, `next start`), the two paths interleaved non-deterministically. The SSE could arrive and the effect could run *after* `stackIsLoadedRef.current = true` was set but *before* `initialize()` checked `pendingInvalidationRef`. In that window the effect took the "stack is ready" branch and called `refetchCurrentCategory()` directly — concurrently with `initialize()` which was still mid-flight. The concurrent refetch would complete against a partially-committed store state, find nothing to remove, and never set `showJustPlannedBadge = true`.
+
+**Fix** (`pwa/src/app/(app)/discovery/page.tsx`)
+- Removed `pendingInvalidationRef` and its inline deferred-refetch path inside `initialize()`.
+- Added `recipes.length` as a dep to the `fillTheGapVersion` effect. When the stack loads (0 → N), the effect re-fires automatically and processes any SSE version that arrived earlier.
+- Added `lastHandledFillTheGapVersionRef` to prevent re-processing the same version when `recipes.length` changes for other reasons (e.g. card swipes).
+
+**Doctrine codified**
+→ `.agents/core/contract-testing.md` §5: "SSE and async React patterns in E2E tests"
+
+---
+
 ### [2026-05-04] Session — Dev Loop Refactor (gate/review/test naming)
 **Status**: COMPLETED ✅
 
