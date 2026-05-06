@@ -88,14 +88,21 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     // pinned clock). This updates todayStore.currentRecipe, which the home page server
     // component cannot set (server-side fetches are not intercepted by page.route()).
     // Registered AFTER setupCommonRoutes so LIFO gives this handler priority.
-    const spaghettiRecipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_SPAGHETTI, name: 'Spaghetti with Toasted Garlic Bread' });
+    const spaghettiRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_SPAGHETTI,
+      name: 'Spaghetti with Toasted Garlic Bread',
+    });
     await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
       const connected = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, locked: false, status: 0, days: buildSpaghettiSchedule().data.days } })}\n\n`;
       const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiRecipe, status: 0 })}\n\n`;
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',
-        headers: { 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' },
+        headers: {
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        },
         body: connected + slotUpdated,
       });
     });
@@ -290,14 +297,21 @@ test.describe("Cook's Mode — UX redesign guard tests (Tasks 45, 46, 50)", () =
 
     // Override the SSE stream to emit slot_updated for 2026-05-04 so that todayStore
     // picks up the recipe even though the home page server component can't be intercepted.
-    const spaghettiScheduleRecipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_SPAGHETTI, name: 'Spaghetti with Toasted Garlic Bread' });
+    const spaghettiScheduleRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_SPAGHETTI,
+      name: 'Spaghetti with Toasted Garlic Bread',
+    });
     await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
       const connected = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: buildSpaghettiSchedule().data })}\n\n`;
       const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiScheduleRecipe, status: 0 })}\n\n`;
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',
-        headers: { 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' },
+        headers: {
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        },
         body: connected + slotUpdated,
       });
     });

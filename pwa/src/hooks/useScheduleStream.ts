@@ -65,6 +65,18 @@ export function useScheduleStream() {
         usePlannerStore.getState().setSseConnectionId(connectionId);
       }
       useWeekStore.getState().applySnapshot(schedule);
+
+      // Seed todayStore from the snapshot so it doesn't rely solely on SSR.
+      // When the home page SSR fetch returns null (e.g. backend unreachable or
+      // no recipe today), the connected snapshot is authoritative.
+      const today = getTodayString();
+      const todayEntry = schedule?.days?.find((d: { date: string }) => d.date === today);
+      if (todayEntry !== undefined) {
+        useTodayStore.getState().applyServerUpdate({
+          recipe: todayEntry.recipe ?? null,
+          status: todayEntry.status ?? 0,
+        });
+      }
     });
 
     // ── slot_updated ───────────────────────────────────────────────────────

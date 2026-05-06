@@ -105,6 +105,11 @@ export const useTodayStore = create<TodayState>((set, get) => ({
         status: existingStatus,
         optimisticWriteAt,
       });
+    } else if (recipe === null && existingRecipe !== null) {
+      // SSR returned null but the store already has a recipe (e.g. from an SSE
+      // connected event that raced ahead of TodayStoreInitializer). Preserve it —
+      // SSR null means "unknown", not "definitely empty".
+      set({ status, optimisticWriteAt: null });
     } else {
       // Fresh mount or optimistic window expired: use provided server data.
       set({
@@ -218,3 +223,8 @@ export const useTodayStore = create<TodayState>((set, get) => ({
     set({ optimisticWriteAt: null });
   },
 }));
+
+// Expose for E2E test access — allows tests to inspect or seed store state directly.
+if (typeof window !== 'undefined') {
+  (window as any).__todayStore = useTodayStore;
+}
