@@ -101,7 +101,8 @@ CREATE TABLE ingredient_categories (
     normalized_key text PRIMARY KEY,
     grocery_section text NOT NULL,
     confidence float NOT NULL DEFAULT 1.0,
-    source text NOT NULL DEFAULT 'llm',  -- 'llm' | 'manual' | 'keyword'
+    -- source values: 'llm' | 'manual' | 'keyword'
+    source text NOT NULL DEFAULT 'llm',
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
     CONSTRAINT ingredient_categories_source_check CHECK (source IN ('llm', 'manual', 'keyword'))
@@ -122,7 +123,7 @@ FROM recipe_votes
 WHERE vote = 1 
 GROUP BY recipe_id;
 
-CREATE OR REPLACE VIEW vw_discovery_recipes AS
+CREATE VIEW vw_discovery_recipes AS
 SELECT r.id, r.name, r.category, r.description, r.ingredients, r.image_count, r.difficulty, r.total_time, r.is_vegetarian, r.is_healthy_choice, r.last_cooked_date, r.created_at, r.dietary_profile,
 COALESCE(v.vote_count, 0) AS vote_count
 FROM recipes r
