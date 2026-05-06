@@ -39,7 +39,13 @@ def get_mock_endpoints(spec=None):
     # Matches Playwright glob strings and plain strings:
     #   page.route('**/api/foo/*/bar', ...)
     #   page.route('/api/foo', ...)
-    route_pattern = r'page\.route\(\s*["\']([^"\']+)["\']'
+    route_pattern_string = r'page\.route\(\s*["\']([^"\']+)["\']'
+    # Matches JS regex literals: page.route(/.../, ...)
+    # Captures everything between the opening /  and the closing /  (which is
+    # always followed by a comma or whitespace before the callback argument).
+    # We use a non-greedy match and require the closing delimiter to be followed
+    # by , or whitespace so we don't accidentally stop at an escaped \/ inside.
+    route_pattern_regex = r'page\.route\(\s*/((?:[^/\\]|\\.)+)/[,\s]'
 
     for root, dirs, files in os.walk(mock_dir):
         for file in files:
@@ -48,7 +54,8 @@ def get_mock_endpoints(spec=None):
                 with open(path, 'r') as f:
                     content = f.read()
 
-                matches = re.findall(route_pattern, content)
+                # --- String-based routes ---
+                matches = re.findall(route_pattern_string, content)
                 for m in matches:
                     # 1. Strip Playwright glob prefix (**/)
                     clean = re.sub(r'^\*+/', '', m)
@@ -65,6 +72,29 @@ def get_mock_endpoints(spec=None):
                         norm_full_p = normalize_path(full_p)
                         for se in get_spec_endpoints(spec):
                             if normalize_path(se['path']) == norm_full_p:
+                                endpoints.append({
+                                    'path': se['path'],
+                                    'method': se['method']
+                                })
+
+                # --- Regex-literal routes (e.g. page.route(/\/api\/stream/, ...)) ---
+                regex_matches = re.findall(route_pattern_regex, content)
+                for rx in regex_matches:
+                    # Convert JS regex pattern to a plain path string so we can
+                    # match it against spec paths.
+                    # e.g. r'\/(?:backend\/)?api\/stream' → '/api/stream'
+                    # 1. Drop optional non-capturing groups like (?:backend\/)?
+                    plain = re.sub(r'\(\?:[^)]+\)\?', '', rx)
+                    # 2. Unescape \/ → /
+                    plain = plain.replace(r'\/', '/')
+                    # 3. Strip any remaining regex metacharacters
+                    plain = re.sub(r'[\\^$.|?*+(){}[\]]', '', plain)
+                    plain = '/' + plain.lstrip('/')
+
+                    if spec:
+                        norm_plain = normalize_path(plain)
+                        for se in get_spec_endpoints(spec):
+                            if normalize_path(se['path']) == norm_plain:
                                 endpoints.append({
                                     'path': se['path'],
                                     'method': se['method']

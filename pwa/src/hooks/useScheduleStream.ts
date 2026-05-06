@@ -31,19 +31,32 @@ import { getTodayString } from '@/lib/imageUtils';
  */
 export function useScheduleStream() {
   useEffect(() => {
+    console.log('[SSE] Hook effect mounting');
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
     // When NEXT_PUBLIC_API_BASE_URL is set, use it as the origin.
     // When it is unset (Traefik routes /api/ directly), fall back to the
     // relative path — EventSource accepts relative URLs in browser contexts.
     const url = baseUrl ? `${baseUrl}/api/stream` : '/api/stream';
-    const source = new EventSource(url, { withCredentials: true });
+    console.log('[SSE] Attempting connection to:', url);
+    
+    let source: EventSource;
+    try {
+      source = new EventSource(url, { withCredentials: true });
+    } catch (err) {
+      console.error('[SSE] Failed to construct EventSource:', err);
+      return;
+    }
+
+    source.onopen = () => console.log('[SSE] Connection opened successfully');
+    source.onerror = (e) => console.error('[SSE] Connection error:', e);
 
     // ── connected ──────────────────────────────────────────────────────────
     // Server sends the current week-0 schedule snapshot on every connect or
     // reconnect. Clear any stale optimistic guards first so the snapshot is
     // treated as authoritative regardless of how recent any local write was.
     source.addEventListener('connected', (e: MessageEvent) => {
+      console.log('[SSE] Received "connected" event');
       const { schedule } = JSON.parse(e.data);
       useTodayStore.getState().clearOptimisticGuard();
       useWeekStore.getState().applySnapshot(schedule);
@@ -54,6 +67,7 @@ export function useScheduleStream() {
     // Update todayStore if the date is today; always pass to weekStore
     // (applySlotUpdate's inCurrentWeek guard handles the filtering).
     source.addEventListener('slot_updated', (e: MessageEvent) => {
+      console.log('[SSE] Received "slot_updated" event');
       const { date, recipe, status } = JSON.parse(e.data);
       const today = getTodayString();
 
@@ -67,6 +81,7 @@ export function useScheduleStream() {
     // ── week_updated ───────────────────────────────────────────────────────
     // The whole week changed (lock, voting open, move).
     source.addEventListener('week_updated', (e: MessageEvent) => {
+      console.log('[SSE] Received "week_updated" event');
       const { schedule } = JSON.parse(e.data);
       useWeekStore.getState().applySnapshot(schedule);
     });
@@ -75,6 +90,7 @@ export function useScheduleStream() {
     // A vote was cast or purged — update vote counts on the planner and
     // re-rank the discovery stack if family interest flipped.
     source.addEventListener('vote_updated', (e: MessageEvent) => {
+      console.log('[SSE] Received "vote_updated" event');
       const { recipeId, voteCount } = JSON.parse(e.data);
       useWeekStore.getState().applyVoteUpdate({ recipeId, voteCount });
       useDiscoveryStore.getState().applyVoteUpdate({ recipeId, voteCount });
@@ -84,6 +100,7 @@ export function useScheduleStream() {
     // Vote crossed the consensus threshold — merge pre-selected recipes into
     // pending slots only (confirmed slots are left untouched).
     source.addEventListener('smart_defaults_updated', (e: MessageEvent) => {
+      console.log('[SSE] Received "smart_defaults_updated" event');
       const { defaults } = JSON.parse(e.data);
       useWeekStore.getState().applySmartDefaultsUpdate(defaults);
     });
@@ -92,6 +109,7 @@ export function useScheduleStream() {
     // A recipe was assigned or removed — any open QuickFindModal should
     // refetch so already-planned recipes disappear from the list.
     source.addEventListener('fill_the_gap_invalidated', (e: MessageEvent) => {
+      console.log('[SSE] Received "fill_the_gap_invalidated" event');
       const { weekOffset } = JSON.parse(e.data);
       useDiscoveryStore.getState().invalidateFillTheGap(weekOffset);
     });
@@ -104,6 +122,7 @@ export function useScheduleStream() {
     // Always notify the GOTO store so HomeCommandCenter can transition from
     // pending to ready without polling.
     source.addEventListener('recipe_ready', (e: MessageEvent) => {
+      console.log('[SSE] Received "recipe_ready" event');
       const { recipeId, name, imageUrl } = JSON.parse(e.data);
       const captureStore = useCaptureStore.getState();
       const pending = captureStore.getPending(recipeId);
@@ -125,6 +144,7 @@ export function useScheduleStream() {
     // pending queue and push a 'failed' notification so RecipeFailureBanner
     // can surface it to the user.
     source.addEventListener('recipe_failed', (e: MessageEvent) => {
+      console.log('[SSE] Received "recipe_failed" event');
       const { recipeId, errorMessage, failedStep, partialData } = JSON.parse(e.data);
       const captureStore = useCaptureStore.getState();
       const pending = captureStore.getPending(recipeId);
@@ -146,19 +166,17 @@ export function useScheduleStream() {
     // Grocery check-state changed (item toggled by another family member).
     // Only apply if the event is for the currently-loaded week.
     source.addEventListener('grocery_updated', (e: MessageEvent) => {
+      console.log('[SSE] Received "grocery_updated" event');
       const { weekOffset, groceryState } = JSON.parse(e.data);
       if (weekOffset === useWeekStore.getState().weekOffset) {
         usePlannerStore.getState().setGroceryState(groceryState);
       }
     });
 
-    // ── onerror ────────────────────────────────────────────────────────────
-    // EventSource reconnects automatically — no manual handling needed.
-    source.onerror = () => {
-      // Intentionally empty: native EventSource reconnect handles this.
-    };
-
     // ── cleanup ────────────────────────────────────────────────────────────
-    return () => source.close();
+    return () => {
+      console.log('[SSE] Hook effect cleanup (closing connection)');
+      source.close();
+    };
   }, []);
 }

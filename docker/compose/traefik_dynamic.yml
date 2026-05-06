@@ -4,47 +4,34 @@ http:
     sse-headers:
       headers:
         customResponseHeaders:
-          X-Accel-Buffering: "no"
-          Cache-Control: "no-cache"
+          X-Accel-Buffering: no 
+          Cache-Control: no-cache
+          Content-Type: text/event-stream
+          Connection: keep-alive
 
   routers:
-    # Dedicated SSE router — must have higher priority than the generic api router
-    # so the sse-headers middleware is applied to /api/stream specifically.
-    # EventSource connects directly to api.wfs.localhost (bypasses /backend proxy).
+    # Dedicated SSE router — Matches both prod and local domains
     api-stream:
-      rule: "Host(`api.wfs.localhost`) && Path(`/api/stream`)"
+      rule: "(Host(`wfs.srvrlss.dev`) || Host(`pwa.wfs.localhost`) || Host(`api.wfs.localhost`)) && Path(`/api/stream`)"
       service: api
       middlewares:
         - sse-headers
-      entryPoints:
-        - web
-      priority: 20
+      entryPoints: [web]
+      priority: 100
 
-    # SSE route on pwa.wfs.localhost — same middleware, higher priority than generic api router.
-    # Covers the case where the PWA connects via the shared host (e.g. local dev without split DNS).
-    pwa-stream:
-      rule: "Host(`pwa.wfs.localhost`) && Path(`/api/stream`)"
-      service: api
-      middlewares:
-        - sse-headers
-      entryPoints:
-        - web
-      priority: 20
-
-    # API traffic: PathPrefix(/api) on the same host as the PWA.
-    # Higher priority ensures it matches before the catch-all pwa router.
+    # API traffic: Matches both prod and local domains
     api:
-      rule: "Host(`pwa.wfs.localhost`) && PathPrefix(`/api`)"
+      rule: "(Host(`wfs.srvrlss.dev`) || Host(`pwa.wfs.localhost`)) && PathPrefix(`/api`)"
       service: api
-      entryPoints:
-        - web
-      priority: 10
+      entryPoints: [web]
+      priority: 50
+
+    # PWA traffic: Matches both prod and local domains
     pwa:
-      rule: "Host(`pwa.wfs.localhost`)"
+      rule: "Host(`wfs.srvrlss.dev`) || Host(`pwa.wfs.localhost`)"
       service: pwa
-      entryPoints:
-        - web
-      priority: 1
+      entryPoints: [web]
+      priority: 10
 
   services:
     api:
