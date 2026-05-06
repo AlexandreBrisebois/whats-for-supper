@@ -75,7 +75,8 @@ import { reclassifyIngredient } from '@/lib/api/ingredients';
 function makeItem(
   displayName: string,
   section: string,
-  normalizedKey?: string
+  normalizedKey?: string,
+  overrides?: Partial<GroceryLineItemDto>
 ): GroceryLineItemDto {
   return {
     displayName,
@@ -85,6 +86,7 @@ function makeItem(
     unitText: null,
     recipeIds: [],
     additionalData: {},
+    ...overrides,
   };
 }
 
@@ -171,6 +173,59 @@ describe('GroceryList — section grouping from DTO', () => {
     render(<GroceryList weekOffset={0} items={[makeItem('xyzzy', 'Pantry', 'xyzzy')]} />);
     expect(screen.getByTestId('aisle-section-Pantry')).toBeInTheDocument();
     expect(screen.queryByTestId('aisle-section-Grocery')).not.toBeInTheDocument();
+  });
+});
+
+describe('GroceryList — quantity hints', () => {
+  it('shows the aggregated amount hint when quantity and unitText are present', () => {
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[
+          makeItem('Potato', 'Produce', 'potato', {
+            quantity: 1500,
+            unitText: 'g',
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Potato')).toBeInTheDocument();
+    expect(screen.getByText('(1500 g)')).toBeInTheDocument();
+  });
+
+  it('does not show the amount hint when quantity is missing', () => {
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[
+          makeItem('Onion', 'Produce', 'onion', {
+            quantity: null,
+            unitText: 'piece',
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Onion')).toBeInTheDocument();
+    expect(screen.queryByText(/piece/)).not.toBeInTheDocument();
+  });
+
+  it('does not show the amount hint when unitText is missing', () => {
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[
+          makeItem('Milk', 'Pantry', 'milk', {
+            quantity: 2,
+            unitText: null,
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Milk')).toBeInTheDocument();
+    expect(screen.queryByText(/\(2/)).not.toBeInTheDocument();
   });
 });
 

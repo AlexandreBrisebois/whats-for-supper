@@ -158,7 +158,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     );
 
     await firstItem.click();
-    await expect(firstItem).toHaveClass(/bg-sage/);
+    await expect(firstItem).toBeChecked();
 
     // Update the GET mock
     await page.route(
@@ -204,7 +204,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     const refreshedItem = page.locator(
       `[data-testid="grocery-item-checkbox"][data-item-name="${itemName}"]`
     );
-    await expect(refreshedItem).toHaveClass(/bg-sage/);
+    await expect(refreshedItem).toBeChecked();
   });
 
   test('Grocery items grouped by aisle sections', async ({ page }) => {

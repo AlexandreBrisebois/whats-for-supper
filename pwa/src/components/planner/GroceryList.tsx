@@ -30,6 +30,16 @@ const AISLE_ICONS: Record<GrocerySection, string> = {
   Grocery: '🛒',
 };
 
+function formatQuantityHint(quantity: number | null | undefined, unitText: string | null | undefined) {
+  if (quantity == null || !unitText) return null;
+
+  const rounded = Number.isInteger(quantity)
+    ? quantity.toString()
+    : quantity.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+
+  return `(${rounded} ${unitText})`;
+}
+
 export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
   const { toggleGroceryItem } = useSchedule();
@@ -221,6 +231,7 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                       <div className="divide-y divide-charcoal/5 p-4 space-y-2">
                         {aisleItems.map((item) => {
                           const key = item.displayName ?? '';
+                          const quantityHint = formatQuantityHint(item.quantity, item.unitText);
                           const isChecked = groceryState[key] ?? false;
                           const hasError = errorItems.has(key);
                           const hasReclassifyError = reclassifyErrors.has(item.normalizedKey ?? '');
@@ -241,6 +252,8 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                   className="flex items-center space-x-4 flex-1 text-left"
                                   data-testid="grocery-item-checkbox"
                                   data-item-name={key}
+                                  role="checkbox"
+                                  aria-checked={isChecked}
                                 >
                                   {isChecked ? (
                                     <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
@@ -251,6 +264,11 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                     className={`font-medium transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
                                   >
                                     {key}
+                                    {quantityHint && (
+                                      <span className="ml-1 text-sm font-normal text-charcoal/50">
+                                        {quantityHint}
+                                      </span>
+                                    )}
                                   </span>
                                   {hasError && (
                                     <AlertCircle
