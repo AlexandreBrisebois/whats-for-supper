@@ -107,7 +107,10 @@ function buildScheduleDays(
 
   return scheduleData.days.map((day: any, index: number) => {
     // Narrow the oneOf union — only treat as a recipe if it has an id
-    const stableUiId = day.date || `pending-${index}`;
+    // Must be a random UUID, NOT derived from date. After reorderLocally reconciles
+    // day/date back to fixed slots, a date-based _uiId would end up at the wrong
+    // slot index, causing Framer Motion to remount items and snap them back visually.
+    const stableUiId = generateUiId();
 
     if (isScheduleRecipe(day.recipe)) {
       return { ...day, recipe: day.recipe, _uiId: stableUiId };
@@ -227,8 +230,9 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     if (from === to || from < 0 || to < 0) return;
 
     const next = [...prev];
-    // 1. Physically move the item in the array so framer-motion's Reorder.Group
-    // sees the tracked _uiId move to the new position.
+    // 1. Physically move the item in the array. _uiId is a random UUID (not derived
+    // from date), so it travels with the recipe content through the splice and is
+    // not clobbered by the date reconciliation below.
     const [movedItem] = next.splice(from, 1);
     next.splice(to, 0, movedItem);
 
