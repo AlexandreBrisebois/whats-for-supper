@@ -59,11 +59,11 @@ export interface WeekState {
   ) => void;
   removeRecipe: (dayIndex: number, date: string) => void;
   /**
-   * Performs only the local state update (array splice + day reconciliation +
+   * Performs only the local state update (slot swap + day reconciliation +
    * optimisticWriteAt). No API call. Use this from onReorder for smooth visual
    * feedback during a drag gesture.
    */
-  reorderLocally: (from: number, to: number) => void;
+  reorderLocally: (from: number, to: number, baseSchedule?: UILocalScheduleDay[]) => void;
   /**
    * Calls reorderLocally then fires moveRecipeApi exactly once. On API failure,
    * reverts to preDragSnapshot (not the current intermediate schedule).
@@ -225,16 +225,21 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   },
 
   // ── reorderLocally ────────────────────────────────────────────────────────
-  reorderLocally(from, to) {
-    const prev = get().schedule;
-    if (from === to || from < 0 || to < 0) return;
+  reorderLocally(from, to, baseSchedule) {
+    const prev = baseSchedule ?? get().schedule;
+    if (from < 0 || to < 0) return;
+
+    if (from === to) {
+      if (baseSchedule) {
+        set({ schedule: [...baseSchedule], optimisticWriteAt: Date.now() });
+      }
+      return;
+    }
 
     const next = [...prev];
-    // 1. Physically move the item in the array. _uiId is a random UUID (not derived
-    // from date), so it travels with the recipe content through the splice and is
-    // not clobbered by the date reconciliation below.
-    const [movedItem] = next.splice(from, 1);
-    next.splice(to, 0, movedItem);
+    // Swap the dragged recipe with the destination day instead of shifting the
+    // intermediate stack. This matches the backend's default swap semantics.
+    [next[from], next[to]] = [next[to], next[from]];
 
     // 2. Reconcile: the user wants to move the CONTENT (recipe) but the DAYS
     // (Mon, Tue...) must remain fixed at their respective indices.
@@ -255,9 +260,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     const recipeToMove = preDragSnapshot[from].recipe;
     if (!recipeToMove?.id) return;
 
-    // Apply the final local reorder using the authoritative from/to positions.
-    get().reorderLocally(from, to);
-
     // BS-10: Deterministic Move API using RecipeId instead of fromIndex.
     moveRecipeApi(get().weekOffset, recipeToMove.id, to).catch(() =>
       set({ schedule: preDragSnapshot, optimisticWriteAt: null })
@@ -273,17 +275,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     const recipeToMove = prev[from].recipe;
     if (!recipeToMove?.id) return;
 
-    const next = [...prev];
-    const [movedItem] = next.splice(from, 1);
-    next.splice(to, 0, movedItem);
-
-    const reconciled = next.map((item, index) => ({
-      ...item,
-      day: prev[index].day,
-      date: prev[index].date,
-    }));
-
-    set({ schedule: reconciled, optimisticWriteAt: Date.now() });
+    get().reorderLocally(from, to, prev);
 
     // BS-10: Deterministic Move API using RecipeId instead of fromIndex.
     moveRecipeApi(get().weekOffset, recipeToMove.id, to).catch(() => set({ schedule: prev }));

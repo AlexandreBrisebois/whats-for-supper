@@ -6,8 +6,10 @@ export type { Page, APIRequestContext };
 export const test = base.extend({
   // Extend the page fixture to clear cookies before each test and inject auth
   page: async ({ page }, use) => {
+    const fixedTestDate = '2026-05-04T12:00:00Z';
+
     // Pin time to 2026-05-04 12:00:00 UTC (a Monday) to match ADR-029 fixed reference date
-    await page.clock.setFixedTime(new Date('2026-05-04T12:00:00Z'));
+    await page.clock.setFixedTime(new Date(fixedTestDate));
 
     await page.context().clearCookies();
 
@@ -19,6 +21,11 @@ export const test = base.extend({
       {
         name: 'h_access',
         value: token,
+        url: baseUrl,
+      },
+      {
+        name: 'wfs-test-date',
+        value: fixedTestDate,
         url: baseUrl,
       },
     ]);

@@ -108,7 +108,6 @@ export default function DiscoveryPage() {
     // activeCategory is intentionally NOT a dep — we read it from the store at call-time
     // inside initialize() to avoid re-triggering this effect when we call setActiveCategory.
     // A separate effect below handles nudge-driven category switches.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_hasHydrated, selectedFamilyMemberId, setActiveCategory]);
 
   // Sync pending cards status to store

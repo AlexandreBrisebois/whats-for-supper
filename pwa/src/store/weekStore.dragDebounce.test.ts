@@ -71,13 +71,16 @@ function makeSevenDaySchedule(): UILocalScheduleDay[] {
  * We replicate that logic here directly against the store, simulating
  * Framer Motion firing onReorder for each intermediate position.
  */
-function simulateHandleReorder(draggedUiId: string, newSchedule: UILocalScheduleDay[]): void {
-  const currentSchedule = useWeekStore.getState().schedule;
-  const fromIndex = currentSchedule.findIndex((d) => d._uiId === draggedUiId);
+function simulateHandleReorder(
+  draggedUiId: string,
+  newSchedule: UILocalScheduleDay[],
+  preDragSnapshot: UILocalScheduleDay[]
+): void {
+  const fromIndex = preDragSnapshot.findIndex((d) => d._uiId === draggedUiId);
   const toIndex = newSchedule.findIndex((d) => d._uiId === draggedUiId);
 
-  if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
-    useWeekStore.getState().reorderLocally(fromIndex, toIndex);
+  if (fromIndex !== -1 && toIndex !== -1) {
+    useWeekStore.getState().reorderLocally(fromIndex, toIndex, preDragSnapshot);
   }
 }
 
@@ -160,7 +163,7 @@ describe('weekStore — drag debounce bug condition (Property 1)', () => {
     for (const targetIndex of intermediatePositions) {
       const currentSchedule = useWeekStore.getState().schedule;
       const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, targetIndex);
-      simulateHandleReorder(draggedUiId, reordered);
+      simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
     }
 
     // onDragEnd fires — drag is complete. commitMove is called exactly once
@@ -201,7 +204,7 @@ describe('weekStore — drag debounce bug condition (Property 1)', () => {
     for (const targetIndex of intermediatePositions) {
       const currentSchedule = useWeekStore.getState().schedule;
       const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, targetIndex);
-      simulateHandleReorder(draggedUiId, reordered);
+      simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
     }
 
     // onDragEnd fires — drag is complete. commitMove is called exactly once
@@ -262,9 +265,10 @@ describe('weekStore — preservation (Property 2)', () => {
         fc.array(fc.integer({ min: 0, max: 6 }), { minLength: 1, maxLength: 6 }),
         (draggedIndex, targetIndices) => {
           // Reset store to a fresh 7-day schedule
+          const preDragSnapshot = makeSevenDaySchedule();
           useWeekStore.setState({
             weekOffset: 0,
-            schedule: makeSevenDaySchedule(),
+            schedule: preDragSnapshot,
             status: 0,
             isLoading: false,
             lastSyncedAt: null,
@@ -277,7 +281,7 @@ describe('weekStore — preservation (Property 2)', () => {
           for (const targetIndex of targetIndices) {
             const scheduleBefore = useWeekStore.getState().schedule;
             const reordered = buildReorderedSchedule(scheduleBefore, draggedUiId, targetIndex);
-            simulateHandleReorder(draggedUiId, reordered);
+            simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
 
             // After each onReorder call, schedule must reflect the new order
             // (i.e., the dragged item must be at targetIndex in the store)
@@ -310,9 +314,10 @@ describe('weekStore — preservation (Property 2)', () => {
         fc.integer({ min: 0, max: 6 }),
         fc.array(fc.integer({ min: 0, max: 6 }), { minLength: 1, maxLength: 6 }),
         (draggedIndex, targetIndices) => {
+          const preDragSnapshot = makeSevenDaySchedule();
           useWeekStore.setState({
             weekOffset: 0,
-            schedule: makeSevenDaySchedule(),
+            schedule: preDragSnapshot,
             status: 0,
             isLoading: false,
             lastSyncedAt: null,
@@ -326,7 +331,7 @@ describe('weekStore — preservation (Property 2)', () => {
           for (const targetIndex of targetIndices) {
             const currentSchedule = useWeekStore.getState().schedule;
             const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, targetIndex);
-            simulateHandleReorder(draggedUiId, reordered);
+            simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
           }
 
           const finalSchedule = useWeekStore.getState().schedule;
@@ -372,7 +377,7 @@ describe('weekStore — preservation (Property 2)', () => {
     // Simulate some intermediate reorders during the drag (reorderLocally — no API)
     const currentSchedule = useWeekStore.getState().schedule;
     const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, 3);
-    simulateHandleReorder(draggedUiId, reordered);
+    simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
 
     // Optimistic update should have happened immediately (reorderLocally)
     const scheduleAfterOptimisticUpdate = useWeekStore.getState().schedule;
@@ -418,6 +423,7 @@ describe('weekStore — preservation (Property 2)', () => {
     vi.clearAllMocks();
 
     const draggedUiId = 'ui-id-2'; // card at slot 2
+    const preDragSnapshot = [...useWeekStore.getState().schedule];
 
     // Simulate the card moving to slot 4 and then back to slot 2
     // (user dragged down and then back up before releasing)
@@ -425,12 +431,12 @@ describe('weekStore — preservation (Property 2)', () => {
 
     // Move to slot 4
     const reorderedTo4 = buildReorderedSchedule(schedule, draggedUiId, 4);
-    simulateHandleReorder(draggedUiId, reorderedTo4);
+    simulateHandleReorder(draggedUiId, reorderedTo4, preDragSnapshot);
 
     // Move back to slot 2 (original position)
     const scheduleAt4 = useWeekStore.getState().schedule;
     const reorderedBackTo2 = buildReorderedSchedule(scheduleAt4, draggedUiId, 2);
-    simulateHandleReorder(draggedUiId, reorderedBackTo2);
+    simulateHandleReorder(draggedUiId, reorderedBackTo2, preDragSnapshot);
 
     // onDragEnd fires — the card is back at its original position.
     // On unfixed code, the guard `fromIndex !== toIndex` in handleReorder
@@ -448,6 +454,36 @@ describe('weekStore — preservation (Property 2)', () => {
     //
     // What we assert here: the schedule correctly reflects no net movement.
     expect(finalPosition).toBe(2);
+  });
+
+  it('swaps the dragged slot with the destination slot instead of shifting the intermediate stack', () => {
+    useWeekStore.setState({
+      weekOffset: 0,
+      schedule: makeSevenDaySchedule(),
+      status: 0,
+      isLoading: false,
+      lastSyncedAt: null,
+      optimisticWriteAt: null,
+    });
+
+    const draggedUiId = 'ui-id-1';
+    const preDragSnapshot = [...useWeekStore.getState().schedule];
+
+    for (const targetIndex of [2, 3, 4]) {
+      const currentSchedule = useWeekStore.getState().schedule;
+      const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, targetIndex);
+      simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
+    }
+
+    expect(useWeekStore.getState().schedule.map((d) => d._uiId)).toEqual([
+      'ui-id-0',
+      'ui-id-4',
+      'ui-id-2',
+      'ui-id-3',
+      'ui-id-1',
+      'ui-id-5',
+      'ui-id-6',
+    ]);
   });
 
   /**
