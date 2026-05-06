@@ -107,6 +107,7 @@ export interface DiscoveryRequestBuilder extends BaseRequestBuilder<DiscoveryReq
  */
 export interface DiscoveryRequestBuilderGetQueryParameters {
   category?: string;
+  cuisine?: string;
 }
 /**
  * Serializes information the current object
@@ -133,7 +134,7 @@ export function serializeDiscoveryGetResponse(
 /**
  * Uri template for the request builder.
  */
-export const DiscoveryRequestBuilderUriTemplate = '{+baseurl}/api/discovery{?category*}';
+export const DiscoveryRequestBuilderUriTemplate = '{+baseurl}/api/discovery{?category*,cuisine*}';
 /**
  * Metadata for all the navigation properties in the request builder.
  */

@@ -97,6 +97,28 @@ export function createDescribeRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FopFlagsDto}
+ */
+// @ts-ignore
+export function createFopFlagsDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFopFlagsDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FopWeekSummaryDto}
+ */
+// @ts-ignore
+export function createFopWeekSummaryDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFopWeekSummaryDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GroceryLineItemDto}
  */
 // @ts-ignore
@@ -207,6 +229,61 @@ export function createRecipeDetailResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1}
+ */
+// @ts-ignore
+export function createRecipeDietaryProfileDto_fopFlagsFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeDietaryProfileDto_fopFlags;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeDietaryProfileDto_fopFlagsMember1}
+ */
+// @ts-ignore
+export function createRecipeDietaryProfileDto_fopFlagsMember1FromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeDietaryProfileDto_fopFlagsMember1;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeDietaryProfileDto}
+ */
+// @ts-ignore
+export function createRecipeDietaryProfileDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeDietaryProfileDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1}
+ */
+// @ts-ignore
+export function createRecipeDto_dietaryProfileFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeDto_dietaryProfile;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeDto_dietaryProfileMember1}
+ */
+// @ts-ignore
+export function createRecipeDto_dietaryProfileMember1FromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeDto_dietaryProfileMember1;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeDto}
  */
 // @ts-ignore
@@ -302,6 +379,28 @@ export function createScheduleDayDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoScheduleDayDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto}
+ */
+// @ts-ignore
+export function createScheduleDays_balanceSummaryFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoScheduleDays_balanceSummary;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ScheduleDays_balanceSummaryMember1}
+ */
+// @ts-ignore
+export function createScheduleDays_balanceSummaryMember1FromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoScheduleDays_balanceSummaryMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -423,6 +522,17 @@ export function createVoteDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoVoteDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {WeeklyBalanceSummaryDto}
+ */
+// @ts-ignore
+export function createWeeklyBalanceSummaryDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoWeeklyBalanceSummaryDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -591,6 +701,48 @@ export function deserializeIntoDescribeRecipeDto(
 }
 /**
  * The deserialization information for the current model
+ * @param FopFlagsDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFopFlagsDto(
+  fopFlagsDto: Partial<FopFlagsDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    highInSaturatedFat: (n) => {
+      fopFlagsDto.highInSaturatedFat = n.getBooleanValue();
+    },
+    highInSodium: (n) => {
+      fopFlagsDto.highInSodium = n.getBooleanValue();
+    },
+    highInSugars: (n) => {
+      fopFlagsDto.highInSugars = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param FopWeekSummaryDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFopWeekSummaryDto(
+  fopWeekSummaryDto: Partial<FopWeekSummaryDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    highInSaturatedFatDays: (n) => {
+      fopWeekSummaryDto.highInSaturatedFatDays = n.getNumberValue();
+    },
+    highInSodiumDays: (n) => {
+      fopWeekSummaryDto.highInSodiumDays = n.getNumberValue();
+    },
+    highInSugarsDays: (n) => {
+      fopWeekSummaryDto.highInSugarsDays = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param GroceryLineItemDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -734,6 +886,9 @@ export function deserializeIntoMoveScheduleDto(
         n.getEnumValue<MoveScheduleDto_intent>(MoveScheduleDto_intentObject) ??
         MoveScheduleDto_intentObject.Swap;
     },
+    recipeId: (n) => {
+      moveScheduleDto.recipeId = n.getGuidValue();
+    },
     targetWeekOffset: (n) => {
       moveScheduleDto.targetWeekOffset = n.getNumberValue();
     },
@@ -824,6 +979,83 @@ export function deserializeIntoRecipeDetailResponse(
 }
 /**
  * The deserialization information for the current model
+ * @param RecipeDietaryProfileDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeDietaryProfileDto(
+  recipeDietaryProfileDto: Partial<RecipeDietaryProfileDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    confidence: (n) => {
+      recipeDietaryProfileDto.confidence = n.getNumberValue();
+    },
+    cuisineType: (n) => {
+      recipeDietaryProfileDto.cuisineType = n.getStringValue();
+    },
+    fopFlags: (n) => {
+      recipeDietaryProfileDto.fopFlags =
+        n.getObjectValue<FopFlagsDto>(createFopFlagsDtoFromDiscriminatorValue) ??
+        n.getObjectValue<RecipeDietaryProfileDto_fopFlagsMember1>(
+          createRecipeDietaryProfileDto_fopFlagsMember1FromDiscriminatorValue
+        );
+    },
+    mealTypes: (n) => {
+      recipeDietaryProfileDto.mealTypes = n.getCollectionOfPrimitiveValues<string>();
+    },
+    primaryFoodGroup: (n) => {
+      recipeDietaryProfileDto.primaryFoodGroup = n.getStringValue();
+    },
+    primaryMealType: (n) => {
+      recipeDietaryProfileDto.primaryMealType = n.getStringValue();
+    },
+    proteinSource: (n) => {
+      recipeDietaryProfileDto.proteinSource = n.getStringValue();
+    },
+    secondaryFoodGroups: (n) => {
+      recipeDietaryProfileDto.secondaryFoodGroups = n.getCollectionOfPrimitiveValues<string>();
+    },
+    source: (n) => {
+      recipeDietaryProfileDto.source = n.getStringValue();
+    },
+    wholeGrainConfident: (n) => {
+      recipeDietaryProfileDto.wholeGrainConfident = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeDietaryProfileDto_fopFlags The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeDietaryProfileDto_fopFlags(
+  recipeDietaryProfileDto_fopFlags:
+    | Partial<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1>
+    | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    ...deserializeIntoFopFlagsDto(recipeDietaryProfileDto_fopFlags as FopFlagsDto),
+    ...deserializeIntoRecipeDietaryProfileDto_fopFlagsMember1(
+      recipeDietaryProfileDto_fopFlags as RecipeDietaryProfileDto_fopFlagsMember1
+    ),
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeDietaryProfileDto_fopFlagsMember1 The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeDietaryProfileDto_fopFlagsMember1(
+  recipeDietaryProfileDto_fopFlagsMember1:
+    | Partial<RecipeDietaryProfileDto_fopFlagsMember1>
+    | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
+}
+/**
+ * The deserialization information for the current model
  * @param RecipeDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -843,6 +1075,15 @@ export function deserializeIntoRecipeDto(
     },
     description: (n) => {
       recipeDto.description = n.getStringValue();
+    },
+    dietaryProfile: (n) => {
+      recipeDto.dietaryProfile =
+        n.getObjectValue<RecipeDietaryProfileDto>(
+          createRecipeDietaryProfileDtoFromDiscriminatorValue
+        ) ??
+        n.getObjectValue<RecipeDto_dietaryProfileMember1>(
+          createRecipeDto_dietaryProfileMember1FromDiscriminatorValue
+        );
     },
     difficulty: (n) => {
       recipeDto.difficulty = n.getStringValue();
@@ -889,6 +1130,35 @@ export function deserializeIntoRecipeDto(
       recipeDto.totalTime = n.getStringValue();
     },
   };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeDto_dietaryProfile The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeDto_dietaryProfile(
+  recipeDto_dietaryProfile:
+    | Partial<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>
+    | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    ...deserializeIntoRecipeDietaryProfileDto(recipeDto_dietaryProfile as RecipeDietaryProfileDto),
+    ...deserializeIntoRecipeDto_dietaryProfileMember1(
+      recipeDto_dietaryProfile as RecipeDto_dietaryProfileMember1
+    ),
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeDto_dietaryProfileMember1 The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeDto_dietaryProfileMember1(
+  recipeDto_dietaryProfileMember1: Partial<RecipeDto_dietaryProfileMember1> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
 }
 /**
  * The deserialization information for the current model
@@ -1078,6 +1348,15 @@ export function deserializeIntoScheduleDays(
   scheduleDays: Partial<ScheduleDays> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    balanceSummary: (n) => {
+      scheduleDays.balanceSummary =
+        n.getObjectValue<ScheduleDays_balanceSummaryMember1>(
+          createScheduleDays_balanceSummaryMember1FromDiscriminatorValue
+        ) ??
+        n.getObjectValue<WeeklyBalanceSummaryDto>(
+          createWeeklyBalanceSummaryDtoFromDiscriminatorValue
+        );
+    },
     days: (n) => {
       scheduleDays.days = n.getCollectionOfObjectValues<ScheduleDayDto>(
         createScheduleDayDtoFromDiscriminatorValue
@@ -1103,6 +1382,37 @@ export function deserializeIntoScheduleDays(
       scheduleDays.weekOffset = n.getNumberValue();
     },
   };
+}
+/**
+ * The deserialization information for the current model
+ * @param ScheduleDays_balanceSummary The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoScheduleDays_balanceSummary(
+  scheduleDays_balanceSummary:
+    | Partial<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto>
+    | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    ...deserializeIntoScheduleDays_balanceSummaryMember1(
+      scheduleDays_balanceSummary as ScheduleDays_balanceSummaryMember1
+    ),
+    ...deserializeIntoWeeklyBalanceSummaryDto(
+      scheduleDays_balanceSummary as WeeklyBalanceSummaryDto
+    ),
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param ScheduleDays_balanceSummaryMember1 The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoScheduleDays_balanceSummaryMember1(
+  scheduleDays_balanceSummaryMember1: Partial<ScheduleDays_balanceSummaryMember1> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
 }
 /**
  * The deserialization information for the current model
@@ -1308,6 +1618,47 @@ export function deserializeIntoVoteDto(
 }
 /**
  * The deserialization information for the current model
+ * @param WeeklyBalanceSummaryDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoWeeklyBalanceSummaryDto(
+  weeklyBalanceSummaryDto: Partial<WeeklyBalanceSummaryDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    fopWeekSummary: (n) => {
+      weeklyBalanceSummaryDto.fopWeekSummary = n.getObjectValue<FopWeekSummaryDto>(
+        createFopWeekSummaryDtoFromDiscriminatorValue
+      );
+    },
+    grainDays: (n) => {
+      weeklyBalanceSummaryDto.grainDays = n.getNumberValue();
+    },
+    isBalanced: (n) => {
+      weeklyBalanceSummaryDto.isBalanced = n.getBooleanValue();
+    },
+    maxConsecutiveSame: (n) => {
+      weeklyBalanceSummaryDto.maxConsecutiveSame = n.getNumberValue();
+    },
+    plantProteinDays: (n) => {
+      weeklyBalanceSummaryDto.plantProteinDays = n.getNumberValue();
+    },
+    proteinDays: (n) => {
+      weeklyBalanceSummaryDto.proteinDays = n.getNumberValue();
+    },
+    recommendations: (n) => {
+      weeklyBalanceSummaryDto.recommendations = n.getCollectionOfPrimitiveValues<string>();
+    },
+    redMeatDays: (n) => {
+      weeklyBalanceSummaryDto.redMeatDays = n.getNumberValue();
+    },
+    veggieDays: (n) => {
+      weeklyBalanceSummaryDto.veggieDays = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param WorkflowInstanceDetailDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -1477,6 +1828,34 @@ export function deserializeIntoWorkflowTriggerResponseDto(
     },
   };
 }
+export interface FopFlagsDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The highInSaturatedFat property
+   */
+  highInSaturatedFat?: boolean | null;
+  /**
+   * The highInSodium property
+   */
+  highInSodium?: boolean | null;
+  /**
+   * The highInSugars property
+   */
+  highInSugars?: boolean | null;
+}
+export interface FopWeekSummaryDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The highInSaturatedFatDays property
+   */
+  highInSaturatedFatDays?: number | null;
+  /**
+   * The highInSodiumDays property
+   */
+  highInSodiumDays?: number | null;
+  /**
+   * The highInSugarsDays property
+   */
+  highInSugarsDays?: number | null;
+}
 export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
   /**
    * The displayName property
@@ -1567,6 +1946,10 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
    */
   intent?: MoveScheduleDto_intent | null;
   /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+  /**
    * The targetWeekOffset property
    */
   targetWeekOffset?: number | null;
@@ -1639,6 +2022,52 @@ export interface RecipeDetailResponse extends AdditionalDataHolder, Parsable {
    */
   updatedAt?: Date | null;
 }
+export interface RecipeDietaryProfileDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The confidence property
+   */
+  confidence?: number | null;
+  /**
+   * The cuisineType property
+   */
+  cuisineType?: string | null;
+  /**
+   * The fopFlags property
+   */
+  fopFlags?: FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1 | null;
+  /**
+   * The mealTypes property
+   */
+  mealTypes?: string[] | null;
+  /**
+   * The primaryFoodGroup property
+   */
+  primaryFoodGroup?: string | null;
+  /**
+   * The primaryMealType property
+   */
+  primaryMealType?: string | null;
+  /**
+   * The proteinSource property
+   */
+  proteinSource?: string | null;
+  /**
+   * The secondaryFoodGroups property
+   */
+  secondaryFoodGroups?: string[] | null;
+  /**
+   * The source property
+   */
+  source?: string | null;
+  /**
+   * The wholeGrainConfident property
+   */
+  wholeGrainConfident?: boolean | null;
+}
+export type RecipeDietaryProfileDto_fopFlags =
+  | FopFlagsDto
+  | RecipeDietaryProfileDto_fopFlagsMember1;
+export interface RecipeDietaryProfileDto_fopFlagsMember1 extends AdditionalDataHolder, Parsable {}
 export interface RecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The addedBy property
@@ -1656,6 +2085,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    * The description property
    */
   description?: string | null;
+  /**
+   * The dietaryProfile property
+   */
+  dietaryProfile?: RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1 | null;
   /**
    * The difficulty property
    */
@@ -1713,6 +2146,8 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   totalTime?: string | null;
 }
+export type RecipeDto_dietaryProfile = RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1;
+export interface RecipeDto_dietaryProfileMember1 extends AdditionalDataHolder, Parsable {}
 export interface RecipeImportStatusResponseDto extends AdditionalDataHolder, Parsable {
   /**
    * The errorMessage property
@@ -1829,6 +2264,10 @@ export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
 }
 export interface ScheduleDays extends AdditionalDataHolder, Parsable {
   /**
+   * The balanceSummary property
+   */
+  balanceSummary?: ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto | null;
+  /**
    * The days property
    */
   days?: ScheduleDayDto[] | null;
@@ -1853,6 +2292,10 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    */
   weekOffset?: number | null;
 }
+export type ScheduleDays_balanceSummary =
+  | ScheduleDays_balanceSummaryMember1
+  | WeeklyBalanceSummaryDto;
+export interface ScheduleDays_balanceSummaryMember1 extends AdditionalDataHolder, Parsable {}
 export interface ScheduleDays_groceryState extends AdditionalDataHolder, Parsable {}
 export interface ScheduleRecipeDto extends AdditionalDataHolder, Parsable {
   /**
@@ -1964,6 +2407,46 @@ export function serializeDescribeRecipeDto(
   writer.writeStringValue('description', describeRecipeDto.description);
   writer.writeStringValue('name', describeRecipeDto.name);
   writer.writeAdditionalData(describeRecipeDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param FopFlagsDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFopFlagsDto(
+  writer: SerializationWriter,
+  fopFlagsDto: Partial<FopFlagsDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!fopFlagsDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('highInSaturatedFat', fopFlagsDto.highInSaturatedFat);
+  writer.writeBooleanValue('highInSodium', fopFlagsDto.highInSodium);
+  writer.writeBooleanValue('highInSugars', fopFlagsDto.highInSugars);
+  writer.writeAdditionalData(fopFlagsDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param FopWeekSummaryDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFopWeekSummaryDto(
+  writer: SerializationWriter,
+  fopWeekSummaryDto: Partial<FopWeekSummaryDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!fopWeekSummaryDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('highInSaturatedFatDays', fopWeekSummaryDto.highInSaturatedFatDays);
+  writer.writeNumberValue('highInSodiumDays', fopWeekSummaryDto.highInSodiumDays);
+  writer.writeNumberValue('highInSugarsDays', fopWeekSummaryDto.highInSugarsDays);
+  writer.writeAdditionalData(fopWeekSummaryDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -2118,6 +2601,7 @@ export function serializeMoveScheduleDto(
     'intent',
     moveScheduleDto.intent ?? MoveScheduleDto_intentObject.Swap
   );
+  writer.writeGuidValue('recipeId', moveScheduleDto.recipeId);
   writer.writeNumberValue('targetWeekOffset', moveScheduleDto.targetWeekOffset);
   writer.writeNumberValue('toIndex', moveScheduleDto.toIndex);
   writer.writeNumberValue('weekOffset', moveScheduleDto.weekOffset);
@@ -2190,6 +2674,81 @@ export function serializeRecipeDetailResponse(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeDietaryProfileDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeDietaryProfileDto(
+  writer: SerializationWriter,
+  recipeDietaryProfileDto: Partial<RecipeDietaryProfileDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeDietaryProfileDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('confidence', recipeDietaryProfileDto.confidence);
+  writer.writeStringValue('cuisineType', recipeDietaryProfileDto.cuisineType);
+  writer.writeObjectValue<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1>(
+    'fopFlags',
+    recipeDietaryProfileDto.fopFlags,
+    serializeRecipeDietaryProfileDto_fopFlags
+  );
+  writer.writeCollectionOfPrimitiveValues<string>('mealTypes', recipeDietaryProfileDto.mealTypes);
+  writer.writeStringValue('primaryFoodGroup', recipeDietaryProfileDto.primaryFoodGroup);
+  writer.writeStringValue('primaryMealType', recipeDietaryProfileDto.primaryMealType);
+  writer.writeStringValue('proteinSource', recipeDietaryProfileDto.proteinSource);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'secondaryFoodGroups',
+    recipeDietaryProfileDto.secondaryFoodGroups
+  );
+  writer.writeStringValue('source', recipeDietaryProfileDto.source);
+  writer.writeBooleanValue('wholeGrainConfident', recipeDietaryProfileDto.wholeGrainConfident);
+  writer.writeAdditionalData(recipeDietaryProfileDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeDietaryProfileDto_fopFlags The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeDietaryProfileDto_fopFlags(
+  writer: SerializationWriter,
+  recipeDietaryProfileDto_fopFlags:
+    | Partial<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  serializeFopFlagsDto(writer, recipeDietaryProfileDto_fopFlags as FopFlagsDto);
+  serializeRecipeDietaryProfileDto_fopFlagsMember1(
+    writer,
+    recipeDietaryProfileDto_fopFlags as RecipeDietaryProfileDto_fopFlagsMember1
+  );
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeDietaryProfileDto_fopFlagsMember1 The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeDietaryProfileDto_fopFlagsMember1(
+  writer: SerializationWriter,
+  recipeDietaryProfileDto_fopFlagsMember1:
+    | Partial<RecipeDietaryProfileDto_fopFlagsMember1>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeDietaryProfileDto_fopFlagsMember1 || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(recipeDietaryProfileDto_fopFlagsMember1.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param RecipeDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -2206,6 +2765,11 @@ export function serializeRecipeDto(
   writer.writeStringValue('category', recipeDto.category);
   writer.writeDateValue('createdAt', recipeDto.createdAt);
   writer.writeStringValue('description', recipeDto.description);
+  writer.writeObjectValue<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>(
+    'dietaryProfile',
+    recipeDto.dietaryProfile,
+    serializeRecipeDto_dietaryProfile
+  );
   writer.writeStringValue('difficulty', recipeDto.difficulty);
   writer.writeGuidValue('id', recipeDto.id);
   writer.writeCollectionOfPrimitiveValues<number>('images', recipeDto.images);
@@ -2221,6 +2785,44 @@ export function serializeRecipeDto(
   writer.writeStringValue('sourceUrl', recipeDto.sourceUrl);
   writer.writeStringValue('totalTime', recipeDto.totalTime);
   writer.writeAdditionalData(recipeDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeDto_dietaryProfile The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeDto_dietaryProfile(
+  writer: SerializationWriter,
+  recipeDto_dietaryProfile:
+    | Partial<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  serializeRecipeDietaryProfileDto(writer, recipeDto_dietaryProfile as RecipeDietaryProfileDto);
+  serializeRecipeDto_dietaryProfileMember1(
+    writer,
+    recipeDto_dietaryProfile as RecipeDto_dietaryProfileMember1
+  );
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeDto_dietaryProfileMember1 The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeDto_dietaryProfileMember1(
+  writer: SerializationWriter,
+  recipeDto_dietaryProfileMember1: Partial<RecipeDto_dietaryProfileMember1> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeDto_dietaryProfileMember1 || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(recipeDto_dietaryProfileMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -2417,6 +3019,11 @@ export function serializeScheduleDays(
   if (!scheduleDays || isSerializingDerivedType) {
     return;
   }
+  writer.writeObjectValue<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto>(
+    'balanceSummary',
+    scheduleDays.balanceSummary,
+    serializeScheduleDays_balanceSummary
+  );
   writer.writeCollectionOfObjectValues<ScheduleDayDto>(
     'days',
     scheduleDays.days,
@@ -2436,6 +3043,47 @@ export function serializeScheduleDays(
   writer.writeNumberValue('status', scheduleDays.status);
   writer.writeNumberValue('weekOffset', scheduleDays.weekOffset);
   writer.writeAdditionalData(scheduleDays.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ScheduleDays_balanceSummary The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeScheduleDays_balanceSummary(
+  writer: SerializationWriter,
+  scheduleDays_balanceSummary:
+    | Partial<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  serializeScheduleDays_balanceSummaryMember1(
+    writer,
+    scheduleDays_balanceSummary as ScheduleDays_balanceSummaryMember1
+  );
+  serializeWeeklyBalanceSummaryDto(writer, scheduleDays_balanceSummary as WeeklyBalanceSummaryDto);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ScheduleDays_balanceSummaryMember1 The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeScheduleDays_balanceSummaryMember1(
+  writer: SerializationWriter,
+  scheduleDays_balanceSummaryMember1:
+    | Partial<ScheduleDays_balanceSummaryMember1>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!scheduleDays_balanceSummaryMember1 || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(scheduleDays_balanceSummaryMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -2644,6 +3292,39 @@ export function serializeVoteDto(
   }
   writer.writeNumberValue('vote', voteDto.vote);
   writer.writeAdditionalData(voteDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param WeeklyBalanceSummaryDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeWeeklyBalanceSummaryDto(
+  writer: SerializationWriter,
+  weeklyBalanceSummaryDto: Partial<WeeklyBalanceSummaryDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!weeklyBalanceSummaryDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<FopWeekSummaryDto>(
+    'fopWeekSummary',
+    weeklyBalanceSummaryDto.fopWeekSummary,
+    serializeFopWeekSummaryDto
+  );
+  writer.writeNumberValue('grainDays', weeklyBalanceSummaryDto.grainDays);
+  writer.writeBooleanValue('isBalanced', weeklyBalanceSummaryDto.isBalanced);
+  writer.writeNumberValue('maxConsecutiveSame', weeklyBalanceSummaryDto.maxConsecutiveSame);
+  writer.writeNumberValue('plantProteinDays', weeklyBalanceSummaryDto.plantProteinDays);
+  writer.writeNumberValue('proteinDays', weeklyBalanceSummaryDto.proteinDays);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'recommendations',
+    weeklyBalanceSummaryDto.recommendations
+  );
+  writer.writeNumberValue('redMeatDays', weeklyBalanceSummaryDto.redMeatDays);
+  writer.writeNumberValue('veggieDays', weeklyBalanceSummaryDto.veggieDays);
+  writer.writeAdditionalData(weeklyBalanceSummaryDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -2903,6 +3584,44 @@ export interface VoteDto extends AdditionalDataHolder, Parsable {
    * The vote property
    */
   vote?: number | null;
+}
+export interface WeeklyBalanceSummaryDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The fopWeekSummary property
+   */
+  fopWeekSummary?: FopWeekSummaryDto | null;
+  /**
+   * The grainDays property
+   */
+  grainDays?: number | null;
+  /**
+   * The isBalanced property
+   */
+  isBalanced?: boolean | null;
+  /**
+   * The maxConsecutiveSame property
+   */
+  maxConsecutiveSame?: number | null;
+  /**
+   * The plantProteinDays property
+   */
+  plantProteinDays?: number | null;
+  /**
+   * The proteinDays property
+   */
+  proteinDays?: number | null;
+  /**
+   * The recommendations property
+   */
+  recommendations?: string[] | null;
+  /**
+   * The redMeatDays property
+   */
+  redMeatDays?: number | null;
+  /**
+   * The veggieDays property
+   */
+  veggieDays?: number | null;
 }
 export interface WorkflowInstanceDetailDto extends AdditionalDataHolder, Parsable {
   /**
