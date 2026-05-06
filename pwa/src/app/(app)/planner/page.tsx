@@ -55,7 +55,6 @@ export default function PlannerPage() {
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
-  const lastReorderRef = useRef<UILocalScheduleDay[] | null>(null);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -202,10 +201,26 @@ export default function PlannerPage() {
     setShowPivot(null);
   };
 
-  // Framer Motion calls onReorder on every pointer move during drag.
-  // We capture the latest visual order so onDragEnd can compute the final destination index.
+  // Framer Motion calls onReorder on every pointer move during drag (fires on each midpoint
+  // crossing). We apply each intermediate reorder directly to the store so that onDragEnd can
+  // read getState().schedule for the authoritative final position — including the terminal slot
+  // where no further midpoint crossing occurs and onReorder would otherwise stop firing.
   const handleReorder = (newSchedule: UILocalScheduleDay[]) => {
-    lastReorderRef.current = newSchedule;
+    const current = useWeekStore.getState().schedule;
+    // Find which item moved: its _uiId is now at a different index in newSchedule vs current.
+    let from = -1;
+    let to = -1;
+    for (let i = 0; i < newSchedule.length; i++) {
+      const currentIdx = current.findIndex((d) => d._uiId === newSchedule[i]._uiId);
+      if (currentIdx !== i) {
+        to = i;
+        from = currentIdx;
+        break;
+      }
+    }
+    if (from !== -1 && to !== -1) {
+      useWeekStore.getState().reorderLocally(from, to);
+    }
   };
 
   const plannedCount = schedule.filter((d) => d.recipe && d.recipe.id).length;
@@ -438,7 +453,6 @@ export default function PlannerPage() {
                       setActiveCookMode(day);
                     }}
                     preDragSnapshotRef={preDragSnapshotRef}
-                    lastReorderRef={lastReorderRef}
                     hasAnimatedIn={hasAnimatedIn}
                   />
                 ))}
@@ -554,7 +568,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
   onPivot,
   onCookMode,
   preDragSnapshotRef,
-  lastReorderRef,
   hasAnimatedIn,
 }: {
   day: UILocalScheduleDay;
@@ -563,7 +576,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
   onPivot: () => void;
   onCookMode: () => void;
   preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
-  lastReorderRef: React.RefObject<UILocalScheduleDay[] | null>;
   hasAnimatedIn: boolean;
 }) {
   const dragControls = useDragControls();
@@ -578,14 +590,15 @@ const PlannerDayCard = memo(function PlannerDayCard({
       }}
       onDragEnd={() => {
         const snapshot = preDragSnapshotRef.current;
-        const finalOrder = lastReorderRef.current;
+        // Read the store directly: handleReorder calls reorderLocally on every midpoint
+        // crossing (including terminal positions), so the store reflects the true final order.
+        const finalOrder = useWeekStore.getState().schedule;
         const finalFrom = snapshot ? snapshot.findIndex((d) => d._uiId === day._uiId) : -1;
-        const finalTo = finalOrder ? finalOrder.findIndex((d) => d._uiId === day._uiId) : -1;
+        const finalTo = finalOrder.findIndex((d) => d._uiId === day._uiId);
         if (finalFrom !== -1 && finalTo !== -1 && finalFrom !== finalTo && snapshot !== null) {
           useWeekStore.getState().commitMove(finalFrom, finalTo, snapshot);
         }
         preDragSnapshotRef.current = null;
-        lastReorderRef.current = null;
       }}
       initial={{ opacity: 0, y: 20 }}
       animate={{

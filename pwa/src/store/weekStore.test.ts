@@ -40,7 +40,7 @@ beforeEach(() => {
     lastSyncedAt: null,
     optimisticWriteAt: null,
   });
-  usePlannerStore.setState({ groceryState: {} });
+  usePlannerStore.setState({ groceryState: {}, localMoveSeq: 0, confirmedMoveSeq: 0 });
 });
 
 // ─── applySnapshot ────────────────────────────────────────────────────────────
@@ -122,29 +122,40 @@ describe('weekStore — applySnapshot', () => {
     expect(state.schedule[0]._isPending).toBeUndefined();
   });
 
-  it('clears optimisticWriteAt when not recent', () => {
-    useWeekStore.setState({ optimisticWriteAt: Date.now() - 20000 }); // 20s ago
-
-    const snapshot = makeScheduleDays([]);
-    useWeekStore.getState().applySnapshot(snapshot);
-
-    expect(useWeekStore.getState().optimisticWriteAt).toBeNull();
-  });
-
-  it('preserves optimisticWriteAt and skips schedule update when recent', () => {
-    const now = Date.now();
-    const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
-    useWeekStore.setState({
-      optimisticWriteAt: now,
-      schedule: initialSchedule,
-    });
+  it('applies snapshot when no pending moves (localMoveSeq === confirmedMoveSeq)', () => {
+    // Both seq counters equal — no move in flight, snapshot should apply
+    usePlannerStore.setState({ localMoveSeq: 3, confirmedMoveSeq: 3 });
 
     const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe: { id: 'new' } as any }]);
     useWeekStore.getState().applySnapshot(snapshot);
 
-    const state = useWeekStore.getState();
-    expect(state.optimisticWriteAt).toBe(now);
-    expect(state.schedule).toBe(initialSchedule); // Should not have updated
+    expect(useWeekStore.getState().schedule[0].recipe?.id).toBe('new');
+  });
+
+  it('skips schedule update when there are pending unconfirmed moves', () => {
+    const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
+    useWeekStore.setState({ schedule: initialSchedule });
+    // localMoveSeq ahead of confirmed — one move in flight
+    usePlannerStore.setState({ localMoveSeq: 5, confirmedMoveSeq: 4 });
+
+    const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe: { id: 'new' } as any }]);
+    useWeekStore.getState().applySnapshot(snapshot);
+
+    expect(useWeekStore.getState().schedule).toBe(initialSchedule); // not clobbered
+  });
+
+  it('skips update and confirms seq when echoSeq matches own move', () => {
+    const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
+    useWeekStore.setState({ schedule: initialSchedule });
+    usePlannerStore.setState({ localMoveSeq: 7, confirmedMoveSeq: 6 });
+
+    const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe: { id: 'new' } as any }]);
+    useWeekStore.getState().applySnapshot(snapshot, 7);
+
+    // Schedule unchanged — this was our own echo
+    expect(useWeekStore.getState().schedule).toBe(initialSchedule);
+    // Sequence confirmed
+    expect(usePlannerStore.getState().confirmedMoveSeq).toBe(7);
   });
 
   it('applySnapshot sets groceryState atomically — same tick as schedule', () => {

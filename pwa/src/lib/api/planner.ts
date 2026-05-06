@@ -1,5 +1,6 @@
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { apiClient } from './api-client';
+import { usePlannerStore } from '@/store/plannerStore';
 import type {
   ScheduleDays,
   ScheduleDayDto,
@@ -36,8 +37,12 @@ export const lockSchedule = async (weekOffset: number) => {
 };
 
 export const moveRecipe = async (weekOffset: number, recipeId: string, toIndex: number) => {
+  // Increment the move sequence counter before the request so HearthAuthProvider
+  // stamps the new value on X-Move-Seq. The server echoes it back in week_updated,
+  // letting applySnapshot identify and skip its own echo.
+  usePlannerStore.getState().nextMoveSeq();
   const result = await apiClient.api.schedule.move.post({ weekOffset, recipeId, toIndex });
-  return result; // Move usually returns 204 or empty data
+  return result;
 };
 
 export const getFillTheGap = async (weekOffset = 0) => {

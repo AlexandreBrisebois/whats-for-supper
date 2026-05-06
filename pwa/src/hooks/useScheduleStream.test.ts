@@ -277,13 +277,22 @@ describe('slot_updated event', () => {
 // ── week_updated event ───────────────────────────────────────────────────────
 
 describe('week_updated event', () => {
-  it('calls applySnapshot on weekStore with the schedule', () => {
+  it('calls applySnapshot on weekStore with schedule and no echoSeq for another member move', () => {
     const { source } = setupHook();
 
     const schedule = { days: [], status: 2 };
     source.emit('week_updated', { schedule });
 
-    expect(mockApplySnapshot).toHaveBeenCalledWith(schedule);
+    expect(mockApplySnapshot).toHaveBeenCalledWith(schedule, undefined);
+  });
+
+  it('calls applySnapshot with echoSeq when server echoes our own move', () => {
+    const { source } = setupHook();
+
+    const schedule = { days: [], status: 0 };
+    source.emit('week_updated', { schedule, echoSeq: 42 });
+
+    expect(mockApplySnapshot).toHaveBeenCalledWith(schedule, 42);
   });
 });
 

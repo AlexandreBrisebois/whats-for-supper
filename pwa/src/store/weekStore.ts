@@ -78,7 +78,7 @@ export interface WeekState {
   sync: () => Promise<void>;
 
   // SSE-driven actions
-  applySnapshot: (schedule: ScheduleDays) => void;
+  applySnapshot: (schedule: ScheduleDays, echoSeq?: number) => void;
   applySlotUpdate: (update: { date: string; recipe: any; status: number }) => void;
   applyVoteUpdate: (update: { recipeId: string; voteCount: number }) => void;
   applySmartDefaultsUpdate: (defaults: SmartDefaultsDto) => void;
@@ -374,17 +374,25 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   },
 
   // ── applySnapshot ─────────────────────────────────────────────────────────
-  applySnapshot(schedule: ScheduleDays) {
-    const { optimisticWriteAt } = get();
-    const optimisticIsRecent =
-      optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 10_000;
+  applySnapshot(schedule: ScheduleDays, echoSeq?: number) {
+    const plannerStore = usePlannerStore.getState();
+
+    // If the server echoed back a move sequence number, this event is our own
+    // response — confirm it and skip the schedule update (our optimistic state
+    // is already correct). Still fall through for non-move SSE events (no echoSeq).
+    if (echoSeq !== undefined) {
+      plannerStore.confirmMoveSeq(echoSeq);
+      return;
+    }
+
+    // Another family member's update — only apply when we have no unconfirmed
+    // moves in flight. This replaces the wall-clock window entirely.
+    const hasPendingMoves = plannerStore.localMoveSeq > plannerStore.confirmedMoveSeq;
 
     // Authoritative status update (always apply)
     const nextStatus = (schedule.status ?? 0) as 0 | 1 | 2;
 
-    // If we have a recent optimistic write, skip the schedule update to avoid
-    // clobbering the UI during or immediately after a drag/assign gesture.
-    if (optimisticIsRecent) {
+    if (hasPendingMoves) {
       set({ status: nextStatus, lastSyncedAt: Date.now() });
       return;
     }
@@ -425,7 +433,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         snapshotIsEmpty && prev.length > 0 ? get().status : ((schedule.status ?? 0) as 0 | 1 | 2),
       balanceSummary: schedule.balanceSummary ?? null,
       lastSyncedAt: Date.now(),
-      optimisticWriteAt: null,
     });
 
     if (incomingGroceryState && typeof incomingGroceryState === 'object') {
