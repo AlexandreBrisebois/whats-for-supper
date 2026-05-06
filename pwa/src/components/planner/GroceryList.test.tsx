@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 
 // ── Store mock ────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,10 @@ vi.mock('@/lib/api/schedule', () => ({
   useSchedule: () => ({
     updateGroceryState: vi.fn().mockResolvedValue({}),
   }),
+}));
+
+vi.mock('@/lib/api/ingredients', () => ({
+  reclassifyIngredient: vi.fn(),
 }));
 
 // ── aisleOrder mock — pin to a single section so tests are deterministic ──────
@@ -64,6 +68,7 @@ vi.mock('@/locales', () => ({
 
 import { GroceryList } from './GroceryList';
 import type { GroceryLineItemDto } from '@/lib/api/generated/models';
+import { reclassifyIngredient } from '@/lib/api/ingredients';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -166,5 +171,37 @@ describe('GroceryList — section grouping from DTO', () => {
     render(<GroceryList weekOffset={0} items={[makeItem('xyzzy', 'Pantry', 'xyzzy')]} />);
     expect(screen.getByTestId('aisle-section-Pantry')).toBeInTheDocument();
     expect(screen.queryByTestId('aisle-section-Grocery')).not.toBeInTheDocument();
+  });
+});
+
+describe('GroceryList — reclassify affordance', () => {
+  it('shows the section picker when the reclassify button is clicked', async () => {
+    render(<GroceryList weekOffset={0} items={[makeItem('Tomato', 'Produce', 'tomato')]} />);
+    const btn = screen.getByTestId('reclassify-btn');
+    fireEvent.click(btn);
+    expect(screen.getByTestId('section-picker')).toBeInTheDocument();
+  });
+
+  it('calls reclassifyIngredient with the selected section', async () => {
+    vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
+    render(<GroceryList weekOffset={0} items={[makeItem('Tomato', 'Produce', 'tomato')]} />);
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('section-option-Pantry'));
+    });
+
+    expect(reclassifyIngredient).toHaveBeenCalledWith('tomato', 'Pantry');
+    expect(screen.queryByTestId('section-picker')).not.toBeInTheDocument();
+  });
+
+  it('shows reclassify error indicator when the API call fails', async () => {
+    vi.mocked(reclassifyIngredient).mockRejectedValue(new Error('Network error'));
+    render(<GroceryList weekOffset={0} items={[makeItem('Tomato', 'Produce', 'tomato')]} />);
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('section-option-Pantry'));
+    });
+
+    await screen.findByTestId('reclassify-error');
   });
 });

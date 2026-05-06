@@ -1,13 +1,14 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, Circle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Circle, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
 import type { GrocerySection } from '@/lib/grocery/aisleMapper';
 import { AISLE_ORDER } from '@/lib/grocery/aisleOrder';
 import { useSchedule } from '@/lib/api/schedule';
+import { reclassifyIngredient } from '@/lib/api/ingredients';
 import type { GroceryLineItemDto } from '@/lib/api/generated/models';
 
 interface GroceryListProps {
@@ -33,6 +34,8 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
   const { toggleGroceryItem } = useSchedule();
   const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
+  const [reclassifyOpen, setReclassifyOpen] = useState<string | null>(null);
+  const [reclassifyErrors, setReclassifyErrors] = useState<Set<string>>(new Set());
   const grouped = useMemo(() => {
     const result: Partial<Record<GrocerySection, GroceryLineItemDto[]>> = {};
     for (const item of items) {
@@ -78,6 +81,28 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
         setErrorItems((prev) => {
           const next = new Set(prev);
           next.delete(ingredientName);
+          return next;
+        });
+      }, 3000);
+    }
+  };
+
+  const handleReclassify = async (item: GroceryLineItemDto, newSection: GrocerySection) => {
+    setReclassifyOpen(null);
+    try {
+      await reclassifyIngredient(item.normalizedKey!, newSection);
+      // Optimistic: the SSE stream will push the recomputed list shortly.
+      // No local state change needed beyond closing the picker.
+    } catch {
+      setReclassifyErrors((prev) => {
+        const next = new Set(prev);
+        next.add(item.normalizedKey!);
+        return next;
+      });
+      setTimeout(() => {
+        setReclassifyErrors((prev) => {
+          const next = new Set(prev);
+          next.delete(item.normalizedKey!);
           return next;
         });
       }, 3000);
@@ -198,39 +223,90 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                           const key = item.displayName ?? '';
                           const isChecked = groceryState[key] ?? false;
                           const hasError = errorItems.has(key);
+                          const hasReclassifyError = reclassifyErrors.has(item.normalizedKey ?? '');
+                          const isPickerOpen = reclassifyOpen === item.normalizedKey;
+
                           return (
-                            <motion.button
-                              key={key}
-                              onClick={() => handleToggle(key)}
-                              layout
-                              className={`w-full flex items-center space-x-4 p-4 rounded-2xl transition-all ${
-                                isChecked
-                                  ? 'bg-sage/5 text-charcoal/40'
-                                  : 'hover:bg-charcoal/2 text-charcoal'
-                              }`}
-                              data-testid={`grocery-item-checkbox`}
-                              data-item-name={key}
-                            >
-                              {isChecked ? (
-                                <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
-                              ) : (
-                                <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
-                              )}
-                              <span
-                                className={`text-left font-medium transition-all ${
-                                  isChecked ? 'line-through opacity-60' : ''
+                            <div key={key} className="relative">
+                              <div
+                                className={`flex items-center p-4 rounded-2xl transition-all ${
+                                  isChecked
+                                    ? 'bg-sage/5 text-charcoal/40'
+                                    : 'hover:bg-charcoal/2 text-charcoal'
                                 }`}
                               >
-                                {key}
-                              </span>
-                              {hasError && (
-                                <AlertCircle
-                                  size={12}
-                                  className="text-terracotta flex-shrink-0 ml-1"
-                                  data-testid="grocery-item-error"
-                                />
+                                {/* Toggle button — takes up the left portion */}
+                                <button
+                                  onClick={() => handleToggle(key)}
+                                  className="flex items-center space-x-4 flex-1 text-left"
+                                  data-testid="grocery-item-checkbox"
+                                  data-item-name={key}
+                                >
+                                  {isChecked ? (
+                                    <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
+                                  ) : (
+                                    <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
+                                  )}
+                                  <span
+                                    className={`font-medium transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
+                                  >
+                                    {key}
+                                  </span>
+                                  {hasError && (
+                                    <AlertCircle
+                                      size={12}
+                                      className="text-terracotta flex-shrink-0 ml-1"
+                                      data-testid="grocery-item-error"
+                                    />
+                                  )}
+                                </button>
+
+                                {/* Reclassify button — separate tap target */}
+                                <button
+                                  onClick={() =>
+                                    setReclassifyOpen(
+                                      isPickerOpen ? null : (item.normalizedKey ?? null)
+                                    )
+                                  }
+                                  className="ml-2 p-1 rounded-full hover:bg-charcoal/5 text-charcoal/30 hover:text-charcoal/60 transition-colors relative"
+                                  aria-label={`Change section for ${key}`}
+                                  data-testid="reclassify-btn"
+                                  data-item-name={key}
+                                >
+                                  <Tag size={14} />
+                                  {hasReclassifyError && (
+                                    <AlertCircle
+                                      size={10}
+                                      className="text-terracotta absolute -top-1 -right-1"
+                                      data-testid="reclassify-error"
+                                    />
+                                  )}
+                                </button>
+                              </div>
+
+                              {/* Inline section picker */}
+                              {isPickerOpen && (
+                                <div
+                                  className="mx-4 mb-2 flex flex-wrap gap-2 p-3 bg-charcoal/3 rounded-2xl"
+                                  data-testid="section-picker"
+                                >
+                                  {AISLE_ORDER.map((section) => (
+                                    <button
+                                      key={section}
+                                      onClick={() => handleReclassify(item, section)}
+                                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                        item.section === section
+                                          ? 'bg-sage text-white'
+                                          : 'bg-white text-charcoal/60 hover:bg-sage/10'
+                                      }`}
+                                      data-testid={`section-option-${section}`}
+                                    >
+                                      {section}
+                                    </button>
+                                  ))}
+                                </div>
                               )}
-                            </motion.button>
+                            </div>
                           );
                         })}
                       </div>

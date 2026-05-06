@@ -911,7 +911,7 @@ public class IngredientCategoryIntegrationTests : IAsyncLifetime
 
 ## Slice 4 — PWA: reclassify affordance
 
-### Task 4.1 — Add reclassify API call
+### Task 4.1 [x] — Add reclassify API call
 
 **File:** `pwa/src/lib/api/ingredients.ts` (new file)
 
@@ -950,7 +950,7 @@ export async function reclassifyIngredient(
 
 ---
 
-### Task 4.2 — Add reclassify state and handler to GroceryList
+### Task 4.2 [x] — Add reclassify state and handler to GroceryList
 
 **File:** `pwa/src/components/planner/GroceryList.tsx`
 
@@ -995,7 +995,7 @@ const handleReclassify = async (item: GroceryLineItemDto, newSection: GrocerySec
 
 ---
 
-### Task 4.3 — Add reclassify UI to each item row
+### Task 4.3 [x] — Add reclassify UI to each item row
 
 **File:** `pwa/src/components/planner/GroceryList.tsx`
 
@@ -1089,7 +1089,7 @@ import { AlertCircle, CheckCircle2, Circle, Tag } from 'lucide-react';
 
 ---
 
-### Task 4.4 — Add reclassify tests to GroceryList
+### Task 4.4 [x] — Add reclassify tests to GroceryList
 
 **File:** `pwa/src/components/planner/GroceryList.test.tsx`
 
