@@ -37,12 +37,6 @@ vi.mock('@/lib/grocery/aisleOrder', () => ({
   AISLE_ORDER: ['Produce', 'Pantry'],
 }));
 
-// ── aisleMapper mock — map everything to Produce for simplicity ───────────────
-
-vi.mock('@/lib/grocery/aisleMapper', () => ({
-  mapIngredientToSection: () => 'Produce',
-}));
-
 // ── Framer Motion mock ────────────────────────────────────────────────────────
 
 vi.mock('framer-motion', () => ({
@@ -69,13 +63,30 @@ vi.mock('@/locales', () => ({
 // ── Import component AFTER mocks ──────────────────────────────────────────────
 
 import { GroceryList } from './GroceryList';
+import type { GroceryLineItemDto } from '@/lib/api/generated/models';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ITEMS = ['tomato', 'lettuce'];
+function makeItem(
+  displayName: string,
+  section: string,
+  normalizedKey?: string
+): GroceryLineItemDto {
+  return {
+    displayName,
+    normalizedKey: normalizedKey ?? displayName.toLowerCase().replace(/\s+/g, '_'),
+    section,
+    quantity: null,
+    unitText: null,
+    recipeIds: [],
+    additionalData: {},
+  };
+}
+
+const ITEMS = [makeItem('tomato', 'Produce'), makeItem('lettuce', 'Produce')];
 
 function renderList() {
-  return render(<GroceryList weekOffset={0} ingredients={ITEMS} />);
+  return render(<GroceryList weekOffset={0} items={ITEMS} />);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -139,12 +150,21 @@ describe('GroceryList — section completion UI', () => {
   });
 
   it('does not show completion state when section has zero items', () => {
-    // No ingredients → empty state, no section cards rendered
+    // No items → empty state, no section cards rendered
     mockGroceryState = {};
 
-    render(<GroceryList weekOffset={0} ingredients={[]} />);
+    render(<GroceryList weekOffset={0} items={[]} />);
 
     expect(screen.queryByTestId('section-complete-icon')).toBeNull();
     expect(screen.queryByTestId('aisle-header-complete')).toBeNull();
+  });
+});
+
+describe('GroceryList — section grouping from DTO', () => {
+  it('groups items by section from the DTO, not by keyword matching', () => {
+    // 'xyzzy' would fall to Grocery by keyword but we explicitly assign it to Pantry
+    render(<GroceryList weekOffset={0} items={[makeItem('xyzzy', 'Pantry', 'xyzzy')]} />);
+    expect(screen.getByTestId('aisle-section-Pantry')).toBeInTheDocument();
+    expect(screen.queryByTestId('aisle-section-Grocery')).not.toBeInTheDocument();
   });
 });

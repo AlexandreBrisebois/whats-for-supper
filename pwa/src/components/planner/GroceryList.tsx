@@ -5,13 +5,14 @@ import { AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
-import { mapIngredientToSection, type GrocerySection } from '@/lib/grocery/aisleMapper';
+import type { GrocerySection } from '@/lib/grocery/aisleMapper';
 import { AISLE_ORDER } from '@/lib/grocery/aisleOrder';
 import { useSchedule } from '@/lib/api/schedule';
+import type { GroceryLineItemDto } from '@/lib/api/generated/models';
 
 interface GroceryListProps {
   weekOffset: number;
-  ingredients: string[];
+  items: GroceryLineItemDto[];
   onClose?: () => void;
 }
 
@@ -28,33 +29,35 @@ const AISLE_ICONS: Record<GrocerySection, string> = {
   Grocery: '🛒',
 };
 
-export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListProps) {
+export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
   const { updateGroceryState } = useSchedule();
   const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
   const grouped = useMemo(() => {
-    const result: Partial<Record<GrocerySection, string[]>> = {};
-    for (const ingredient of ingredients) {
-      const section = mapIngredientToSection(ingredient);
-      if (!result[section]) result[section] = [];
-      result[section]!.push(ingredient);
+    const result: Partial<Record<GrocerySection, GroceryLineItemDto[]>> = {};
+    for (const item of items) {
+      const section = (item.section ?? 'Grocery') as GrocerySection;
+      const bucket = AISLE_ORDER.includes(section) ? section : 'Grocery';
+      if (!result[bucket]) result[bucket] = [];
+      result[bucket]!.push(item);
     }
     return result;
-  }, [ingredients]);
+  }, [items]);
 
   useEffect(() => {
-    // Initialize grocery state if not already set and we have ingredients
-    if (ingredients.length > 0 && Object.keys(groceryState).length === 0) {
-      const initialState = ingredients.reduce(
-        (acc, ing) => {
-          acc[ing] = false;
+    // Initialize grocery state if not already set and we have items
+    if (items.length > 0 && Object.keys(groceryState).length === 0) {
+      const initialState = items.reduce(
+        (acc, item) => {
+          const key = item.displayName ?? '';
+          acc[key] = false;
           return acc;
         },
         {} as Record<string, boolean>
       );
       setGroceryState(initialState);
     }
-  }, [ingredients, groceryState, setGroceryState]);
+  }, [items, groceryState, setGroceryState]);
 
   const handleToggle = async (ingredientName: string) => {
     const newState = !groceryState[ingredientName];
@@ -125,7 +128,9 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                   const aisleItems = grouped[aisle] || [];
                   if (aisleItems.length === 0) return null;
 
-                  const checkedCount = aisleItems.filter((item) => groceryState[item]).length;
+                  const checkedCount = aisleItems.filter(
+                    (item) => groceryState[item.displayName ?? '']
+                  ).length;
 
                   return (
                     <motion.div
@@ -191,12 +196,13 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                       {/* Items */}
                       <div className="divide-y divide-charcoal/5 p-4 space-y-2">
                         {aisleItems.map((item) => {
-                          const isChecked = groceryState[item] ?? false;
-                          const hasError = errorItems.has(item);
+                          const key = item.displayName ?? '';
+                          const isChecked = groceryState[key] ?? false;
+                          const hasError = errorItems.has(key);
                           return (
                             <motion.button
-                              key={item}
-                              onClick={() => handleToggle(item)}
+                              key={key}
+                              onClick={() => handleToggle(key)}
                               layout
                               className={`w-full flex items-center space-x-4 p-4 rounded-2xl transition-all ${
                                 isChecked
@@ -204,7 +210,7 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                                   : 'hover:bg-charcoal/2 text-charcoal'
                               }`}
                               data-testid={`grocery-item-checkbox`}
-                              data-item-name={item}
+                              data-item-name={key}
                             >
                               {isChecked ? (
                                 <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
@@ -216,7 +222,7 @@ export function GroceryList({ weekOffset, ingredients, onClose }: GroceryListPro
                                   isChecked ? 'line-through opacity-60' : ''
                                 }`}
                               >
-                                {item}
+                                {key}
                               </span>
                               {hasError && (
                                 <AlertCircle

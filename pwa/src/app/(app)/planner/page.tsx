@@ -43,12 +43,9 @@ export default function PlannerPage() {
   const schedule = useWeekStore((s) => s.schedule);
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
+  const groceryItems = useWeekStore((s) => s.groceryItems);
   const isVotingOpen = status === 1;
   const isLocked = status === 2;
-  const memoizedIngredients = useMemo(
-    () => [...new Set(schedule.flatMap((day) => day.recipe?.ingredients ?? []))],
-    [schedule]
-  );
   const [showPivot, setShowPivot] = useState<{ dayIndex: number } | null>(null);
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [successDay, setSuccessDay] = useState<number | null>(null);
@@ -409,7 +406,7 @@ export default function PlannerPage() {
             >
               <GroceryList
                 weekOffset={currentWeekOffset}
-                ingredients={memoizedIngredients}
+                items={groceryItems ?? []}
                 onClose={() => setActiveTab('planner')}
               />
             </motion.div>

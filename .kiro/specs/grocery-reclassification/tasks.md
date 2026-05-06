@@ -21,7 +21,7 @@ Authority order: `specs/openapi.yaml` → this spec → tests → implementation
 
 > **Why first?** The bug where well-categorized items land in the wrong aisle exists independently of reclassification. Fixing it now means Slice 2 (reclassify) starts from a correct baseline, and the test fixtures established here carry through.
 
-### Task 1.1 — Update GroceryList to accept DTOs
+### Task 1.1 [x] — Update GroceryList to accept DTOs
 
 **File:** `pwa/src/components/planner/GroceryList.tsx`
 
@@ -104,7 +104,7 @@ Remove the `mapIngredientToSection` import — it is no longer used here.
 
 ---
 
-### Task 1.2 — Update planner page to pass items
+### Task 1.2 [x] — Update planner page to pass items
 
 **File:** `pwa/src/app/(app)/planner/page.tsx`
 
@@ -141,7 +141,7 @@ const { groceryItems } = useWeekStore();
 
 ---
 
-### Task 1.3 — Update GroceryList tests
+### Task 1.3 [x] — Update GroceryList tests
 
 **File:** `pwa/src/components/planner/GroceryList.test.tsx`
 

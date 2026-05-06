@@ -22,6 +22,7 @@ Show three options:
 1. Claude Code
 2. Codex
 3. Gemini Flash
+4. GitHub Copilot
 
 Wait for me to answer.
 
