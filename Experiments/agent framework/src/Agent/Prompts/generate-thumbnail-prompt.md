@@ -1,1 +1,0 @@
-Task: Generate 400x400 JPG thumbnail of the finished dish from these images. Focus on the plated meal.

@@ -58,6 +58,7 @@ export default function PlannerPage() {
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
+  const lastReorderRef = useRef<UILocalScheduleDay[] | null>(null);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -205,8 +206,10 @@ export default function PlannerPage() {
   };
 
   // Framer Motion calls onReorder on every pointer move during drag.
-  // We let it manage the visual order itself — store updates happen once in onDragEnd via commitMove.
-  const handleReorder = (_newSchedule: UILocalScheduleDay[]) => {};
+  // We capture the latest visual order so onDragEnd can compute the final destination index.
+  const handleReorder = (newSchedule: UILocalScheduleDay[]) => {
+    lastReorderRef.current = newSchedule;
+  };
 
   const plannedCount = schedule.filter((d) => d.recipe && d.recipe.id).length;
   const isFinalized = isLocked;
@@ -438,6 +441,7 @@ export default function PlannerPage() {
                       setActiveCookMode(day);
                     }}
                     preDragSnapshotRef={preDragSnapshotRef}
+                    lastReorderRef={lastReorderRef}
                     hasAnimatedIn={hasAnimatedIn}
                   />
                 ))}
@@ -553,6 +557,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
   onPivot,
   onCookMode,
   preDragSnapshotRef,
+  lastReorderRef,
   hasAnimatedIn,
 }: {
   day: UILocalScheduleDay;
@@ -561,6 +566,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
   onPivot: () => void;
   onCookMode: () => void;
   preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
+  lastReorderRef: React.RefObject<UILocalScheduleDay[] | null>;
   hasAnimatedIn: boolean;
 }) {
   const dragControls = useDragControls();
@@ -575,13 +581,14 @@ const PlannerDayCard = memo(function PlannerDayCard({
       }}
       onDragEnd={() => {
         const snapshot = preDragSnapshotRef.current;
-        const currentSchedule = useWeekStore.getState().schedule;
+        const finalOrder = lastReorderRef.current;
         const finalFrom = snapshot ? snapshot.findIndex((d) => d._uiId === day._uiId) : -1;
-        const finalTo = currentSchedule.findIndex((d) => d._uiId === day._uiId);
-        if (finalFrom !== finalTo && snapshot !== null) {
+        const finalTo = finalOrder ? finalOrder.findIndex((d) => d._uiId === day._uiId) : -1;
+        if (finalFrom !== -1 && finalTo !== -1 && finalFrom !== finalTo && snapshot !== null) {
           useWeekStore.getState().commitMove(finalFrom, finalTo, snapshot);
         }
         preDragSnapshotRef.current = null;
+        lastReorderRef.current = null;
       }}
       initial={{ opacity: 0, y: 20 }}
       animate={{
