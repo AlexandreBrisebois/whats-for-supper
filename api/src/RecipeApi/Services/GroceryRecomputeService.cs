@@ -436,7 +436,28 @@ public class GroceryRecomputeService(
                 }
             }
 
+            var requiredQuantity = item["requiredQuantity"];
+            if (quantity == null && requiredQuantity != null)
+            {
+                var requiredValue = requiredQuantity["value"];
+                if (requiredValue != null)
+                {
+                    try
+                    {
+                        quantity = requiredValue.GetValue<double>();
+                    }
+                    catch
+                    {
+                        logger.LogDebug(
+                            "Recipe {RecipeId}: supply item '{Name}' has non-numeric requiredQuantity.value — setting quantity to null",
+                            recipeId, name);
+                    }
+                }
+            }
+
             var unitText = item["unitText"]?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(unitText))
+                unitText = requiredQuantity?["unitText"]?.GetValue<string>();
             if (string.IsNullOrWhiteSpace(unitText))
                 unitText = null;
 

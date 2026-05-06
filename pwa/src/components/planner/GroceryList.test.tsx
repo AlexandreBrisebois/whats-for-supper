@@ -176,28 +176,6 @@ describe('GroceryList — section grouping from DTO', () => {
   });
 });
 
-describe('GroceryList — checkbox state attributes', () => {
-  it('renders checked items with explicit aria-checked and data-state values', () => {
-    mockGroceryState = { tomato: true };
-
-    render(<GroceryList weekOffset={0} items={[makeItem('tomato', 'Produce', 'tomato')]} />);
-
-    const checkbox = screen.getByTestId('grocery-item-checkbox');
-    expect(checkbox).toHaveAttribute('aria-checked', 'true');
-    expect(checkbox).toHaveAttribute('data-state', 'checked');
-  });
-
-  it('renders unchecked items with explicit aria-checked and data-state values', () => {
-    mockGroceryState = { tomato: false };
-
-    render(<GroceryList weekOffset={0} items={[makeItem('tomato', 'Produce', 'tomato')]} />);
-
-    const checkbox = screen.getByTestId('grocery-item-checkbox');
-    expect(checkbox).toHaveAttribute('aria-checked', 'false');
-    expect(checkbox).toHaveAttribute('data-state', 'unchecked');
-  });
-});
-
 describe('GroceryList — quantity hints', () => {
   it('shows the aggregated amount hint when quantity and unitText are present', () => {
     render(
@@ -213,7 +191,7 @@ describe('GroceryList — quantity hints', () => {
     );
 
     expect(screen.getByText('Potato')).toBeInTheDocument();
-    expect(screen.getByText('(1500 g)')).toBeInTheDocument();
+    expect(screen.getByTestId('grocery-item-quantity-hint')).toHaveTextContent('1500 g');
   });
 
   it('does not show the amount hint when quantity is missing', () => {

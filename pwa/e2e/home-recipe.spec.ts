@@ -280,9 +280,16 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   test('"Pick Something Else" flow opens Quick Find then Step 2', async ({ page }) => {
     const monday = currentMonday();
     const today = toDateStr(monday);
+    const lasagnaRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Test Lasagna',
+      image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+    });
 
     let moveCalled = false;
     let assignCalled = false;
+
+    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
 
     // Mock schedule with a planned recipe for today
     await page.route(
@@ -329,10 +336,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             return {
               date: dateStr,
               status: 0,
-              recipe: builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_LASAGNA,
-                name: 'Test Lasagna',
-              }),
+              recipe: dateStr === today ? lasagnaRecipe : null,
             };
           });
           await route.fulfill({
@@ -382,6 +386,107 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Dialog should be closed
     await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+  });
+
+  test('Closing Quick Find after "Pick Something Else" exits without changing tonight', async ({
+    page,
+  }) => {
+    const monday = currentMonday();
+    const today = toDateStr(monday);
+
+    const lasagnaRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Test Lasagna',
+      image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+    });
+
+    let moveCalled = false;
+    let assignCalled = false;
+
+    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        const method = request.method();
+
+        if (url.pathname.endsWith('/fill-the-gap')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: [
+                builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_CHICKEN,
+                  name: 'Test Chicken',
+                  image: '/chicken.jpg',
+                }),
+              ],
+            }),
+          });
+        } else if (url.pathname.endsWith('/move') && method === 'POST') {
+          moveCalled = true;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ success: true }),
+          });
+        } else if (url.pathname.endsWith('/assign') && method === 'POST') {
+          assignCalled = true;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ success: true }),
+          });
+        } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(monday);
+            d.setUTCDate(monday.getUTCDate() + i);
+            const dateStr = toDateStr(d);
+            return {
+              date: dateStr,
+              status: 0,
+              recipe: dateStr === today ? lasagnaRecipe : null,
+            };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+          });
+        } else {
+          await route.continue();
+        }
+      }
+    );
+
+    await page.goto('/home');
+    await expect(page.getByTestId('home-loader')).not.toBeVisible();
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Test Lasagna' }).first()).toBeVisible();
+
+    await page.getByTestId('tonight-menu-card').click();
+    await page.waitForTimeout(600);
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    await page.getByTestId('recovery-action-pick-else').click();
+
+    await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+    await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+
+    await page.getByTestId('quick-find-close').click();
+
+    await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
+    await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Test Lasagna' }).first()).toBeVisible();
+    expect(moveCalled).toBe(false);
+    expect(assignCalled).toBe(false);
   });
 
   // B5 + reload: page reload after "Order In" (no recipe) does not show pivot card

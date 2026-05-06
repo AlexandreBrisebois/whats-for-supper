@@ -241,13 +241,19 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     // intermediate stack. This matches the backend's default swap semantics.
     [next[from], next[to]] = [next[to], next[from]];
 
-    // 2. Reconcile: the user wants to move the CONTENT (recipe) but the DAYS
-    // (Mon, Tue...) must remain fixed at their respective indices.
-    const reconciled = next.map((item, index) => ({
-      ...item,
-      day: prev[index].day,
-      date: prev[index].date,
-    }));
+    // Reconcile only the two affected slots so unaffected cards keep their
+    // object identity during drag and do not all re-render on each midpoint.
+    const reconciled = [...prev];
+    reconciled[from] = {
+      ...next[from],
+      day: prev[from].day,
+      date: prev[from].date,
+    };
+    reconciled[to] = {
+      ...next[to],
+      day: prev[to].day,
+      date: prev[to].date,
+    };
 
     set({ schedule: reconciled, optimisticWriteAt: Date.now() });
     // No API call — this is intentionally local-only for smooth drag feedback.

@@ -96,7 +96,10 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
               <span className="text-[10px] font-black uppercase tracking-[0.3em]">Quick find</span>
             </div>
             <button
+              data-testid="quick-find-close"
               onClick={onClose}
+              aria-label="Close"
+              title="Close"
               className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors backdrop-blur-sm"
             >
               <X size={20} />

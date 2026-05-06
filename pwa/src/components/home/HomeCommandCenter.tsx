@@ -27,13 +27,17 @@ interface HomeCommandCenterProps {
   todayStatus?: 0 | 2 | 3;
 }
 
+type RecoveryFlowState =
+  | { kind: 'closed' }
+  | { kind: 'step1' }
+  | { kind: 'quick_find'; intent: 'pick_else' | null }
+  | { kind: 'step2'; intent: 'order_in'; pendingRecipe: null }
+  | { kind: 'step2'; intent: 'pick_else'; pendingRecipe: any };
+
 export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCenterProps) {
   // ── UI-only state (not domain state) ──────────────────────────────────────
   const [showCooksMode, setShowCooksMode] = useState(false);
-  const [showRecovery, setShowRecovery] = useState(false);
-  const [showQuickFind, setShowQuickFind] = useState(false);
-  const [recoveryIntent, setRecoveryIntent] = useState<'order_in' | 'pick_else' | null>(null);
-  const [pendingRecipe, setPendingRecipe] = useState<any>(null);
+  const [recoveryFlow, setRecoveryFlow] = useState<RecoveryFlowState>({ kind: 'closed' });
   const [cookedDismissed, setCookedDismissed] = useState(false);
   const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null);
   const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
@@ -188,8 +192,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   };
 
   const handleSkipTrigger = () => {
-    setRecoveryIntent(null);
-    setShowRecovery(true);
+    setRecoveryFlow({ kind: 'step1' });
   };
 
   const handleCookedMark = () => {
@@ -204,13 +207,11 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         if (!todayDate) return;
 
         if (action === 'order_in') {
-          setRecoveryIntent('order_in');
           markOrderedIn();
+          setRecoveryFlow({ kind: 'step2', intent: 'order_in', pendingRecipe: null });
           // Do NOT close recovery dialog; let Step 2 handle rescheduling
         } else if (action === 'pick_else') {
-          setRecoveryIntent('pick_else');
-          setShowRecovery(false);
-          setShowQuickFind(true);
+          setRecoveryFlow({ kind: 'quick_find', intent: 'pick_else' });
         } else if (action === 'tomorrow') {
           // Reschedule tonight's meal to tomorrow
           await apiClient.api.schedule.move.post({
@@ -220,13 +221,11 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             intent: 'push',
           });
 
-          if (recoveryIntent === 'pick_else' && pendingRecipe) {
-            assignRecipe(pendingRecipe);
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
+            assignRecipe(recoveryFlow.pendingRecipe);
           }
 
-          setShowRecovery(false);
-          setRecoveryIntent(null);
-          setPendingRecipe(null);
+          setRecoveryFlow({ kind: 'closed' });
           sync();
         } else if (action === 'next_week') {
           await apiClient.api.schedule.move.post({
@@ -236,40 +235,40 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             targetWeekOffset: 1,
             intent: 'push',
           });
-          if (recoveryIntent === 'pick_else' && pendingRecipe) {
-            assignRecipe(pendingRecipe);
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
+            assignRecipe(recoveryFlow.pendingRecipe);
           }
-          setShowRecovery(false);
-          setRecoveryIntent(null);
-          setPendingRecipe(null);
+          setRecoveryFlow({ kind: 'closed' });
           sync();
         } else if (action === 'drop') {
           await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
-          if (recoveryIntent === 'pick_else' && pendingRecipe) {
-            assignRecipe(pendingRecipe);
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
+            assignRecipe(recoveryFlow.pendingRecipe);
           }
-          setShowRecovery(false);
-          setRecoveryIntent(null);
-          setPendingRecipe(null);
+          setRecoveryFlow({ kind: 'closed' });
           sync();
         }
       } catch (error) {
         console.error('Failed recovery action:', error);
       }
     },
-    [markOrderedIn, sync, recoveryIntent, pendingRecipe, assignRecipe]
+    [markOrderedIn, sync, recoveryFlow, assignRecipe]
   );
 
   const handleQuickFindSelect = async (recipe: any) => {
-    setShowQuickFind(false);
+    const quickFindIntent = recoveryFlow.kind === 'quick_find' ? recoveryFlow.intent : null;
+    setRecoveryFlow({ kind: 'closed' });
     if (!recipe) return;
-    if (recoveryIntent === 'pick_else') {
-      setPendingRecipe(recipe);
-      setShowRecovery(true);
+    if (quickFindIntent === 'pick_else') {
+      setRecoveryFlow({ kind: 'step2', intent: 'pick_else', pendingRecipe: recipe });
     } else {
       assignRecipe({ id: recipe.id, name: recipe.name ?? null, image: recipe.image ?? '' });
     }
   };
+
+  const showRecovery = recoveryFlow.kind === 'step1' || recoveryFlow.kind === 'step2';
+  const showQuickFind = recoveryFlow.kind === 'quick_find';
+  const recoveryStep = recoveryFlow.kind === 'step2' ? 2 : 1;
 
   return (
     <div className="flex flex-col gap-8 pt-4 pb-12 max-w-sm mx-auto w-full px-6 sm:px-0">
@@ -293,18 +292,17 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                     image: gotoRecipeData?.imageUrl ?? gotoImageUrl ?? '',
                   });
                 } else {
-                  setShowQuickFind(true);
+                  setRecoveryFlow({ kind: 'quick_find', intent: null });
                 }
               }}
-              onDiscover={() => setShowQuickFind(true)}
+              onDiscover={() => setRecoveryFlow({ kind: 'quick_find', intent: null })}
               onOrderIn={async () => {
                 if (!currentRecipe) {
                   // B5: No recipe — write status:3 unconditionally via store
                   markOrderedIn();
                 } else {
                   // B6: Recipe exists — open recovery dialog first
-                  setRecoveryIntent('order_in');
-                  setShowRecovery(true);
+                  setRecoveryFlow({ kind: 'step1' });
                 }
               }}
             />
@@ -385,12 +383,9 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         {showRecovery && (
           <SkipRecoveryDialog
             isOpen={showRecovery}
-            initialStep={pendingRecipe ? 2 : 1}
-            onClose={() => {
-              setShowRecovery(false);
-              setRecoveryIntent(null);
-              setPendingRecipe(null);
-            }}
+            step={recoveryStep}
+            onClose={() => setRecoveryFlow({ kind: 'closed' })}
+            onBack={() => setRecoveryFlow({ kind: 'step1' })}
             onAction={handleRecoveryAction}
           />
         )}
@@ -399,7 +394,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       <AnimatePresence>
         {showQuickFind && (
           <QuickFindModal
-            onClose={() => setShowQuickFind(false)}
+            onClose={() => setRecoveryFlow({ kind: 'closed' })}
             onSelect={handleQuickFindSelect}
           />
         )}

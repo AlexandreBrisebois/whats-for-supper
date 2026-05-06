@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Utensils, Pizza, RefreshCw, Calendar, ArrowRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,19 +9,19 @@ import { t } from '@/locales';
 
 interface SkipRecoveryDialogProps {
   isOpen: boolean;
+  step: 1 | 2;
   onClose: () => void;
+  onBack: () => void;
   onAction: (action: 'order_in' | 'pick_else' | 'tomorrow' | 'next_week' | 'drop') => void;
-  initialStep?: number;
 }
 
 export function SkipRecoveryDialog({
   isOpen,
+  step,
   onClose,
+  onBack,
   onAction,
-  initialStep = 1,
 }: SkipRecoveryDialogProps) {
-  const [step, setStep] = useState(initialStep);
-
   if (!isOpen) return null;
 
   return (
@@ -50,6 +50,8 @@ export function SkipRecoveryDialog({
           </h2>
           <button
             onClick={onClose}
+            aria-label={t('common.close', 'Close')}
+            title={t('common.close', 'Close')}
             className="p-2 rounded-full bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10 transition-colors"
           >
             <X size={20} />
@@ -82,7 +84,6 @@ export function SkipRecoveryDialog({
                   <button
                     onClick={() => {
                       onAction('order_in');
-                      setStep(2);
                     }}
                     data-testid="recovery-action-order-in"
                     className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
@@ -103,7 +104,6 @@ export function SkipRecoveryDialog({
                   <button
                     onClick={() => {
                       onAction('pick_else');
-                      setStep(2);
                     }}
                     data-testid="recovery-action-pick-else"
                     className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all text-left group"
@@ -207,7 +207,7 @@ export function SkipRecoveryDialog({
                 </div>
 
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={onBack}
                   className="mt-4 text-xs font-black uppercase tracking-widest text-charcoal/30 hover:text-charcoal/60 transition-colors"
                 >
                   {t('home.goBack', 'Go back')}

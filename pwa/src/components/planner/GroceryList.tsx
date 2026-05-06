@@ -255,12 +255,12 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                 {/* Toggle button — takes up the left portion */}
                                 <button
                                   onClick={() => handleToggle(key)}
-                                  className="flex items-center space-x-4 flex-1 text-left"
+                                  className="flex min-w-0 items-start space-x-4 flex-1 text-left"
                                   data-testid="grocery-item-checkbox"
                                   data-item-name={key}
                                   data-state={isChecked ? 'checked' : 'unchecked'}
                                   role="checkbox"
-                                  aria-checked={isChecked ? 'true' : 'false'}
+                                  aria-checked={isChecked}
                                 >
                                   {isChecked ? (
                                     <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
@@ -268,11 +268,18 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                     <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
                                   )}
                                   <span
-                                    className={`font-medium transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
+                                    className={`min-w-0 flex-1 transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
                                   >
-                                    {key}
+                                    <span
+                                      className={`block font-medium transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
+                                    >
+                                      {key}
+                                    </span>
                                     {quantityHint && (
-                                      <span className="ml-1 text-sm font-normal text-charcoal/50">
+                                      <span
+                                        data-testid="grocery-item-quantity-hint"
+                                        className="mt-1 block text-sm font-normal text-charcoal/50"
+                                      >
                                         {quantityHint}
                                       </span>
                                     )}

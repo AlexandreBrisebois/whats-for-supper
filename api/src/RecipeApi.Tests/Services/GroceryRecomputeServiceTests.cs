@@ -254,6 +254,46 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         Assert.Equal("g", potato.UnitText);
     }
 
+        [Fact]
+        public async Task RecomputeForWeekAsync_RequiredQuantityShape_ExtractsQuantityAndUnit()
+        {
+                var recipeId = Guid.NewGuid();
+                _db.Recipes.Add(new Recipe
+                {
+                        Id = recipeId,
+                        Name = "SchemaOrg Recipe",
+                        RawMetadata =
+                                """
+                                {
+                                    "supply": [
+                                        {
+                                            "name": "garlic cloves",
+                                            "requiredQuantity": {
+                                                "value": 4,
+                                                "unitText": "piece"
+                                            }
+                                        }
+                                    ]
+                                }
+                                """,
+                });
+                _db.CalendarEvents.Add(new CalendarEvent
+                {
+                        Id = Guid.NewGuid(),
+                        RecipeId = recipeId,
+                        Date = TestMonday,
+                        Status = CalendarEventStatus.Planned,
+                });
+                await _db.SaveChangesAsync();
+
+                await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+                var items = await GetGroceryItemsAsync(TestMonday);
+                var garlic = items.Single(i => i.NormalizedKey!.Contains("garlic"));
+                Assert.Equal(4.0, garlic.Quantity);
+                Assert.Equal("piece", garlic.UnitText);
+        }
+
     [Fact]
     public async Task RecomputeForWeekAsync_UnknownUnit_KeptAsSeparateBucket()
     {
