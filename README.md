@@ -153,6 +153,9 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Discovery nudge via SSE | ✅ Complete |
 | Backup / restore (NAS-safe, LLM-skip on restore) | ✅ Complete |
 | NAS deployment (Synology / Unraid) | ✅ Running in production |
+| **Search** | ⚠️ TODO |
+| **Recipes management** (edit, delete, set discoverable for voting and quick find) | ⚠️ TODO |
+| **Dietician Agent** | ⚠️ TODO |
 
 ---
 
