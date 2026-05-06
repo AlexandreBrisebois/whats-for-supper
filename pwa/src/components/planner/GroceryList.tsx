@@ -30,12 +30,18 @@ const AISLE_ICONS: Record<GrocerySection, string> = {
   Grocery: '🛒',
 };
 
-function formatQuantityHint(quantity: number | null | undefined, unitText: string | null | undefined) {
+function formatQuantityHint(
+  quantity: number | null | undefined,
+  unitText: string | null | undefined
+) {
   if (quantity == null || !unitText) return null;
 
   const rounded = Number.isInteger(quantity)
     ? quantity.toString()
-    : quantity.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+    : quantity
+        .toFixed(3)
+        .replace(/\.0+$/, '')
+        .replace(/(\.\d*?)0+$/, '$1');
 
   return `(${rounded} ${unitText})`;
 }

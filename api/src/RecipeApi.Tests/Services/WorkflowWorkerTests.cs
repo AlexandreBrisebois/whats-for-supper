@@ -1962,7 +1962,7 @@ public class CapturingEventPublisher(
     : IScheduleEventPublisher
 {
     public Task PublishSlotUpdatedAsync(DateOnly date, RecipeApi.Dto.ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null) => Task.CompletedTask;
-    public Task PublishWeekUpdatedAsync(RecipeApi.Dto.ScheduleDays schedule, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishWeekUpdatedAsync(RecipeApi.Dto.ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null) => Task.CompletedTask;
     public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null) => Task.CompletedTask;
     public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, RecipeApi.Dto.SmartDefaultsDto defaults, string? excludeConnectionId = null) => Task.CompletedTask;
     public Task PublishFillTheGapInvalidatedAsync(int weekOffset, string? excludeConnectionId = null) => Task.CompletedTask;

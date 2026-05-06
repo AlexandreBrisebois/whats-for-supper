@@ -27,7 +27,7 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     [HttpPost("move")]
     public async Task<IActionResult> MoveRecipe([FromBody] MoveScheduleDto dto)
     {
-        await _scheduleService.MoveScheduleEventAsync(dto, GetConnectionId());
+        await _scheduleService.MoveScheduleEventAsync(dto, GetConnectionId(), GetMoveSeq());
         return Ok(new { message = "Recipe moved" });
     }
 
@@ -93,4 +93,10 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     }
 
     private string? GetConnectionId() => Request.Headers["X-SSE-Connection-ID"].FirstOrDefault();
+
+    private int? GetMoveSeq()
+    {
+        var headerValue = Request.Headers["X-Move-Seq"].FirstOrDefault();
+        return int.TryParse(headerValue, out var seq) ? seq : null;
+    }
 }

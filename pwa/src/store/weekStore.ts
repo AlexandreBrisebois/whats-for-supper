@@ -382,19 +382,35 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     // is already correct). Still fall through for non-move SSE events (no echoSeq).
     if (echoSeq !== undefined) {
       plannerStore.confirmMoveSeq(echoSeq);
+      const refreshedPlannerStore = usePlannerStore.getState();
+      const deferredSnapshot = refreshedPlannerStore.deferredWeekSnapshot;
+      if (
+        deferredSnapshot &&
+        !refreshedPlannerStore.isDragActive &&
+        refreshedPlannerStore.localMoveSeq === refreshedPlannerStore.confirmedMoveSeq
+      ) {
+        refreshedPlannerStore.setDeferredWeekSnapshot(null);
+        get().applySnapshot(deferredSnapshot);
+      }
       return;
     }
 
     // Another family member's update — only apply when we have no unconfirmed
     // moves in flight. This replaces the wall-clock window entirely.
-    const hasPendingMoves = plannerStore.localMoveSeq > plannerStore.confirmedMoveSeq;
+    const hasPendingMoves =
+      plannerStore.localMoveSeq > plannerStore.confirmedMoveSeq || plannerStore.isDragActive;
 
     // Authoritative status update (always apply)
     const nextStatus = (schedule.status ?? 0) as 0 | 1 | 2;
 
     if (hasPendingMoves) {
+      plannerStore.setDeferredWeekSnapshot(schedule);
       set({ status: nextStatus, lastSyncedAt: Date.now() });
       return;
+    }
+
+    if (plannerStore.deferredWeekSnapshot) {
+      plannerStore.setDeferredWeekSnapshot(null);
     }
 
     const mergedDays = buildScheduleDays(schedule);

@@ -40,7 +40,13 @@ beforeEach(() => {
     lastSyncedAt: null,
     optimisticWriteAt: null,
   });
-  usePlannerStore.setState({ groceryState: {}, localMoveSeq: 0, confirmedMoveSeq: 0 });
+  usePlannerStore.setState({
+    groceryState: {},
+    localMoveSeq: 0,
+    confirmedMoveSeq: 0,
+    isDragActive: false,
+    deferredWeekSnapshot: null,
+  });
 });
 
 // ─── applySnapshot ────────────────────────────────────────────────────────────
@@ -144,6 +150,20 @@ describe('weekStore — applySnapshot', () => {
     expect(useWeekStore.getState().schedule).toBe(initialSchedule); // not clobbered
   });
 
+  it('skips schedule update while a local drag is active but still applies status', () => {
+    const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
+    useWeekStore.setState({ schedule: initialSchedule, status: 0 });
+    usePlannerStore.setState({ isDragActive: true, localMoveSeq: 0, confirmedMoveSeq: 0 });
+
+    const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe: { id: 'new' } as any }]);
+    snapshot.status = 1;
+
+    useWeekStore.getState().applySnapshot(snapshot);
+
+    expect(useWeekStore.getState().schedule).toBe(initialSchedule);
+    expect(useWeekStore.getState().status).toBe(1);
+  });
+
   it('skips update and confirms seq when echoSeq matches own move', () => {
     const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
     useWeekStore.setState({ schedule: initialSchedule });
@@ -156,6 +176,31 @@ describe('weekStore — applySnapshot', () => {
     expect(useWeekStore.getState().schedule).toBe(initialSchedule);
     // Sequence confirmed
     expect(usePlannerStore.getState().confirmedMoveSeq).toBe(7);
+  });
+
+  it('flushes a deferred remote snapshot after confirming the local move echo', () => {
+    const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
+    useWeekStore.setState({ schedule: initialSchedule });
+
+    const deferredSnapshot = makeScheduleDays([
+      { date: '2025-01-06', recipe: { id: 'queued-remote' } as any },
+    ]);
+
+    usePlannerStore.setState({
+      localMoveSeq: 8,
+      confirmedMoveSeq: 7,
+      deferredWeekSnapshot: deferredSnapshot,
+      isDragActive: false,
+    });
+
+    const ownEchoSnapshot = makeScheduleDays([
+      { date: '2025-01-06', recipe: { id: 'local' } as any },
+    ]);
+    useWeekStore.getState().applySnapshot(ownEchoSnapshot, 8);
+
+    expect(usePlannerStore.getState().confirmedMoveSeq).toBe(8);
+    expect(usePlannerStore.getState().deferredWeekSnapshot).toBeNull();
+    expect(useWeekStore.getState().schedule[0].recipe?.id).toBe('queued-remote');
   });
 
   it('applySnapshot sets groceryState atomically — same tick as schedule', () => {

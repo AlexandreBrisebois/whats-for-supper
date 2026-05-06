@@ -382,6 +382,9 @@ components:
           required: [schedule]
           properties:
             schedule: { $ref: '#/components/schemas/ScheduleDays' }
+            echoSeq:
+              type: integer
+              description: Optional move sequence echoed back for optimistic drag reconciliation.
 
     VoteUpdatedEvent:
       allOf:
@@ -645,7 +648,7 @@ paths:
                   value: "event: slot_updated\ndata: {\"type\":\"slot_updated\",\"date\":\"2026-05-05\",\"recipe\":null,\"status\":3}\n\n"
                 week_updated:
                   summary: A week-level mutation (lock, voting open, move)
-                  value: "event: week_updated\ndata: {\"type\":\"week_updated\",\"schedule\":{\"weekOffset\":0,\"locked\":true,\"status\":2,\"days\":[]}}\n\n"
+                  value: "event: week_updated\ndata: {\"type\":\"week_updated\",\"schedule\":{\"weekOffset\":0,\"locked\":true,\"status\":2,\"days\":[]},\"echoSeq\":5}\n\n"
                 heartbeat:
                   summary: Heartbeat comment to keep the connection alive
                   value: ": ping\n\n"

@@ -586,6 +586,8 @@ const PlannerDayCard = memo(function PlannerDayCard({
       dragListener={false}
       dragControls={dragControls}
       onDragStart={() => {
+        usePlannerStore.getState().setDeferredWeekSnapshot(null);
+        usePlannerStore.getState().setIsDragActive(true);
         preDragSnapshotRef.current = useWeekStore.getState().schedule;
       }}
       onDragEnd={() => {
@@ -597,6 +599,17 @@ const PlannerDayCard = memo(function PlannerDayCard({
         const finalTo = finalOrder.findIndex((d) => d._uiId === day._uiId);
         if (finalFrom !== -1 && finalTo !== -1 && finalFrom !== finalTo && snapshot !== null) {
           useWeekStore.getState().commitMove(finalFrom, finalTo, snapshot);
+        }
+        const plannerStore = usePlannerStore.getState();
+        plannerStore.setIsDragActive(false);
+        const refreshedPlannerStore = usePlannerStore.getState();
+        if (
+          refreshedPlannerStore.deferredWeekSnapshot &&
+          refreshedPlannerStore.localMoveSeq === refreshedPlannerStore.confirmedMoveSeq
+        ) {
+          const deferredSnapshot = refreshedPlannerStore.deferredWeekSnapshot;
+          refreshedPlannerStore.setDeferredWeekSnapshot(null);
+          useWeekStore.getState().applySnapshot(deferredSnapshot);
         }
         preDragSnapshotRef.current = null;
       }}

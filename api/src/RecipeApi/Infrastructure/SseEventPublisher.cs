@@ -24,8 +24,11 @@ public class SseEventPublisher : IScheduleEventPublisher
             status
         }, excludeConnectionId);
 
-    public Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null)
-        => _manager.BroadcastAsync("week_updated", new { schedule }, excludeConnectionId);
+    public Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null)
+        => _manager.BroadcastAsync(
+            "week_updated",
+            echoSeq.HasValue ? new { schedule, echoSeq } : new { schedule },
+            excludeConnectionId);
 
     public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("vote_updated", new { recipeId, voteCount }, excludeConnectionId);

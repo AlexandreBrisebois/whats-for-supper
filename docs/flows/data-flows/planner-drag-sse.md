@@ -93,23 +93,35 @@ confirmedMoveSeq: number  // updated when the server echoes the seq back
 5. `applySnapshot(schedule, echoSeq: 5)`:
    - `echoSeq` present → this is our own echo → call `confirmMoveSeq(5)` → skip schedule update.
 6. Another family member's move arrives → `week_updated` with no `echoSeq`:
-   - `localMoveSeq (5) === confirmedMoveSeq (5)` → no pending moves → apply normally.
+  - `localMoveSeq (5) === confirmedMoveSeq (5)` and no active drag → apply normally.
+  - if a drag is active or a local move is still unconfirmed → defer the snapshot and keep the current local order stable.
 
 If two rapid moves happen before the first SSE echo returns:
 - `localMoveSeq` = 6, `confirmedMoveSeq` = 4 → both SSE echoes are skipped.
-- A third-party `week_updated` (no `echoSeq`) still defers while moves are unconfirmed.
+- A third-party `week_updated` (no `echoSeq`) is queued while moves are unconfirmed.
+- When the confirming echo arrives and `localMoveSeq === confirmedMoveSeq`, the latest deferred snapshot is applied.
 
 **Key property:** optimistic wins are held until the server confirms, not until an arbitrary clock expires.
 
-### What the server must send (pending implementation)
+### Active drag freeze and deferred reconciliation
+
+While a card is actively being dragged, `plannerStore.isDragActive` blocks `applySnapshot()` from replacing the visible schedule. This keeps remote SSE updates from fighting the pointer and snapping the card away from where the user is placing it.
+
+Instead of dropping those remote `week_updated` events on the floor, the client stores the latest one in `plannerStore.deferredWeekSnapshot`.
+
+- If the drag ends without producing a pending move, the deferred snapshot is applied immediately.
+- If the drag ends with a move still awaiting confirmation, the deferred snapshot remains queued until the echoed `echoSeq` confirms the local move.
+- Once the local move is confirmed, the queued remote snapshot is replayed exactly once.
+
+This gives the planner the local stability of a "freeze during drag" policy without permanently hiding cross-device updates.
+
+### What the server sends
 
 The `week_updated` SSE payload must include `echoSeq` when the event was triggered by a move request that carried `X-Move-Seq`:
 
 ```json
 { "schedule": { ... }, "echoSeq": 5 }
 ```
-
-Until the server sends `echoSeq`, the field is `undefined` and `applySnapshot` falls through to the `localMoveSeq > confirmedMoveSeq` pending-moves check — still a significant improvement over the time window.
 
 ---
 
@@ -125,6 +137,7 @@ Until the server sends `echoSeq`, the field is `undefined` and `applySnapshot` f
 2. Drag index 3 → index 6. Card must land at the bottom. API `toIndex` must be `6`.
 3. Drag index 0, pass over index 3, release at index 5. Card lands at 5 (was landing at 4 before this fix).
 4. Two rapid moves before SSE echo returns. Final order matches the second move, not a server clobber.
+5. A remote `week_updated` arriving during an active drag does not replace the visible order until the drag ends and local move confirmation is settled.
 
 ---
 
@@ -132,9 +145,12 @@ Until the server sends `echoSeq`, the field is `undefined` and `applySnapshot` f
 
 | File | Change |
 |---|---|
-| `pwa/src/app/(app)/planner/page.tsx` | `handleReorder` calls `reorderLocally`; `onDragEnd` reads store; `lastReorderRef` removed |
-| `pwa/src/store/weekStore.ts` | `applySnapshot` signature adds `echoSeq?`; seq-based guard replaces wall-clock for move echoes |
-| `pwa/src/store/plannerStore.ts` | Added `localMoveSeq`, `confirmedMoveSeq`, `nextMoveSeq()`, `confirmMoveSeq()` |
+| `pwa/src/app/(app)/planner/page.tsx` | `handleReorder` calls `reorderLocally`; `onDragEnd` reads store; drag start/end set the active-drag boundary and flush deferred remote snapshots when safe |
+| `pwa/src/store/weekStore.ts` | `applySnapshot` signature adds `echoSeq?`; seq-based guard replaces wall-clock for move echoes; remote snapshots are deferred during active drag or pending move confirmation |
+| `pwa/src/store/plannerStore.ts` | Added `localMoveSeq`, `confirmedMoveSeq`, `nextMoveSeq()`, `confirmMoveSeq()`, `isDragActive`, and `deferredWeekSnapshot` |
+| `api/src/RecipeApi/Controllers/ScheduleController.cs` | Parses `X-Move-Seq` and threads it into move processing |
+| `api/src/RecipeApi/Services/ScheduleService.cs` | Publishes `week_updated` with `echoSeq` for move-driven updates |
+| `api/src/RecipeApi/Infrastructure/SseEventPublisher.cs` | Serializes `echoSeq` only when present |
 | `pwa/src/lib/api/api-client.ts` | `HearthAuthProvider` injects `X-Move-Seq` when moves are pending |
 | `pwa/src/lib/api/planner.ts` | `moveRecipe` calls `nextMoveSeq()` before the API call |
 | `pwa/src/hooks/useScheduleStream.ts` | `week_updated` handler passes `echoSeq` to `applySnapshot` |

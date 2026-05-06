@@ -1,10 +1,13 @@
 import { create } from 'zustand';
+import type { ScheduleDays } from '@/lib/api/generated/models';
 
 interface PlannerState {
   currentWeekOffset: number;
   activeTab: 'planner' | 'grocery';
   isVotingOpen: boolean;
   isLocked: boolean;
+  isDragActive: boolean;
+  deferredWeekSnapshot: ScheduleDays | null;
   sseConnectionId: string | null;
   /**
    * Monotonic counter incremented on every move API call.
@@ -25,6 +28,8 @@ interface PlannerState {
   setActiveTab: (tab: 'planner' | 'grocery') => void;
   setVotingOpen: (open: boolean) => void;
   setIsLocked: (locked: boolean) => void;
+  setIsDragActive: (active: boolean) => void;
+  setDeferredWeekSnapshot: (snapshot: ScheduleDays | null) => void;
   setSseConnectionId: (id: string | null) => void;
   /** Increment localMoveSeq and return the new value to stamp on the request. */
   nextMoveSeq: () => number;
@@ -41,6 +46,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   activeTab: 'planner',
   isVotingOpen: false,
   isLocked: false,
+  isDragActive: false,
+  deferredWeekSnapshot: null,
   sseConnectionId: null,
   localMoveSeq: 0,
   confirmedMoveSeq: 0,
@@ -51,6 +58,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   setVotingOpen: (open) => set({ isVotingOpen: open }),
   setIsLocked: (locked) => set({ isLocked: locked }),
+  setIsDragActive: (active) => set({ isDragActive: active }),
+  setDeferredWeekSnapshot: (snapshot) => set({ deferredWeekSnapshot: snapshot }),
   setSseConnectionId: (id) => set({ sseConnectionId: id }),
   nextMoveSeq: () => {
     const next = get().localMoveSeq + 1;

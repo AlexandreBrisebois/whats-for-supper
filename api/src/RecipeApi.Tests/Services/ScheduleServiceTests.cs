@@ -17,6 +17,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     private IServiceScope _scope = null!;
     private RecipeDbContext _db = null!;
     private ScheduleService _service = null!;
+    private Mock<IScheduleEventPublisher> _publisherMock = null!;
 
     public async Task InitializeAsync()
     {
@@ -24,9 +25,9 @@ public class ScheduleServiceTests : IAsyncLifetime
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
-        var publisherMock = new Mock<IScheduleEventPublisher>();
+        _publisherMock = new Mock<IScheduleEventPublisher>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        _service = new ScheduleService(_db, logger, publisherMock.Object, groceryRecomputeService);
+        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService);
     }
 
     public async Task DisposeAsync()
@@ -149,6 +150,33 @@ public class ScheduleServiceTests : IAsyncLifetime
         Assert.Null(e1);
         Assert.Equal(r1Id, e2?.RecipeId);
         Assert.Equal(r2Id, e3?.RecipeId);
+    }
+
+    [Fact]
+    public async Task Should_Publish_EchoSeq_When_Move_Is_Confirmed()
+    {
+        // Arrange
+        var recipe1Id = Guid.NewGuid();
+        var recipe2Id = Guid.NewGuid();
+        _db.Recipes.AddRange(new Recipe { Id = recipe1Id, Name = "R1" }, new Recipe { Id = recipe2Id, Name = "R2" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipe1Id, Date = monday, Status = CalendarEventStatus.Planned },
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipe2Id, Date = monday.AddDays(1), Status = CalendarEventStatus.Planned }
+        );
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipe1Id, 1, "swap"), echoSeq: 9);
+
+        // Assert
+        _publisherMock.Verify(
+            p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), null, 9),
+            Times.Once);
     }
 
     [Fact]

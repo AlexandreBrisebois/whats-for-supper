@@ -141,14 +141,14 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
     }
 
-    public async Task MoveScheduleEventAsync(MoveScheduleDto dto, string? excludeConnectionId = null)
+    public async Task MoveScheduleEventAsync(MoveScheduleDto dto, string? excludeConnectionId = null, int? echoSeq = null)
     {
         var targetWeekOffset = dto.TargetWeekOffset ?? dto.WeekOffset;
         if (targetWeekOffset != dto.WeekOffset)
         {
             await MoveCrossWeekAsync(dto, targetWeekOffset);
             var crossWeekSchedule = await GetScheduleAsync(dto.WeekOffset);
-            await _publisher.PublishWeekUpdatedAsync(crossWeekSchedule, excludeConnectionId);
+            await _publisher.PublishWeekUpdatedAsync(crossWeekSchedule, excludeConnectionId, echoSeq);
             return;
         }
 
@@ -212,7 +212,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         await _dbContext.SaveChangesAsync();
 
         var schedule = await GetScheduleAsync(dto.WeekOffset);
-        await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
+        await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId, echoSeq);
     }
 
     private async Task MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset)

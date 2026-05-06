@@ -109,6 +109,22 @@ public class SseEventPublisherTests
         Assert.Equal(0, data.GetProperty("schedule").GetProperty("weekOffset").GetInt32());
     }
 
+    [Fact]
+    public async Task PublishWeekUpdatedAsync_WithEchoSeq_SerializesEchoSeq()
+    {
+        var (manager, body) = MakeManager();
+        var publisher = new SseEventPublisher(manager);
+
+        var schedule = new ScheduleDays(0, false, 0, []);
+
+        await publisher.PublishWeekUpdatedAsync(schedule, echoSeq: 5);
+
+        var (eventType, data) = ParseSseFrame(ReadBody(body));
+
+        Assert.Equal("week_updated", eventType);
+        Assert.Equal(5, data.GetProperty("echoSeq").GetInt32());
+    }
+
     // -------------------------------------------------------------------------
     // PublishVoteUpdatedAsync
     // -------------------------------------------------------------------------
