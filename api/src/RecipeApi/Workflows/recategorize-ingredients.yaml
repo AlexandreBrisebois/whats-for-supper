@@ -1,0 +1,14 @@
+name: recategorize-ingredients
+parameters:
+    - recipeId
+tasks:
+    - name: categorize_ingredients
+      processor: CategorizeIngredients
+      payload:
+          recipeId: "{{ recipeId }}"
+    - name: recipe_ready
+      processor: RecipeReady
+      depends_on:
+          - categorize_ingredients
+      payload:
+          recipeId: "{{ recipeId }}"
