@@ -141,8 +141,10 @@
     "smartShopping": "Smart Shopping",
     "checklist": "Grocery Checklist",
     "noIngredients": "No ingredients in this week's plan",
+    "emptyTitle": "Your list is empty",
+    "emptySubtext": "Add meals to your planner and your grocery list will build itself — organized by store section.",
+    "startPlanning": "Start Planning",
     "itemsCount": "{{checked}}/{{total}} items",
-    "doneShopping": "Done Shopping",
     "aisles": {
       "Vegetables": "Vegetables",
       "Meat": "Meat",

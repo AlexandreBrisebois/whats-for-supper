@@ -294,28 +294,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None);
 
-        var updatedSchedule = await GetScheduleAsync(dto.WeekOffset);
-        await _publisher.PublishWeekUpdatedAsync(updatedSchedule, excludeConnectionId);
-
-        // Build the ScheduleRecipeDto for the assigned slot
-        var assignedEvent = await _dbContext.CalendarEvents
-            .Include(e => e.Recipe)
-            .FirstOrDefaultAsync(e => e.Date == date);
-
-        ScheduleRecipeDto? recipeDto = null;
-        if (assignedEvent?.Recipe != null)
-        {
-            recipeDto = new ScheduleRecipeDto(
-                assignedEvent.Recipe.Id,
-                assignedEvent.Recipe.Name,
-                $"/api/recipes/{assignedEvent.Recipe.Id}/hero",
-                assignedEvent.VoteCount,
-                RecipeService.DeserializeIngredients(assignedEvent.Recipe.Ingredients),
-                assignedEvent.Recipe.Description,
-                assignedEvent.Recipe.TotalTime);
-        }
-
-        await _publisher.PublishSlotUpdatedAsync(date, recipeDto, (int)CalendarEventStatus.Planned, excludeConnectionId);
+        var schedule = await GetScheduleAsync(dto.WeekOffset);
+        await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
         await _publisher.PublishFillTheGapInvalidatedAsync(dto.WeekOffset, excludeConnectionId);
     }
 
@@ -395,10 +375,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
             await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None);
 
-            var updatedSchedule = await GetScheduleAsync(weekOffset);
-            await _publisher.PublishWeekUpdatedAsync(updatedSchedule, excludeConnectionId);
-
-            await _publisher.PublishSlotUpdatedAsync(date, null, 0, excludeConnectionId);
+            var schedule = await GetScheduleAsync(weekOffset);
+            await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
             await _publisher.PublishFillTheGapInvalidatedAsync(weekOffset, excludeConnectionId);
         }
     }

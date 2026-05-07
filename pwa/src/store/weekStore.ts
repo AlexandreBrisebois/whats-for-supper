@@ -446,6 +446,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       status:
         snapshotIsEmpty && prev.length > 0 ? get().status : ((schedule.status ?? 0) as 0 | 1 | 2),
       balanceSummary: schedule.balanceSummary ?? null,
+      groceryItems: schedule.groceryItems ?? [],
       lastSyncedAt: Date.now(),
     });
 

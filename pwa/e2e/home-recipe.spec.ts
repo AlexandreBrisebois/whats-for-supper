@@ -504,7 +504,11 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
               ],
             }),
           });
-        } else if (url.pathname.includes('/day/') && url.pathname.endsWith('/remove') && method === 'DELETE') {
+        } else if (
+          url.pathname.includes('/day/') &&
+          url.pathname.endsWith('/remove') &&
+          method === 'DELETE'
+        ) {
           removeCalled = true;
           await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         } else if (url.pathname.endsWith('/assign') && method === 'POST') {
@@ -517,7 +521,11 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             const d = new Date(monday);
             d.setUTCDate(monday.getUTCDate() + i);
             const dateStr = toDateStr(d);
-            return { date: dateStr, status: 0, recipe: dateStr === today && !removeCalled ? lasagnaRecipe : null };
+            return {
+              date: dateStr,
+              status: 0,
+              recipe: dateStr === today && !removeCalled ? lasagnaRecipe : null,
+            };
           });
           await route.fulfill({
             status: 200,

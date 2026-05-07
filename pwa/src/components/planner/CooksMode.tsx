@@ -5,8 +5,6 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
-  Timer,
-  Flame,
   UtensilsCrossed,
   CheckCircle2,
   Circle,
@@ -68,6 +66,14 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [showCelebration, setShowCelebration] = useState(false);
   const { cookProgress, setCookProgress } = usePlannerStore();
   const currentStep = cookProgress[initialRecipe.id] ?? 0;
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -132,7 +138,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       data-testid="cooks-mode-overlay"
-      className="fixed inset-0 z-[100] bg-cream flex flex-col relative"
+      className="fixed inset-0 z-[100] bg-cream flex flex-col"
     >
       <AnimatePresence>
         {showCelebration && (
@@ -218,7 +224,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               </div>
 
               <h3 className="text-4xl font-heading font-black text-charcoal mb-4 leading-tight">
-                {currentStepData.title}
+                {currentStep === 0 ? t('cook.checkAndPrep', 'Check & Prep') : currentStepData.title}
               </h3>
 
               {currentStep === 0 ? (
@@ -249,26 +255,16 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                               onClick={() =>
                                 setGathered((prev) => ({ ...prev, [ing]: !prev[ing] }))
                               }
-                              className={`flex items-center p-4 rounded-3xl border-2 shadow-sm w-full text-left transition-all ${
-                                isChecked
-                                  ? 'bg-sage/10 border-sage/20 text-charcoal/40'
-                                  : 'bg-white border-charcoal/5'
+                              className={`flex items-center p-4 rounded-2xl w-full text-left transition-all ${
+                                isChecked ? 'bg-sage/5' : 'bg-white/50 hover:bg-white'
                               }`}
                             >
-                              <div
-                                className={`h-8 w-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 transition-all ${
-                                  isChecked
-                                    ? 'bg-sage text-white'
-                                    : 'bg-terracotta/10 border-2 border-terracotta/20 text-terracotta/40'
-                                }`}
-                              >
-                                {isChecked ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-                              </div>
-                              <span
-                                className={`text-base font-bold transition-all ${
-                                  isChecked ? 'line-through text-charcoal/40' : 'text-charcoal/80'
-                                }`}
-                              >
+                              {isChecked ? (
+                                <CheckCircle2 size={20} className="text-sage flex-shrink-0 mr-3" />
+                              ) : (
+                                <Circle size={20} className="text-charcoal/20 flex-shrink-0 mr-3" />
+                              )}
+                              <span className="text-base font-bold text-charcoal/80 transition-all">
                                 {ing}
                               </span>
                             </motion.button>
@@ -323,35 +319,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           </span>
           <ChevronRight size={28} />
         </Button>
-      </div>
-
-      {/* Footer Info */}
-      <div className="px-8 py-6 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/20">
-        <div className="flex items-center space-x-2">
-          <Timer size={14} />
-          <span>
-            {recipeDetails?.totalTime || '45 mins'} {t('cook.total', 'total')}
-          </span>
-        </div>
-        <div className="flex items-center space-x-2 text-ochre">
-          {initialRecipe.isCold ? (
-            <>
-              <Timer size={14} />
-              <span>{t('cook.noCookFresh', 'No-Cook / Fresh')}</span>
-            </>
-          ) : (
-            <>
-              <Flame size={14} className="animate-pulse" />
-              <span>{t('cook.mediumHeat', 'Medium Heat (Level 6)')}</span>
-            </>
-          )}
-        </div>
-        {initialRecipe.isVegetarian && (
-          <div className="flex items-center space-x-2 text-sage font-black">
-            <UtensilsCrossed size={14} />
-            <span>{t('cook.plantPoweredEmoji', 'Plant-Powered! 🌿')}</span>
-          </div>
-        )}
       </div>
     </motion.div>
   );

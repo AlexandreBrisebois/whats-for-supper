@@ -196,10 +196,8 @@ export default function PlannerPage() {
     const dayIndex = showPivot.dayIndex;
     const date = schedule[dayIndex].date;
     if (!date) return;
-    useWeekStore.getState().removeRecipe(dayIndex, date);
-    setSuccessDay(dayIndex);
-    setTimeout(() => setSuccessDay(null), 2000);
     setShowPivot(null);
+    useWeekStore.getState().removeRecipe(dayIndex, date);
   };
 
   // Framer Motion calls onReorder on every pointer move during drag (fires on each midpoint

@@ -294,6 +294,26 @@ describe('week_updated event', () => {
 
     expect(mockApplySnapshot).toHaveBeenCalledWith(schedule, 42);
   });
+
+  it('updates todayStore when week_updated contains today’s date', () => {
+    const { source } = setupHook();
+
+    const recipe = { id: 'r-today', name: 'Today’s Pasta', image: '' };
+    const schedule = {
+      days: [
+        { date: '2025-01-15', recipe, status: 1 }, // today
+        { date: '2025-01-16', recipe: null, status: 0 },
+      ],
+      status: 0,
+    };
+
+    source.emit('week_updated', { schedule });
+
+    expect(mockApplyServerUpdate).toHaveBeenCalledWith({
+      recipe,
+      status: 1,
+    });
+  });
 });
 
 // ── vote_updated event ───────────────────────────────────────────────────────

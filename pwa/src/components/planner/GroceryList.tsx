@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, Circle, Tag, ShoppingCart } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Circle, ShoppingCart, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
@@ -154,30 +154,28 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
           <AnimatePresence mode="wait">
             {Object.keys(grouped).length === 0 ? (
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-center py-16 px-4"
-                data-testid="grocery-empty-state"
+                className="text-center py-20 px-6"
               >
-                <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-sage/10 flex items-center justify-center">
-                  <ShoppingCart size={36} className="text-sage/50" />
+                <div className="h-24 w-24 bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ShoppingCart size={40} className="text-sage" />
                 </div>
-                <h3 className="font-heading text-xl font-black text-charcoal mb-2">
+                <h3 className="text-xl font-heading font-black text-charcoal mb-2">
                   {t('grocery.emptyTitle', 'Your list is empty')}
                 </h3>
-                <p className="text-charcoal/50 text-sm font-medium max-w-xs mx-auto mb-8 leading-relaxed">
+                <p className="text-charcoal/40 font-medium mb-12 max-w-[240px] mx-auto">
                   {t(
-                    'grocery.emptyBody',
+                    'grocery.emptySubtext',
                     'Add meals to your planner and your grocery list will build itself — organized by store section.'
                   )}
                 </p>
                 {onClose && (
                   <Button
                     onClick={onClose}
-                    data-testid="grocery-empty-go-to-planner"
-                    className="rounded-3xl bg-sage text-white px-8 h-14 text-sm font-bold shadow-lg shadow-sage/20"
+                    className="bg-terracotta text-white rounded-3xl h-16 px-10 font-bold shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
                   >
-                    {t('grocery.goToPlanner', 'Go to Planner')}
+                    {t('grocery.startPlanning', 'Start Planning')}
                   </Button>
                 )}
               </motion.div>
@@ -272,14 +270,21 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                 }`}
                               >
                                 {/* Toggle button — takes up the left portion */}
-                                <button
+                                <div
                                   onClick={() => handleToggle(key)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === ' ' || event.key === 'Enter') {
+                                      event.preventDefault();
+                                      void handleToggle(key);
+                                    }
+                                  }}
                                   className="flex min-w-0 items-start space-x-4 flex-1 text-left"
                                   data-testid="grocery-item-checkbox"
                                   data-item-name={key}
                                   data-state={isChecked ? 'checked' : 'unchecked'}
                                   role="checkbox"
-                                  aria-checked={isChecked}
+                                  aria-checked={isChecked ? 'true' : 'false'}
+                                  tabIndex={0}
                                 >
                                   {isChecked ? (
                                     <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
@@ -310,7 +315,7 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                       data-testid="grocery-item-error"
                                     />
                                   )}
-                                </button>
+                                </div>
 
                                 {/* Reclassify button — separate tap target */}
                                 <button
@@ -369,19 +374,6 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Footer */}
-      {onClose && (
-        <div className="p-8 bg-white/50 backdrop-blur-md border-t border-charcoal/5">
-          <Button
-            onClick={onClose}
-            data-testid="done-shopping-btn"
-            className="w-full h-16 rounded-3xl bg-sage text-white text-lg font-bold shadow-xl shadow-sage/20"
-          >
-            {t('grocery.doneShopping', 'Done Shopping')}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

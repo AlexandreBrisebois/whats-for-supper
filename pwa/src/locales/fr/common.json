@@ -141,8 +141,10 @@
     "smartShopping": "Courses Intelligentes",
     "checklist": "Liste de Courses",
     "noIngredients": "Aucun ingrédient pour cette semaine",
+    "emptyTitle": "Votre liste vous attend",
+    "emptySubtext": "Prévoyez quelques repas pour voir vos ingrédients organisés par rayon.",
+    "startPlanning": "Commencer le planning",
     "itemsCount": "{{checked}}/{{total}} articles",
-    "doneShopping": "Courses terminées",
     "aisles": {
       "Vegetables": "Légumes",
       "Meat": "Viande",
