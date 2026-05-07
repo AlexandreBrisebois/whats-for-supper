@@ -20,7 +20,7 @@ import { t, tWithVars } from '@/locales';
 
 /**
  * RecipesPage / Search destination.
- * Focuses on an agentic, free-text search experience with a "Top Pick" highlight.
+ * Focuses on a search-first experience with a Top Pick highlight.
  */
 export default function RecipesPage() {
   const [query, setQuery] = useState('');
@@ -140,7 +140,7 @@ export default function RecipesPage() {
               className="flex items-center justify-between px-1"
             >
               <h2 className="font-heading text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-                {t('recipes.recommendations', "Agent's Recommendations")}
+                {t('recipes.recommendations', 'Top Picks')}
               </h2>
             </motion.div>
 

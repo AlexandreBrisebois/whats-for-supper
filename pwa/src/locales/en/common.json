@@ -184,6 +184,7 @@
     "selectMealDay": "Select a meal for Day {{day}}",
     "cancel": "Cancel",
     "searchPlaceholder": "Something spicy for 4...",
+    "recommendations": "Top Picks",
     "agentsRecommendations": "Agent's Recommendations",
     "topPick": "Top Pick"
   }

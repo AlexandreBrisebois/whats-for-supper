@@ -184,6 +184,7 @@
     "selectMealDay": "Choisir un repas pour le Jour {{day}}",
     "cancel": "Annuler",
     "searchPlaceholder": "Un truc épicé pour 4...",
+    "recommendations": "Meilleurs choix",
     "agentsRecommendations": "Recommandations de l'Agent",
     "topPick": "Le Top"
   }
