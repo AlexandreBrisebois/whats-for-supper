@@ -70,6 +70,7 @@ export default function MinimalCapture({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const saveAreaRef = useRef<HTMLDivElement>(null);
+  const photoSubmitLockRef = useRef(false);
 
   // Shared content from manifest or props
   const sharedUrl = initialUrl || searchParams.get('url');
@@ -92,6 +93,7 @@ export default function MinimalCapture({
   const [isDescribing, setIsDescribing] = useState(false);
   const [describeError, setDescribeError] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState(extractedUrl || '');
+  const [isPhotoSubmitPending, setIsPhotoSubmitPending] = useState(false);
 
   const [onSuccess, setOnSuccess] = useState(false);
   const [showDescribe, setShowDescribe] = useState(mode === 'describe');
@@ -178,20 +180,31 @@ export default function MinimalCapture({
 
   // Photo path save — E4
   const handleSave = async () => {
-    const id = await submitRecipe();
-    if (id) {
-      setWasPhotoCaptured(true);
-      if (isGoto) {
-        // Use the first image's implied recipe name (we don't have a name from the photo path,
-        // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
-        await saveSetting('family_goto', {
-          description: 'Your captured recipe',
-          recipeId: id,
-        });
+    if (photoSubmitLockRef.current || isPhotoSubmitPending || isSubmitting) {
+      return;
+    }
+
+    photoSubmitLockRef.current = true;
+    setIsPhotoSubmitPending(true);
+    try {
+      const id = await submitRecipe();
+      if (id) {
+        setWasPhotoCaptured(true);
+        if (isGoto) {
+          // Use the first image's implied recipe name (we don't have a name from the photo path,
+          // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
+          await saveSetting('family_goto', {
+            description: 'Your captured recipe',
+            recipeId: id,
+          });
+        }
+        useCaptureStore.getState().addPending({ recipeId: id });
+        setPendingRecipeId(id);
+        setOnSuccess(true);
       }
-      useCaptureStore.getState().addPending({ recipeId: id });
-      setPendingRecipeId(id);
-      setOnSuccess(true);
+    } finally {
+      photoSubmitLockRef.current = false;
+      setIsPhotoSubmitPending(false);
     }
   };
 
@@ -560,8 +573,9 @@ export default function MinimalCapture({
                   variant="primary"
                   fullWidth
                   size="lg"
-                  isLoading={isSubmitting}
+                  isLoading={isSubmitting || isPhotoSubmitPending}
                   onClick={handleSave}
+                  disabled={isSubmitting || isPhotoSubmitPending}
                   className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
                 >
                   {t('capture.saveRecipe', 'Save Recipe')}
