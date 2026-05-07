@@ -155,40 +155,8 @@ jobs:
           done
           echo "PWA did not start in time" && exit 1
 
-      - name: E2E — Planner (core)
-        run: npm run test:e2e:planner
-        working-directory: pwa
-
-      - name: E2E — Planner Full Cycle
-        run: npm run test:e2e:planner-full-cycle
-        working-directory: pwa
-
-      - name: E2E — Planner Social
-        run: npm run test:e2e:planner-social
-        working-directory: pwa
-
-      - name: E2E — Utility Flows
-        run: npm run test:e2e:utility
-        working-directory: pwa
-
-      - name: E2E — Home Recovery
-        run: npm run test:e2e:home
-        working-directory: pwa
-
-      - name: E2E — Capture Flow
-        run: npm run test:e2e:capture
-        working-directory: pwa
-
-      - name: E2E — Discovery
-        run: npm run test:e2e:discovery
-        working-directory: pwa
-
-      - name: E2E — Onboarding
-        run: npm run test:e2e:onboarding
-        working-directory: pwa
-
-      - name: E2E — Recipes
-        run: npm run test:e2e:recipes
+      - name: E2E — Playwright
+        run: npm run test:e2e
         working-directory: pwa
 
       - name: Upload Playwright report

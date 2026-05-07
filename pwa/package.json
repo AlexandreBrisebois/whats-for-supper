@@ -14,7 +14,6 @@
     "test:e2e": "playwright test",
     "test:e2e:planner": "playwright test e2e/planner.spec.ts",
     "test:e2e:planner-full-cycle": "playwright test e2e/planner-full-cycle.spec.ts",
-    "test:e2e:planner-social": "playwright test e2e/planner-social.spec.ts",
     "test:e2e:utility": "playwright test e2e/utility-flows.spec.ts",
     "test:e2e:home": "playwright test e2e/home-*.spec.ts",
     "test:e2e:capture": "playwright test e2e/capture-flow.spec.ts",
