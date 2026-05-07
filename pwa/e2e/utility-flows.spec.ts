@@ -87,7 +87,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                 locked: true,
                 status: 2,
                 days,
-                groceryState: {},
+                groceryState: { additionalData: {} },
                 groceryItems: builders.groceryItems(
                   UTILITY_GROCERY_INGREDIENTS,
                   UTILITY_GROCERY_SECTION_MAP
@@ -229,7 +229,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                     }),
                   },
                 ],
-                groceryState: { [itemName]: true },
+                groceryState: { additionalData: { [itemName]: true } },
                 groceryItems: builders.groceryItems([itemName], { [itemName]: 'Pantry' }),
               },
             }),

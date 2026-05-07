@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const isCI = !!process.env.CI;
 const hasExternalBaseUrl = !!process.env.BASE_URL;
+const shouldManageWebServer = !hasExternalBaseUrl;
 
 export default defineConfig({
   // Directory containing E2E test files
@@ -63,21 +64,23 @@ export default defineConfig({
     },
   ],
 
-  // Automatically start the Next.js dev server when running tests locally.
-  webServer:
-    isCI || hasExternalBaseUrl
-      ? undefined
-      : {
-          command: 'NEXT_PUBLIC_ENVIRONMENT=test npm run dev',
-          url: 'http://127.0.0.1:3000',
-          reuseExistingServer: true,
-          stdout: 'pipe',
-          stderr: 'pipe',
-          env: {
-            NEXT_PUBLIC_ENVIRONMENT: 'test',
-            API_INTERNAL_URL: 'http://127.0.0.1:5001',
-            NEXT_PUBLIC_API_BASE_URL: '',
-            HEARTH_SECRET: process.env.HEARTH_SECRET || 'our family loves cooking',
-          },
+  // Let Playwright manage the app server whenever tests are targeting the default local base URL.
+  webServer: shouldManageWebServer
+    ? {
+        command: isCI
+          ? 'NEXT_PUBLIC_ENVIRONMENT=test npm run start'
+          : 'NEXT_PUBLIC_ENVIRONMENT=test npm run dev',
+        url: 'http://127.0.0.1:3000',
+        reuseExistingServer: !isCI,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: {
+          NEXT_PUBLIC_ENVIRONMENT: 'test',
+          PORT: '3000',
+          API_INTERNAL_URL: 'http://127.0.0.1:5001',
+          NEXT_PUBLIC_API_BASE_URL: isCI ? 'http://127.0.0.1:5001' : '',
+          HEARTH_SECRET: process.env.HEARTH_SECRET || 'our family loves cooking',
         },
+      }
+    : undefined,
 });

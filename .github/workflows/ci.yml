@@ -91,7 +91,6 @@ jobs:
     needs: contract-integrity-gate
     env:
       CI: true
-      BASE_URL: http://127.0.0.1:3000
       HEARTH_SECRET: ${{ secrets.HEARTH_SECRET || 'our family loves cooking' }}
 
     steps:
@@ -134,26 +133,6 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5001
           API_INTERNAL_URL: http://127.0.0.1:5001
-
-      - name: Start PWA in background
-        run: |
-          npm run start > pwa.log 2>&1 &
-        working-directory: pwa
-        env:
-          PORT: 3000
-          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5001
-          API_INTERNAL_URL: http://127.0.0.1:5001
-
-      - name: Wait for PWA to be ready
-        run: |
-          for i in $(seq 1 20); do
-            if curl -sf http://127.0.0.1:3000/api/health; then
-              echo "PWA is ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "PWA did not start in time" && exit 1
 
       - name: E2E — Playwright
         run: npm run test:e2e
