@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, Circle, Tag } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Circle, ShoppingCart, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
@@ -154,13 +154,30 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
           <AnimatePresence mode="wait">
             {Object.keys(grouped).length === 0 ? (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-12"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-20 px-6"
               >
-                <p className="text-charcoal/40 font-medium">
-                  {t('grocery.noIngredients', "No ingredients in this week's plan")}
+                <div className="h-24 w-24 bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ShoppingCart size={40} className="text-sage" />
+                </div>
+                <h3 className="text-xl font-heading font-black text-charcoal mb-2">
+                  {t('grocery.emptyTitle', 'Your list is waiting')}
+                </h3>
+                <p className="text-charcoal/40 font-medium mb-12 max-w-[240px] mx-auto">
+                  {t(
+                    'grocery.emptySubtext',
+                    'Plan a few meals to see your ingredients organized by aisle.'
+                  )}
                 </p>
+                {onClose && (
+                  <Button
+                    onClick={onClose}
+                    className="bg-terracotta text-white rounded-3xl h-16 px-10 font-bold shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
+                  >
+                    {t('grocery.startPlanning', 'Start Planning')}
+                  </Button>
+                )}
               </motion.div>
             ) : (
               <div className="space-y-8">
@@ -350,7 +367,6 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
           </AnimatePresence>
         </div>
       </div>
-
     </div>
   );
 }

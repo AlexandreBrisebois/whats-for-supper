@@ -141,6 +141,9 @@
     "smartShopping": "Smart Shopping",
     "checklist": "Grocery Checklist",
     "noIngredients": "No ingredients in this week's plan",
+    "emptyTitle": "Your list is waiting",
+    "emptySubtext": "Plan a few meals to see your ingredients organized by aisle.",
+    "startPlanning": "Start Planning",
     "itemsCount": "{{checked}}/{{total}} items",
     "aisles": {
       "Vegetables": "Vegetables",
