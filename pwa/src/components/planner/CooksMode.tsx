@@ -70,6 +70,13 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const currentStep = cookProgress[initialRecipe.id] ?? 0;
 
   useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchDetails = async () => {
       try {
         const details = await getRecipe(initialRecipe.id);
@@ -132,7 +139,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       data-testid="cooks-mode-overlay"
-      className="fixed inset-0 z-[100] bg-cream flex flex-col relative"
+      className="fixed inset-0 z-[100] bg-cream flex flex-col"
     >
       <AnimatePresence>
         {showCelebration && (
