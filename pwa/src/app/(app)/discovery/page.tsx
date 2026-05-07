@@ -16,8 +16,6 @@ export default function DiscoveryPage() {
   const recipes = useDiscoveryStore((s) => s.discoveryStack);
   const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
   const { selectedFamilyMemberId, _hasHydrated } = useFamily();
-  const [categories, setCategories] = useState<string[]>([]);
-  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEureka, setIsEureka] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
@@ -36,9 +34,7 @@ export default function DiscoveryPage() {
     setIsLoading(true);
     try {
       const cats = await getCategories();
-      setCategories(cats);
       categoriesRef.current = cats;
-      setCurrentCategoryIndex(0);
       categoryIndexRef.current = 0;
 
       let startIndex = 0;
@@ -48,7 +44,6 @@ export default function DiscoveryPage() {
         const stack = await getDiscoveryStack(categoryToLoad);
         if (stack.length > 0) {
           setActiveCategory(categoryToLoad);
-          setCurrentCategoryIndex(startIndex);
           categoryIndexRef.current = startIndex;
           useDiscoveryStore.getState().setStack(
             stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` }))
@@ -77,7 +72,6 @@ export default function DiscoveryPage() {
       try {
         const cats = await getCategories();
         if (ignore) return;
-        setCategories(cats);
         categoriesRef.current = cats;
 
         // Nudge priority: read activeCategory from store at call-time (not from
@@ -95,7 +89,6 @@ export default function DiscoveryPage() {
             const stack = await getDiscoveryStack(categoryToLoad);
             if (ignore) break;
             if (stack.length > 0) {
-              setCurrentCategoryIndex(startIndex);
               categoryIndexRef.current = startIndex;
               setActiveCategory(categoryToLoad);
               useDiscoveryStore.getState().setStack(
@@ -108,6 +101,8 @@ export default function DiscoveryPage() {
             startIndex++;
           }
           if (!foundNonEmpty && !ignore) {
+            setActiveCategory(null);
+            categoryIndexRef.current = 0;
             useDiscoveryStore.getState().setStack([]);
             stackIsLoadedRef.current = true;
           }
@@ -149,7 +144,6 @@ export default function DiscoveryPage() {
             imageUrl: `/api/recipes/${r.id}/hero`,
           }));
           useDiscoveryStore.getState().setStack(mappedStack);
-          setCurrentCategoryIndex(nextIndex);
           categoryIndexRef.current = nextIndex;
           setActiveCategory(nextCategory);
           return;
@@ -157,6 +151,8 @@ export default function DiscoveryPage() {
         nextIndex++;
       }
       // All remaining categories exhausted → show empty state
+      setActiveCategory(null);
+      categoryIndexRef.current = 0;
       useDiscoveryStore.getState().setStack([]);
     } catch (error) {
       console.error('Failed to fetch next category stack', error);
