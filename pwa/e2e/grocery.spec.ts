@@ -85,17 +85,14 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     }
   );
 
-  await mockSseWithConnectedSchedule(
-    page,
-    {
-      weekOffset: 0,
-      locked: false,
-      status: 0,
-      days,
-      groceryItems: builders.groceryItems(GROCERY_INGREDIENTS, GROCERY_SECTION_MAP),
-      groceryState: { additionalData: {} },
-    } as any
-  );
+  await mockSseWithConnectedSchedule(page, {
+    weekOffset: 0,
+    locked: false,
+    status: 0,
+    days,
+    groceryItems: builders.groceryItems(GROCERY_INGREDIENTS, GROCERY_SECTION_MAP),
+    groceryState: { additionalData: {} },
+  } as any);
 
   await page.goto('/planner');
   await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });

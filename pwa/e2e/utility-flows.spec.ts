@@ -101,37 +101,31 @@ test.describe("Cook's Mode and Grocery Flows", () => {
       }
     );
 
-    await mockSseWithConnectedSchedule(
-      page,
-      {
-        weekOffset: 0,
-        locked: true,
-        status: 2,
-        days: Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(thisMonday);
-          d.setUTCDate(thisMonday.getUTCDate() + i);
-          const dateStr = toDateStr(d);
-          const isToday = dateStr === TODAY;
+    await mockSseWithConnectedSchedule(page, {
+      weekOffset: 0,
+      locked: true,
+      status: 2,
+      days: Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(thisMonday);
+        d.setUTCDate(thisMonday.getUTCDate() + i);
+        const dateStr = toDateStr(d);
+        const isToday = dateStr === TODAY;
 
-          return {
-            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-            date: dateStr,
-            recipe: isToday
-              ? builders.scheduleRecipe({
-                  id: MOCK_IDS.RECIPE_LASAGNA,
-                  name: 'Test Lasagna',
-                  ingredients: UTILITY_GROCERY_INGREDIENTS,
-                })
-              : null,
-          };
-        }),
-        groceryItems: builders.groceryItems(
-          UTILITY_GROCERY_INGREDIENTS,
-          UTILITY_GROCERY_SECTION_MAP
-        ),
-        groceryState: { additionalData: {} },
-      } as any
-    );
+        return {
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+          date: dateStr,
+          recipe: isToday
+            ? builders.scheduleRecipe({
+                id: MOCK_IDS.RECIPE_LASAGNA,
+                name: 'Test Lasagna',
+                ingredients: UTILITY_GROCERY_INGREDIENTS,
+              })
+            : null,
+        };
+      }),
+      groceryItems: builders.groceryItems(UTILITY_GROCERY_INGREDIENTS, UTILITY_GROCERY_SECTION_MAP),
+      groceryState: { additionalData: {} },
+    } as any);
 
     // Specific route for smart-defaults
     await page.route(
