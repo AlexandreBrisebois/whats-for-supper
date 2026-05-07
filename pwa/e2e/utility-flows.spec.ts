@@ -240,6 +240,25 @@ test.describe("Cook's Mode and Grocery Flows", () => {
       }
     );
 
+    await mockSseWithConnectedSchedule(page, {
+      weekOffset: 0,
+      locked: true,
+      status: 2,
+      days: [
+        {
+          day: 'Mon',
+          date: TODAY,
+          recipe: builders.scheduleRecipe({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name: 'T1',
+            ingredients: [itemName],
+          }),
+        },
+      ],
+      groceryItems: builders.groceryItems([itemName], { [itemName]: 'Pantry' }),
+      groceryState: { additionalData: { [itemName]: true } },
+    } as any);
+
     await page.reload();
     await expect(page.locator(`[data-date="${TODAY}"]`)).toBeVisible({ timeout: 15_000 });
     await page.getByTestId('grocery-tab').click();

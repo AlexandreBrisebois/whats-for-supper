@@ -67,10 +67,10 @@ public class ClassifyDietaryProfileProcessorTests : IDisposable
     /// </summary>
     private static string BuildLlmResponse(
         string primaryFoodGroup = "ProteinFoods",
-        string[] secondaryFoodGroups = null,
+        string[]? secondaryFoodGroups = null,
         string proteinSource = "Poultry",
         string cuisineType = "Canadian",
-        string[] mealTypes = null,
+        string[]? mealTypes = null,
         string primaryMealType = "Dinner",
         bool wholeGrainConfident = false,
         double confidence = 0.95)

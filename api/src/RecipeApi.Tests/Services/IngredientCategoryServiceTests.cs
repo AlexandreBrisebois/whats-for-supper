@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -25,7 +26,7 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
 
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>();
-        _recomputeMock = new Mock<GroceryRecomputeService>(_db, new AisleMapper(), logger, null)
+        _recomputeMock = new Mock<GroceryRecomputeService>(_db, new AisleMapper(), logger, (IScheduleEventPublisher?)null)
         {
             CallBase = false
         };
