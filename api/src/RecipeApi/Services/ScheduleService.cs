@@ -163,6 +163,10 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             return;
         }
 
+        var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
+        var sourceRecipeId = fromEvent.RecipeId;
+        var sourceVoteCount = fromEvent.VoteCount;
+
         var fromDate = fromEvent.Date;
 
         if (dto.Intent == "push")
@@ -196,7 +200,23 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                         prevEvent.Date = currentDay;
                     }
                 }
-                fromEvent.Date = toDate;
+                if (preserveOrderedInSource)
+                {
+                    _dbContext.CalendarEvents.Add(new CalendarEvent
+                    {
+                        Id = Guid.NewGuid(),
+                        RecipeId = sourceRecipeId,
+                        Date = toDate,
+                        Status = CalendarEventStatus.Planned,
+                        VoteCount = sourceVoteCount,
+                    });
+                    fromEvent.RecipeId = Guid.Empty;
+                    fromEvent.VoteCount = 0;
+                }
+                else
+                {
+                    fromEvent.Date = toDate;
+                }
             }
             else
             {
@@ -217,10 +237,15 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
     private async Task MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset)
     {
+        var (sourceMonday, _) = GetWeekBounds(dto.WeekOffset);
         var (targetMonday, _) = GetWeekBounds(targetWeekOffset);
 
         var fromEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.RecipeId == dto.RecipeId);
         if (fromEvent == null) return;
+
+        var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
+        var sourceRecipeId = fromEvent.RecipeId;
+        var sourceVoteCount = fromEvent.VoteCount;
 
         // Find first available slot in target week starting at toIndex
         var targetIndex = dto.ToIndex;
@@ -240,8 +265,27 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         await EnsureWeekPlanExistsAsync(targetMonday);
 
-        fromEvent.Date = targetMonday.AddDays(targetIndex);
+        if (preserveOrderedInSource)
+        {
+            _dbContext.CalendarEvents.Add(new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = sourceRecipeId,
+                Date = targetMonday.AddDays(targetIndex),
+                Status = CalendarEventStatus.Planned,
+                VoteCount = sourceVoteCount,
+            });
+            fromEvent.RecipeId = Guid.Empty;
+            fromEvent.VoteCount = 0;
+        }
+        else
+        {
+            fromEvent.Date = targetMonday.AddDays(targetIndex);
+        }
         await _dbContext.SaveChangesAsync();
+
+        await _groceryRecomputeService.RecomputeForWeekAsync(sourceMonday, CancellationToken.None);
+        await _groceryRecomputeService.RecomputeForWeekAsync(targetMonday, CancellationToken.None);
     }
 
     private async Task SwapInternalAsync(DateOnly fromDate, DateOnly toDate)
@@ -278,6 +322,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         if (existingEvent != null)
         {
             existingEvent.RecipeId = dto.RecipeId;
+            existingEvent.Status = CalendarEventStatus.Planned;
         }
         else
         {

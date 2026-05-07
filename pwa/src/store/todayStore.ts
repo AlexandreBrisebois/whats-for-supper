@@ -128,7 +128,7 @@ export const useTodayStore = create<TodayState>((set, get) => ({
       name: recipe.name ?? '',
       image: recipe.image,
     };
-    set({ currentRecipe: optimistic, optimisticWriteAt: Date.now() });
+    set({ currentRecipe: optimistic, status: 0, optimisticWriteAt: Date.now() });
 
     // Background network write — no await, no router.refresh()
     const dayIndex = (new Date().getDay() + 6) % 7;

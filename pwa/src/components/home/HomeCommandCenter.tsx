@@ -19,6 +19,7 @@ import { SolarLoader } from '../ui/SolarLoader';
 import { useFamilyStore } from '@/store/familyStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useGotoStore } from '@/store/gotoStore';
+import { useWeekStore } from '@/store/weekStore';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 
@@ -208,6 +209,11 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
 
         if (action === 'order_in') {
           markOrderedIn();
+          useWeekStore.getState().applySlotUpdate({
+            date: todayStr,
+            recipe: null,
+            status: 3,
+          });
           setRecoveryFlow({ kind: 'step2', intent: 'order_in', pendingRecipe: null });
           // Do NOT close recovery dialog; let Step 2 handle rescheduling
         } else if (action === 'pick_else') {
@@ -232,6 +238,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           }
 
           setRecoveryFlow({ kind: 'closed' });
+          await useWeekStore.getState().init(0);
           sync();
         } else if (action === 'next_week') {
           const recipeId = currentRecipe?.id;
@@ -251,6 +258,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             assignRecipe(recoveryFlow.pendingRecipe);
           }
           setRecoveryFlow({ kind: 'closed' });
+          await useWeekStore.getState().init(0);
           sync();
         } else if (action === 'drop') {
           await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
@@ -260,6 +268,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             assignRecipe(recoveryFlow.pendingRecipe);
           }
           setRecoveryFlow({ kind: 'closed' });
+          await useWeekStore.getState().init(0);
           sync();
         }
       } catch (error) {
@@ -314,6 +323,11 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 if (!currentRecipe) {
                   // B5: No recipe — write status:3 unconditionally via store
                   markOrderedIn();
+                  useWeekStore.getState().applySlotUpdate({
+                    date: getTodayString(),
+                    recipe: null,
+                    status: 3,
+                  });
                 } else {
                   // B6: Recipe exists — open recovery dialog first
                   setRecoveryFlow({ kind: 'step1' });

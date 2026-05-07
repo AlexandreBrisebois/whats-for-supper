@@ -554,6 +554,71 @@ describe('weekStore — preservation (Property 2)', () => {
     expect(vi.mocked(plannerApi.moveRecipe)).toHaveBeenCalledTimes(0);
   });
 
+  it('assignRecipe refreshes grocery items after a successful assign', async () => {
+    const assignMock = vi.mocked(plannerApi.assignRecipeToDay);
+    const getScheduleMock = vi.mocked(plannerApi.getSchedule);
+    assignMock.mockResolvedValueOnce(undefined as any);
+    getScheduleMock.mockResolvedValueOnce({
+      weekOffset: 0,
+      status: 0,
+      days: makeSevenDaySchedule(),
+      groceryItems: [
+        {
+          displayName: 'Pasta',
+          normalizedKey: 'pasta',
+          section: 'Pantry',
+          quantity: 200,
+          unitText: 'g',
+          recipeIds: ['new-recipe-id'],
+          additionalData: {},
+        } as any,
+      ],
+      balanceSummary: null,
+    } as any);
+
+    const schedule = makeSevenDaySchedule();
+    useWeekStore.setState({
+      weekOffset: 0,
+      schedule,
+      groceryItems: [],
+      status: 0,
+      isLoading: false,
+      lastSyncedAt: null,
+      optimisticWriteAt: null,
+      balanceSummary: null,
+    });
+    vi.clearAllMocks();
+    assignMock.mockResolvedValueOnce(undefined as any);
+    getScheduleMock.mockResolvedValueOnce({
+      weekOffset: 0,
+      status: 0,
+      days: makeSevenDaySchedule(),
+      groceryItems: [
+        {
+          displayName: 'Pasta',
+          normalizedKey: 'pasta',
+          section: 'Pantry',
+          quantity: 200,
+          unitText: 'g',
+          recipeIds: ['new-recipe-id'],
+          additionalData: {},
+        } as any,
+      ],
+      balanceSummary: null,
+    } as any);
+
+    const recipe = { id: 'new-recipe-id', name: 'New Recipe', image: '/img/new' };
+    useWeekStore.getState().assignRecipe(2, recipe);
+
+    await vi.waitFor(() => {
+      expect(assignMock).toHaveBeenCalledTimes(1);
+      expect(getScheduleMock).toHaveBeenCalledWith(0);
+    });
+
+    expect(useWeekStore.getState().groceryItems).toHaveLength(1);
+    expect(useWeekStore.getState().groceryItems[0].displayName).toBe('Pasta');
+  });
+
   it('removeRecipe updates schedule immediately and calls removeRecipeFromDay API', async () => {
     const removeMock = vi.mocked(plannerApi.removeRecipeFromDay);
     removeMock.mockResolvedValueOnce(undefined as any);
@@ -582,5 +647,54 @@ describe('weekStore — preservation (Property 2)', () => {
       expect(removeMock).toHaveBeenCalledTimes(1);
     });
     expect(vi.mocked(plannerApi.moveRecipe)).toHaveBeenCalledTimes(0);
+  });
+
+  it('removeRecipe removes grocery items contributed only by the removed recipe', async () => {
+    const removeMock = vi.mocked(plannerApi.removeRecipeFromDay);
+    removeMock.mockResolvedValueOnce(undefined as any);
+
+    const schedule = makeSevenDaySchedule();
+    useWeekStore.setState({
+      weekOffset: 0,
+      schedule,
+      groceryItems: [
+        {
+          displayName: 'Pasta',
+          normalizedKey: 'pasta',
+          section: 'Pantry',
+          quantity: 200,
+          unitText: 'g',
+          recipeIds: ['recipe-1'],
+          additionalData: {},
+        } as any,
+        {
+          displayName: 'Olive Oil',
+          normalizedKey: 'olive_oil',
+          section: 'Pantry',
+          quantity: 2,
+          unitText: 'tbsp',
+          recipeIds: ['recipe-1', 'recipe-2'],
+          additionalData: {},
+        } as any,
+      ],
+      status: 0,
+      isLoading: false,
+      lastSyncedAt: null,
+      optimisticWriteAt: null,
+    });
+    vi.clearAllMocks();
+    removeMock.mockResolvedValueOnce(undefined as any);
+
+    const date = schedule[1].date;
+    useWeekStore.getState().removeRecipe(1, date!);
+
+    const groceryItemsAfter = useWeekStore.getState().groceryItems;
+    expect(groceryItemsAfter).toHaveLength(1);
+    expect(groceryItemsAfter[0].displayName).toBe('Olive Oil');
+    expect(groceryItemsAfter[0].recipeIds).toEqual(['recipe-2']);
+
+    await vi.waitFor(() => {
+      expect(removeMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

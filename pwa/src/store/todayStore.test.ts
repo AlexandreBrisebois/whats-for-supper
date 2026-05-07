@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('@/lib/api/planner', () => ({
+  assignRecipeToDay: vi.fn().mockResolvedValue(undefined),
+  getSchedule: vi.fn().mockResolvedValue(undefined),
+  isScheduleRecipe: (recipe: any) => !!recipe && typeof recipe.id === 'string' && recipe.id.length > 0,
+}));
+
 import { useTodayStore } from './todayStore';
+import { assignRecipeToDay } from '@/lib/api/planner';
 
 // Reset store state before each test
 beforeEach(() => {
@@ -94,6 +102,23 @@ describe('todayStore — applyServerUpdate', () => {
     useTodayStore.getState().applyServerUpdate({ recipe: mockRecipe, status: 0 });
 
     expect(useTodayStore.getState().optimisticWriteAt).toBeNull();
+  });
+});
+
+describe('todayStore — assignRecipe', () => {
+  it('clears skipped status and restores today recipe immediately', () => {
+    useTodayStore.setState({ status: 3, currentRecipe: null });
+
+    useTodayStore.getState().assignRecipe({
+      id: 'recipe-2',
+      name: 'Soup',
+      image: '/api/recipes/recipe-2/original/0',
+    });
+
+    const state = useTodayStore.getState();
+    expect(state.status).toBe(0);
+    expect(state.currentRecipe?.id).toBe('recipe-2');
+    expect(assignRecipeToDay).toHaveBeenCalledTimes(1);
   });
 });
 

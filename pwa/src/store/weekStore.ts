@@ -137,6 +137,23 @@ function buildScheduleDays(
   });
 }
 
+function removeRecipeFromGroceryItems(
+  groceryItems: GroceryLineItemDto[],
+  recipeId: string | undefined
+): GroceryLineItemDto[] {
+  if (!recipeId) return groceryItems;
+
+  return groceryItems
+    .map((item) => {
+      const remainingRecipeIds = (item.recipeIds ?? []).filter((id) => id !== recipeId);
+      return {
+        ...item,
+        recipeIds: remainingRecipeIds,
+      };
+    })
+    .filter((item) => (item.recipeIds ?? []).length > 0);
+}
+
 // ─── Store ──────────────────────────────────────────────────────────────────
 
 export const useWeekStore = create<WeekState>((set, get) => ({
@@ -202,6 +219,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       i === dayIndex
         ? {
             ...d,
+            status: 0,
             recipe: {
               id: recipe.id,
               name: recipe.name ?? '',
@@ -211,17 +229,36 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         : d
     );
     set({ schedule: next, optimisticWriteAt: Date.now() });
-    assignRecipeToDay(get().weekOffset, dayIndex, recipe).catch(() => set({ schedule: prev }));
+    assignRecipeToDay(get().weekOffset, dayIndex, recipe)
+      .then(async () => {
+        const data = await getSchedule(get().weekOffset);
+        if (!data) return;
+
+        set({
+          groceryItems: data.groceryItems ?? [],
+          balanceSummary: data.balanceSummary ?? null,
+          status: ((data.status ?? 0) as 0 | 1 | 2),
+          lastSyncedAt: Date.now(),
+        });
+      })
+      .catch(() => set({ schedule: prev }));
   },
 
   // ── removeRecipe ──────────────────────────────────────────────────────────
   removeRecipe(dayIndex, date) {
     const prev = get().schedule;
+    const prevGroceryItems = get().groceryItems;
+    const recipeId = prev[dayIndex]?.recipe?.id;
+    const removedRecipeId = typeof recipeId === 'string' ? recipeId : undefined;
     const next = prev.map((d, i) =>
       i === dayIndex ? { ...d, recipe: undefined, _isPending: false, _userCleared: true } : d
     );
-    set({ schedule: next, optimisticWriteAt: Date.now() });
-    removeRecipeFromDay(date).catch(() => set({ schedule: prev }));
+    set({
+      schedule: next,
+      groceryItems: removeRecipeFromGroceryItems(prevGroceryItems, removedRecipeId),
+      optimisticWriteAt: Date.now(),
+    });
+    removeRecipeFromDay(date).catch(() => set({ schedule: prev, groceryItems: prevGroceryItems }));
   },
 
   // ── reorderLocally ────────────────────────────────────────────────────────

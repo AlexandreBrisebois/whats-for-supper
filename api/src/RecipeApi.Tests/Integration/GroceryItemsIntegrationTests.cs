@@ -89,6 +89,71 @@ public class GroceryItemsIntegrationTests : IAsyncLifetime
         return monday.ToString("yyyy-MM-dd");
     }
 
+    [Fact]
+    public async Task MoveRecipe_ToNextWeek_PopulatesTargetWeekGroceryItems()
+    {
+        // Arrange: create a recipe with supply[] so the grocery list is derived from it
+        var supplyJson = """
+            {
+              "supply": [
+                { "name": "rice", "quantity": 2, "unitText": "cups" },
+                { "name": "lime", "quantity": 1, "unitText": "piece" }
+              ]
+            }
+            """;
+        var recipeId = await CreateRecipeWithSupplyAsync("Rice Bowl", supplyJson);
+
+        var assignResponse = await _client.PostAsJsonAsync("/api/schedule/assign", new
+        {
+            weekOffset = 0,
+            dayIndex = 0,
+            recipeId,
+        });
+        Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
+
+        // Act: move the recipe from this week into next week.
+        var moveResponse = await _client.PostAsJsonAsync("/api/schedule/move", new
+        {
+            weekOffset = 0,
+            recipeId,
+            toIndex = 0,
+            targetWeekOffset = 1,
+            intent = "push",
+        });
+        Assert.Equal(HttpStatusCode.OK, moveResponse.StatusCode);
+
+        // Assert: next week's grocery list reflects the moved recipe.
+        var nextWeekSchedule = await GetScheduleAsync(1);
+        var nextWeekGroceryItems = nextWeekSchedule.GetProperty("groceryItems");
+        Assert.Equal(JsonValueKind.Array, nextWeekGroceryItems.ValueKind);
+        Assert.True(nextWeekGroceryItems.GetArrayLength() > 0,
+            "groceryItems must be non-empty for the target week after moving a recipe there");
+
+        var nextWeekNames = nextWeekGroceryItems.EnumerateArray()
+            .Select(item => item.GetProperty("displayName").GetString())
+            .ToList();
+
+        Assert.Contains("rice", nextWeekNames);
+        Assert.Contains("lime", nextWeekNames);
+
+        // And the source week should no longer include those grocery items.
+        var currentWeekSchedule = await GetScheduleAsync(0);
+        var currentWeekGroceryItems = currentWeekSchedule.GetProperty("groceryItems");
+        if (currentWeekGroceryItems.ValueKind == JsonValueKind.Array)
+        {
+            var currentWeekNames = currentWeekGroceryItems.EnumerateArray()
+                .Select(item => item.GetProperty("displayName").GetString())
+                .ToList();
+
+            Assert.DoesNotContain("rice", currentWeekNames);
+            Assert.DoesNotContain("lime", currentWeekNames);
+        }
+        else
+        {
+            Assert.Equal(JsonValueKind.Null, currentWeekGroceryItems.ValueKind);
+        }
+    }
+
     // ── Task 11.1: Assign recipe → GET /api/schedule returns groceryItems ────
 
     [Fact]

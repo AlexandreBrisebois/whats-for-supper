@@ -106,6 +106,35 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AssignRecipe_ReopensSkippedCalendarEvent_WhenReplacingOrderedInSlot()
+    {
+        // Arrange: existing skipped slot with no recipe assigned yet
+        var newRecipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = newRecipeId, Name = "Changed Mind Recipe" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = Guid.Empty,
+            Date = monday,
+            Status = CalendarEventStatus.Skipped,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act: assign a real recipe back into that skipped slot
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, newRecipeId));
+
+        // Assert: same slot now carries the recipe and is back to Planned
+        var calendarEvent = _db.CalendarEvents.Single(e => e.Date == monday);
+        Assert.Equal(newRecipeId, calendarEvent.RecipeId);
+        Assert.Equal(CalendarEventStatus.Planned, calendarEvent.Status);
+    }
+
+    [Fact]
     public async Task ValidateDay_OrderedIn_WithNoExistingEvent_CreatesSkippedEvent()
     {
         // Arrange: no CalendarEvent for today

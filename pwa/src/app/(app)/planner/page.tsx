@@ -760,7 +760,11 @@ const PlannerDayCard = memo(function PlannerDayCard({
               </div>
             </div>
           ) : day.status === 3 ? (
-            <div data-testid="ordered-in-indicator" className="flex items-center gap-3">
+            <button
+              onClick={onPivot}
+              data-testid="ordered-in-indicator"
+              className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
+            >
               <div className="h-10 w-10 rounded-xl bg-charcoal/5 flex items-center justify-center flex-shrink-0">
                 <span className="text-xl">🥡</span>
               </div>
@@ -768,7 +772,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 <span className="text-sm font-bold text-charcoal/60">Ordered In</span>
                 <span className="text-[10px] text-charcoal/30 font-medium">No cook tonight</span>
               </div>
-            </div>
+            </button>
           ) : (
             <button
               onClick={onPivot}
