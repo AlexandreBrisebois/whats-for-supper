@@ -695,7 +695,10 @@ const PlannerDayCard = memo(function PlannerDayCard({
         )}
       </AnimatePresence>
 
-      <motion.div whileTap={{ scale: 0.98 }} className="flex items-stretch px-4 py-2 relative z-10 min-h-[68px]">
+      <motion.div
+        whileTap={{ scale: 0.98 }}
+        className="flex items-stretch px-4 py-2 relative z-10 min-h-[68px]"
+      >
         <div className="flex flex-col items-center justify-center w-12 mr-4 shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
             {day.day}
@@ -751,16 +754,21 @@ const PlannerDayCard = memo(function PlannerDayCard({
                   {(() => {
                     const count = day._voteCount ?? day.recipe?.voteCount ?? null;
                     const isUnanimous = day._unanimousVote;
+                    const hasVotes = count != null && count > 0;
                     return (
                       <span
                         data-testid="vote-count"
                         className={cn(
                           'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
-                          count != null ? 'visible' : 'invisible',
-                          isUnanimous ? 'bg-sage/20 text-sage' : 'bg-ochre/20 text-ochre'
+                          hasVotes ? 'visible' : 'visible',
+                          hasVotes
+                            ? isUnanimous
+                              ? 'bg-sage/20 text-sage'
+                              : 'bg-ochre/20 text-ochre'
+                            : 'bg-charcoal/8 text-charcoal/55'
                         )}
                       >
-                        {count ?? 0} voted
+                        {hasVotes ? `${count} voted` : 'Chosen'}
                       </span>
                     );
                   })()}

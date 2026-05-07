@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('framer-motion', () => ({
   motion: {
@@ -19,6 +19,24 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 import { PlanningPivotSheet } from './PlanningPivotSheet';
+
+const mockClipboardWriteText = vi.fn().mockResolvedValue(undefined);
+const mockShare = vi.fn().mockResolvedValue(undefined);
+
+beforeEach(() => {
+  mockClipboardWriteText.mockClear();
+  mockShare.mockClear();
+
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: mockClipboardWriteText },
+  });
+
+  Object.defineProperty(navigator, 'share', {
+    configurable: true,
+    value: mockShare,
+  });
+});
 
 function renderSheet() {
   const onClose = vi.fn();
@@ -65,9 +83,10 @@ describe('PlanningPivotSheet', () => {
     renderSheet();
 
     expect(screen.queryByTestId('pivot-nudge-family')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pivot-ask-family')).toBeInTheDocument();
   });
 
-  it('shows nudge family after ask family when voting is open', () => {
+  it('shows nudge family and hides ask family when voting is open', () => {
     const onClose = vi.fn();
 
     render(
@@ -84,11 +103,57 @@ describe('PlanningPivotSheet', () => {
       />
     );
 
-    const askFamily = screen.getByTestId('pivot-ask-family');
     const nudgeFamily = screen.getByTestId('pivot-nudge-family');
 
-    expect(askFamily).toBeInTheDocument();
+    expect(screen.queryByTestId('pivot-ask-family')).not.toBeInTheDocument();
     expect(nudgeFamily).toBeInTheDocument();
-    expect(askFamily.compareDocumentPosition(nudgeFamily) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('opens a nudge dialog with copy and share actions instead of sharing immediately', async () => {
+    render(
+      <PlanningPivotSheet
+        isOpen
+        onClose={vi.fn()}
+        dayIndex={2}
+        onQuickFind={vi.fn()}
+        onSearchLibrary={vi.fn()}
+        onAskFamily={vi.fn()}
+        onRemoveRecipe={vi.fn()}
+        isVotingOpen
+        hasRecipe
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('pivot-nudge-family'));
+
+    expect(screen.getByTestId('pivot-nudge-dialog')).toBeInTheDocument();
+    await screen.findByText('http://example.com/discovery');
+    expect(screen.getByRole('button', { name: /copy/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /share/i })).toBeInTheDocument();
+    expect(mockShare).not.toHaveBeenCalled();
+  });
+
+  it('copies the voting link from the nudge dialog', async () => {
+    render(
+      <PlanningPivotSheet
+        isOpen
+        onClose={vi.fn()}
+        dayIndex={2}
+        onQuickFind={vi.fn()}
+        onSearchLibrary={vi.fn()}
+        onAskFamily={vi.fn()}
+        onRemoveRecipe={vi.fn()}
+        isVotingOpen
+        hasRecipe
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('pivot-nudge-family'));
+    await screen.findByText('http://example.com/discovery');
+    fireEvent.click(screen.getByRole('button', { name: /copy/i }));
+
+    await waitFor(() => {
+      expect(mockClipboardWriteText).toHaveBeenCalledWith('http://example.com/discovery');
+    });
   });
 });

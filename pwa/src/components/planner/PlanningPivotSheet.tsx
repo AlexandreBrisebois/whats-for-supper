@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Search, Users, Share2, Trash2, ChevronRight, X } from 'lucide-react';
+import { Sparkles, Search, Users, Share2, Trash2, ChevronRight, X, Copy } from 'lucide-react';
 import { getVotingLink } from '@/lib/auth';
 import { t } from '@/locales';
 
@@ -27,29 +27,45 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
   isVotingOpen,
   hasRecipe,
 }) => {
-  const handleNudge = async () => {
-    const baseUrl = window.location.origin;
-    const votingLink = await getVotingLink(baseUrl);
-    const shareUrl = votingLink || baseUrl + '/discovery';
+  const [shareUrl, setShareUrl] = useState('');
+  const [showNudgeDialog, setShowNudgeDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "What's for Supper?",
-          text: `Help us choose what's for supper! Vote here:`,
-          url: shareUrl,
-        });
-      } catch (error) {
-        console.error('Error sharing:', error);
-      }
-    } else {
-      // Fallback: copy to clipboard or just alert
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        alert('Link copied to clipboard!');
-      } catch (err) {
-        console.error('Failed to copy: ', err);
-      }
+  useEffect(() => {
+    if (!showNudgeDialog) return;
+
+    const baseUrl = window.location.origin;
+    getVotingLink(baseUrl).then((votingLink) => {
+      setShareUrl(votingLink || baseUrl + '/discovery');
+    });
+  }, [showNudgeDialog]);
+
+  const handleNudge = async () => {
+    setCopied(false);
+    setShowNudgeDialog(true);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!navigator.share || !shareUrl) return;
+    try {
+      await navigator.share({
+        title: "What's for Supper?",
+        text: `Help us choose what's for supper! Vote here:`,
+        url: shareUrl,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
     }
   };
 
@@ -133,22 +149,24 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                 <ChevronRight size={18} className="text-charcoal/20" />
               </button>
 
-              <button
-                onClick={onAskFamily}
-                data-testid="pivot-ask-family"
-                className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all text-left group"
-              >
-                <div className="h-14 w-14 rounded-2xl bg-sage/10 text-sage flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Users size={24} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-heading text-xl font-black text-charcoal tracking-tight">
-                    Ask the family
-                  </h4>
-                  <p className="text-[11px] text-charcoal/40 font-medium">Open for voting</p>
-                </div>
-                <ChevronRight size={18} className="text-charcoal/20" />
-              </button>
+              {!isVotingOpen && (
+                <button
+                  onClick={onAskFamily}
+                  data-testid="pivot-ask-family"
+                  className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all text-left group"
+                >
+                  <div className="h-14 w-14 rounded-2xl bg-sage/10 text-sage flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Users size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-heading text-xl font-black text-charcoal tracking-tight">
+                      Ask the family
+                    </h4>
+                    <p className="text-[11px] text-charcoal/40 font-medium">Open for voting</p>
+                  </div>
+                  <ChevronRight size={18} className="text-charcoal/20" />
+                </button>
+              )}
 
               {isVotingOpen && (
                 <button
@@ -161,7 +179,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                   </div>
                   <div className="flex-1">
                     <h4 className="font-heading text-xl font-black tracking-tight">Nudge family</h4>
-                    <p className="text-[11px] opacity-80 font-medium">Share voting link</p>
+                    <p className="text-[11px] opacity-80 font-medium">Remind everyone to vote</p>
                   </div>
                   <ChevronRight size={18} className="opacity-40" />
                 </button>
@@ -186,6 +204,71 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
               )}
             </div>
           </motion.div>
+
+          <AnimatePresence>
+            {showNudgeDialog && (
+              <motion.div
+                key="nudge-dialog-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-10 flex items-center justify-center bg-charcoal/40 backdrop-blur-sm px-4"
+                onClick={() => setShowNudgeDialog(false)}
+              >
+                <motion.div
+                  data-testid="pivot-nudge-dialog"
+                  initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  className="w-full max-w-sm rounded-[2rem] bg-white p-6 shadow-2xl flex flex-col gap-5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-lg font-bold text-charcoal">Nudge the family</h2>
+                      <p className="text-xs text-charcoal/50 mt-0.5">Share this week&apos;s voting link</p>
+                    </div>
+                    <button
+                      onClick={() => setShowNudgeDialog(false)}
+                      className="p-2 rounded-full hover:bg-charcoal/5 text-charcoal/40 transition-colors"
+                      aria-label={t('common.close', 'Close')}
+                      title={t('common.close', 'Close')}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="rounded-xl bg-cream border border-charcoal/10 px-4 py-3 text-xs font-mono text-charcoal/60 break-all select-all">
+                    {shareUrl || 'Generating link…'}
+                  </div>
+
+                  {copied && <p className="text-xs text-sage font-medium text-center -mt-2">Link copied!</p>}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCopy}
+                      disabled={!shareUrl}
+                      className="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-charcoal/5 text-charcoal text-sm font-semibold transition-all active:scale-95 hover:bg-charcoal/10 disabled:opacity-40"
+                    >
+                      <Copy size={16} />
+                      Copy
+                    </button>
+                    {canShare && (
+                      <button
+                        onClick={handleShare}
+                        disabled={!shareUrl}
+                        className="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-ochre text-white text-sm font-semibold shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 disabled:opacity-40"
+                      >
+                        <Share2 size={16} />
+                        Share
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </AnimatePresence>
