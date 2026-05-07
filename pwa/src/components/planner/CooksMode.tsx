@@ -99,9 +99,13 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   }, [initialRecipe.id]);
 
   const steps = parsedSteps.length > 0 ? parsedSteps : getFallbackSteps();
+  const isPrepStep = currentStep === 0;
+  const activeRecipeStepIndex = Math.max(currentStep - 1, 0);
 
   const nextStep = () => {
-    if (currentStep < steps.length - 1) {
+    if (isPrepStep) {
+      setCookProgress(initialRecipe.id, 1);
+    } else if (currentStep < steps.length) {
       setCookProgress(initialRecipe.id, currentStep + 1);
     } else {
       setShowCelebration(true);
@@ -130,7 +134,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     );
   }
 
-  const currentStepData = steps[currentStep];
+  const currentStepData = steps[activeRecipeStepIndex];
 
   return (
     <motion.div
@@ -195,7 +199,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           <motion.div
             key={i}
             animate={{
-              backgroundColor: i <= currentStep ? 'rgba(205, 93, 69, 1)' : 'rgba(0, 0, 0, 0.05)',
+              backgroundColor: i < currentStep ? 'rgba(205, 93, 69, 1)' : 'rgba(0, 0, 0, 0.05)',
             }}
             className="flex-1"
           />
@@ -219,18 +223,18 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 className="mb-8 inline-flex items-center space-x-2 text-terracotta bg-terracotta/5 px-6 py-3 rounded-full"
               >
                 <span className="text-sm font-black uppercase tracking-widest">
-                  {`${currentStep + 1} / ${steps.length}`}
+                  {isPrepStep ? t('cook.checkAndPrep', 'Check & Prep') : `${currentStep} / ${steps.length}`}
                 </span>
               </div>
 
               <h3 className="text-4xl font-heading font-black text-charcoal mb-4 leading-tight">
-                {currentStep === 0 ? t('cook.checkAndPrep', 'Check & Prep') : currentStepData.title}
+                {isPrepStep ? t('cook.checkAndPrep', 'Check & Prep') : currentStepData.title}
               </h3>
 
-              {currentStep === 0 ? (
+              {isPrepStep ? (
                 <div className="mt-8 space-y-8 bg-terracotta/[0.02]">
                   <p className="text-xl font-medium text-charcoal/80 leading-relaxed max-w-lg mx-auto">
-                    {currentStepData.instruction}
+                    {t('cook.ingredientsReady', 'Check off your ingredients before you start cooking.')}
                   </p>
 
                   {/* Ingredients Grid */}
@@ -311,9 +315,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           className="h-20 rounded-3xl bg-terracotta text-white text-2xl font-black flex items-center justify-center space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
         >
           <span>
-            {currentStep === steps.length - 1
+            {currentStep === steps.length
               ? t('cook.done', 'Done')
-              : currentStep === 0
+              : isPrepStep
                 ? t('cook.letsCook', "Let's Cook")
                 : t('cook.next', 'Next')}
           </span>
