@@ -70,9 +70,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const currentStep = cookProgress[initialRecipe.id] ?? 0;
 
   useEffect(() => {
+    const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = previous;
     };
   }, []);
 
