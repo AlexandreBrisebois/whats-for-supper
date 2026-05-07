@@ -113,14 +113,19 @@ tasks:
         echo "✓ Lingering processes cleaned up"
 
   test:kill:
-    desc: "Kill zombie Playwright and npm test processes (use before running E2E to avoid port ghosts)"
+    desc: "Kill zombie Playwright, Vitest, and npm test processes (use before running tests to avoid port ghosts)"
     cmds:
       - |
         echo "Killing zombie test processes..."
 
         pkill -f "playwright test" 2>/dev/null || true
         pkill -f "npm run test:e2e" 2>/dev/null || true
+        pkill -f "npm run test:unit" 2>/dev/null || true
+        pkill -f "npm run test:unit:coverage" 2>/dev/null || true
+        pkill -f "npm run test:unit:watch" 2>/dev/null || true
         pkill -f "npm run test$" 2>/dev/null || true
+        pkill -f "vitest" 2>/dev/null || true
+        pkill -f "vite-node.*vitest" 2>/dev/null || true
 
         # Kill anything still holding the PWA port
         PORT_PIDS=$(lsof -ti:{{.PWA_PORT}} 2>/dev/null || true)

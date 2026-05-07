@@ -97,6 +97,48 @@ test.describe('Capture Flow', () => {
     await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
   });
 
+  test('large photo uploads show immediate upload feedback and a delayed overlay', async ({
+    page,
+  }) => {
+    await page.route('**/api/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await route.fulfill({
+          status: 202,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], total: 0 }),
+      });
+    });
+
+    await page.goto('/capture');
+
+    const fileInput = page.locator('input[type="file"]').first();
+    await fileInput.setInputFiles(FIXTURE_IMAGE);
+
+    await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await page.getByRole('button', { name: /save recipe/i }).click();
+
+    await expect(page.getByRole('button', { name: /uploading photos/i })).toBeDisabled();
+    await expect(page.getByText(/large photos can take a few seconds/i)).toBeVisible();
+    await expect(page.getByTestId('capture-photo-upload-overlay')).toBeVisible();
+    await expect(page.getByText(/please keep this screen open while we send them/i)).toBeVisible();
+
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
+  });
+
   test('after successful capture, user can return to home', async ({ page }) => {
     await page.goto('/home');
     await expect(

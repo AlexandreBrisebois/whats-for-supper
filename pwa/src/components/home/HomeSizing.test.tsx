@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 
 vi.mock('next/image', () => ({
   default: ({ fill: _fill, priority: _priority, unoptimized: _unoptimized, ...props }: any) => (
+    // eslint-disable-next-line @next/next/no-img-element
     <img {...props} alt={props.alt} />
   ),
 }));
