@@ -511,11 +511,13 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           assignCalled = true;
           await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
+          // Before drop: today still has the recipe so sync() doesn't clobber the SSE-seeded store.
+          // After drop: today is empty so sync() reflects the removed slot.
           const days = Array.from({ length: 7 }, (_, i) => {
             const d = new Date(monday);
             d.setUTCDate(monday.getUTCDate() + i);
             const dateStr = toDateStr(d);
-            return { date: dateStr, status: 0, recipe: null };
+            return { date: dateStr, status: 0, recipe: dateStr === today && !removeCalled ? lasagnaRecipe : null };
           });
           await route.fulfill({
             status: 200,
