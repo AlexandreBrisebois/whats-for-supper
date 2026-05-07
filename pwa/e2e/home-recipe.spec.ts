@@ -287,6 +287,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     });
 
     let moveCalled = false;
+    let moveRecipeId: string | null = null;
     let assignCalled = false;
 
     await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
@@ -315,6 +316,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           });
         } else if (url.pathname.endsWith('/move') && method === 'POST') {
           moveCalled = true;
+          const body = request.postDataJSON();
+          moveRecipeId = body?.recipeId ?? null;
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -380,12 +383,187 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Click "Move to Tomorrow"
     await page.getByTestId('recovery-action-tomorrow').click();
 
-    // Verify both APIs called
+    // Verify both APIs called and move sent the correct recipeId (regression: BS-10)
     await expect.poll(() => moveCalled).toBe(true);
     await expect.poll(() => assignCalled).toBe(true);
+    expect(moveRecipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
 
     // Dialog should be closed
     await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+  });
+
+  test('"Order In → Move to Tomorrow" sends recipeId and closes dialog', async ({ page }) => {
+    const monday = currentMonday();
+    const today = toDateStr(monday);
+    const lasagnaRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Test Lasagna',
+      image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+    });
+
+    let moveCalled = false;
+    let moveRecipeId: string | null = null;
+
+    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        const method = request.method();
+
+        if (url.pathname.endsWith('/move') && method === 'POST') {
+          moveCalled = true;
+          const body = request.postDataJSON();
+          moveRecipeId = body?.recipeId ?? null;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { message: 'Recipe moved' } }),
+          });
+        } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(monday);
+            d.setUTCDate(monday.getUTCDate() + i);
+            const dateStr = toDateStr(d);
+            return { date: dateStr, status: 0, recipe: dateStr === today ? lasagnaRecipe : null };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+          });
+        } else {
+          await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        }
+      }
+    );
+
+    await page.goto('/home');
+    await expect(page.getByTestId('home-loader')).not.toBeVisible();
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+
+    // Flip the card and click skip
+    await page.getByTestId('tonight-menu-card').click();
+    await page.waitForTimeout(600);
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
+
+    // Click "Ordering In" → step 2
+    await page.getByTestId('recovery-action-order-in').click();
+    await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
+
+    // Click "Move to Tomorrow"
+    await page.getByTestId('recovery-action-tomorrow').click();
+
+    // Move must be called with the original recipe's ID (regression: BS-10)
+    await expect.poll(() => moveCalled).toBe(true);
+    expect(moveRecipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
+
+    // Dialog must be closed
+    await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+  });
+
+  test('"Order In → Drop Tonight" resets state so user can re-plan', async ({ page }) => {
+    const monday = currentMonday();
+    const today = toDateStr(monday);
+    const lasagnaRecipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Test Lasagna',
+      image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+    });
+
+    let removeCalled = false;
+    let assignCalled = false;
+
+    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule'),
+      async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        const method = request.method();
+
+        if (url.pathname.endsWith('/fill-the-gap')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: [
+                builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_CHICKEN,
+                  name: 'Test Chicken',
+                  image: '/chicken.jpg',
+                }),
+              ],
+            }),
+          });
+        } else if (url.pathname.includes('/day/') && url.pathname.endsWith('/remove') && method === 'DELETE') {
+          removeCalled = true;
+          await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        } else if (url.pathname.endsWith('/assign') && method === 'POST') {
+          assignCalled = true;
+          await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(monday);
+            d.setUTCDate(monday.getUTCDate() + i);
+            const dateStr = toDateStr(d);
+            return { date: dateStr, status: 0, recipe: null };
+          });
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+          });
+        } else {
+          await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        }
+      }
+    );
+
+    await page.goto('/home');
+    await expect(page.getByTestId('home-loader')).not.toBeVisible();
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+
+    // Flip the card and click skip
+    await page.getByTestId('tonight-menu-card').click();
+    await page.waitForTimeout(600);
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
+      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
+
+    // Click "Ordering In" → step 2
+    await page.getByTestId('recovery-action-order-in').click();
+    await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
+
+    // Click "Just Drop Tonight"
+    await page.getByText('Just Drop Tonight').click();
+
+    // Remove must be called
+    await expect.poll(() => removeCalled).toBe(true);
+
+    // Dialog must be closed
+    await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+
+    // Pivot card must show — user is NOT stuck (regression: drop resets status)
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible({ timeout: 3000 });
+
+    // User can add a recipe back via Quick Find
+    await page.getByTestId('discover-btn').click();
+    await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+    await page.getByTestId('quick-find-select').first().click();
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 500 });
+    await expect.poll(() => assignCalled).toBe(true);
   });
 
   test('Closing Quick Find after "Pick Something Else" exits without changing tonight', async ({
