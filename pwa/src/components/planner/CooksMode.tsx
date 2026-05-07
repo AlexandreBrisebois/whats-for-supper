@@ -320,8 +320,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           <ChevronRight size={28} />
         </Button>
       </div>
-
-
     </motion.div>
   );
 }
