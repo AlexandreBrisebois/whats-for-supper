@@ -1,6 +1,6 @@
 'use client';
 
-import { Utensils, Ban, Sparkles, ChevronRight, Clock } from 'lucide-react';
+import { Utensils, ArrowRightLeft, Sparkles, ChevronRight, Clock } from 'lucide-react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -169,7 +169,7 @@ export function TonightMenuCard({
                   className="flex items-center justify-center gap-2 h-14 rounded-[1.5rem] bg-[#CD5D45] text-white shadow-lg shadow-terracotta/20 transition-all active:scale-95 hover:brightness-110"
                   data-testid="skip-tonight-btn"
                 >
-                  <Ban size={18} />
+                  <ArrowRightLeft size={18} />
                   <span className="text-[10px] font-black uppercase tracking-widest">
                     {t('home.changePlan', 'Change Plan')}
                   </span>
