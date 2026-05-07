@@ -14,11 +14,35 @@ export type ScheduleResponse = ScheduleDays;
 export type PreSelectedRecipe = PreSelectedRecipeDto;
 export type SmartDefaultsResponse = SmartDefaultsDto;
 
+function readRecord(value: unknown): Record<string, unknown> | null {
+  return value != null && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+export function normalizeScheduleRecipe(recipe: unknown): ScheduleRecipeDto | null {
+  const raw = readRecord(recipe);
+  if (!raw) return null;
+
+  const directId = raw.id;
+  if (typeof directId === 'string' && directId.length > 0) {
+    return raw as ScheduleRecipeDto;
+  }
+
+  const nestedData = readRecord(raw.data);
+  if (nestedData && typeof nestedData.id === 'string' && nestedData.id.length > 0) {
+    return nestedData as ScheduleRecipeDto;
+  }
+
+  const additionalData = readRecord(raw.additionalData);
+  if (additionalData && typeof additionalData.id === 'string' && additionalData.id.length > 0) {
+    return additionalData as ScheduleRecipeDto;
+  }
+
+  return null;
+}
+
 /** Narrows the oneOf recipe union to the concrete ScheduleRecipeDto, filtering out the null member. */
 export function isScheduleRecipe(recipe: any | null | undefined): recipe is ScheduleRecipeDto {
-  if (!recipe) return false;
-  // Only treat as a valid schedule recipe if it has a string ID
-  return typeof recipe.id === 'string' && recipe.id.length > 0;
+  return normalizeScheduleRecipe(recipe) !== null;
 }
 
 export const getSchedule = async (weekOffset: number): Promise<ScheduleResponse | undefined> => {

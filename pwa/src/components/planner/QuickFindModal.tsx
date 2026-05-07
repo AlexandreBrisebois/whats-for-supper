@@ -79,7 +79,7 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-charcoal/40 backdrop-blur-xl"
+        className="absolute inset-0 bg-cream/55 backdrop-blur-xl"
       />
 
       <motion.div
@@ -87,7 +87,7 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         data-testid="quick-find-modal"
-        className="relative w-full max-w-sm rounded-[3.5rem] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(253,252,240,0.98))] shadow-[0_32px_64px_-12px_rgba(205,93,69,0.18)] border border-white/80"
+        className="relative w-full max-w-sm rounded-[3.5rem] overflow-hidden border border-white/60 bg-[rgba(253,252,240,0.78)] shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)] backdrop-blur-xl"
       >
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
-import { assignRecipeToDay, getSchedule, isScheduleRecipe } from '@/lib/api/planner';
+import { assignRecipeToDay, getSchedule, normalizeScheduleRecipe } from '@/lib/api/planner';
 import { getTodayString } from '@/lib/imageUtils';
 import type { ScheduleRecipeDto } from '@/lib/api/generated/models';
 
@@ -181,8 +181,9 @@ export const useTodayStore = create<TodayState>((set, get) => ({
         set({ status: 3, lastSyncedAt: Date.now() });
       } else if (!optimisticIsRecent) {
         // Only reconcile currentRecipe when no optimistic write is in-flight
-        if (isScheduleRecipe(todaysEntry?.recipe)) {
-          set({ currentRecipe: todaysEntry!.recipe, lastSyncedAt: Date.now() });
+        const recipe = normalizeScheduleRecipe(todaysEntry?.recipe);
+        if (recipe) {
+          set({ currentRecipe: recipe, lastSyncedAt: Date.now() });
         } else {
           set({ currentRecipe: null, lastSyncedAt: Date.now() });
         }

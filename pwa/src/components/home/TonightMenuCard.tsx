@@ -176,7 +176,7 @@ export function TonightMenuCard({
                 >
                   <Ban size={18} />
                   <span className="text-[10px] font-black uppercase tracking-widest">
-                    {t('home.skip', 'Skip')}
+                    {t('home.changePlan', 'Change Plan')}
                   </span>
                 </button>
                 <button

@@ -383,6 +383,28 @@ export function createRecommendationsResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ScheduleDayDto_recipeMember1 | ScheduleRecipeDto}
+ */
+// @ts-ignore
+export function createScheduleDayDto_recipeFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoScheduleDayDto_recipe;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ScheduleDayDto_recipeMember1}
+ */
+// @ts-ignore
+export function createScheduleDayDto_recipeMember1FromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoScheduleDayDto_recipeMember1;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ScheduleDayDto}
  */
 // @ts-ignore
@@ -1358,14 +1380,42 @@ export function deserializeIntoScheduleDayDto(
       scheduleDayDto.day = n.getStringValue();
     },
     recipe: (n) => {
-      scheduleDayDto.recipe = n.getObjectValue<ScheduleRecipeDto>(
-        createScheduleRecipeDtoFromDiscriminatorValue
-      );
+      scheduleDayDto.recipe =
+        n.getObjectValue<ScheduleDayDto_recipeMember1>(
+          createScheduleDayDto_recipeMember1FromDiscriminatorValue
+        ) ?? n.getObjectValue<ScheduleRecipeDto>(createScheduleRecipeDtoFromDiscriminatorValue);
     },
     status: (n) => {
       scheduleDayDto.status = n.getNumberValue();
     },
   };
+}
+/**
+ * The deserialization information for the current model
+ * @param ScheduleDayDto_recipe The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoScheduleDayDto_recipe(
+  scheduleDayDto_recipe: Partial<ScheduleDayDto_recipeMember1 | ScheduleRecipeDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    ...deserializeIntoScheduleDayDto_recipeMember1(
+      scheduleDayDto_recipe as ScheduleDayDto_recipeMember1
+    ),
+    ...deserializeIntoScheduleRecipeDto(scheduleDayDto_recipe as ScheduleRecipeDto),
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param ScheduleDayDto_recipeMember1 The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoScheduleDayDto_recipeMember1(
+  scheduleDayDto_recipeMember1: Partial<ScheduleDayDto_recipeMember1> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
 }
 /**
  * The deserialization information for the current model
@@ -2293,12 +2343,14 @@ export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
   /**
    * The recipe property
    */
-  recipe?: ScheduleRecipeDto | null;
+  recipe?: ScheduleDayDto_recipeMember1 | ScheduleRecipeDto | null;
   /**
    * 0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
    */
   status?: number | null;
 }
+export type ScheduleDayDto_recipe = ScheduleDayDto_recipeMember1 | ScheduleRecipeDto;
+export interface ScheduleDayDto_recipeMember1 extends AdditionalDataHolder, Parsable {}
 export interface ScheduleDays extends AdditionalDataHolder, Parsable {
   /**
    * The balanceSummary property
@@ -3054,13 +3106,51 @@ export function serializeScheduleDayDto(
   }
   writer.writeStringValue('date', scheduleDayDto.date);
   writer.writeStringValue('day', scheduleDayDto.day);
-  writer.writeObjectValue<ScheduleRecipeDto>(
+  writer.writeObjectValue<ScheduleDayDto_recipeMember1 | ScheduleRecipeDto>(
     'recipe',
     scheduleDayDto.recipe,
-    serializeScheduleRecipeDto
+    serializeScheduleDayDto_recipe
   );
   writer.writeNumberValue('status', scheduleDayDto.status);
   writer.writeAdditionalData(scheduleDayDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ScheduleDayDto_recipe The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeScheduleDayDto_recipe(
+  writer: SerializationWriter,
+  scheduleDayDto_recipe:
+    | Partial<ScheduleDayDto_recipeMember1 | ScheduleRecipeDto>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  serializeScheduleDayDto_recipeMember1(
+    writer,
+    scheduleDayDto_recipe as ScheduleDayDto_recipeMember1
+  );
+  serializeScheduleRecipeDto(writer, scheduleDayDto_recipe as ScheduleRecipeDto);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ScheduleDayDto_recipeMember1 The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeScheduleDayDto_recipeMember1(
+  writer: SerializationWriter,
+  scheduleDayDto_recipeMember1: Partial<ScheduleDayDto_recipeMember1> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!scheduleDayDto_recipeMember1 || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(scheduleDayDto_recipeMember1.additionalData);
 }
 /**
  * Serializes information the current object

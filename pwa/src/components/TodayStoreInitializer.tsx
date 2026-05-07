@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useTodayStore } from '@/store/todayStore';
-import { isScheduleRecipe } from '@/lib/api/planner';
+import { normalizeScheduleRecipe } from '@/lib/api/planner';
 import type { ScheduleRecipeDto } from '@/lib/api/generated/models';
 
 /**
@@ -26,11 +26,7 @@ export function TodayStoreInitializer({
 }) {
   useEffect(() => {
     // Resolve the SSR recipe to a plain ScheduleRecipeDto (or null)
-    const ssrRecipe: ScheduleRecipeDto | null = isScheduleRecipe(todaysRecipe)
-      ? 'data' in todaysRecipe
-        ? (todaysRecipe.data as ScheduleRecipeDto)
-        : (todaysRecipe as ScheduleRecipeDto)
-      : null;
+    const ssrRecipe: ScheduleRecipeDto | null = normalizeScheduleRecipe(todaysRecipe);
 
     useTodayStore.getState().init(ssrRecipe, todayStatus);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only init; SSE keeps the store current after that

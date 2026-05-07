@@ -223,7 +223,11 @@ components:
       properties:
         day: { type: string }
         date: { type: string }
-        recipe: { $ref: '#/components/schemas/ScheduleRecipeDto' }
+        recipe:
+          nullable: true
+          oneOf:
+            - { $ref: '#/components/schemas/ScheduleRecipeDto' }
+            - { type: 'null' }
         status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
 
     ScheduleRecipeDto:

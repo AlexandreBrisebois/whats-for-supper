@@ -79,7 +79,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
             exit={{ opacity: 0 }}
             onClick={onClose}
             data-testid="pivot-sheet-backdrop"
-            className="absolute inset-0 bg-charcoal/40 backdrop-blur-md"
+            className="absolute inset-0 bg-cream/55 backdrop-blur-xl"
           />
           <motion.div
             data-testid="pivot-sheet"
@@ -87,7 +87,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 32 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="relative w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-2xl p-8"
+            className="relative w-full max-w-sm rounded-[3rem] overflow-hidden border border-white/60 bg-[rgba(253,252,240,0.78)] p-8 shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)] backdrop-blur-xl"
           >
             <div className="flex items-center justify-between mb-8">
               <div className="flex flex-col gap-1">
@@ -227,7 +227,9 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                   <div className="flex items-start justify-between">
                     <div>
                       <h2 className="text-lg font-bold text-charcoal">Nudge the family</h2>
-                      <p className="text-xs text-charcoal/50 mt-0.5">Share this week&apos;s voting link</p>
+                      <p className="text-xs text-charcoal/50 mt-0.5">
+                        Share this week&apos;s voting link
+                      </p>
                     </div>
                     <button
                       onClick={() => setShowNudgeDialog(false)}
@@ -243,7 +245,9 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                     {shareUrl || 'Generating link…'}
                   </div>
 
-                  {copied && <p className="text-xs text-sage font-medium text-center -mt-2">Link copied!</p>}
+                  {copied && (
+                    <p className="text-xs text-sage font-medium text-center -mt-2">Link copied!</p>
+                  )}
 
                   <div className="flex gap-3">
                     <button

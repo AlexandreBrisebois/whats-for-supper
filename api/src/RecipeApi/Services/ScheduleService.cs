@@ -124,7 +124,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         foreach (var @event in events)
         {
             @event.Status = CalendarEventStatus.Locked;
-            if (voteCountDict.TryGetValue(@event.RecipeId, out var voteCount))
+            if (@event.RecipeId is { } recipeId && voteCountDict.TryGetValue(recipeId, out var voteCount))
             {
                 @event.VoteCount = voteCount;
             }
@@ -155,19 +155,35 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         var (monday, _) = GetWeekBounds(dto.WeekOffset);
         var toDate = monday.AddDays(dto.ToIndex);
 
-        // BS-10: Find recipe by ID for deterministic moves in collaborative environments.
-        var fromEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.RecipeId == dto.RecipeId);
+        var fromDate = dto.FromIndex is { } fromIndex ? monday.AddDays(fromIndex) : (DateOnly?)null;
+
+        // Prefer the explicit source slot when the client knows it. This avoids moving the wrong
+        // event when the same recipe appears multiple times in a week.
+        var fromEvent = fromDate is { } explicitFromDate
+            ? await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == explicitFromDate)
+            : null;
+
+        // Fallback to recipeId for older clients that do not send fromIndex.
+        fromEvent ??= await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.RecipeId == dto.RecipeId);
         if (fromEvent == null)
         {
             _logger.LogWarning("Move ignored: Recipe {RecipeId} not found in schedule.", dto.RecipeId);
             return;
         }
 
-        var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
-        var sourceRecipeId = fromEvent.RecipeId;
-        var sourceVoteCount = fromEvent.VoteCount;
+        if (fromEvent.RecipeId != dto.RecipeId)
+        {
+            _logger.LogWarning(
+                "Move ignored: source slot {FromDate} does not contain recipe {RecipeId}.",
+                fromEvent.Date,
+                dto.RecipeId);
+            return;
+        }
 
-        var fromDate = fromEvent.Date;
+        var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
+        var sourceRecipeId = fromEvent.RecipeId ?? throw new InvalidOperationException("Scheduled event is missing a recipe association.");
+        var sourceVoteCount = fromEvent.VoteCount;
+        var currentFromDate = fromEvent.Date;
 
         if (dto.Intent == "push")
         {
@@ -188,7 +204,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
             if (foundEmpty)
             {
-                _logger.LogInformation("Pushing recipe {RecipeId} from {From} to {To}, shifting slots", dto.RecipeId, fromDate, toDate);
+                _logger.LogInformation("Pushing recipe {RecipeId} from {From} to {To}, shifting slots", dto.RecipeId, currentFromDate, toDate);
                 // Shift recipes from targetIndex down to toIndex
                 for (int i = targetIndex; i > dto.ToIndex; i--)
                 {
@@ -210,7 +226,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                         Status = CalendarEventStatus.Planned,
                         VoteCount = sourceVoteCount,
                     });
-                    fromEvent.RecipeId = Guid.Empty;
+                    fromEvent.RecipeId = null;
                     fromEvent.VoteCount = 0;
                 }
                 else
@@ -221,12 +237,12 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             else
             {
                 _logger.LogWarning("No empty slot found for push, falling back to swap");
-                await SwapInternalAsync(fromDate, toDate);
+                await SwapInternalAsync(currentFromDate, toDate);
             }
         }
         else
         {
-            await SwapInternalAsync(fromDate, toDate);
+            await SwapInternalAsync(currentFromDate, toDate);
         }
 
         await _dbContext.SaveChangesAsync();
@@ -240,11 +256,25 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         var (sourceMonday, _) = GetWeekBounds(dto.WeekOffset);
         var (targetMonday, _) = GetWeekBounds(targetWeekOffset);
 
-        var fromEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.RecipeId == dto.RecipeId);
+        var fromDate = dto.FromIndex is { } fromIndex ? sourceMonday.AddDays(fromIndex) : (DateOnly?)null;
+        var fromEvent = fromDate is { } explicitFromDate
+            ? await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == explicitFromDate)
+            : null;
+
+        fromEvent ??= await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.RecipeId == dto.RecipeId);
         if (fromEvent == null) return;
 
+        if (fromEvent.RecipeId != dto.RecipeId)
+        {
+            _logger.LogWarning(
+                "Cross-week move ignored: source slot {FromDate} does not contain recipe {RecipeId}.",
+                fromEvent.Date,
+                dto.RecipeId);
+            return;
+        }
+
         var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
-        var sourceRecipeId = fromEvent.RecipeId;
+        var sourceRecipeId = fromEvent.RecipeId ?? throw new InvalidOperationException("Scheduled event is missing a recipe association.");
         var sourceVoteCount = fromEvent.VoteCount;
 
         // Find first available slot in target week starting at toIndex
@@ -275,7 +305,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 Status = CalendarEventStatus.Planned,
                 VoteCount = sourceVoteCount,
             });
-            fromEvent.RecipeId = Guid.Empty;
+            fromEvent.RecipeId = null;
             fromEvent.VoteCount = 0;
         }
         else
@@ -350,7 +380,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         var assignedIds = await _dbContext.CalendarEvents
             .Where(e => e.Date >= monday && e.Date <= sunday)
-            .Select(e => e.RecipeId)
+            .Where(e => e.RecipeId != null)
+            .Select(e => e.RecipeId!.Value)
             .ToHashSetAsync();
 
         var results = await _dbContext.RecipeMatches
@@ -548,7 +579,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 var newEvent = new CalendarEvent
                 {
                     Id = Guid.NewGuid(),
-                    RecipeId = Guid.Empty, // sentinel: no recipe for this ordered-in event
+                    RecipeId = null,
                     Date = date,
                     Status = CalendarEventStatus.Skipped,
                 };
@@ -569,8 +600,11 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         if (oldStatus == CalendarEventStatus.AwaitingConsensus && @event.Status == CalendarEventStatus.Locked)
         {
             _logger.LogInformation("Consensus Purge #2: Recipe {RecipeId} reached consensus, purging votes", @event.RecipeId);
-            var votesToPurge = await _dbContext.RecipeVotes.Where(v => v.RecipeId == @event.RecipeId).ToListAsync();
-            _dbContext.RecipeVotes.RemoveRange(votesToPurge);
+            if (@event.RecipeId is { } recipeId)
+            {
+                var votesToPurge = await _dbContext.RecipeVotes.Where(v => v.RecipeId == recipeId).ToListAsync();
+                _dbContext.RecipeVotes.RemoveRange(votesToPurge);
+            }
         }
 
         if (dto.Status == 2 && @event.Recipe != null) // 2 = Cooked
@@ -583,7 +617,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         // Build ScheduleRecipeDto for the slot (may be null for ordered-in)
         ScheduleRecipeDto? recipeDto = null;
-        if (@event.Recipe != null && @event.RecipeId != Guid.Empty)
+        if (@event.Recipe != null && @event.RecipeId != null)
         {
             recipeDto = new ScheduleRecipeDto(
                 @event.Recipe.Id,

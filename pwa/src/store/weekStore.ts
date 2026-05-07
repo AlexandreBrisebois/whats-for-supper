@@ -6,7 +6,7 @@ import {
   moveRecipe as moveRecipeApi,
   openVoting as openVotingApi,
   lockSchedule,
-  isScheduleRecipe,
+  normalizeScheduleRecipe,
   getSmartDefaults,
 } from '@/lib/api/planner';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -111,9 +111,10 @@ function buildScheduleDays(
     // day/date back to fixed slots, a date-based _uiId would end up at the wrong
     // slot index, causing Framer Motion to remount items and snap them back visually.
     const stableUiId = generateUiId();
+    const recipe = normalizeScheduleRecipe(day.recipe);
 
-    if (isScheduleRecipe(day.recipe)) {
-      return { ...day, recipe: day.recipe, _uiId: stableUiId };
+    if (recipe) {
+      return { ...day, recipe, _uiId: stableUiId };
     }
 
     const smartDefault = defaultsByDayIndex.get(index);
