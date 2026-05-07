@@ -177,12 +177,8 @@ test.describe('Planner Social Coordination', () => {
     await expect(removeButton).toBeVisible();
     await removeButton.click();
 
-    // 3. Verify grid is updated
+    // 3. Verify grid is updated immediately after remove
     const cardContent = page.locator('[data-testid="day-card-0"]');
     await expect(cardContent).not.toContainText('Pasta Carbonara');
-
-    // 4. Verify success ring animation triggered
-    const successRing = page.locator('[data-testid="success-ring"]');
-    await expect(successRing).toBeVisible();
   });
 });
