@@ -328,7 +328,9 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                   >
                                     <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
                                     <span className="min-w-0 flex-1 transition-all">
-                                      <span className="block font-medium transition-all">{key}</span>
+                                      <span className="block font-medium transition-all">
+                                        {key}
+                                      </span>
                                       {quantityHint && (
                                         <span
                                           data-testid="grocery-item-quantity-hint"

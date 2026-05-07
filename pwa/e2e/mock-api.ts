@@ -34,11 +34,7 @@ function buildSseBody(frames: string[]): string {
   return frames.join('');
 }
 
-/**
- * Builds the default `connected` event payload with a 7-day empty schedule
- * anchored to the fixed test Monday (2026-05-04).
- */
-function buildConnectedEvent(): string {
+function buildDefaultConnectedSchedule(): ScheduleDays {
   const monday = currentMonday();
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
@@ -50,8 +46,34 @@ function buildConnectedEvent(): string {
       status: 0,
     };
   });
-  const schedule: ScheduleDays = { weekOffset: 0, locked: false, status: 0, days } as ScheduleDays;
+
+  return { weekOffset: 0, locked: false, status: 0, days } as ScheduleDays;
+}
+
+/**
+ * Builds the default `connected` event payload with a 7-day empty schedule
+ * anchored to the fixed test Monday (2026-05-04).
+ */
+function buildConnectedEvent(schedule: ScheduleDays = buildDefaultConnectedSchedule()): string {
   return buildSseFrame('connected', { type: 'connected', schedule });
+}
+
+export async function mockSseWithConnectedSchedule(
+  page: Page,
+  schedule: ScheduleDays
+): Promise<void> {
+  await page.route(/\/([^/]+\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+      body: buildSseBody([buildConnectedEvent(schedule)]),
+    });
+  });
 }
 
 /**

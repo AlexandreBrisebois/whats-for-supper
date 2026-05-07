@@ -1,5 +1,12 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  currentMonday,
+  toDateStr,
+  setupCommonRoutes,
+  mockSseWithConnectedSchedule,
+} from './mock-api';
 
 /**
  * ADR 029: Deterministic E2E Testing Strategy
@@ -92,6 +99,38 @@ test.describe("Cook's Mode and Grocery Flows", () => {
           await route.continue();
         }
       }
+    );
+
+    await mockSseWithConnectedSchedule(
+      page,
+      {
+        weekOffset: 0,
+        locked: true,
+        status: 2,
+        days: Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(thisMonday);
+          d.setUTCDate(thisMonday.getUTCDate() + i);
+          const dateStr = toDateStr(d);
+          const isToday = dateStr === TODAY;
+
+          return {
+            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+            date: dateStr,
+            recipe: isToday
+              ? builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_LASAGNA,
+                  name: 'Test Lasagna',
+                  ingredients: UTILITY_GROCERY_INGREDIENTS,
+                })
+              : null,
+          };
+        }),
+        groceryItems: builders.groceryItems(
+          UTILITY_GROCERY_INGREDIENTS,
+          UTILITY_GROCERY_SECTION_MAP
+        ),
+        groceryState: { additionalData: {} },
+      } as any
     );
 
     // Specific route for smart-defaults
@@ -220,6 +259,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
   test('Grocery items grouped by aisle sections', async ({ page }) => {
     await page.getByTestId('grocery-tab').click();
     await expect(page.getByTestId('grocery-checklist')).toBeVisible();
+    await expect(page.getByText('Your list is empty')).not.toBeVisible();
 
     // Wait for items to populate before checking sections
     await expect(page.locator('[data-testid="grocery-item-checkbox"]').first()).toBeVisible({

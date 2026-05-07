@@ -64,19 +64,20 @@ export default defineConfig({
   ],
 
   // Automatically start the Next.js dev server when running tests locally.
-  webServer: isCI || hasExternalBaseUrl
-    ? undefined
-    : {
-        command: 'NEXT_PUBLIC_ENVIRONMENT=test npm run dev',
-        url: 'http://127.0.0.1:3000',
-        reuseExistingServer: true,
-        stdout: 'pipe',
-        stderr: 'pipe',
-        env: {
-          NEXT_PUBLIC_ENVIRONMENT: 'test',
-          API_INTERNAL_URL: 'http://127.0.0.1:5001',
-          NEXT_PUBLIC_API_BASE_URL: '',
-          HEARTH_SECRET: process.env.HEARTH_SECRET || 'our family loves cooking',
+  webServer:
+    isCI || hasExternalBaseUrl
+      ? undefined
+      : {
+          command: 'NEXT_PUBLIC_ENVIRONMENT=test npm run dev',
+          url: 'http://127.0.0.1:3000',
+          reuseExistingServer: true,
+          stdout: 'pipe',
+          stderr: 'pipe',
+          env: {
+            NEXT_PUBLIC_ENVIRONMENT: 'test',
+            API_INTERNAL_URL: 'http://127.0.0.1:5001',
+            NEXT_PUBLIC_API_BASE_URL: '',
+            HEARTH_SECRET: process.env.HEARTH_SECRET || 'our family loves cooking',
+          },
         },
-      },
 });

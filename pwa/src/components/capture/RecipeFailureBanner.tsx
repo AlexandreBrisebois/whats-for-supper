@@ -71,31 +71,32 @@ export function RecipeFailureBanner() {
                   className="flex w-full items-center gap-3 pr-12 text-left active:scale-[0.98] transition-transform"
                   aria-label={`Recipe couldn't be saved — ${recipeName}. Tap to try again.`}
                 >
-                {/* Icon */}
-                <div className="flex-shrink-0 ml-3 my-3">
-                  <div className="h-8 w-8 rounded-full bg-terracotta/15 flex items-center justify-center text-terracotta/70">
-                    <AlertCircle size={16} />
+                  {/* Icon */}
+                  <div className="flex-shrink-0 ml-3 my-3">
+                    <div className="h-8 w-8 rounded-full bg-terracotta/15 flex items-center justify-center text-terracotta/70">
+                      <AlertCircle size={16} />
+                    </div>
                   </div>
-                </div>
 
-                {/* Text */}
-                <div className="flex-1 min-w-0 py-3">
-                  <p className="text-sm text-charcoal leading-snug">
-                    Recipe couldn&apos;t be saved — <span className="font-bold">{recipeName}</span>.{' '}
-                    <span className="text-terracotta/80 font-medium">Tap to try again.</span>
-                  </p>
-                </div>
+                  {/* Text */}
+                  <div className="flex-1 min-w-0 py-3">
+                    <p className="text-sm text-charcoal leading-snug">
+                      Recipe couldn&apos;t be saved —{' '}
+                      <span className="font-bold">{recipeName}</span>.{' '}
+                      <span className="text-terracotta/80 font-medium">Tap to try again.</span>
+                    </p>
+                  </div>
 
-                {/* Dismiss */}
-                <button
-                  type="button"
-                  onClick={handleDismiss}
-                  aria-label="Dismiss failure notification"
-                  data-testid={`recipe-failure-dismiss-${notification.recipeId}`}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
-                >
-                  <X size={14} />
-                </button>
+                  {/* Dismiss */}
+                  <button
+                    type="button"
+                    onClick={handleDismiss}
+                    aria-label="Dismiss failure notification"
+                    data-testid={`recipe-failure-dismiss-${notification.recipeId}`}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
+                  >
+                    <X size={14} />
+                  </button>
                 </button>
               </div>
             </motion.div>

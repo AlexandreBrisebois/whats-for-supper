@@ -244,15 +244,9 @@ export default function PlannerPage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
       {/* Animated Blobs */}
-      <div
-        className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]"
-      />
-      <div
-        className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]"
-      />
-      <div
-        className="blob blob-ochre -bottom-20 left-1/4 animate-[pulse_12s_infinite] [animation-delay:2s]"
-      />
+      <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
+      <div className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]" />
+      <div className="blob blob-ochre -bottom-20 left-1/4 animate-[pulse_12s_infinite] [animation-delay:2s]" />
 
       {/* Header Section */}
       <header className="sticky top-0 z-30 px-4 pt-3 pb-3 sm:px-6 sm:pt-5 sm:pb-4 glass-nav">

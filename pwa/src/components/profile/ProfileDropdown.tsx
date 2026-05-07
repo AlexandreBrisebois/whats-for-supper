@@ -43,7 +43,9 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center justify-between gap-4 rounded-2xl bg-white/40 backdrop-blur-md border border-white/40 p-4 shadow-glass hover:bg-white/50 transition-all active:scale-[0.98]"
         aria-label={
-          isOpen ? t('profile.closeMemberMenu', 'Close member menu') : t('profile.openMemberMenu', 'Open member menu')
+          isOpen
+            ? t('profile.closeMemberMenu', 'Close member menu')
+            : t('profile.openMemberMenu', 'Open member menu')
         }
       >
         <div className="flex items-center gap-3">

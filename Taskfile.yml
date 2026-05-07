@@ -186,6 +186,12 @@ tasks:
     cmds:
       - npx playwright test
 
+  test:e2e:reuse-server:
+    desc: "🎭 Run E2E suites against an existing local PWA to avoid Playwright webServer startup"
+    dir: pwa
+    cmds:
+      - BASE_URL="${BASE_URL:-http://127.0.0.1:3000}" npm run test:e2e:reuse-server
+
   test:e2e:ci:
     desc: "Run E2E against production build (CI parity: build + test)"
     dir: pwa

@@ -127,55 +127,55 @@ export function LibraryToast() {
                 onClick={handleToastTap}
                 className="flex w-full items-center gap-3 pr-12 text-left active:scale-[0.98] transition-transform"
               >
-              {/* Thumbnail */}
-              <div className="flex-shrink-0 ml-3 my-3">
-                {current.imageUrl ? (
-                  <div className="relative h-10 w-10 rounded-xl overflow-hidden">
-                    <Image
-                      src={getImageUrl(current.imageUrl)}
-                      alt={current.name}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                ) : (
-                  <div className="h-10 w-10 rounded-xl bg-sage/20 flex items-center justify-center text-sage">
-                    <Utensils size={20} />
-                  </div>
-                )}
-              </div>
+                {/* Thumbnail */}
+                <div className="flex-shrink-0 ml-3 my-3">
+                  {current.imageUrl ? (
+                    <div className="relative h-10 w-10 rounded-xl overflow-hidden">
+                      <Image
+                        src={getImageUrl(current.imageUrl)}
+                        alt={current.name}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-10 w-10 rounded-xl bg-sage/20 flex items-center justify-center text-sage">
+                      <Utensils size={20} />
+                    </div>
+                  )}
+                </div>
 
-              {/* Text */}
-              <div className="flex-1 min-w-0 py-3">
-                <p className="text-sm text-charcoal leading-snug">
-                  <span className="text-sage mr-1">✓</span>
-                  <span className="font-bold">{current.name}</span>
-                  {' is ready!'}
-                </p>
-                <p className="text-[10px] text-charcoal/50 font-medium mt-0.5">
-                  Tap to add to your week
-                </p>
-              </div>
+                {/* Text */}
+                <div className="flex-1 min-w-0 py-3">
+                  <p className="text-sm text-charcoal leading-snug">
+                    <span className="text-sage mr-1">✓</span>
+                    <span className="font-bold">{current.name}</span>
+                    {' is ready!'}
+                  </p>
+                  <p className="text-[10px] text-charcoal/50 font-medium mt-0.5">
+                    Tap to add to your week
+                  </p>
+                </div>
 
-              {/* Dismiss */}
-              <button
-                type="button"
-                onClick={handleDismiss}
-                aria-label="Dismiss notification"
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
-              >
-                <X size={14} />
-              </button>
+                {/* Dismiss */}
+                <button
+                  type="button"
+                  onClick={handleDismiss}
+                  aria-label="Dismiss notification"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
+                >
+                  <X size={14} />
+                </button>
 
-              {/* Progress bar */}
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sage/10">
-                <motion.div
-                  className="h-full bg-sage/60 transition-none"
-                  animate={{ scaleX: progress / 100 }}
-                  style={{ transformOrigin: 'left center' }}
-                />
-              </div>
+                {/* Progress bar */}
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sage/10">
+                  <motion.div
+                    className="h-full bg-sage/60 transition-none"
+                    animate={{ scaleX: progress / 100 }}
+                    style={{ transformOrigin: 'left center' }}
+                  />
+                </div>
               </button>
             </div>
 
