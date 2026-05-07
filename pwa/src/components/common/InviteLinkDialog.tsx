@@ -72,7 +72,9 @@ export function InviteLinkDialog({ memberId, memberName, onClose }: InviteLinkDi
               <p className="text-xs text-charcoal/50 mt-0.5">Share this link with your family</p>
             </div>
             <button
+              type="button"
               onClick={onClose}
+              aria-label="Close invite dialog"
               className="p-2 rounded-full hover:bg-charcoal/5 text-charcoal/40 transition-colors"
             >
               <X size={18} />

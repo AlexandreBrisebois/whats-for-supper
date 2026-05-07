@@ -245,16 +245,13 @@ export default function PlannerPage() {
     <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
       {/* Animated Blobs */}
       <div
-        className="blob blob-terracotta -top-20 -left-20 animate-pulse"
-        style={{ animationDuration: '8s' }}
+        className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]"
       />
       <div
-        className="blob blob-sage top-1/2 -right-40 animate-pulse"
-        style={{ animationDuration: '10s', animationDelay: '1s' }}
+        className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]"
       />
       <div
-        className="blob blob-ochre -bottom-20 left-1/4 animate-pulse"
-        style={{ animationDuration: '12s', animationDelay: '2s' }}
+        className="blob blob-ochre -bottom-20 left-1/4 animate-[pulse_12s_infinite] [animation-delay:2s]"
       />
 
       {/* Header Section */}

@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const isCI = !!process.env.CI;
+const hasExternalBaseUrl = !!process.env.BASE_URL;
 
 export default defineConfig({
   // Directory containing E2E test files
@@ -63,7 +64,7 @@ export default defineConfig({
   ],
 
   // Automatically start the Next.js dev server when running tests locally.
-  webServer: isCI
+  webServer: isCI || hasExternalBaseUrl
     ? undefined
     : {
         command: 'NEXT_PUBLIC_ENVIRONMENT=test npm run dev',

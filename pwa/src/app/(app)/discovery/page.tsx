@@ -398,26 +398,32 @@ export default function DiscoveryPage() {
       {/* Control Buttons (Thumb Zone) */}
       <div className="mt-10 flex w-full max-w-sm shrink-0 items-center justify-between px-8 pb-4">
         <button
+          type="button"
           disabled={recipes.length === 0}
           onClick={() => recipes.length > 0 && handleSwipeLeft(recipes[recipes.length - 1].id)}
           data-testid="dislike-button"
+          aria-label="Dislike recipe"
           className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_rgba(205,93,69,0.15)] border border-terracotta/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-2xl">✕</div>
         </button>
 
         <button
+          type="button"
           onClick={fetchCategories}
           data-testid="refresh-button"
+          aria-label="Refresh recipe suggestions"
           className="flex h-12 w-12 items-center justify-center rounded-full bg-white/50 text-charcoal/30 shadow-sm border border-charcoal/5 active:rotate-180 transition-transform duration-500"
         >
           <RefreshCcw size={18} />
         </button>
 
         <button
+          type="button"
           disabled={recipes.length === 0}
           onClick={() => recipes.length > 0 && handleSwipeRight(recipes[recipes.length - 1].id)}
           data-testid="like-button"
+          aria-label="Like recipe"
           className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-sage shadow-[0_10px_25px_rgba(138,154,91,0.15)] border border-sage/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-3xl">♥</div>

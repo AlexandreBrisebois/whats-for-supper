@@ -141,14 +141,12 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     const checklist = page.getByTestId('grocery-checklist');
     await expect(checklist).toBeVisible();
 
-    await expect(page.locator('[data-testid="grocery-item-checkbox"]').first()).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(page.getByText('Your list is empty')).not.toBeVisible();
 
     const firstItem = page.locator(
       `[data-testid="grocery-item-checkbox"][data-item-name="${itemName}"]`
     );
-    await expect(firstItem).toBeVisible();
+    await expect(firstItem).toBeVisible({ timeout: 10_000 });
 
     // Mock update
     await page.route(
@@ -161,7 +159,13 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     await expect(firstItem).toHaveAttribute('aria-checked', 'false');
     await expect(firstItem).toHaveAttribute('data-state', 'unchecked');
 
+    const groceryPatchRequest = page.waitForRequest(
+      (request) =>
+        request.method() === 'PATCH' && request.url().includes('/api/schedule/0/grocery/item')
+    );
+
     await firstItem.click({ delay: 100 });
+    await groceryPatchRequest;
     await expect(firstItem).toBeChecked();
     await expect(firstItem).toHaveAttribute('aria-checked', 'true');
 

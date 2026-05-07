@@ -121,11 +121,12 @@ export function LibraryToast() {
             aria-label={`${current.name} is ready`}
           >
             {/* Toast card */}
-            <button
-              onClick={handleToastTap}
-              className="relative flex items-center gap-3 w-full rounded-2xl bg-sage/10 border border-sage/30 overflow-hidden text-left active:scale-[0.98] transition-transform"
-              style={{ borderLeft: '4px solid var(--color-sage, #7a9e7e)' }}
-            >
+            <div className="relative w-full overflow-hidden rounded-2xl border border-sage/30 border-l-4 border-l-sage bg-sage/10">
+              <button
+                type="button"
+                onClick={handleToastTap}
+                className="flex w-full items-center gap-3 pr-12 text-left active:scale-[0.98] transition-transform"
+              >
               {/* Thumbnail */}
               <div className="flex-shrink-0 ml-3 my-3">
                 {current.imageUrl ? (
@@ -159,21 +160,24 @@ export function LibraryToast() {
 
               {/* Dismiss */}
               <button
+                type="button"
                 onClick={handleDismiss}
                 aria-label="Dismiss notification"
-                className="flex-shrink-0 mr-3 p-1.5 rounded-full text-charcoal/40 hover:text-charcoal/70 hover:bg-charcoal/5 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
               >
                 <X size={14} />
               </button>
 
               {/* Progress bar */}
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sage/10">
-                <div
+                <motion.div
                   className="h-full bg-sage/60 transition-none"
-                  style={{ width: `${progress}%` }}
+                  animate={{ scaleX: progress / 100 }}
+                  style={{ transformOrigin: 'left center' }}
                 />
               </div>
-            </button>
+              </button>
+            </div>
 
             {/* "+N more" badge */}
             {extraCount > 0 && (

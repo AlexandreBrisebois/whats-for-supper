@@ -118,14 +118,9 @@ export function TonightMenuCard({
         {/* Back of Card (Glassmorphism) */}
         <div
           className={cn(
-            'absolute inset-0 rounded-[3rem] rotate-y-180 backface-hidden border-2 border-white/40 overflow-hidden flex flex-col shadow-2xl',
+            'absolute inset-0 rounded-[3rem] rotate-y-180 backface-hidden border-2 border-white/40 overflow-hidden flex flex-col shadow-2xl bg-white/40 backdrop-blur-[24px]',
             !isFlipped ? 'pointer-events-none' : ''
           )}
-          style={{
-            background: 'rgba(255, 255, 255, 0.4)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-          }}
         >
           <div className="flex-1 overflow-y-auto scrollbar-none p-8 flex flex-col">
             <div className="flex items-center justify-between mb-8">

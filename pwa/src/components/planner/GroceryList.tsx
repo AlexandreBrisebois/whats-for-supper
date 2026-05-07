@@ -270,55 +270,87 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                 }`}
                               >
                                 {/* Toggle button — takes up the left portion */}
-                                <div
-                                  onClick={() => handleToggle(key)}
-                                  onKeyDown={(event) => {
-                                    if (event.key === ' ' || event.key === 'Enter') {
-                                      event.preventDefault();
-                                      void handleToggle(key);
-                                    }
-                                  }}
-                                  className="flex min-w-0 items-start space-x-4 flex-1 text-left"
-                                  data-testid="grocery-item-checkbox"
-                                  data-item-name={key}
-                                  data-state={isChecked ? 'checked' : 'unchecked'}
-                                  role="checkbox"
-                                  aria-checked={isChecked ? 'true' : 'false'}
-                                  tabIndex={0}
-                                >
-                                  {isChecked ? (
-                                    <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
-                                  ) : (
-                                    <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
-                                  )}
-                                  <span
-                                    className={`min-w-0 flex-1 transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
+                                {isChecked ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggle(key)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === ' ' || event.key === 'Enter') {
+                                        event.preventDefault();
+                                        void handleToggle(key);
+                                      }
+                                    }}
+                                    className="flex min-w-0 items-start space-x-4 flex-1 text-left"
+                                    data-testid="grocery-item-checkbox"
+                                    data-item-name={key}
+                                    data-state="checked"
+                                    role="checkbox"
+                                    aria-checked="true"
                                   >
-                                    <span
-                                      className={`block font-medium transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
-                                    >
-                                      {key}
-                                    </span>
-                                    {quantityHint && (
-                                      <span
-                                        data-testid="grocery-item-quantity-hint"
-                                        className="mt-1 block text-sm font-normal text-charcoal/50"
-                                      >
-                                        {quantityHint}
+                                    <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
+                                    <span className="min-w-0 flex-1 transition-all line-through opacity-60">
+                                      <span className="block font-medium transition-all line-through opacity-60">
+                                        {key}
                                       </span>
+                                      {quantityHint && (
+                                        <span
+                                          data-testid="grocery-item-quantity-hint"
+                                          className="mt-1 block text-sm font-normal text-charcoal/50"
+                                        >
+                                          {quantityHint}
+                                        </span>
+                                      )}
+                                    </span>
+                                    {hasError && (
+                                      <AlertCircle
+                                        size={12}
+                                        className="text-terracotta flex-shrink-0 ml-1"
+                                        data-testid="grocery-item-error"
+                                      />
                                     )}
-                                  </span>
-                                  {hasError && (
-                                    <AlertCircle
-                                      size={12}
-                                      className="text-terracotta flex-shrink-0 ml-1"
-                                      data-testid="grocery-item-error"
-                                    />
-                                  )}
-                                </div>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggle(key)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === ' ' || event.key === 'Enter') {
+                                        event.preventDefault();
+                                        void handleToggle(key);
+                                      }
+                                    }}
+                                    className="flex min-w-0 items-start space-x-4 flex-1 text-left"
+                                    data-testid="grocery-item-checkbox"
+                                    data-item-name={key}
+                                    data-state="unchecked"
+                                    role="checkbox"
+                                    aria-checked="false"
+                                  >
+                                    <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
+                                    <span className="min-w-0 flex-1 transition-all">
+                                      <span className="block font-medium transition-all">{key}</span>
+                                      {quantityHint && (
+                                        <span
+                                          data-testid="grocery-item-quantity-hint"
+                                          className="mt-1 block text-sm font-normal text-charcoal/50"
+                                        >
+                                          {quantityHint}
+                                        </span>
+                                      )}
+                                    </span>
+                                    {hasError && (
+                                      <AlertCircle
+                                        size={12}
+                                        className="text-terracotta flex-shrink-0 ml-1"
+                                        data-testid="grocery-item-error"
+                                      />
+                                    )}
+                                  </button>
+                                )}
 
                                 {/* Reclassify button — separate tap target */}
                                 <button
+                                  type="button"
                                   onClick={() =>
                                     setReclassifyOpen(
                                       isPickerOpen ? null : (item.normalizedKey ?? null)
@@ -348,6 +380,7 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                 >
                                   {AISLE_ORDER.map((section) => (
                                     <button
+                                      type="button"
                                       key={section}
                                       onClick={() => handleReclassify(item, section)}
                                       className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
