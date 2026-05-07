@@ -153,6 +153,162 @@ test.describe('Discovery Flow', () => {
     await expect(page.getByTestId('just-planned-badge')).not.toBeVisible({ timeout: 5_000 });
   });
 
+  test('should auto-advance past empty first category to next non-empty category', async ({
+    page,
+  }) => {
+    // Italian is empty (all voted), Asian has cards — page should land on Asian, not empty state
+    await page.route(
+      (url) => url.pathname.endsWith('/api/discovery') && !url.pathname.includes('/vote'),
+      async (route) => {
+        const category = new URL(route.request().url()).searchParams.get('category');
+        if (category === 'Italian') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: [] }),
+          });
+        } else {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: MOCK_STACK }),
+          });
+        }
+      }
+    );
+
+    await page.goto('/discovery');
+
+    await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('discovery-card').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('discovery-empty-state')).not.toBeVisible();
+  });
+
+  test('should skip multiple empty categories before showing first non-empty category', async ({
+    page,
+  }) => {
+    // Italian and Asian are empty, Mexican has cards
+    await page.route(
+      (url) => url.pathname.endsWith('/api/discovery') && !url.pathname.includes('/vote'),
+      async (route) => {
+        const category = new URL(route.request().url()).searchParams.get('category');
+        if (category === 'Italian' || category === 'Asian') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: [] }),
+          });
+        } else {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: MOCK_STACK }),
+          });
+        }
+      }
+    );
+
+    await page.goto('/discovery');
+
+    await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('discovery-card').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('discovery-empty-state')).not.toBeVisible();
+  });
+
+  test('refresh button should be hidden while voting categories are available', async ({
+    page,
+  }) => {
+    await page.goto('/discovery');
+
+    await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('discovery-card').first()).toBeVisible({ timeout: 10_000 });
+
+    // Refresh button must not be rendered while cards are present
+    await expect(page.getByTestId('refresh-button')).not.toBeVisible();
+  });
+
+  test('refresh button should appear only after all categories are exhausted', async ({ page }) => {
+    await page.goto('/discovery');
+
+    await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    // 3 categories × 2 cards = 6 swipes to exhaust everything
+    for (let i = 0; i < 6; i++) {
+      const likeBtn = page.getByTestId('like-button');
+      await expect(likeBtn).toBeEnabled({ timeout: 5_000 });
+      await likeBtn.click();
+    }
+
+    await expect(page.getByTestId('discovery-empty-state')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('refresh-button')).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('SSE fill_the_gap empties last card in category → auto-advances to next category', async ({
+    page,
+  }) => {
+    await mockSseWithFillTheGapInvalidated(page, 0);
+
+    // Italian has 1 card (Lasagna). After SSE, Italian refetch returns [] — Lasagna was planned.
+    // The next category (Asian/Mexican) uses a DISTINCT stack with no "Mock Gourmet Discovery"
+    // so the assertion that Lasagna disappears is reliable even across SSE reconnects.
+    const NEXT_STACK = [
+      builders.recipe({ id: MOCK_IDS.RECIPE_CARBONARA, name: 'Mock Comfort Classic' }),
+      builders.recipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Mock Chicken Delight' }),
+    ];
+
+    let italianCallCount = 0;
+    await page.route(
+      (url) => url.pathname.endsWith('/api/discovery') && !url.pathname.includes('/vote'),
+      async (route) => {
+        const category = new URL(route.request().url()).searchParams.get('category');
+        if (category === 'Italian') {
+          const idx = italianCallCount++;
+          if (idx === 0) {
+            // Initial load: 1 card
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                data: [builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Mock Gourmet Discovery' })],
+              }),
+            });
+          } else {
+            // Silent refetch after SSE: Lasagna was planned
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: [] }),
+            });
+          }
+        } else {
+          // Asian / Mexican — always return the distinct next-category stack
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: NEXT_STACK }),
+          });
+        }
+      }
+    );
+
+    await page.goto('/discovery');
+
+    await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('discovery-card').first()).toBeVisible();
+
+    // After SSE fires and the refetch empties Italian, the page auto-advances.
+    // Lasagna should disappear and be replaced by next-category cards.
+    await expect(
+      page.locator('[data-testid="discovery-card"]').filter({ hasText: /Mock Gourmet Discovery/i })
+    ).not.toBeVisible({ timeout: 10_000 });
+
+    // Empty state must NOT appear — we cycled to the next category
+    await expect(page.getByTestId('discovery-empty-state')).not.toBeVisible({ timeout: 5_000 });
+
+    // A card from the next category should be visible
+    await expect(page.getByTestId('discovery-card').first()).toBeVisible({ timeout: 10_000 });
+  });
+
   test('SSE vote_updated: ring appears on voted card; position-0 card unchanged', async ({
     page,
   }) => {
