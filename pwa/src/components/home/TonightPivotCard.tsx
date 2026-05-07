@@ -38,7 +38,7 @@ export function TonightPivotCard({
 
   return (
     <div
-      className="relative aspect-[4/5] w-full perspective-1000 group"
+      className="relative w-full min-h-[28rem] h-[clamp(28rem,64vh,38rem)] perspective-1000 group sm:aspect-[4/5] sm:h-auto sm:min-h-0"
       data-testid="tonight-pivot-card"
     >
       <TonightCardBase className="absolute inset-0 flex flex-col p-6 backface-hidden">

@@ -67,6 +67,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   const hideHeader = mainAppRoutes.includes(pathname as any);
 
   const isDiscovery = pathname === ROUTES.DISCOVERY;
+  const isHome = pathname === ROUTES.HOME;
 
   return (
     <>
@@ -79,7 +80,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
         {...headerProps}
         hideNavigation={isCapture}
         hideHeader={hideHeader}
-        isFluid={isDiscovery || isCapture}
+        isFluid={isHome || isDiscovery || isCapture}
         className={
           pathname === ROUTES.HOME ? 'solar-earth-bg' : isDiscovery ? 'vibrant-discovery-bg' : ''
         }

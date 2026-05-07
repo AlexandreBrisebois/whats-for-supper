@@ -294,7 +294,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const recoveryStep = recoveryFlow.kind === 'step2' ? 2 : 1;
 
   return (
-    <div className="flex flex-col gap-8 pt-4 pb-12 max-w-sm mx-auto w-full px-6 sm:px-0">
+    <div className="flex flex-col gap-5 pt-3 pb-12 max-w-[27rem] mx-auto w-full px-4 sm:gap-8 sm:px-0 sm:pt-4 sm:max-w-sm">
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20" data-testid="home-loader">
           <SolarLoader label={t('home.aligningDay', 'Aligning your day...')} />

@@ -10,14 +10,14 @@ export function QuickCaptureTrigger() {
     <Link
       href={ROUTES.CAPTURE}
       data-testid="quick-capture-trigger"
-      className="group relative flex items-center justify-between w-full bg-white text-charcoal p-6 rounded-[2.5rem] border-2 border-charcoal/5 transition-all active:scale-[0.98] hover:border-terracotta/20"
+      className="group relative flex items-center justify-between w-full bg-white text-charcoal p-4 sm:p-6 rounded-[2.5rem] border-2 border-charcoal/5 transition-all active:scale-[0.98] hover:border-terracotta/20"
     >
-      <div className="flex items-center gap-5">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-terracotta/10 text-terracotta transition-colors group-hover:bg-terracotta group-hover:text-white">
+      <div className="flex items-center gap-3 sm:gap-5">
+        <div className="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-terracotta/10 text-terracotta transition-colors group-hover:bg-terracotta group-hover:text-white">
           <Camera size={32} strokeWidth={2} />
         </div>
         <div className="flex flex-col">
-          <span className="font-heading text-xl font-black tracking-tighter leading-none">
+          <span className="font-heading text-[1.05rem] sm:text-xl font-black tracking-tighter leading-none">
             {t('home.captureRecipe', 'Capture a Recipe')}
           </span>
           <span className="text-charcoal/40 text-[10px] font-black uppercase tracking-widest mt-1">
@@ -25,7 +25,7 @@ export function QuickCaptureTrigger() {
           </span>
         </div>
       </div>
-      <div className="h-10 w-10 rounded-full border border-charcoal/10 flex items-center justify-center group-hover:border-terracotta/30">
+      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border border-charcoal/10 flex items-center justify-center group-hover:border-terracotta/30">
         <ChevronRight
           size={20}
           className="text-charcoal/20 group-hover:text-terracotta transition-all group-hover:translate-x-0.5"
