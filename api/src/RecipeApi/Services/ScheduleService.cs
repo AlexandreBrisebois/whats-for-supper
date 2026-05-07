@@ -294,6 +294,9 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None);
 
+        var updatedSchedule = await GetScheduleAsync(dto.WeekOffset);
+        await _publisher.PublishWeekUpdatedAsync(updatedSchedule, excludeConnectionId);
+
         // Build the ScheduleRecipeDto for the assigned slot
         var assignedEvent = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
@@ -391,6 +394,9 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             _logger.LogInformation("Removed recipe from date {Date}", date);
 
             await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+            var updatedSchedule = await GetScheduleAsync(weekOffset);
+            await _publisher.PublishWeekUpdatedAsync(updatedSchedule, excludeConnectionId);
 
             await _publisher.PublishSlotUpdatedAsync(date, null, 0, excludeConnectionId);
             await _publisher.PublishFillTheGapInvalidatedAsync(weekOffset, excludeConnectionId);
