@@ -3,7 +3,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('@/lib/api/planner', () => ({
   assignRecipeToDay: vi.fn().mockResolvedValue(undefined),
   getSchedule: vi.fn().mockResolvedValue(undefined),
-  isScheduleRecipe: (recipe: any) => !!recipe && typeof recipe.id === 'string' && recipe.id.length > 0,
+  isScheduleRecipe: (recipe: any) =>
+    !!recipe && typeof recipe.id === 'string' && recipe.id.length > 0,
 }));
 
 import { useTodayStore } from './todayStore';

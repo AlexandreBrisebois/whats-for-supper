@@ -237,7 +237,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         set({
           groceryItems: data.groceryItems ?? [],
           balanceSummary: data.balanceSummary ?? null,
-          status: ((data.status ?? 0) as 0 | 1 | 2),
+          status: (data.status ?? 0) as 0 | 1 | 2,
           lastSyncedAt: Date.now(),
         });
       })
