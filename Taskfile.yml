@@ -240,6 +240,7 @@ tasks:
     desc: "📦 Force rebuild all images (No-cache + Image removal)"
     cmds:
       - task: clean:images
+      - docker builder prune -a -f
       - task: publish
         vars: { NOCACHE: "true" }
 
