@@ -213,12 +213,18 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         } else if (action === 'pick_else') {
           setRecoveryFlow({ kind: 'quick_find', intent: 'pick_else' });
         } else if (action === 'tomorrow') {
+          const recipeId = currentRecipe?.id;
+          if (!recipeId) {
+            setRecoveryFlow({ kind: 'closed' });
+            return;
+          }
           // Reschedule tonight's meal to tomorrow
           await apiClient.api.schedule.move.post({
             weekOffset: 0,
             fromIndex: (new Date().getDay() + 6) % 7,
             toIndex: ((new Date().getDay() + 6) % 7) + 1,
             intent: 'push',
+            recipeId,
           });
 
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
@@ -228,12 +234,18 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           setRecoveryFlow({ kind: 'closed' });
           sync();
         } else if (action === 'next_week') {
+          const recipeId = currentRecipe?.id;
+          if (!recipeId) {
+            setRecoveryFlow({ kind: 'closed' });
+            return;
+          }
           await apiClient.api.schedule.move.post({
             weekOffset: 0,
             fromIndex: (new Date().getDay() + 6) % 7,
             toIndex: 0,
             targetWeekOffset: 1,
             intent: 'push',
+            recipeId,
           });
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
             assignRecipe(recoveryFlow.pendingRecipe);
@@ -242,6 +254,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           sync();
         } else if (action === 'drop') {
           await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
+          // Reset today's slot so the user can re-plan after dropping
+          useTodayStore.getState().applyServerUpdate({ recipe: null, status: 0 });
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
             assignRecipe(recoveryFlow.pendingRecipe);
           }
@@ -252,7 +266,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         console.error('Failed recovery action:', error);
       }
     },
-    [markOrderedIn, sync, recoveryFlow, assignRecipe]
+    [markOrderedIn, sync, recoveryFlow, assignRecipe, currentRecipe]
   );
 
   const handleQuickFindSelect = async (recipe: any) => {
