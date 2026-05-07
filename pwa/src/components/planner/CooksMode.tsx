@@ -223,7 +223,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 className="mb-8 inline-flex items-center space-x-2 text-terracotta bg-terracotta/5 px-6 py-3 rounded-full"
               >
                 <span className="text-sm font-black uppercase tracking-widest">
-                  {isPrepStep ? t('cook.checkAndPrep', 'Check & Prep') : `${currentStep} / ${steps.length}`}
+                  {isPrepStep
+                    ? t('cook.checkAndPrep', 'Check & Prep')
+                    : `${currentStep} / ${steps.length}`}
                 </span>
               </div>
 
@@ -234,7 +236,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               {isPrepStep ? (
                 <div className="mt-8 space-y-8 bg-terracotta/[0.02]">
                   <p className="text-xl font-medium text-charcoal/80 leading-relaxed max-w-lg mx-auto">
-                    {t('cook.ingredientsReady', 'Check off your ingredients before you start cooking.')}
+                    {t(
+                      'cook.ingredientsReady',
+                      'Check off your ingredients before you start cooking.'
+                    )}
                   </p>
 
                   {/* Ingredients Grid */}

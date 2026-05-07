@@ -51,7 +51,7 @@ describe('CooksMode', () => {
     usePlannerStore.setState({ cookProgress: {} });
   });
 
-  it('keeps check and prep focused on ingredients, then starts recipe content at step 1 after Let\'s Cook', async () => {
+  it("keeps check and prep focused on ingredients, then starts recipe content at step 1 after Let's Cook", async () => {
     getRecipeMock.mockResolvedValue({
       id: 'recipe-1',
       name: 'Pasta Night',
