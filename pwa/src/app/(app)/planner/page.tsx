@@ -196,8 +196,6 @@ export default function PlannerPage() {
     const dayIndex = showPivot.dayIndex;
     const date = schedule[dayIndex].date;
     if (!date) return;
-    setSuccessDay(dayIndex);
-    setTimeout(() => setSuccessDay(null), 2000);
     setShowPivot(null);
     useWeekStore.getState().removeRecipe(dayIndex, date);
   };
