@@ -59,6 +59,7 @@ export function FamilyMemberList({
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
+                      data-testid={`family-member-edit-input-${member.id}`}
                       aria-label={tWithVars('family.editNameFor', 'Edit name for {name}', {
                         name: member.name,
                       })}
@@ -73,6 +74,7 @@ export function FamilyMemberList({
                       type="button"
                       onClick={() => handleUpdate(member.id)}
                       disabled={isLoading || !editName.trim()}
+                      data-testid={`family-member-save-${member.id}`}
                       className="rounded-full p-2 text-indigo hover:bg-indigo/10 disabled:opacity-30"
                       aria-label={t('family.saveName', 'Save name')}
                     >
@@ -82,6 +84,7 @@ export function FamilyMemberList({
                       type="button"
                       onClick={cancelEditing}
                       disabled={isLoading}
+                      data-testid={`family-member-cancel-${member.id}`}
                       className="rounded-full p-2 text-charcoal-400 hover:bg-charcoal-100"
                       aria-label={t('family.cancelEditing', 'Cancel editing')}
                     >
@@ -121,6 +124,7 @@ export function FamilyMemberList({
                             e.stopPropagation();
                             onInvite(member.id, member.name);
                           }}
+                          data-testid={`family-member-invite-${member.id}`}
                           className={[
                             'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm',
                             selected
@@ -138,6 +142,7 @@ export function FamilyMemberList({
                           e.stopPropagation();
                           startEditing(member);
                         }}
+                        data-testid={`family-member-edit-${member.id}`}
                         className={[
                           'rounded-full p-2.5 transition-all',
                           selected

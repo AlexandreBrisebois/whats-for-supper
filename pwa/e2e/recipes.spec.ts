@@ -103,4 +103,13 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toBeVisible();
     await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_TACOS}`)).toBeVisible();
   });
+
+  test('planning mode can be cancelled back to the planner', async ({ page }) => {
+    await page.goto('/recipes?addToDay=2&weekOffset=0');
+
+    await expect(page.getByTestId('planning-mode-banner')).toBeVisible();
+    await page.getByTestId('planning-mode-cancel').click();
+
+    await expect(page).toHaveURL(/\/planner/);
+  });
 });

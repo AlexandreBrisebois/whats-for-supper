@@ -41,6 +41,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        data-testid="profile-dropdown-toggle"
         className="flex w-full items-center justify-between gap-4 rounded-2xl bg-white/40 backdrop-blur-md border border-white/40 p-4 shadow-glass hover:bg-white/50 transition-all active:scale-[0.98]"
         aria-label={
           isOpen
@@ -68,12 +69,16 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
 
       {isOpen && (
         <div className="absolute top-full left-0 z-50 mt-3 w-full animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
-          <ul className="overflow-hidden rounded-2xl bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl">
+          <ul
+            data-testid="profile-dropdown-menu"
+            className="overflow-hidden rounded-2xl bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl"
+          >
             {familyMembers?.map((member) => (
               <li key={member.id}>
                 <button
                   type="button"
                   onClick={() => handleSelect(member.id)}
+                  data-testid={`profile-dropdown-option-${member.id}`}
                   className={`flex w-full items-center justify-between px-5 py-4 text-left transition-colors ${
                     member.id === selectedMember?.id
                       ? 'bg-indigo/5 text-indigo'

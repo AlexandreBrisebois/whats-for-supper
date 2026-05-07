@@ -94,6 +94,7 @@ export default function RecipesPage() {
           </div>
           <button
             onClick={() => router.push('/planner')}
+            data-testid="planning-mode-cancel"
             className="text-xs font-bold text-terracotta hover:underline"
           >
             {t('recipes.cancel', 'Cancel')}

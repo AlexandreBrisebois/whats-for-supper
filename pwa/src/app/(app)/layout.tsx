@@ -42,6 +42,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
         rightAction: (
           <Link
             href={ROUTES.HOME}
+            data-testid="capture-cancel-btn"
             aria-label="Cancel capture"
             className="flex h-10 w-10 items-center justify-center rounded-full text-charcoal/60 hover:bg-terracotta/5 active:scale-95 transition-all"
           >

@@ -146,6 +146,18 @@ test.describe('Capture Flow', () => {
     ).toBeVisible();
   });
 
+  test('capture cancel button returns the user home', async ({ page }) => {
+    await page.goto('/capture');
+
+    await expect(page.getByTestId('capture-cancel-btn')).toBeVisible();
+    await page.getByTestId('capture-cancel-btn').click();
+
+    await expect(page).toHaveURL(/\/home/);
+    await expect(
+      page.getByTestId('tonight-menu-card').or(page.getByTestId('tonight-pivot-card'))
+    ).toBeVisible();
+  });
+
   // -------------------------------------------------------------------------
   // URL Capture — Share Target / Link Ingestion
   // -------------------------------------------------------------------------
@@ -756,6 +768,33 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await expect(page.locator('[role="status"]').filter({ hasText: /is ready/i })).toBeVisible();
   });
 
+  test('LibraryToast drawer actions let the user add a recipe to this week', async ({ page }) => {
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const recipeName = 'Test Lasagna';
+
+    await page.goto('/home');
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
+
+    await page.evaluate(
+      ({ id, name }) => {
+        (window as any).__libraryStore.getState().pushNotification({
+          recipeId: id,
+          name,
+          type: 'ready',
+        });
+      },
+      { id: recipeId, name: recipeName }
+    );
+
+    await expect(page.locator('[role="status"]').filter({ hasText: recipeName })).toBeVisible();
+    await page.locator('[role="status"]').filter({ hasText: recipeName }).click();
+
+    await expect(page.getByTestId('library-toast-add-to-week')).toBeVisible();
+    await page.getByTestId('library-toast-add-to-week').click();
+
+    await expect(page).toHaveURL(/\/planner/);
+  });
+
   // ── RecipeFailureBanner on recipe_failed ─────────────────────────────────
   // When SSE fires `recipe_failed` for a recipe that was submitted in this
   // session, the RecipeFailureBanner appears with a retry CTA.
@@ -797,5 +836,30 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toContainText(
       /tap to try again/i
     );
+  });
+
+  test('RecipeFailureBanner dismiss action removes the failed notification', async ({ page }) => {
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const recipeName = 'Test Lasagna';
+
+    await page.goto('/home');
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
+
+    await page.evaluate(
+      ({ id, name }) => {
+        (window as any).__libraryStore.getState().pushNotification({
+          recipeId: id,
+          name,
+          type: 'failed',
+          errorMessage: 'AI extraction failed',
+          failedStep: 'recipe-extraction',
+        });
+      },
+      { id: recipeId, name: recipeName }
+    );
+
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toBeVisible();
+    await page.getByTestId(`recipe-failure-dismiss-${recipeId}`).click();
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).not.toBeVisible();
   });
 });

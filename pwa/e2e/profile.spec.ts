@@ -24,4 +24,24 @@ test.describe('Profile Page', () => {
       timeout: 5000,
     });
   });
+
+  test('user can switch the active family member from the profile dropdown', async ({ page }) => {
+    await page.goto('/profile');
+
+    await expect(page.getByTestId('profile-dropdown-toggle')).toBeVisible();
+    await page.getByTestId('profile-dropdown-toggle').click();
+
+    await expect(page.getByTestId('profile-dropdown-menu')).toBeVisible();
+    await page.getByTestId(`profile-dropdown-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+
+    await expect(page).toHaveURL(/\/home/);
+
+    const cookies = await page.context().cookies();
+    expect(cookies.find((cookie) => cookie.name === 'x-family-member-id')?.value).toBe(
+      MOCK_IDS.MEMBER_JORDAN
+    );
+
+    await page.goto('/profile');
+    await expect(page.getByTestId('profile-dropdown-toggle')).toContainText('Jordan');
+  });
 });
