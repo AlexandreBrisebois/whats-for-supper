@@ -142,7 +142,6 @@
     "checklist": "Liste de Courses",
     "noIngredients": "Aucun ingrédient pour cette semaine",
     "itemsCount": "{{checked}}/{{total}} articles",
-    "doneShopping": "Courses terminées",
     "aisles": {
       "Vegetables": "Légumes",
       "Meat": "Viande",

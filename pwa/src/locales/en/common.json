@@ -142,7 +142,6 @@
     "checklist": "Grocery Checklist",
     "noIngredients": "No ingredients in this week's plan",
     "itemsCount": "{{checked}}/{{total}} items",
-    "doneShopping": "Done Shopping",
     "aisles": {
       "Vegetables": "Vegetables",
       "Meat": "Meat",

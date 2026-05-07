@@ -351,18 +351,6 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
         </div>
       </div>
 
-      {/* Footer */}
-      {onClose && (
-        <div className="p-8 bg-white/50 backdrop-blur-md border-t border-charcoal/5">
-          <Button
-            onClick={onClose}
-            data-testid="done-shopping-btn"
-            className="w-full h-16 rounded-3xl bg-sage text-white text-lg font-bold shadow-xl shadow-sage/20"
-          >
-            {t('grocery.doneShopping', 'Done Shopping')}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
