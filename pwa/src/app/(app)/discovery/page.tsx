@@ -37,25 +37,26 @@ export default function DiscoveryPage() {
       categoriesRef.current = cats;
       categoryIndexRef.current = 0;
 
-      let startIndex = 0;
       let foundNonEmpty = false;
-      while (startIndex < cats.length) {
-        const categoryToLoad = cats[startIndex];
+      for (let i = 0; i < cats.length; i++) {
+        const categoryToLoad = cats[i];
         const stack = await getDiscoveryStack(categoryToLoad);
         if (stack.length > 0) {
           setActiveCategory(categoryToLoad);
-          categoryIndexRef.current = startIndex;
+          categoryIndexRef.current = i;
           useDiscoveryStore.getState().setStack(
             stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` }))
           );
+          stackIsLoadedRef.current = true;
           foundNonEmpty = true;
           break;
         }
-        startIndex++;
       }
       if (!foundNonEmpty) {
         setActiveCategory(null);
+        categoryIndexRef.current = 0;
         useDiscoveryStore.getState().setStack([]);
+        stackIsLoadedRef.current = true;
       }
     } catch (error) {
       console.error('Failed to fetch discovery data', error);
@@ -82,14 +83,16 @@ export default function DiscoveryPage() {
           const index = cats.indexOf(targetCategory);
           const resolvedIndex = index !== -1 ? index : 0;
 
-          let startIndex = resolvedIndex;
+          // Wrap-around scan: start from resolvedIndex, cycle through all
+          // categories so earlier ones aren't skipped if a nudge pointed mid-list.
           let foundNonEmpty = false;
-          while (startIndex < cats.length && !ignore) {
-            const categoryToLoad = cats[startIndex];
+          for (let i = 0; i < cats.length && !ignore; i++) {
+            const tryIndex = (resolvedIndex + i) % cats.length;
+            const categoryToLoad = cats[tryIndex];
             const stack = await getDiscoveryStack(categoryToLoad);
             if (ignore) break;
             if (stack.length > 0) {
-              categoryIndexRef.current = startIndex;
+              categoryIndexRef.current = tryIndex;
               setActiveCategory(categoryToLoad);
               useDiscoveryStore.getState().setStack(
                 stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` }))
@@ -98,7 +101,6 @@ export default function DiscoveryPage() {
               foundNonEmpty = true;
               break;
             }
-            startIndex++;
           }
           if (!foundNonEmpty && !ignore) {
             setActiveCategory(null);
@@ -131,11 +133,14 @@ export default function DiscoveryPage() {
 
   const loadNextCategory = useCallback(async () => {
     const cats = categoriesRef.current;
-    let nextIndex = categoryIndexRef.current + 1;
+    const startIndex = categoryIndexRef.current;
 
     setIsLoading(true);
     try {
-      while (nextIndex < cats.length) {
+      // Wrap-around scan: try every other category before declaring exhaustion.
+      // cats.length - 1 iterations skips the current index (already exhausted).
+      for (let i = 1; i < cats.length; i++) {
+        const nextIndex = (startIndex + i) % cats.length;
         const nextCategory = cats[nextIndex];
         const stack = await getDiscoveryStack(nextCategory);
         if (stack.length > 0) {
@@ -148,9 +153,8 @@ export default function DiscoveryPage() {
           setActiveCategory(nextCategory);
           return;
         }
-        nextIndex++;
       }
-      // All remaining categories exhausted → show empty state
+      // All categories exhausted → show empty state
       setActiveCategory(null);
       categoryIndexRef.current = 0;
       useDiscoveryStore.getState().setStack([]);
