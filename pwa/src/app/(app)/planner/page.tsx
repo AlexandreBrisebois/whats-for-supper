@@ -241,8 +241,8 @@ export default function PlannerPage() {
       />
 
       {/* Header Section */}
-      <header className="sticky top-0 z-30 px-6 pt-6 pb-6 glass-nav">
-        <div className="max-w-sm mx-auto w-full">
+      <header className="sticky top-0 z-30 px-4 pt-4 pb-4 sm:px-6 sm:pt-6 sm:pb-6 glass-nav">
+        <div className="max-w-[27rem] sm:max-w-sm mx-auto w-full">
           {/* Tab Switcher */}
           <div className="flex bg-charcoal/5 p-1.5 rounded-[1.5rem] relative">
             <button
@@ -272,7 +272,9 @@ export default function PlannerPage() {
             <button
               data-testid="prev-week"
               onClick={handlePrevWeek}
-              className="p-2 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+              className="p-3 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+              aria-label="Previous week"
+              title="Previous week"
             >
               <ChevronLeft className="text-charcoal/60" />
             </button>
@@ -385,7 +387,9 @@ export default function PlannerPage() {
             <button
               data-testid="next-week"
               onClick={handleNextWeek}
-              className="p-2 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+              className="p-3 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+              aria-label="Next week"
+              title="Next week"
             >
               <ChevronRight className="text-charcoal/60" />
             </button>
@@ -394,7 +398,7 @@ export default function PlannerPage() {
       </header>
 
       {/* Main Content */}
-      <main className="px-6 py-8 overflow-x-hidden max-w-sm mx-auto w-full">
+      <main className="px-4 sm:px-6 py-6 sm:py-8 overflow-x-hidden max-w-[27rem] sm:max-w-sm mx-auto w-full">
         <AnimatePresence mode="wait">
           {isLoading ? (
             <motion.div
@@ -659,7 +663,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
 
       <motion.div
         whileTap={{ scale: 0.98 }}
-        className="flex items-center p-4 relative z-10 h-[72px]"
+        className="flex items-center p-4 relative z-10 min-h-[80px]"
       >
         <div className="flex flex-col items-center justify-center w-12 mr-4">
           <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
@@ -750,8 +754,9 @@ const PlannerDayCard = memo(function PlannerDayCard({
               {/* Custom Drag Handle */}
               <div
                 onPointerDown={(e) => dragControls.start(e)}
-                className="p-3 -mr-3 cursor-grab active:cursor-grabbing touch-none select-none group/handle"
+                className="p-3.5 -mr-3 cursor-grab active:cursor-grabbing touch-none select-none group/handle"
                 aria-label="Drag to reorder"
+                title="Drag to reorder"
               >
                 <GripVertical
                   className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
@@ -777,9 +782,9 @@ const PlannerDayCard = memo(function PlannerDayCard({
             <button
               onClick={onPivot}
               data-testid="plan-meal-button"
-              className="flex items-center w-full text-left group"
+              className="flex items-center w-full min-h-[52px] text-left group"
             >
-              <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
+              <div className="h-11 w-11 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
                 <Plus
                   className="text-terracotta/50 group-hover:text-terracotta transition-colors"
                   size={18}

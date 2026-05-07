@@ -72,4 +72,21 @@ describe('AppRouteLayout', () => {
       isFluid: true,
     });
   });
+
+  it('uses the fluid shell on the planner route', () => {
+    mocks.pathname = '/planner';
+    mocks.layoutProps = null;
+
+    render(
+      <AppRouteLayout>
+        <div>Planner</div>
+      </AppRouteLayout>
+    );
+
+    expect(screen.getByTestId('app-layout')).toBeInTheDocument();
+    expect(mocks.layoutProps).toMatchObject({
+      hideHeader: true,
+      isFluid: true,
+    });
+  });
 });
