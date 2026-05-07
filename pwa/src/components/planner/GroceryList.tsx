@@ -162,12 +162,12 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                   <ShoppingCart size={40} className="text-sage" />
                 </div>
                 <h3 className="text-xl font-heading font-black text-charcoal mb-2">
-                  {t('grocery.emptyTitle', 'Your list is waiting')}
+                  {t('grocery.emptyTitle', 'Your list is empty')}
                 </h3>
                 <p className="text-charcoal/40 font-medium mb-12 max-w-[240px] mx-auto">
                   {t(
                     'grocery.emptySubtext',
-                    'Plan a few meals to see your ingredients organized by aisle.'
+                    'Add meals to your planner and your grocery list will build itself — organized by store section.'
                   )}
                 </p>
                 {onClose && (
