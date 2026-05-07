@@ -597,7 +597,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task AssignRecipe_PublishesSlotUpdatedAndFillTheGapEvents()
+    public async Task AssignRecipe_PublishesWeekUpdatedAndFillTheGapEvents()
     {
         // Arrange
         var recipeId = Guid.NewGuid();
@@ -608,12 +608,9 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         // Act
         await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
 
-        // Assert: slot_updated published with the recipe and Planned status
+        // Assert: week_updated published once
         _publisherMock.Verify(
-            p => p.PublishSlotUpdatedAsync(
-                It.IsAny<DateOnly>(),
-                It.Is<ScheduleRecipeDto?>(r => r != null && r.Id == recipeId),
-                (int)CalendarEventStatus.Planned),
+            p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>()),
             Times.Once);
 
         // Assert: fill_the_gap_invalidated published for weekOffset 0
@@ -671,7 +668,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RemoveRecipe_PublishesSlotUpdatedAndFillTheGapEvents()
+    public async Task RemoveRecipe_PublishesWeekUpdatedAndFillTheGapEvents()
     {
         // Arrange: create a recipe and calendar event for today
         var recipeId = Guid.NewGuid();
@@ -691,12 +688,9 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         // Act
         await _service.RemoveRecipeAsync(today);
 
-        // Assert: slot_updated published with null recipe and status 0
+        // Assert: week_updated published once
         _publisherMock.Verify(
-            p => p.PublishSlotUpdatedAsync(
-                today,
-                null,
-                0),
+            p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>()),
             Times.Once);
 
         // Assert: fill_the_gap_invalidated published

@@ -103,6 +103,16 @@ export function useScheduleStream() {
       console.log('[SSE] Received "week_updated" event');
       const { schedule, echoSeq } = JSON.parse(e.data);
       useWeekStore.getState().applySnapshot(schedule, echoSeq);
+
+      // Keep todayStore in sync with the week snapshot
+      const today = getTodayString();
+      const todayEntry = schedule?.days?.find((d: { date: string }) => d.date === today);
+      if (todayEntry !== undefined) {
+        useTodayStore.getState().applyServerUpdate({
+          recipe: todayEntry.recipe ?? null,
+          status: todayEntry.status ?? 0,
+        });
+      }
     });
 
     // ── vote_updated ───────────────────────────────────────────────────────
