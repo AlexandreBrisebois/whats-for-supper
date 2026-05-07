@@ -87,12 +87,12 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         data-testid="quick-find-modal"
-        className="relative w-full max-w-sm glass-ochre rounded-[3.5rem] overflow-hidden shadow-[0_32px_64px_-12px_rgba(225,173,1,0.3)] border-white/40 border-2"
+        className="relative w-full max-w-sm rounded-[3.5rem] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(253,252,240,0.98))] shadow-[0_32px_64px_-12px_rgba(205,93,69,0.18)] border border-white/80"
       >
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-2 text-white">
-              <Sparkles size={20} className="text-white animate-pulse" />
+            <div className="flex items-center space-x-2 text-ochre">
+              <Sparkles size={20} className="text-ochre animate-pulse" />
               <span className="text-[10px] font-black uppercase tracking-[0.3em]">Quick find</span>
             </div>
             <button
@@ -100,7 +100,7 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
               onClick={onClose}
               aria-label="Close"
               title="Close"
-              className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors backdrop-blur-sm"
+              className="p-3 rounded-full bg-charcoal/5 hover:bg-charcoal/10 text-charcoal/45 transition-colors"
             >
               <X size={20} />
             </button>
@@ -215,13 +215,13 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
               </AnimatePresence>
             </div>
           ) : (
-            <p className="text-center py-10 text-white/40">No recipes found.</p>
+            <p className="text-center py-10 text-charcoal/40">No recipes found.</p>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <Button
               variant="secondary"
-              className="h-16 rounded-3xl bg-white/10 border-white/20 text-white font-black hover:bg-white/20 active:scale-95 transition-all uppercase tracking-widest text-[11px]"
+              className="h-16 rounded-3xl bg-charcoal/5 border-charcoal/10 text-charcoal font-black hover:bg-charcoal/10 active:scale-95 transition-all uppercase tracking-widest text-[11px]"
               onClick={handleNext}
               disabled={isLoading}
               data-testid="quick-find-next"
@@ -232,8 +232,8 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
               className={cn(
                 'h-16 rounded-3xl font-black shadow-xl active:scale-95 transition-all uppercase tracking-widest text-[11px]',
                 isNudgeCard
-                  ? 'bg-white/20 text-white/40 cursor-not-allowed'
-                  : 'bg-white text-ochre shadow-ochre/40'
+                  ? 'bg-charcoal/10 text-charcoal/30 cursor-not-allowed shadow-none'
+                  : 'bg-ochre text-white shadow-ochre/30'
               )}
               onClick={() => !isNudgeCard && currentRecipe && onSelect(currentRecipe)}
               disabled={isLoading || isNudgeCard || !currentRecipe}
@@ -249,7 +249,7 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
                 key={i}
                 animate={{
                   width: i === currentIndex ? 32 : 8,
-                  backgroundColor: i === currentIndex ? '#ffffff' : 'rgba(255, 255, 255, 0.2)',
+                  backgroundColor: i === currentIndex ? '#E1AD01' : 'rgba(32, 24, 21, 0.12)',
                 }}
                 className="h-2 rounded-full"
               />
