@@ -37,9 +37,11 @@ public class RecipeController(
     [SkipWrapping]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
-        [FromQuery] int limit = 20)
+        [FromQuery] int limit = 20,
+        [FromQuery] string? order = null,
+        [FromQuery] bool? discoverableOnly = null)
     {
-        var result = await recipeService.GetRecipesList(page, limit);
+        var result = await recipeService.GetRecipesList(page, limit, order, discoverableOnly);
         return Ok(result);
     }
 
@@ -50,6 +52,14 @@ public class RecipeController(
     {
         var result = await recipeService.GetRecipeDetail(id);
         return Ok(result);
+    }
+
+    /// <summary>GET /api/recipes/library-summary — total counts and health stats.</summary>
+    [HttpGet("library-summary")]
+    public async Task<IActionResult> GetLibrarySummary()
+    {
+        var result = await recipeService.GetLibrarySummary();
+        return Ok(new { data = result });
     }
 
     /// <summary>

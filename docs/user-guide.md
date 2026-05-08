@@ -65,6 +65,30 @@ Discovery saves you from the "I don't know, what do *you* want?" loop that ends 
 
 ---
 
+## Searching Your Library
+
+When you know exactly what you're looking for, or have a specific craving, use the **Search** tab.
+
+You don't need to be precise. Type like you talk: "chicken pasta tonight", "quick fish", or "the salmon bowls we liked." The app uses semantic search to find the best matches even if the words don't match perfectly.
+
+Search is **planner-aware**. If you open search from a day in your planner, it automatically hides recipes you've already planned for other days and highlights ones that help balance your week.
+
+Search saves you from scrolling through hundreds of recipes to find "that one thing."
+
+---
+
+## Browsing Your Library
+
+Sometimes you don't know what you want, but you want to be inspired by what you already have. Tap **Browse Library** on the Home screen to enter a full-screen, immersive experience.
+
+Flip through your recipes one by one, just like a physical recipe box. The app shows you recipes you haven't cooked in a while first, helping you rediscover forgotten family favourites.
+
+Tap any card to see the full details, or toggle the **Sparkles** icon to see only the recipes you've marked as "Discoverable" for family voting.
+
+Browsing saves you from the "we always eat the same three things" rut.
+
+---
+
 ## Adding Recipes
 
 You can add a recipe three ways:
@@ -79,6 +103,16 @@ Adding recipes saves you from retyping Grandma's lasagna off a crumpled index ca
 
 ---
 
+## Managing Your Library
+
+If you delete a recipe by mistake, don't panic. It goes to the **Recycle Bin** (found in Settings) for 30 days. You can restore it with one tap.
+
+You can also toggle whether a recipe is "Discoverable" directly from the library or the browse stack. Only discoverable recipes appear in the family voting stack.
+
+Library management saves you from "digital clutter" while keeping your favourites safe.
+
+---
+
 ## Real-Time Sync
 
 Everything in the app is shared and live. When Alex assigns a recipe on the planner, Jordan's home screen updates immediately — no refresh, no waiting.
@@ -87,5 +121,4 @@ The grocery list works the same way. Two people in the same store, checking thin
 
 The discovery stack adapts in real time too — as the week fills up, the cards shift toward whatever food group the family still needs most.
 
-This saves you from the classic "I already bought that" text message.
 

@@ -430,6 +430,28 @@ export function createRecipeImportTriggerResponseDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeLibrarySummaryDto_ratings}
+ */
+// @ts-ignore
+export function createRecipeLibrarySummaryDto_ratingsFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeLibrarySummaryDto_ratings;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeLibrarySummaryDto}
+ */
+// @ts-ignore
+export function createRecipeLibrarySummaryDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeLibrarySummaryDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeListResponse}
  */
 // @ts-ignore
@@ -1558,6 +1580,53 @@ export function deserializeIntoRecipeImportTriggerResponseDto(
   return {
     importId: (n) => {
       recipeImportTriggerResponseDto.importId = n.getGuidValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeLibrarySummaryDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeLibrarySummaryDto(
+  recipeLibrarySummaryDto: Partial<RecipeLibrarySummaryDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    neverCooked: (n) => {
+      recipeLibrarySummaryDto.neverCooked = n.getNumberValue();
+    },
+    ratings: (n) => {
+      recipeLibrarySummaryDto.ratings = n.getObjectValue<RecipeLibrarySummaryDto_ratings>(
+        createRecipeLibrarySummaryDto_ratingsFromDiscriminatorValue
+      );
+    },
+    total: (n) => {
+      recipeLibrarySummaryDto.total = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeLibrarySummaryDto_ratings The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeLibrarySummaryDto_ratings(
+  recipeLibrarySummaryDto_ratings: Partial<RecipeLibrarySummaryDto_ratings> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    dislike: (n) => {
+      recipeLibrarySummaryDto_ratings.dislike = n.getNumberValue();
+    },
+    like: (n) => {
+      recipeLibrarySummaryDto_ratings.like = n.getNumberValue();
+    },
+    love: (n) => {
+      recipeLibrarySummaryDto_ratings.love = n.getNumberValue();
+    },
+    unrated: (n) => {
+      recipeLibrarySummaryDto_ratings.unrated = n.getNumberValue();
     },
   };
 }
@@ -2857,6 +2926,38 @@ export interface RecipeImportTriggerResponseDto extends AdditionalDataHolder, Pa
    */
   importId?: Guid | null;
 }
+export interface RecipeLibrarySummaryDto extends AdditionalDataHolder, Parsable {
+  /**
+   * Count where lastCookedDate IS NULL and deletedAt IS NULL.
+   */
+  neverCooked?: number | null;
+  /**
+   * The ratings property
+   */
+  ratings?: RecipeLibrarySummaryDto_ratings | null;
+  /**
+   * Count of all non-soft-deleted recipes.
+   */
+  total?: number | null;
+}
+export interface RecipeLibrarySummaryDto_ratings extends AdditionalDataHolder, Parsable {
+  /**
+   * rating == 1
+   */
+  dislike?: number | null;
+  /**
+   * rating == 2
+   */
+  like?: number | null;
+  /**
+   * rating == 3
+   */
+  love?: number | null;
+  /**
+   * rating == 0
+   */
+  unrated?: number | null;
+}
 export interface RecipeListResponse extends AdditionalDataHolder, Parsable {
   /**
    * The pagination property
@@ -3840,6 +3941,51 @@ export function serializeRecipeImportTriggerResponseDto(
   }
   writer.writeGuidValue('importId', recipeImportTriggerResponseDto.importId);
   writer.writeAdditionalData(recipeImportTriggerResponseDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeLibrarySummaryDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeLibrarySummaryDto(
+  writer: SerializationWriter,
+  recipeLibrarySummaryDto: Partial<RecipeLibrarySummaryDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeLibrarySummaryDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('neverCooked', recipeLibrarySummaryDto.neverCooked);
+  writer.writeObjectValue<RecipeLibrarySummaryDto_ratings>(
+    'ratings',
+    recipeLibrarySummaryDto.ratings,
+    serializeRecipeLibrarySummaryDto_ratings
+  );
+  writer.writeNumberValue('total', recipeLibrarySummaryDto.total);
+  writer.writeAdditionalData(recipeLibrarySummaryDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeLibrarySummaryDto_ratings The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeLibrarySummaryDto_ratings(
+  writer: SerializationWriter,
+  recipeLibrarySummaryDto_ratings: Partial<RecipeLibrarySummaryDto_ratings> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeLibrarySummaryDto_ratings || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('dislike', recipeLibrarySummaryDto_ratings.dislike);
+  writer.writeNumberValue('like', recipeLibrarySummaryDto_ratings.like);
+  writer.writeNumberValue('love', recipeLibrarySummaryDto_ratings.love);
+  writer.writeNumberValue('unrated', recipeLibrarySummaryDto_ratings.unrated);
+  writer.writeAdditionalData(recipeLibrarySummaryDto_ratings.additionalData);
 }
 /**
  * Serializes information the current object

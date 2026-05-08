@@ -283,26 +283,7 @@ export async function setupCommonRoutes(page: Page) {
     }
   );
 
-  // GET /api/recipes and POST /api/recipes
-  await page.route('**/api/recipes', async (route) => {
-    if (route.request().method() === 'POST') {
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
-      });
-    } else {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          recipes: [],
-          updatedAt: new Date().toISOString(),
-          pagination: { page: 1, limit: 20, total: 0 },
-        }),
-      });
-    }
-  });
+
 
   // GET /api/recipes/recommendations
   await page.route('**/api/recipes/recommendations', async (route) => {
@@ -408,6 +389,60 @@ export async function setupCommonRoutes(page: Page) {
   await page.route('**/api/recipes/*/original/*', async (route) => {
     await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
+
+  // GET /api/recipes (List) — registered BEFORE **/api/recipes/* to take priority
+  await page.route(
+    (url) => url.pathname.endsWith('/api/recipes'),
+    async (route) => {
+      const url = new URL(route.request().url());
+      const order = url.searchParams.get('order');
+
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
+        });
+      } else {
+        const isDiscoverableOnly = url.searchParams.get('discoverableOnly') === 'true';
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            recipes:
+              order === 'explore'
+                ? [
+                    builders.recipe({
+                      id: isDiscoverableOnly ? MOCK_IDS.RECIPE_GOTO_STUB : MOCK_IDS.RECIPE_LASAGNA,
+                      name: isDiscoverableOnly ? 'Discoverable Recipe' : 'Mock Recipe',
+                    }),
+                  ]
+                : [],
+            updatedAt: new Date().toISOString(),
+            pagination: { page: 1, limit: 20, total: order === 'explore' ? 1 : 0 },
+          }),
+        });
+      }
+    }
+  );
+
+  // GET /api/recipes/library-summary — registered BEFORE **/api/recipes/* to take priority
+  await page.route(
+    (url) => url.pathname.endsWith('/api/recipes/library-summary'),
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            total: 1,
+            neverCooked: 1,
+            ratings: { love: 0, like: 0, dislike: 0, unrated: 1 },
+          },
+        }),
+      });
+    }
+  );
 
   // GET /api/recipes/{id}, PATCH /api/recipes/{id}, DELETE /api/recipes/{id}
   await page.route('**/api/recipes/*', async (route) => {
@@ -779,6 +814,7 @@ export async function setupCommonRoutes(page: Page) {
       body: JSON.stringify({ data: { queued: true } }),
     });
   });
+
 }
 
 // ---------------------------------------------------------------------------

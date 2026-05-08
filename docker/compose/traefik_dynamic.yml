@@ -9,29 +9,8 @@ http:
           Content-Type: text/event-stream
           Connection: keep-alive
 
-  routers:
-    # Dedicated SSE router — Matches both prod and local domains
-    api-stream:
-      rule: "(Host(`wfs.srvrlss.dev`) || Host(`pwa.wfs.localhost`) || Host(`api.wfs.localhost`)) && Path(`/api/stream`)"
-      service: api
-      middlewares:
-        - sse-headers
-      entryPoints: [web]
-      priority: 100
-
-    # API traffic: Matches both prod and local domains
-    api:
-      rule: "(Host(`wfs.srvrlss.dev`) || Host(`pwa.wfs.localhost`)) && PathPrefix(`/api`)"
-      service: api
-      entryPoints: [web]
-      priority: 50
-
-    # PWA traffic: Matches both prod and local domains
-    pwa:
-      rule: "Host(`wfs.srvrlss.dev`) || Host(`pwa.wfs.localhost`)"
-      service: pwa
-      entryPoints: [web]
-      priority: 10
+  # The sse-headers middleware is referenced by labels in the compose files
+  # to ensure EventSource connections are not buffered by Traefik.
 
   services:
     api:

@@ -49,6 +49,9 @@ Search the way a tired parent actually thinks: "chicken pasta pesto tonight", "f
 **7. Recycle Bin and Library Recovery**
 Deleting a recipe is reversible. Soft delete sends it to the Recycle Bin where it can be restored in one tap. Permanent purge — which requires an elevated PIN — removes all DB records and disk assets atomically. A recipe assigned to an active planner slot cannot be deleted until it is removed from the plan first.
 
+**8. Recipe Library Browse**
+An immersive, full-screen card browsing experience for the entire recipe library. It prioritizes recipes that haven't been cooked in a long time, helping families rediscover forgotten favourites. Built with smooth swipe navigation and integrated discoverability toggles, it mirrors the tactile ritual of flipping through a physical recipe box.
+
 ---
 
 ## Architecture
@@ -159,13 +162,18 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Discovery nudge via SSE | ✅ Complete |
 | Backup / restore (NAS-safe, LLM-skip on restore) | ✅ Complete |
 | NAS deployment (Synology / Unraid) | ✅ Running in production |
-| **Semantic recipe search** (hybrid lexical + vector, planner-aware, family-fit) | ✅ Complete |
-| **Recipe library management** (edit, soft delete, restore, Recycle Bin, discovery toggle) | ✅ Complete |
-| **Pantry/fridge/freezer photo search** (inventory-led ingredient boost) | ✅ Complete |
-| **Agent super-search** (long-form natural language → structured results) | ✅ Complete |
-| **Search index workflow** (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
-| **Failed Captures recovery** (Settings queue, retry with idempotency guard) | ✅ Complete |
-| **Dietician Agent** | ⚠️ TODO |
+| Semantic recipe search (hybrid lexical + vector, planner-aware, family-fit) | ✅ Complete |
+| Recipe library management (edit, soft delete, restore, Recycle Bin, discovery toggle) | ✅ Complete |
+| Recipe Library Browse (immersive card-flip library discovery) | ✅ Complete |
+| Pantry/fridge/freezer photo search (inventory-led ingredient boost) | ✅ Complete |
+| Agent super-search (long-form natural language → structured results) | ✅ Complete |
+| Search index workflow (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
+| Failed Captures recovery (Settings queue, retry with idempotency guard) | ✅ Complete |
+| Dietician Agent | ⚠️ TODO |
+|  | ⚠️ TODO |
+|  | ⚠️ TODO |
+|  | ⚠️ TODO |
+
 
 ---
 

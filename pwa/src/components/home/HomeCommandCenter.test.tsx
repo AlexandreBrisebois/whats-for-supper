@@ -33,6 +33,7 @@ vi.mock('@/components/home/HomeSections', () => ({
   QuickCaptureTrigger: () => null,
   CookedSuccessCard: () => null,
   VotingNudgeCard: () => null,
+  BrowseLibraryTrigger: () => null,
 }));
 
 vi.mock('@/components/home/TonightPivotCard', () => ({

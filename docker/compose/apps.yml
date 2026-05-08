@@ -36,9 +36,14 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.api.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.api.rule=Host(`${DOMAIN_NAME:-pwa.wfs.localhost}`) && PathPrefix(`/api`)"
       - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.services.api.loadbalancer.server.port=9001"
+      # Dedicated SSE router with unbuffered headers
+      - "traefik.http.routers.api-stream.rule=Host(`${DOMAIN_NAME:-pwa.wfs.localhost}`) && Path(`/api/stream`)"
+      - "traefik.http.routers.api-stream.entrypoints=web"
+      - "traefik.http.routers.api-stream.middlewares=sse-headers@file"
+      - "traefik.http.routers.api-stream.priority=100"
  
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -53,7 +58,7 @@ services:
     environment:
 
 
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://pwa.wfs.localhost}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:9001}
       HEARTH_SECRET: ${HEARTH_SECRET}
     depends_on:
@@ -63,7 +68,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=wfs-proxy"
-      - "traefik.http.routers.pwa.rule=Host(`${PWA_HOST:-pwa.wfs.localhost}`)"
+      - "traefik.http.routers.pwa.rule=Host(`${DOMAIN_NAME:-pwa.wfs.localhost}`)"
       - "traefik.http.routers.pwa.entrypoints=web"
       - "traefik.http.services.pwa.loadbalancer.server.port=3000"
     healthcheck:

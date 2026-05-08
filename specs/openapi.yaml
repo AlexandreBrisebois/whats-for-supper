@@ -93,6 +93,21 @@ components:
         pagination:
           $ref: '#/components/schemas/PaginationDto'
 
+    RecipeLibrarySummaryDto:
+      type: object
+      required: [total, neverCooked, ratings]
+      properties:
+        total: { type: integer, description: 'Count of all non-soft-deleted recipes.' }
+        neverCooked: { type: integer, description: 'Count where lastCookedDate IS NULL and deletedAt IS NULL.' }
+        ratings:
+          type: object
+          required: [love, like, dislike, unrated]
+          properties:
+            love: { type: integer, description: 'rating == 3' }
+            like: { type: integer, description: 'rating == 2' }
+            dislike: { type: integer, description: 'rating == 1' }
+            unrated: { type: integer, description: 'rating == 0' }
+
     RecipeDetailResponse:
       type: object
       required: [updatedAt, recipe]
@@ -1061,6 +1076,23 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, default: 20 }
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [explore]
+          description: |
+            Sort order for recipes. When "explore" is specified, recipes are ordered by
+            lastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).
+            When absent, default ordering (newest-created first) is applied.
+        - name: discoverableOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: |
+            When true, only returns recipes marked as discoverable (high family interest).
+            When false (default), returns all non-soft-deleted recipes.
       responses:
         '200':
           description: OK (Not wrapped in data envelope)
@@ -1101,6 +1133,30 @@ paths:
               example:
                 data:
                   id: '550e8400-e29b-41d4-a716-446655440003'
+
+  /api/recipes/library-summary:
+    get:
+      summary: Get recipe library health counts
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RecipeLibrarySummaryDto'
+              example:
+                data:
+                  total: 42
+                  neverCooked: 12
+                  ratings:
+                    love: 8
+                    like: 15
+                    dislike: 3
+                    unrated: 16
 
   /api/recipes/{id}:
     parameters:

@@ -4,6 +4,40 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-08] Session — Recipe Stack Browse (search-feature branch) — Finalization
+**Status**: COMPLETED ✅
+**Branch**: `search-feature`
+
+#### What was built
+
+This session implemented the **Recipe Stack Browse** feature, a full-screen library-browsing experience designed to mimic the tactile ritual of flipping through physical recipe cards.
+
+**Key Achievements:**
+
+1. **BrowseAllStackPage**: A high-priority, full-screen overlay (`/browse-all-stack`) that uses a dedicated `browseStackStore` (Zustand) to manage library navigation independently from the Discovery feed.
+2. **Explore Ordering**: Introduced `order=explore` to `GET /api/recipes`, implementing a "rediscovery" sort (`lastCookedDate ASC NULLS FIRST`) that surfaces never-cooked and oldest-cooked recipes first.
+3. **RecipeStackCard**: A purpose-built card component that mirrors the `DiscoveryCard` aesthetics but uses ochre navigation indicators ("Next →", "← Back") and intentionally excludes all voting logic to preserve library integrity.
+4. **Library Summary API**: Created `GET /api/recipes/library-summary` to provide real-time counts of total, never-cooked, and rated recipes for the stack depth indicator.
+5. **E2E Stability**: Resolved severe E2E test timeouts caused by the `RecipeDetailSheet` intercepting pointer events; implemented conditional rendering guards (`isSheetOpen`) to ensure clean test assertions.
+6. **Immersive UX**: Added a Search Escape button (magnifying glass) to the browse overlay to allow fast transitions from browsing to targeted search.
+
+#### Technical Context & Decisions
+
+- **Gesture Separation**: The `StackActionBar` (toggle and counter) is placed outside the Framer Motion drag surface to prevent gesture conflicts between navigation swipes and button taps.
+- **Paged Pre-fetching**: Implemented a threshold-based pre-fetch (when 5 cards remain) to ensure a zero-lag experience even for large libraries.
+- **Zero Drift**: Confirmed that all new endpoints and DTOs align perfectly with the OpenAPI spec via `task agent:drift`.
+
+#### Documentation Updated
+
+| File | What changed |
+|------|-------------|
+| `user-guide.md` | Added "Searching Your Library", "Browsing Your Library", and "Managing Your Library" (Recycle Bin) sections. |
+| `README.md` | Added "Recipe Stack Browse" as Pillar 8 and updated the feature status table. |
+| `docs/flows/user-flows/recipe-stack-browse.md` | New: Sequence diagram for card navigation and management. |
+| `docs/flows/data-flows/recipe-stack-browse.md` | New: Paging logic, explore sorting, and state management details. |
+
+---
+
 ### [2026-05-08] Session — Semantic Recipe Search v2 (search-feature branch) — Close-Out Documentation
 **Status**: COMPLETED ✅
 **Branch**: `search-feature` → ready to merge into `main`

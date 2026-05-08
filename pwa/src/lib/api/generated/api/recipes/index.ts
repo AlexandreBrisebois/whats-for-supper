@@ -34,6 +34,11 @@ import {
 } from './item/index';
 // @ts-ignore
 import {
+  LibrarySummaryRequestBuilderRequestsMetadata,
+  type LibrarySummaryRequestBuilder,
+} from './librarySummary/index';
+// @ts-ignore
+import {
   RecommendationsRequestBuilderRequestsMetadata,
   type RecommendationsRequestBuilder,
 } from './recommendations/index';
@@ -113,6 +118,8 @@ export function deserializeIntoRecipesPostResponse_data(
     },
   };
 }
+export type GetOrderQueryParameterType =
+  (typeof GetOrderQueryParameterTypeObject)[keyof typeof GetOrderQueryParameterTypeObject];
 export interface RecipesPostResponse extends AdditionalDataHolder, Parsable {
   /**
    * The data property
@@ -145,6 +152,10 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * The importStatus property
    */
   get importStatus(): ImportStatusRequestBuilder;
+  /**
+   * The librarySummary property
+   */
+  get librarySummary(): LibrarySummaryRequestBuilder;
   /**
    * The recommendations property
    */
@@ -204,7 +215,15 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
  * List recipes
  */
 export interface RecipesRequestBuilderGetQueryParameters {
+  /**
+   * When true, only returns recipes marked as discoverable (high family interest).When false (default), returns all non-soft-deleted recipes.
+   */
+  discoverableOnly?: boolean;
   limit?: number;
+  /**
+   * Sort order for recipes. When "explore" is specified, recipes are ordered bylastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).When absent, default ordering (newest-created first) is applied.
+   */
+  order?: GetOrderQueryParameterType;
   page?: number;
 }
 /**
@@ -250,7 +269,11 @@ export function serializeRecipesPostResponse_data(
 /**
  * Uri template for the request builder.
  */
-export const RecipesRequestBuilderUriTemplate = '{+baseurl}/api/recipes{?limit*,page*}';
+export const RecipesRequestBuilderUriTemplate =
+  '{+baseurl}/api/recipes{?discoverableOnly*,limit*,order*,page*}';
+export const GetOrderQueryParameterTypeObject = {
+  Explore: 'explore',
+} as const;
 /**
  * Metadata for all the navigation properties in the request builder.
  */
@@ -274,6 +297,9 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
   },
   importStatus: {
     requestsMetadata: ImportStatusRequestBuilderRequestsMetadata,
+  },
+  librarySummary: {
+    requestsMetadata: LibrarySummaryRequestBuilderRequestsMetadata,
   },
   recommendations: {
     requestsMetadata: RecommendationsRequestBuilderRequestsMetadata,

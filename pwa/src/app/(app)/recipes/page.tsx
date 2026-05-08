@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
+import { BrowseLibraryTrigger } from '@/components/home/HomeSections';
 
 /**
  * RecipesPage / Search destination.
@@ -409,6 +410,9 @@ export default function RecipesPage() {
           );
         })}
       </div>
+
+      {/* Browse library trigger — requirement 1.2, 14.1 */}
+      <BrowseLibraryTrigger testId="browse-all-stack-trigger" />
 
       {/* Results Section */}
       <div className="flex flex-col gap-6">
