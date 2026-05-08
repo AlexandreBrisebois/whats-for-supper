@@ -53,17 +53,17 @@ The feature introduces:
     - Test that all counts exclude soft-deleted recipes
     - _Requirements: 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9_
 
-- [ ] 4. Checkpoint - Verify backend implementation
+- [x] 4. Checkpoint - Verify backend implementation
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Frontend - Create Browse Stack Store
-  - [ ] 5.1 Implement browseStackStore with Zustand
+- [x] 5. Frontend - Create Browse Stack Store
+  - [x] 5.1 Implement browseStackStore with Zustand
     - Create `pwa/src/store/browseStackStore.ts`
     - Define `BrowseStackStore` interface with recipes, currentIndex, totalCount, pagination state
     - Implement actions: `setRecipes`, `appendRecipes`, `setCurrentIndex`, `setTotalCount`, `nextCard`, `previousCard`, `reset`
     - _Requirements: 1, 2_
   
-  - [ ] 5.2 Write unit tests for browseStackStore
+  - [x] 5.2 Write unit tests for browseStackStore
     - Test that `nextCard()` increments `currentIndex`
     - Test that `previousCard()` decrements `currentIndex` but not below 0
     - Test that `setRecipes()` replaces recipes array
@@ -71,8 +71,8 @@ The feature introduces:
     - Test that `reset()` clears all state
     - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 6. Frontend - Create RecipeStackCard Component
-  - [ ] 6.1 Implement RecipeStackCard component
+- [x] 6. Frontend - Create RecipeStackCard Component
+  - [x] 6.1 Implement RecipeStackCard component
     - Create `pwa/src/components/recipes/RecipeStackCard.tsx`
     - Define props: `id`, `name`, `description`, `imageUrl`, `totalTime`, `difficulty`, `category`, `isFront`, `stackIndex`, `onSwipeRight`, `onSwipeLeft`, `onTap`
     - Implement Framer Motion drag logic (threshold: 80px, velocity: 500px/s)
@@ -82,7 +82,7 @@ The feature introduces:
     - NO voting logic, NO `hasFamilyInterest` prop, NO vote indicators
     - _Requirements: 2.1, 2.2, 3.1, 3.2, 3.3, 3.4, 3.5, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9, 10.10_
   
-  - [ ] 6.2 Write unit tests for RecipeStackCard
+  - [x] 6.2 Write unit tests for RecipeStackCard
     - Test that component renders with correct props
     - Test that swipe indicators appear at correct thresholds
     - Test that `onSwipeRight` is called when swiped right beyond threshold
@@ -170,7 +170,7 @@ The feature introduces:
     - Freeze stack while sheet is open (no index change, no API call on close)
     - _Requirements: 2.7, 2.8, 2.9_
   
-  - [ ]* 10.5 Write integration tests for BrowseAllStack
+  - [ ] 10.5 Write integration tests for BrowseAllStack
     - Test that library summary is fetched on mount
     - Test that first page of recipes is fetched on mount
     - Test that first card is displayed after load
@@ -197,7 +197,7 @@ The feature introduces:
     - _Requirements: 1.2, 1.3_
 
 - [ ] 12. E2E Tests - Write Playwright tests
-  - [ ]* 12.1 Write browse-all-stack.spec.ts
+  - [ ] 12.1 Write browse-all-stack.spec.ts
     - Create `pwa/e2e/browse-all-stack.spec.ts`
     - Test entry points: Home page trigger and Recipes page trigger open overlay
     - Test navigation: swipe right advances, swipe left returns, first card no-wrap, End Card behavior
