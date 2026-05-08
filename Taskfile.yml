@@ -1,5 +1,8 @@
 version: '3'
-
+shell:
+  program: bash
+  args: [-c]
+  
 # What's For Supper - Development Tasks
 # Install: https://taskfile.dev/installation/
 # Usage: task [task-name] or task -l (list all)

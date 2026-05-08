@@ -92,8 +92,8 @@ The feature introduces:
     - Test that NO `hasFamilyInterest` ring is rendered
     - _Requirements: 3.1, 3.2, 3.4, 3.5, 10.3, 10.5_
 
-- [ ] 7. Frontend - Create Stack Action Bar Component
-  - [ ] 7.1 Implement StackActionBar component
+- [x] 7. Frontend - Create Stack Action Bar Component
+  - [x] 7.1 Implement StackActionBar component
     - Create `pwa/src/components/recipes/StackActionBar.tsx`
     - Define props: `currentRecipe`, `position`, `total`, `onToggleDiscoverable`
     - Implement discoverable toggle with distinct visual states and `data-testid="card-toggle-discovery-{recipeId}"`
@@ -103,7 +103,7 @@ The feature introduces:
     - Add accessible `aria-label` for toggle: "Add to discovery" or "Remove from discovery"
     - _Requirements: 4.1, 4.2, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11_
   
-  - [ ] 7.2 Write unit tests for StackActionBar
+  - [x] 7.2 Write unit tests for StackActionBar
     - Test that depth indicator renders with correct format
     - Test that discoverable toggle renders with correct icon state
     - Test that `onToggleDiscoverable` is called when toggle is tapped
