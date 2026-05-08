@@ -10,6 +10,7 @@ namespace RecipeApi.Controllers;
 [Route("api/recipes")]
 public class RecipeController(
     RecipeService recipeService,
+    RecipeSearchService recipeSearchService,
     ImageService imageService,
     RecipeImportService importService,
     RecipeImportBulkService bulkImportService) : ControllerBase
@@ -200,24 +201,10 @@ public class RecipeController(
 
     /// <summary>POST /api/recipes/search — contract placeholder for semantic search.</summary>
     [HttpPost("search")]
-    public IActionResult Search([FromBody] RecipeSearchRequestDto dto)
+    public async Task<IActionResult> Search([FromBody] RecipeSearchRequestDto dto, CancellationToken ct)
     {
-        var searchMode = dto.PantrySnapshotId is not null
-            ? "pantry-assisted"
-            : dto.SimilarToRecipeId is not null
-                ? "similar"
-                : string.Equals(dto.Mode, "agent", StringComparison.OrdinalIgnoreCase)
-                    ? "agent"
-                    : "standard";
-
-        return Ok(new RecipeSearchResponseDto
-        {
-            TopPick = null,
-            Results = [],
-            AppliedFilters = dto.Filters ?? new RecipeSearchFiltersDto(),
-            SearchMode = searchMode,
-            ResultPath = "lexical-only",
-        });
+        var result = await recipeSearchService.SearchAsync(dto, ct);
+        return Ok(result);
     }
 
     /// <summary>GET /api/recipes/{id}/original/{photoIndex} — raw image binary.</summary>

@@ -206,7 +206,7 @@ Watch it fail. Implement `RecipeSearchService` until it passes.
 - `task review` passes.
 - No PWA changes needed.
 
-- [ ] Task 3 complete
+- [x] Task 3 complete
 
 ---
 

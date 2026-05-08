@@ -19,7 +19,7 @@ repos:
       - id: api-review
         name: API Review (Lint & Test)
         language: system
-        entry: bash -c "cd api && dotnet format --verify-no-changes && dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj"
+        entry: bash -c "cd api && DOTNET_CLI_HOME=\"${TMPDIR:-$HOME/.dotnet}\" dotnet format RecipeApi.csproj --verify-no-changes --no-restore && DOTNET_CLI_HOME=\"${TMPDIR:-$HOME/.dotnet}\" dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore"
         files: ^api/
         pass_filenames: false
 

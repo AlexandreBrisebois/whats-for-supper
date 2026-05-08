@@ -63,6 +63,22 @@ export type RecipeSearchResponse = {
   resultPath: string | null;
 };
 
+type KiotaAdditionalData = {
+  additionalData?: Record<string, unknown>;
+};
+
+function readField<T>(source: unknown, key: string): T | undefined {
+  if (!source || typeof source !== 'object') return undefined;
+
+  const direct = (source as Record<string, unknown>)[key];
+  if (direct !== undefined) return direct as T;
+
+  const additional = (source as KiotaAdditionalData).additionalData;
+  if (additional && key in additional) return additional[key] as T;
+
+  return undefined;
+}
+
 function unwrapUntypedNode(node: any): any {
   if (node && typeof node.getValue === 'function') {
     const value = node.getValue();
@@ -103,20 +119,40 @@ function mapToRecipe(dto: RecipeDto): Recipe {
 function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeSearchResult | null {
   if (!dto) return null;
 
+  const id = readField<string>(dto, 'id') || '';
+  const name = readField<string>(dto, 'name') || '';
+  const imageUrl = readField<string>(dto, 'imageUrl') || '';
+  const totalTime = readField<string>(dto, 'totalTime') || '';
+  const difficulty = readField<string>(dto, 'difficulty') || '';
+  const rating = readField<number>(dto, 'rating') || 0;
+  const isDiscoverable = readField<boolean>(dto, 'isDiscoverable') ?? false;
+  const notes = (readField<string | null>(dto, 'notes') ?? null) as string | null;
+  const reasonsValue = readField<Array<{ source?: string | null; label?: string | null }>>(
+    dto,
+    'reasons'
+  );
+  const plannerFitNote = (readField<string | null>(dto, 'plannerFitNote') ?? null) as string | null;
+
+  // Kiota currently deserializes nullable union topPick into an empty marker object.
+  // Treat that shape as null so the page can show the real empty state.
+  if (!id && !name && !imageUrl && !totalTime && !difficulty && !notes && !plannerFitNote) {
+    return null;
+  }
+
   return {
-    id: dto.id || '',
-    name: dto.name || '',
-    imageUrl: dto.imageUrl || '',
-    totalTime: dto.totalTime || '',
-    difficulty: dto.difficulty || '',
-    rating: dto.rating || 0,
-    isDiscoverable: dto.isDiscoverable ?? false,
-    notes: dto.notes ?? null,
-    reasons: (dto.reasons || []).map((reason) => ({
+    id,
+    name,
+    imageUrl,
+    totalTime,
+    difficulty,
+    rating,
+    isDiscoverable,
+    notes,
+    reasons: (reasonsValue || []).map((reason) => ({
       source: reason?.source || '',
       label: reason?.label || '',
     })),
-    plannerFitNote: dto.plannerFitNote ?? null,
+    plannerFitNote,
   };
 }
 
@@ -194,7 +230,8 @@ export async function searchRecipes(
   request: Pick<RecipeSearchRequestDto, 'query' | 'mode' | 'limit' | 'weekOffset' | 'dayIndex'>
 ): Promise<RecipeSearchResponse> {
   const result = await apiClient.api.recipes.search.post(request);
-  const data = result?.data as RecipeSearchResponseDto | undefined;
+  const data = ((result as { data?: RecipeSearchResponseDto } | null | undefined)?.data ??
+    (result as RecipeSearchResponseDto | null | undefined)) as RecipeSearchResponseDto | undefined;
 
   return {
     topPick: mapSearchResult((data?.topPick as RecipeSearchResultDto | null | undefined) ?? null),

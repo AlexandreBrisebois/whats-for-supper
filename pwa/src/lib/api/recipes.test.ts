@@ -141,4 +141,73 @@ describe('searchRecipes', () => {
     });
     expect(result.resultPath).toBe('lexical-only');
   });
+
+  it('also supports a direct RecipeSearchResponseDto shape', async () => {
+    recipesApiMocks.searchPost.mockResolvedValue({
+      topPick: {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'Chicken Soup',
+        imageUrl: 'https://example.com/chicken-soup.jpg',
+        totalTime: '30 min',
+        difficulty: 'Easy',
+        rating: 2,
+        isDiscoverable: true,
+        notes: 'weeknight staple',
+        reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+        plannerFitNote: null,
+      },
+      results: [],
+      appliedFilters: {},
+      searchMode: 'standard',
+      resultPath: 'lexical-only',
+    });
+
+    const result = await searchRecipes({ query: 'chicken', mode: 'standard', limit: 5 });
+
+    expect(result.topPick?.name).toBe('Chicken Soup');
+    expect(result.results).toEqual([]);
+    expect(result.resultPath).toBe('lexical-only');
+  });
+
+  it('recovers topPick fields from Kiota additionalData and treats empty marker objects as null', async () => {
+    recipesApiMocks.searchPost.mockResolvedValue({
+      data: {
+        topPick: {
+          additionalData: {
+            id: '33333333-3333-3333-3333-333333333333',
+            name: 'Homemade Lasagna',
+            imageUrl: 'https://example.com/lasagna.jpg',
+            totalTime: '45 min',
+            difficulty: 'Medium',
+            rating: 3,
+            isDiscoverable: true,
+            notes: null,
+            reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+            plannerFitNote: null,
+          },
+        },
+        results: [],
+        appliedFilters: {},
+        searchMode: 'standard',
+        resultPath: 'lexical-only',
+      },
+    });
+
+    const recovered = await searchRecipes({ query: 'lasagna', mode: 'standard', limit: 5 });
+    expect(recovered.topPick?.name).toBe('Homemade Lasagna');
+    expect(recovered.topPick?.reasons[0]?.label).toBe('Name matches your search');
+
+    recipesApiMocks.searchPost.mockResolvedValue({
+      data: {
+        topPick: { additionalData: {} },
+        results: [],
+        appliedFilters: {},
+        searchMode: 'standard',
+        resultPath: 'lexical-only',
+      },
+    });
+
+    const emptyMarker = await searchRecipes({ query: 'missing', mode: 'standard', limit: 5 });
+    expect(emptyMarker.topPick).toBeNull();
+  });
 });
