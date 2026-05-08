@@ -91,7 +91,9 @@ describe('EndCard — rendering', () => {
   it('displays the supporting message about browsing completion', () => {
     render(<EndCard {...defaultProps} />);
     expect(
-      screen.getByText(/You've browsed your whole library\. Did you find what you were looking for\?/i)
+      screen.getByText(
+        /You've browsed your whole library\. Did you find what you were looking for\?/i
+      )
     ).toBeTruthy();
   });
 
