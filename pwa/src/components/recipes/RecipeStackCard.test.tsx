@@ -205,7 +205,9 @@ describe('RecipeStackCard — swipe callbacks', () => {
   it('does NOT call onSwipeRight or onSwipeLeft when drag is below threshold', async () => {
     const onSwipeRight = vi.fn();
     const onSwipeLeft = vi.fn();
-    render(<RecipeStackCard {...defaultProps} onSwipeRight={onSwipeRight} onSwipeLeft={onSwipeLeft} />);
+    render(
+      <RecipeStackCard {...defaultProps} onSwipeRight={onSwipeRight} onSwipeLeft={onSwipeLeft} />
+    );
 
     expect(capturedOnDragEnd).toBeDefined();
     await capturedOnDragEnd!(null, makeDragInfo(30)); // below 80px threshold
@@ -216,7 +218,9 @@ describe('RecipeStackCard — swipe callbacks', () => {
   it('does NOT call onSwipeLeft when drag is below threshold on left side', async () => {
     const onSwipeRight = vi.fn();
     const onSwipeLeft = vi.fn();
-    render(<RecipeStackCard {...defaultProps} onSwipeRight={onSwipeRight} onSwipeLeft={onSwipeLeft} />);
+    render(
+      <RecipeStackCard {...defaultProps} onSwipeRight={onSwipeRight} onSwipeLeft={onSwipeLeft} />
+    );
 
     expect(capturedOnDragEnd).toBeDefined();
     await capturedOnDragEnd!(null, makeDragInfo(-30)); // below 80px threshold

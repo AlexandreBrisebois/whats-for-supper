@@ -191,10 +191,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
       {/* Apply stack-card-front testid via a wrapper when isFront */}
-      <div
-        className="h-full w-full"
-        {...(isFront ? { 'data-testid': 'stack-card-front' } : {})}
-      >
+      <div className="h-full w-full" {...(isFront ? { 'data-testid': 'stack-card-front' } : {})}>
         <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
           <div className="relative h-[62%] w-full overflow-hidden">
             <Image
@@ -214,9 +211,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
                   data-testid="stack-swipe-next-indicator"
                   className="absolute flex flex-col items-center gap-2 rounded-full bg-ochre/30 px-8 py-6 text-white backdrop-blur-md shadow-2xl"
                 >
-                  <span className="text-xl font-black tracking-widest text-ochre-700">
-                    Next →
-                  </span>
+                  <span className="text-xl font-black tracking-widest text-ochre-700">Next →</span>
                 </motion.div>
 
                 {/* ← Back indicator (swipe left) */}
@@ -225,9 +220,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
                   data-testid="stack-swipe-back-indicator"
                   className="absolute flex flex-col items-center gap-2 rounded-full bg-ochre/30 px-8 py-6 text-white backdrop-blur-md shadow-2xl"
                 >
-                  <span className="text-xl font-black tracking-widest text-ochre-700">
-                    ← Back
-                  </span>
+                  <span className="text-xl font-black tracking-widest text-ochre-700">← Back</span>
                 </motion.div>
               </div>
             )}
