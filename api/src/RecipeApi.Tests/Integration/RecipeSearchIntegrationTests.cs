@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
+using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 
@@ -246,6 +248,195 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.True(appliedFilters.GetProperty("discoverableOnly").GetBoolean());
     }
 
+    [Fact]
+    public async Task Search_WithPlannerContext_Excludes_Recipes_Already_Assigned_In_TargetWeek()
+    {
+        var assignedRecipe = CreateRecipe(
+            "Assigned Chicken",
+            "Chicken dinner already planned this week",
+            totalTime: "45 min",
+            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+
+        var availableRecipe = CreateRecipe(
+            "Available Chicken",
+            "Chicken dinner still available",
+            totalTime: "35 min",
+            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+
+        await SeedRecipeAsync(assignedRecipe);
+        await SeedRecipeAsync(availableRecipe);
+        await SeedWeekAsync(
+            weekOffset: 0,
+            assignedRecipeIds: [assignedRecipe.Id],
+            balanceSummary: WeeklyBalanceScorer.Compute(new RecipeDietaryProfile?[]
+            {
+                CreateDietaryProfile("ProteinFoods"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            }));
+
+        var response = await PostSearchAsync(new { query = "chicken", weekOffset = 0, dayIndex = 2 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var results = document.RootElement.GetProperty("results");
+
+        Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("id").GetGuid() == assignedRecipe.Id);
+        Assert.Contains(results.EnumerateArray(), result => result.GetProperty("id").GetGuid() == availableRecipe.Id);
+    }
+
+    [Fact]
+    public async Task Search_WithPlannerContext_Promotes_Vegetable_Recipe_To_TopPick_When_Week_Has_Veggie_Gap()
+    {
+        var proteinRecipe = CreateRecipe(
+            "Comfort Bowl",
+            "Fresh dinner with bright flavors",
+            totalTime: "35 min",
+            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+
+        var veggieRecipe = CreateRecipe(
+            "Garden Veggie Bowl",
+            "Fresh dinner with bright flavors",
+            totalTime: "40 min",
+            dietaryProfile: CreateDietaryProfile("VegetablesAndFruits"));
+
+        await SeedRecipeAsync(proteinRecipe);
+        await SeedRecipeAsync(veggieRecipe);
+        await SeedWeekAsync(
+            weekOffset: 0,
+            assignedRecipeIds: [proteinRecipe.Id],
+            balanceSummary: WeeklyBalanceScorer.Compute(new RecipeDietaryProfile?[]
+            {
+                CreateDietaryProfile("ProteinFoods"),
+                CreateDietaryProfile("ProteinFoods"),
+                null,
+                null,
+                null,
+                null,
+                null
+            }));
+
+        var response = await PostSearchAsync(new { query = "fresh dinner", weekOffset = 0, dayIndex = 2 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+
+        Assert.Equal(veggieRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.False(string.IsNullOrWhiteSpace(topPick.GetProperty("plannerFitNote").GetString()));
+    }
+
+    [Fact]
+    public async Task Search_WithoutPlannerContext_Keeps_TopPick_Based_On_QueryFit_Only()
+    {
+        var exactMatch = CreateRecipe(
+            "Quick Chicken Tacos",
+            "Fast and easy tacos",
+            totalTime: "35 min",
+            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+
+        var veggieRecipe = CreateRecipe(
+            "Garden Tacos",
+            "Fast and easy tacos",
+            totalTime: "35 min",
+            dietaryProfile: CreateDietaryProfile("VegetablesAndFruits"));
+
+        await SeedRecipeAsync(exactMatch);
+        await SeedRecipeAsync(veggieRecipe);
+
+        var response = await PostSearchAsync(new { query = "quick chicken tacos" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+
+        Assert.Equal(exactMatch.Id, topPick.GetProperty("id").GetGuid());
+        Assert.True(topPick.GetProperty("plannerFitNote").ValueKind == JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Search_WithPlannerContext_Sets_PlannerFitNote_On_TopPick()
+    {
+        var veggieRecipe = CreateRecipe(
+            "Veggie Stir Fry",
+            "Fresh dinner",
+            totalTime: "40 min",
+            dietaryProfile: CreateDietaryProfile("VegetablesAndFruits"));
+
+        await SeedRecipeAsync(veggieRecipe);
+        await SeedWeekAsync(
+            weekOffset: 0,
+            assignedRecipeIds: [],
+            balanceSummary: WeeklyBalanceScorer.Compute(new RecipeDietaryProfile?[]
+            {
+                CreateDietaryProfile("ProteinFoods"),
+                CreateDietaryProfile("ProteinFoods"),
+                null,
+                null,
+                null,
+                null,
+                null
+            }));
+
+        var response = await PostSearchAsync(new { query = "fresh dinner", weekOffset = 0, dayIndex = 2 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+
+        Assert.False(string.IsNullOrWhiteSpace(topPick.GetProperty("plannerFitNote").GetString()));
+    }
+
+    [Fact]
+    public async Task Search_WithQuickQuery_AndPlannerContext_Boosts_Quick_Recipes()
+    {
+        var slowerRecipe = CreateRecipe(
+            "Quick Chicken Pasta",
+            "Fast dinner on paper but still takes time",
+            totalTime: "45 min",
+            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+
+        var fasterRecipe = CreateRecipe(
+            "Weeknight Pasta",
+            "Fast dinner on paper but actually quick",
+            totalTime: "25 min",
+            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+
+        await SeedRecipeAsync(slowerRecipe);
+        await SeedRecipeAsync(fasterRecipe);
+        await SeedWeekAsync(
+            weekOffset: 0,
+            assignedRecipeIds: [],
+            balanceSummary: WeeklyBalanceScorer.Compute(new RecipeDietaryProfile?[]
+            {
+                CreateDietaryProfile("ProteinFoods"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            }));
+
+        var response = await PostSearchAsync(new { query = "quick pasta tonight", weekOffset = 0, dayIndex = 2 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+
+        Assert.Equal(fasterRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Contains("quick", topPick.GetProperty("plannerFitNote").GetString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task<HttpResponseMessage> PostSearchAsync(object payload)
     {
         return await _client.PostAsJsonAsync("/api/recipes/search", payload);
@@ -267,5 +458,72 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
+    }
+
+    private async Task SeedWeekAsync(int weekOffset, IReadOnlyList<Guid> assignedRecipeIds, WeeklyBalanceSummary balanceSummary)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var monday = GetMondayForWeekOffset(weekOffset);
+        db.WeeklyPlans.Add(new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = monday,
+            BalanceSummary = JsonSerializer.Serialize(balanceSummary, JsonDefaults.CamelCase)
+        });
+
+        for (var index = 0; index < assignedRecipeIds.Count; index++)
+        {
+            db.CalendarEvents.Add(new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = assignedRecipeIds[index],
+                Date = monday.AddDays(index),
+                MealSlot = 0,
+                Status = CalendarEventStatus.Planned
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static Recipe CreateRecipe(string name, string description, string? totalTime, RecipeDietaryProfile dietaryProfile)
+    {
+        return new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = Guid.NewGuid(),
+            Name = name,
+            Description = description,
+            TotalTime = totalTime,
+            Ingredients = JsonSerializer.Serialize(new[] { "chicken", "garlic", "spinach" }),
+            Notes = description,
+            DietaryProfile = JsonSerializer.Serialize(dietaryProfile, JsonDefaults.CamelCase),
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+    }
+
+    private static RecipeDietaryProfile CreateDietaryProfile(string primaryFoodGroup)
+    {
+        return new RecipeDietaryProfile(
+            PrimaryFoodGroup: primaryFoodGroup,
+            SecondaryFoodGroups: [],
+            ProteinSource: primaryFoodGroup == "ProteinFoods" ? "Poultry" : "None",
+            CuisineType: "Canadian",
+            MealTypes: ["Dinner"],
+            PrimaryMealType: "Dinner",
+            WholeGrainConfident: false,
+            Confidence: 0.95,
+            Source: "test",
+            FopFlags: null);
+    }
+
+    private static DateOnly GetMondayForWeekOffset(int weekOffset)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var monday = today.AddDays(-(7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7);
+        return monday.AddDays(weekOffset * 7);
     }
 }

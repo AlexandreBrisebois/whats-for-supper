@@ -247,7 +247,7 @@ Implement planner exclusion logic. Watch it pass.
 - Existing planner E2E tests still pass.
 - `task review` passes.
 
-- [ ] Task 4 complete
+- [x] Task 4 complete
 
 ---
 
