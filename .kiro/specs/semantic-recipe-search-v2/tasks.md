@@ -162,7 +162,7 @@ handled by the default `setupCommonRoutes` mock added in Task 1.
 - Planner handoff (`addToDay` + `weekOffset`) still works end-to-end.
 - `task review` passes.
 
-- [ ] Task 2 complete
+- [x] Task 2 complete
 
 ---
 

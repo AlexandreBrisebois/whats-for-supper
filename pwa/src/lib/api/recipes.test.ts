@@ -5,6 +5,26 @@ const { mockGetState, fetchMock } = vi.hoisted(() => ({
   fetchMock: vi.fn(),
 }));
 
+const recipesApiMocks = vi.hoisted(() => {
+  const searchPost = vi.fn();
+  const byIdGet = vi.fn();
+  const byIdDelete = vi.fn();
+  const byIdPatch = vi.fn();
+  const recipesGet = vi.fn();
+  const captureUrlPost = vi.fn();
+  const recommendationsGet = vi.fn();
+
+  return {
+    searchPost,
+    byIdGet,
+    byIdDelete,
+    byIdPatch,
+    recipesGet,
+    captureUrlPost,
+    recommendationsGet,
+  };
+});
+
 vi.mock('@/store/familyStore', () => ({
   useFamilyStore: {
     getState: mockGetState,
@@ -15,10 +35,15 @@ vi.mock('./api-client', () => ({
   apiClient: {
     api: {
       recipes: {
-        byId: () => ({ get: vi.fn(), delete: vi.fn(), patch: vi.fn() }),
-        get: vi.fn(),
-        captureUrl: { post: vi.fn() },
-        recommendations: { get: vi.fn() },
+        byId: () => ({
+          get: recipesApiMocks.byIdGet,
+          delete: recipesApiMocks.byIdDelete,
+          patch: recipesApiMocks.byIdPatch,
+        }),
+        get: recipesApiMocks.recipesGet,
+        captureUrl: { post: recipesApiMocks.captureUrlPost },
+        recommendations: { get: recipesApiMocks.recommendationsGet },
+        search: { post: recipesApiMocks.searchPost },
       },
     },
   },
@@ -27,7 +52,7 @@ vi.mock('./api-client', () => ({
   },
 }));
 
-import { createRecipe } from './recipes';
+import { createRecipe, searchRecipes } from './recipes';
 
 describe('createRecipe', () => {
   beforeEach(() => {
@@ -56,5 +81,64 @@ describe('createRecipe', () => {
     const result = await createRecipe(new FormData());
 
     expect(result).toEqual({ id: 'recipe-wrapped-id' });
+  });
+});
+
+describe('searchRecipes', () => {
+  beforeEach(() => {
+    recipesApiMocks.searchPost.mockReset();
+  });
+
+  it('posts the query to the generated search endpoint and normalizes the response', async () => {
+    recipesApiMocks.searchPost.mockResolvedValue({
+      data: {
+        topPick: {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'Chicken Soup',
+          imageUrl: 'https://example.com/chicken-soup.jpg',
+          totalTime: '30 min',
+          difficulty: 'Easy',
+          rating: 2,
+          isDiscoverable: true,
+          notes: 'weeknight staple',
+          reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+          plannerFitNote: null,
+        },
+        results: [
+          {
+            id: '22222222-2222-2222-2222-222222222222',
+            name: 'Chicken Pasta',
+            imageUrl: 'https://example.com/chicken-pasta.jpg',
+            totalTime: '25 min',
+            difficulty: 'Easy',
+            rating: 1,
+            isDiscoverable: true,
+            notes: null,
+            reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+            plannerFitNote: null,
+          },
+        ],
+        appliedFilters: {},
+        searchMode: 'standard',
+        resultPath: 'lexical-only',
+      },
+    });
+
+    const result = await searchRecipes({ query: 'chicken', mode: 'standard', limit: 5 });
+
+    expect(recipesApiMocks.searchPost).toHaveBeenCalledWith({
+      query: 'chicken',
+      mode: 'standard',
+      limit: 5,
+    });
+    expect(result.topPick?.name).toBe('Chicken Soup');
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0]).toMatchObject({
+      id: '22222222-2222-2222-2222-222222222222',
+      name: 'Chicken Pasta',
+      totalTime: '25 min',
+      difficulty: 'Easy',
+    });
+    expect(result.resultPath).toBe('lexical-only');
   });
 });

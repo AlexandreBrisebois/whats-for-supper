@@ -9,10 +9,16 @@ import {
   Clock,
   ChefHat,
   Loader2,
+  Camera,
+  Trash2,
 } from 'lucide-react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { getRecommendations, RecommendationsResponse } from '@/lib/api/recipes';
+import {
+  searchRecipes,
+  type RecipeSearchResponse,
+  type RecipeSearchResult,
+} from '@/lib/api/recipes';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { assignRecipeToDay } from '@/lib/api/planner';
 import { cn } from '@/lib/utils';
@@ -24,37 +30,90 @@ import { t, tWithVars } from '@/locales';
  */
 export default function RecipesPage() {
   const [query, setQuery] = useState('');
-  const [data, setData] = useState<RecommendationsResponse | null>(null);
+  const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [openDetailRecipeId] = useState<string | null>(null);
+  const [similarToRecipeId] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const addToDay = searchParams.get('addToDay');
   const weekOffset = searchParams.get('weekOffset');
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const recommendations = await getRecommendations();
-        setData(recommendations);
-      } catch (error) {
-        console.error('Failed to fetch recommendations', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadData();
-  }, []);
+  const parsedDayIndex = addToDay !== null ? parseInt(addToDay, 10) : undefined;
+  const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
 
-  const handleSelectRecipe = async (recipe: any) => {
+  const runSearch = async (nextQuery: string) => {
+    setIsLoading(true);
+    try {
+      const response = await searchRecipes({
+        query: nextQuery,
+        mode: 'standard',
+        limit: 5,
+        weekOffset: parsedWeekOffset,
+        dayIndex: parsedDayIndex,
+      });
+      setData(response);
+    } catch (error) {
+      console.error('Failed to search recipes', error);
+      setData({
+        topPick: null,
+        results: [],
+        appliedFilters: {},
+        searchMode: 'standard',
+        resultPath: 'lexical-only',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isActive = true;
+
+    void (async () => {
+      try {
+        const response = await searchRecipes({
+          query: '',
+          mode: 'standard',
+          limit: 5,
+          weekOffset: parsedWeekOffset,
+          dayIndex: parsedDayIndex,
+        });
+
+        if (!isActive) return;
+        setData(response);
+      } catch (error) {
+        if (!isActive) return;
+        console.error('Failed to search recipes', error);
+        setData({
+          topPick: null,
+          results: [],
+          appliedFilters: {},
+          searchMode: 'standard',
+          resultPath: 'lexical-only',
+        });
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [parsedDayIndex, parsedWeekOffset]);
+
+  const handleSelectRecipe = async (recipe: RecipeSearchResult) => {
     if (addToDay !== null && weekOffset !== null) {
       setIsAssigning(true);
       try {
-        await assignRecipeToDay(parseInt(weekOffset), parseInt(addToDay), {
+        await assignRecipeToDay(parseInt(weekOffset, 10), parseInt(addToDay, 10), {
           id: recipe.id,
-          name: recipe.name || recipe.title,
-          image: recipe.image || recipe.imageUrl,
+          name: recipe.name,
+          image: recipe.imageUrl,
         });
         router.push(`/planner?success=1&dayIndex=${addToDay}`);
       } catch (error) {
@@ -68,6 +127,7 @@ export default function RecipesPage() {
   };
 
   const { topPick, results } = data ?? { topPick: null, results: [] };
+  const showEmptyState = !isLoading && topPick == null && results.length === 0;
 
   return (
     <div className="flex flex-col gap-8 pb-12">
@@ -115,6 +175,11 @@ export default function RecipesPage() {
           value={query}
           data-testid="recipe-search-input"
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              void runSearch(query);
+            }
+          }}
           placeholder={t('recipes.searchPlaceholder', 'Something spicy for 4...')}
           className="w-full bg-white/70 backdrop-blur-md border-2 border-charcoal/5 rounded-[2rem] py-5 pl-16 pr-8 text-lg font-bold text-charcoal placeholder:text-charcoal/20 focus:outline-none focus:border-terracotta/20 transition-all shadow-card focus:shadow-xl focus:bg-white"
         />
@@ -125,13 +190,51 @@ export default function RecipesPage() {
         )}
       </motion.div>
 
+      <div className="flex items-center gap-3 px-1">
+        <button
+          type="button"
+          data-testid="agent-search-trigger"
+          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+        >
+          <Sparkles size={16} className="text-terracotta" />
+          {t('recipes.agentSearch', 'Agent Search')}
+        </button>
+        <button
+          type="button"
+          data-testid="inventory-camera-trigger"
+          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+        >
+          <Camera size={16} className="text-terracotta" />
+          {t('recipes.inventoryCamera', 'Use Camera')}
+        </button>
+      </div>
+
       {/* Results Section */}
       <div className="flex flex-col gap-6">
         {isLoading ? (
           <div className="flex h-48 w-full items-center justify-center">
             <Loader2 className="animate-spin text-ochre" size={48} data-testid="recipe-loader" />
           </div>
-        ) : !data ? null : (
+        ) : !data ? null : showEmptyState ? (
+          <div
+            data-testid="search-empty-state"
+            className="rounded-[2rem] border border-dashed border-charcoal/15 bg-white/60 p-8 text-center shadow-sm"
+          >
+            <p className="text-lg font-black tracking-tight text-charcoal">
+              {t(
+                'recipes.searchEmptyTitle',
+                'No matches yet. Try a different description or clear filters.'
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => void runSearch('')}
+              className="mt-4 inline-flex rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white shadow-sm"
+            >
+              {t('recipes.clearFilters', 'Clear Filters')}
+            </button>
+          </div>
+        ) : (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -163,7 +266,7 @@ export default function RecipesPage() {
 
                 <div className="relative w-full aspect-[16/10] min-h-[240px] rounded-[2.5rem] overflow-hidden shadow-2xl glass-solar border border-white/20">
                   <Image
-                    src={topPick.imageUrl}
+                    src={topPick.imageUrl || '/placeholder-recipe.jpg'}
                     alt={topPick.name}
                     fill
                     className="object-cover transition-transform duration-1000 group-hover:scale-105"
@@ -174,7 +277,7 @@ export default function RecipesPage() {
                   <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-2.5 text-white z-10">
                     <div className="flex gap-2">
                       <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                        <Clock size={10} /> {topPick.prepTime}
+                        <Clock size={10} /> {topPick.totalTime}
                       </span>
                       <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
                         <ChefHat size={10} /> {topPick.difficulty}
@@ -183,9 +286,11 @@ export default function RecipesPage() {
                     <h3 className="text-3xl font-black tracking-tighter leading-none">
                       {topPick.name}
                     </h3>
-                    <p className="text-white/70 text-sm font-medium line-clamp-2 max-w-[90%] leading-snug">
-                      {topPick.description}
-                    </p>
+                    {topPick.reasons.length > 0 && (
+                      <p className="text-white/70 text-sm font-medium line-clamp-2 max-w-[90%] leading-snug">
+                        {topPick.reasons[0].label}
+                      </p>
+                    )}
                   </div>
 
                   <div className="absolute bottom-6 right-6 z-10">
@@ -214,7 +319,7 @@ export default function RecipesPage() {
                 >
                   <div className="relative aspect-[4/3] rounded-[1.5rem] overflow-hidden">
                     <Image
-                      src={recipe.image}
+                      src={recipe.imageUrl || '/placeholder-recipe.jpg'}
                       alt={recipe.name}
                       fill
                       className="object-cover transition-transform group-hover:scale-110"
@@ -222,7 +327,7 @@ export default function RecipesPage() {
                   </div>
                   <div className="flex flex-col gap-1 px-1.5 pb-1">
                     <span className="text-[9px] font-black uppercase tracking-widest text-charcoal/30 flex items-center gap-1">
-                      <Clock size={9} /> {recipe.time}
+                      <Clock size={9} /> {recipe.totalTime}
                     </span>
                     <h4 className="text-base font-black tracking-tighter leading-tight text-charcoal truncate">
                       {recipe.name}
@@ -233,6 +338,22 @@ export default function RecipesPage() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="flex items-center justify-start px-1">
+        <button
+          type="button"
+          data-testid="recycle-bin-entry"
+          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+        >
+          <Trash2 size={16} className="text-terracotta" />
+          {t('recipes.recycleBin', 'Recycle Bin')}
+        </button>
+      </div>
+
+      <div className="sr-only" aria-hidden="true">
+        {openDetailRecipeId}
+        {similarToRecipeId}
       </div>
     </div>
   );

@@ -1,28 +1,43 @@
 import { test, expect } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
-const MOCK_RECIPES = {
+const MOCK_SEARCH_RESULTS = {
   topPick: {
     id: MOCK_IDS.RECIPE_LASAGNA,
     name: 'Homemade Lasagna',
-    rating: 5,
-    image: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
-    tags: ['italian', 'dinner'],
+    imageUrl: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
+    totalTime: '45 min',
+    difficulty: 'Medium',
+    rating: 3,
+    isDiscoverable: true,
+    notes: null,
+    reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+    plannerFitNote: null,
   },
   secondary: [
     {
       id: MOCK_IDS.RECIPE_STIR_FRY,
       name: 'Chicken Stir Fry',
-      rating: 4,
-      image: 'https://images.unsplash.com/photo-1559847844-5315695dadae',
-      tags: ['asian', 'quick'],
+      imageUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae',
+      totalTime: '20 min',
+      difficulty: 'Easy',
+      rating: 2,
+      isDiscoverable: true,
+      notes: null,
+      reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+      plannerFitNote: null,
     },
     {
       id: MOCK_IDS.RECIPE_TACOS,
       name: 'Beef Tacos',
-      rating: 4,
-      image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47',
-      tags: ['mexican', 'dinner'],
+      imageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47',
+      totalTime: '25 min',
+      difficulty: 'Easy',
+      rating: 2,
+      isDiscoverable: true,
+      notes: null,
+      reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+      plannerFitNote: null,
     },
   ],
 };
@@ -47,61 +62,63 @@ test.describe('Recipes Search Page', () => {
 
     await setupCommonRoutes(page);
 
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes'),
-      async (route) => {
-        const url = route.request().url();
+    await page.route('**/api/recipes/search', async (route) => {
+      const body = route.request().postDataJSON() as { query?: string };
+      const query = body?.query ?? '';
 
-        if (url.includes('/recommendations')) {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: {
-                topPick: {
-                  ...MOCK_RECIPES.topPick,
-                  imageUrl: MOCK_RECIPES.topPick.image,
-                  description: 'A classic favorite.',
-                  prepTime: '45 min',
-                  difficulty: 'Medium',
-                },
-                results: MOCK_RECIPES.secondary.map((r) => ({
-                  ...r,
-                  time: '20 min',
-                })),
-              },
-            }),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: [
-                builders.recipe({ ...MOCK_RECIPES.topPick }),
-                builders.recipe({ ...MOCK_RECIPES.secondary[0] }),
-                builders.recipe({ ...MOCK_RECIPES.secondary[1] }),
-              ],
-              total: 3,
-            }),
-          });
-        }
-      }
-    );
+      const response =
+        query === 'chicken'
+          ? {
+              topPick: MOCK_SEARCH_RESULTS.topPick,
+              results: MOCK_SEARCH_RESULTS.secondary,
+              appliedFilters: {},
+              searchMode: 'standard',
+              resultPath: 'lexical-only',
+            }
+          : {
+              topPick: null,
+              results: [],
+              appliedFilters: {},
+              searchMode: 'standard',
+              resultPath: 'lexical-only',
+            };
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: response }),
+      });
+    });
+
+    await page.route('**/api/recipes', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Homemade Lasagna' }),
+            builders.recipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Chicken Stir Fry' }),
+            builders.recipe({ id: MOCK_IDS.RECIPE_TACOS, name: 'Beef Tacos' }),
+          ],
+          total: 3,
+        }),
+      });
+    });
   });
 
-  test('should display search UI and mock data correctly', async ({ page }) => {
+  test('searches on Enter and shows the top pick result', async ({ page }) => {
     await page.goto('/recipes');
 
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
-
     await expect(page.getByTestId('recipe-search-input')).toBeVisible();
+
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
 
     await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
     await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/Homemade Lasagna/i);
 
     await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toBeVisible();
-    await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_TACOS}`)).toBeVisible();
   });
 
   test('planning mode can be cancelled back to the planner', async ({ page }) => {
@@ -111,5 +128,12 @@ test.describe('Recipes Search Page', () => {
     await page.getByTestId('planning-mode-cancel').click();
 
     await expect(page).toHaveURL(/\/planner/);
+  });
+
+  test('shows the empty state when search returns no matches', async ({ page }) => {
+    await page.goto('/recipes');
+
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('search-empty-state')).toBeVisible();
   });
 });

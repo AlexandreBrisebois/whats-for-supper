@@ -1,6 +1,12 @@
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
-import type { RecipeDto, RecommendationResultDto } from './generated/models/index';
+import type {
+  RecipeDto,
+  RecommendationResultDto,
+  RecipeSearchRequestDto,
+  RecipeSearchResponseDto,
+  RecipeSearchResultDto,
+} from './generated/models/index';
 
 export interface Recipe {
   id: string;
@@ -34,6 +40,27 @@ export type RecommendationsResponse = {
     difficulty: string;
   } | null;
   results: RecommendationResult[];
+};
+
+export type RecipeSearchResult = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  totalTime: string;
+  difficulty: string;
+  rating: number;
+  isDiscoverable: boolean;
+  notes: string | null;
+  reasons: Array<{ source: string; label: string }>;
+  plannerFitNote: string | null;
+};
+
+export type RecipeSearchResponse = {
+  topPick: RecipeSearchResult | null;
+  results: RecipeSearchResult[];
+  appliedFilters: Record<string, boolean | null>;
+  searchMode: string | null;
+  resultPath: string | null;
 };
 
 function unwrapUntypedNode(node: any): any {
@@ -70,6 +97,26 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     isVegetarian: dto.isVegetarian ?? false,
     isHealthyChoice: dto.isHealthyChoice ?? false,
     recipeInstructions,
+  };
+}
+
+function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeSearchResult | null {
+  if (!dto) return null;
+
+  return {
+    id: dto.id || '',
+    name: dto.name || '',
+    imageUrl: dto.imageUrl || '',
+    totalTime: dto.totalTime || '',
+    difficulty: dto.difficulty || '',
+    rating: dto.rating || 0,
+    isDiscoverable: dto.isDiscoverable ?? false,
+    notes: dto.notes ?? null,
+    reasons: (dto.reasons || []).map((reason) => ({
+      source: reason?.source || '',
+      label: reason?.label || '',
+    })),
+    plannerFitNote: dto.plannerFitNote ?? null,
   };
 }
 
@@ -141,6 +188,23 @@ export async function updateRecipe(
     notes: updates.notes,
     rating: updates.rating,
   });
+}
+
+export async function searchRecipes(
+  request: Pick<RecipeSearchRequestDto, 'query' | 'mode' | 'limit' | 'weekOffset' | 'dayIndex'>
+): Promise<RecipeSearchResponse> {
+  const result = await apiClient.api.recipes.search.post(request);
+  const data = result?.data as RecipeSearchResponseDto | undefined;
+
+  return {
+    topPick: mapSearchResult((data?.topPick as RecipeSearchResultDto | null | undefined) ?? null),
+    results: (data?.results || [])
+      .map((recipe) => mapSearchResult(recipe))
+      .filter((recipe): recipe is RecipeSearchResult => recipe !== null),
+    appliedFilters: (data?.appliedFilters as Record<string, boolean | null> | null) || {},
+    searchMode: data?.searchMode || null,
+    resultPath: data?.resultPath || null,
+  };
 }
 
 export async function getRecommendations(): Promise<RecommendationsResponse> {
