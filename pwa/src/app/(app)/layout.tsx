@@ -26,8 +26,9 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     (window as any).__captureStore = useCaptureStore;
   }, []);
 
-  // Determine if we should hide navigation (e.g., for Capture flow)
+  // Determine if we should hide navigation (e.g., for Capture flow or Browse All Stack)
   const isCapture = pathname.startsWith(ROUTES.CAPTURE);
+  const isBrowseAllStack = pathname.startsWith('/browse-all-stack');
 
   // Map pathnames to titles
   const getHeaderProps = (path: string) => {
@@ -80,9 +81,9 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
       <RecipeFailureBanner />
       <Layout
         {...headerProps}
-        hideNavigation={isCapture}
-        hideHeader={hideHeader}
-        isFluid={isHome || isDiscovery || isPlanner || isCapture}
+        hideNavigation={isCapture || isBrowseAllStack}
+        hideHeader={hideHeader || isBrowseAllStack}
+        isFluid={isHome || isDiscovery || isPlanner || isCapture || isBrowseAllStack}
         className={
           pathname === ROUTES.HOME ? 'solar-earth-bg' : isDiscovery ? 'vibrant-discovery-bg' : ''
         }

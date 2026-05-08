@@ -133,11 +133,11 @@ The feature introduces:
     - Test that CTA navigates to `/capture` when tapped
     - _Requirements: 8.2, 8.3, 8.4, 8.5, 8.6_
 
-- [ ] 9. Checkpoint - Verify component implementations
+- [x] 9. Checkpoint - Verify component implementations
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Frontend - Implement BrowseAllStack Overlay
-  - [ ] 10.1 Create BrowseAllStack page/component
+- [x] 10. Frontend - Implement BrowseAllStack Overlay
+  - [x] 10.1 Create BrowseAllStack page/component
     - Create `pwa/src/app/(app)/browse-all-stack/page.tsx` (or modal component)
     - Implement full-screen overlay layout with `data-testid="browse-all-stack-container"`
     - Add exit button (top-left, X icon) with `data-testid="browse-all-exit"`
@@ -146,7 +146,7 @@ The feature introduces:
     - Hide bottom navigation bar, search bar, and filter pills while active
     - _Requirements: 1.3, 1.4, 1.5, 1.6, 1.7, 1.8_
   
-  - [ ] 10.2 Implement navigation and lifecycle logic
+  - [x] 10.2 Implement navigation and lifecycle logic
     - Fetch `GET /api/recipes/library-summary` on mount to get `totalCount`
     - Fetch `GET /api/recipes?order=explore&page=1&limit=20` on mount
     - Implement swipe right to advance, swipe left to go back
@@ -157,20 +157,20 @@ The feature introduces:
     - Call `reset()` on unmount to clear store state
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 5.1, 5.2_
   
-  - [ ] 10.3 Implement paged loading and pre-fetch
+  - [x] 10.3 Implement paged loading and pre-fetch
     - Load recipes in pages of 20 from `GET /api/recipes?order=explore&page=N&limit=20`
     - Pre-fetch next page when `remainingCards <= 5`
     - Show loading spinner with `data-testid="browse-all-loader"` if pre-fetch incomplete
     - Set `totalCount` from `pagination.total` on first page load
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7_
   
-  - [ ] 10.4 Implement Recipe Detail Sheet integration
+  - [x] 10.4 Implement Recipe Detail Sheet integration
     - Open Recipe Detail Sheet when card is tapped
     - Return to same card and stack position when sheet is closed
     - Freeze stack while sheet is open (no index change, no API call on close)
     - _Requirements: 2.7, 2.8, 2.9_
   
-  - [ ] 10.5 Write integration tests for BrowseAllStack
+  - [x] 10.5 Write integration tests for BrowseAllStack
     - Test that library summary is fetched on mount
     - Test that first page of recipes is fetched on mount
     - Test that first card is displayed after load
