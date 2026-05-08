@@ -1121,7 +1121,7 @@ Unknown failure code maps to: `"Something went wrong importing the recipe. Try a
 - Integration tests pass.
 - `task review` passes.
 
-- [ ] Task 17 complete
+- [x] Task 17 complete
 
 ---
 

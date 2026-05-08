@@ -129,6 +129,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
         builder.Services.AddScoped<RecipePurgeService>();
+        builder.Services.AddScoped<CaptureFailureService>();
         builder.Services.AddScoped<RecipeSearchService>();
         builder.Services.AddScoped<AgentSearchTranslationService>();
         builder.Services.AddSingleton<InventoryCaptureService>();

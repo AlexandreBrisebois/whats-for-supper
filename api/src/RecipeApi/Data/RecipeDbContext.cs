@@ -19,6 +19,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<FamilySetting> FamilySettings => Set<FamilySetting>();
     public DbSet<IngredientCategory> IngredientCategories => Set<IngredientCategory>();
     public DbSet<RecipeSearchDocument> RecipeSearchDocuments => Set<RecipeSearchDocument>();
+    public DbSet<CaptureFailure> CaptureFailures => Set<CaptureFailure>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -203,6 +204,15 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                   .HasForeignKey<RecipeSearchDocument>(e => e.RecipeId)
                   .OnDelete(DeleteBehavior.Cascade);
             entity.ToTable("recipe_search_documents");
+        });
+
+        modelBuilder.Entity<CaptureFailure>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RetryPayload).HasColumnType("jsonb");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.LastFailedAt).HasDefaultValueSql("NOW()");
+            entity.ToTable("capture_failures");
         });
     }
 
