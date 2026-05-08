@@ -80,6 +80,7 @@ components:
           items: {}
           description: 'Parsed recipe instructions (string array or HowToStep objects)'
         createdAt: { type: string, format: date-time }
+        deletedAt: { type: [string, 'null'], format: date-time }
 
     RecipeListResponse:
       type: object
@@ -721,6 +722,24 @@ components:
         message:
           type: string
 
+    RecipeTrashItemDto:
+      type: object
+      required: [id, deletedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: [string, 'null'] }
+        imageUrl: { type: [string, 'null'] }
+        deletedAt: { type: string, format: date-time }
+        deletedBy: { type: [string, 'null'], format: uuid }
+
+    RecipeTrashListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/RecipeTrashItemDto' }
+
 paths:
   /api/stream:
     get:
@@ -1080,11 +1099,58 @@ paths:
                 properties:
                   data: { type: object }
     delete:
-      summary: Delete a recipe
+      summary: Soft-delete a recipe (returns updated recipe with deletedAt set)
       security: [{ FamilyMemberId: [] }]
       responses:
-        '204':
-          description: Deleted
+        '200':
+          description: Soft-deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+        '409':
+          description: Recipe is assigned to an active planner slot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [errorCode, message, assignedDays]
+                properties:
+                  errorCode: { type: string, enum: [RECIPE_ASSIGNED_TO_PLANNER] }
+                  message: { type: string }
+                  assignedDays:
+                    type: array
+                    items: { type: string, format: date }
+
+  /api/recipes/trash:
+    get:
+      summary: List soft-deleted recipes (Recycle Bin)
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/RecipeTrashListResponse' }
+
+  /api/recipes/{id}/restore:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Restore a soft-deleted recipe
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
 
   /api/recipes/{recipeId}/original/{photoIndex}:
     parameters:

@@ -21,11 +21,15 @@ import {
   type OriginalRequestBuilder,
 } from './original/index';
 // @ts-ignore
+import { RestoreRequestBuilderRequestsMetadata, type RestoreRequestBuilder } from './restore/index';
+// @ts-ignore
 import { StatusRequestBuilderRequestsMetadata, type StatusRequestBuilder } from './status/index';
 // @ts-ignore
 import {
   type AdditionalDataHolder,
+  type ApiError,
   type BaseRequestBuilder,
+  type DateOnly,
   type KeysToExcludeForNavigationMetadata,
   type NavigationMetadata,
   type Parsable,
@@ -60,6 +64,17 @@ export function createPatchResponseFromDiscriminatorValue(
   return deserializeIntoPatchResponse;
 }
 /**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeDetailResponse409Error}
+ */
+// @ts-ignore
+export function createRecipeDetailResponse409ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeDetailResponse409Error;
+}
+/**
  * The deserialization information for the current model
  * @param PatchResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
@@ -88,6 +103,30 @@ export function deserializeIntoPatchResponse_data(
   return {};
 }
 /**
+ * The deserialization information for the current model
+ * @param RecipeDetailResponse409Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeDetailResponse409Error(
+  recipeDetailResponse409Error: Partial<RecipeDetailResponse409Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    assignedDays: (n) => {
+      recipeDetailResponse409Error.assignedDays = n.getCollectionOfPrimitiveValues<DateOnly>();
+    },
+    errorCode: (n) => {
+      recipeDetailResponse409Error.errorCode =
+        n.getEnumValue<RecipeDetailResponse409Error_errorCode>(
+          RecipeDetailResponse409Error_errorCodeObject
+        );
+    },
+    message: (n) => {
+      recipeDetailResponse409Error.messageEscaped = n.getStringValue();
+    },
+  };
+}
+/**
  * Builds and executes requests for operations under /api/recipes/{-id}
  */
 export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilder> {
@@ -104,14 +143,22 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    */
   get original(): OriginalRequestBuilder;
   /**
+   * The restore property
+   */
+  get restore(): RestoreRequestBuilder;
+  /**
    * The status property
    */
   get status(): StatusRequestBuilder;
   /**
-   * Delete a recipe
+   * Soft-delete a recipe (returns updated recipe with deletedAt set)
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+   * @returns {Promise<RecipeDetailResponse>}
+   * @throws {RecipeDetailResponse409Error} error when the service returns a 409 status code
    */
-  delete(requestConfiguration?: RequestConfiguration<object> | undefined): Promise<void>;
+  delete(
+    requestConfiguration?: RequestConfiguration<object> | undefined
+  ): Promise<RecipeDetailResponse | undefined>;
   /**
    * Get recipe detail
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -131,7 +178,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<PatchResponse | undefined>;
   /**
-   * Delete a recipe
+   * Soft-delete a recipe (returns updated recipe with deletedAt set)
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -164,6 +211,22 @@ export interface PatchResponse extends AdditionalDataHolder, Parsable {
   data?: PatchResponse_data | null;
 }
 export interface PatchResponse_data extends AdditionalDataHolder, Parsable {}
+export interface RecipeDetailResponse409Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The assignedDays property
+   */
+  assignedDays?: DateOnly[] | null;
+  /**
+   * The errorCode property
+   */
+  errorCode?: RecipeDetailResponse409Error_errorCode | null;
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+}
+export type RecipeDetailResponse409Error_errorCode =
+  (typeof RecipeDetailResponse409Error_errorCodeObject)[keyof typeof RecipeDetailResponse409Error_errorCodeObject];
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
@@ -204,6 +267,32 @@ export function serializePatchResponse_data(
   writer.writeAdditionalData(patchResponse_data.additionalData);
 }
 /**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeDetailResponse409Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeDetailResponse409Error(
+  writer: SerializationWriter,
+  recipeDetailResponse409Error: Partial<RecipeDetailResponse409Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeDetailResponse409Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfPrimitiveValues<DateOnly>(
+    'assignedDays',
+    recipeDetailResponse409Error.assignedDays
+  );
+  writer.writeEnumValue<RecipeDetailResponse409Error_errorCode>(
+    'errorCode',
+    recipeDetailResponse409Error.errorCode
+  );
+  writer.writeStringValue('message', recipeDetailResponse409Error.messageEscaped);
+  writer.writeAdditionalData(recipeDetailResponse409Error.additionalData);
+}
+/**
  * Uri template for the request builder.
  */
 export const ItemRequestBuilderUriTemplate = '{+baseurl}/api/recipes/{%2Did}';
@@ -223,6 +312,9 @@ export const ItemRequestBuilderNavigationMetadata: Record<
   original: {
     navigationMetadata: OriginalRequestBuilderNavigationMetadata,
   },
+  restore: {
+    requestsMetadata: RestoreRequestBuilderRequestsMetadata,
+  },
   status: {
     requestsMetadata: StatusRequestBuilderRequestsMetadata,
   },
@@ -233,7 +325,12 @@ export const ItemRequestBuilderNavigationMetadata: Record<
 export const ItemRequestBuilderRequestsMetadata: RequestsMetadata = {
   delete: {
     uriTemplate: ItemRequestBuilderUriTemplate,
-    adapterMethodName: 'sendNoResponseContent',
+    responseBodyContentType: 'application/json',
+    errorMappings: {
+      409: createRecipeDetailResponse409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
+    adapterMethodName: 'send',
+    responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
   },
   get: {
     uriTemplate: ItemRequestBuilderUriTemplate,
@@ -251,5 +348,8 @@ export const ItemRequestBuilderRequestsMetadata: RequestsMetadata = {
     requestInformationContentSetMethod: 'setContentFromParsable',
   },
 };
+export const RecipeDetailResponse409Error_errorCodeObject = {
+  RECIPE_ASSIGNED_TO_PLANNER: 'RECIPE_ASSIGNED_TO_PLANNER',
+} as const;
 /* tslint:enable */
 /* eslint-enable */

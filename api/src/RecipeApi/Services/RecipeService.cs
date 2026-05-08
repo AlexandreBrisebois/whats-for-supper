@@ -405,6 +405,94 @@ public class RecipeService(
         db.Recipes.Remove(recipe);
         await db.SaveChangesAsync();
     }
+
+    /// <summary>
+    /// Soft-deletes a recipe. Returns the updated recipe with DeletedAt set.
+    /// Throws <see cref="InvalidOperationException"/> if the recipe is assigned to a planner slot.
+    /// </summary>
+    public async Task<(RecipeDetailResponseDto Recipe, List<string> AssignedDays)> SoftDeleteRecipe(Guid id, Guid deletedBy)
+    {
+        var recipe = await db.Recipes.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var assignedDates = await db.CalendarEvents
+            .Where(e => e.RecipeId == id && e.Date >= today)
+            .Select(e => e.Date.ToString("yyyy-MM-dd"))
+            .ToListAsync();
+
+        if (assignedDates.Count > 0)
+            return (null!, assignedDates);
+
+        recipe.DeletedAt = DateTimeOffset.UtcNow;
+        recipe.DeletedBy = deletedBy;
+        await db.SaveChangesAsync();
+
+        return (MapToDetailResponse(recipe), []);
+    }
+
+    /// <summary>Returns all soft-deleted recipes for the Recycle Bin.</summary>
+    public async Task<List<RecipeTrashItemDto>> GetTrash()
+    {
+        return await db.Recipes
+            .Where(r => r.DeletedAt != null)
+            .OrderByDescending(r => r.DeletedAt)
+            .Select(r => new RecipeTrashItemDto
+            {
+                Id = r.Id,
+                Name = r.Name,
+                ImageUrl = $"/api/recipes/{r.Id}/hero",
+                DeletedAt = r.DeletedAt!.Value,
+                DeletedBy = r.DeletedBy
+            })
+            .ToListAsync();
+    }
+
+    /// <summary>Restores a soft-deleted recipe and re-includes it in all active surfaces.</summary>
+    public async Task<RecipeDetailResponseDto> RestoreRecipe(Guid id)
+    {
+        var recipe = await db.Recipes.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        recipe.DeletedAt = null;
+        recipe.DeletedBy = null;
+        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        await searchIndex.EnqueueAsync(id);
+
+        return MapToDetailResponse(recipe);
+    }
+
+    private RecipeDetailResponseDto MapToDetailResponse(Recipe recipe) =>
+        new()
+        {
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Recipe = new RecipeDto
+            {
+                Id = recipe.Id,
+                Rating = (int)recipe.Rating,
+                Notes = recipe.Notes,
+                AddedBy = recipe.AddedBy,
+                Name = recipe.Name,
+                TotalTime = recipe.TotalTime,
+                SourceUrl = recipe.SourceUrl,
+                Description = recipe.Description,
+                Category = recipe.Category,
+                DietaryProfile = DeserializeDietaryProfile(recipe.DietaryProfile),
+                Difficulty = recipe.Difficulty,
+                ImageUrl = $"/api/recipes/{recipe.Id}/hero",
+                Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
+                Ingredients = DeserializeIngredients(recipe.Ingredients),
+                RecipeInstructions = ExtractRecipeInstructions(recipe.RawMetadata),
+                IsVegetarian = recipe.IsVegetarian,
+                IsHealthyChoice = recipe.IsHealthyChoice,
+                IsDiscoverable = recipe.IsDiscoverable,
+                CreatedAt = recipe.CreatedAt,
+                DeletedAt = recipe.DeletedAt
+            }
+        };
+
     /// <summary>
     /// Deserializes the ingredients JSON column, tolerating both string arrays
     /// (["flour", "eggs"]) and object arrays ([{"name":"flour",...}]) from legacy data.

@@ -23,4 +23,7 @@ export const MOCK_IDS = {
 
   // Inventory captures (Task 13)
   INVENTORY_CAPTURE: '770e8400-e29b-41d4-a716-446655440030',
+
+  // Recycle Bin (Task 14)
+  RECIPE_IN_TRASH: '660e8400-e29b-41d4-a716-446655440025',
 };

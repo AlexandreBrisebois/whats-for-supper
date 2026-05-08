@@ -40,6 +40,8 @@ import {
 // @ts-ignore
 import { SearchRequestBuilderRequestsMetadata, type SearchRequestBuilder } from './search/index';
 // @ts-ignore
+import { TrashRequestBuilderRequestsMetadata, type TrashRequestBuilder } from './trash/index';
+// @ts-ignore
 import {
   MultipartBody,
   serializeMultipartBody,
@@ -151,6 +153,10 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * The search property
    */
   get search(): SearchRequestBuilder;
+  /**
+   * The trash property
+   */
+  get trash(): TrashRequestBuilder;
   /**
    * Gets an item from the ApiSdk.api.recipes.item collection
    * @param id Unique identifier of the item
@@ -274,6 +280,9 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
   },
   search: {
     requestsMetadata: SearchRequestBuilderRequestsMetadata,
+  },
+  trash: {
+    requestsMetadata: TrashRequestBuilderRequestsMetadata,
   },
 };
 /**

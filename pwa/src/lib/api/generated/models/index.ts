@@ -438,6 +438,28 @@ export function createRecipeStatusDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeTrashItemDto}
+ */
+// @ts-ignore
+export function createRecipeTrashItemDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeTrashItemDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeTrashListResponse}
+ */
+// @ts-ignore
+export function createRecipeTrashListResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeTrashListResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ReclassifyIngredientRequest}
  */
 // @ts-ignore
@@ -1215,6 +1237,9 @@ export function deserializeIntoRecipeDto(
     createdAt: (n) => {
       recipeDto.createdAt = n.getDateValue();
     },
+    deletedAt: (n) => {
+      recipeDto.deletedAt = n.getDateValue();
+    },
     description: (n) => {
       recipeDto.description = n.getStringValue();
     },
@@ -1611,6 +1636,50 @@ export function deserializeIntoRecipeStatusDto(
     },
     status: (n) => {
       recipeStatusDto.status = n.getEnumValue<RecipeStatusDto_status>(RecipeStatusDto_statusObject);
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeTrashItemDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeTrashItemDto(
+  recipeTrashItemDto: Partial<RecipeTrashItemDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    deletedAt: (n) => {
+      recipeTrashItemDto.deletedAt = n.getDateValue();
+    },
+    deletedBy: (n) => {
+      recipeTrashItemDto.deletedBy = n.getGuidValue();
+    },
+    id: (n) => {
+      recipeTrashItemDto.id = n.getGuidValue();
+    },
+    imageUrl: (n) => {
+      recipeTrashItemDto.imageUrl = n.getStringValue();
+    },
+    name: (n) => {
+      recipeTrashItemDto.name = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeTrashListResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeTrashListResponse(
+  recipeTrashListResponse: Partial<RecipeTrashListResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    items: (n) => {
+      recipeTrashListResponse.items = n.getCollectionOfObjectValues<RecipeTrashItemDto>(
+        createRecipeTrashItemDtoFromDiscriminatorValue
+      );
     },
   };
 }
@@ -2493,6 +2562,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   createdAt?: Date | null;
   /**
+   * The deletedAt property
+   */
+  deletedAt?: Date | null;
+  /**
    * The description property
    */
   description?: string | null;
@@ -2773,6 +2846,34 @@ export interface RecipeStatusDto extends AdditionalDataHolder, Parsable {
 }
 export type RecipeStatusDto_status =
   (typeof RecipeStatusDto_statusObject)[keyof typeof RecipeStatusDto_statusObject];
+export interface RecipeTrashItemDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The deletedAt property
+   */
+  deletedAt?: Date | null;
+  /**
+   * The deletedBy property
+   */
+  deletedBy?: Guid | null;
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+  /**
+   * The imageUrl property
+   */
+  imageUrl?: string | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+}
+export interface RecipeTrashListResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The items property
+   */
+  items?: RecipeTrashItemDto[] | null;
+}
 export interface ReclassifyIngredientRequest extends AdditionalDataHolder, Parsable {
   /**
    * The grocerySection property
@@ -3354,6 +3455,7 @@ export function serializeRecipeDto(
   writer.writeGuidValue('addedBy', recipeDto.addedBy);
   writer.writeStringValue('category', recipeDto.category);
   writer.writeDateValue('createdAt', recipeDto.createdAt);
+  writer.writeDateValue('deletedAt', recipeDto.deletedAt);
   writer.writeStringValue('description', recipeDto.description);
   writer.writeObjectValue<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>(
     'dietaryProfile',
@@ -3706,6 +3808,50 @@ export function serializeRecipeStatusDto(
   writer.writeStringValue('name', recipeStatusDto.name);
   writer.writeEnumValue<RecipeStatusDto_status>('status', recipeStatusDto.status);
   writer.writeAdditionalData(recipeStatusDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeTrashItemDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeTrashItemDto(
+  writer: SerializationWriter,
+  recipeTrashItemDto: Partial<RecipeTrashItemDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeTrashItemDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeDateValue('deletedAt', recipeTrashItemDto.deletedAt);
+  writer.writeGuidValue('deletedBy', recipeTrashItemDto.deletedBy);
+  writer.writeGuidValue('id', recipeTrashItemDto.id);
+  writer.writeStringValue('imageUrl', recipeTrashItemDto.imageUrl);
+  writer.writeStringValue('name', recipeTrashItemDto.name);
+  writer.writeAdditionalData(recipeTrashItemDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeTrashListResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeTrashListResponse(
+  writer: SerializationWriter,
+  recipeTrashListResponse: Partial<RecipeTrashListResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeTrashListResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<RecipeTrashItemDto>(
+    'items',
+    recipeTrashListResponse.items,
+    serializeRecipeTrashItemDto
+  );
+  writer.writeAdditionalData(recipeTrashListResponse.additionalData);
 }
 /**
  * Serializes information the current object

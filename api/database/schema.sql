@@ -38,6 +38,9 @@ CREATE TABLE recipes (
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
     last_cooked_date timestamptz,
+    deleted_at timestamptz null,
+    deleted_by uuid null,
+    delete_note text null,
     CONSTRAINT recipes_rating_check CHECK (rating >= 0 AND rating <= 3)
 );
 

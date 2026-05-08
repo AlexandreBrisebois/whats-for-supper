@@ -921,7 +921,7 @@ await page.route('**/api/recipes/*/restore', async (route) => {
 - All existing E2E tests still pass with the updated mock.
 - `task review` passes.
 
-- [ ] Task 14 complete
+- [x] Task 14 complete
 
 ---
 

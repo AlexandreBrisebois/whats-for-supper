@@ -235,11 +235,53 @@ public class RecipeController(
         return File(stream, contentType);
     }
 
-    /// <summary>DELETE /api/recipes/{id} — delete a recipe and its associated files.</summary>
+    /// <summary>DELETE /api/recipes/{id} — soft-delete a recipe (sets deleted_at). Returns 409 if in an active planner slot.</summary>
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(
+        Guid id,
+        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId)
     {
-        await recipeService.DeleteRecipe(id);
-        return NoContent();
+        try
+        {
+            var deletedBy = familyMemberId ?? Guid.Empty;
+            var (result, assignedDays) = await recipeService.SoftDeleteRecipe(id, deletedBy);
+
+            if (assignedDays.Count > 0)
+                return Conflict(new
+                {
+                    errorCode = "RECIPE_ASSIGNED_TO_PLANNER",
+                    message = $"This recipe is scheduled for {assignedDays[0]}. Remove it from the planner first.",
+                    assignedDays
+                });
+
+            return Ok(new { data = result.Recipe });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>GET /api/recipes/trash — list soft-deleted recipes (Recycle Bin).</summary>
+    [HttpGet("trash")]
+    public async Task<IActionResult> GetTrash()
+    {
+        var items = await recipeService.GetTrash();
+        return Ok(new { data = new { items } });
+    }
+
+    /// <summary>POST /api/recipes/{id}/restore — restore a soft-deleted recipe.</summary>
+    [HttpPost("{id:guid}/restore")]
+    public async Task<IActionResult> Restore(Guid id)
+    {
+        try
+        {
+            var result = await recipeService.RestoreRecipe(id);
+            return Ok(new { data = result.Recipe });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }

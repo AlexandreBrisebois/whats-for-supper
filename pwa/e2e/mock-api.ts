@@ -412,7 +412,18 @@ export async function setupCommonRoutes(page: Page) {
   // GET /api/recipes/{id}, PATCH /api/recipes/{id}, DELETE /api/recipes/{id}
   await page.route('**/api/recipes/*', async (route) => {
     if (route.request().method() === 'DELETE') {
-      await route.fulfill({ status: 204 });
+      const id =
+        route
+          .request()
+          .url()
+          .match(/\/recipes\/([0-9a-f-]+)$/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: builders.recipe({ id, deletedAt: new Date() }),
+        }),
+      });
     } else if (route.request().method() === 'PATCH') {
       await route.fulfill({
         status: 200,
@@ -426,6 +437,24 @@ export async function setupCommonRoutes(page: Page) {
         body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
       });
     }
+  });
+
+  // GET /api/recipes/trash — registered AFTER the wildcard so LIFO gives it priority
+  await page.route('**/api/recipes/trash', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { items: [] } }),
+    });
+  });
+
+  // POST /api/recipes/*/restore — registered AFTER the wildcard so LIFO gives it priority
+  await page.route('**/api/recipes/*/restore', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: builders.recipe() }),
+    });
   });
 
   // POST /api/recipes/capture-url — registered AFTER the wildcard so LIFO gives it priority

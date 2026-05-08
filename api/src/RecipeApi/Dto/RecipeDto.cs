@@ -61,4 +61,7 @@ public class RecipeDto
 
     [JsonPropertyName("createdAt")]
     public required DateTimeOffset CreatedAt { get; set; }
+
+    [JsonPropertyName("deletedAt")]
+    public DateTimeOffset? DeletedAt { get; set; }
 }
