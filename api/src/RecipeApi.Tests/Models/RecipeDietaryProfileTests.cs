@@ -41,6 +41,7 @@ public class RecipeDietaryProfileTests
 
         // Assert
         Assert.NotNull(deserialized);
+        Assert.NotNull(deserialized.FopFlags);
         Assert.Equal(original.PrimaryFoodGroup, deserialized.PrimaryFoodGroup);
         Assert.Equal(original.SecondaryFoodGroups, deserialized.SecondaryFoodGroups);
         Assert.Equal(original.ProteinSource, deserialized.ProteinSource);
@@ -50,8 +51,7 @@ public class RecipeDietaryProfileTests
         Assert.Equal(original.WholeGrainConfident, deserialized.WholeGrainConfident);
         Assert.Equal(original.Confidence, deserialized.Confidence);
         Assert.Equal(original.Source, deserialized.Source);
-        Assert.NotNull(deserialized.FopFlags);
-        Assert.Equal(original.FopFlags.HighInSaturatedFat, deserialized.FopFlags.HighInSaturatedFat);
+        Assert.Equal(original.FopFlags!.HighInSaturatedFat, deserialized.FopFlags.HighInSaturatedFat);
         Assert.Equal(original.FopFlags.HighInSugars, deserialized.FopFlags.HighInSugars);
         Assert.Equal(original.FopFlags.HighInSodium, deserialized.FopFlags.HighInSodium);
     }

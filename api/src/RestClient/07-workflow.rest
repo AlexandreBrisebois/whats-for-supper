@@ -1,34 +1,10 @@
 @workflowId = classify-recipe
 @recipeImportWorkflowId = classify-recipe
 
-@recipeId = 2a801596-60e6-463d-90fc-28547537133e
-#@recipeId = 0384639a-96e2-48d9-89fe-c30d55e06c98
-#@recipeId = 06726f44-ff99-4d62-a4b8-20ef165476f5
-#@recipeId = 0732fd95-15ab-4ac2-8f68-3f42e811d6f0
-#@recipeId = 221fda72-e196-4b75-b19c-fdd44ccc8239
-#@recipeId = 2740ef1c-6fb0-4d23-823f-af46c2f2e8fe
-#@recipeId = 34d722e1-5ae1-4ff2-b9c2-37aa0cdbb481
-#@recipeId = 388ea661-5155-4d03-b4db-6dc4f3196766
-#@recipeId = 3a8e06c9-8ceb-4391-b89c-eb4969382f06
-#@recipeId = 4ef7ea47-7ffd-44da-899c-3ac36b8aea77
-#@recipeId = 5dd5df7e-833d-41b5-8756-0dceeee7482b
-#@recipeId = 5df6b7da-4537-4b06-bae6-e8278ce2d1a9
-#@recipeId = 6ecf33c0-b6b9-4277-b740-7d302314e496
-#@recipeId = 85d9b017-d0aa-4d58-8a1c-c2f42e4b684e
-#@recipeId = 8c9f976a-e0a3-41c9-8527-a9a5722236a2
-#@recipeId = 8ce8068c-41e5-4a7d-a427-2095853e7bb4
-#@recipeId = 92a42910-4429-4335-a422-ea2c79801fdf
-#@recipeId = 9cfeac13-8102-41fe-aecd-6313c00eae79
-#@recipeId = a6f67f9b-4cc2-4282-a9d0-ce90bc18bead
-#@recipeId = b484b8e2-5a10-43a4-a260-9c054ba6947d
-#@recipeId = bbf32558-54df-487a-9092-c911d63d2e0a
-#@recipeId = df0aa48c-3253-43e7-b642-f919cd1ae376
-#@recipeId = e2b2e759-913e-4925-bfcf-e34cac913f5a
-#@recipeId = f4d4d64e-7d1e-4974-ac65-ef95a71acf48
+@recipeId = 7d4c50f3-a3b9-412d-8e8b-940809b9553e
 #@recipeId = 9b683c7b-9ba7-4fd6-ae8b-b95eee02b689
-#@recipeId = 7d4c50f3-a3b9-412d-8e8b-940809b9553e
 #@recipeId = e6fdbb5a-ae0b-429a-8e99-e23122b52e4f
-#@recipeId = 4fb4626e-18d7-493d-930a-177ede01fb3d
+#@recipeId = 3fe040b3-29e8-4e26-90b6-1401c0bf3d03
 
 @instanceId = 207241a0-55c3-4374-a5c0-61fb40a5355b
 @taskId = 5042beb0-19d8-46ce-abc4-a8c85dae2ef5

@@ -1,6 +1,6 @@
 'use client';
 
-import { Utensils, Ban, Sparkles, ChevronRight, Clock } from 'lucide-react';
+import { Utensils, ArrowRightLeft, Sparkles, ChevronRight, Clock } from 'lucide-react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -56,7 +56,7 @@ export function TonightMenuCard({
 
   return (
     <div
-      className="relative aspect-[4/5] w-full perspective-1000 group"
+      className="relative w-full min-h-[28rem] h-[clamp(28rem,64vh,38rem)] perspective-1000 group sm:aspect-[4/5] sm:h-auto sm:min-h-0"
       data-testid="tonight-menu-card"
     >
       <motion.div
@@ -118,14 +118,9 @@ export function TonightMenuCard({
         {/* Back of Card (Glassmorphism) */}
         <div
           className={cn(
-            'absolute inset-0 rounded-[3rem] rotate-y-180 backface-hidden border-2 border-white/40 overflow-hidden flex flex-col shadow-2xl',
+            'absolute inset-0 rounded-[3rem] rotate-y-180 backface-hidden border-2 border-white/40 overflow-hidden flex flex-col shadow-2xl bg-white/40 backdrop-blur-[24px]',
             !isFlipped ? 'pointer-events-none' : ''
           )}
-          style={{
-            background: 'rgba(255, 255, 255, 0.4)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-          }}
         >
           <div className="flex-1 overflow-y-auto scrollbar-none p-8 flex flex-col">
             <div className="flex items-center justify-between mb-8">
@@ -174,9 +169,9 @@ export function TonightMenuCard({
                   className="flex items-center justify-center gap-2 h-14 rounded-[1.5rem] bg-[#CD5D45] text-white shadow-lg shadow-terracotta/20 transition-all active:scale-95 hover:brightness-110"
                   data-testid="skip-tonight-btn"
                 >
-                  <Ban size={18} />
+                  <ArrowRightLeft size={18} />
                   <span className="text-[10px] font-black uppercase tracking-widest">
-                    {t('home.skip', 'Skip')}
+                    {t('home.changePlan', 'Change Plan')}
                   </span>
                 </button>
                 <button

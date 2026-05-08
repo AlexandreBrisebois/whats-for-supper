@@ -125,7 +125,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     try {
       const response = await apiClient.api.settings.byKey(key).get();
       // SettingsDto_value is an AdditionalDataHolder — raw fields live in additionalData
-      const value = response?.data?.value?.additionalData ?? null;
+      const value = response?.data?.value?.additionalData ?? response?.data?.value ?? null;
       set((state) => ({
         familySettings: { ...state.familySettings, [key]: value },
       }));

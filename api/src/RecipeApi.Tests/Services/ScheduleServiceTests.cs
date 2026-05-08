@@ -153,6 +153,126 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Should_Preserve_OrderedIn_Source_When_Pushing_Skipped_Recipe_To_Tomorrow()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "R1" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = monday,
+            Status = CalendarEventStatus.Skipped,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "push"));
+
+        // Assert: source day stays ordered-in, tomorrow gets the planned recipe
+        var todayEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday);
+        var tomorrowEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday.AddDays(1));
+
+        Assert.NotNull(todayEvent);
+        Assert.Equal(CalendarEventStatus.Skipped, todayEvent!.Status);
+        Assert.Null(todayEvent.RecipeId);
+
+        Assert.NotNull(tomorrowEvent);
+        Assert.Equal(recipeId, tomorrowEvent!.RecipeId);
+        Assert.Equal(CalendarEventStatus.Planned, tomorrowEvent.Status);
+    }
+
+    [Fact]
+    public async Task Should_Preserve_OrderedIn_Source_After_Validating_Planned_Event_Then_Pushing_To_Tomorrow()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "R1" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = monday,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act: mirror the live flow used by Home recovery
+        await _service.ValidateDayAsync(monday.ToString("yyyy-MM-dd"), new ValidationDto(3));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "push"));
+
+        // Assert: source day stays ordered-in, tomorrow gets the planned recipe
+        var todayEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday);
+        var tomorrowEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday.AddDays(1));
+
+        Assert.NotNull(todayEvent);
+        Assert.Equal(CalendarEventStatus.Skipped, todayEvent!.Status);
+        Assert.Null(todayEvent.RecipeId);
+
+        Assert.NotNull(tomorrowEvent);
+        Assert.Equal(recipeId, tomorrowEvent!.RecipeId);
+        Assert.Equal(CalendarEventStatus.Planned, tomorrowEvent.Status);
+    }
+
+    [Fact]
+    public async Task Should_Move_The_Explicit_Source_Slot_When_Recipe_Appears_Multiple_Times()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var otherRecipeId = Guid.NewGuid();
+        _db.Recipes.AddRange(
+            new Recipe { Id = recipeId, Name = "Repeated Recipe" },
+            new Recipe { Id = otherRecipeId, Name = "Other Recipe" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = recipeId,
+                Date = monday,
+                Status = CalendarEventStatus.Planned,
+            },
+            new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = otherRecipeId,
+                Date = monday.AddDays(1),
+                Status = CalendarEventStatus.Planned,
+            },
+            new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = recipeId,
+                Date = monday.AddDays(3),
+                Status = CalendarEventStatus.Planned,
+            });
+        await _db.SaveChangesAsync();
+
+        // Act: move the recipe from Thursday to Friday, not the matching Monday slot.
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 4, "push", null, 3));
+
+        // Assert
+        Assert.NotNull(_db.CalendarEvents.FirstOrDefault(e => e.Date == monday && e.RecipeId == recipeId));
+        Assert.Null(_db.CalendarEvents.FirstOrDefault(e => e.Date == monday.AddDays(3)));
+        Assert.NotNull(_db.CalendarEvents.FirstOrDefault(e => e.Date == monday.AddDays(4) && e.RecipeId == recipeId));
+    }
+
+    [Fact]
     public async Task Should_Publish_EchoSeq_When_Move_Is_Confirmed()
     {
         // Arrange

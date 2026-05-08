@@ -63,38 +63,42 @@ export function RecipeFailureBanner() {
               exit={{ opacity: 0, y: 10 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
-              <button
-                onClick={handleTap}
-                data-testid={`recipe-failure-banner-${notification.recipeId}`}
-                className="relative flex items-center gap-3 w-full rounded-2xl bg-terracotta/10 border border-terracotta/30 overflow-hidden text-left active:scale-[0.98] transition-transform"
-                style={{ borderLeft: '4px solid var(--color-terracotta, #c4704f)' }}
-                aria-label={`Recipe couldn't be saved — ${recipeName}. Tap to try again.`}
-              >
-                {/* Icon */}
-                <div className="flex-shrink-0 ml-3 my-3">
-                  <div className="h-8 w-8 rounded-full bg-terracotta/15 flex items-center justify-center text-terracotta/70">
-                    <AlertCircle size={16} />
-                  </div>
-                </div>
-
-                {/* Text */}
-                <div className="flex-1 min-w-0 py-3">
-                  <p className="text-sm text-charcoal leading-snug">
-                    Recipe couldn&apos;t be saved — <span className="font-bold">{recipeName}</span>.{' '}
-                    <span className="text-terracotta/80 font-medium">Tap to try again.</span>
-                  </p>
-                </div>
-
-                {/* Dismiss */}
+              <div className="relative w-full overflow-hidden rounded-2xl border border-terracotta/30 border-l-4 border-l-terracotta bg-terracotta/10">
                 <button
-                  onClick={handleDismiss}
-                  aria-label="Dismiss failure notification"
-                  data-testid={`recipe-failure-dismiss-${notification.recipeId}`}
-                  className="flex-shrink-0 mr-3 p-1.5 rounded-full text-charcoal/40 hover:text-charcoal/70 hover:bg-charcoal/5 transition-colors"
+                  type="button"
+                  onClick={handleTap}
+                  data-testid={`recipe-failure-banner-${notification.recipeId}`}
+                  className="flex w-full items-center gap-3 pr-12 text-left active:scale-[0.98] transition-transform"
+                  aria-label={`Recipe couldn't be saved — ${recipeName}. Tap to try again.`}
                 >
-                  <X size={14} />
+                  {/* Icon */}
+                  <div className="flex-shrink-0 ml-3 my-3">
+                    <div className="h-8 w-8 rounded-full bg-terracotta/15 flex items-center justify-center text-terracotta/70">
+                      <AlertCircle size={16} />
+                    </div>
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 min-w-0 py-3">
+                    <p className="text-sm text-charcoal leading-snug">
+                      Recipe couldn&apos;t be saved —{' '}
+                      <span className="font-bold">{recipeName}</span>.{' '}
+                      <span className="text-terracotta/80 font-medium">Tap to try again.</span>
+                    </p>
+                  </div>
+
+                  {/* Dismiss */}
+                  <button
+                    type="button"
+                    onClick={handleDismiss}
+                    aria-label="Dismiss failure notification"
+                    data-testid={`recipe-failure-dismiss-${notification.recipeId}`}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
+                  >
+                    <X size={14} />
+                  </button>
                 </button>
-              </button>
+              </div>
             </motion.div>
           );
         })}

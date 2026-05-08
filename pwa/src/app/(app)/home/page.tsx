@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 import { HomeCommandCenter } from '@/components/home/HomeCommandCenter';
 import type { ScheduleDays } from '@/lib/api/generated/models';
-import { isScheduleRecipe } from '@/lib/api/planner';
+import { normalizeScheduleRecipe } from '@/lib/api/planner';
 
 /**
  * HomePage is now a Server Component.
@@ -36,7 +36,7 @@ export default async function HomePage() {
   const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
   const isDone = todaysEntry?.status === 2 || todaysEntry?.status === 3;
   const rawRecipe = isDone ? null : todaysEntry?.recipe;
-  const todaysRecipe = isScheduleRecipe(rawRecipe) ? rawRecipe : null;
+  const todaysRecipe = normalizeScheduleRecipe(rawRecipe);
 
   const todayStatus: 0 | 2 | 3 = todaysEntry?.status === 2 ? 2 : todaysEntry?.status === 3 ? 3 : 0;
 

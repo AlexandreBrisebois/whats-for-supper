@@ -97,8 +97,62 @@ test.describe('Capture Flow', () => {
     await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
   });
 
+  test('large photo uploads show immediate upload feedback and a delayed overlay', async ({
+    page,
+  }) => {
+    await page.route('**/api/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await route.fulfill({
+          status: 202,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], total: 0 }),
+      });
+    });
+
+    await page.goto('/capture');
+
+    const fileInput = page.locator('input[type="file"]').first();
+    await fileInput.setInputFiles(FIXTURE_IMAGE);
+
+    await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await page.getByRole('button', { name: /save recipe/i }).click();
+
+    await expect(page.getByRole('button', { name: /uploading photos/i })).toBeDisabled();
+    await expect(page.getByText(/large photos can take a few seconds/i)).toBeVisible();
+    await expect(page.getByTestId('capture-photo-upload-overlay')).toBeVisible();
+    await expect(page.getByText(/please keep this screen open while we send them/i)).toBeVisible();
+
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
+  });
+
   test('after successful capture, user can return to home', async ({ page }) => {
     await page.goto('/home');
+    await expect(
+      page.getByTestId('tonight-menu-card').or(page.getByTestId('tonight-pivot-card'))
+    ).toBeVisible();
+  });
+
+  test('capture cancel button returns the user home', async ({ page }) => {
+    await page.goto('/capture');
+
+    await expect(page.getByTestId('capture-cancel-btn')).toBeVisible();
+    await page.getByTestId('capture-cancel-btn').click();
+
+    await expect(page).toHaveURL(/\/home/);
     await expect(
       page.getByTestId('tonight-menu-card').or(page.getByTestId('tonight-pivot-card'))
     ).toBeVisible();
@@ -714,6 +768,33 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await expect(page.locator('[role="status"]').filter({ hasText: /is ready/i })).toBeVisible();
   });
 
+  test('LibraryToast drawer actions let the user add a recipe to this week', async ({ page }) => {
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const recipeName = 'Test Lasagna';
+
+    await page.goto('/home');
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
+
+    await page.evaluate(
+      ({ id, name }) => {
+        (window as any).__libraryStore.getState().pushNotification({
+          recipeId: id,
+          name,
+          type: 'ready',
+        });
+      },
+      { id: recipeId, name: recipeName }
+    );
+
+    await expect(page.locator('[role="status"]').filter({ hasText: recipeName })).toBeVisible();
+    await page.locator('[role="status"]').filter({ hasText: recipeName }).click();
+
+    await expect(page.getByTestId('library-toast-add-to-week')).toBeVisible();
+    await page.getByTestId('library-toast-add-to-week').click();
+
+    await expect(page).toHaveURL(/\/planner/);
+  });
+
   // ── RecipeFailureBanner on recipe_failed ─────────────────────────────────
   // When SSE fires `recipe_failed` for a recipe that was submitted in this
   // session, the RecipeFailureBanner appears with a retry CTA.
@@ -755,5 +836,30 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toContainText(
       /tap to try again/i
     );
+  });
+
+  test('RecipeFailureBanner dismiss action removes the failed notification', async ({ page }) => {
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const recipeName = 'Test Lasagna';
+
+    await page.goto('/home');
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
+
+    await page.evaluate(
+      ({ id, name }) => {
+        (window as any).__libraryStore.getState().pushNotification({
+          recipeId: id,
+          name,
+          type: 'failed',
+          errorMessage: 'AI extraction failed',
+          failedStep: 'recipe-extraction',
+        });
+      },
+      { id: recipeId, name: recipeName }
+    );
+
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toBeVisible();
+    await page.getByTestId(`recipe-failure-dismiss-${recipeId}`).click();
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).not.toBeVisible();
   });
 });

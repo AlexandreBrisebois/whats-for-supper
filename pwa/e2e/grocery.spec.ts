@@ -14,6 +14,7 @@ import {
   currentMonday,
   toDateStr,
   setupCommonRoutes,
+  mockSseWithConnectedSchedule,
   mockSseWithGroceryUpdated,
   mockSseWithWeekUpdate,
 } from './mock-api';
@@ -84,12 +85,22 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     }
   );
 
+  await mockSseWithConnectedSchedule(page, {
+    weekOffset: 0,
+    locked: false,
+    status: 0,
+    days,
+    groceryItems: builders.groceryItems(GROCERY_INGREDIENTS, GROCERY_SECTION_MAP),
+    groceryState: { additionalData: {} },
+  } as any);
+
   await page.goto('/planner');
   await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
 
   // Switch to the grocery tab
   await page.getByTestId('grocery-tab').click();
   await expect(page.getByTestId('grocery-checklist')).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText('Your list is empty')).not.toBeVisible();
 }
 
 test.describe('Grocery List — PATCH failure behaviour', () => {

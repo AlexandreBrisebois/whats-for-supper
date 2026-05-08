@@ -403,6 +403,15 @@ public class ManagementService(
             foreach (var @event in events)
             {
                 if (ct.IsCancellationRequested) break;
+                if (@event.RecipeId == null)
+                {
+                    var existingOrderedIn = await db.CalendarEvents.FindAsync(new object[] { @event.Id }, ct);
+                    if (existingOrderedIn == null) db.CalendarEvents.Add(@event);
+                    else db.Entry(existingOrderedIn).CurrentValues.SetValues(@event);
+                    result.CalendarEventsRestored++;
+                    continue;
+                }
+
                 // Verify recipe exists before adding event
                 var recipeExists = await db.Recipes.AnyAsync(r => r.Id == @event.RecipeId, ct);
                 if (!recipeExists)

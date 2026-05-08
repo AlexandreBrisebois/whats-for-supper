@@ -19,6 +19,7 @@ import { SolarLoader } from '../ui/SolarLoader';
 import { useFamilyStore } from '@/store/familyStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useGotoStore } from '@/store/gotoStore';
+import { useWeekStore } from '@/store/weekStore';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 
@@ -31,7 +32,7 @@ type RecoveryFlowState =
   | { kind: 'closed' }
   | { kind: 'step1' }
   | { kind: 'quick_find'; intent: 'pick_else' | null }
-  | { kind: 'step2'; intent: 'order_in'; pendingRecipe: null }
+  | { kind: 'step2'; intent: 'order_in'; pendingRecipe: any }
   | { kind: 'step2'; intent: 'pick_else'; pendingRecipe: any };
 
 export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCenterProps) {
@@ -206,17 +207,40 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         const todayDate = DateOnly.parse(todayStr);
         if (!todayDate) return;
 
+        const finalizeOrderedIn = async () => {
+          useTodayStore.getState().applyServerUpdate({ recipe: null, status: 3 });
+          useWeekStore.getState().applySlotUpdate({
+            date: todayStr,
+            recipe: null,
+            status: 3,
+          });
+          await apiClient.api.schedule.day.byDate(todayDate).validate.post({ status: 3 });
+        };
+
         if (action === 'order_in') {
-          markOrderedIn();
-          setRecoveryFlow({ kind: 'step2', intent: 'order_in', pendingRecipe: null });
-          // Do NOT close recovery dialog; let Step 2 handle rescheduling
+          if (!currentRecipe) {
+            markOrderedIn();
+            useWeekStore.getState().applySlotUpdate({
+              date: todayStr,
+              recipe: null,
+              status: 3,
+            });
+            return;
+          }
+
+          setRecoveryFlow({ kind: 'step2', intent: 'order_in', pendingRecipe: currentRecipe });
         } else if (action === 'pick_else') {
           setRecoveryFlow({ kind: 'quick_find', intent: 'pick_else' });
         } else if (action === 'tomorrow') {
+          const recipeToReassign =
+            recoveryFlow.kind === 'step2' ? recoveryFlow.pendingRecipe : null;
           const recipeId = currentRecipe?.id;
           if (!recipeId) {
             setRecoveryFlow({ kind: 'closed' });
             return;
+          }
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+            await finalizeOrderedIn();
           }
           // Reschedule tonight's meal to tomorrow
           await apiClient.api.schedule.move.post({
@@ -232,12 +256,26 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           }
 
           setRecoveryFlow({ kind: 'closed' });
+          await useWeekStore.getState().init(0);
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+            useWeekStore.getState().applySlotUpdate({
+              date: todayStr,
+              recipe: null,
+              status: 3,
+            });
+          }
           sync();
+          router.push(ROUTES.PLANNER);
         } else if (action === 'next_week') {
+          const recipeToReassign =
+            recoveryFlow.kind === 'step2' ? recoveryFlow.pendingRecipe : null;
           const recipeId = currentRecipe?.id;
           if (!recipeId) {
             setRecoveryFlow({ kind: 'closed' });
             return;
+          }
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+            await finalizeOrderedIn();
           }
           await apiClient.api.schedule.move.post({
             weekOffset: 0,
@@ -251,22 +289,44 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             assignRecipe(recoveryFlow.pendingRecipe);
           }
           setRecoveryFlow({ kind: 'closed' });
+          await useWeekStore.getState().init(0);
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+            useWeekStore.getState().applySlotUpdate({
+              date: todayStr,
+              recipe: null,
+              status: 3,
+            });
+          }
           sync();
+          router.push(ROUTES.PLANNER);
         } else if (action === 'drop') {
-          await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
-          // Reset today's slot so the user can re-plan after dropping
-          useTodayStore.getState().applyServerUpdate({ recipe: null, status: 0 });
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+            await finalizeOrderedIn();
+          } else {
+            await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
+            // Reset today's slot so the user can re-plan after dropping
+            useTodayStore.getState().applyServerUpdate({ recipe: null, status: 0 });
+          }
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
             assignRecipe(recoveryFlow.pendingRecipe);
           }
           setRecoveryFlow({ kind: 'closed' });
+          await useWeekStore.getState().init(0);
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+            useWeekStore.getState().applySlotUpdate({
+              date: todayStr,
+              recipe: null,
+              status: 3,
+            });
+          }
           sync();
+          router.push(ROUTES.PLANNER);
         }
       } catch (error) {
         console.error('Failed recovery action:', error);
       }
     },
-    [markOrderedIn, sync, recoveryFlow, assignRecipe, currentRecipe]
+    [markOrderedIn, sync, recoveryFlow, assignRecipe, currentRecipe, router]
   );
 
   const handleQuickFindSelect = async (recipe: any) => {
@@ -285,7 +345,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const recoveryStep = recoveryFlow.kind === 'step2' ? 2 : 1;
 
   return (
-    <div className="flex flex-col gap-8 pt-4 pb-12 max-w-sm mx-auto w-full px-6 sm:px-0">
+    <div className="flex flex-col gap-5 pt-3 pb-12 max-w-[27rem] mx-auto w-full px-4 sm:gap-8 sm:px-0 sm:pt-4 sm:max-w-sm">
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20" data-testid="home-loader">
           <SolarLoader label={t('home.aligningDay', 'Aligning your day...')} />
@@ -314,6 +374,11 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 if (!currentRecipe) {
                   // B5: No recipe — write status:3 unconditionally via store
                   markOrderedIn();
+                  useWeekStore.getState().applySlotUpdate({
+                    date: getTodayString(),
+                    recipe: null,
+                    status: 3,
+                  });
                 } else {
                   // B6: Recipe exists — open recovery dialog first
                   setRecoveryFlow({ kind: 'step1' });

@@ -45,7 +45,7 @@ public class GroceryRecomputeService(
         // 1. Load all CalendarEvents for the week, including Recipe.RawMetadata.
         var events = await db.CalendarEvents
             .Include(e => e.Recipe)
-            .Where(e => e.Date >= monday && e.Date <= sunday && e.RecipeId != Guid.Empty)
+            .Where(e => e.Date >= monday && e.Date <= sunday && e.RecipeId != null)
             .ToListAsync(ct);
 
         // 2. Extract supply[] from each recipe's raw_metadata.
@@ -193,7 +193,7 @@ public class GroceryRecomputeService(
             var date = monday.AddDays(i);
             var evt = await db.CalendarEvents
                 .Include(e => e.Recipe)
-                .FirstOrDefaultAsync(e => e.Date == date && e.RecipeId != Guid.Empty, ct);
+                .FirstOrDefaultAsync(e => e.Date == date && e.RecipeId != null, ct);
 
             if (evt?.Recipe?.DietaryProfile != null)
             {

@@ -10,6 +10,8 @@ using Xunit;
 using RecipeApi.Dto;
 using Moq;
 using RecipeApi.Infrastructure;
+using System.Net;
+using System.Net.Http.Json;
 
 namespace RecipeApi.Tests.Integration;
 
@@ -26,6 +28,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     private ScheduleService _service = null!;
     private DiscoveryService _discoveryService = null!;
     private Mock<IScheduleEventPublisher> _publisherMock = null!;
+    private HttpClient _client = null!;
 
     public async Task InitializeAsync()
     {
@@ -37,6 +40,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
         _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService);
         _discoveryService = new DiscoveryService(_db, _publisherMock.Object);
+        _client = _factory.CreateClient();
     }
 
     public async Task DisposeAsync()
@@ -106,6 +110,35 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AssignRecipe_ReopensSkippedCalendarEvent_WhenReplacingOrderedInSlot()
+    {
+        // Arrange: existing skipped slot with no recipe assigned yet
+        var newRecipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = newRecipeId, Name = "Changed Mind Recipe" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday);
+
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = Guid.Empty,
+            Date = monday,
+            Status = CalendarEventStatus.Skipped,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act: assign a real recipe back into that skipped slot
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, newRecipeId));
+
+        // Assert: same slot now carries the recipe and is back to Planned
+        var calendarEvent = _db.CalendarEvents.Single(e => e.Date == monday);
+        Assert.Equal(newRecipeId, calendarEvent.RecipeId);
+        Assert.Equal(CalendarEventStatus.Planned, calendarEvent.Status);
+    }
+
+    [Fact]
     public async Task ValidateDay_OrderedIn_WithNoExistingEvent_CreatesSkippedEvent()
     {
         // Arrange: no CalendarEvent for today
@@ -119,6 +152,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var calendarEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == today);
         Assert.NotNull(calendarEvent);
         Assert.Equal(CalendarEventStatus.Skipped, calendarEvent.Status);
+        Assert.Null(calendarEvent.RecipeId);
     }
 
     [Fact]
@@ -147,6 +181,116 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         Assert.NotNull(calendarEvent);
         Assert.Equal(CalendarEventStatus.Skipped, calendarEvent.Status);
         Assert.Equal(recipeId, calendarEvent.RecipeId); // original recipe preserved
+    }
+
+    [Fact]
+    public async Task OrderIn_Then_MoveToTomorrow_Through_Http_EndPoints_Succeeds()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "HTTP Flow Recipe" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = today,
+            Status = CalendarEventStatus.Planned,
+        });
+        await _db.SaveChangesAsync();
+
+        // Act: mirror the Home recovery flow through the actual HTTP endpoints
+        var validateResponse = await _client.PostAsJsonAsync($"/api/schedule/day/{today:yyyy-MM-dd}/validate", new
+        {
+            status = 3,
+        });
+        var moveResponse = await _client.PostAsJsonAsync("/api/schedule/move", new
+        {
+            weekOffset = 0,
+            recipeId,
+            toIndex = ((int)today.DayOfWeek + 6) % 7 + 1,
+            intent = "push",
+        });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, validateResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, moveResponse.StatusCode);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var assertDb = assertScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var todayEvent = assertDb.CalendarEvents.FirstOrDefault(e => e.Date == today);
+        var tomorrowEvent = assertDb.CalendarEvents.FirstOrDefault(e => e.Date == today.AddDays(1));
+
+        Assert.NotNull(todayEvent);
+        Assert.Equal(CalendarEventStatus.Skipped, todayEvent!.Status);
+        Assert.Null(todayEvent.RecipeId);
+
+        Assert.NotNull(tomorrowEvent);
+        Assert.Equal(recipeId, tomorrowEvent!.RecipeId);
+        Assert.Equal(CalendarEventStatus.Planned, tomorrowEvent.Status);
+    }
+
+    [Fact]
+    public async Task OrderIn_Then_MoveToTomorrow_Uses_FromIndex_When_Recipe_Is_Duplicated_Elsewhere()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Duplicated HTTP Flow Recipe" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = recipeId,
+                Date = today.AddDays(-1),
+                Status = CalendarEventStatus.Planned,
+            },
+            new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = recipeId,
+                Date = today,
+                Status = CalendarEventStatus.Planned,
+            });
+        await _db.SaveChangesAsync();
+
+        var todayIndex = ((int)today.DayOfWeek + 6) % 7;
+
+        // Act
+        var validateResponse = await _client.PostAsJsonAsync($"/api/schedule/day/{today:yyyy-MM-dd}/validate", new
+        {
+            status = 3,
+        });
+        var moveResponse = await _client.PostAsJsonAsync("/api/schedule/move", new
+        {
+            weekOffset = 0,
+            recipeId,
+            fromIndex = todayIndex,
+            toIndex = todayIndex + 1,
+            intent = "push",
+        });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, validateResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, moveResponse.StatusCode);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var assertDb = assertScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var previousDayEvent = assertDb.CalendarEvents.FirstOrDefault(e => e.Date == today.AddDays(-1));
+        var todayEvent = assertDb.CalendarEvents.FirstOrDefault(e => e.Date == today);
+        var tomorrowEvent = assertDb.CalendarEvents.FirstOrDefault(e => e.Date == today.AddDays(1));
+
+        Assert.NotNull(previousDayEvent);
+        Assert.Equal(recipeId, previousDayEvent!.RecipeId);
+
+        Assert.NotNull(todayEvent);
+        Assert.Equal(CalendarEventStatus.Skipped, todayEvent!.Status);
+        Assert.Null(todayEvent.RecipeId);
+
+        Assert.NotNull(tomorrowEvent);
+        Assert.Equal(recipeId, tomorrowEvent!.RecipeId);
     }
 
     // ──────────────────────────────────────────────────────────────────────────────
@@ -597,7 +741,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task AssignRecipe_PublishesSlotUpdatedAndFillTheGapEvents()
+    public async Task AssignRecipe_PublishesWeekUpdatedAndFillTheGapEvents()
     {
         // Arrange
         var recipeId = Guid.NewGuid();
@@ -608,12 +752,9 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         // Act
         await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
 
-        // Assert: slot_updated published with the recipe and Planned status
+        // Assert: week_updated published once
         _publisherMock.Verify(
-            p => p.PublishSlotUpdatedAsync(
-                It.IsAny<DateOnly>(),
-                It.Is<ScheduleRecipeDto?>(r => r != null && r.Id == recipeId),
-                (int)CalendarEventStatus.Planned),
+            p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>()),
             Times.Once);
 
         // Assert: fill_the_gap_invalidated published for weekOffset 0
@@ -671,7 +812,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RemoveRecipe_PublishesSlotUpdatedAndFillTheGapEvents()
+    public async Task RemoveRecipe_PublishesWeekUpdatedAndFillTheGapEvents()
     {
         // Arrange: create a recipe and calendar event for today
         var recipeId = Guid.NewGuid();
@@ -691,12 +832,9 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         // Act
         await _service.RemoveRecipeAsync(today);
 
-        // Assert: slot_updated published with null recipe and status 0
+        // Assert: week_updated published once
         _publisherMock.Verify(
-            p => p.PublishSlotUpdatedAsync(
-                today,
-                null,
-                0),
+            p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>()),
             Times.Once);
 
         // Assert: fill_the_gap_invalidated published

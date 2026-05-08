@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants/routes';
 import { t, tWithVars } from '@/locales';
 
+const PHOTO_UPLOAD_OVERLAY_DELAY_MS = 800;
+
 interface MinimalCaptureProps {
   /** When 'goto', wires the post-save saveSetting call */
   intent?: string;
@@ -70,6 +72,8 @@ export default function MinimalCapture({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const saveAreaRef = useRef<HTMLDivElement>(null);
+  const photoSubmitLockRef = useRef(false);
+  const photoUploadOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Shared content from manifest or props
   const sharedUrl = initialUrl || searchParams.get('url');
@@ -92,6 +96,8 @@ export default function MinimalCapture({
   const [isDescribing, setIsDescribing] = useState(false);
   const [describeError, setDescribeError] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState(extractedUrl || '');
+  const [isPhotoSubmitPending, setIsPhotoSubmitPending] = useState(false);
+  const [showPhotoUploadOverlay, setShowPhotoUploadOverlay] = useState(false);
 
   const [onSuccess, setOnSuccess] = useState(false);
   const [showDescribe, setShowDescribe] = useState(mode === 'describe');
@@ -129,6 +135,28 @@ export default function MinimalCapture({
       return () => clearTimeout(timer);
     }
   }, [images.length]);
+
+  useEffect(() => {
+    if (!isPhotoSubmitPending) {
+      if (photoUploadOverlayTimerRef.current) {
+        clearTimeout(photoUploadOverlayTimerRef.current);
+        photoUploadOverlayTimerRef.current = null;
+      }
+      return;
+    }
+
+    photoUploadOverlayTimerRef.current = setTimeout(() => {
+      setShowPhotoUploadOverlay(true);
+      photoUploadOverlayTimerRef.current = null;
+    }, PHOTO_UPLOAD_OVERLAY_DELAY_MS);
+
+    return () => {
+      if (photoUploadOverlayTimerRef.current) {
+        clearTimeout(photoUploadOverlayTimerRef.current);
+        photoUploadOverlayTimerRef.current = null;
+      }
+    };
+  }, [isPhotoSubmitPending]);
 
   const handleUrlCapture = useCallback(
     async (url: string) => {
@@ -178,20 +206,33 @@ export default function MinimalCapture({
 
   // Photo path save — E4
   const handleSave = async () => {
-    const id = await submitRecipe();
-    if (id) {
-      setWasPhotoCaptured(true);
-      if (isGoto) {
-        // Use the first image's implied recipe name (we don't have a name from the photo path,
-        // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
-        await saveSetting('family_goto', {
-          description: 'Your captured recipe',
-          recipeId: id,
-        });
+    if (photoSubmitLockRef.current || isPhotoSubmitPending || isSubmitting) {
+      return;
+    }
+
+    photoSubmitLockRef.current = true;
+    setShowPhotoUploadOverlay(false);
+    setIsPhotoSubmitPending(true);
+    try {
+      const id = await submitRecipe();
+      if (id) {
+        setWasPhotoCaptured(true);
+        if (isGoto) {
+          // Use the first image's implied recipe name (we don't have a name from the photo path,
+          // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
+          await saveSetting('family_goto', {
+            description: 'Your captured recipe',
+            recipeId: id,
+          });
+        }
+        useCaptureStore.getState().addPending({ recipeId: id });
+        setPendingRecipeId(id);
+        setOnSuccess(true);
       }
-      useCaptureStore.getState().addPending({ recipeId: id });
-      setPendingRecipeId(id);
-      setOnSuccess(true);
+    } finally {
+      photoSubmitLockRef.current = false;
+      setShowPhotoUploadOverlay(false);
+      setIsPhotoSubmitPending(false);
     }
   };
 
@@ -395,6 +436,29 @@ export default function MinimalCapture({
         </div>
       )}
 
+      {showPhotoUploadOverlay && (
+        <div
+          data-testid="capture-photo-upload-overlay"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-cream/90 backdrop-blur-md animate-in fade-in duration-300"
+        >
+          <div className="relative">
+            <div className="absolute inset-0 animate-ping rounded-full bg-terracotta/20" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-terracotta text-white shadow-xl">
+              <ImageIcon size={32} className="animate-pulse" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1 px-6 text-center">
+            <h3 className="font-heading text-xl font-bold text-charcoal">
+              Uploading your photos...
+            </h3>
+            <p className="text-sm text-charcoal/50">
+              Please keep this screen open while we send them.
+            </p>
+          </div>
+          <Loader2 className="animate-spin text-terracotta" size={24} />
+        </div>
+      )}
+
       {/* ── Camera / Gallery — hidden when describe or url review is active ───────────── */}
       {!showDescribe && !showUrlReview && (
         <div className="flex flex-col gap-10">
@@ -443,8 +507,9 @@ export default function MinimalCapture({
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               className="hidden"
+              aria-label={t('capture.takePhoto', 'Take a photo')}
+              title={t('capture.takePhoto', 'Take a photo')}
               onChange={handleFileChange}
             />
             <input
@@ -453,6 +518,8 @@ export default function MinimalCapture({
               accept="image/*"
               multiple
               className="hidden"
+              aria-label={t('capture.choosePhotos', 'Choose photos from your library')}
+              title={t('capture.choosePhotos', 'Choose photos from your library')}
               onChange={handleFileChange}
             />
           </div>
@@ -488,10 +555,13 @@ export default function MinimalCapture({
                       className="h-full w-full object-cover"
                     />
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         removeImage(idx);
                       }}
+                      aria-label={t('capture.removePhoto', 'Remove photo')}
+                      title={t('capture.removePhoto', 'Remove photo')}
                       className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-charcoal/80 text-white backdrop-blur-sm transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
                     >
                       <X size={14} />
@@ -560,12 +630,22 @@ export default function MinimalCapture({
                   variant="primary"
                   fullWidth
                   size="lg"
-                  isLoading={isSubmitting}
+                  isLoading={isSubmitting || isPhotoSubmitPending}
+                  loadingText="Uploading Photos..."
                   onClick={handleSave}
+                  disabled={isSubmitting || isPhotoSubmitPending}
                   className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
                 >
                   {t('capture.saveRecipe', 'Save Recipe')}
                 </Button>
+                {isPhotoSubmitPending && (
+                  <p
+                    data-testid="capture-photo-upload-helper"
+                    className="mt-3 px-3 text-center text-sm font-medium text-charcoal/60"
+                  >
+                    Large photos can take a few seconds.
+                  </p>
+                )}
               </div>
             </div>
           )}

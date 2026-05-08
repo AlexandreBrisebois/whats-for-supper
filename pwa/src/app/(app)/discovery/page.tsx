@@ -11,13 +11,11 @@ import { useFamily } from '@/hooks/useFamily';
 import { t, tWithVars } from '@/locales';
 
 export default function DiscoveryPage() {
-  const { setHasPendingCards, activeCategory, setActiveCategory } = useDiscoveryStore();
+  const { setHasPendingCards, setActiveCategory } = useDiscoveryStore();
   // Lift state to store — SSE can now update the stack without the page being mounted
   const recipes = useDiscoveryStore((s) => s.discoveryStack);
   const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
   const { selectedFamilyMemberId, _hasHydrated } = useFamily();
-  const [categories, setCategories] = useState<string[]>([]);
-  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEureka, setIsEureka] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
@@ -36,21 +34,29 @@ export default function DiscoveryPage() {
     setIsLoading(true);
     try {
       const cats = await getCategories();
-      setCategories(cats);
       categoriesRef.current = cats;
+      categoryIndexRef.current = 0;
 
-      const targetCategory = cats[0];
-      if (targetCategory) {
-        setActiveCategory(targetCategory);
-        setCurrentCategoryIndex(0);
+      let foundNonEmpty = false;
+      for (let i = 0; i < cats.length; i++) {
+        const categoryToLoad = cats[i];
+        const stack = await getDiscoveryStack(categoryToLoad);
+        if (stack.length > 0) {
+          setActiveCategory(categoryToLoad);
+          categoryIndexRef.current = i;
+          useDiscoveryStore.getState().setStack(
+            stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` }))
+          );
+          stackIsLoadedRef.current = true;
+          foundNonEmpty = true;
+          break;
+        }
+      }
+      if (!foundNonEmpty) {
+        setActiveCategory(null);
         categoryIndexRef.current = 0;
-        const stack = await getDiscoveryStack(targetCategory);
-        useDiscoveryStore.getState().setStack(
-          stack.map((r) => ({
-            ...r,
-            imageUrl: `/api/recipes/${r.id}/hero`,
-          }))
-        );
+        useDiscoveryStore.getState().setStack([]);
+        stackIsLoadedRef.current = true;
       }
     } catch (error) {
       console.error('Failed to fetch discovery data', error);
@@ -67,31 +73,47 @@ export default function DiscoveryPage() {
       try {
         const cats = await getCategories();
         if (ignore) return;
-        setCategories(cats);
         categoriesRef.current = cats;
 
         // Nudge priority: read activeCategory from store at call-time (not from
         // the closure dep) so we don't re-trigger this effect when we set it below.
-        const storedCategory = useDiscoveryStore.getState().activeCategory;
-        const targetCategory = storedCategory ?? cats[0];
-        if (targetCategory) {
+        if (cats.length === 0) {
+          if (!ignore) {
+            setActiveCategory(null);
+            categoryIndexRef.current = 0;
+            useDiscoveryStore.getState().setStack([]);
+            stackIsLoadedRef.current = true;
+          }
+        } else {
+          const storedCategory = useDiscoveryStore.getState().activeCategory;
+          const targetCategory = storedCategory ?? cats[0];
           const index = cats.indexOf(targetCategory);
           const resolvedIndex = index !== -1 ? index : 0;
-          setCurrentCategoryIndex(resolvedIndex);
-          categoryIndexRef.current = resolvedIndex;
-          setActiveCategory(targetCategory);
 
-          const stack = await getDiscoveryStack(targetCategory);
-          if (!ignore) {
-            useDiscoveryStore.getState().setStack(
-              stack.map((r) => ({
-                ...r,
-                imageUrl: `/api/recipes/${r.id}/hero`,
-              }))
-            );
+          // Wrap-around scan: start from resolvedIndex, cycle through all
+          // categories so earlier ones aren't skipped if a nudge pointed mid-list.
+          let foundNonEmpty = false;
+          for (let i = 0; i < cats.length && !ignore; i++) {
+            const tryIndex = (resolvedIndex + i) % cats.length;
+            const categoryToLoad = cats[tryIndex];
+            const stack = await getDiscoveryStack(categoryToLoad);
+            if (ignore) break;
+            if (stack.length > 0) {
+              categoryIndexRef.current = tryIndex;
+              setActiveCategory(categoryToLoad);
+              useDiscoveryStore.getState().setStack(
+                stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` }))
+              );
+              stackIsLoadedRef.current = true;
+              foundNonEmpty = true;
+              break;
+            }
+          }
+          if (!foundNonEmpty && !ignore) {
+            setActiveCategory(null);
+            categoryIndexRef.current = 0;
+            useDiscoveryStore.getState().setStack([]);
             stackIsLoadedRef.current = true;
-            // The fillTheGapVersion effect has recipes.length as a dep — it will
-            // re-fire now that the stack is populated and handle any pending SSE.
           }
         }
       } catch (error) {
@@ -115,6 +137,40 @@ export default function DiscoveryPage() {
     setHasPendingCards(recipes.length > 0);
     return () => setHasPendingCards(false);
   }, [recipes.length, setHasPendingCards]);
+
+  const loadNextCategory = useCallback(async () => {
+    const cats = categoriesRef.current;
+    const startIndex = categoryIndexRef.current;
+
+    setIsLoading(true);
+    try {
+      // Wrap-around scan: try every other category before declaring exhaustion.
+      // cats.length - 1 iterations skips the current index (already exhausted).
+      for (let i = 1; i < cats.length; i++) {
+        const nextIndex = (startIndex + i) % cats.length;
+        const nextCategory = cats[nextIndex];
+        const stack = await getDiscoveryStack(nextCategory);
+        if (stack.length > 0) {
+          const mappedStack = stack.map((r) => ({
+            ...r,
+            imageUrl: `/api/recipes/${r.id}/hero`,
+          }));
+          useDiscoveryStore.getState().setStack(mappedStack);
+          categoryIndexRef.current = nextIndex;
+          setActiveCategory(nextCategory);
+          return;
+        }
+      }
+      // All categories exhausted → show empty state
+      setActiveCategory(null);
+      categoryIndexRef.current = 0;
+      useDiscoveryStore.getState().setStack([]);
+    } catch (error) {
+      console.error('Failed to fetch next category stack', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setActiveCategory]);
 
   /**
    * Silent refetch of the current category stack triggered by fill-the-gap
@@ -154,6 +210,12 @@ export default function DiscoveryPage() {
         }
       }
 
+      // If SSE-driven removals emptied the category, advance to the next one
+      if (useDiscoveryStore.getState().discoveryStack.length === 0) {
+        loadNextCategory();
+        return;
+      }
+
       // Show micro-badge if any visible card was removed
       if (removedFromVisible) {
         setShowJustPlannedBadge(true);
@@ -165,7 +227,7 @@ export default function DiscoveryPage() {
     } catch (error) {
       console.error('Silent refetch of discovery category failed', error);
     }
-  }, []); // stable — reads from refs, no closure deps
+  }, [loadNextCategory]); // loadNextCategory is stable (ref-based)
 
   // Subscribe to fill-the-gap invalidation signal from SSE.
   // recipes.length is included so the effect re-fires once the stack loads,
@@ -186,30 +248,6 @@ export default function DiscoveryPage() {
       if (justPlannedTimerRef.current) clearTimeout(justPlannedTimerRef.current);
     };
   }, []);
-
-  const loadNextCategory = useCallback(async () => {
-    const nextIndex = currentCategoryIndex + 1;
-    if (nextIndex < categories.length) {
-      setIsLoading(true);
-      try {
-        const nextCategory = categories[nextIndex];
-        const stack = await getDiscoveryStack(nextCategory);
-        console.log('loadNextCategory rawStack first:', JSON.stringify(stack[0]));
-        const mappedStack = stack.map((r) => ({
-          ...r,
-          imageUrl: `/api/recipes/${r.id}/hero`,
-        }));
-        console.log('loadNextCategory mappedStack first:', JSON.stringify(mappedStack[0]));
-        useDiscoveryStore.getState().setStack(mappedStack);
-        setCurrentCategoryIndex(nextIndex);
-        setActiveCategory(nextCategory);
-      } catch (error) {
-        console.error('Failed to fetch next category stack', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }, [categories, currentCategoryIndex, setActiveCategory]);
 
   const triggerEureka = useCallback(() => {
     const duration = 3 * 1000;
@@ -398,26 +436,36 @@ export default function DiscoveryPage() {
       {/* Control Buttons (Thumb Zone) */}
       <div className="mt-10 flex w-full max-w-sm shrink-0 items-center justify-between px-8 pb-4">
         <button
+          type="button"
           disabled={recipes.length === 0}
           onClick={() => recipes.length > 0 && handleSwipeLeft(recipes[recipes.length - 1].id)}
           data-testid="dislike-button"
+          aria-label="Dislike recipe"
           className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_rgba(205,93,69,0.15)] border border-terracotta/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-2xl">✕</div>
         </button>
 
-        <button
-          onClick={fetchCategories}
-          data-testid="refresh-button"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/50 text-charcoal/30 shadow-sm border border-charcoal/5 active:rotate-180 transition-transform duration-500"
-        >
-          <RefreshCcw size={18} />
-        </button>
+        {recipes.length === 0 ? (
+          <button
+            type="button"
+            onClick={fetchCategories}
+            data-testid="refresh-button"
+            aria-label="Refresh recipe suggestions"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-white/50 text-charcoal/30 shadow-sm border border-charcoal/5 active:rotate-180 transition-transform duration-500"
+          >
+            <RefreshCcw size={18} />
+          </button>
+        ) : (
+          <div className="h-12 w-12" />
+        )}
 
         <button
+          type="button"
           disabled={recipes.length === 0}
           onClick={() => recipes.length > 0 && handleSwipeRight(recipes[recipes.length - 1].id)}
           data-testid="like-button"
+          aria-label="Like recipe"
           className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-sage shadow-[0_10px_25px_rgba(138,154,91,0.15)] border border-sage/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-3xl">♥</div>

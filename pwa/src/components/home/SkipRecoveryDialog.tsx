@@ -31,7 +31,7 @@ export function SkipRecoveryDialog({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-charcoal/40 backdrop-blur-md"
+        className="absolute inset-0 bg-cream/55 backdrop-blur-xl"
       />
 
       <motion.div
@@ -39,7 +39,7 @@ export function SkipRecoveryDialog({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="relative w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-2xl p-8"
+        className="relative w-full max-w-sm rounded-[3rem] overflow-hidden border border-white/60 bg-[rgba(253,252,240,0.78)] p-8 shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)] backdrop-blur-xl"
       >
         <div className="flex justify-between items-center mb-8">
           <h2
@@ -86,12 +86,12 @@ export function SkipRecoveryDialog({
                       onAction('order_in');
                     }}
                     data-testid="recovery-action-order-in"
-                    className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
+                    className="flex w-full items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
                   >
                     <div className="h-14 w-14 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center group-hover:scale-110 transition-transform">
                       <Pizza size={28} />
                     </div>
-                    <div className="flex flex-col">
+                    <div className="flex flex-1 flex-col items-start text-left">
                       <span className="font-heading text-xl font-black text-charcoal tracking-tight">
                         {t('home.orderingIn', 'Ordering In')}
                       </span>
@@ -106,12 +106,12 @@ export function SkipRecoveryDialog({
                       onAction('pick_else');
                     }}
                     data-testid="recovery-action-pick-else"
-                    className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all text-left group"
+                    className="flex w-full items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all text-left group"
                   >
                     <div className="h-14 w-14 rounded-2xl bg-sage/10 text-sage flex items-center justify-center group-hover:scale-110 transition-transform">
                       <Utensils size={28} />
                     </div>
-                    <div className="flex flex-col">
+                    <div className="flex flex-1 flex-col items-start text-left">
                       <span className="font-heading text-xl font-black text-charcoal tracking-tight">
                         {t('home.pickSomethingElse', 'Pick Something Else')}
                       </span>
@@ -146,13 +146,13 @@ export function SkipRecoveryDialog({
                   <button
                     onClick={() => onAction('tomorrow')}
                     data-testid="recovery-action-tomorrow"
-                    className="flex items-center justify-between p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all group"
+                    className="flex w-full items-center justify-between p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
                   >
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center group-hover:scale-110 transition-transform">
                         <ArrowRight size={24} />
                       </div>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col items-start text-left">
                         <span className="font-heading text-lg font-black text-charcoal tracking-tight">
                           {t('home.moveTomorrow', 'Move to Tomorrow')}
                         </span>
@@ -168,13 +168,13 @@ export function SkipRecoveryDialog({
 
                   <button
                     onClick={() => onAction('next_week')}
-                    className="flex items-center justify-between p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all group"
+                    className="flex w-full items-center justify-between p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all text-left group"
                   >
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-2xl bg-sage/10 text-sage flex items-center justify-center group-hover:scale-110 transition-transform">
                         <RefreshCw size={24} />
                       </div>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col items-start text-left">
                         <span className="font-heading text-lg font-black text-charcoal tracking-tight">
                           {t('home.saveForNextWeek', 'Save for Next Week')}
                         </span>
@@ -190,12 +190,12 @@ export function SkipRecoveryDialog({
 
                   <button
                     onClick={() => onAction('drop')}
-                    className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-charcoal/20 hover:bg-charcoal/5 transition-all group"
+                    className="flex w-full items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-charcoal/20 hover:bg-charcoal/5 transition-all text-left group"
                   >
                     <div className="h-12 w-12 rounded-2xl bg-charcoal/5 text-charcoal/40 flex items-center justify-center group-hover:text-charcoal/60 transition-colors">
                       <Trash2 size={24} />
                     </div>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col items-start text-left">
                       <span className="font-heading text-lg font-black text-charcoal tracking-tight">
                         {t('home.dropTonight', 'Just Drop Tonight')}
                       </span>

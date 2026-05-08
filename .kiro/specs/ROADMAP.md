@@ -218,6 +218,28 @@ weekStore shape:
   { weekOffset, schedule, status: 0|1|2, isLoading, lastSyncedAt, optimisticWriteAt }
   Actions: init, assignRecipe, removeRecipe, moveRecipe, openVoting, closeVoting, lockWeek, sync
 
+---
+
+## Future Session — Semantic Search Ranking Quality Governance
+
+**Spec:** `.kiro/specs/semantic-recipe-search/`
+**Effort:** Medium
+**Status:** [ ] Deferred until enough real search seed data exists
+**Depends on:** Semantic search shipped with telemetry in place
+
+**Why deferred:**
+- There is not yet enough real household query data to build a coherent golden evaluation dataset.
+- Shipping formal ranking-regression gates now would create synthetic confidence rather than useful signal.
+
+**What this future session should add:**
+- a golden query set from real household usage,
+- expected top-pick / top-3 result bands,
+- ranking regression checks for major reranking changes,
+- human review workflow for validating Top Pick quality.
+
+**Interim rule:**
+- Until this session exists, semantic search quality should be monitored through correctness tests, instrumentation, and manual review of obvious ranking failures.
+
 Key constraints:
 - status is always seeded from API response (WeeklyPlan.Status) — never from local boolean flags
 - isVotingOpen = status === 1, isLocked = status === 2 (derived, not stored)

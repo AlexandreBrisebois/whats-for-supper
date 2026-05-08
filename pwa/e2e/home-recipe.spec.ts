@@ -469,7 +469,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
   });
 
-  test('"Order In → Drop Tonight" resets state so user can re-plan', async ({ page }) => {
+  test('"Order In → Drop Tonight" marks tonight ordered in and navigates to planner', async ({
+    page,
+  }) => {
     const monday = currentMonday();
     const today = toDateStr(monday);
     const lasagnaRecipe = builders.scheduleRecipe({
@@ -478,8 +480,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
     });
 
-    let removeCalled = false;
-    let assignCalled = false;
+    let validateCalled = false;
 
     await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
 
@@ -504,20 +505,23 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
               ],
             }),
           });
-        } else if (url.pathname.includes('/day/') && url.pathname.endsWith('/remove') && method === 'DELETE') {
-          removeCalled = true;
-          await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-        } else if (url.pathname.endsWith('/assign') && method === 'POST') {
-          assignCalled = true;
+        } else if (
+          url.pathname.includes('/day/') &&
+          url.pathname.endsWith('/validate') &&
+          method === 'POST'
+        ) {
+          validateCalled = true;
           await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
-          // Before drop: today still has the recipe so sync() doesn't clobber the SSE-seeded store.
-          // After drop: today is empty so sync() reflects the removed slot.
           const days = Array.from({ length: 7 }, (_, i) => {
             const d = new Date(monday);
             d.setUTCDate(monday.getUTCDate() + i);
             const dateStr = toDateStr(d);
-            return { date: dateStr, status: 0, recipe: dateStr === today && !removeCalled ? lasagnaRecipe : null };
+            return {
+              date: dateStr,
+              status: dateStr === today && validateCalled ? 3 : 0,
+              recipe: dateStr === today && !validateCalled ? lasagnaRecipe : null,
+            };
           });
           await route.fulfill({
             status: 200,
@@ -551,21 +555,15 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Click "Just Drop Tonight"
     await page.getByText('Just Drop Tonight').click();
 
-    // Remove must be called
-    await expect.poll(() => removeCalled).toBe(true);
+    // Ordered-in validation must be called
+    await expect.poll(() => validateCalled).toBe(true);
 
     // Dialog must be closed
     await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
 
-    // Pivot card must show — user is NOT stuck (regression: drop resets status)
-    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible({ timeout: 3000 });
-
-    // User can add a recipe back via Quick Find
-    await page.getByTestId('discover-btn').click();
-    await expect(page.getByTestId('quick-find-modal')).toBeVisible();
-    await page.getByTestId('quick-find-select').first().click();
-    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 500 });
-    await expect.poll(() => assignCalled).toBe(true);
+    // Flow exits to planner with tonight marked ordered in
+    await expect(page).toHaveURL(/\/planner/);
+    await expect(page.getByTestId('ordered-in-indicator')).toBeVisible({ timeout: 3000 });
   });
 
   test('Closing Quick Find after "Pick Something Else" exits without changing tonight', async ({

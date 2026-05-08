@@ -20,6 +20,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
+  loadingText?: string;
   fullWidth?: boolean;
 }
 
@@ -27,6 +28,7 @@ export function Button({
   variant = 'primary',
   size = 'md',
   isLoading = false,
+  loadingText,
   fullWidth = false,
   className = '',
   children,
@@ -49,7 +51,10 @@ export function Button({
         .join(' ')}
     >
       {isLoading ? (
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <span className="inline-flex items-center gap-2">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          {loadingText ? <span>{loadingText}</span> : null}
+        </span>
       ) : (
         children
       )}

@@ -47,7 +47,9 @@ export default function PlannerPage() {
   const isVotingOpen = status === 1;
   const isLocked = status === 2;
   const [showPivot, setShowPivot] = useState<{ dayIndex: number } | null>(null);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [showQuickFind, setShowQuickFind] = useState(false);
+  const [pendingQuickFindDayIndex, setPendingQuickFindDayIndex] = useState<number | null>(null);
   const [successDay, setSuccessDay] = useState<number | null>(null);
   const [activeCookMode, setActiveCookMode] = useState<UILocalScheduleDay | null>(null);
   const { setHasPendingCards } = useDiscoveryStore();
@@ -76,6 +78,18 @@ export default function PlannerPage() {
   useEffect(() => {
     useWeekStore.getState().init(currentWeekOffset);
   }, [currentWeekOffset, successParam]);
+
+  useEffect(() => {
+    if (pendingQuickFindDayIndex === null || showPivot !== null) return;
+
+    const timer = window.setTimeout(() => {
+      setSelectedDayIndex(pendingQuickFindDayIndex);
+      setShowQuickFind(true);
+      setPendingQuickFindDayIndex(null);
+    }, 240);
+
+    return () => window.clearTimeout(timer);
+  }, [pendingQuickFindDayIndex, showPivot]);
 
   // Update prevOffset during render for animation direction (not in effect to avoid lint warning)
   if (currentWeekOffset !== prevOffset) {
@@ -156,15 +170,15 @@ export default function PlannerPage() {
   };
 
   const handleQuickFindSelect = async (recipe: any) => {
-    if (showPivot === null) return;
-    useWeekStore.getState().assignRecipe(showPivot.dayIndex, {
+    if (selectedDayIndex === null) return;
+    useWeekStore.getState().assignRecipe(selectedDayIndex, {
       id: recipe.id,
       name: recipe.name ?? null,
       image: recipe.image ?? '',
     });
 
     // Propagate to todayStore if this is today's slot
-    const assignedDate = schedule[showPivot.dayIndex]?.date;
+    const assignedDate = schedule[selectedDayIndex]?.date;
     if (currentWeekOffset === 0 && assignedDate === getTodayString()) {
       useTodayStore.getState().assignRecipe({
         id: recipe.id,
@@ -175,11 +189,14 @@ export default function PlannerPage() {
 
     setShowQuickFind(false);
     setShowPivot(null);
+    setSelectedDayIndex(null);
+    setPendingQuickFindDayIndex(null);
   };
 
   const handleSearchPath = () => {
-    if (showPivot === null) return;
-    router.push(`/recipes?addToDay=${showPivot.dayIndex}&weekOffset=${currentWeekOffset}`);
+    const dayIndex = showPivot?.dayIndex ?? selectedDayIndex;
+    if (dayIndex === null) return;
+    router.push(`/recipes?addToDay=${dayIndex}&weekOffset=${currentWeekOffset}`);
   };
 
   const handleAskFamily = async () => {
@@ -196,8 +213,8 @@ export default function PlannerPage() {
     const dayIndex = showPivot.dayIndex;
     const date = schedule[dayIndex].date;
     if (!date) return;
-    useWeekStore.getState().removeRecipe(dayIndex, date);
     setShowPivot(null);
+    useWeekStore.getState().removeRecipe(dayIndex, date);
   };
 
   // Framer Motion calls onReorder on every pointer move during drag (fires on each midpoint
@@ -227,22 +244,13 @@ export default function PlannerPage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
       {/* Animated Blobs */}
-      <div
-        className="blob blob-terracotta -top-20 -left-20 animate-pulse"
-        style={{ animationDuration: '8s' }}
-      />
-      <div
-        className="blob blob-sage top-1/2 -right-40 animate-pulse"
-        style={{ animationDuration: '10s', animationDelay: '1s' }}
-      />
-      <div
-        className="blob blob-ochre -bottom-20 left-1/4 animate-pulse"
-        style={{ animationDuration: '12s', animationDelay: '2s' }}
-      />
+      <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
+      <div className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]" />
+      <div className="blob blob-ochre -bottom-20 left-1/4 animate-[pulse_12s_infinite] [animation-delay:2s]" />
 
       {/* Header Section */}
-      <header className="sticky top-0 z-30 px-6 pt-6 pb-6 glass-nav">
-        <div className="max-w-sm mx-auto w-full">
+      <header className="sticky top-0 z-30 px-4 pt-3 pb-3 sm:px-6 sm:pt-5 sm:pb-4 glass-nav">
+        <div className="max-w-[27rem] sm:max-w-sm mx-auto w-full">
           {/* Tab Switcher */}
           <div className="flex bg-charcoal/5 p-1.5 rounded-[1.5rem] relative">
             <button
@@ -268,16 +276,18 @@ export default function PlannerPage() {
           </div>
 
           {/* Week Navigator */}
-          <div className="flex items-center justify-between">
+          <div className="mt-3 flex items-start justify-between gap-3">
             <button
               data-testid="prev-week"
               onClick={handlePrevWeek}
-              className="p-2 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+              className="p-3 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+              aria-label="Previous week"
+              title="Previous week"
             >
               <ChevronLeft className="text-charcoal/60" />
             </button>
 
-            <div className="text-center">
+            <div className="min-w-0 flex-1 text-center">
               <span
                 className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/30 text-center flex-1"
                 data-testid="week-range"
@@ -327,7 +337,7 @@ export default function PlannerPage() {
                     })()
                   : t('messages.loading', 'Loading...')}
               </h2>
-              <div className="flex items-center justify-center mt-2">
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                 <div
                   data-testid="planned-count-badge"
                   className="flex items-center space-x-1 text-sage font-bold text-[9px] bg-sage/5 px-2 py-1 rounded-full border border-sage/10 uppercase tracking-widest"
@@ -341,7 +351,7 @@ export default function PlannerPage() {
                   })}
                 </div>
                 {isVotingOpen && (
-                  <div className="flex items-center gap-2 ml-2">
+                  <div className="flex items-center gap-2">
                     <div
                       data-testid="voting-status-badge"
                       className="flex items-center space-x-1 text-ochre font-bold text-[9px] bg-ochre/5 px-2 py-1 rounded-full border border-ochre/10 uppercase tracking-widest"
@@ -355,7 +365,7 @@ export default function PlannerPage() {
                     <button
                       onClick={handleCloseVoting}
                       data-testid="close-voting-btn"
-                      className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-terracotta bg-white shadow-sm px-4 py-1.5 rounded-full border border-terracotta/10 hover:bg-terracotta hover:text-white transition-all active:scale-95 shadow-lg shadow-terracotta/5"
+                      className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta bg-white/80 px-3 py-1.5 rounded-full border border-terracotta/10 hover:bg-terracotta hover:text-white transition-all active:scale-95"
                     >
                       <Ban size={10} />
                       {t('planner.closeVoting', 'Close Voting')}
@@ -363,29 +373,14 @@ export default function PlannerPage() {
                   </div>
                 )}
               </div>
-
-              {status === 0 && !weekIsPast && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex justify-center mt-4"
-                >
-                  <Button
-                    onClick={handleAskFamily}
-                    data-testid="ask-family-cta"
-                    className="bg-sage text-white text-[10px] font-bold uppercase tracking-widest h-8 px-6 rounded-full shadow-lg shadow-sage/20 active:scale-95 transition-all"
-                  >
-                    <Users size={12} className="mr-2" />
-                    {t('planner.askFamily', 'Ask the Family')}
-                  </Button>
-                </motion.div>
-              )}
             </div>
 
             <button
               data-testid="next-week"
               onClick={handleNextWeek}
-              className="p-2 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+              className="p-3 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
+              aria-label="Next week"
+              title="Next week"
             >
               <ChevronRight className="text-charcoal/60" />
             </button>
@@ -394,7 +389,7 @@ export default function PlannerPage() {
       </header>
 
       {/* Main Content */}
-      <main className="px-6 py-8 overflow-x-hidden max-w-sm mx-auto w-full">
+      <main className="px-4 sm:px-6 py-5 sm:py-7 overflow-x-hidden max-w-[27rem] sm:max-w-sm mx-auto w-full">
         <AnimatePresence mode="wait">
           {isLoading ? (
             <motion.div
@@ -427,13 +422,32 @@ export default function PlannerPage() {
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
-              <BalanceIndicator summary={balanceSummary} className="mb-6" />
+              <div className="mb-4 opacity-90">
+                <BalanceIndicator summary={balanceSummary} className="mb-0" />
+              </div>
+
+              {status === 0 && !weekIsPast && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 flex justify-start"
+                >
+                  <Button
+                    onClick={handleAskFamily}
+                    data-testid="ask-family-cta"
+                    className="bg-sage text-white text-[10px] font-bold uppercase tracking-widest h-9 px-5 rounded-full shadow-lg shadow-sage/15 active:scale-95 transition-all"
+                  >
+                    <Users size={12} className="mr-2" />
+                    {t('planner.askFamily', 'Ask the Family')}
+                  </Button>
+                </motion.div>
+              )}
 
               <Reorder.Group
                 axis="y"
                 values={schedule}
                 onReorder={handleReorder}
-                className="w-full space-y-4"
+                className="w-full space-y-3.5"
                 data-testid="reorder-group"
               >
                 {schedule.map((day, index) => (
@@ -442,7 +456,10 @@ export default function PlannerPage() {
                     day={day}
                     index={index}
                     successDay={successDay}
-                    onPivot={() => setShowPivot({ dayIndex: index })}
+                    onPivot={() => {
+                      setSelectedDayIndex(index);
+                      setShowPivot({ dayIndex: index });
+                    }}
                     onCookMode={() => {
                       setActiveCookMode(day);
                     }}
@@ -510,9 +527,17 @@ export default function PlannerPage() {
 
       <PlanningPivotSheet
         isOpen={showPivot !== null}
-        onClose={() => setShowPivot(null)}
+        onClose={() => {
+          setShowPivot(null);
+          setSelectedDayIndex(null);
+          setPendingQuickFindDayIndex(null);
+        }}
         dayIndex={showPivot?.dayIndex ?? 0}
-        onQuickFind={() => setShowQuickFind(true)}
+        onQuickFind={() => {
+          if (showPivot === null) return;
+          setPendingQuickFindDayIndex(showPivot.dayIndex);
+          setShowPivot(null);
+        }}
         onSearchLibrary={handleSearchPath}
         onAskFamily={handleAskFamily}
         onRemoveRecipe={handleRemoveRecipe}
@@ -523,7 +548,11 @@ export default function PlannerPage() {
       <AnimatePresence>
         {showQuickFind && (
           <QuickFindModal
-            onClose={() => setShowQuickFind(false)}
+            onClose={() => {
+              setShowQuickFind(false);
+              setSelectedDayIndex(null);
+              setPendingQuickFindDayIndex(null);
+            }}
             onSelect={handleQuickFindSelect}
             weekOffset={currentWeekOffset}
           />
@@ -659,9 +688,9 @@ const PlannerDayCard = memo(function PlannerDayCard({
 
       <motion.div
         whileTap={{ scale: 0.98 }}
-        className="flex items-center p-4 relative z-10 h-[72px]"
+        className="flex items-stretch px-4 py-2 relative z-10 min-h-[68px]"
       >
-        <div className="flex flex-col items-center justify-center w-12 mr-4">
+        <div className="flex flex-col items-center justify-center w-12 mr-4 shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
             {day.day}
           </span>
@@ -682,10 +711,24 @@ const PlannerDayCard = memo(function PlannerDayCard({
         </div>
 
         <div className="flex-1 min-w-0">
-          {day.recipe?.id ? (
-            <div className="flex items-center">
+          {day.status === 3 ? (
+            <button
+              onClick={onPivot}
+              data-testid="ordered-in-indicator"
+              className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
+            >
+              <div className="h-10 w-10 rounded-xl bg-charcoal/5 flex items-center justify-center flex-shrink-0">
+                <span className="text-xl">🥡</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-charcoal/60">Ordered In</span>
+                <span className="text-[10px] text-charcoal/30 font-medium">No cook tonight</span>
+              </div>
+            </button>
+          ) : day.recipe?.id ? (
+            <div className="flex items-stretch">
               {day.recipe.image && (
-                <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-3 bg-charcoal/5 flex-shrink-0">
+                <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center">
                   <Image
                     src={getImageUrl(day.recipe.image)}
                     alt={day.recipe.name || 'Recipe'}
@@ -703,12 +746,12 @@ const PlannerDayCard = memo(function PlannerDayCard({
                   e.stopPropagation();
                   onPivot();
                 }}
-                className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
                 data-testid="edit-recipe-button"
               >
-                <div className="flex flex-col gap-1.5">
+                <div className="flex w-full flex-col justify-center gap-1">
                   <h4
-                    className="text-sm font-bold text-charcoal line-clamp-1"
+                    className="text-sm leading-[1.15rem] font-bold text-charcoal line-clamp-2"
                     data-testid="recipe-name"
                   >
                     {day.recipe.name}
@@ -716,64 +759,62 @@ const PlannerDayCard = memo(function PlannerDayCard({
                   {(() => {
                     const count = day._voteCount ?? day.recipe?.voteCount ?? null;
                     const isUnanimous = day._unanimousVote;
+                    const hasVotes = count != null && count > 0;
                     return (
                       <span
                         data-testid="vote-count"
-                        style={{ visibility: count != null ? 'visible' : 'hidden' }}
                         className={cn(
-                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block mt-1',
-                          isUnanimous ? 'bg-sage/20 text-sage' : 'bg-ochre/20 text-ochre'
+                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
+                          hasVotes ? 'visible' : 'visible',
+                          hasVotes
+                            ? isUnanimous
+                              ? 'bg-sage/20 text-sage'
+                              : 'bg-ochre/20 text-ochre'
+                            : 'bg-charcoal/8 text-charcoal/55'
                         )}
                       >
-                        {count ?? 0} voted
+                        {hasVotes ? `${count} voted` : 'Chosen'}
                       </span>
                     );
                   })()}
                 </div>
-                <p className="text-[10px] text-charcoal/40 font-medium">Supper planned</p>
               </button>
-              {day.date === getTodayString() && day.recipe && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCookMode();
-                  }}
-                  className="mr-2 text-2xl active:scale-90 transition-transform"
-                  data-testid="start-cook-mode"
+              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
+                {day.date === getTodayString() && day.recipe && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCookMode();
+                    }}
+                    className="h-9 w-9 rounded-xl bg-sage/8 text-lg active:scale-90 transition-transform"
+                    data-testid="start-cook-mode"
+                    title="Open cook mode"
+                    aria-label="Open cook mode"
+                  >
+                    👨‍🍳
+                  </motion.button>
+                )}
+                <div
+                  onPointerDown={(e) => dragControls.start(e)}
+                  className="h-full min-h-[44px] flex items-center px-2.5 cursor-grab active:cursor-grabbing touch-none select-none group/handle rounded-r-2xl"
+                  aria-label="Drag to reorder"
+                  title="Drag to reorder"
                 >
-                  👨‍🍳
-                </motion.button>
-              )}
-              {/* Custom Drag Handle */}
-              <div
-                onPointerDown={(e) => dragControls.start(e)}
-                className="p-3 -mr-3 cursor-grab active:cursor-grabbing touch-none select-none group/handle"
-                aria-label="Drag to reorder"
-              >
-                <GripVertical
-                  className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
-                  size={20}
-                />
-              </div>
-            </div>
-          ) : day.status === 3 ? (
-            <div data-testid="ordered-in-indicator" className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-charcoal/5 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl">🥡</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-bold text-charcoal/60">Ordered In</span>
-                <span className="text-[10px] text-charcoal/30 font-medium">No cook tonight</span>
+                  <GripVertical
+                    className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
+                    size={20}
+                  />
+                </div>
               </div>
             </div>
           ) : (
             <button
               onClick={onPivot}
               data-testid="plan-meal-button"
-              className="flex items-center w-full text-left group"
+              className="flex items-center w-full min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
             >
               <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
                 <Plus
@@ -781,9 +822,11 @@ const PlannerDayCard = memo(function PlannerDayCard({
                   size={18}
                 />
               </div>
-              <span className="text-sm font-bold text-charcoal/30 group-hover:text-terracotta/60 transition-colors">
-                Plan a meal
-              </span>
+              <div className="flex min-h-[40px] flex-col justify-center">
+                <span className="text-sm font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors">
+                  Plan supper
+                </span>
+              </div>
             </button>
           )}
         </div>

@@ -91,6 +91,7 @@ public class RecipeControllerTests : IAsyncLifetime
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var workflow = await db.WorkflowInstances
                 .FirstOrDefaultAsync(w => w.WorkflowId == "recipe-import" &&
+                                          w.Parameters != null &&
                                           w.Parameters.Contains(recipeId.ToString()));
             Assert.NotNull(workflow);
         }

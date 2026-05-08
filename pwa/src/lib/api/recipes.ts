@@ -110,7 +110,7 @@ export async function createRecipe(formData: FormData): Promise<{ id: string }> 
 
   const result = await response.json();
   return {
-    id: (result?.data as any)?.id || '',
+    id: (result?.data as any)?.id || result?.id || '',
   };
 }
 

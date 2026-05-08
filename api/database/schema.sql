@@ -54,13 +54,13 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
 
 CREATE TABLE calendar_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    recipe_id uuid REFERENCES recipes(id) ON DELETE CASCADE,
     date date NOT NULL,
     meal_slot smallint NOT NULL DEFAULT 0,
     status smallint NOT NULL,
     vote_count integer,
     candidate_ids uuid[],
-    CONSTRAINT calendar_events_status_check CHECK (status >= 0 AND status <= 3),
+    CONSTRAINT calendar_events_status_check CHECK (status >= 0 AND status <= 4),
     CONSTRAINT calendar_events_date_slot_unique UNIQUE (date, meal_slot)
 );
 

@@ -11,7 +11,7 @@ public class CalendarEvent
     public Guid Id { get; set; }
 
     [Column("recipe_id")]
-    public Guid RecipeId { get; set; }
+    public Guid? RecipeId { get; set; }
 
     [Column("date")]
     public DateOnly Date { get; set; }

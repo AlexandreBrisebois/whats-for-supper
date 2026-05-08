@@ -1,5 +1,12 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  currentMonday,
+  toDateStr,
+  setupCommonRoutes,
+  mockSseWithConnectedSchedule,
+} from './mock-api';
 
 /**
  * ADR 029: Deterministic E2E Testing Strategy
@@ -80,7 +87,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                 locked: true,
                 status: 2,
                 days,
-                groceryState: {},
+                groceryState: { additionalData: {} },
                 groceryItems: builders.groceryItems(
                   UTILITY_GROCERY_INGREDIENTS,
                   UTILITY_GROCERY_SECTION_MAP
@@ -93,6 +100,32 @@ test.describe("Cook's Mode and Grocery Flows", () => {
         }
       }
     );
+
+    await mockSseWithConnectedSchedule(page, {
+      weekOffset: 0,
+      locked: true,
+      status: 2,
+      days: Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(thisMonday);
+        d.setUTCDate(thisMonday.getUTCDate() + i);
+        const dateStr = toDateStr(d);
+        const isToday = dateStr === TODAY;
+
+        return {
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+          date: dateStr,
+          recipe: isToday
+            ? builders.scheduleRecipe({
+                id: MOCK_IDS.RECIPE_LASAGNA,
+                name: 'Test Lasagna',
+                ingredients: UTILITY_GROCERY_INGREDIENTS,
+              })
+            : null,
+        };
+      }),
+      groceryItems: builders.groceryItems(UTILITY_GROCERY_INGREDIENTS, UTILITY_GROCERY_SECTION_MAP),
+      groceryState: { additionalData: {} },
+    } as any);
 
     // Specific route for smart-defaults
     await page.route(
@@ -128,6 +161,9 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
+
+    await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
     await page.getByTestId('close-cooks-mode').click();
@@ -141,14 +177,10 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     const checklist = page.getByTestId('grocery-checklist');
     await expect(checklist).toBeVisible();
 
-    await expect(page.locator('[data-testid="grocery-item-checkbox"]').first()).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(page.getByText('Your list is empty')).not.toBeVisible();
 
-    const firstItem = page.locator(
-      `[data-testid="grocery-item-checkbox"][data-item-name="${itemName}"]`
-    );
-    await expect(firstItem).toBeVisible();
+    const firstItem = checklist.getByRole('checkbox', { name: itemName, exact: true });
+    await expect(firstItem).toBeVisible({ timeout: 10_000 });
 
     // Mock update
     await page.route(
@@ -161,7 +193,13 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     await expect(firstItem).toHaveAttribute('aria-checked', 'false');
     await expect(firstItem).toHaveAttribute('data-state', 'unchecked');
 
+    const groceryPatchRequest = page.waitForRequest(
+      (request) =>
+        request.method() === 'PATCH' && request.url().includes('/api/schedule/0/grocery/item')
+    );
+
     await firstItem.click({ delay: 100 });
+    await groceryPatchRequest;
     await expect(firstItem).toBeChecked();
     await expect(firstItem).toHaveAttribute('aria-checked', 'true');
 
@@ -192,7 +230,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                     }),
                   },
                 ],
-                groceryState: { [itemName]: true },
+                groceryState: { additionalData: { [itemName]: true } },
                 groceryItems: builders.groceryItems([itemName], { [itemName]: 'Pantry' }),
               },
             }),
@@ -203,12 +241,31 @@ test.describe("Cook's Mode and Grocery Flows", () => {
       }
     );
 
+    await mockSseWithConnectedSchedule(page, {
+      weekOffset: 0,
+      locked: true,
+      status: 2,
+      days: [
+        {
+          day: 'Mon',
+          date: TODAY,
+          recipe: builders.scheduleRecipe({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name: 'T1',
+            ingredients: [itemName],
+          }),
+        },
+      ],
+      groceryItems: builders.groceryItems([itemName], { [itemName]: 'Pantry' }),
+      groceryState: { additionalData: { [itemName]: true } },
+    } as any);
+
     await page.reload();
     await expect(page.locator(`[data-date="${TODAY}"]`)).toBeVisible({ timeout: 15_000 });
     await page.getByTestId('grocery-tab').click();
-    const refreshedItem = page.locator(
-      `[data-testid="grocery-item-checkbox"][data-item-name="${itemName}"]`
-    );
+    await expect(checklist).toBeVisible({ timeout: 10_000 });
+    const refreshedItem = checklist.getByRole('checkbox', { name: itemName, exact: true });
+    await expect(refreshedItem).toBeVisible({ timeout: 10_000 });
     await expect(refreshedItem).toBeChecked();
     await expect(refreshedItem).toHaveAttribute('aria-checked', 'true');
   });
@@ -216,6 +273,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
   test('Grocery items grouped by aisle sections', async ({ page }) => {
     await page.getByTestId('grocery-tab').click();
     await expect(page.getByTestId('grocery-checklist')).toBeVisible();
+    await expect(page.getByText('Your list is empty')).not.toBeVisible();
 
     // Wait for items to populate before checking sections
     await expect(page.locator('[data-testid="grocery-item-checkbox"]').first()).toBeVisible({

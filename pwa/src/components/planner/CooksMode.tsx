@@ -5,8 +5,6 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
-  Timer,
-  Flame,
   UtensilsCrossed,
   CheckCircle2,
   Circle,
@@ -101,9 +99,13 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   }, [initialRecipe.id]);
 
   const steps = parsedSteps.length > 0 ? parsedSteps : getFallbackSteps();
+  const isPrepStep = currentStep === 0;
+  const activeRecipeStepIndex = Math.max(currentStep - 1, 0);
 
   const nextStep = () => {
-    if (currentStep < steps.length - 1) {
+    if (isPrepStep) {
+      setCookProgress(initialRecipe.id, 1);
+    } else if (currentStep < steps.length) {
       setCookProgress(initialRecipe.id, currentStep + 1);
     } else {
       setShowCelebration(true);
@@ -132,7 +134,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     );
   }
 
-  const currentStepData = steps[currentStep];
+  const currentStepData = steps[activeRecipeStepIndex];
 
   return (
     <motion.div
@@ -197,7 +199,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           <motion.div
             key={i}
             animate={{
-              backgroundColor: i <= currentStep ? 'rgba(205, 93, 69, 1)' : 'rgba(0, 0, 0, 0.05)',
+              backgroundColor: i < currentStep ? 'rgba(205, 93, 69, 1)' : 'rgba(0, 0, 0, 0.05)',
             }}
             className="flex-1"
           />
@@ -221,18 +223,23 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 className="mb-8 inline-flex items-center space-x-2 text-terracotta bg-terracotta/5 px-6 py-3 rounded-full"
               >
                 <span className="text-sm font-black uppercase tracking-widest">
-                  {`${currentStep + 1} / ${steps.length}`}
+                  {isPrepStep
+                    ? t('cook.checkAndPrep', 'Check & Prep')
+                    : `${currentStep} / ${steps.length}`}
                 </span>
               </div>
 
               <h3 className="text-4xl font-heading font-black text-charcoal mb-4 leading-tight">
-                {currentStepData.title}
+                {isPrepStep ? t('cook.checkAndPrep', 'Check & Prep') : currentStepData.title}
               </h3>
 
-              {currentStep === 0 ? (
+              {isPrepStep ? (
                 <div className="mt-8 space-y-8 bg-terracotta/[0.02]">
                   <p className="text-xl font-medium text-charcoal/80 leading-relaxed max-w-lg mx-auto">
-                    {currentStepData.instruction}
+                    {t(
+                      'cook.ingredientsReady',
+                      'Check off your ingredients before you start cooking.'
+                    )}
                   </p>
 
                   {/* Ingredients Grid */}
@@ -257,26 +264,16 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                               onClick={() =>
                                 setGathered((prev) => ({ ...prev, [ing]: !prev[ing] }))
                               }
-                              className={`flex items-center p-4 rounded-3xl border-2 shadow-sm w-full text-left transition-all ${
-                                isChecked
-                                  ? 'bg-sage/10 border-sage/20 text-charcoal/40'
-                                  : 'bg-white border-charcoal/5'
+                              className={`flex items-center p-4 rounded-2xl w-full text-left transition-all ${
+                                isChecked ? 'bg-sage/5' : 'bg-white/50 hover:bg-white'
                               }`}
                             >
-                              <div
-                                className={`h-8 w-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 transition-all ${
-                                  isChecked
-                                    ? 'bg-sage text-white'
-                                    : 'bg-terracotta/10 border-2 border-terracotta/20 text-terracotta/40'
-                                }`}
-                              >
-                                {isChecked ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-                              </div>
-                              <span
-                                className={`text-base font-bold transition-all ${
-                                  isChecked ? 'line-through text-charcoal/40' : 'text-charcoal/80'
-                                }`}
-                              >
+                              {isChecked ? (
+                                <CheckCircle2 size={20} className="text-sage flex-shrink-0 mr-3" />
+                              ) : (
+                                <Circle size={20} className="text-charcoal/20 flex-shrink-0 mr-3" />
+                              )}
+                              <span className="text-base font-bold text-charcoal/80 transition-all">
                                 {ing}
                               </span>
                             </motion.button>
@@ -323,43 +320,14 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           className="h-20 rounded-3xl bg-terracotta text-white text-2xl font-black flex items-center justify-center space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
         >
           <span>
-            {currentStep === steps.length - 1
+            {currentStep === steps.length
               ? t('cook.done', 'Done')
-              : currentStep === 0
+              : isPrepStep
                 ? t('cook.letsCook', "Let's Cook")
                 : t('cook.next', 'Next')}
           </span>
           <ChevronRight size={28} />
         </Button>
-      </div>
-
-      {/* Footer Info */}
-      <div className="px-8 py-6 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/20">
-        <div className="flex items-center space-x-2">
-          <Timer size={14} />
-          <span>
-            {recipeDetails?.totalTime || '45 mins'} {t('cook.total', 'total')}
-          </span>
-        </div>
-        <div className="flex items-center space-x-2 text-ochre">
-          {initialRecipe.isCold ? (
-            <>
-              <Timer size={14} />
-              <span>{t('cook.noCookFresh', 'No-Cook / Fresh')}</span>
-            </>
-          ) : (
-            <>
-              <Flame size={14} className="animate-pulse" />
-              <span>{t('cook.mediumHeat', 'Medium Heat (Level 6)')}</span>
-            </>
-          )}
-        </div>
-        {initialRecipe.isVegetarian && (
-          <div className="flex items-center space-x-2 text-sage font-black">
-            <UtensilsCrossed size={14} />
-            <span>{t('cook.plantPoweredEmoji', 'Plant-Powered! 🌿')}</span>
-          </div>
-        )}
       </div>
     </motion.div>
   );

@@ -81,6 +81,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.HasOne(e => e.Recipe)
                   .WithMany()
                   .HasForeignKey(e => e.RecipeId)
+                  .IsRequired(false)
                   .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(e => e.FamilyMember)

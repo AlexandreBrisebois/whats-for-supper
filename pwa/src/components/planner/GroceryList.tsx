@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, Circle, Tag } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Circle, ShoppingCart, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
@@ -154,13 +154,30 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
           <AnimatePresence mode="wait">
             {Object.keys(grouped).length === 0 ? (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-12"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-20 px-6"
               >
-                <p className="text-charcoal/40 font-medium">
-                  {t('grocery.noIngredients', "No ingredients in this week's plan")}
+                <div className="h-24 w-24 bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ShoppingCart size={40} className="text-sage" />
+                </div>
+                <h3 className="text-xl font-heading font-black text-charcoal mb-2">
+                  {t('grocery.emptyTitle', 'Your list is empty')}
+                </h3>
+                <p className="text-charcoal/40 font-medium mb-12 max-w-[240px] mx-auto">
+                  {t(
+                    'grocery.emptySubtext',
+                    'Add meals to your planner and your grocery list will build itself — organized by store section.'
+                  )}
                 </p>
+                {onClose && (
+                  <Button
+                    onClick={onClose}
+                    className="bg-terracotta text-white rounded-3xl h-16 px-10 font-bold shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
+                  >
+                    {t('grocery.startPlanning', 'Start Planning')}
+                  </Button>
+                )}
               </motion.div>
             ) : (
               <div className="space-y-8">
@@ -253,48 +270,89 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                 }`}
                               >
                                 {/* Toggle button — takes up the left portion */}
-                                <button
-                                  onClick={() => handleToggle(key)}
-                                  className="flex min-w-0 items-start space-x-4 flex-1 text-left"
-                                  data-testid="grocery-item-checkbox"
-                                  data-item-name={key}
-                                  data-state={isChecked ? 'checked' : 'unchecked'}
-                                  role="checkbox"
-                                  aria-checked={isChecked}
-                                >
-                                  {isChecked ? (
-                                    <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
-                                  ) : (
-                                    <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
-                                  )}
-                                  <span
-                                    className={`min-w-0 flex-1 transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
+                                {isChecked ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggle(key)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === ' ' || event.key === 'Enter') {
+                                        event.preventDefault();
+                                        void handleToggle(key);
+                                      }
+                                    }}
+                                    className="flex min-w-0 items-start space-x-4 flex-1 text-left"
+                                    data-testid="grocery-item-checkbox"
+                                    data-item-name={key}
+                                    data-state="checked"
+                                    role="checkbox"
+                                    aria-checked="true"
                                   >
-                                    <span
-                                      className={`block font-medium transition-all ${isChecked ? 'line-through opacity-60' : ''}`}
-                                    >
-                                      {key}
-                                    </span>
-                                    {quantityHint && (
-                                      <span
-                                        data-testid="grocery-item-quantity-hint"
-                                        className="mt-1 block text-sm font-normal text-charcoal/50"
-                                      >
-                                        {quantityHint}
+                                    <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
+                                    <span className="min-w-0 flex-1 transition-all line-through opacity-60">
+                                      <span className="block font-medium transition-all line-through opacity-60">
+                                        {key}
                                       </span>
+                                      {quantityHint && (
+                                        <span
+                                          data-testid="grocery-item-quantity-hint"
+                                          className="mt-1 block text-sm font-normal text-charcoal/50"
+                                        >
+                                          {quantityHint}
+                                        </span>
+                                      )}
+                                    </span>
+                                    {hasError && (
+                                      <AlertCircle
+                                        size={12}
+                                        className="text-terracotta flex-shrink-0 ml-1"
+                                        data-testid="grocery-item-error"
+                                      />
                                     )}
-                                  </span>
-                                  {hasError && (
-                                    <AlertCircle
-                                      size={12}
-                                      className="text-terracotta flex-shrink-0 ml-1"
-                                      data-testid="grocery-item-error"
-                                    />
-                                  )}
-                                </button>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggle(key)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === ' ' || event.key === 'Enter') {
+                                        event.preventDefault();
+                                        void handleToggle(key);
+                                      }
+                                    }}
+                                    className="flex min-w-0 items-start space-x-4 flex-1 text-left"
+                                    data-testid="grocery-item-checkbox"
+                                    data-item-name={key}
+                                    data-state="unchecked"
+                                    role="checkbox"
+                                    aria-checked="false"
+                                  >
+                                    <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
+                                    <span className="min-w-0 flex-1 transition-all">
+                                      <span className="block font-medium transition-all">
+                                        {key}
+                                      </span>
+                                      {quantityHint && (
+                                        <span
+                                          data-testid="grocery-item-quantity-hint"
+                                          className="mt-1 block text-sm font-normal text-charcoal/50"
+                                        >
+                                          {quantityHint}
+                                        </span>
+                                      )}
+                                    </span>
+                                    {hasError && (
+                                      <AlertCircle
+                                        size={12}
+                                        className="text-terracotta flex-shrink-0 ml-1"
+                                        data-testid="grocery-item-error"
+                                      />
+                                    )}
+                                  </button>
+                                )}
 
                                 {/* Reclassify button — separate tap target */}
                                 <button
+                                  type="button"
                                   onClick={() =>
                                     setReclassifyOpen(
                                       isPickerOpen ? null : (item.normalizedKey ?? null)
@@ -324,6 +382,7 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
                                 >
                                   {AISLE_ORDER.map((section) => (
                                     <button
+                                      type="button"
                                       key={section}
                                       onClick={() => handleReclassify(item, section)}
                                       className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
@@ -350,19 +409,6 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Footer */}
-      {onClose && (
-        <div className="p-8 bg-white/50 backdrop-blur-md border-t border-charcoal/5">
-          <Button
-            onClick={onClose}
-            data-testid="done-shopping-btn"
-            className="w-full h-16 rounded-3xl bg-sage text-white text-lg font-bold shadow-xl shadow-sage/20"
-          >
-            {t('grocery.doneShopping', 'Done Shopping')}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

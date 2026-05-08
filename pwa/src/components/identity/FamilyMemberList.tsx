@@ -46,19 +46,23 @@ export function FamilyMemberList({
           {t('family.noMembers', 'No family members yet. Add one below!')}
         </p>
       ) : (
-        <ul className="flex flex-col gap-2" role="listbox" aria-label="Family members">
+        <ul className="flex flex-col gap-2" aria-label="Family members">
           {members.map((member) => {
             const selected = member.id === selectedId;
             const isEditing = editingId === member.id;
 
             return (
-              <li key={member.id} role="option" aria-selected={selected}>
+              <li key={member.id}>
                 {isEditing ? (
                   <div className="flex w-full items-center gap-2 rounded-2xl bg-white p-2 shadow-card ring-2 ring-indigo">
                     <input
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
+                      data-testid={`family-member-edit-input-${member.id}`}
+                      aria-label={tWithVars('family.editNameFor', 'Edit name for {name}', {
+                        name: member.name,
+                      })}
                       className="flex-1 rounded-xl bg-indigo/5 px-3 py-2 text-sm font-medium text-charcoal focus:outline-none"
                       autoFocus
                       onKeyDown={(e) => {
@@ -67,16 +71,20 @@ export function FamilyMemberList({
                       }}
                     />
                     <button
+                      type="button"
                       onClick={() => handleUpdate(member.id)}
                       disabled={isLoading || !editName.trim()}
+                      data-testid={`family-member-save-${member.id}`}
                       className="rounded-full p-2 text-indigo hover:bg-indigo/10 disabled:opacity-30"
                       aria-label={t('family.saveName', 'Save name')}
                     >
                       <Check className="h-4 w-4" />
                     </button>
                     <button
+                      type="button"
                       onClick={cancelEditing}
                       disabled={isLoading}
+                      data-testid={`family-member-cancel-${member.id}`}
                       className="rounded-full p-2 text-charcoal-400 hover:bg-charcoal-100"
                       aria-label={t('family.cancelEditing', 'Cancel editing')}
                     >
@@ -99,19 +107,24 @@ export function FamilyMemberList({
                     >
                       <span className="font-medium truncate">{member.name}</span>
                       {selected && (
-                        <span className="ml-auto text-xs font-semibold text-lavender/80">
-                          {t('family.selected', 'you')}
-                        </span>
+                        <>
+                          <span className="ml-auto text-xs font-semibold text-lavender/80">
+                            {t('family.selected', 'you')}
+                          </span>
+                          <span className="sr-only">Selected family member</span>
+                        </>
                       )}
                     </button>
 
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                       {onInvite && (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onInvite(member.id, member.name);
                           }}
+                          data-testid={`family-member-invite-${member.id}`}
                           className={[
                             'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm',
                             selected
@@ -124,10 +137,12 @@ export function FamilyMemberList({
                         </button>
                       )}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           startEditing(member);
                         }}
+                        data-testid={`family-member-edit-${member.id}`}
                         className={[
                           'rounded-full p-2.5 transition-all',
                           selected
