@@ -52,7 +52,13 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('next/image', () => ({
-  default: ({ src, alt, fill: _fill, sizes: _sizes, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; sizes?: string }) => (
+  default: ({
+    src,
+    alt,
+    fill: _fill,
+    sizes: _sizes,
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; sizes?: string }) => (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt={alt} {...props} />
   ),
@@ -133,13 +139,7 @@ vi.mock('@/lib/api/recipes', () => ({
 
 // Stub RecipeDetailSheet — renders a minimal stand-in with a close button
 vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
-  RecipeDetailSheet: ({
-    recipeId,
-    onClose,
-  }: {
-    recipeId: string;
-    onClose: () => void;
-  }) => (
+  RecipeDetailSheet: ({ recipeId, onClose }: { recipeId: string; onClose: () => void }) => (
     <div data-testid="recipe-detail-sheet" data-recipe-id={recipeId}>
       <button data-testid="action-close-sheet" onClick={onClose}>
         Close
@@ -267,9 +267,7 @@ describe('BrowseAllStack — initial card display', () => {
     });
 
     // The front card should be the first recipe
-    expect(
-      screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)).toBeInTheDocument();
   });
 });
 
@@ -291,9 +289,7 @@ describe('BrowseAllStack — swipe navigation', () => {
 
     await waitFor(() => {
       // Second recipe should now be the front card
-      expect(
-        screen.getByTestId(`stack-card-${RECIPE_IDS[1]}`)
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(`stack-card-${RECIPE_IDS[1]}`)).toBeInTheDocument();
     });
   });
 
@@ -322,9 +318,7 @@ describe('BrowseAllStack — swipe navigation', () => {
 
     await waitFor(() => {
       // Should be back on the first recipe
-      expect(
-        screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)).toBeInTheDocument();
     });
   });
 });
@@ -348,11 +342,15 @@ describe('BrowseAllStack — pre-fetch', () => {
 
     // Advance to index 1 (6 remaining) — no prefetch yet
     const onDragEnd = mocks.getCapturedOnDragEnd();
-    await act(async () => { await onDragEnd!(null, makeDragInfo(100)); });
+    await act(async () => {
+      await onDragEnd!(null, makeDragInfo(100));
+    });
 
     // Advance to index 2 (5 remaining) — prefetch should trigger
     const onDragEnd2 = mocks.getCapturedOnDragEnd();
-    await act(async () => { await onDragEnd2!(null, makeDragInfo(100)); });
+    await act(async () => {
+      await onDragEnd2!(null, makeDragInfo(100));
+    });
 
     await waitFor(() => {
       // recipesGet called twice: initial load + prefetch
@@ -383,7 +381,9 @@ describe('BrowseAllStack — End Card', () => {
     // Swipe through all 3 recipes
     for (let i = 0; i < 3; i++) {
       const onDragEnd = mocks.getCapturedOnDragEnd();
-      await act(async () => { await onDragEnd!(null, makeDragInfo(100)); });
+      await act(async () => {
+        await onDragEnd!(null, makeDragInfo(100));
+      });
     }
 
     await waitFor(() => {
@@ -401,7 +401,9 @@ describe('BrowseAllStack — End Card', () => {
     // Swipe through all 3 recipes to reach End Card
     for (let i = 0; i < 3; i++) {
       const onDragEnd = mocks.getCapturedOnDragEnd();
-      await act(async () => { await onDragEnd!(null, makeDragInfo(100)); });
+      await act(async () => {
+        await onDragEnd!(null, makeDragInfo(100));
+      });
     }
 
     await waitFor(() => {
@@ -410,13 +412,13 @@ describe('BrowseAllStack — End Card', () => {
 
     // Swipe right on End Card — should wrap to first recipe
     const onDragEndOnEndCard = mocks.getCapturedOnDragEnd();
-    await act(async () => { await onDragEndOnEndCard!(null, makeDragInfo(100)); });
+    await act(async () => {
+      await onDragEndOnEndCard!(null, makeDragInfo(100));
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
-      expect(
-        screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)).toBeInTheDocument();
     });
 
     // End Card should no longer be visible
@@ -453,7 +455,9 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
 
     // Advance to card 2 first
     const onDragEnd = mocks.getCapturedOnDragEnd();
-    await act(async () => { await onDragEnd!(null, makeDragInfo(100)); });
+    await act(async () => {
+      await onDragEnd!(null, makeDragInfo(100));
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId(`stack-card-${RECIPE_IDS[1]}`)).toBeInTheDocument();
@@ -461,7 +465,9 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
 
     // Tap to open detail sheet
     const onTap = mocks.getCapturedOnTap();
-    act(() => { onTap!(); });
+    act(() => {
+      onTap!();
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();

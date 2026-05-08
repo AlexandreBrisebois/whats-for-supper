@@ -206,7 +206,15 @@ export default function BrowseAllStackPage() {
     }
 
     nextCard();
-  }, [isEndCard, currentIndex, recipes.length, hasMorePages, isPrefetching, nextCard, setCurrentIndex]);
+  }, [
+    isEndCard,
+    currentIndex,
+    recipes.length,
+    hasMorePages,
+    isPrefetching,
+    nextCard,
+    setCurrentIndex,
+  ]);
 
   const handleSwipeLeft = useCallback(() => {
     if (isEndCard) {
@@ -234,18 +242,13 @@ export default function BrowseAllStackPage() {
   // ---------------------------------------------------------------------------
   // Discoverable toggle handler
   // ---------------------------------------------------------------------------
-  const handleToggleDiscoverable = useCallback(
-    async (recipeId: string, newValue: boolean) => {
-      await updateRecipe(recipeId, { isDiscoverable: newValue });
-      // Update the recipe in the store so the toggle reflects the new state
-      useBrowseStackStore.setState((s) => ({
-        recipes: s.recipes.map((r) =>
-          r.id === recipeId ? { ...r, isDiscoverable: newValue } : r
-        ),
-      }));
-    },
-    []
-  );
+  const handleToggleDiscoverable = useCallback(async (recipeId: string, newValue: boolean) => {
+    await updateRecipe(recipeId, { isDiscoverable: newValue });
+    // Update the recipe in the store so the toggle reflects the new state
+    useBrowseStackStore.setState((s) => ({
+      recipes: s.recipes.map((r) => (r.id === recipeId ? { ...r, isDiscoverable: newValue } : r)),
+    }));
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Exit and search escape handlers
@@ -314,7 +317,7 @@ export default function BrowseAllStackPage() {
 
   const currentRecipe = recipes[currentIndex] ?? null;
   const position = currentIndex + 1; // 1-based
-  const displayTotal = totalCount > 0 ? totalCount : (isInitialLoading ? 0 : 0);
+  const displayTotal = totalCount > 0 ? totalCount : isInitialLoading ? 0 : 0;
 
   // Show loader when user is at last loaded card and prefetch is in flight
   const isAtLastLoadedCard = currentIndex >= recipes.length - 1;
@@ -363,7 +366,6 @@ export default function BrowseAllStackPage() {
 
       {/* Main content area */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-2 min-h-0">
-
         {/* Initial loading state */}
         {isInitialLoading && (
           <div className="flex flex-col items-center gap-4">
@@ -433,10 +435,7 @@ export default function BrowseAllStackPage() {
                   </div>
                 ) : isEndCard ? (
                   /* End Card (requirement 8) */
-                  <EndCard
-                    onSwipeRight={handleSwipeRight}
-                    onSwipeLeft={handleSwipeLeft}
-                  />
+                  <EndCard onSwipeRight={handleSwipeRight} onSwipeLeft={handleSwipeLeft} />
                 ) : (
                   /* Recipe stack cards */
                   visibleRecipes.map((recipe, visibleIndex) => {
