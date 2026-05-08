@@ -9,6 +9,19 @@ and silent failure modes that would cause small-model builders to invent incompa
 
 Nothing in v1 is weakened. All requirements are expanded, not replaced.
 
+### E2E selector rule
+
+Every `data-testid` value required for testing is listed in the requirements below
+and cross-referenced in the authoritative index in `design.md`.
+
+**ALL E2E test interactions and assertions MUST use `page.getByTestId(...)`.**
+`getByText`, `getByRole`, `getByLabel`, `getByPlaceholder`, CSS class selectors,
+and XPath are FORBIDDEN in E2E tests for this feature.
+
+A `data-testid` value MUST appear in `design.md` before it may be used in a test.
+A UI element that cannot be addressed by `data-testid` is not testable and
+therefore not shippable.
+
 ---
 
 ## Introduction
