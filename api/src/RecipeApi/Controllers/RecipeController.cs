@@ -38,24 +38,22 @@ public class RecipeController(
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20,
-        [FromQuery] string? order = null)
+        [FromQuery] string? order = null,
+        [FromQuery] bool? discoverableOnly = null)
     {
         if (order is not null && !string.Equals(order, "explore", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { error = "Invalid order parameter. Allowed values: explore" });
 
-        var result = string.Equals(order, "explore", StringComparison.OrdinalIgnoreCase)
-            ? await recipeService.GetRecipesListExplore(page, limit)
-            : await recipeService.GetRecipesList(page, limit);
-
+        var result = await recipeService.GetRecipesList(page, limit, order, discoverableOnly);
         return Ok(result);
     }
 
     /// <summary>GET /api/recipes/library-summary — lightweight library health counts.</summary>
     [HttpGet("library-summary")]
-    public async Task<IActionResult> LibrarySummary()
+    public async Task<IActionResult> GetLibrarySummary()
     {
-        var summary = await recipeService.GetLibrarySummary();
-        return Ok(new { data = summary });
+        var result = await recipeService.GetLibrarySummary();
+        return Ok(new { data = result });
     }
 
     /// <summary>GET /api/recipes/{id} — full detail for a single recipe.</summary>

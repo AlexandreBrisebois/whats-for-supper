@@ -4,35 +4,28 @@
 // @ts-ignore
 import { OpenRequestBuilderRequestsMetadata, type OpenRequestBuilder } from './open/index';
 // @ts-ignore
-import {
-  type BaseRequestBuilder,
-  type KeysToExcludeForNavigationMetadata,
-  type NavigationMetadata,
-} from '@microsoft/kiota-abstractions';
+import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata } from '@microsoft/kiota-abstractions';
 
 /**
  * Builds and executes requests for operations under /api/schedule/voting
  */
 export interface VotingRequestBuilder extends BaseRequestBuilder<VotingRequestBuilder> {
-  /**
-   * The open property
-   */
-  get open(): OpenRequestBuilder;
+    /**
+     * The open property
+     */
+    get open(): OpenRequestBuilder;
 }
 /**
  * Uri template for the request builder.
  */
-export const VotingRequestBuilderUriTemplate = '{+baseurl}/api/schedule/voting';
+export const VotingRequestBuilderUriTemplate = "{+baseurl}/api/schedule/voting";
 /**
  * Metadata for all the navigation properties in the request builder.
  */
-export const VotingRequestBuilderNavigationMetadata: Record<
-  Exclude<keyof VotingRequestBuilder, KeysToExcludeForNavigationMetadata>,
-  NavigationMetadata
-> = {
-  open: {
-    requestsMetadata: OpenRequestBuilderRequestsMetadata,
-  },
+export const VotingRequestBuilderNavigationMetadata: Record<Exclude<keyof VotingRequestBuilder, KeysToExcludeForNavigationMetadata>, NavigationMetadata> = {
+    open: {
+        requestsMetadata: OpenRequestBuilderRequestsMetadata,
+    },
 };
 /* tslint:enable */
 /* eslint-enable */

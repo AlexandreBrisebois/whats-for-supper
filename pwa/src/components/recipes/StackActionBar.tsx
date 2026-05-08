@@ -1,105 +1,113 @@
 'use client';
 
 import React from 'react';
-import { Heart } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Sparkles, Library, Heart } from 'lucide-react';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
 interface StackActionBarProps {
   currentRecipe: RecipeDto;
-  position: number;
-  total: number;
-  onToggleDiscoverable: (recipeId: string, newValue: boolean) => Promise<void>;
+  currentIndex: number;
+  totalCount: number;
+  isDiscoverableOnly: boolean;
+  onToggleGlobalFilter: () => void;
+  onToggleIndividualCuration: (recipeId: string, newValue: boolean) => Promise<void>;
 }
 
 export const StackActionBar: React.FC<StackActionBarProps> = ({
   currentRecipe,
-  position,
-  total,
-  onToggleDiscoverable,
+  currentIndex,
+  totalCount,
+  isDiscoverableOnly,
+  onToggleGlobalFilter,
+  onToggleIndividualCuration,
 }) => {
   const recipeId = currentRecipe.id ?? '';
-
-  // `pendingValue` holds the optimistic override while a PATCH is in flight.
-  // When null the component falls back to the prop value, which automatically
-  // reflects the correct state after a card change without needing an effect.
+  
+  // Individual curation state (optimistic)
   const [pendingValue, setPendingValue] = React.useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [hasError, setHasError] = React.useState(false);
+  const [isUpdating, setIsUpdating] = React.useState(false);
   const [loadingForId, setLoadingForId] = React.useState<string | null>(null);
 
-  // Derive the displayed value: use the optimistic override only while the
-  // in-flight request belongs to the current card.
-  const isDiscoverable =
-    isLoading && loadingForId === recipeId && pendingValue !== null
+  const isIndividualDiscoverable =
+    isUpdating && loadingForId === recipeId && pendingValue !== null
       ? pendingValue
       : (currentRecipe.isDiscoverable ?? false);
 
-  const handleToggle = async () => {
-    if (isLoading) return;
-
-    const newValue = !isDiscoverable;
-
-    // Optimistic update
+  const handleIndividualToggle = async () => {
+    if (isUpdating) return;
+    const newValue = !isIndividualDiscoverable;
     setPendingValue(newValue);
     setLoadingForId(recipeId);
-    setIsLoading(true);
-    setHasError(false);
-
+    setIsUpdating(true);
     try {
-      await onToggleDiscoverable(recipeId, newValue);
-    } catch {
-      setHasError(true);
-      setTimeout(() => setHasError(false), 2000);
+      await onToggleIndividualCuration(recipeId, newValue);
+    } catch (err) {
+      console.error('Individual toggle failed', err);
     } finally {
       setPendingValue(null);
       setLoadingForId(null);
-      setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
   return (
-    <div data-testid="stack-action-bar" className="flex items-center justify-between px-6 py-4">
-      {/* Discoverable toggle */}
-      <div className="relative">
-        {isLoading && (
-          <span
-            data-testid={`card-toggle-discovery-${recipeId}-loading`}
-            className="absolute inset-0 flex items-center justify-center"
-            aria-hidden="true"
-          >
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-ochre border-t-transparent" />
-          </span>
-        )}
-        <button
-          type="button"
-          data-testid={`card-toggle-discovery-${recipeId}`}
-          aria-label={isDiscoverable ? 'Remove from discovery' : 'Add to discovery'}
-          disabled={isLoading}
-          onClick={() => void handleToggle()}
-          className={[
-            'inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-black transition-all',
-            'border shadow-sm',
-            isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
-            hasError
-              ? 'border-red-300 bg-red-50 text-red-600'
-              : isDiscoverable
-                ? 'border-ochre bg-ochre text-white shadow-ochre/20'
-                : 'border-charcoal/10 bg-white text-charcoal/70 hover:bg-ochre-50/80 hover:text-ochre-700',
-          ].join(' ')}
-        >
-          <Heart size={16} className={isDiscoverable ? 'fill-white' : ''} />
-          <span>{isDiscoverable ? 'In discovery' : 'Add to discovery'}</span>
-        </button>
-      </div>
-
-      {/* Depth indicator */}
-      <span
-        data-testid="stack-depth-indicator"
-        aria-live="polite"
-        className="text-sm font-black tabular-nums text-charcoal/50 tracking-tight"
+    <div className="flex justify-center w-full px-6 py-4">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="flex items-center gap-1 rounded-full bg-charcoal/90 p-1.5 text-white shadow-2xl backdrop-blur-xl border border-white/10"
+        data-testid="stack-action-bar"
       >
-        {position} / {total}
-      </span>
+        {/* Global Toggle: All vs Discoverable */}
+        <button
+          onClick={onToggleGlobalFilter}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 ${
+            isDiscoverableOnly
+              ? 'bg-ochre text-charcoal shadow-[0_0_15px_rgba(224,159,31,0.3)]'
+              : 'bg-white/5 hover:bg-white/10 text-white/70'
+          }`}
+          data-testid="stack-toggle-discoverable"
+          aria-label={isDiscoverableOnly ? "Show all recipes" : "Show discoverable only"}
+        >
+          <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-charcoal' : ''}`} />
+          <span className="text-[10px] font-black uppercase tracking-wider">
+            {isDiscoverableOnly ? 'Discoverable' : 'Library'}
+          </span>
+        </button>
+
+        <div className="h-4 w-px bg-white/10 mx-1" />
+
+        {/* Counter */}
+        <div className="flex items-center gap-2 px-3 py-2" data-testid="stack-depth-indicator">
+          <Library className="h-3.5 w-3.5 text-ochre/80" />
+          <span className="text-[10px] font-bold tabular-nums text-white/90">
+            <span className="text-ochre">{currentIndex + 1}</span>
+            <span className="text-white/40 mx-1"> / </span>
+            <span className="text-white/60">{totalCount}</span>
+          </span>
+        </div>
+
+        <div className="h-4 w-px bg-white/10 mx-1" />
+
+        {/* Individual Curation Toggle */}
+        <button
+          onClick={handleIndividualToggle}
+          disabled={isUpdating}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 ${
+            isIndividualDiscoverable
+              ? 'bg-sage text-charcoal shadow-[0_0_15px_rgba(125,142,125,0.3)]'
+              : 'bg-white/5 hover:bg-white/10 text-white/70'
+          } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
+          data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
+          aria-label={isIndividualDiscoverable ? 'Remove from discovery' : 'Add to discovery'}
+        >
+          <Heart className={`h-3.5 w-3.5 ${isIndividualDiscoverable ? 'fill-charcoal' : ''}`} />
+          <span className="text-[10px] font-black uppercase tracking-wider">
+            {isIndividualDiscoverable ? 'Pinned' : 'Pin'}
+          </span>
+        </button>
+      </motion.div>
     </div>
   );
 };

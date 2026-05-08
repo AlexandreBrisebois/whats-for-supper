@@ -117,11 +117,11 @@ export function VotingNudgeCard({ plannedCount, onVote, onDismiss }: VotingNudge
   );
 }
 
-export function BrowseLibraryTrigger({ testId }: { testId: string }) {
+export function BrowseLibraryTrigger({ testId }: { testId?: string }) {
   return (
     <Link
       href={ROUTES.BROWSE_ALL_STACK}
-      data-testid={testId}
+      data-testid={testId || 'browse-all-stack-trigger'}
       className="group relative flex items-center justify-between w-full bg-white text-charcoal p-4 sm:p-6 rounded-[2.5rem] border-2 border-charcoal/5 transition-all active:scale-[0.98] hover:border-ochre/20"
     >
       <div className="flex items-center gap-3 sm:gap-5">

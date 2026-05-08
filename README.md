@@ -49,6 +49,9 @@ Search the way a tired parent actually thinks: "chicken pasta pesto tonight", "f
 **7. Recycle Bin and Library Recovery**
 Deleting a recipe is reversible. Soft delete sends it to the Recycle Bin where it can be restored in one tap. Permanent purge — which requires an elevated PIN — removes all DB records and disk assets atomically. A recipe assigned to an active planner slot cannot be deleted until it is removed from the plan first.
 
+**8. Recipe Library Browse**
+An immersive, full-screen card browsing experience for the entire recipe library. It prioritizes recipes that haven't been cooked in a long time, helping families rediscover forgotten favourites. Built with smooth swipe navigation and integrated discoverability toggles, it mirrors the tactile ritual of flipping through a physical recipe box.
+
 ---
 
 ## Architecture
@@ -165,11 +168,16 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Agent super-search (long-form natural language → structured results) | ✅ Complete |
 | index workflow (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
 | Failed Captures recovery (Settings queue, retry with idempotency guard) | ✅ Complete |
-| Canadian Food Guide Classification | ⚠️ TODO |
-| Dietician Agent | ⚠️ TODO | depends on canadian food guide classification |
-| Dreaming | ⚠️ TODO | 
-| Demo Mode | ⚠️ TODO | depends on Dreaming |
-| Family health Profiles | ⚠️ TODO |
+| Recipe Library Browse (immersive card-flip library discovery) | ✅ Complete |
+| Pantry/fridge/freezer photo search (inventory-led ingredient boost) | ✅ Complete |
+| Agent super-search (long-form natural language → structured results) | ✅ Complete |
+| Search index workflow (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
+| Failed Captures recovery (Settings queue, retry with idempotency guard) | ✅ Complete |
+| Canadian Food Guide Classification | ⚠️ TODO | [spec](.kiro/specs/cnf-data-ingestion)
+| Dietician Agent | ⚠️ TODO | depends on canadian food guide classification | [spec](.kiro/specs/dietitian-agent-phase2)
+| Dreaming | ⚠️ TODO | [spec](.kiro/specs/dreaming)
+| Demo Mode | ⚠️ TODO | depends on Dreaming | [spec](.kiro/specs/demo-mode)
+| Family health Profiles | ⚠️ TODO | [spec](.kiro/specs/family-health-profiles)
 
 ---
 

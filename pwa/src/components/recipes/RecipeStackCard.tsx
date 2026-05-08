@@ -11,6 +11,12 @@ import {
   useMotionValueEvent,
 } from 'framer-motion';
 
+// ---------------------------------------------------------------------------
+// RecipeStackCard
+// Purpose-built browse card — NO voting logic, NO hasFamilyInterest prop.
+// Requirements: 10.1–10.9, 3.1–3.5
+// ---------------------------------------------------------------------------
+
 interface RecipeStackCardProps {
   id: string;
   name: string;
@@ -21,9 +27,9 @@ interface RecipeStackCardProps {
   category: string;
   isFront: boolean;
   stackIndex: number;
-  onSwipeRight: () => void;
-  onSwipeLeft: () => void;
-  onTap: () => void;
+  onSwipeRight: () => void; // Navigate to next card
+  onSwipeLeft: () => void;  // Navigate to previous card
+  onTap: () => void;        // Open Recipe Detail Sheet
 }
 
 const formatDuration = (duration: string) => {
@@ -76,7 +82,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
     }
   });
 
-  // Swipe indicator opacity — ochre color, not sage/terracotta
+  // Swipe indicator opacity — ochre color, not sage/terracotta (requirement 3.3)
   const nextOpacity = useTransform(x, [20, 80], [0, 1]);
   const backOpacity = useTransform(x, [-80, -20], [1, 0]);
 
@@ -162,10 +168,6 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
     onTap();
   };
 
-  const testIds = isFront
-    ? { 'data-testid': `stack-card-${id} stack-card-front` }
-    : { 'data-testid': `stack-card-${id}` };
-
   return (
     <motion.div
       layout
@@ -175,6 +177,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
         transformOrigin: 'bottom center',
         touchAction: 'none',
         zIndex: 10 - stackIndex,
+        willChange: 'transform',
       }}
       drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
@@ -186,60 +189,58 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
       onDragEnd={handleDragEnd}
       onTap={handleTap}
       className="absolute inset-x-0 top-0 bottom-12 cursor-grab active:cursor-grabbing"
-      data-testid={`stack-card-${id}`}
+      data-testid={isFront ? 'stack-card-front' : `stack-card-${id}`}
+      data-recipe-id={id}
       {...(isFront ? { 'data-front': 'true' } : {})}
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
-      {/* Apply stack-card-front testid via a wrapper when isFront */}
-      <div className="h-full w-full" {...(isFront ? { 'data-testid': 'stack-card-front' } : {})}>
-        <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
-          <div className="relative h-[62%] w-full overflow-hidden">
-            <Image
-              src={imageUrl}
-              alt={name}
-              fill
-              className="object-cover select-none pointer-events-none"
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
+      <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
+        <div className="relative h-[62%] w-full overflow-hidden">
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            className="object-cover select-none pointer-events-none"
+            sizes="(max-width: 768px) 100vw, 50vw"
+          />
 
-            {/* Swipe direction indicators — ochre color, navigation only */}
-            {isFront && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                {/* Next → indicator (swipe right) */}
-                <motion.div
-                  style={{ opacity: nextOpacity }}
-                  data-testid="stack-swipe-next-indicator"
-                  className="absolute flex flex-col items-center gap-2 rounded-full bg-ochre/30 px-8 py-6 text-white backdrop-blur-md shadow-2xl"
-                >
-                  <span className="text-xl font-black tracking-widest text-ochre-700">Next →</span>
-                </motion.div>
+          {/* Swipe direction indicators — ochre color, navigation only (requirements 3.1, 3.2, 3.3) */}
+          {isFront && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              {/* Next → indicator (swipe right) */}
+              <motion.div
+                style={{ opacity: nextOpacity }}
+                data-testid="stack-swipe-next-indicator"
+                className="absolute flex flex-col items-center gap-2 rounded-full bg-ochre/30 px-8 py-6 text-white backdrop-blur-md shadow-2xl"
+              >
+                <span className="text-xl font-black tracking-widest text-ochre-700">Next →</span>
+              </motion.div>
 
-                {/* ← Back indicator (swipe left) */}
-                <motion.div
-                  style={{ opacity: backOpacity }}
-                  data-testid="stack-swipe-back-indicator"
-                  className="absolute flex flex-col items-center gap-2 rounded-full bg-ochre/30 px-8 py-6 text-white backdrop-blur-md shadow-2xl"
-                >
-                  <span className="text-xl font-black tracking-widest text-ochre-700">← Back</span>
-                </motion.div>
-              </div>
-            )}
-
-            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-          </div>
-
-          <div className="flex-1 p-8 flex flex-col justify-between">
-            <h2 className="text-2xl font-bold tracking-tight font-heading mb-4 leading-tight">
-              {name}
-            </h2>
-            <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
-                Prep: {formatDuration(totalTime)}
-              </span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sage-50/80 text-sage-700">
-                Diff: {difficulty || 'Medium'}
-              </span>
+              {/* ← Back indicator (swipe left) */}
+              <motion.div
+                style={{ opacity: backOpacity }}
+                data-testid="stack-swipe-back-indicator"
+                className="absolute flex flex-col items-center gap-2 rounded-full bg-ochre/30 px-8 py-6 text-white backdrop-blur-md shadow-2xl"
+              >
+                <span className="text-xl font-black tracking-widest text-ochre-700">← Back</span>
+              </motion.div>
             </div>
+          )}
+
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        </div>
+
+        <div className="flex-1 p-8 flex flex-col justify-between">
+          <h2 className="text-2xl font-bold tracking-tight font-heading mb-4 leading-tight">
+            {name}
+          </h2>
+          <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
+              Prep: {formatDuration(totalTime)}
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sage-50/80 text-sage-700">
+              Diff: {difficulty || 'Medium'}
+            </span>
           </div>
         </div>
       </div>

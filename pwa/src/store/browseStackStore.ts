@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
-interface BrowseStackStore {
+/**
+ * Interface for the BrowseStackStore.
+ * Manages state for the Browse All Stack overlay.
+ * Requirements: 1, 2
+ */
+export interface BrowseStackStore {
   // Stack state
   recipes: RecipeDto[];
   currentIndex: number;
@@ -57,6 +62,7 @@ export const useBrowseStackStore = create<BrowseStackStore>((set, get) => ({
   },
 
   nextCard() {
+    // We allow currentIndex to exceed recipes.length to show the EndCard
     set((s) => ({ currentIndex: s.currentIndex + 1 }));
   },
 

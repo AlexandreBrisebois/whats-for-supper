@@ -267,7 +267,7 @@ describe('BrowseAllStack — initial card display', () => {
     });
 
     // The front card should be the first recipe
-    expect(screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)).toBeInTheDocument();
+    expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[0]);
   });
 });
 
@@ -289,7 +289,7 @@ describe('BrowseAllStack — swipe navigation', () => {
 
     await waitFor(() => {
       // Second recipe should now be the front card
-      expect(screen.getByTestId(`stack-card-${RECIPE_IDS[1]}`)).toBeInTheDocument();
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[1]);
     });
   });
 
@@ -307,7 +307,7 @@ describe('BrowseAllStack — swipe navigation', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId(`stack-card-${RECIPE_IDS[1]}`)).toBeInTheDocument();
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[1]);
     });
 
     // Now swipe left to go back
@@ -318,7 +318,7 @@ describe('BrowseAllStack — swipe navigation', () => {
 
     await waitFor(() => {
       // Should be back on the first recipe
-      expect(screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)).toBeInTheDocument();
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[0]);
     });
   });
 });
@@ -417,8 +417,7 @@ describe('BrowseAllStack — End Card', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
-      expect(screen.getByTestId(`stack-card-${RECIPE_IDS[0]}`)).toBeInTheDocument();
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[0]);
     });
 
     // End Card should no longer be visible
@@ -460,7 +459,7 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId(`stack-card-${RECIPE_IDS[1]}`)).toBeInTheDocument();
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[1]);
     });
 
     // Tap to open detail sheet
@@ -489,8 +488,7 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
     });
 
     // Same card should still be shown — no index change
-    expect(screen.getByTestId(`stack-card-${RECIPE_IDS[1]}`)).toBeInTheDocument();
-    expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
+    expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[1]);
 
     // No additional API calls should have been made on close
     expect(mocks.recipesGet).toHaveBeenCalledTimes(1);

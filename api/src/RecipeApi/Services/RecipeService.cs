@@ -95,17 +95,33 @@ public class RecipeService(
         return recipeId;
     }
 
-    /// <summary>Returns a paginated list of recipes, newest first.</summary>
-    public async Task<RecipeListResponseDto> GetRecipesList(int page, int limit)
+    /// <summary>Returns a paginated list of recipes, newest first (default) or oldest-cooked first (order=explore).</summary>
+    public async Task<RecipeListResponseDto> GetRecipesList(int page, int limit, string? order = null, bool? discoverableOnly = null)
     {
         page = Math.Max(1, page);
         limit = Math.Clamp(limit, 1, 100);
 
-        var total = await db.Recipes.CountAsync(r => r.IsDiscoverable && r.DeletedAt == null);
+        var query = db.Recipes.Where(r => r.DeletedAt == null);
 
-        var entities = await db.Recipes
-            .Where(r => r.DeletedAt == null)
-            .OrderByDescending(r => r.CreatedAt)
+        if (discoverableOnly == true)
+        {
+            query = query.Where(r => r.IsDiscoverable);
+        }
+
+        var total = await query.CountAsync();
+
+        if (order == "explore")
+        {
+            query = query.OrderBy(r => r.LastCookedDate == null ? 0 : 1)
+                         .ThenBy(r => r.LastCookedDate)
+                         .ThenByDescending(r => r.CreatedAt);
+        }
+        else
+        {
+            query = query.OrderByDescending(r => r.CreatedAt);
+        }
+
+        var entities = await query
             .Skip((page - 1) * limit)
             .Take(limit)
             .ToListAsync();
@@ -551,6 +567,7 @@ public class RecipeService(
 
         return MapToDetailResponse(recipe);
     }
+
 
     private RecipeDetailResponseDto MapToDetailResponse(Recipe recipe) =>
         new()

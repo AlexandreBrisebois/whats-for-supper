@@ -4,35 +4,28 @@
 // @ts-ignore
 import { RetryRequestBuilderRequestsMetadata, type RetryRequestBuilder } from './retry/index';
 // @ts-ignore
-import {
-  type BaseRequestBuilder,
-  type KeysToExcludeForNavigationMetadata,
-  type NavigationMetadata,
-} from '@microsoft/kiota-abstractions';
+import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata } from '@microsoft/kiota-abstractions';
 
 /**
  * Builds and executes requests for operations under /api/captures/failures/{id}
  */
 export interface FailuresItemRequestBuilder extends BaseRequestBuilder<FailuresItemRequestBuilder> {
-  /**
-   * The retry property
-   */
-  get retry(): RetryRequestBuilder;
+    /**
+     * The retry property
+     */
+    get retry(): RetryRequestBuilder;
 }
 /**
  * Uri template for the request builder.
  */
-export const FailuresItemRequestBuilderUriTemplate = '{+baseurl}/api/captures/failures/{id}';
+export const FailuresItemRequestBuilderUriTemplate = "{+baseurl}/api/captures/failures/{id}";
 /**
  * Metadata for all the navigation properties in the request builder.
  */
-export const FailuresItemRequestBuilderNavigationMetadata: Record<
-  Exclude<keyof FailuresItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
-  NavigationMetadata
-> = {
-  retry: {
-    requestsMetadata: RetryRequestBuilderRequestsMetadata,
-  },
+export const FailuresItemRequestBuilderNavigationMetadata: Record<Exclude<keyof FailuresItemRequestBuilder, KeysToExcludeForNavigationMetadata>, NavigationMetadata> = {
+    retry: {
+        requestsMetadata: RetryRequestBuilderRequestsMetadata,
+    },
 };
 /* tslint:enable */
 /* eslint-enable */

@@ -115,8 +115,8 @@ describe('RecipeStackCard — rendering', () => {
     expect(img).toBeTruthy();
   });
 
-  it('renders card root with data-testid="stack-card-{id}"', () => {
-    render(<RecipeStackCard {...defaultProps} />);
+  it('renders card root with data-testid="stack-card-{id}" when isFront is false', () => {
+    render(<RecipeStackCard {...defaultProps} isFront={false} />);
     expect(screen.getByTestId('stack-card-recipe-123')).toBeTruthy();
   });
 
@@ -269,7 +269,7 @@ describe('RecipeStackCard — no voting indicators', () => {
   });
 
   it('does NOT render hasFamilyInterest ring (no ring-sage class)', () => {
-    render(<RecipeStackCard {...defaultProps} />);
+    render(<RecipeStackCard {...defaultProps} isFront={false} />);
     // The component has no hasFamilyInterest prop — verify no ring-sage class exists
     const container = screen.getByTestId('stack-card-recipe-123');
     expect(container.innerHTML).not.toContain('ring-sage');

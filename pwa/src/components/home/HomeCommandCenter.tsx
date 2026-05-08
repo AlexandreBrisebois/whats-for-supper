@@ -446,7 +446,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       )}
 
       <QuickCaptureTrigger />
-
       <BrowseLibraryTrigger testId="home-browse-all-trigger" />
 
       <AnimatePresence>

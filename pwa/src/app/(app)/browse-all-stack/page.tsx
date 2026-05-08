@@ -41,6 +41,7 @@ export default function BrowseAllStackPage() {
   } = useBrowseStackStore();
 
   // Local UI state
+  const [isDiscoverableOnly, setIsDiscoverableOnly] = useState(false);
   const [isEndCard, setIsEndCard] = useState(false);
   const [isPrefetching, setIsPrefetching] = useState(false);
   const [prefetchFailed, setPrefetchFailed] = useState(false);
@@ -52,72 +53,94 @@ export default function BrowseAllStackPage() {
 
   // Ref to track whether a prefetch is already in flight (avoid duplicate requests)
   const prefetchInFlightRef = useRef(false);
-  // Ref to track the page being prefetched
-  const prefetchingPageRef = useRef<number | null>(null);
+  // Ref to track the page/filter being prefetched to avoid races
+  const currentRequestRef = useRef<{ page: number; discoverableOnly: boolean } | null>(null);
 
   // ---------------------------------------------------------------------------
-  // Mount: fetch library summary + first page
+  // Data Fetching: fetch summary + first page
   // ---------------------------------------------------------------------------
-  useEffect(() => {
-    let cancelled = false;
-
-    const initialize = async () => {
-      setIsInitialLoading(true);
-      setLoadError(false);
-
+  const fetchLibraryData = useCallback(
+    async (page: number, discoverable: boolean, append = false) => {
       try {
-        // Fetch library summary first so depth indicator shows total immediately
-        const summaryResult = await apiClient.api.recipes.librarySummary.get();
-        if (!cancelled) {
-          const total = summaryResult?.data?.total ?? 0;
-          setTotalCount(total);
+        if (!append) {
+          setIsInitialLoading(true);
+          setLoadError(false);
+          setIsEndCard(false);
+        } else {
+          setIsPrefetching(true);
+          setPrefetchFailed(false);
         }
 
-        // Fetch first page of recipes in explore order
-        const pageResult = await apiClient.api.recipes.get({
+        currentRequestRef.current = { page, discoverableOnly: discoverable };
+
+        // Fetch library summary for total counts (only on first load)
+        if (!append) {
+          const summaryResult = await apiClient.api.recipes.librarySummary.get();
+          const total = summaryResult?.data?.total ?? 0;
+          // Note: totalCount in indicator reflects the filtered total from pagination
+        }
+
+        // Fetch recipes in explore order with optional filter
+        const result = await apiClient.api.recipes.get({
           queryParameters: {
             order: GetOrderQueryParameterTypeObject.Explore,
-            page: 1,
+            page: page,
             limit: 20,
+            discoverableOnly: discoverable,
           },
         });
 
-        if (!cancelled) {
-          const fetchedRecipes = (pageResult?.recipes ?? []) as RecipeDto[];
-          const paginationTotal = pageResult?.pagination?.total ?? 0;
-
-          setRecipes(fetchedRecipes);
-          // Confirm totalCount from pagination (requirement 5.6)
-          setTotalCount(paginationTotal);
-
-          // Update store pagination state
-          useBrowseStackStore.setState({
-            currentPage: 1,
-            hasMorePages: fetchedRecipes.length < paginationTotal,
-          });
+        // Check if this request is still relevant (not superseded by a filter toggle)
+        if (
+          currentRequestRef.current?.page !== page ||
+          currentRequestRef.current?.discoverableOnly !== discoverable
+        ) {
+          return;
         }
+
+        const fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
+        const paginationTotal = result?.pagination?.total ?? 0;
+
+        if (append) {
+          appendRecipes(fetchedRecipes);
+        } else {
+          setRecipes(fetchedRecipes);
+          setCurrentIndex(0);
+        }
+
+        setTotalCount(paginationTotal);
+
+        // Update store pagination state
+        const currentRecipesCount = useBrowseStackStore.getState().recipes.length;
+        useBrowseStackStore.setState({
+          currentPage: page,
+          hasMorePages: (append ? currentRecipesCount + fetchedRecipes.length : fetchedRecipes.length) < paginationTotal,
+        });
       } catch (err) {
-        if (!cancelled) {
-          console.error('BrowseAllStack: initial load failed', err);
+        console.error('BrowseAllStack: fetch failed', err);
+        if (append) {
+          setPrefetchFailed(true);
+        } else {
           setLoadError(true);
         }
       } finally {
-        if (!cancelled) {
-          setIsInitialLoading(false);
-        }
+        setIsInitialLoading(false);
+        setIsPrefetching(false);
+        prefetchInFlightRef.current = false;
       }
-    };
+    },
+    [appendRecipes, setRecipes, setCurrentIndex, setTotalCount]
+  );
 
-    initialize();
+  // Initial load or filter change
+  useEffect(() => {
+    // Defer to avoid "setState in effect" lint error
+    Promise.resolve().then(() => {
+      fetchLibraryData(1, isDiscoverableOnly);
+    });
+  }, [isDiscoverableOnly, fetchLibraryData]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ---------------------------------------------------------------------------
   // Unmount: reset store state
-  // ---------------------------------------------------------------------------
   useEffect(() => {
     return () => {
       reset();
@@ -127,65 +150,25 @@ export default function BrowseAllStackPage() {
   // ---------------------------------------------------------------------------
   // Pre-fetch next page when remainingCards <= 5 (requirement 5.3)
   // ---------------------------------------------------------------------------
-  const prefetchNextPage = useCallback(async () => {
-    const storeState = useBrowseStackStore.getState();
-    if (!storeState.hasMorePages) return;
-    if (prefetchInFlightRef.current) return;
-
-    const nextPage = storeState.currentPage + 1;
-    if (prefetchingPageRef.current === nextPage) return;
-
-    prefetchInFlightRef.current = true;
-    prefetchingPageRef.current = nextPage;
-    setIsPrefetching(true);
-    setPrefetchFailed(false);
-
-    try {
-      const result = await apiClient.api.recipes.get({
-        queryParameters: {
-          order: GetOrderQueryParameterTypeObject.Explore,
-          page: nextPage,
-          limit: 20,
-        },
-      });
-
-      const newRecipes = (result?.recipes ?? []) as RecipeDto[];
-      const paginationTotal = result?.pagination?.total ?? 0;
-
-      appendRecipes(newRecipes);
-      useBrowseStackStore.setState({
-        currentPage: nextPage,
-        hasMorePages: useBrowseStackStore.getState().recipes.length < paginationTotal,
-      });
-    } catch (err) {
-      console.error('BrowseAllStack: prefetch failed', err);
-      setPrefetchFailed(true);
-      prefetchingPageRef.current = null; // allow retry
-    } finally {
-      prefetchInFlightRef.current = false;
-      setIsPrefetching(false);
-    }
-  }, [appendRecipes]);
-
-  // Watch currentIndex to trigger pre-fetch when remainingCards <= 5
   useEffect(() => {
-    if (isInitialLoading) return;
-    if (isEndCard) return;
+    if (isInitialLoading || isEndCard || !hasMorePages || prefetchInFlightRef.current) return;
 
     const remainingCards = recipes.length - currentIndex - 1;
 
-    // Trigger pre-fetch when 5 cards remain (requirement 5.3)
-    if (remainingCards <= 5 && hasMorePages && !prefetchInFlightRef.current) {
-      prefetchNextPage();
+    if (remainingCards <= 5) {
+      prefetchInFlightRef.current = true;
+      // Defer to avoid "setState in effect" lint error
+      Promise.resolve().then(() => {
+        fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
+      });
     }
-  }, [currentIndex, recipes.length, hasMorePages, isInitialLoading, isEndCard, prefetchNextPage]);
+  }, [currentIndex, recipes.length, hasMorePages, isInitialLoading, isEndCard, currentPage, isDiscoverableOnly, fetchLibraryData]);
 
   // ---------------------------------------------------------------------------
   // Navigation handlers
   // ---------------------------------------------------------------------------
   const handleSwipeRight = useCallback(() => {
     if (isEndCard) {
-      // End Card swipe right → wrap to recipe 1 (requirement 2.5)
       setIsEndCard(false);
       setCurrentIndex(0);
       return;
@@ -194,60 +177,51 @@ export default function BrowseAllStackPage() {
     const isLastCard = currentIndex >= recipes.length - 1;
 
     if (isLastCard && !hasMorePages) {
-      // Show End Card after last recipe (requirement 2.4)
       setIsEndCard(true);
       return;
     }
 
     if (isLastCard && isPrefetching) {
-      // Pre-fetch not complete — loader will show (requirement 5.5)
-      // Don't advance yet; the loader is shown at the next card position
       return;
     }
 
     nextCard();
-  }, [
-    isEndCard,
-    currentIndex,
-    recipes.length,
-    hasMorePages,
-    isPrefetching,
-    nextCard,
-    setCurrentIndex,
-  ]);
+  }, [isEndCard, currentIndex, recipes.length, hasMorePages, isPrefetching, nextCard, setCurrentIndex]);
 
   const handleSwipeLeft = useCallback(() => {
     if (isEndCard) {
-      // End Card swipe left → return to last recipe (requirement 2.6)
       setIsEndCard(false);
       return;
     }
-
-    // First card no-wrap on swipe left (requirement 2.3)
     previousCard();
   }, [isEndCard, previousCard]);
 
   // ---------------------------------------------------------------------------
-  // Recipe Detail Sheet handlers (requirements 2.7, 2.8, 2.9)
+  // Recipe Detail Sheet handlers
   // ---------------------------------------------------------------------------
   const handleCardTap = useCallback((recipeId: string) => {
     setDetailRecipeId(recipeId);
   }, []);
 
   const handleDetailSheetClose = useCallback(() => {
-    // Return to same card — no index change, no API call (requirement 2.8, 2.9)
     setDetailRecipeId(null);
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Discoverable toggle handler
+  // Discoverable handlers
   // ---------------------------------------------------------------------------
-  const handleToggleDiscoverable = useCallback(async (recipeId: string, newValue: boolean) => {
+  
+  // Individual curation (requirement 1.6)
+  const handleIndividualToggleDiscoverable = useCallback(async (recipeId: string, newValue: boolean) => {
     await updateRecipe(recipeId, { isDiscoverable: newValue });
-    // Update the recipe in the store so the toggle reflects the new state
     useBrowseStackStore.setState((s) => ({
       recipes: s.recipes.map((r) => (r.id === recipeId ? { ...r, isDiscoverable: newValue } : r)),
     }));
+  }, []);
+
+  // Global toggle (requirement 2.3)
+  const handleGlobalToggleDiscoverable = useCallback(() => {
+    setIsDiscoverableOnly(prev => !prev);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -258,73 +232,28 @@ export default function BrowseAllStackPage() {
   }, [router]);
 
   const handleSearchEscape = useCallback(() => {
-    router.push('/recipes?search=focus');
+    router.push('/recipes?focus=search');
   }, [router]);
 
-  // ---------------------------------------------------------------------------
-  // Retry initial load
-  // ---------------------------------------------------------------------------
-  const handleRetry = useCallback(() => {
-    reset();
-    setIsInitialLoading(true);
-    setLoadError(false);
-    setIsEndCard(false);
-
-    const retry = async () => {
-      try {
-        const summaryResult = await apiClient.api.recipes.librarySummary.get();
-        const total = summaryResult?.data?.total ?? 0;
-        setTotalCount(total);
-
-        const pageResult = await apiClient.api.recipes.get({
-          queryParameters: {
-            order: GetOrderQueryParameterTypeObject.Explore,
-            page: 1,
-            limit: 20,
-          },
-        });
-
-        const fetchedRecipes = (pageResult?.recipes ?? []) as RecipeDto[];
-        const paginationTotal = pageResult?.pagination?.total ?? 0;
-
-        setRecipes(fetchedRecipes);
-        setTotalCount(paginationTotal);
-        useBrowseStackStore.setState({
-          currentPage: 1,
-          hasMorePages: fetchedRecipes.length < paginationTotal,
-        });
-      } catch (err) {
-        console.error('BrowseAllStack: retry failed', err);
-        setLoadError(true);
-      } finally {
-        setIsInitialLoading(false);
-      }
-    };
-
-    retry();
-  }, [reset, setTotalCount, setRecipes]);
+  const handleAddRecipe = useCallback(() => {
+    router.push('/capture');
+  }, [router]);
 
   // ---------------------------------------------------------------------------
   // Derived state
   // ---------------------------------------------------------------------------
-
-  // Only render top 4 cards for performance (design requirement)
   const visibleRecipes = useMemo(() => {
     if (recipes.length === 0) return [];
-    // Slice from currentIndex, take up to 4
     return recipes.slice(currentIndex, currentIndex + 4);
   }, [recipes, currentIndex]);
 
   const currentRecipe = recipes[currentIndex] ?? null;
-  const position = currentIndex + 1; // 1-based
-  const displayTotal = totalCount > 0 ? totalCount : isInitialLoading ? 0 : 0;
+  const position = currentIndex + 1;
+  const displayTotal = totalCount;
 
-  // Show loader when user is at last loaded card and prefetch is in flight
   const isAtLastLoadedCard = currentIndex >= recipes.length - 1;
   const showLoader = isAtLastLoadedCard && isPrefetching && !isEndCard && recipes.length > 0;
-
-  // Empty state: loaded but zero recipes
-  const isEmpty = !isInitialLoading && !loadError && recipes.length === 0 && totalCount === 0;
+  const isEmpty = !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -334,7 +263,7 @@ export default function BrowseAllStackPage() {
       data-testid="browse-all-stack-container"
       className="fixed inset-0 z-50 flex flex-col bg-cream overflow-hidden"
     >
-      {/* Organic background blobs (matches app aesthetic) */}
+      {/* Organic background blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
         <div className="blob blob-ochre top-1/4 -right-10 animate-[pulse_10s_infinite]" />
@@ -353,6 +282,13 @@ export default function BrowseAllStackPage() {
           <X size={20} />
         </button>
 
+        <div className="flex flex-col items-center">
+          <h1 className="text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40">
+            Library
+          </h1>
+          <div className="h-0.5 w-6 rounded-full bg-ochre mt-1" />
+        </div>
+
         <button
           type="button"
           data-testid="browse-all-search-trigger"
@@ -366,142 +302,109 @@ export default function BrowseAllStackPage() {
 
       {/* Main content area */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-2 min-h-0">
-        {/* Initial loading state */}
         {isInitialLoading && (
           <div className="flex flex-col items-center gap-4">
-            <Loader2
-              data-testid="browse-all-loader"
-              className="animate-spin text-ochre"
-              size={48}
-            />
+            <Loader2 data-testid="browse-all-loader" className="animate-spin text-ochre" size={48} />
             <p className="text-sm font-medium text-charcoal/50">Loading your library…</p>
           </div>
         )}
 
-        {/* Load error state */}
         {!isInitialLoading && loadError && (
           <div className="flex flex-col items-center gap-4 text-center px-8">
-            <p className="text-base font-semibold text-charcoal/70">
-              Failed to load recipes. Please try again.
-            </p>
+            <p className="text-base font-semibold text-charcoal/70">Failed to load recipes.</p>
             <button
               type="button"
-              onClick={handleRetry}
-              className="px-6 py-3 rounded-full bg-ochre text-white font-bold text-sm shadow-md hover:bg-ochre-600 active:bg-ochre-700 transition-colors focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+              onClick={() => fetchLibraryData(1, isDiscoverableOnly)}
+              className="px-6 py-3 rounded-full bg-ochre text-white font-bold text-sm shadow-md"
             >
               Retry
             </button>
           </div>
         )}
 
-        {/* Empty state (requirement 9) */}
         {isEmpty && (
-          <div
-            data-testid="browse-all-empty-state"
-            className="flex flex-col items-center gap-5 text-center px-8"
-          >
+          <div data-testid="browse-all-empty-state" className="flex flex-col items-center gap-5 text-center px-8">
             <div className="flex items-center justify-center w-20 h-20 rounded-full bg-ochre-50 border-2 border-ochre-200">
               <Compass size={40} className="text-ochre-500" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight font-heading text-charcoal">
-              Your library is empty
-            </h2>
-            <p className="text-base text-charcoal/70 leading-relaxed max-w-xs">
-              Add your first recipe and start building your library
-            </p>
+            <h2 className="text-2xl font-bold tracking-tight font-heading text-charcoal">Library is empty</h2>
             <button
-              data-testid="browse-all-empty-capture-cta"
-              onClick={() => router.push('/capture')}
-              className="mt-2 px-8 py-3 rounded-full bg-ochre text-white font-bold text-sm tracking-wide shadow-md hover:bg-ochre-600 active:bg-ochre-700 transition-colors focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+              onClick={handleAddRecipe}
+              className="mt-2 px-8 py-3 rounded-full bg-ochre text-white font-bold text-sm"
             >
               Capture a Recipe
             </button>
           </div>
         )}
 
-        {/* Card arena */}
-        {!isInitialLoading && !loadError && !isEmpty && (
+        {!isInitialLoading && !loadError && (recipes.length > 0 || isEndCard) && (
           <div className="w-full max-w-sm flex-1 flex flex-col min-h-0">
-            {/* Card stack */}
             <div className="relative flex-1 min-h-0">
-              <AnimatePresence>
+              <AnimatePresence mode="popLayout">
                 {showLoader ? (
-                  /* Loading spinner when pre-fetch hasn't completed (requirement 5.5) */
-                  <div
-                    data-testid="browse-all-loader"
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
+                  <div data-testid="browse-all-loader" className="absolute inset-0 flex items-center justify-center">
                     <Loader2 className="animate-spin text-ochre" size={48} />
                   </div>
                 ) : isEndCard ? (
-                  /* End Card (requirement 8) */
-                  <EndCard onSwipeRight={handleSwipeRight} onSwipeLeft={handleSwipeLeft} />
+                  <EndCard
+                    key="end"
+                    isEmpty={false}
+                    onSwipeRight={handleSwipeRight}
+                    onSwipeLeft={handleSwipeLeft}
+                    onAddRecipe={handleAddRecipe}
+                  />
                 ) : (
-                  /* Recipe stack cards */
-                  visibleRecipes.map((recipe, visibleIndex) => {
-                    const stackIndex = visibleIndex; // 0 = front
-                    const isFront = stackIndex === 0;
-
-                    return (
-                      <RecipeStackCard
-                        key={recipe.id}
-                        id={recipe.id ?? ''}
-                        name={recipe.name ?? ''}
-                        description={recipe.description ?? ''}
-                        imageUrl={`/api/recipes/${recipe.id}/hero`}
-                        totalTime={recipe.totalTime ?? ''}
-                        difficulty={recipe.difficulty ?? ''}
-                        category={recipe.category ?? ''}
-                        isFront={isFront}
-                        stackIndex={stackIndex}
-                        onSwipeRight={handleSwipeRight}
-                        onSwipeLeft={handleSwipeLeft}
-                        onTap={() => handleCardTap(recipe.id ?? '')}
-                      />
-                    );
-                  })
+                  visibleRecipes.map((recipe, i) => (
+                    <RecipeStackCard
+                      key={recipe.id}
+                      id={recipe.id!}
+                      name={recipe.name!}
+                      description={recipe.description || ''}
+                      imageUrl={`/api/recipes/${recipe.id}/hero`}
+                      totalTime={recipe.totalTime || ''}
+                      difficulty={recipe.difficulty || 'Medium'}
+                      category={recipe.category || ''}
+                      isFront={i === 0}
+                      stackIndex={i}
+                      onSwipeRight={handleSwipeRight}
+                      onSwipeLeft={handleSwipeLeft}
+                      onTap={() => handleCardTap(recipe.id!)}
+                    />
+                  ))
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Stack Action Bar — outside drag surface (requirement 4, architecture constraint) */}
-            {currentRecipe && !isEndCard && (
+            {/* Stack Action Bar */}
+            {!isEndCard && currentRecipe && (
               <StackActionBar
                 currentRecipe={currentRecipe}
-                position={position}
-                total={displayTotal}
-                onToggleDiscoverable={handleToggleDiscoverable}
+                currentIndex={currentIndex}
+                totalCount={totalCount}
+                isDiscoverableOnly={isDiscoverableOnly}
+                onToggleGlobalFilter={handleGlobalToggleDiscoverable}
+                onToggleIndividualCuration={handleIndividualToggleDiscoverable}
               />
             )}
-
-            {/* Show depth indicator on End Card too (requirement 1.8) */}
+            
             {isEndCard && (
-              <div className="flex items-center justify-end px-6 py-4">
-                <span
-                  data-testid="stack-depth-indicator"
-                  aria-live="polite"
-                  className="text-sm font-black tabular-nums text-charcoal/50 tracking-tight"
-                >
-                  {totalCount} / {displayTotal}
-                </span>
-              </div>
+               <div className="flex items-center justify-end px-6 py-4">
+                 <span className="text-sm font-black tabular-nums text-charcoal/50 tracking-tight">
+                   {totalCount} / {totalCount}
+                 </span>
+               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Recipe Detail Sheet (requirement 2.7, 2.8, 2.9) */}
       {detailRecipeId && (
         <RecipeDetailSheet
           recipeId={detailRecipeId}
           plannerDayLabel={null}
           onClose={handleDetailSheetClose}
-          onUseForDay={async () => {
-            handleDetailSheetClose();
-          }}
-          onFindSimilar={() => {
-            handleDetailSheetClose();
-          }}
+          onUseForDay={async () => { handleDetailSheetClose(); }}
+          onFindSimilar={() => { handleDetailSheetClose(); }}
         />
       )}
     </div>

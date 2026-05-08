@@ -3,14 +3,23 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useMotionValue, useTransform, useAnimation, PanInfo } from 'framer-motion';
-import { Compass } from 'lucide-react';
+import { Compass, Search, Plus, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { ROUTES } from '@/lib/constants/routes';
 
 interface EndCardProps {
+  isEmpty?: boolean;
   onSwipeRight: () => void;
   onSwipeLeft: () => void;
+  onAddRecipe?: () => void;
 }
 
-export const EndCard: React.FC<EndCardProps> = ({ onSwipeRight, onSwipeLeft }) => {
+export const EndCard: React.FC<EndCardProps> = ({ 
+  isEmpty = false, 
+  onSwipeRight, 
+  onSwipeLeft,
+  onAddRecipe 
+}) => {
   const router = useRouter();
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
@@ -48,7 +57,11 @@ export const EndCard: React.FC<EndCardProps> = ({ onSwipeRight, onSwipeLeft }) =
   };
 
   const handleCaptureCta = () => {
-    router.push('/capture');
+    if (onAddRecipe) {
+      onAddRecipe();
+    } else {
+      router.push(ROUTES.CAPTURE);
+    }
   };
 
   return (
@@ -67,38 +80,51 @@ export const EndCard: React.FC<EndCardProps> = ({ onSwipeRight, onSwipeLeft }) =
       animate={controls}
       onDragEnd={handleDragEnd}
       className="absolute inset-x-0 top-0 bottom-12 cursor-grab active:cursor-grabbing"
-      data-testid="browse-all-end-card"
+      data-testid={isEmpty ? "browse-all-empty-state" : "browse-all-end-card"}
       whileTap={{ scale: 0.98 }}
     >
-      <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-cream shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border border-ochre-100 flex flex-col items-center justify-center px-8 py-12 gap-6">
-        {/* Compass / supper icon */}
-        <div className="flex items-center justify-center w-20 h-20 rounded-full bg-ochre-50 border-2 border-ochre-200">
-          <Compass size={40} className="text-ochre-500" />
+      <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-cream shadow-card border border-ochre/10 flex flex-col items-center justify-center px-8 py-12 gap-6">
+        {/* Icon container */}
+        <div className={`flex items-center justify-center w-20 h-20 rounded-full border-2 ${isEmpty ? 'bg-ochre/10 border-ochre/20' : 'bg-sage/10 border-sage/20'}`}>
+          {isEmpty ? (
+            <Search size={40} className="text-ochre" />
+          ) : (
+            <Compass size={40} className="text-ochre" />
+          )}
         </div>
 
         {/* Heading */}
-        <h2 className="text-3xl font-bold tracking-tight font-heading text-center text-charcoal">
-          What&apos;s for Supper?
+        <h2 className="text-3xl font-black tracking-tighter font-heading text-center text-charcoal leading-none">
+          {isEmpty ? "Your Library is Empty" : "What's for Supper?"}
         </h2>
 
         {/* Supporting message */}
-        <p className="text-base text-charcoal/70 text-center leading-relaxed max-w-xs">
-          You&apos;ve browsed your whole library. Did you find what you were looking for?
-        </p>
-
-        {/* Secondary message */}
-        <p className="text-sm text-ochre-700 text-center leading-relaxed max-w-xs font-medium">
-          Have a recipe nearby you&apos;d like to add?
+        <p className="text-base text-charcoal/60 text-center leading-snug max-w-xs font-medium">
+          {isEmpty 
+            ? "Start your collection by adding a favorite family recipe or capturing one from the web."
+            : "You've flipped through your whole library. Did you find what you were looking for tonight?"}
         </p>
 
         {/* CTA button */}
         <button
-          data-testid="end-card-capture-cta"
+          data-testid={isEmpty ? "browse-all-empty-capture-cta" : "end-card-capture-cta"}
           onClick={handleCaptureCta}
-          className="mt-2 px-8 py-3 rounded-full bg-ochre text-white font-bold text-sm tracking-wide shadow-md hover:bg-ochre-600 active:bg-ochre-700 transition-colors focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+          className="group mt-2 flex items-center gap-3 rounded-full bg-charcoal px-8 py-4 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
         >
-          Capture a Recipe
+          <Plus size={20} strokeWidth={3} />
+          <span className="font-black text-sm uppercase tracking-widest">
+            {isEmpty ? "Add New Recipe" : "Capture a Recipe"}
+          </span>
         </button>
+        
+        {!isEmpty && (
+          <Link
+            href={ROUTES.HOME}
+            className="text-xs font-black uppercase tracking-widest text-ochre hover:text-ochre/80 transition-colors"
+          >
+            Back to Planner
+          </Link>
+        )}
       </div>
     </motion.div>
   );

@@ -40,9 +40,11 @@ describe('StackActionBar — depth indicator', () => {
     render(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={3}
-        total={24}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={2}
+        totalCount={24}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
     expect(screen.getByTestId('stack-depth-indicator').textContent).toBe('3 / 24');
@@ -52,9 +54,11 @@ describe('StackActionBar — depth indicator', () => {
     render(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={1}
-        total={10}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={0}
+        totalCount={10}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
     expect(screen.getByTestId('stack-depth-indicator')).toBeTruthy();
@@ -64,9 +68,11 @@ describe('StackActionBar — depth indicator', () => {
     const { rerender } = render(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={1}
-        total={10}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={0}
+        totalCount={10}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
     expect(screen.getByTestId('stack-depth-indicator').textContent).toBe('1 / 10');
@@ -74,9 +80,11 @@ describe('StackActionBar — depth indicator', () => {
     rerender(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={5}
-        total={10}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={4}
+        totalCount={10}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
     expect(screen.getByTestId('stack-depth-indicator').textContent).toBe('5 / 10');
@@ -92,9 +100,11 @@ describe('StackActionBar — container', () => {
     render(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={1}
-        total={5}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
     expect(screen.getByTestId('stack-action-bar')).toBeTruthy();
@@ -110,9 +120,11 @@ describe('StackActionBar — discoverable toggle visual state', () => {
     render(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={1}
-        total={5}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
     expect(screen.getByTestId('card-toggle-discovery-recipe-abc')).toBeTruthy();
@@ -122,9 +134,11 @@ describe('StackActionBar — discoverable toggle visual state', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: false })}
-        position={1}
-        total={5}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
@@ -135,9 +149,11 @@ describe('StackActionBar — discoverable toggle visual state', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: true })}
-        position={1}
-        total={5}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
@@ -155,9 +171,11 @@ describe('StackActionBar — toggle interaction', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: false })}
-        position={1}
-        total={5}
-        onToggleDiscoverable={onToggle}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={onToggle}
       />
     );
 
@@ -173,9 +191,11 @@ describe('StackActionBar — toggle interaction', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: true })}
-        position={1}
-        total={5}
-        onToggleDiscoverable={onToggle}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={onToggle}
       />
     );
 
@@ -198,9 +218,11 @@ describe('StackActionBar — toggle interaction', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: false })}
-        position={1}
-        total={5}
-        onToggleDiscoverable={onToggle}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={onToggle}
       />
     );
 
@@ -236,9 +258,11 @@ describe('StackActionBar — loading state', () => {
     render(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={1}
-        total={5}
-        onToggleDiscoverable={onToggle}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={onToggle}
       />
     );
 
@@ -268,16 +292,18 @@ describe('StackActionBar — loading state', () => {
     render(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={1}
-        total={5}
-        onToggleDiscoverable={onToggle}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={onToggle}
       />
     );
 
     fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
 
     await waitFor(() => {
-      const btn = screen.getByTestId('card-toggle-discovery-recipe-abc') as HTMLButtonElement;
+      const btn = screen.getByTestId('card-toggle-discovery-recipe-abc-loading') as HTMLButtonElement;
       expect(btn.disabled).toBe(true);
     });
 
@@ -296,9 +322,11 @@ describe('StackActionBar — error handling', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: false })}
-        position={1}
-        total={5}
-        onToggleDiscoverable={onToggle}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={onToggle}
       />
     );
 
@@ -319,9 +347,11 @@ describe('StackActionBar — error handling', () => {
     render(
       <StackActionBar
         currentRecipe={defaultRecipe}
-        position={1}
-        total={5}
-        onToggleDiscoverable={onToggle}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={onToggle}
       />
     );
 
@@ -345,9 +375,11 @@ describe('StackActionBar — card change sync', () => {
     const { rerender } = render(
       <StackActionBar
         currentRecipe={recipeA}
-        position={1}
-        total={5}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
 
@@ -358,9 +390,11 @@ describe('StackActionBar — card change sync', () => {
     rerender(
       <StackActionBar
         currentRecipe={recipeB}
-        position={2}
-        total={5}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={1}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
 
@@ -376,9 +410,11 @@ describe('StackActionBar — card change sync', () => {
     const { rerender } = render(
       <StackActionBar
         currentRecipe={recipeA}
-        position={1}
-        total={5}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={0}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
 
@@ -388,9 +424,11 @@ describe('StackActionBar — card change sync', () => {
     rerender(
       <StackActionBar
         currentRecipe={recipeB}
-        position={2}
-        total={5}
-        onToggleDiscoverable={vi.fn()}
+        currentIndex={1}
+        totalCount={5}
+        isDiscoverableOnly={false}
+        onToggleGlobalFilter={vi.fn()}
+        onToggleIndividualCuration={vi.fn()}
       />
     );
 

@@ -76,6 +76,14 @@ vi.mock('@/lib/api/planner', () => ({
   assignRecipeToDay: (...args: unknown[]) => mocks.assignRecipeToDay(...args),
 }));
 
+vi.mock('@/components/home/HomeSections', () => ({
+  BrowseLibraryTrigger: ({ testId }: { testId: string }) => (
+    <a href="/browse-all-stack" data-testid={testId}>
+      Browse your library
+    </a>
+  ),
+}));
+
 import RecipesPage from './page';
 
 function makeSearchResponse(overrides: Record<string, unknown> = {}) {

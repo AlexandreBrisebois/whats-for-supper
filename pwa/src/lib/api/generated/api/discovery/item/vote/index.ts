@@ -4,17 +4,7 @@
 // @ts-ignore
 import { serializeVoteDto, type VoteDto } from '../../../../models/index';
 // @ts-ignore
-import {
-  type AdditionalDataHolder,
-  type BaseRequestBuilder,
-  type Parsable,
-  type ParsableFactory,
-  type ParseNode,
-  type RequestConfiguration,
-  type RequestInformation,
-  type RequestsMetadata,
-  type SerializationWriter,
-} from '@microsoft/kiota-abstractions';
+import { type AdditionalDataHolder, type BaseRequestBuilder, type Parsable, type ParsableFactory, type ParseNode, type RequestConfiguration, type RequestInformation, type RequestsMetadata, type SerializationWriter } from '@microsoft/kiota-abstractions';
 
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -22,10 +12,8 @@ import {
  * @returns {VotePostResponse_data}
  */
 // @ts-ignore
-export function createVotePostResponse_dataFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoVotePostResponse_data;
+export function createVotePostResponse_dataFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVotePostResponse_data;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -33,10 +21,8 @@ export function createVotePostResponse_dataFromDiscriminatorValue(
  * @returns {VotePostResponse}
  */
 // @ts-ignore
-export function createVotePostResponseFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoVotePostResponse;
+export function createVotePostResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVotePostResponse;
 }
 /**
  * The deserialization information for the current model
@@ -44,16 +30,10 @@ export function createVotePostResponseFromDiscriminatorValue(
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoVotePostResponse(
-  votePostResponse: Partial<VotePostResponse> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    data: (n) => {
-      votePostResponse.data = n.getObjectValue<VotePostResponse_data>(
-        createVotePostResponse_dataFromDiscriminatorValue
-      );
-    },
-  };
+export function deserializeIntoVotePostResponse(votePostResponse: Partial<VotePostResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "data": n => { votePostResponse.data = n.getObjectValue<VotePostResponse_data>(createVotePostResponse_dataFromDiscriminatorValue); },
+    }
 }
 /**
  * The deserialization information for the current model
@@ -61,14 +41,10 @@ export function deserializeIntoVotePostResponse(
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoVotePostResponse_data(
-  votePostResponse_data: Partial<VotePostResponse_data> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    message: (n) => {
-      votePostResponse_data.message = n.getStringValue();
-    },
-  };
+export function deserializeIntoVotePostResponse_data(votePostResponse_data: Partial<VotePostResponse_data> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "message": n => { votePostResponse_data.message = n.getStringValue(); },
+    }
 }
 /**
  * Serializes information the current object
@@ -77,20 +53,10 @@ export function deserializeIntoVotePostResponse_data(
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeVotePostResponse(
-  writer: SerializationWriter,
-  votePostResponse: Partial<VotePostResponse> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!votePostResponse || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeObjectValue<VotePostResponse_data>(
-    'data',
-    votePostResponse.data,
-    serializeVotePostResponse_data
-  );
-  writer.writeAdditionalData(votePostResponse.additionalData);
+export function serializeVotePostResponse(writer: SerializationWriter, votePostResponse: Partial<VotePostResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!votePostResponse || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<VotePostResponse_data>("data", votePostResponse.data, serializeVotePostResponse_data);
+    writer.writeAdditionalData(votePostResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -99,71 +65,59 @@ export function serializeVotePostResponse(
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeVotePostResponse_data(
-  writer: SerializationWriter,
-  votePostResponse_data: Partial<VotePostResponse_data> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!votePostResponse_data || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeStringValue('message', votePostResponse_data.message);
-  writer.writeAdditionalData(votePostResponse_data.additionalData);
+export function serializeVotePostResponse_data(writer: SerializationWriter, votePostResponse_data: Partial<VotePostResponse_data> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!votePostResponse_data || isSerializingDerivedType) { return; }
+    writer.writeStringValue("message", votePostResponse_data.message);
+    writer.writeAdditionalData(votePostResponse_data.additionalData);
 }
 export interface VotePostResponse extends AdditionalDataHolder, Parsable {
-  /**
-   * The data property
-   */
-  data?: VotePostResponse_data | null;
+    /**
+     * The data property
+     */
+    data?: VotePostResponse_data | null;
 }
 export interface VotePostResponse_data extends AdditionalDataHolder, Parsable {
-  /**
-   * The message property
-   */
-  message?: string | null;
+    /**
+     * The message property
+     */
+    message?: string | null;
 }
 /**
  * Builds and executes requests for operations under /api/discovery/{id}/vote
  */
 export interface VoteRequestBuilder extends BaseRequestBuilder<VoteRequestBuilder> {
-  /**
-   * Submit a vote for a discovery recipe
-   * @param body The request body
-   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {Promise<VotePostResponse>}
-   */
-  post(
-    body: VoteDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<VotePostResponse | undefined>;
-  /**
-   * Submit a vote for a discovery recipe
-   * @param body The request body
-   * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {RequestInformation}
-   */
-  toPostRequestInformation(
-    body: VoteDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
-  ): RequestInformation;
+    /**
+     * Submit a vote for a discovery recipe
+     * @param body The request body
+     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+     * @returns {Promise<VotePostResponse>}
+     */
+     post(body: VoteDto, requestConfiguration?: RequestConfiguration<object> | undefined) : Promise<VotePostResponse | undefined>;
+    /**
+     * Submit a vote for a discovery recipe
+     * @param body The request body
+     * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+     * @returns {RequestInformation}
+     */
+     toPostRequestInformation(body: VoteDto, requestConfiguration?: RequestConfiguration<object> | undefined) : RequestInformation;
 }
 /**
  * Uri template for the request builder.
  */
-export const VoteRequestBuilderUriTemplate = '{+baseurl}/api/discovery/{id}/vote';
+export const VoteRequestBuilderUriTemplate = "{+baseurl}/api/discovery/{id}/vote";
 /**
  * Metadata for all the requests in the request builder.
  */
 export const VoteRequestBuilderRequestsMetadata: RequestsMetadata = {
-  post: {
-    uriTemplate: VoteRequestBuilderUriTemplate,
-    responseBodyContentType: 'application/json',
-    adapterMethodName: 'send',
-    responseBodyFactory: createVotePostResponseFromDiscriminatorValue,
-    requestBodyContentType: 'application/json',
-    requestBodySerializer: serializeVoteDto,
-    requestInformationContentSetMethod: 'setContentFromParsable',
-  },
+    post: {
+        uriTemplate: VoteRequestBuilderUriTemplate,
+        responseBodyContentType: "application/json",
+        adapterMethodName: "send",
+        responseBodyFactory:  createVotePostResponseFromDiscriminatorValue,
+        requestBodyContentType: "application/json",
+        requestBodySerializer: serializeVoteDto,
+        requestInformationContentSetMethod: "setContentFromParsable",
+    },
 };
 /* tslint:enable */
 /* eslint-enable */

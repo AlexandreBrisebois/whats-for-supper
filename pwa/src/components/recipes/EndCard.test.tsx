@@ -92,14 +92,18 @@ describe('EndCard — rendering', () => {
     render(<EndCard {...defaultProps} />);
     expect(
       screen.getByText(
-        /You've browsed your whole library\. Did you find what you were looking for\?/i
+        /You've flipped through your whole library\. Did you find what you were looking for tonight\?/i
       )
     ).toBeTruthy();
   });
 
-  it('displays the secondary message about capturing a recipe', () => {
-    render(<EndCard {...defaultProps} />);
-    expect(screen.getByText(/Have a recipe nearby you'd like to add\?/i)).toBeTruthy();
+  it('displays the empty state message when isEmpty is true', () => {
+    render(<EndCard {...defaultProps} isEmpty={true} />);
+    expect(
+      screen.getByText(
+        /Start your collection by adding a favorite family recipe or capturing one from the web\./i
+      )
+    ).toBeTruthy();
   });
 
   it('renders the CTA button with data-testid="end-card-capture-cta"', () => {

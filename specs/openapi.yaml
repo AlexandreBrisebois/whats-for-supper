@@ -93,6 +93,21 @@ components:
         pagination:
           $ref: '#/components/schemas/PaginationDto'
 
+    RecipeLibrarySummaryDto:
+      type: object
+      required: [total, neverCooked, ratings]
+      properties:
+        total: { type: integer, description: 'Count of all non-soft-deleted recipes.' }
+        neverCooked: { type: integer, description: 'Count where lastCookedDate IS NULL and deletedAt IS NULL.' }
+        ratings:
+          type: object
+          required: [love, like, dislike, unrated]
+          properties:
+            love: { type: integer, description: 'rating == 3' }
+            like: { type: integer, description: 'rating == 2' }
+            dislike: { type: integer, description: 'rating == 1' }
+            unrated: { type: integer, description: 'rating == 0' }
+
     RecipeDetailResponse:
       type: object
       required: [updatedAt, recipe]
@@ -722,24 +737,6 @@ components:
         message:
           type: string
 
-    RecipeLibrarySummaryDto:
-      type: object
-      required: [total, neverCooked, ratings]
-      properties:
-        total:
-          type: integer
-          description: Count of all non-soft-deleted recipes
-        neverCooked:
-          type: integer
-          description: Count of recipes where lastCookedDate IS NULL and deletedAt IS NULL
-        ratings:
-          type: object
-          required: [love, like, dislike, unrated]
-          properties:
-            love:    { type: integer, description: 'Count of recipes with rating == 3' }
-            like:    { type: integer, description: 'Count of recipes with rating == 2' }
-            dislike: { type: integer, description: 'Count of recipes with rating == 1' }
-            unrated: { type: integer, description: 'Count of recipes with rating == 0' }
 
     RecipeTrashItemDto:
       type: object
@@ -1091,6 +1088,14 @@ paths:
             lastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).
             When absent, default ordering (newest-created first) is applied.
             Returns HTTP 400 for unrecognised values.
+        - name: discoverableOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: |
+            When true, only returns recipes marked as discoverable (high family interest).
+            When false (default), returns all non-soft-deleted recipes.
       responses:
         '200':
           description: OK (Not wrapped in data envelope)
@@ -1146,6 +1151,7 @@ paths:
       description: |
         Returns a lightweight summary of the recipe library for use in the depth indicator.
         All counts exclude soft-deleted recipes.
+      security: [{ FamilyMemberId: [] }]
       responses:
         '200':
           description: OK
