@@ -4,6 +4,90 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-08] Session — Semantic Recipe Search v2 (search-feature branch) — Close-Out Documentation
+**Status**: COMPLETED ✅
+**Branch**: `search-feature` → ready to merge into `main`
+
+---
+
+#### What was built
+
+This session closed out the full `semantic-recipe-search-v2` spec. All 19 tasks are marked complete. The branch adds 96 files and 12,998 net insertions to the codebase.
+
+**The six pillars of this branch:**
+
+**1. Hybrid semantic search** (`POST /api/recipes/search`)
+The `/recipes` page is now a full search surface. Standard field search (Enter to submit), agent super-search (stars icon → long-form textarea → `mode: "agent"`), and similar-recipe search (`similarToRecipeId`) all route through one `RecipeSearchService`. Results come back as a decisive shortlist: one Top Pick + up to four alternates, each with explainable `reasons`. The `resultPath` field tells callers whether results came from `lexical-only`, `hybrid`, or `fallback-lexical`.
+
+**2. Planner-aware and family-fit reranking**
+When search is entered from the Planner (`?addToDay=X&weekOffset=Y`), the service excludes already-assigned recipes and applies deterministic balance-gap boosts (+0.20 for veg/protein/grain/plant-protein gaps) and urgency boosts (+0.10 for quick recipes when the query implies tonight/quick/fast). Family signals — rating (±0.08–0.15), discovery votes (up to +0.15), notes match (+0.10) — are always applied. All score constants are named constants in `RecipeSearchService`, not magic numbers.
+
+**3. Vector indexing workflow**
+`recipe_search_documents` table (pgvector, `vector(1536)`). `SearchFingerprintService` computes SHA-256 fingerprints from canonical JSON (exact field set documented in spec R8-AC5 and data-flow doc). `SearchIndexWorkflow` handles the `pending → indexing → ready/failed/stale` lifecycle with stale-fingerprint guard (exits without writing when recipe changed since enqueue). Recipes with no embedding are always lexically searchable. The 300 ms vector budget inside each search request degrades gracefully to `fallback-lexical`.
+
+**4. Backup/restore search sidecar**
+`POST /api/management/backup` writes a `search.index.json` per recipe directory alongside existing `recipe.info` files. `POST /api/management/seed` restores `recipe_search_documents` from the sidecar when present and compatible (`schemaVersion == 1` AND `embeddingModel` matches `EMBEDDING_MODEL_ID`). Mismatch → `index_status = pending` and background reindex. Lexical search is immediate; semantic rehydration completes later.
+
+**5. Recycle Bin and hard purge**
+`DELETE /api/recipes/{id}` is now a soft delete (HTTP 200, sets `deleted_at`). Hard deletes blocked if the recipe is currently in a planner slot (HTTP 409 with `assignedDays`). `GET /api/recipes/trash` / `POST /api/recipes/{id}/restore` / `DELETE /api/recipes/{id}/purge` complete the lifecycle. Purge requires an elevated PIN in `X-Elevated-Pin` header; PIN lives in `ELEVATED_ACTIONS_PIN` env var. `RecipePurgeService` owns the purge operation: filesystem first, then DB rows. If filesystem cleanup fails, the DB row is not touched. All active recipe queries use a global `WHERE deleted_at IS NULL` filter enforced at the `RecipeDbContext` level.
+
+**6. Failed Captures queue in Settings**
+`capture_failures` table persists failed imports with `friendly_reason` (user-facing), `technical_reason` (internal), and `retry_payload` (versioned JSON). `CaptureFailureReasonMapper` owns the failure code → friendly copy translation. `POST /api/captures/failures/{id}/retry` uses an atomic compare-and-set (`UPDATE … WHERE status = 'failed' RETURNING id`) to prevent double-enqueue from concurrent taps. Settings shows the active failed queue; resolved items are filtered out.
+
+---
+
+#### New environment variables
+
+Two new variables are required in production. Both were added to `docker/.env.example`, `docker/compose/apps.yml`, `docker/compose/production.yml`, `docker/compose/production-overrides.yml`, and `docker/docker-compose.prod.yml`.
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `EMBEDDING_MODEL_ID` | `text-embedding-3-small` | Embedding model for vector indexing. Changing this after the index is built requires a full reindex. Leave empty to run lexical-only search. |
+| `ELEVATED_ACTIONS_PIN` | _(empty)_ | PIN required to purge from Recycle Bin. If unset, purge returns HTTP 503 (`PIN_NOT_CONFIGURED`). Set a 4–6 digit PIN in `.env.local` to enable. |
+
+---
+
+#### Documentation updated this session
+
+| File | What changed |
+|------|-------------|
+| `README.md` | Status table updated (search and library management marked complete). Two new pillars added to "What it does." Documentation table links added. |
+| `DEPLOY.md` | New Section 8: semantic search configuration, `EMBEDDING_MODEL_ID`, `ELEVATED_ACTIONS_PIN`, sidecar backup/restore behaviour. |
+| `docker/.env.example` | New SEARCH section (`EMBEDDING_MODEL_ID`) and `ELEVATED_ACTIONS_PIN` in SECURITY section, both with full explanatory comments. |
+| `docker/compose/apps.yml` | Two new vars added to api service environment block. |
+| `docker/compose/production.yml` | Two new vars added to api service environment block. |
+| `docker/compose/production-overrides.yml` | Two new vars added to api service environment block. |
+| `docker/docker-compose.prod.yml` | Two new vars added to api service environment block. |
+| `docs/flows/user-flows/recipe-search-and-library-recovery.md` | Full rewrite: spec ref updated to v2, all three input paths, planner reranking rules with exact values, action map table, filter pill definitions, Recycle Bin flow with 409/403/503 paths, elevated-PIN rules, failed captures with CAS idempotency note. |
+| `docs/flows/data-flows/recipe-search-index-and-recovery.md` | Full rewrite: spec ref updated to v2, hybrid pipeline flowchart matches implementation, full ranking modifier table with constant names, agent translation described, inventory photo pipeline with temp-file lifecycle, `source_fingerprint` canonical field set, `SearchIndexWorkflow` sequence diagram with status transitions, sidecar schema, hard-delete purge flowchart with filesystem-first safety note, failed capture retry CAS, complete telemetry event table, failure mode table. |
+
+---
+
+#### Key design decisions and locked patterns
+
+These must not be revisited without an ADR:
+
+1. **`source_fingerprint` is centralized in `SearchFingerprintService`.** The canonical field set and sort order is the spec (R8-AC5). Any second implementation will silently diverge.
+2. **`ELEVATED_ACTIONS_PIN` travels only in `X-Elevated-Pin` header.** Never in URL, query string, or body.
+3. **Filesystem cleanup runs before DB row deletion in `RecipePurgeService`.** If filesystem fails, the DB row is preserved and the error is surfaced. No silent half-deletes.
+4. **Agent mode is a thin server-side translation, not a second retrieval branch.** `AgentSearchTranslationService` rewrites the request; `RecipeSearchService` answers it. One ranking pipeline for all callers.
+5. **Pantry snapshots are in-memory only.** Never persisted, never in backup/restore, TTL 60 s. If the process restarts, orphaned entries are gone naturally.
+6. **Changing `EMBEDDING_MODEL_ID` in production requires a full reindex.** Mixed-model indexes produce inconsistent similarity scores. The compatibility check in backup/restore catches this on seed but not on live traffic.
+7. **Retry idempotency is an atomic CAS, not read-then-write.** `UPDATE … WHERE status = 'failed' RETURNING id` — if it returns 0 rows, a 409 is returned immediately.
+
+---
+
+#### What comes next (Dietician Agent)
+
+The remaining TODO item in the README is the Dietician Agent — a feature that will provide nutritional context, suggest weekly improvements, and potentially surface dietary-gap explanations in the planner. The search infrastructure built in this branch (grounded results with reasons, planner balance summary, family-fit signals) is the intended data source for that agent.
+
+Before starting that work:
+- Merge this branch and verify production deployment with `ELEVATED_ACTIONS_PIN` and `EMBEDDING_MODEL_ID` set.
+- Run `POST /api/management/backup` once to seed the `search.index.json` sidecars for all existing recipes.
+- Monitor `index_status` distribution (`pending`, `stale`, `failed`) via the management status endpoint. An `EMBEDDING_MODEL_ID` configured against a real provider will begin filling the vector index asynchronously.
+
+---
+
 ### [2026-05-06] SSE fill_the_gap_invalidated Race Condition Fix
 **Status**: COMPLETED ✅
 

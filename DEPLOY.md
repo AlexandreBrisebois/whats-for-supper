@@ -143,7 +143,43 @@ Reads all `recipe.info` files from `DATA_ROOT` and reconstructs the database. Di
 
 ---
 
-## 8. Updating
+## 8. Semantic search configuration
+
+Semantic search runs out of the box using trigram-based lexical retrieval (no external service required). Vector-based hybrid search requires a configured embedding provider.
+
+### Embedding provider
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `EMBEDDING_MODEL_ID` | `text-embedding-3-small` | The embedding model used to generate recipe vectors. Must match the model used when the index was built. Changing this value requires a full reindex. |
+
+When `EMBEDDING_MODEL_ID` is set and an embedding provider is registered, the search pipeline uses hybrid retrieval: lexical trigram candidates merged with pgvector cosine-similarity candidates. If the embedding provider is unavailable or times out (300 ms budget per request), search falls back to lexical-only and reports `resultPath: "fallback-lexical"` — the user sees identical results with no error.
+
+### Search index backup and restore
+
+The management backup endpoint (`POST /api/management/backup`) writes a `search.index.json` sidecar alongside each recipe directory. On restore (`POST /api/management/seed`), the sidecar is read and the `recipe_search_documents` row is upserted — no re-embedding call is needed for compatible artifacts.
+
+Compatibility check: `schemaVersion` must be `1` AND `embeddingModel` must match the current `EMBEDDING_MODEL_ID`. A mismatch marks the recipe as `index_status = pending` and schedules a background reindex. Lexical search remains available immediately.
+
+### Elevated PIN (permanent delete)
+
+Permanently deleting a recipe from the Recycle Bin requires an **elevated PIN**. This prevents accidental irreversible data loss.
+
+| Variable | Notes |
+|----------|-------|
+| `ELEVATED_ACTIONS_PIN` | Any short PIN string. Not set by default. If unset, the purge endpoint returns HTTP 503 and permanent delete is unavailable. |
+
+The PIN travels in the `X-Elevated-Pin` request header and is never written to the URL, query string, or response body.
+
+> **Recommendation:** Set a simple 4–6 digit PIN in `.env.local`. Keep it separate from the `HEARTH_SECRET` passphrase — they serve different purposes.
+
+```env
+ELEVATED_ACTIONS_PIN=1234
+```
+
+---
+
+## 9. Updating
 
 ```bash
 git pull
@@ -166,5 +202,6 @@ See [`docker/.env.example`](docker/.env.example) for the full annotated referenc
 | API | `API_HOST`, `API_PORT`, `ASPNETCORE_ENVIRONMENT` |
 | PWA | `PWA_HOST`, `NEXT_PUBLIC_API_BASE_URL`, `HEARTH_SECRET`, `NEXT_PUBLIC_COOKIE_DOMAIN` |
 | AI | `GEMINI_API_KEY`, `GEMINI_MODEL_ID`, `GEMINI_ENDPOINT` |
+| Search | `EMBEDDING_MODEL_ID` |
 | Storage | `DATA_ROOT` |
-| Security | `CORS_ALLOWED_ORIGINS` |
+| Security | `CORS_ALLOWED_ORIGINS`, `ELEVATED_ACTIONS_PIN` |

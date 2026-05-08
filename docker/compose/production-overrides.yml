@@ -3,6 +3,8 @@ services:
     image: ${WFS_REGISTRY}/whats-for-supper-api:${TAG}
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      ELEVATED_ACTIONS_PIN: ${ELEVATED_ACTIONS_PIN:-}
+      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-text-embedding-3-small}
       HEARTH_SECRET: ${HEARTH_SECRET}
       CORS__ALLOWED_ORIGINS: https://wfs.srvrlss.dev
     labels:

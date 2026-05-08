@@ -41,7 +41,13 @@ Every recipe in the library is classified once against Canada's 2019 Food Guide 
 A swipe-based card stack for family voting. When enough household members vote for the same recipe, it surfaces as a suggestion in the planner. No group chats, no debates — the app builds consensus in the background.
 
 **5. Zero-Friction Capture**
-Add recipes from a photo, a URL, or a description. Everything queues into an AI workflow pipeline (Gemini Flash) that extracts ingredients, synthesises a recipe, generates a hero image, categorises ingredients into grocery sections, and classifies the dietary profile — all without blocking the UI.
+Add recipes from a photo, a URL, or a description. Everything queues into an AI workflow pipeline (Gemini Flash) that extracts ingredients, synthesises a recipe, generates a hero image, categorises ingredients into grocery sections, and classifies the dietary profile — all without blocking the UI. Failed captures are preserved with a human-readable reason and can be retried from Settings.
+
+**6. Semantic Recipe Search**
+Search the way a tired parent actually thinks: "chicken pasta pesto tonight", "fish but quick", "find the salmon bowls the kids loved." The search page lives at `/recipes` and combines trigram-based lexical retrieval with pgvector embeddings. Results come back as a decisive shortlist — one strong **Top Pick** and up to four alternates — with explainable reasons for each match. When opened from the Planner, search is planner-aware: it excludes already-assigned recipes and promotes meals that close weekly nutritional gaps. The stars affordance triggers long-form agent super-search; the camera icon triggers pantry/fridge/freezer photo search.
+
+**7. Recycle Bin and Library Recovery**
+Deleting a recipe is reversible. Soft delete sends it to the Recycle Bin where it can be restored in one tap. Permanent purge — which requires an elevated PIN — removes all DB records and disk assets atomically. A recipe assigned to an active planner slot cannot be deleted until it is removed from the plan first.
 
 ---
 
@@ -153,8 +159,12 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Discovery nudge via SSE | ✅ Complete |
 | Backup / restore (NAS-safe, LLM-skip on restore) | ✅ Complete |
 | NAS deployment (Synology / Unraid) | ✅ Running in production |
-| **Search** | ⚠️ TODO |
-| **Recipes management** (edit, delete, set discoverable for voting and quick find) | ⚠️ TODO |
+| **Semantic recipe search** (hybrid lexical + vector, planner-aware, family-fit) | ✅ Complete |
+| **Recipe library management** (edit, soft delete, restore, Recycle Bin, discovery toggle) | ✅ Complete |
+| **Pantry/fridge/freezer photo search** (inventory-led ingredient boost) | ✅ Complete |
+| **Agent super-search** (long-form natural language → structured results) | ✅ Complete |
+| **Search index workflow** (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
+| **Failed Captures recovery** (Settings queue, retry with idempotency guard) | ✅ Complete |
 | **Dietician Agent** | ⚠️ TODO |
 
 ---
@@ -168,6 +178,8 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | [`AGENT.md`](AGENT.md) | Agent constitution — start here for AI-assisted contributions |
 | [`docs/user-guide.md`](docs/user-guide.md) | User-facing feature guide |
 | [`docs/flows/`](docs/flows/) | Data flows, user flows, and architecture diagrams |
+| [`docs/flows/user-flows/recipe-search-and-library-recovery.md`](docs/flows/user-flows/recipe-search-and-library-recovery.md) | Search UX: input paths, planner mode, Recycle Bin, Failed Captures |
+| [`docs/flows/data-flows/recipe-search-index-and-recovery.md`](docs/flows/data-flows/recipe-search-index-and-recovery.md) | Hybrid search pipeline, indexing workflow, backup/restore sidecar |
 | [`api/docs/DIETARY_CATEGORIZATION.md`](api/docs/DIETARY_CATEGORIZATION.md) | AI usage, CFG classification, FOP flags |
 
 ---
