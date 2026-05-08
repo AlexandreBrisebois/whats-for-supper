@@ -1,6 +1,125 @@
 import { test, expect } from './fixtures';
 import { MOCK_IDS, setupCommonRoutes, mockSseWithRecipeReady } from './mock-api';
 
+// ── Task 18: Failed Captures queue ──────────────────────────────────────────
+
+test.describe('Settings — Failed Captures section', () => {
+  test.beforeEach(async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+    await setupCommonRoutes(page);
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({
+          state: {
+            selectedFamilyMemberId: id,
+            familyMembers: [{ id, name: 'Alex' }],
+            _hasHydrated: true,
+            hasLoaded: true,
+          },
+          version: 0,
+        })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+  });
+
+  // E2E 1: Navigate to Settings → failed-captures-section is visible
+  test('Settings page renders failed-captures-section', async ({ page }) => {
+    await page.goto('/profile/settings');
+    await expect(page.getByTestId('failed-captures-section')).toBeVisible({ timeout: 5000 });
+  });
+
+  // E2E 2: Failed capture present → visible with friendly reason
+  test('renders failure row with friendly reason', async ({ page }) => {
+    await page.route('**/api/captures/failures', async (route) => {
+      if (route.request().method() !== 'GET') {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: MOCK_IDS.CAPTURE_FAILURE_URL,
+                sourceType: 'url',
+                previewText: 'https://example.com/recipe',
+                friendlyReason: "We couldn't read the recipe page.",
+                failureCode: 'url_unreadable',
+                status: 'failed',
+                retryCount: 0,
+                createdAt: new Date().toISOString(),
+                lastFailedAt: new Date().toISOString(),
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.goto('/profile/settings');
+
+    await expect(page.getByTestId(`failed-capture-${MOCK_IDS.CAPTURE_FAILURE_URL}`)).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(
+      page.getByTestId(`failed-capture-reason-${MOCK_IDS.CAPTURE_FAILURE_URL}`)
+    ).toContainText("We couldn't read the recipe page.");
+  });
+
+  // E2E 3: Retry tap → mock POST returns queued: true → in-progress state shown
+  test('retry tap calls retry endpoint and shows in-progress state', async ({ page }) => {
+    await page.route('**/api/captures/failures', async (route) => {
+      if (route.request().method() !== 'GET') {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: MOCK_IDS.CAPTURE_FAILURE_URL,
+                sourceType: 'url',
+                friendlyReason: "We couldn't read the recipe page.",
+                status: 'failed',
+                retryCount: 0,
+                createdAt: new Date().toISOString(),
+                lastFailedAt: new Date().toISOString(),
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.goto('/profile/settings');
+
+    await expect(page.getByTestId(`action-retry-${MOCK_IDS.CAPTURE_FAILURE_URL}`)).toBeVisible({
+      timeout: 5000,
+    });
+
+    await page.getByTestId(`action-retry-${MOCK_IDS.CAPTURE_FAILURE_URL}`).click();
+
+    await expect(
+      page.getByTestId(`action-retry-${MOCK_IDS.CAPTURE_FAILURE_URL}-retrying`)
+    ).toBeVisible({ timeout: 5000 });
+  });
+
+  // E2E 4: Default mock returns empty list → failed-captures-empty is visible
+  test('renders failed-captures-empty when list is empty', async ({ page }) => {
+    await page.goto('/profile/settings');
+    await expect(page.getByTestId('failed-captures-empty')).toBeVisible({ timeout: 5000 });
+  });
+});
+
 test.describe('Settings — FamilyGOTOSettings card', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';

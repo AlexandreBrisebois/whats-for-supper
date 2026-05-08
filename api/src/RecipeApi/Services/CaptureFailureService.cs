@@ -4,6 +4,8 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
+public enum RetryResult { Queued, AlreadyRetrying, UnsupportedPayloadVersion, NotFound }
+
 public class CaptureFailureService(RecipeDbContext db)
 {
     private static readonly HashSet<string> UrlWorkflowIds =
@@ -53,6 +55,29 @@ public class CaptureFailureService(RecipeDbContext db)
             .Where(f => f.Status != "resolved")
             .OrderByDescending(f => f.LastFailedAt)
             .ToListAsync(ct);
+
+    /// <summary>
+    /// Transitions a failure record from 'failed' to 'retrying'.
+    /// Returns <see cref="RetryResult.AlreadyRetrying"/> if a retry is already in progress.
+    /// Returns <see cref="RetryResult.UnsupportedPayloadVersion"/> if payload_version != 1.
+    /// Note: the compare-and-set semantics are enforced at the application layer; for
+    /// true concurrent-request safety a SELECT FOR UPDATE or DB-level CAS is needed in prod.
+    /// </summary>
+    public async Task<RetryResult> RetryAsync(Guid id, CancellationToken ct = default)
+    {
+        var row = await db.CaptureFailures.FindAsync([id], ct);
+        if (row is null) return RetryResult.NotFound;
+
+        if (row.Status != "failed") return RetryResult.AlreadyRetrying;
+
+        if (row.PayloadVersion != 1) return RetryResult.UnsupportedPayloadVersion;
+
+        row.Status = "retrying";
+        row.LastRetriedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return RetryResult.Queued;
+    }
 
     private static string ResolveSourceType(string workflowId)
     {

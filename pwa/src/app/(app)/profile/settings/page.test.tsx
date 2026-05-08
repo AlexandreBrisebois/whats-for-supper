@@ -34,6 +34,11 @@ vi.mock('@/components/profile/FamilyGOTOSettings', () => ({
   FamilyGOTOSettings: () => <div data-testid="family-goto-stub" />,
 }));
 
+// @/components/profile/FailedCapturesSection — avoid deep dependency tree
+vi.mock('@/components/profile/FailedCapturesSection', () => ({
+  FailedCapturesSection: () => <div data-testid="failed-captures-stub" />,
+}));
+
 // @/components/common/LocaleProvider — control locale state
 const localeState = { locale: 'en' };
 const mockSetCurrentLocale = vi.fn((l: string) => {

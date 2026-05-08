@@ -36,6 +36,64 @@ export interface BulkImportTriggerResponseDto extends AdditionalDataHolder, Pars
    */
   queuedCount?: number | null;
 }
+export interface CaptureFailureDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The createdAt property
+   */
+  createdAt?: Date | null;
+  /**
+   * The failureCode property
+   */
+  failureCode?: string | null;
+  /**
+   * The familyMemberId property
+   */
+  familyMemberId?: Guid | null;
+  /**
+   * The friendlyReason property
+   */
+  friendlyReason?: string | null;
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+  /**
+   * The lastFailedAt property
+   */
+  lastFailedAt?: Date | null;
+  /**
+   * The previewText property
+   */
+  previewText?: string | null;
+  /**
+   * The retryCount property
+   */
+  retryCount?: number | null;
+  /**
+   * The sourceType property
+   */
+  sourceType?: CaptureFailureDto_sourceType | null;
+  /**
+   * The status property
+   */
+  status?: CaptureFailureDto_status | null;
+}
+export type CaptureFailureDto_sourceType =
+  (typeof CaptureFailureDto_sourceTypeObject)[keyof typeof CaptureFailureDto_sourceTypeObject];
+export type CaptureFailureDto_status =
+  (typeof CaptureFailureDto_statusObject)[keyof typeof CaptureFailureDto_statusObject];
+export interface CaptureFailureListResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The items property
+   */
+  items?: CaptureFailureDto[] | null;
+}
+export interface CaptureFailureRetryResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The queued property
+   */
+  queued?: boolean | null;
+}
 export interface CaptureUrlDto extends AdditionalDataHolder, Parsable {
   /**
    * The notes property
@@ -71,6 +129,39 @@ export function createBulkImportTriggerResponseDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoBulkImportTriggerResponseDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CaptureFailureDto}
+ */
+// @ts-ignore
+export function createCaptureFailureDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoCaptureFailureDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CaptureFailureListResponse}
+ */
+// @ts-ignore
+export function createCaptureFailureListResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoCaptureFailureListResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CaptureFailureRetryResponse}
+ */
+// @ts-ignore
+export function createCaptureFailureRetryResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoCaptureFailureRetryResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -811,6 +902,84 @@ export function deserializeIntoBulkImportTriggerResponseDto(
     },
     queuedCount: (n) => {
       bulkImportTriggerResponseDto.queuedCount = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param CaptureFailureDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCaptureFailureDto(
+  captureFailureDto: Partial<CaptureFailureDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    createdAt: (n) => {
+      captureFailureDto.createdAt = n.getDateValue();
+    },
+    failureCode: (n) => {
+      captureFailureDto.failureCode = n.getStringValue();
+    },
+    familyMemberId: (n) => {
+      captureFailureDto.familyMemberId = n.getGuidValue();
+    },
+    friendlyReason: (n) => {
+      captureFailureDto.friendlyReason = n.getStringValue();
+    },
+    id: (n) => {
+      captureFailureDto.id = n.getGuidValue();
+    },
+    lastFailedAt: (n) => {
+      captureFailureDto.lastFailedAt = n.getDateValue();
+    },
+    previewText: (n) => {
+      captureFailureDto.previewText = n.getStringValue();
+    },
+    retryCount: (n) => {
+      captureFailureDto.retryCount = n.getNumberValue();
+    },
+    sourceType: (n) => {
+      captureFailureDto.sourceType = n.getEnumValue<CaptureFailureDto_sourceType>(
+        CaptureFailureDto_sourceTypeObject
+      );
+    },
+    status: (n) => {
+      captureFailureDto.status = n.getEnumValue<CaptureFailureDto_status>(
+        CaptureFailureDto_statusObject
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param CaptureFailureListResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCaptureFailureListResponse(
+  captureFailureListResponse: Partial<CaptureFailureListResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    items: (n) => {
+      captureFailureListResponse.items = n.getCollectionOfObjectValues<CaptureFailureDto>(
+        createCaptureFailureDtoFromDiscriminatorValue
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param CaptureFailureRetryResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCaptureFailureRetryResponse(
+  captureFailureRetryResponse: Partial<CaptureFailureRetryResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    queued: (n) => {
+      captureFailureRetryResponse.queued = n.getBooleanValue();
     },
   };
 }
@@ -3071,6 +3240,73 @@ export function serializeBulkImportTriggerResponseDto(
 }
 /**
  * Serializes information the current object
+ * @param CaptureFailureDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCaptureFailureDto(
+  writer: SerializationWriter,
+  captureFailureDto: Partial<CaptureFailureDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!captureFailureDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeDateValue('createdAt', captureFailureDto.createdAt);
+  writer.writeStringValue('failureCode', captureFailureDto.failureCode);
+  writer.writeGuidValue('familyMemberId', captureFailureDto.familyMemberId);
+  writer.writeStringValue('friendlyReason', captureFailureDto.friendlyReason);
+  writer.writeGuidValue('id', captureFailureDto.id);
+  writer.writeDateValue('lastFailedAt', captureFailureDto.lastFailedAt);
+  writer.writeStringValue('previewText', captureFailureDto.previewText);
+  writer.writeNumberValue('retryCount', captureFailureDto.retryCount);
+  writer.writeEnumValue<CaptureFailureDto_sourceType>('sourceType', captureFailureDto.sourceType);
+  writer.writeEnumValue<CaptureFailureDto_status>('status', captureFailureDto.status);
+  writer.writeAdditionalData(captureFailureDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CaptureFailureListResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCaptureFailureListResponse(
+  writer: SerializationWriter,
+  captureFailureListResponse: Partial<CaptureFailureListResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!captureFailureListResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<CaptureFailureDto>(
+    'items',
+    captureFailureListResponse.items,
+    serializeCaptureFailureDto
+  );
+  writer.writeAdditionalData(captureFailureListResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CaptureFailureRetryResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCaptureFailureRetryResponse(
+  writer: SerializationWriter,
+  captureFailureRetryResponse: Partial<CaptureFailureRetryResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!captureFailureRetryResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('queued', captureFailureRetryResponse.queued);
+  writer.writeAdditionalData(captureFailureRetryResponse.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param CaptureUrlDto The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -4777,6 +5013,16 @@ export interface WorkflowTriggerResponseDto extends AdditionalDataHolder, Parsab
    */
   instanceId?: Guid | null;
 }
+export const CaptureFailureDto_sourceTypeObject = {
+  Url: 'url',
+  Photos: 'photos',
+  Describe: 'describe',
+} as const;
+export const CaptureFailureDto_statusObject = {
+  Failed: 'failed',
+  Retrying: 'retrying',
+  Resolved: 'resolved',
+} as const;
 export const ManagementTaskStatusResponse_statusObject = {
   Pending: 'Pending',
   Processing: 'Processing',

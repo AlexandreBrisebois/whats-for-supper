@@ -746,6 +746,35 @@ components:
       properties:
         purged: { type: boolean }
 
+    CaptureFailureDto:
+      type: object
+      required: [id, sourceType, friendlyReason, status, retryCount, createdAt, lastFailedAt]
+      properties:
+        id: { type: string, format: uuid }
+        familyMemberId: { type: [string, 'null'], format: uuid }
+        sourceType: { type: string, enum: [url, photos, describe] }
+        previewText: { type: [string, 'null'] }
+        friendlyReason: { type: string }
+        failureCode: { type: [string, 'null'] }
+        status: { type: string, enum: [failed, retrying, resolved] }
+        retryCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        lastFailedAt: { type: string, format: date-time }
+
+    CaptureFailureListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CaptureFailureDto' }
+
+    CaptureFailureRetryResponse:
+      type: object
+      required: [queued]
+      properties:
+        queued: { type: boolean }
+
 paths:
   /api/stream:
     get:
@@ -2020,3 +2049,52 @@ paths:
                   data: { $ref: '#/components/schemas/InventoryCaptureResponse' }
         '404':
           description: Snapshot not found or expired
+
+  /api/captures/failures:
+    get:
+      summary: List active failed capture records
+      responses:
+        '200':
+          description: List of failed captures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/CaptureFailureListResponse' }
+
+  /api/captures/failures/{id}/retry:
+    post:
+      summary: Retry a failed capture
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '202':
+          description: Retry queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/CaptureFailureRetryResponse' }
+        '409':
+          description: Retry already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode: { type: string }
+                  message: { type: string }
+        '422':
+          description: Unsupported payload version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode: { type: string }
+                  message: { type: string }

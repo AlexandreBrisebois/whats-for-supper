@@ -1197,7 +1197,7 @@ await page.route('**/api/captures/failures/*/retry', async (route) => {
 - `task agent:drift` passes.
 - `task review` passes.
 
-- [ ] Task 18 complete
+- [x] Task 18 complete
 
 ---
 

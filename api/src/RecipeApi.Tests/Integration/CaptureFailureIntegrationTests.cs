@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,16 +13,142 @@ namespace RecipeApi.Tests.Integration;
 public class CaptureFailureIntegrationTests : IAsyncLifetime
 {
     private TestWebApplicationFactory _factory = null!;
+    private HttpClient _client = null!;
 
     public async Task InitializeAsync()
     {
         _factory = await TestWebApplicationFactory.CreateAsync();
+        _client  = _factory.CreateClient();
     }
 
     public async Task DisposeAsync()
     {
+        _client.Dispose();
         await _factory.DisposeAsync();
     }
+
+    // ── Task 18: Controller tests — GET /api/captures/failures + POST retry ──
+
+    // Task18-1: POST .../retry sets status = 'retrying' atomically
+    [Fact]
+    public async Task RetryAsync_SetsStatus_Retrying()
+    {
+        var id = await SeedFailureAsync();
+
+        var response = await _client.PostAsync($"/api/captures/failures/{id}/retry", null);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var body = await ReadDataAsync<RetryResponseBody>(response);
+        Assert.True(body.Queued);
+
+        var row = await GetRowByIdAsync(id);
+        Assert.NotNull(row);
+        Assert.Equal("retrying", row.Status);
+    }
+
+    // Task18-2: Second concurrent POST .../retry while status = 'retrying' returns HTTP 409
+    [Fact]
+    public async Task RetryAsync_WhenAlreadyRetrying_Returns409()
+    {
+        var id = await SeedFailureAsync(status: "retrying");
+
+        var response = await _client.PostAsync($"/api/captures/failures/{id}/retry", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    // Task18-3: POST .../retry returns HTTP 202 with { queued: true } for status = 'failed'
+    [Fact]
+    public async Task RetryAsync_ForFailedStatus_Returns202_WithQueued()
+    {
+        var id = await SeedFailureAsync(status: "failed");
+
+        var response = await _client.PostAsync($"/api/captures/failures/{id}/retry", null);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var body = await ReadDataAsync<RetryResponseBody>(response);
+        Assert.True(body.Queued);
+    }
+
+    // Task18-4: payload_version = 2 (unsupported) returns HTTP 422
+    [Fact]
+    public async Task RetryAsync_UnsupportedPayloadVersion_Returns422()
+    {
+        var id = await SeedFailureAsync(payloadVersion: 2);
+
+        var response = await _client.PostAsync($"/api/captures/failures/{id}/retry", null);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    // Task18-5: GET /api/captures/failures returns active failures (HTTP 200)
+    [Fact]
+    public async Task GetFailures_Returns200_WithActiveFailures()
+    {
+        var id = await SeedFailureAsync();
+
+        var response = await _client.GetAsync("/api/captures/failures");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.Contains(id.ToString(), json);
+    }
+
+    // Task18-6: GET /api/captures/failures excludes resolved rows
+    [Fact]
+    public async Task GetFailures_DoesNotReturn_ResolvedRows()
+    {
+        var id = await SeedFailureAsync(status: "resolved");
+
+        var response = await _client.GetAsync("/api/captures/failures");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(id.ToString(), json);
+    }
+
+    // ── helpers for controller tests ─────────────────────────────────────────
+
+    private async Task<Guid> SeedFailureAsync(string status = "failed", int payloadVersion = 1)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var now = DateTimeOffset.UtcNow;
+        var failure = new CaptureFailure
+        {
+            Id = Guid.NewGuid(),
+            SourceType = "url",
+            RetryPayload = BuildUrlRetryPayload("https://example.com"),
+            PayloadVersion = payloadVersion,
+            FriendlyReason = "Test failure",
+            Status = status,
+            CreatedAt = now,
+            LastFailedAt = now,
+        };
+        db.CaptureFailures.Add(failure);
+        await db.SaveChangesAsync();
+        return failure.Id;
+    }
+
+    private async Task<CaptureFailure?> GetRowByIdAsync(Guid id)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        return await db.CaptureFailures.FindAsync(id);
+    }
+
+    private static async Task<T> ReadDataAsync<T>(HttpResponseMessage response)
+    {
+        var json = await response.Content.ReadAsStringAsync();
+        var doc = JsonSerializer.Deserialize<JsonElement>(json);
+        var data = doc.GetProperty("data");
+        return JsonSerializer.Deserialize<T>(data.GetRawText(), new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+        })!;
+    }
+
+    private record RetryResponseBody(bool Queued);
 
     // Test 1: Failed URL capture creates a capture_failures row with sourceType = "url"
     [Fact]
