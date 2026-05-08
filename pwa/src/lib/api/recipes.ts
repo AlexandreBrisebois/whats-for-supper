@@ -287,6 +287,12 @@ export async function restoreRecipe(id: string): Promise<void> {
   await apiClient.api.recipes.byId(id as any).restore.post();
 }
 
+export async function purgeRecipe(id: string, elevatedPin: string): Promise<void> {
+  await apiClient.api.recipes.byId(id as any).purge.delete({
+    headers: { 'X-Elevated-Pin': elevatedPin },
+  });
+}
+
 export async function getRecommendations(): Promise<RecommendationsResponse> {
   const result = await apiClient.api.recipes.recommendations.get();
   const data = result?.data;

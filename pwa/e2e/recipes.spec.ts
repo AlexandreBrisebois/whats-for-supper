@@ -575,6 +575,95 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId('trash-empty-state')).toBeVisible();
   });
 
+  // ── Task 16: Hard delete purge from Recycle Bin ─────────────────────────────
+
+  test('purge scenario: PIN dialog opens, correct PIN submits purge, item removed', async ({
+    page,
+  }) => {
+    await page.route('**/api/recipes/trash', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: MOCK_IDS.RECIPE_IN_TRASH,
+                name: 'Deleted Soup',
+                imageUrl: null,
+                deletedAt: new Date().toISOString(),
+                deletedBy: null,
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('recycle-bin-entry').click();
+    await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_IN_TRASH}`)).toBeVisible();
+
+    await page.getByTestId(`action-purge-${MOCK_IDS.RECIPE_IN_TRASH}`).click();
+    await expect(page.getByTestId('elevated-pin-dialog')).toBeVisible();
+
+    await page.getByTestId('elevated-pin-input').fill('1234');
+    await page.getByTestId('elevated-pin-dialog').dispatchEvent('submit');
+
+    await expect(page.getByTestId('elevated-pin-dialog')).not.toBeVisible();
+    await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_IN_TRASH}`)).not.toBeVisible();
+  });
+
+  test('purge scenario: cancelling PIN dialog does not call purge endpoint', async ({ page }) => {
+    let purgeCallCount = 0;
+
+    await page.route('**/api/recipes/*/purge', async (route) => {
+      purgeCallCount++;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { purged: true } }),
+      });
+    });
+
+    await page.route('**/api/recipes/trash', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: MOCK_IDS.RECIPE_IN_TRASH,
+                name: 'Deleted Soup',
+                imageUrl: null,
+                deletedAt: new Date().toISOString(),
+                deletedBy: null,
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('recycle-bin-entry').click();
+    await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_IN_TRASH}`)).toBeVisible();
+
+    await page.getByTestId(`action-purge-${MOCK_IDS.RECIPE_IN_TRASH}`).click();
+    await expect(page.getByTestId('elevated-pin-dialog')).toBeVisible();
+
+    await page.getByTestId('elevated-pin-cancel').click();
+
+    await expect(page.getByTestId('elevated-pin-dialog')).not.toBeVisible();
+    await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_IN_TRASH}`)).toBeVisible();
+    expect(purgeCallCount).toBe(0);
+  });
+
   test('toggling discovery from the detail sheet calls PATCH with isDiscoverable without navigating', async ({
     page,
   }) => {

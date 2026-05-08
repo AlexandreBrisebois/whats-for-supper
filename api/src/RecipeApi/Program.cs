@@ -103,6 +103,7 @@ try
     builder.Services.AddScoped<ManagementService>();
     builder.Services.AddScoped<RecipeImportBulkService>();
     builder.Services.AddScoped<RecipeService>();
+    builder.Services.AddScoped<RecipePurgeService>();
     builder.Services.AddScoped<RecipeSearchService>();
     builder.Services.AddScoped<AgentSearchTranslationService>();
     builder.Services.AddSingleton<InventoryCaptureService>();

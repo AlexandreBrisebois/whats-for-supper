@@ -14,7 +14,8 @@ public class RecipeController(
     AgentSearchTranslationService agentSearchTranslationService,
     ImageService imageService,
     RecipeImportService importService,
-    RecipeImportBulkService bulkImportService) : ControllerBase
+    RecipeImportBulkService bulkImportService,
+    RecipePurgeService recipePurgeService) : ControllerBase
 {
     /// <summary>POST /api/recipes — upload images and create a new recipe.</summary>
     [HttpPost]
@@ -283,5 +284,32 @@ public class RecipeController(
         {
             return NotFound(new { message = ex.Message });
         }
+    }
+
+    /// <summary>DELETE /api/recipes/{id}/purge — hard-delete a soft-deleted recipe from the Recycle Bin.</summary>
+    [HttpDelete("{id:guid}/purge")]
+    public async Task<IActionResult> Purge(
+        Guid id,
+        [FromHeader(Name = "X-Elevated-Pin")] string? elevatedPin)
+    {
+        var result = await recipePurgeService.PurgeAsync(id, elevatedPin);
+
+        return result switch
+        {
+            PurgeResult.Success => Ok(new { data = new { purged = true } }),
+            PurgeResult.PinNotConfigured => StatusCode(503, new
+            {
+                errorCode = "PIN_NOT_CONFIGURED",
+                message = "Permanent delete is not available."
+            }),
+            PurgeResult.Forbidden => StatusCode(403, new { errorCode = "FORBIDDEN", message = "Missing or incorrect elevated PIN." }),
+            PurgeResult.NotInTrash => Conflict(new
+            {
+                errorCode = "NOT_IN_TRASH",
+                message = "This recipe must be in the Recycle Bin before it can be permanently deleted."
+            }),
+            PurgeResult.NotFound => NotFound(new { message = "Recipe not found." }),
+            _ => StatusCode(500)
+        };
     }
 }

@@ -2,17 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import { X, RotateCcw, Trash2 } from 'lucide-react';
-import { getTrashItems, restoreRecipe, type TrashItem } from '@/lib/api/recipes';
+import { getTrashItems, restoreRecipe, purgeRecipe, type TrashItem } from '@/lib/api/recipes';
 import { t } from '@/locales';
 
 interface RecycleBinSheetProps {
   onClose: () => void;
 }
 
+interface PinDialogState {
+  recipeId: string;
+  pin: string;
+  error: string | null;
+  isSubmitting: boolean;
+}
+
 export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
   const [items, setItems] = useState<TrashItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [restoringIds, setRestoringIds] = useState<Set<string>>(new Set());
+  const [pinDialog, setPinDialog] = useState<PinDialogState | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -48,6 +56,36 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
         next.delete(id);
         return next;
       });
+    }
+  };
+
+  const openPinDialog = (recipeId: string) => {
+    setPinDialog({ recipeId, pin: '', error: null, isSubmitting: false });
+  };
+
+  const closePinDialog = () => {
+    setPinDialog(null);
+  };
+
+  const handlePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinDialog) return;
+
+    setPinDialog((prev) => prev && { ...prev, isSubmitting: true, error: null });
+
+    try {
+      await purgeRecipe(pinDialog.recipeId, pinDialog.pin);
+      setItems((prev) => prev.filter((item) => item.id !== pinDialog.recipeId));
+      setPinDialog(null);
+    } catch {
+      setPinDialog(
+        (prev) =>
+          prev && {
+            ...prev,
+            isSubmitting: false,
+            error: t('recipes.purgeError', 'Incorrect PIN or permanent delete is not available.'),
+          }
+      );
     }
   };
 
@@ -115,9 +153,8 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                       <button
                         type="button"
                         data-testid={`action-purge-${item.id}`}
-                        disabled
-                        className="inline-flex items-center gap-1.5 rounded-full border border-charcoal/10 bg-white/70 px-3 py-1.5 text-xs font-bold text-charcoal/40 shadow-sm cursor-not-allowed"
-                        title={t('recipes.purgeComingSoon', 'Permanent delete coming soon')}
+                        onClick={() => openPinDialog(item.id)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 shadow-sm hover:bg-red-100 transition-colors"
                       >
                         <Trash2 size={12} />
                         {t('recipes.purge', 'Delete')}
@@ -130,6 +167,65 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
           )}
         </div>
       </div>
+
+      {pinDialog && (
+        <div
+          className="absolute inset-0 z-60 flex items-center justify-center bg-black/60"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <form
+            data-testid="elevated-pin-dialog"
+            onSubmit={(e) => void handlePinSubmit(e)}
+            className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl mx-4 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-heading text-base font-black tracking-tight text-charcoal">
+              {t('recipes.confirmDelete', 'Permanently Delete Recipe')}
+            </h3>
+            <p className="text-sm text-charcoal/60">
+              {t(
+                'recipes.confirmDeleteDescription',
+                'This action cannot be undone. Enter your PIN to confirm.'
+              )}
+            </p>
+            <input
+              data-testid="elevated-pin-input"
+              type="password"
+              value={pinDialog.pin}
+              onChange={(e) =>
+                setPinDialog((prev) => prev && { ...prev, pin: e.target.value, error: null })
+              }
+              placeholder={t('recipes.pinPlaceholder', 'Enter PIN')}
+              className="w-full rounded-2xl border border-charcoal/10 bg-white/80 px-4 py-3 text-sm font-medium text-charcoal placeholder:text-charcoal/30 focus:outline-none focus:ring-2 focus:ring-terracotta/40"
+              autoFocus
+            />
+            {pinDialog.error && (
+              <p data-testid="elevated-pin-error" className="text-xs text-red-500">
+                {pinDialog.error}
+              </p>
+            )}
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                data-testid="elevated-pin-cancel"
+                onClick={closePinDialog}
+                className="rounded-full px-4 py-2 text-sm font-bold text-charcoal/60 hover:bg-charcoal/5 transition-colors"
+              >
+                {t('common.cancel', 'Cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={pinDialog.isSubmitting || !pinDialog.pin}
+                className="rounded-full bg-red-500 px-4 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-50 hover:bg-red-600 transition-colors"
+              >
+                {pinDialog.isSubmitting
+                  ? t('common.deleting', 'Deleting…')
+                  : t('recipes.confirmDeleteButton', 'Delete Forever')}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

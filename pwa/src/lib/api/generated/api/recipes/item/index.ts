@@ -21,6 +21,8 @@ import {
   type OriginalRequestBuilder,
 } from './original/index';
 // @ts-ignore
+import { PurgeRequestBuilderRequestsMetadata, type PurgeRequestBuilder } from './purge/index';
+// @ts-ignore
 import { RestoreRequestBuilderRequestsMetadata, type RestoreRequestBuilder } from './restore/index';
 // @ts-ignore
 import { StatusRequestBuilderRequestsMetadata, type StatusRequestBuilder } from './status/index';
@@ -142,6 +144,10 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * The original property
    */
   get original(): OriginalRequestBuilder;
+  /**
+   * The purge property
+   */
+  get purge(): PurgeRequestBuilder;
   /**
    * The restore property
    */
@@ -311,6 +317,9 @@ export const ItemRequestBuilderNavigationMetadata: Record<
   },
   original: {
     navigationMetadata: OriginalRequestBuilderNavigationMetadata,
+  },
+  purge: {
+    requestsMetadata: PurgeRequestBuilderRequestsMetadata,
   },
   restore: {
     requestsMetadata: RestoreRequestBuilderRequestsMetadata,

@@ -1058,7 +1058,7 @@ await page.route('**/api/recipes/*/purge', async (route) => {
 - `task agent:drift` passes.
 - `task review` passes.
 
-- [ ] Task 16 complete
+- [x] Task 16 complete
 
 ---
 

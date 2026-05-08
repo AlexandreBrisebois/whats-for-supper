@@ -740,6 +740,12 @@ components:
           type: array
           items: { $ref: '#/components/schemas/RecipeTrashItemDto' }
 
+    RecipePurgeResponse:
+      type: object
+      required: [purged]
+      properties:
+        purged: { type: boolean }
+
 paths:
   /api/stream:
     get:
@@ -1151,6 +1157,57 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+
+  /api/recipes/{id}/purge:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Hard-delete (purge) a soft-deleted recipe from the Recycle Bin
+      security: [{ FamilyMemberId: [] }]
+      parameters:
+        - name: X-Elevated-Pin
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Purged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/RecipePurgeResponse' }
+        '403':
+          description: Missing or incorrect elevated PIN
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode: { type: string }
+                  message: { type: string }
+        '409':
+          description: Recipe is not in trash (deleted_at is null)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode: { type: string }
+                  message: { type: string }
+        '503':
+          description: Elevated PIN not configured
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode: { type: string, enum: [PIN_NOT_CONFIGURED] }
+                  message: { type: string }
 
   /api/recipes/{recipeId}/original/{photoIndex}:
     parameters:

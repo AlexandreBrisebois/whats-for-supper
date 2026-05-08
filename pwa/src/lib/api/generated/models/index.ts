@@ -350,6 +350,17 @@ export function createRecipeListResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipePurgeResponse}
+ */
+// @ts-ignore
+export function createRecipePurgeResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipePurgeResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeSearchFiltersDto}
  */
 // @ts-ignore
@@ -1403,6 +1414,21 @@ export function deserializeIntoRecipeListResponse(
     },
     updatedAt: (n) => {
       recipeListResponse.updatedAt = n.getDateValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipePurgeResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipePurgeResponse(
+  recipePurgeResponse: Partial<RecipePurgeResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    purged: (n) => {
+      recipePurgeResponse.purged = n.getBooleanValue();
     },
   };
 }
@@ -2676,6 +2702,12 @@ export interface RecipeListResponse extends AdditionalDataHolder, Parsable {
    */
   updatedAt?: Date | null;
 }
+export interface RecipePurgeResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The purged property
+   */
+  purged?: boolean | null;
+}
 export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
   /**
    * The discoverableOnly property
@@ -3600,6 +3632,24 @@ export function serializeRecipeListResponse(
   );
   writer.writeDateValue('updatedAt', recipeListResponse.updatedAt);
   writer.writeAdditionalData(recipeListResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipePurgeResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipePurgeResponse(
+  writer: SerializationWriter,
+  recipePurgeResponse: Partial<RecipePurgeResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipePurgeResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('purged', recipePurgeResponse.purged);
+  writer.writeAdditionalData(recipePurgeResponse.additionalData);
 }
 /**
  * Serializes information the current object

@@ -457,6 +457,15 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // DELETE /api/recipes/*/purge
+  await page.route('**/api/recipes/*/purge', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { purged: true } }),
+    });
+  });
+
   // POST /api/recipes/capture-url — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes/capture-url', async (route) => {
     if (route.request().method() === 'POST') {
