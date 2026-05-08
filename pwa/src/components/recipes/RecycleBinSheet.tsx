@@ -77,15 +77,16 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
       await purgeRecipe(pinDialog.recipeId, pinDialog.pin);
       setItems((prev) => prev.filter((item) => item.id !== pinDialog.recipeId));
       setPinDialog(null);
-    } catch {
-      setPinDialog(
-        (prev) =>
-          prev && {
-            ...prev,
-            isSubmitting: false,
-            error: t('recipes.purgeError', 'Incorrect PIN or permanent delete is not available.'),
-          }
-      );
+    } catch (error: any) {
+      console.error('Purge failed', error);
+      setPinDialog((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          isSubmitting: false,
+          error: t('recipes.purgeError', 'Incorrect PIN or permanent delete is not available.'),
+        };
+      });
     }
   };
 

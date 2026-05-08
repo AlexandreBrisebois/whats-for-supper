@@ -25,19 +25,16 @@ test.describe('Recipe Stack Browse', () => {
 
   test('can open the browse stack from home and navigate cards', async ({ page }) => {
     // Open Browse All
-    await page.getByTestId('browse-all-stack-trigger').click();
+    await page.getByTestId('home-browse-all-trigger').click();
 
     // Check overlay presence
-    await expect(page.getByTestId('browse-all-stack-overlay')).toBeVisible();
+    await expect(page.getByTestId('browse-all-stack-container')).toBeVisible();
     await expect(page.getByTestId('stack-card-front')).toBeVisible();
 
     // Check counter
-    await expect(page.getByTestId('stack-counter')).toHaveText(/1\s*\/\s*\d+/);
+    await expect(page.getByTestId('stack-depth-indicator')).toHaveText(/1\s*\/\s*\d+/);
 
     // Swipe next (simulate by clicking the right area or finding the button if any)
-    // In our implementation, we rely on the RecipeStackCard's internal gesture,
-    // but we can trigger the onSwipeRight handler via the test.
-    // For now, let's just check if we can see the first few recipes from the mock.
     const firstRecipeName = await page.getByTestId('stack-card-front').locator('h2').textContent();
     expect(firstRecipeName).toBeTruthy();
 
@@ -48,18 +45,18 @@ test.describe('Recipe Stack Browse', () => {
     await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
 
     // Back to home
-    await page.getByTestId('stack-back-button').click();
-    await expect(page.getByTestId('browse-all-stack-overlay')).not.toBeVisible();
+    await page.getByTestId('browse-all-exit').click();
+    await expect(page.getByTestId('browse-all-stack-container')).not.toBeVisible();
   });
 
   test('can toggle discoverable filter', async ({ page }) => {
-    await page.getByTestId('browse-all-stack-trigger').click();
+    await page.getByTestId('home-browse-all-trigger').click();
 
     const toggle = page.getByTestId('stack-toggle-discoverable');
     await expect(toggle).toContainText('All Recipes');
 
     await toggle.click();
-    await expect(toggle).toContainText('Discoverable');
+    await expect(toggle).toContainText('Curated');
 
     // Should trigger a reload (mocked API handles this)
     await expect(page.getByTestId('stack-card-front').first()).toBeVisible();

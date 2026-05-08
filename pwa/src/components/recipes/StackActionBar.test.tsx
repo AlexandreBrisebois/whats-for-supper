@@ -130,7 +130,7 @@ describe('StackActionBar — discoverable toggle visual state', () => {
     expect(screen.getByTestId('card-toggle-discovery-recipe-abc')).toBeTruthy();
   });
 
-  it('renders aria-label "Add to discovery" when isDiscoverable is false', () => {
+  it('renders aria-label "Make visible in discovery" when isDiscoverable is false', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: false })}
@@ -142,10 +142,10 @@ describe('StackActionBar — discoverable toggle visual state', () => {
       />
     );
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
-    expect(btn.getAttribute('aria-label')).toBe('Add to discovery');
+    expect(btn.getAttribute('aria-label')).toBe('Make visible in discovery');
   });
 
-  it('renders aria-label "Remove from discovery" when isDiscoverable is true', () => {
+  it('renders aria-label "Hide from discovery" when isDiscoverable is true', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: true })}
@@ -157,7 +157,7 @@ describe('StackActionBar — discoverable toggle visual state', () => {
       />
     );
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
-    expect(btn.getAttribute('aria-label')).toBe('Remove from discovery');
+    expect(btn.getAttribute('aria-label')).toBe('Hide from discovery');
   });
 });
 
@@ -227,13 +227,13 @@ describe('StackActionBar — toggle interaction', () => {
     );
 
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
-    expect(btn.getAttribute('aria-label')).toBe('Add to discovery');
+    expect(btn.getAttribute('aria-label')).toBe('Make visible in discovery');
 
     fireEvent.click(btn);
 
     // Optimistic update should flip the label immediately
     await waitFor(() => {
-      expect(btn.getAttribute('aria-label')).toBe('Remove from discovery');
+      expect(btn.getAttribute('aria-label')).toBe('Hide from discovery');
     });
 
     // Resolve the promise
@@ -333,13 +333,13 @@ describe('StackActionBar — error handling', () => {
     );
 
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
-    expect(btn.getAttribute('aria-label')).toBe('Add to discovery');
+    expect(btn.getAttribute('aria-label')).toBe('Make visible in discovery');
 
     fireEvent.click(btn);
 
     // After rejection, should revert back to original state
     await waitFor(() => {
-      expect(btn.getAttribute('aria-label')).toBe('Add to discovery');
+      expect(btn.getAttribute('aria-label')).toBe('Make visible in discovery');
     });
   });
 
@@ -386,7 +386,7 @@ describe('StackActionBar — card change sync', () => {
     );
 
     expect(screen.getByTestId('card-toggle-discovery-recipe-a').getAttribute('aria-label')).toBe(
-      'Add to discovery'
+      'Make visible in discovery'
     );
 
     rerender(
@@ -401,7 +401,7 @@ describe('StackActionBar — card change sync', () => {
     );
 
     expect(screen.getByTestId('card-toggle-discovery-recipe-b').getAttribute('aria-label')).toBe(
-      'Remove from discovery'
+      'Hide from discovery'
     );
   });
 

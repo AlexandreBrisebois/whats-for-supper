@@ -1,7 +1,6 @@
 'use client';
 
 import { Utensils } from 'lucide-react';
-import Image from 'next/image';
 import { TonightCardBase } from './TonightMenuCard';
 import { getImageUrl } from '@/lib/imageUtils';
 
@@ -58,13 +57,11 @@ export function TonightPivotCard({
           className="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 bg-charcoal/5 flex items-center justify-center"
         >
           {imageUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={getImageUrl(imageUrl)}
               alt={gotoDescription ?? 'Recipe image'}
-              fill
-              className="object-cover"
-              priority
-              unoptimized
+              className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
             <Utensils size={48} className="text-charcoal/10" />

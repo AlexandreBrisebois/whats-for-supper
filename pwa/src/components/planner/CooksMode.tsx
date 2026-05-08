@@ -10,7 +10,6 @@ import {
   Circle,
   Sparkles,
 } from 'lucide-react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { getRecipe, Recipe } from '@/lib/api/recipes';
@@ -164,12 +163,11 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         <div className="flex items-center space-x-4">
           <div className="h-14 w-14 rounded-2xl overflow-hidden relative border-2 border-white shadow-md bg-charcoal/5 flex items-center justify-center">
             {initialRecipe.image ? (
-              <Image
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
                 src={getImageUrl(initialRecipe.image)}
                 alt={initialRecipe.name || 'Recipe'}
-                fill
-                className="object-cover"
-                unoptimized
+                className="absolute inset-0 h-full w-full object-cover"
               />
             ) : (
               <UtensilsCrossed size={24} className="text-charcoal/20" />

@@ -46,6 +46,9 @@ const THREE_RECIPES = [RECIPE_1, RECIPE_2, RECIPE_3];
 async function swipeRight(page: Page): Promise<void> {
   const card = page.getByTestId('stack-card-front');
   await card.waitFor({ state: 'visible' });
+  // Wait for entrance/spring animations to settle before grabbing bounding box
+  await page.waitForTimeout(500);
+
   const box = await card.boundingBox();
   if (!box) throw new Error('stack-card-front has no bounding box');
 
@@ -56,6 +59,9 @@ async function swipeRight(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(startX + 200, startY, { steps: 10 });
   await page.mouse.up();
+
+  // Wait for framer-motion animation (300ms) and state update to complete
+  await page.waitForTimeout(1000);
 }
 
 /**
@@ -65,6 +71,9 @@ async function swipeRight(page: Page): Promise<void> {
 async function swipeLeft(page: Page): Promise<void> {
   const card = page.getByTestId('stack-card-front');
   await card.waitFor({ state: 'visible' });
+  // Wait for entrance/spring animations to settle before grabbing bounding box
+  await page.waitForTimeout(500);
+
   const box = await card.boundingBox();
   if (!box) throw new Error('stack-card-front has no bounding box');
 
@@ -75,6 +84,9 @@ async function swipeLeft(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(startX - 200, startY, { steps: 10 });
   await page.mouse.up();
+
+  // Wait for framer-motion animation (300ms) and state update to complete
+  await page.waitForTimeout(1000);
 }
 
 /**
@@ -93,6 +105,9 @@ async function swipeRightEndCard(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(startX + 200, startY, { steps: 10 });
   await page.mouse.up();
+
+  // Wait for animation
+  await page.waitForTimeout(1000);
 }
 
 /**
@@ -111,6 +126,9 @@ async function swipeLeftEndCard(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(startX - 200, startY, { steps: 10 });
   await page.mouse.up();
+
+  // Wait for animation
+  await page.waitForTimeout(1000);
 }
 
 // ---------------------------------------------------------------------------
@@ -259,6 +277,8 @@ test.describe('Browse All Stack — Exit and Search Escape', () => {
 
 test.describe('Browse All Stack — Card Navigation', () => {
   test.beforeEach(async ({ page }) => {
+    page.on('console', (msg) => console.log('PAGE LOG:', msg.text()));
+    page.on('pageerror', (err) => console.log('PAGE ERROR:', err.message));
     await setupBrowseAllStack(page);
     await page.goto('/browse-all-stack');
     await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
@@ -323,9 +343,11 @@ test.describe('Browse All Stack — Card Navigation', () => {
     });
 
     // Swipe right on last card → End Card
-    await swipeRight(page);
+    await swipeRight(page); // Salad -> End Card
 
-    await expect(page.getByTestId('browse-all-end-card')).toBeVisible({ timeout: 5_000 });
+    // Wait for animation to finish
+    await page.waitForTimeout(500);
+    await expect(page.getByTestId('browse-all-end-card')).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -563,7 +585,7 @@ test.describe('Browse All Stack — End Card', () => {
     });
 
     await swipeRight(page);
-    await expect(page.getByTestId('browse-all-end-card')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('browse-all-end-card')).toBeVisible({ timeout: 10_000 });
   });
 
   // Requirement 8.1

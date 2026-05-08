@@ -304,7 +304,9 @@ test.describe('Discovery Flow', () => {
               status: 200,
               contentType: 'application/json',
               body: JSON.stringify({
-                data: [builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Mock Gourmet Discovery' })],
+                data: [
+                  builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Mock Gourmet Discovery' }),
+                ],
               }),
             });
           } else {

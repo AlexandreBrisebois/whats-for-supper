@@ -14,6 +14,11 @@ GET {{baseUrl}}/api/recipes/{{recipeId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
+### Get recipe library summary
+GET {{baseUrl}}/api/recipes/library-summary
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
 ### Create a recipe from images
 # Replace image paths and ensure familyMemberId is a real value.
 # @name createRecipe

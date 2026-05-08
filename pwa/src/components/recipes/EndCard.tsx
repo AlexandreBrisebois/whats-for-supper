@@ -108,16 +108,22 @@ export const EndCard: React.FC<EndCardProps> = ({
         </p>
 
         {/* CTA button */}
-        <button
+        <Link
+          href={onAddRecipe ? '#' : ROUTES.CAPTURE}
           data-testid={isEmpty ? 'browse-all-empty-capture-cta' : 'end-card-capture-cta'}
-          onClick={handleCaptureCta}
-          className="group mt-2 flex items-center gap-3 rounded-full bg-charcoal px-8 py-4 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
+          onClick={(e) => {
+            if (onAddRecipe) {
+              e.preventDefault();
+              onAddRecipe();
+            }
+          }}
+          className="group mt-2 flex items-center gap-3 rounded-full bg-charcoal px-8 py-4 text-white shadow-lg transition-all hover:scale-105 active:scale-95 no-underline"
         >
           <Plus size={20} strokeWidth={3} />
           <span className="font-black text-sm uppercase tracking-widest">
             {isEmpty ? 'Add New Recipe' : 'Capture a Recipe'}
           </span>
-        </button>
+        </Link>
 
         {!isEmpty && (
           <Link

@@ -287,6 +287,9 @@ describe('BrowseAllStack — swipe navigation', () => {
       await onDragEnd!(null, makeDragInfo(100));
     });
 
+    console.log('DOM AFTER SWIPE:');
+    screen.debug(screen.getByTestId('browse-all-stack-container'));
+
     await waitFor(() => {
       // Second recipe should now be the front card
       expect(screen.getByTestId('stack-card-front')).toHaveAttribute(

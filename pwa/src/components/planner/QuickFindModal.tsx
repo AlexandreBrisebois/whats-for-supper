@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Utensils } from 'lucide-react';
-import Image from 'next/image';
 import { getFillTheGap } from '@/lib/api/planner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -154,12 +153,11 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
                       >
                         {currentRecipe.image && (
                           <>
-                            <Image
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
                               src={getImageUrl(currentRecipe.image)}
                               alt={currentRecipe.name}
-                              fill
-                              className="object-cover"
-                              unoptimized
+                              className="absolute inset-0 h-full w-full object-cover"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                           </>

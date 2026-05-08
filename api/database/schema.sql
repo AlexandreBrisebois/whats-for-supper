@@ -44,6 +44,30 @@ CREATE TABLE recipes (
     CONSTRAINT recipes_rating_check CHECK (rating >= 0 AND rating <= 3)
 );
 
+CREATE TABLE IF NOT EXISTS recipe_search_documents (
+    recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
+    document_text text NOT NULL,
+    search_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    embedding_json text,
+    embedding vector(1536) GENERATED ALWAYS AS (
+        CASE 
+            WHEN embedding_json IS NOT NULL AND embedding_json != 'null' 
+            THEN (embedding_json)::vector 
+            ELSE NULL 
+        END
+    ) STORED,
+    embedding_model text NOT NULL,
+    embedding_version text,
+    index_status text NOT NULL DEFAULT 'pending',
+    last_indexed_at timestamptz,
+    source_fingerprint text,
+    schema_version integer NOT NULL DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_recipe_search_documents_embedding 
+    ON recipe_search_documents 
+    USING hnsw (embedding vector_cosine_ops);
+
 CREATE TABLE IF NOT EXISTS weekly_plans (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     week_start_date date UNIQUE NOT NULL,

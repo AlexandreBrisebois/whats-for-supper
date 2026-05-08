@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { X, Clock, ChefHat, ArrowRightLeft, Trash2, Eye } from 'lucide-react';
-import { getRecipe, updateRecipe, type Recipe } from '@/lib/api/recipes';
+import { getRecipe, updateRecipe, deleteRecipe, type Recipe } from '@/lib/api/recipes';
 import { t } from '@/locales';
 
 interface RecipeDetailSheetProps {
@@ -87,6 +87,19 @@ export function RecipeDetailSheet({
     setIsSavingAction(true);
     try {
       await onUseForDay(recipe);
+    } finally {
+      setIsSavingAction(false);
+    }
+  };
+
+  const handleMoveToBin = async () => {
+    if (!recipe) return;
+    setIsSavingAction(true);
+    try {
+      await deleteRecipe(recipe.id);
+      onClose();
+    } catch (error) {
+      console.error('Failed to move recipe to bin', error);
     } finally {
       setIsSavingAction(false);
     }
@@ -254,11 +267,12 @@ export function RecipeDetailSheet({
               <button
                 type="button"
                 data-testid="action-move-to-bin"
-                disabled
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-5 py-3 text-sm font-black text-charcoal/50 shadow-sm disabled:cursor-not-allowed"
+                onClick={() => void handleMoveToBin()}
+                disabled={isSavingAction}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm disabled:opacity-60"
               >
                 <Trash2 size={16} />
-                {t('recipes.moveToBinSoon', 'Move to Bin (coming soon)')}
+                {t('recipes.moveToBin', 'Move to Bin')}
               </button>
             </div>
           </div>

@@ -13,7 +13,6 @@ import {
   Trash2,
   BookOpen,
 } from 'lucide-react';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   searchRecipes,
@@ -473,12 +472,10 @@ export default function RecipesPage() {
                 </div>
 
                 <div className="relative w-full aspect-[16/10] min-h-[240px] rounded-[2.5rem] overflow-hidden shadow-2xl glass-solar border border-white/20">
-                  <Image
+                  <img
                     src={topPick.imageUrl || '/placeholder-recipe.jpg'}
                     alt={topPick.name}
-                    fill
-                    className="object-cover transition-transform duration-1000 group-hover:scale-105"
-                    priority
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent opacity-90" />
 
@@ -526,11 +523,10 @@ export default function RecipesPage() {
                   )}
                 >
                   <div className="relative aspect-[4/3] rounded-[1.5rem] overflow-hidden">
-                    <Image
+                    <img
                       src={recipe.imageUrl || '/placeholder-recipe.jpg'}
                       alt={recipe.name}
-                      fill
-                      className="object-cover transition-transform group-hover:scale-110"
+                      className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110"
                     />
                   </div>
                   <div className="flex flex-col gap-1 px-1.5 pb-1">

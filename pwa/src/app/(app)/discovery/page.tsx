@@ -44,9 +44,9 @@ export default function DiscoveryPage() {
         if (stack.length > 0) {
           setActiveCategory(categoryToLoad);
           categoryIndexRef.current = i;
-          useDiscoveryStore.getState().setStack(
-            stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` }))
-          );
+          useDiscoveryStore
+            .getState()
+            .setStack(stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` })));
           stackIsLoadedRef.current = true;
           foundNonEmpty = true;
           break;
@@ -101,9 +101,9 @@ export default function DiscoveryPage() {
             if (stack.length > 0) {
               categoryIndexRef.current = tryIndex;
               setActiveCategory(categoryToLoad);
-              useDiscoveryStore.getState().setStack(
-                stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` }))
-              );
+              useDiscoveryStore
+                .getState()
+                .setStack(stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` })));
               stackIsLoadedRef.current = true;
               foundNonEmpty = true;
               break;

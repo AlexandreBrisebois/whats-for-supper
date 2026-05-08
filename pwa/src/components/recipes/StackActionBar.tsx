@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Library, Heart } from 'lucide-react';
+import { Sparkles, Library, Eye, EyeOff } from 'lucide-react';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
 interface StackActionBarProps {
@@ -72,7 +72,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-charcoal' : ''}`} />
           <span className="text-[10px] font-black uppercase tracking-wider">
-            {isDiscoverableOnly ? 'Discoverable' : 'Library'}
+            {isDiscoverableOnly ? 'Curated' : 'All Recipes'}
           </span>
         </button>
 
@@ -100,11 +100,17 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
               : 'bg-white/5 hover:bg-white/10 text-white/70'
           } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
           data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
-          aria-label={isIndividualDiscoverable ? 'Remove from discovery' : 'Add to discovery'}
+          aria-label={
+            isIndividualDiscoverable ? 'Hide from discovery' : 'Make visible in discovery'
+          }
         >
-          <Heart className={`h-3.5 w-3.5 ${isIndividualDiscoverable ? 'fill-charcoal' : ''}`} />
+          {isIndividualDiscoverable ? (
+            <Eye className="h-3.5 w-3.5 text-charcoal fill-charcoal" />
+          ) : (
+            <EyeOff className="h-3.5 w-3.5 text-white/70" />
+          )}
           <span className="text-[10px] font-black uppercase tracking-wider">
-            {isIndividualDiscoverable ? 'Pinned' : 'Pin'}
+            {isIndividualDiscoverable ? 'Visible' : 'Hidden'}
           </span>
         </button>
       </motion.div>

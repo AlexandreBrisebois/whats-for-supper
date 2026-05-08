@@ -11,7 +11,7 @@ namespace RecipeApi.Controllers;
 [ApiController]
 [Route("api/management")]
 [SkipWrapping]
-public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbContext db) : ControllerBase
+public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbContext db, IServiceScopeFactory scopeFactory) : ControllerBase
 {
     /// <summary>
     /// POST /api/management/backup — trigger an asynchronous export.
@@ -41,6 +41,33 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
     {
         var instance = await orchestrator.TriggerAsync("db-disaster-recovery", []);
         return Accepted(new { message = "Disaster recovery task enqueued.", taskId = instance.Id });
+    }
+
+    /// <summary>
+    /// POST /api/management/backfill-search — trigger a search index backfill.
+    /// </summary>
+    [HttpPost("backfill-search")]
+    public IActionResult BackfillSearch()
+    {
+        // Run in background to prevent HTTP timeouts for large libraries (1000s of recipes)
+        _ = Task.Run(async () =>
+        {
+            using var scope = scopeFactory.CreateScope();
+            var searchWorkflow = scope.ServiceProvider.GetRequiredService<SearchIndexWorkflow>();
+
+            try
+            {
+                // Use CancellationToken.None so it doesn't cancel when the HTTP request finishes
+                await searchWorkflow.BackfillAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                var logger = scope.ServiceProvider.GetService<ILogger<ManagementController>>();
+                logger?.LogError(ex, "Background search index backfill failed.");
+            }
+        });
+
+        return Accepted(new { message = "Search index backfill triggered in the background." });
     }
 
     /// <summary>

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import {
   motion,
   useMotionValue,
@@ -189,19 +188,21 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
       onDragEnd={handleDragEnd}
       onTap={handleTap}
       className="absolute inset-x-0 top-0 bottom-12 cursor-grab active:cursor-grabbing"
-      data-testid={isFront ? 'stack-card-front' : `stack-card-${id}`}
+      data-testid={isFront ? 'stack-card-front' : 'stack-card-back'}
       data-recipe-id={id}
       {...(isFront ? { 'data-front': 'true' } : {})}
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
-      <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
+      <div
+        data-testid={`stack-card-${id}`}
+        className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col"
+      >
         <div className="relative h-[62%] w-full overflow-hidden">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={imageUrl}
             alt={name}
-            fill
-            className="object-cover select-none pointer-events-none"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />
 
           {/* Swipe direction indicators — ochre color, navigation only (requirements 3.1, 3.2, 3.3) */}

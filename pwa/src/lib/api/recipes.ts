@@ -288,9 +288,18 @@ export async function restoreRecipe(id: string): Promise<void> {
 }
 
 export async function purgeRecipe(id: string, elevatedPin: string): Promise<void> {
-  await apiClient.api.recipes.byId(id as any).purge.delete({
-    headers: { 'X-Elevated-Pin': elevatedPin },
+  // Use native fetch to ensure we can catch non-2xx status codes reliably in tests
+  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/${id}/purge`, {
+    method: 'DELETE',
+    headers: {
+      'X-Elevated-Pin': elevatedPin,
+      'X-Family-Member-Id': useFamilyStore.getState().selectedFamilyMemberId || '',
+    },
   });
+
+  if (!response.ok) {
+    throw new Error(`Purge failed with status ${response.status}`);
+  }
 }
 
 export async function getRecommendations(): Promise<RecommendationsResponse> {

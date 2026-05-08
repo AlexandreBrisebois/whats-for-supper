@@ -113,11 +113,18 @@ describe('EndCard — rendering', () => {
 });
 
 describe('EndCard — CTA navigation', () => {
-  it('navigates to /capture when CTA is clicked', () => {
-    render(<EndCard {...defaultProps} />);
+  it('calls onAddRecipe when CTA is clicked and onAddRecipe is provided', () => {
+    const onAddRecipe = vi.fn();
+    render(<EndCard {...defaultProps} onAddRecipe={onAddRecipe} />);
     fireEvent.click(screen.getByTestId('end-card-capture-cta'));
-    expect(mockPush).toHaveBeenCalledWith('/capture');
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(onAddRecipe).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigates to /capture via Link href when onAddRecipe is not provided', () => {
+    render(<EndCard {...defaultProps} />);
+    const cta = screen.getByTestId('end-card-capture-cta');
+    // CTA is a <Link href="/capture"> — no router.push involved
+    expect(cta.getAttribute('href')).toBe('/capture');
   });
 });
 

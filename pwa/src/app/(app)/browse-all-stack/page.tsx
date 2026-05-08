@@ -47,6 +47,8 @@ export default function BrowseAllStackPage() {
   const [prefetchFailed, setPrefetchFailed] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  // True while we are fetching the last page to wrap backwards
+  const [isWrappingToEnd, setIsWrappingToEnd] = useState(false);
 
   // Recipe Detail Sheet state — freeze stack while open
   const [detailRecipeId, setDetailRecipeId] = useState<string | null>(null);
@@ -134,6 +136,71 @@ export default function BrowseAllStackPage() {
     [appendRecipes, setRecipes, setCurrentIndex, setTotalCount]
   );
 
+  // ---------------------------------------------------------------------------
+  // Wrap-to-last-page: fetch the last page and land on its last recipe.
+  // Called when swiping left from card 1 or left from the End Card.
+  // ---------------------------------------------------------------------------
+  const wrapToLastPage = useCallback(async () => {
+    // If all pages are already in memory, jump instantly.
+    if (!hasMorePages) {
+      setIsEndCard(false);
+      setCurrentIndex(recipes.length - 1);
+      return;
+    }
+
+    // Otherwise calculate the last page number and fetch it.
+    const LIMIT = 20;
+    const lastPage = Math.ceil(totalCount / LIMIT);
+
+    setIsWrappingToEnd(true);
+    setIsEndCard(false);
+    try {
+      const result = await apiClient.api.recipes.get({
+        queryParameters: {
+          order: GetOrderQueryParameterTypeObject.Explore,
+          page: lastPage,
+          limit: LIMIT,
+          discoverableOnly: isDiscoverableOnly,
+        },
+      });
+
+      const fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
+
+      // Replace the store recipes with page 1 already in memory + this last
+      // page so the user can swipe left naturally from here.
+      // We only prepend page-1 recipes (already loaded) + last-page recipes.
+      // The middle pages are intentionally skipped; they'll load on forward
+      // swipe if the user reverses direction.
+      const firstPageRecipes = useBrowseStackStore.getState().recipes.slice(0, LIMIT);
+      const merged = [...firstPageRecipes, ...fetchedRecipes];
+      setRecipes(merged);
+
+      // Update pagination state so the store knows we're "at" the last page.
+      useBrowseStackStore.setState({
+        currentPage: lastPage,
+        hasMorePages: false,
+      });
+      setTotalCount(result?.pagination?.total ?? totalCount);
+
+      // Land on the last recipe.
+      setCurrentIndex(merged.length - 1);
+    } catch (err) {
+      console.error('BrowseAllStack: wrapToLastPage failed', err);
+      // Fall back gracefully: just land on the last recipe we have.
+      setCurrentIndex(recipes.length - 1);
+    } finally {
+      setIsWrappingToEnd(false);
+    }
+  }, [
+    hasMorePages,
+    totalCount,
+    isDiscoverableOnly,
+    recipes,
+    setRecipes,
+    setCurrentIndex,
+    setTotalCount,
+  ]);
+
   // Initial load or filter change
   useEffect(() => {
     // Defer to avoid "setState in effect" lint error
@@ -196,24 +263,22 @@ export default function BrowseAllStackPage() {
       return;
     }
 
-    nextCard();
-  }, [
-    isEndCard,
-    currentIndex,
-    recipes.length,
-    hasMorePages,
-    isPrefetching,
-    nextCard,
-    setCurrentIndex,
-  ]);
+    setCurrentIndex(currentIndex + 1);
+  }, [isEndCard, currentIndex, recipes.length, hasMorePages, isPrefetching, setCurrentIndex]);
 
   const handleSwipeLeft = useCallback(() => {
+    // From the End Card: go to the actual last recipe (wrap backwards).
     if (isEndCard) {
-      setIsEndCard(false);
+      wrapToLastPage();
+      return;
+    }
+    // From the first card: also wrap to the last recipe.
+    if (currentIndex <= 0) {
+      wrapToLastPage();
       return;
     }
     previousCard();
-  }, [isEndCard, previousCard]);
+  }, [isEndCard, currentIndex, previousCard, wrapToLastPage]);
 
   // ---------------------------------------------------------------------------
   // Recipe Detail Sheet handlers
@@ -274,7 +339,8 @@ export default function BrowseAllStackPage() {
   const displayTotal = totalCount;
 
   const isAtLastLoadedCard = currentIndex >= recipes.length - 1;
-  const showLoader = isAtLastLoadedCard && isPrefetching && !isEndCard && recipes.length > 0;
+  const showLoader =
+    (isAtLastLoadedCard && isPrefetching && !isEndCard && recipes.length > 0) || isWrappingToEnd;
   const isEmpty = !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly;
 
   // ---------------------------------------------------------------------------
@@ -348,25 +414,7 @@ export default function BrowseAllStackPage() {
           </div>
         )}
 
-        {isEmpty && (
-          <div
-            data-testid="browse-all-empty-state"
-            className="flex flex-col items-center gap-5 text-center px-8"
-          >
-            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-ochre-50 border-2 border-ochre-200">
-              <Compass size={40} className="text-ochre-500" />
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight font-heading text-charcoal">
-              Library is empty
-            </h2>
-            <button
-              onClick={handleAddRecipe}
-              className="mt-2 px-8 py-3 rounded-full bg-ochre text-white font-bold text-sm"
-            >
-              Capture a Recipe
-            </button>
-          </div>
-        )}
+        {isEmpty && <EndCard isEmpty={true} onSwipeRight={() => {}} onSwipeLeft={() => {}} />}
 
         {!isInitialLoading && !loadError && (recipes.length > 0 || isEndCard) && (
           <div className="w-full max-w-sm flex-1 flex flex-col min-h-0">

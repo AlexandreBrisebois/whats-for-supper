@@ -20,7 +20,13 @@ POST {{baseUrl}}/api/management/seed
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### 4. Check Task Status
+### 4. Trigger Search Index Backfill
+# Enqueues missing or stale recipes for search indexing.
+POST {{baseUrl}}/api/management/backfill-search
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### 5. Check Task Status
 # Returns the status of the current or most recent management task.
 GET {{baseUrl}}/api/management/status
 Accept: application/json

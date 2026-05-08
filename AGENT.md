@@ -144,6 +144,9 @@ This repo uses a **modular instruction system**. Shared doctrine lives in `.agen
 - `.agents/core/context-loading.md`  
   Context, scope, and atomic delegation discipline.
 
+- `.agents/core/network-topology.md`
+  Same-Origin doctrine, relative pathing, and SSE/Cookie stability.
+
 - `.agents/skills/session-review.md`  
   1. **Summarize Delta**: Identify every file changed and test passed in this session.
   2. **Update Plans**: Ensure any active implementation plan is synchronized to `docs/plans/YYYY-MM-DD-<feature>.md`.

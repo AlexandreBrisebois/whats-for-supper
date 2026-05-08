@@ -1,7 +1,6 @@
 'use client';
 
 import { Utensils, ArrowRightLeft, Sparkles, ChevronRight, Clock } from 'lucide-react';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -85,13 +84,11 @@ export function TonightMenuCard({
 
           <div className="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-2xl mb-6">
             {imageUrl ? (
-              <Image
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
                 src={getImageUrl(imageUrl)}
                 alt={recipeName}
-                fill
-                className="object-cover"
-                priority
-                unoptimized
+                className="absolute inset-0 h-full w-full object-cover"
               />
             ) : (
               <div className="w-full h-full bg-charcoal/5 flex items-center justify-center">
