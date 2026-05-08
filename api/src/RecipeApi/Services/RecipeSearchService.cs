@@ -13,8 +13,15 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
     private const int DefaultLimit = 5;
     private const int MaxLimit = 5;
     private const double ReasonThreshold = 0.3;
+    private const double MinimumCandidateScore = 0.2;
     private const double PlannerGapBoost = 0.20;
     private const double PlannerUrgencyBoost = 0.10;
+    private const double NotesMatchBoost = 0.10;
+    private const double BoostLove = 0.15;
+    private const double BoostLike = 0.08;
+    private const double BoostDislike = 0.10;
+    private const double BoostVotesMax = 0.15;
+    private const double BoostVotesRate = 0.05;
 
     public async Task<RecipeSearchResponseDto> SearchAsync(RecipeSearchRequestDto dto, CancellationToken ct = default)
     {
@@ -43,6 +50,8 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
         {
             candidates = await ApplyPlannerAwareRerankingAsync(candidates, dto.WeekOffset.Value, query, ct);
         }
+
+        candidates = await ApplyFamilyFitRerankingAsync(candidates, ct);
 
         var results = candidates
             .OrderByDescending(candidate => candidate.Score)
@@ -85,7 +94,7 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
     {
         return recipes
             .Select(recipe => RankRecipe(recipe, query))
-            .Where(candidate => candidate.Score > 0)
+            .Where(candidate => candidate.Score >= MinimumCandidateScore)
             .ToList();
     }
 
@@ -99,6 +108,7 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
         var nameScore = TrigramSimilarity(normalizedQuery, normalizedName);
         var notesScore = TrigramSimilarity(normalizedQuery, normalizedNotes);
         var documentScore = TrigramSimilarity(normalizedQuery, normalizedDocument);
+        var score = Math.Max(documentScore, Math.Max(nameScore, notesScore));
 
         var reasons = new List<RecipeSearchReasonDto>();
 
@@ -113,6 +123,7 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
 
         if (notesScore >= ReasonThreshold)
         {
+            score += NotesMatchBoost;
             reasons.Add(new RecipeSearchReasonDto
             {
                 Source = "notes-match",
@@ -120,7 +131,6 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
             });
         }
 
-        var score = Math.Max(documentScore, Math.Max(nameScore, notesScore));
         if (score <= 0)
         {
             return new RankedRecipe(recipe, 0, reasons, null);
@@ -136,6 +146,71 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
         }
 
         return new RankedRecipe(recipe, score, reasons, null);
+    }
+
+    private async Task<List<RankedRecipe>> ApplyFamilyFitRerankingAsync(
+        List<RankedRecipe> candidates,
+        CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        if (candidates.Count == 0)
+        {
+            return candidates;
+        }
+
+        var candidateIds = candidates.Select(candidate => candidate.Recipe.Id).ToList();
+        var voteCounts = await db.RecipeVotes
+            .AsNoTracking()
+            .Where(vote => candidateIds.Contains(vote.RecipeId) && vote.Vote == VoteType.Like)
+            .GroupBy(vote => vote.RecipeId)
+            .Select(group => new { RecipeId = group.Key, VoteCount = group.Count() })
+            .ToDictionaryAsync(x => x.RecipeId, x => x.VoteCount, ct);
+
+        return candidates
+            .Select(candidate => ApplyFamilySignals(candidate, voteCounts.GetValueOrDefault(candidate.Recipe.Id)))
+            .ToList();
+    }
+
+    private static RankedRecipe ApplyFamilySignals(RankedRecipe candidate, int likeVoteCount)
+    {
+        var score = candidate.Score;
+        var reasons = candidate.Reasons.ToList();
+
+        var (ratingDelta, ratingLabel) = candidate.Recipe.Rating switch
+        {
+            RecipeRating.Love => (BoostLove, "Loved by your household"),
+            RecipeRating.Like => (BoostLike, "Liked by your household"),
+            RecipeRating.Dislike => (-BoostDislike, "Previously marked as a dislike"),
+            _ => (0d, (string?)null)
+        };
+
+        if (ratingDelta != 0 && ratingLabel is not null)
+        {
+            score += ratingDelta;
+            reasons.Add(new RecipeSearchReasonDto
+            {
+                Source = "rating-boost",
+                Label = ratingLabel
+            });
+        }
+
+        var voteBoost = Math.Min(likeVoteCount * BoostVotesRate, BoostVotesMax);
+        if (voteBoost > 0)
+        {
+            score += voteBoost;
+            reasons.Add(new RecipeSearchReasonDto
+            {
+                Source = "vote-boost",
+                Label = "Family has shown interest"
+            });
+        }
+
+        return candidate with
+        {
+            Score = score,
+            Reasons = reasons
+        };
     }
 
     private async Task<List<RankedRecipe>> ApplyPlannerAwareRerankingAsync(
@@ -180,7 +255,7 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
                 reasons.Add(new RecipeSearchReasonDto
                 {
                     Source = "planner-fit",
-                    Label = gapNote
+                    Label = gapNote!
                 });
             }
         }

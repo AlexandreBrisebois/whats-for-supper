@@ -437,6 +437,158 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Contains("quick", topPick.GetProperty("plannerFitNote").GetString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Search_Prefers_Love_Rated_Recipe_Over_Equivalent_Unrated_Recipe()
+    {
+        var neutralRecipe = CreateRecipe("Chicken Pasta", "Bright lemon chicken pasta", "30 min", CreateDietaryProfile("ProteinFoods"));
+        neutralRecipe.Rating = RecipeRating.Unknown;
+
+        var lovedRecipe = CreateRecipe("Chicken Pasta Supreme", "Bright lemon chicken pasta", "30 min", CreateDietaryProfile("ProteinFoods"));
+        lovedRecipe.Rating = RecipeRating.Love;
+
+        await SeedRecipeAsync(neutralRecipe);
+        await SeedRecipeAsync(lovedRecipe);
+
+        var response = await PostSearchAsync(new { query = "chicken pasta" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+        var reasons = topPick.GetProperty("reasons");
+
+        Assert.Equal(lovedRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Contains(reasons.EnumerateArray(), reason => reason.GetProperty("source").GetString() == "rating-boost");
+    }
+
+    [Fact]
+    public async Task Search_Demotes_Disliked_Recipe_Below_Equivalent_Unrated_Recipe()
+    {
+        var neutralRecipe = CreateRecipe("Chicken Tacos", "Fast chicken taco night", "25 min", CreateDietaryProfile("ProteinFoods"));
+        neutralRecipe.Rating = RecipeRating.Unknown;
+
+        var dislikedRecipe = CreateRecipe("Chicken Tacos Deluxe", "Fast chicken taco night", "25 min", CreateDietaryProfile("ProteinFoods"));
+        dislikedRecipe.Rating = RecipeRating.Dislike;
+
+        await SeedRecipeAsync(neutralRecipe);
+        await SeedRecipeAsync(dislikedRecipe);
+
+        var response = await PostSearchAsync(new { query = "chicken tacos" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+        var dislikedResult = document.RootElement.GetProperty("results")
+            .EnumerateArray()
+            .Single(result => result.GetProperty("id").GetGuid() == dislikedRecipe.Id);
+
+        Assert.Equal(neutralRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Contains(dislikedResult.GetProperty("reasons").EnumerateArray(), reason => reason.GetProperty("source").GetString() == "rating-boost");
+    }
+
+    [Fact]
+    public async Task Search_Prefers_Notes_Match_Over_Equivalent_NonNotes_Match()
+    {
+        var plainRecipe = CreateRecipe("Cozy Pasta", "Creamy pasta for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+        plainRecipe.Notes = "Family likes this on weekends.";
+
+        var notesRecipe = CreateRecipe("Weeknight Pasta", "Creamy pasta for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+        notesRecipe.Notes = "This is the soup mood pasta everyone asks for.";
+
+        await SeedRecipeAsync(plainRecipe);
+        await SeedRecipeAsync(notesRecipe);
+
+        var response = await PostSearchAsync(new { query = "soup pasta" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+
+        Assert.Equal(notesRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Contains(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "notes-match" &&
+            reason.GetProperty("label").GetString() == "Your notes mention this");
+    }
+
+    [Fact]
+    public async Task Search_Applies_Bounded_Vote_Boost_And_Emits_Vote_Reason()
+    {
+        var neutralRecipe = CreateRecipe("Chicken Rice Bowl", "Fresh bowl for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var votedRecipe = CreateRecipe("Chicken Rice Bowl Plus", "Fresh bowl for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+
+        await SeedRecipeAsync(neutralRecipe);
+        await SeedRecipeAsync(votedRecipe);
+        await SeedLikeVotesAsync(votedRecipe.Id, 2);
+
+        var response = await PostSearchAsync(new { query = "chicken rice bowl" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+        var votedResult = document.RootElement.GetProperty("results")
+            .EnumerateArray()
+            .Single(result => result.GetProperty("id").GetGuid() == votedRecipe.Id);
+
+        Assert.Equal(votedRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Contains(votedResult.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "vote-boost" &&
+            reason.GetProperty("label").GetString() == "Family has shown interest");
+    }
+
+    [Fact]
+    public async Task Search_Caps_Vote_Boost_At_Maximum_Value()
+    {
+        var cappedRecipe = CreateRecipe("Chicken Rice Bowl Capped", "Fresh bowl for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var baselineRecipe = CreateRecipe("Chicken Rice Bowl Baseline", "Fresh bowl for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+
+        await SeedRecipeAsync(cappedRecipe);
+        await SeedRecipeAsync(baselineRecipe);
+        await SeedLikeVotesAsync(cappedRecipe.Id, 10);
+        await SeedLikeVotesAsync(baselineRecipe.Id, 3);
+
+        var response = await PostSearchAsync(new { query = "chicken rice bowl" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var results = document.RootElement.GetProperty("results");
+        var cappedResult = results.EnumerateArray().Single(result => result.GetProperty("id").GetGuid() == cappedRecipe.Id);
+        var baselineResult = results.EnumerateArray().Single(result => result.GetProperty("id").GetGuid() == baselineRecipe.Id);
+
+        Assert.Contains(cappedResult.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "vote-boost" &&
+            reason.GetProperty("label").GetString() == "Family has shown interest");
+        Assert.Contains(baselineResult.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "vote-boost" &&
+            reason.GetProperty("label").GetString() == "Family has shown interest");
+    }
+
+    [Fact]
+    public async Task Search_Love_Boost_Does_Not_Override_A_Completely_NonMatching_Query()
+    {
+        var matchingRecipe = CreateRecipe("Chicken Soup", "Comforting chicken soup", "40 min", CreateDietaryProfile("ProteinFoods"));
+
+        var lovedNonMatch = CreateRecipe("Berry Pancakes", "Weekend breakfast favorite", "20 min", CreateDietaryProfile("WholeGrains"));
+        lovedNonMatch.Rating = RecipeRating.Love;
+
+        await SeedRecipeAsync(matchingRecipe);
+        await SeedRecipeAsync(lovedNonMatch);
+
+        var response = await PostSearchAsync(new { query = "chicken soup" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var results = document.RootElement.GetProperty("results");
+        var topPick = document.RootElement.GetProperty("topPick");
+
+        Assert.Equal(matchingRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("id").GetGuid() == lovedNonMatch.Id);
+    }
+
     private async Task<HttpResponseMessage> PostSearchAsync(object payload)
     {
         return await _client.PostAsJsonAsync("/api/recipes/search", payload);
@@ -457,6 +609,34 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SeedLikeVotesAsync(Guid recipeId, int count)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        for (var index = 0; index < count; index++)
+        {
+            var familyMemberId = Guid.NewGuid();
+            db.FamilyMembers.Add(new FamilyMember
+            {
+                Id = familyMemberId,
+                Name = $"Tester {index}",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+
+            db.RecipeVotes.Add(new RecipeVote
+            {
+                RecipeId = recipeId,
+                FamilyMemberId = familyMemberId,
+                Vote = VoteType.Like,
+                VotedAt = DateTimeOffset.UtcNow.AddMinutes(index)
+            });
+        }
+
         await db.SaveChangesAsync();
     }
 

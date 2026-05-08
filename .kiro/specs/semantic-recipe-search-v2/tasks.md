@@ -297,7 +297,7 @@ BOOST_VOTES_RATE = 0.05
 - No PWA changes.
 - `task review` passes.
 
-- [ ] Task 5 complete
+- [x] Task 5 complete
 
 ---
 
