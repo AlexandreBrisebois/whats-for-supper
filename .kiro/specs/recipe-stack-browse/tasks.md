@@ -111,8 +111,8 @@ The feature introduces:
     - Test that toggle state reverts on error
     - _Requirements: 4.2, 4.5, 4.6, 4.7, 4.8_
 
-- [ ] 8. Frontend - Create End Card and Empty State Components
-  - [ ] 8.1 Implement EndCard component
+- [x] 8. Frontend - Create End Card and Empty State Components
+  - [x] 8.1 Implement EndCard component
     - Create `pwa/src/components/recipes/EndCard.tsx`
     - Render with warm cream background, ochre accent, supper/compass icon
     - Display heading: "What's for Supper?"
@@ -121,14 +121,14 @@ The feature introduces:
     - Support swipe gestures (right = wrap to recipe 1, left = return to last recipe)
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9_
   
-  - [ ] 8.2 Create empty state inline in BrowseAllStack
+  - [x] 8.2 Create empty state inline in BrowseAllStack
     - Render with `data-testid="browse-all-empty-state"` when `pagination.total === 0`
     - Display heading: "Your library is empty"
     - Display supporting message about adding first recipe
     - Add CTA button with `data-testid="browse-all-empty-capture-cta"` that navigates to `/capture`
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
   
-  - [ ] 8.3 Write unit tests for EndCard
+  - [x] 8.3 Write unit tests for EndCard
     - Test that EndCard renders with correct content
     - Test that CTA navigates to `/capture` when tapped
     - _Requirements: 8.2, 8.3, 8.4, 8.5, 8.6_
