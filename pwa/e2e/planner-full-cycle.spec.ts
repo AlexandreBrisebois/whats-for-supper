@@ -182,7 +182,10 @@ test.describe("Planner — Cook's Mode", () => {
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
-    // Step indicator format is "1 / 2" (current / total)
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
+    await expect(page.getByTestId('cooks-mode-step-next')).toContainText(/Let's Cook/i);
+
+    await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/1 \/ /i);
 
     await page.getByTestId('cooks-mode-step-next').click();

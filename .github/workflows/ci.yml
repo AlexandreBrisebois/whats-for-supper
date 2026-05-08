@@ -135,7 +135,7 @@ jobs:
           API_INTERNAL_URL: http://127.0.0.1:5001
 
       - name: E2E — Playwright
-        run: npm run test:e2e
+        run: npm run test:e2e -- --workers=2
         working-directory: pwa
 
       - name: Upload Playwright report

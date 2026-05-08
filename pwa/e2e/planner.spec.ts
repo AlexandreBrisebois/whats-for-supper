@@ -233,10 +233,14 @@ test.describe('Supper Planner', () => {
     // Verify overlay
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
+    await expect(page.getByTestId('cooks-mode-step-next')).toContainText(/Let's Cook/i);
+
+    // Navigate steps
+    await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByText(/Chop the onions and mince the garlic/i).first()).toBeVisible();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
-    // Navigate steps
     await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByText(/Saute until golden and fragrant/i).first()).toBeVisible();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);

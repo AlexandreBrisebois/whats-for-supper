@@ -161,6 +161,9 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
+
+    await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
     await page.getByTestId('close-cooks-mode').click();
@@ -176,9 +179,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     await expect(page.getByText('Your list is empty')).not.toBeVisible();
 
-    const firstItem = page.locator(
-      `[data-testid="grocery-item-checkbox"][data-item-name="${itemName}"]`
-    );
+    const firstItem = checklist.getByRole('checkbox', { name: itemName, exact: true });
     await expect(firstItem).toBeVisible({ timeout: 10_000 });
 
     // Mock update
@@ -262,9 +263,9 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     await page.reload();
     await expect(page.locator(`[data-date="${TODAY}"]`)).toBeVisible({ timeout: 15_000 });
     await page.getByTestId('grocery-tab').click();
-    const refreshedItem = page.locator(
-      `[data-testid="grocery-item-checkbox"][data-item-name="${itemName}"]`
-    );
+    await expect(checklist).toBeVisible({ timeout: 10_000 });
+    const refreshedItem = checklist.getByRole('checkbox', { name: itemName, exact: true });
+    await expect(refreshedItem).toBeVisible({ timeout: 10_000 });
     await expect(refreshedItem).toBeChecked();
     await expect(refreshedItem).toHaveAttribute('aria-checked', 'true');
   });
