@@ -16,6 +16,7 @@ using RecipeApi.Middleware;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Services.Processors;
+using RecipeApi.Tests.Infrastructure;
 
 namespace RecipeApi.Tests.Infrastructure;
 
@@ -40,12 +41,13 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     private readonly string _dataRoot = Path.Combine(Path.GetTempPath(), $"wfs-test-{Guid.NewGuid():N}");
     private readonly bool _enableAuth;
 
+    private ISearchTelemetry? _telemetry;
     private TestWebApplicationFactory(bool enableAuth = false) => _enableAuth = enableAuth;
 
     /// <summary>Factory with auth disabled — for business-logic tests.</summary>
-    public static async Task<TestWebApplicationFactory> CreateAsync()
+    public static async Task<TestWebApplicationFactory> CreateAsync(ISearchTelemetry? telemetry = null)
     {
-        var factory = new TestWebApplicationFactory(enableAuth: false);
+        var factory = new TestWebApplicationFactory(enableAuth: false) { _telemetry = telemetry };
         await factory.StartAsync();
         return factory;
     }
@@ -129,6 +131,11 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipeImportBulkService>();
         builder.Services.AddScoped<SettingsService>();
         builder.Services.AddScoped<ManagementService>();
+        builder.Services.AddScoped<SearchIndexWorkflow>();
+        if (_telemetry is not null)
+            builder.Services.AddSingleton<ISearchTelemetry>(_telemetry);
+        else
+            builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
 
         builder.Services.AddScoped<IWorkflowOrchestrator>(sp =>
         {

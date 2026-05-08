@@ -80,8 +80,14 @@ public class Recipe
     [Column("dietary_profile", TypeName = "jsonb")]
     public string? DietaryProfile { get; set; } = null;
 
-    // Phase 3+: pgvector embedding — not mapped until vector extension is enabled
-    // public Vector? Embedding { get; set; }
+    [Column("deleted_at")]
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    [Column("deleted_by")]
+    public Guid? DeletedBy { get; set; }
+
+    [Column("delete_note")]
+    public string? DeleteNote { get; set; }
 
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

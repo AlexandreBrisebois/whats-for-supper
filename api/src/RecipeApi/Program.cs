@@ -114,6 +114,8 @@ try
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
+    builder.Services.AddScoped<SearchIndexWorkflow>();
+    builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
 
     // ── Workflow Processors Registration ─────────────────────────────────────
     // Each IWorkflowProcessor handles a specific task type in YAML workflows.

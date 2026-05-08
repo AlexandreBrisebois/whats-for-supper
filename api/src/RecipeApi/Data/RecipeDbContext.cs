@@ -18,6 +18,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<WeeklyPlan> WeeklyPlans => Set<WeeklyPlan>();
     public DbSet<FamilySetting> FamilySettings => Set<FamilySetting>();
     public DbSet<IngredientCategory> IngredientCategories => Set<IngredientCategory>();
+    public DbSet<RecipeSearchDocument> RecipeSearchDocuments => Set<RecipeSearchDocument>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -191,6 +192,17 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
             entity.HasIndex(e => e.Key).IsUnique().HasDatabaseName("idx_family_settings_key");
             entity.ToTable("family_settings");
+        });
+
+        modelBuilder.Entity<RecipeSearchDocument>(entity =>
+        {
+            entity.HasKey(e => e.RecipeId);
+            entity.Property(e => e.SearchMetadata).HasColumnType("jsonb");
+            entity.HasOne(e => e.Recipe)
+                  .WithOne()
+                  .HasForeignKey<RecipeSearchDocument>(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable("recipe_search_documents");
         });
     }
 

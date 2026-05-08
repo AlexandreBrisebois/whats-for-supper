@@ -8,7 +8,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public partial class RecipeSearchService(RecipeDbContext db, ScheduleService scheduleService)
+public partial class RecipeSearchService(RecipeDbContext db, ScheduleService scheduleService, ISearchTelemetry? telemetry = null)
 {
     private const int DefaultLimit = 5;
     private const int MaxLimit = 5;
@@ -25,6 +25,7 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
 
     public async Task<RecipeSearchResponseDto> SearchAsync(RecipeSearchRequestDto dto, CancellationToken ct = default)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var query = dto.Query?.Trim() ?? string.Empty;
         var limit = Math.Clamp(dto.Limit ?? DefaultLimit, 1, MaxLimit);
         var appliedFilters = dto.Filters ?? new RecipeSearchFiltersDto();
@@ -37,8 +38,17 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
                     ? "agent"
                     : "standard";
 
+        telemetry?.Emit(SearchTelemetryEvents.SearchRequested, new()
+        {
+            ["mode"] = searchMode,
+            ["hasPlanner"] = dto.WeekOffset is not null,
+            ["hasFilters"] = dto.Filters is not null,
+            ["hasPantry"] = dto.PantrySnapshotId is not null
+        });
+
         var recipes = await db.Recipes
             .AsNoTracking()
+            .Where(recipe => recipe.DeletedAt == null)
             .OrderByDescending(recipe => recipe.CreatedAt)
             .ToListAsync(ct);
 
@@ -65,7 +75,7 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
             results[0].PlannerFitNote = "Not yet planned this week";
         }
 
-        return new RecipeSearchResponseDto
+        var response = new RecipeSearchResponseDto
         {
             TopPick = results.FirstOrDefault(),
             Results = results,
@@ -73,6 +83,27 @@ public partial class RecipeSearchService(RecipeDbContext db, ScheduleService sch
             SearchMode = searchMode,
             ResultPath = "lexical-only"
         };
+
+        stopwatch.Stop();
+        telemetry?.Emit(SearchTelemetryEvents.SearchCompleted, new()
+        {
+            ["mode"] = searchMode,
+            ["resultPath"] = response.ResultPath,
+            ["resultCount"] = results.Count,
+            ["topPickPresent"] = response.TopPick is not null,
+            ["durationMs"] = stopwatch.ElapsedMilliseconds
+        });
+
+        if (results.Count == 0)
+        {
+            telemetry?.Emit(SearchTelemetryEvents.SearchEmptyResults, new()
+            {
+                ["mode"] = searchMode,
+                ["filtersApplied"] = appliedFilters
+            });
+        }
+
+        return response;
     }
 
     private static List<RankedRecipe> BuildDefaultCandidates(List<Recipe> recipes)

@@ -543,7 +543,7 @@ Implement the function. Watch it pass.
 - `task agent:drift` passes (schema change is tracked).
 - `task review` passes.
 
-- [ ] Task 9 complete
+- [x] Task 9 complete
 
 ---
 
@@ -589,7 +589,7 @@ is upserted with `index_status = 'ready'`. Watch it fail. Implement. Watch it pa
 - Telemetry events emitted correctly.
 - `task review` passes.
 
-- [ ] Task 10 complete
+- [x] Task 10 complete
 
 ---
 
@@ -631,7 +631,7 @@ results with `resultPath = "hybrid"`. Watch it fail. Wire the vector retrieval p
 - Hybrid search works without breaking Phase 1 lexical behaviour.
 - `task review` passes.
 
-- [ ] Task 11 complete
+- [x] Task 11 complete
 
 ---
 
@@ -666,7 +666,7 @@ Watch it fail. Instrument the service. Watch it pass.
 - Telemetry unit tests pass.
 - `task review` passes.
 
-- [ ] Task 11A complete
+- [x] Task 11A complete
 
 ---
 

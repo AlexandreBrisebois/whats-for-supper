@@ -10,10 +10,18 @@ namespace RecipeApi.Services;
 public class ManagementService(
     RecipeDbContext db,
     IRecipeStore recipeStore,
+    RecipesRootResolver recipesRoot,
     DataRootResolver dataRoot,
     ILogger<ManagementService> logger)
 {
     private string DataRoot => dataRoot.Root;
+
+    private static readonly JsonSerializerOptions _cycleIgnoreOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+    };
 
     public async Task<object> BackupAsync()
     {
@@ -97,7 +105,7 @@ public class ManagementService(
             if (!await recipeStore.RecipeJsonExistsAsync(recipe.Id) &&
                 (!string.IsNullOrEmpty(recipe.RawMetadata) || !string.IsNullOrEmpty(recipe.Ingredients)))
             {
-                var recipeJson = JsonSerializer.Serialize(recipe, JsonDefaults.CamelCase);
+                var recipeJson = JsonSerializer.Serialize(recipe, _cycleIgnoreOptions);
                 await recipeStore.WriteRecipeJsonAsync(recipe.Id, recipeJson);
             }
 
@@ -139,6 +147,53 @@ public class ManagementService(
         await File.WriteAllLinesAsync(categoriesPath, csvLines);
         logger.LogInformation("Backed up {Count} ingredient categories to {Path}", ingredientCategories.Count, categoriesPath);
 
+        // 6. Backup search index sidecars (only for recipes with index_status = 'ready')
+        var readyDocs = await db.RecipeSearchDocuments
+            .AsNoTracking()
+            .Where(d => d.IndexStatus == "ready")
+            .ToListAsync();
+
+        int sidecarCount = 0;
+        foreach (var doc in readyDocs)
+        {
+            try
+            {
+                // Build sidecar manually to avoid EF navigation cycle issues
+                var sidecarDict = new Dictionary<string, object?>
+                {
+                    ["schemaVersion"] = doc.SchemaVersion,
+                    ["recipeId"] = doc.RecipeId.ToString(),
+                    ["documentText"] = doc.DocumentText,
+                    ["searchMetadata"] = doc.SearchMetadata ?? "{}",
+                    ["embeddingModel"] = doc.EmbeddingModel,
+                    ["embeddingVersion"] = (object?)doc.EmbeddingVersion,
+                    ["sourceFingerprint"] = doc.SourceFingerprint,
+                    ["exportedAt"] = DateTimeOffset.UtcNow.ToString("O")
+                };
+
+                // Embed the raw float array if present
+                if (doc.EmbeddingJson is not null)
+                {
+                    sidecarDict["embedding"] = JsonSerializer.Deserialize<float[]>(doc.EmbeddingJson);
+                }
+                else
+                {
+                    sidecarDict["embedding"] = null;
+                }
+
+                var sidecarJson = JsonSerializer.Serialize(sidecarDict, JsonDefaults.CamelCase);
+                var sidecarPath = GetSearchIndexSidecarPath(doc.RecipeId);
+                Directory.CreateDirectory(Path.GetDirectoryName(sidecarPath)!);
+                await File.WriteAllTextAsync(sidecarPath, sidecarJson);
+                sidecarCount++;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to write search.index.json for recipe {RecipeId}", doc.RecipeId);
+            }
+        }
+
+        logger.LogInformation("Backed up {Count} search index sidecars", sidecarCount);
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
     }
@@ -375,6 +430,82 @@ public class ManagementService(
         }
 
         await db.SaveChangesAsync(ct);
+
+        // 4b. Restore search index sidecars
+        var configuredModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "text-embedding-3-small";
+        foreach (var recipe in recipesToRestore)
+        {
+            if (ct.IsCancellationRequested) break;
+            try
+            {
+                var sidecarPath = GetSearchIndexSidecarPath(recipe.Id);
+                if (!File.Exists(sidecarPath))
+                {
+                    // No sidecar — mark pending so background job re-indexes
+                    await UpsertSearchDocumentPendingAsync(recipe.Id, ct);
+                    logger.LogInformation("recipe_index_restore_marked_pending recipeId={RecipeId} reason=missing", recipe.Id);
+                    continue;
+                }
+
+                var sidecarJson = await File.ReadAllTextAsync(sidecarPath, ct);
+                using var sidecarDoc = JsonDocument.Parse(sidecarJson);
+                var root = sidecarDoc.RootElement;
+
+                var schemaVersion = root.TryGetProperty("schemaVersion", out var sv) ? sv.GetInt32() : 0;
+                var embeddingModel = root.TryGetProperty("embeddingModel", out var em) ? em.GetString() : null;
+
+                if (schemaVersion != 1 || embeddingModel != configuredModel)
+                {
+                    await UpsertSearchDocumentPendingAsync(recipe.Id, ct);
+                    logger.LogInformation("recipe_index_restore_marked_pending recipeId={RecipeId} reason=incompatible schemaVersion={SchemaVersion} model={Model}",
+                        recipe.Id, schemaVersion, embeddingModel);
+                    continue;
+                }
+
+                var documentText = root.TryGetProperty("documentText", out var dt) ? dt.GetString() ?? string.Empty : string.Empty;
+                var sourceFingerprint = root.TryGetProperty("sourceFingerprint", out var fp) ? fp.GetString() : null;
+                var embeddingVersion = root.TryGetProperty("embeddingVersion", out var ev) ? ev.GetString() : null;
+                string? embeddingJson = null;
+                if (root.TryGetProperty("embedding", out var embProp) && embProp.ValueKind == JsonValueKind.Array)
+                    embeddingJson = embProp.GetRawText();
+
+                var existing = await db.RecipeSearchDocuments.FindAsync(new object[] { recipe.Id }, ct);
+                if (existing is null)
+                {
+                    db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+                    {
+                        RecipeId = recipe.Id,
+                        DocumentText = documentText,
+                        SearchMetadata = "{}",
+                        IndexStatus = "ready",
+                        EmbeddingJson = embeddingJson,
+                        EmbeddingModel = embeddingModel!,
+                        EmbeddingVersion = embeddingVersion,
+                        SourceFingerprint = sourceFingerprint,
+                        LastIndexedAt = DateTimeOffset.UtcNow,
+                        SchemaVersion = 1
+                    });
+                }
+                else
+                {
+                    existing.DocumentText = documentText;
+                    existing.IndexStatus = "ready";
+                    existing.EmbeddingJson = embeddingJson;
+                    existing.EmbeddingModel = embeddingModel!;
+                    existing.EmbeddingVersion = embeddingVersion;
+                    existing.SourceFingerprint = sourceFingerprint;
+                    existing.LastIndexedAt = DateTimeOffset.UtcNow;
+                    existing.SchemaVersion = 1;
+                }
+
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation("recipe_index_restore_rehydrated recipeId={RecipeId}", recipe.Id);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to restore search index for recipe {RecipeId}", recipe.Id);
+            }
+        }
 
         // 5. Restore Weekly Plans
         var plansPath = Path.Combine(DataRoot, "weekly-plans.json");
@@ -681,6 +812,33 @@ public class ManagementService(
         return value;
     }
 
+    private string GetSearchIndexSidecarPath(Guid recipeId)
+    {
+        return Path.Combine(recipesRoot.Root, recipeId.ToString(), "search.index.json");
+    }
+
+    private async Task UpsertSearchDocumentPendingAsync(Guid recipeId, CancellationToken ct)
+    {
+        var existing = await db.RecipeSearchDocuments.FindAsync(new object[] { recipeId }, ct);
+        if (existing is null)
+        {
+            db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+            {
+                RecipeId = recipeId,
+                DocumentText = string.Empty,
+                SearchMetadata = "{}",
+                IndexStatus = "pending",
+                EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "text-embedding-3-small",
+                SchemaVersion = 1
+            });
+        }
+        else if (existing.IndexStatus != "ready")
+        {
+            existing.IndexStatus = "pending";
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
     private async Task<int> MergeFamilyMembersAsync(List<FamilyMember> sourceMembers)
     {
         var membersPath = Path.Combine(DataRoot, "family-members.json");
@@ -703,7 +861,7 @@ public class ManagementService(
 
         if (addedCount > 0)
         {
-            var updatedJson2 = JsonSerializer.Serialize(existingMembers, JsonDefaults.CamelCase);
+            var updatedJson2 = JsonSerializer.Serialize(existingMembers, _cycleIgnoreOptions);
             await File.WriteAllTextAsync(membersPath, updatedJson2);
             logger.LogInformation("Merged {Count} family members into {Path}", addedCount, membersPath);
         }

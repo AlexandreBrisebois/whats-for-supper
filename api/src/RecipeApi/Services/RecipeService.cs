@@ -12,6 +12,7 @@ public class RecipeService(
     IValidationService validation,
     ImageService images,
     IWorkflowOrchestrator orchestrator,
+    SearchIndexWorkflow searchIndex,
     ILogger<RecipeService> logger)
 {
     /// <summary>
@@ -72,6 +73,10 @@ public class RecipeService(
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
 
+        // Enqueue search index job for new recipe
+        try { await searchIndex.EnqueueAsync(recipeId); }
+        catch (Exception ex) { logger.LogError(ex, "Failed to enqueue search index for new recipe {RecipeId}", recipeId); }
+
         // Trigger the recipe-import workflow asynchronously.
         // This queues the background extraction (OCR/AI) of the recipe content from photos.
         try
@@ -96,9 +101,10 @@ public class RecipeService(
         page = Math.Max(1, page);
         limit = Math.Clamp(limit, 1, 100);
 
-        var total = await db.Recipes.CountAsync(r => r.IsDiscoverable);
+        var total = await db.Recipes.CountAsync(r => r.IsDiscoverable && r.DeletedAt == null);
 
         var entities = await db.Recipes
+            .Where(r => r.DeletedAt == null)
             .OrderByDescending(r => r.CreatedAt)
             .Skip((page - 1) * limit)
             .Take(limit)
@@ -196,6 +202,13 @@ public class RecipeService(
 
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
+
+        // Re-enqueue search index when search-relevant fields changed
+        if (dto.Notes is not null || dto.Rating.HasValue || dto.IsDiscoverable.HasValue)
+        {
+            try { await searchIndex.EnqueueAsync(id); }
+            catch (Exception ex) { logger.LogError(ex, "Failed to enqueue search index for updated recipe {RecipeId}", id); }
+        }
 
         // Keep recipe.info on disk in sync with the DB
         await images.UpdateRecipeInfo(
