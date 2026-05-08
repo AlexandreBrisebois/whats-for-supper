@@ -6,7 +6,8 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 
 0. **Recipe Stack Browse Stabilization (COMPLETED - GREEN STATE ✅)**
    - Successfully reconciled merge conflicts and achieved 100% test pass rate (335/335).
-   - Regenerated Kiota API client and resolved all linting violations.
+   - **Fixed Client Drift**: Removed `src/lib/api/generated/` from `.prettierignore` and updated `Taskfile.yml` to ensure recursive formatting.
+   - All pre-commit hooks and `gen:client:check` now pass definitively.
    - Foundation is production-ready for the **Dietician Agent** work.
 
 1. **SSE Workflow — URL Capture & Social Coordination (Ready to Start)**

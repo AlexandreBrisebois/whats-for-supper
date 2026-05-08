@@ -25,8 +25,9 @@ This session finalized and stabilized the **Recipe Stack Browse** feature, resol
 
 #### Technical Context & Decisions
 
-- **Deterministic Test Selection**: Standardized on `data-recipe-id` for card identification in tests, providing higher reliability than brittle positional selectors.
-- **Optimistic UI Hardening**: Restored specific `-loading` test-ids to satisfy requirements for visual feedback during curation updates.
+- **Deterministic Test Selection**: Standardized on `data-recipe-id` for card identification in tests.
+- **Client Drift Resolution**: Fixed a persistent `gen:client:check` failure by removing `src/lib/api/generated/` from `.prettierignore` and updating `Taskfile.yml` to use recursive glob formatting.
+- **Optimistic UI Hardening**: Restored specific `-loading` test-ids.
 - **State Separation**: Maintained strict separation between Personal Library browsing (`browseStackStore`) and Social Discovery (`discoveryStore`).
 - **Performance**: Decoupled data fetching from local state length to prevent infinite render loops and redundant API calls.
 
