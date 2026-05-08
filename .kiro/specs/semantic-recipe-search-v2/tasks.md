@@ -1327,7 +1327,7 @@ for all element interactions and assertions. No `getByText`, `getByRole`, or CSS
 - `task review` passes.
 - No `data-testid` drift between code and `design.md` index.
 
-- [ ] Task 19 complete
+- [x] Task 19 complete
 
 ---
 
