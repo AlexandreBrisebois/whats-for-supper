@@ -313,6 +313,23 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // POST /api/recipes/search
+  await page.route('**/api/recipes/search', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          topPick: null,
+          results: [],
+          appliedFilters: {},
+          searchMode: 'standard',
+          resultPath: 'lexical-only',
+        },
+      }),
+    });
+  });
+
   // POST /api/recipes/describe
   await page.route('**/api/recipes/describe', async (route) => {
     if (route.request().method() === 'POST') {

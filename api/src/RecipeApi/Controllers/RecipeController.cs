@@ -198,6 +198,28 @@ public class RecipeController(
         return Ok(response);
     }
 
+    /// <summary>POST /api/recipes/search — contract placeholder for semantic search.</summary>
+    [HttpPost("search")]
+    public IActionResult Search([FromBody] RecipeSearchRequestDto dto)
+    {
+        var searchMode = dto.PantrySnapshotId is not null
+            ? "pantry-assisted"
+            : dto.SimilarToRecipeId is not null
+                ? "similar"
+                : string.Equals(dto.Mode, "agent", StringComparison.OrdinalIgnoreCase)
+                    ? "agent"
+                    : "standard";
+
+        return Ok(new RecipeSearchResponseDto
+        {
+            TopPick = null,
+            Results = [],
+            AppliedFilters = dto.Filters ?? new RecipeSearchFiltersDto(),
+            SearchMode = searchMode,
+            ResultPath = "lexical-only",
+        });
+    }
+
     /// <summary>GET /api/recipes/{id}/original/{photoIndex} — raw image binary.</summary>
     [HttpGet("{recipeId:guid}/original/{photoIndex:int}")]
     [AllowAnonymous]

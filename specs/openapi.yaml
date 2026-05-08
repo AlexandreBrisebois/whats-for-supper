@@ -116,6 +116,81 @@ components:
           type: array
           items: { $ref: '#/components/schemas/RecommendationResultDto' }
 
+    RecipeSearchFiltersDto:
+      type: object
+      properties:
+        newRecipes: { type: [boolean, 'null'] }
+        neverCooked: { type: [boolean, 'null'] }
+        familyFavorite: { type: [boolean, 'null'] }
+        quickOnly: { type: [boolean, 'null'] }
+        notCookedInLongTime: { type: [boolean, 'null'] }
+        discoverableOnly: { type: [boolean, 'null'] }
+
+    RecipeSearchReasonDto:
+      type: object
+      required: [source, label]
+      properties:
+        source:
+          type: string
+          enum:
+            - name-match
+            - notes-match
+            - rating-boost
+            - vote-boost
+            - planner-fit
+            - inventory-fit
+            - semantic-match
+        label: { type: string }
+
+    RecipeSearchResultDto:
+      type: object
+      required: [id, rating, isDiscoverable, reasons]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: [string, 'null'] }
+        imageUrl: { type: [string, 'null'] }
+        totalTime: { type: [string, 'null'] }
+        difficulty: { type: [string, 'null'] }
+        rating: { type: integer }
+        isDiscoverable: { type: boolean }
+        notes: { type: [string, 'null'] }
+        reasons:
+          type: array
+          items: { $ref: '#/components/schemas/RecipeSearchReasonDto' }
+        plannerFitNote: { type: [string, 'null'] }
+
+    RecipeSearchRequestDto:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        mode: { type: string, enum: [standard, agent], default: standard }
+        similarToRecipeId: { type: [string, 'null'], format: uuid }
+        pantrySnapshotId: { type: [string, 'null'], format: uuid }
+        weekOffset: { type: [integer, 'null'] }
+        dayIndex: { type: [integer, 'null'] }
+        limit: { type: integer, minimum: 1, maximum: 5, default: 5 }
+        filters: { $ref: '#/components/schemas/RecipeSearchFiltersDto' }
+
+    RecipeSearchResponseDto:
+      type: object
+      required: [results, appliedFilters, searchMode, resultPath]
+      properties:
+        topPick:
+          oneOf:
+            - { $ref: '#/components/schemas/RecipeSearchResultDto' }
+            - { type: 'null' }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/RecipeSearchResultDto' }
+        appliedFilters: { $ref: '#/components/schemas/RecipeSearchFiltersDto' }
+        searchMode:
+          type: string
+          enum: [standard, agent, similar, pantry-assisted]
+        resultPath:
+          type: string
+          enum: [lexical-only, hybrid, fallback-lexical]
+
     TopPickDto:
       type: object
       required: [id, name, description, imageUrl, prepTime, difficulty]
@@ -1052,6 +1127,32 @@ paths:
                         name: 'Gorgonzola Gnocchi'
                         time: '20 mins'
                         image: '/api/recipes/550e8400-e29b-41d4-a716-446655440002/hero'
+
+  /api/recipes/search:
+    post:
+      summary: Search recipes
+      operationId: searchRecipes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecipeSearchRequestDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/RecipeSearchResponseDto' }
+              example:
+                data:
+                  topPick: null
+                  results: []
+                  appliedFilters: {}
+                  searchMode: standard
+                  resultPath: lexical-only
 
   /api/schedule:
     get:

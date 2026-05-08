@@ -38,6 +38,8 @@ import {
   type RecommendationsRequestBuilder,
 } from './recommendations/index';
 // @ts-ignore
+import { SearchRequestBuilderRequestsMetadata, type SearchRequestBuilder } from './search/index';
+// @ts-ignore
 import {
   MultipartBody,
   serializeMultipartBody,
@@ -145,6 +147,10 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * The recommendations property
    */
   get recommendations(): RecommendationsRequestBuilder;
+  /**
+   * The search property
+   */
+  get search(): SearchRequestBuilder;
   /**
    * Gets an item from the ApiSdk.api.recipes.item collection
    * @param id Unique identifier of the item
@@ -265,6 +271,9 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
   },
   recommendations: {
     requestsMetadata: RecommendationsRequestBuilderRequestsMetadata,
+  },
+  search: {
+    requestsMetadata: SearchRequestBuilderRequestsMetadata,
   },
 };
 /**

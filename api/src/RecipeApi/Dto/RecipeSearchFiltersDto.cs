@@ -1,0 +1,24 @@
+using System.Text.Json.Serialization;
+
+namespace RecipeApi.Dto;
+
+public class RecipeSearchFiltersDto
+{
+    [JsonPropertyName("newRecipes")]
+    public bool? NewRecipes { get; set; }
+
+    [JsonPropertyName("neverCooked")]
+    public bool? NeverCooked { get; set; }
+
+    [JsonPropertyName("familyFavorite")]
+    public bool? FamilyFavorite { get; set; }
+
+    [JsonPropertyName("quickOnly")]
+    public bool? QuickOnly { get; set; }
+
+    [JsonPropertyName("notCookedInLongTime")]
+    public bool? NotCookedInLongTime { get; set; }
+
+    [JsonPropertyName("discoverableOnly")]
+    public bool? DiscoverableOnly { get; set; }
+}

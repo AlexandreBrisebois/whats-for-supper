@@ -104,7 +104,7 @@ await page.route('**/api/recipes/search', async (route) => {
 
 **No PWA UI changes in this task.**
 
-- [ ] Task 1 complete
+- [x] Task 1 complete
 
 ---
 

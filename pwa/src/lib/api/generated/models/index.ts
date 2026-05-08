@@ -339,6 +339,83 @@ export function createRecipeListResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchFiltersDto}
+ */
+// @ts-ignore
+export function createRecipeSearchFiltersDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchFiltersDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchReasonDto}
+ */
+// @ts-ignore
+export function createRecipeSearchReasonDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchReasonDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchRequestDto}
+ */
+// @ts-ignore
+export function createRecipeSearchRequestDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchRequestDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto}
+ */
+// @ts-ignore
+export function createRecipeSearchResponseDto_topPickFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchResponseDto_topPick;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchResponseDto_topPickMember1}
+ */
+// @ts-ignore
+export function createRecipeSearchResponseDto_topPickMember1FromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchResponseDto_topPickMember1;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchResponseDto}
+ */
+// @ts-ignore
+export function createRecipeSearchResponseDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchResponseDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchResultDto}
+ */
+// @ts-ignore
+export function createRecipeSearchResultDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchResultDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeStatusDto}
  */
 // @ts-ignore
@@ -1269,6 +1346,212 @@ export function deserializeIntoRecipeListResponse(
     },
     updatedAt: (n) => {
       recipeListResponse.updatedAt = n.getDateValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchFiltersDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchFiltersDto(
+  recipeSearchFiltersDto: Partial<RecipeSearchFiltersDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    discoverableOnly: (n) => {
+      recipeSearchFiltersDto.discoverableOnly = n.getBooleanValue();
+    },
+    familyFavorite: (n) => {
+      recipeSearchFiltersDto.familyFavorite = n.getBooleanValue();
+    },
+    neverCooked: (n) => {
+      recipeSearchFiltersDto.neverCooked = n.getBooleanValue();
+    },
+    newRecipes: (n) => {
+      recipeSearchFiltersDto.newRecipes = n.getBooleanValue();
+    },
+    notCookedInLongTime: (n) => {
+      recipeSearchFiltersDto.notCookedInLongTime = n.getBooleanValue();
+    },
+    quickOnly: (n) => {
+      recipeSearchFiltersDto.quickOnly = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchReasonDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchReasonDto(
+  recipeSearchReasonDto: Partial<RecipeSearchReasonDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    label: (n) => {
+      recipeSearchReasonDto.label = n.getStringValue();
+    },
+    source: (n) => {
+      recipeSearchReasonDto.source = n.getEnumValue<RecipeSearchReasonDto_source>(
+        RecipeSearchReasonDto_sourceObject
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchRequestDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchRequestDto(
+  recipeSearchRequestDto: Partial<RecipeSearchRequestDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    dayIndex: (n) => {
+      recipeSearchRequestDto.dayIndex = n.getNumberValue();
+    },
+    filters: (n) => {
+      recipeSearchRequestDto.filters = n.getObjectValue<RecipeSearchFiltersDto>(
+        createRecipeSearchFiltersDtoFromDiscriminatorValue
+      );
+    },
+    limit: (n) => {
+      recipeSearchRequestDto.limit = n.getNumberValue();
+    },
+    mode: (n) => {
+      recipeSearchRequestDto.mode =
+        n.getEnumValue<RecipeSearchRequestDto_mode>(RecipeSearchRequestDto_modeObject) ??
+        RecipeSearchRequestDto_modeObject.Standard;
+    },
+    pantrySnapshotId: (n) => {
+      recipeSearchRequestDto.pantrySnapshotId = n.getGuidValue();
+    },
+    query: (n) => {
+      recipeSearchRequestDto.query = n.getStringValue();
+    },
+    similarToRecipeId: (n) => {
+      recipeSearchRequestDto.similarToRecipeId = n.getGuidValue();
+    },
+    weekOffset: (n) => {
+      recipeSearchRequestDto.weekOffset = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchResponseDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchResponseDto(
+  recipeSearchResponseDto: Partial<RecipeSearchResponseDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    appliedFilters: (n) => {
+      recipeSearchResponseDto.appliedFilters = n.getObjectValue<RecipeSearchFiltersDto>(
+        createRecipeSearchFiltersDtoFromDiscriminatorValue
+      );
+    },
+    resultPath: (n) => {
+      recipeSearchResponseDto.resultPath = n.getEnumValue<RecipeSearchResponseDto_resultPath>(
+        RecipeSearchResponseDto_resultPathObject
+      );
+    },
+    results: (n) => {
+      recipeSearchResponseDto.results = n.getCollectionOfObjectValues<RecipeSearchResultDto>(
+        createRecipeSearchResultDtoFromDiscriminatorValue
+      );
+    },
+    searchMode: (n) => {
+      recipeSearchResponseDto.searchMode = n.getEnumValue<RecipeSearchResponseDto_searchMode>(
+        RecipeSearchResponseDto_searchModeObject
+      );
+    },
+    topPick: (n) => {
+      recipeSearchResponseDto.topPick =
+        n.getObjectValue<RecipeSearchResponseDto_topPickMember1>(
+          createRecipeSearchResponseDto_topPickMember1FromDiscriminatorValue
+        ) ??
+        n.getObjectValue<RecipeSearchResultDto>(createRecipeSearchResultDtoFromDiscriminatorValue);
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchResponseDto_topPick The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchResponseDto_topPick(
+  recipeSearchResponseDto_topPick:
+    | Partial<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto>
+    | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    ...deserializeIntoRecipeSearchResponseDto_topPickMember1(
+      recipeSearchResponseDto_topPick as RecipeSearchResponseDto_topPickMember1
+    ),
+    ...deserializeIntoRecipeSearchResultDto(
+      recipeSearchResponseDto_topPick as RecipeSearchResultDto
+    ),
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchResponseDto_topPickMember1 The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchResponseDto_topPickMember1(
+  recipeSearchResponseDto_topPickMember1:
+    | Partial<RecipeSearchResponseDto_topPickMember1>
+    | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchResultDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchResultDto(
+  recipeSearchResultDto: Partial<RecipeSearchResultDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    difficulty: (n) => {
+      recipeSearchResultDto.difficulty = n.getStringValue();
+    },
+    id: (n) => {
+      recipeSearchResultDto.id = n.getGuidValue();
+    },
+    imageUrl: (n) => {
+      recipeSearchResultDto.imageUrl = n.getStringValue();
+    },
+    isDiscoverable: (n) => {
+      recipeSearchResultDto.isDiscoverable = n.getBooleanValue();
+    },
+    name: (n) => {
+      recipeSearchResultDto.name = n.getStringValue();
+    },
+    notes: (n) => {
+      recipeSearchResultDto.notes = n.getStringValue();
+    },
+    plannerFitNote: (n) => {
+      recipeSearchResultDto.plannerFitNote = n.getStringValue();
+    },
+    rating: (n) => {
+      recipeSearchResultDto.rating = n.getNumberValue();
+    },
+    reasons: (n) => {
+      recipeSearchResultDto.reasons = n.getCollectionOfObjectValues<RecipeSearchReasonDto>(
+        createRecipeSearchReasonDtoFromDiscriminatorValue
+      );
+    },
+    totalTime: (n) => {
+      recipeSearchResultDto.totalTime = n.getStringValue();
     },
   };
 }
@@ -2271,6 +2554,152 @@ export interface RecipeListResponse extends AdditionalDataHolder, Parsable {
    */
   updatedAt?: Date | null;
 }
+export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The discoverableOnly property
+   */
+  discoverableOnly?: boolean | null;
+  /**
+   * The familyFavorite property
+   */
+  familyFavorite?: boolean | null;
+  /**
+   * The neverCooked property
+   */
+  neverCooked?: boolean | null;
+  /**
+   * The newRecipes property
+   */
+  newRecipes?: boolean | null;
+  /**
+   * The notCookedInLongTime property
+   */
+  notCookedInLongTime?: boolean | null;
+  /**
+   * The quickOnly property
+   */
+  quickOnly?: boolean | null;
+}
+export interface RecipeSearchReasonDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The label property
+   */
+  label?: string | null;
+  /**
+   * The source property
+   */
+  source?: RecipeSearchReasonDto_source | null;
+}
+export type RecipeSearchReasonDto_source =
+  (typeof RecipeSearchReasonDto_sourceObject)[keyof typeof RecipeSearchReasonDto_sourceObject];
+export interface RecipeSearchRequestDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The dayIndex property
+   */
+  dayIndex?: number | null;
+  /**
+   * The filters property
+   */
+  filters?: RecipeSearchFiltersDto | null;
+  /**
+   * The limit property
+   */
+  limit?: number | null;
+  /**
+   * The mode property
+   */
+  mode?: RecipeSearchRequestDto_mode | null;
+  /**
+   * The pantrySnapshotId property
+   */
+  pantrySnapshotId?: Guid | null;
+  /**
+   * The query property
+   */
+  query?: string | null;
+  /**
+   * The similarToRecipeId property
+   */
+  similarToRecipeId?: Guid | null;
+  /**
+   * The weekOffset property
+   */
+  weekOffset?: number | null;
+}
+export type RecipeSearchRequestDto_mode =
+  (typeof RecipeSearchRequestDto_modeObject)[keyof typeof RecipeSearchRequestDto_modeObject];
+export interface RecipeSearchResponseDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The appliedFilters property
+   */
+  appliedFilters?: RecipeSearchFiltersDto | null;
+  /**
+   * The resultPath property
+   */
+  resultPath?: RecipeSearchResponseDto_resultPath | null;
+  /**
+   * The results property
+   */
+  results?: RecipeSearchResultDto[] | null;
+  /**
+   * The searchMode property
+   */
+  searchMode?: RecipeSearchResponseDto_searchMode | null;
+  /**
+   * The topPick property
+   */
+  topPick?: RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto | null;
+}
+export type RecipeSearchResponseDto_resultPath =
+  (typeof RecipeSearchResponseDto_resultPathObject)[keyof typeof RecipeSearchResponseDto_resultPathObject];
+export type RecipeSearchResponseDto_searchMode =
+  (typeof RecipeSearchResponseDto_searchModeObject)[keyof typeof RecipeSearchResponseDto_searchModeObject];
+export type RecipeSearchResponseDto_topPick =
+  | RecipeSearchResponseDto_topPickMember1
+  | RecipeSearchResultDto;
+export interface RecipeSearchResponseDto_topPickMember1 extends AdditionalDataHolder, Parsable {}
+export interface RecipeSearchResultDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The difficulty property
+   */
+  difficulty?: string | null;
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+  /**
+   * The imageUrl property
+   */
+  imageUrl?: string | null;
+  /**
+   * The isDiscoverable property
+   */
+  isDiscoverable?: boolean | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+  /**
+   * The notes property
+   */
+  notes?: string | null;
+  /**
+   * The plannerFitNote property
+   */
+  plannerFitNote?: string | null;
+  /**
+   * The rating property
+   */
+  rating?: number | null;
+  /**
+   * The reasons property
+   */
+  reasons?: RecipeSearchReasonDto[] | null;
+  /**
+   * The totalTime property
+   */
+  totalTime?: string | null;
+}
 export interface RecipeStatusDto extends AdditionalDataHolder, Parsable {
   /**
    * The id property
@@ -2997,6 +3426,192 @@ export function serializeRecipeListResponse(
   );
   writer.writeDateValue('updatedAt', recipeListResponse.updatedAt);
   writer.writeAdditionalData(recipeListResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchFiltersDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchFiltersDto(
+  writer: SerializationWriter,
+  recipeSearchFiltersDto: Partial<RecipeSearchFiltersDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchFiltersDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('discoverableOnly', recipeSearchFiltersDto.discoverableOnly);
+  writer.writeBooleanValue('familyFavorite', recipeSearchFiltersDto.familyFavorite);
+  writer.writeBooleanValue('neverCooked', recipeSearchFiltersDto.neverCooked);
+  writer.writeBooleanValue('newRecipes', recipeSearchFiltersDto.newRecipes);
+  writer.writeBooleanValue('notCookedInLongTime', recipeSearchFiltersDto.notCookedInLongTime);
+  writer.writeBooleanValue('quickOnly', recipeSearchFiltersDto.quickOnly);
+  writer.writeAdditionalData(recipeSearchFiltersDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchReasonDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchReasonDto(
+  writer: SerializationWriter,
+  recipeSearchReasonDto: Partial<RecipeSearchReasonDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchReasonDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('label', recipeSearchReasonDto.label);
+  writer.writeEnumValue<RecipeSearchReasonDto_source>('source', recipeSearchReasonDto.source);
+  writer.writeAdditionalData(recipeSearchReasonDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchRequestDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchRequestDto(
+  writer: SerializationWriter,
+  recipeSearchRequestDto: Partial<RecipeSearchRequestDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchRequestDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('dayIndex', recipeSearchRequestDto.dayIndex);
+  writer.writeObjectValue<RecipeSearchFiltersDto>(
+    'filters',
+    recipeSearchRequestDto.filters,
+    serializeRecipeSearchFiltersDto
+  );
+  writer.writeNumberValue('limit', recipeSearchRequestDto.limit);
+  writer.writeEnumValue<RecipeSearchRequestDto_mode>(
+    'mode',
+    recipeSearchRequestDto.mode ?? RecipeSearchRequestDto_modeObject.Standard
+  );
+  writer.writeGuidValue('pantrySnapshotId', recipeSearchRequestDto.pantrySnapshotId);
+  writer.writeStringValue('query', recipeSearchRequestDto.query);
+  writer.writeGuidValue('similarToRecipeId', recipeSearchRequestDto.similarToRecipeId);
+  writer.writeNumberValue('weekOffset', recipeSearchRequestDto.weekOffset);
+  writer.writeAdditionalData(recipeSearchRequestDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchResponseDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchResponseDto(
+  writer: SerializationWriter,
+  recipeSearchResponseDto: Partial<RecipeSearchResponseDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchResponseDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<RecipeSearchFiltersDto>(
+    'appliedFilters',
+    recipeSearchResponseDto.appliedFilters,
+    serializeRecipeSearchFiltersDto
+  );
+  writer.writeEnumValue<RecipeSearchResponseDto_resultPath>(
+    'resultPath',
+    recipeSearchResponseDto.resultPath
+  );
+  writer.writeCollectionOfObjectValues<RecipeSearchResultDto>(
+    'results',
+    recipeSearchResponseDto.results,
+    serializeRecipeSearchResultDto
+  );
+  writer.writeEnumValue<RecipeSearchResponseDto_searchMode>(
+    'searchMode',
+    recipeSearchResponseDto.searchMode
+  );
+  writer.writeObjectValue<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto>(
+    'topPick',
+    recipeSearchResponseDto.topPick,
+    serializeRecipeSearchResponseDto_topPick
+  );
+  writer.writeAdditionalData(recipeSearchResponseDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchResponseDto_topPick The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchResponseDto_topPick(
+  writer: SerializationWriter,
+  recipeSearchResponseDto_topPick:
+    | Partial<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  serializeRecipeSearchResponseDto_topPickMember1(
+    writer,
+    recipeSearchResponseDto_topPick as RecipeSearchResponseDto_topPickMember1
+  );
+  serializeRecipeSearchResultDto(writer, recipeSearchResponseDto_topPick as RecipeSearchResultDto);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchResponseDto_topPickMember1 The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchResponseDto_topPickMember1(
+  writer: SerializationWriter,
+  recipeSearchResponseDto_topPickMember1:
+    | Partial<RecipeSearchResponseDto_topPickMember1>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchResponseDto_topPickMember1 || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(recipeSearchResponseDto_topPickMember1.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchResultDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchResultDto(
+  writer: SerializationWriter,
+  recipeSearchResultDto: Partial<RecipeSearchResultDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchResultDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('difficulty', recipeSearchResultDto.difficulty);
+  writer.writeGuidValue('id', recipeSearchResultDto.id);
+  writer.writeStringValue('imageUrl', recipeSearchResultDto.imageUrl);
+  writer.writeBooleanValue('isDiscoverable', recipeSearchResultDto.isDiscoverable);
+  writer.writeStringValue('name', recipeSearchResultDto.name);
+  writer.writeStringValue('notes', recipeSearchResultDto.notes);
+  writer.writeStringValue('plannerFitNote', recipeSearchResultDto.plannerFitNote);
+  writer.writeNumberValue('rating', recipeSearchResultDto.rating);
+  writer.writeCollectionOfObjectValues<RecipeSearchReasonDto>(
+    'reasons',
+    recipeSearchResultDto.reasons,
+    serializeRecipeSearchReasonDto
+  );
+  writer.writeStringValue('totalTime', recipeSearchResultDto.totalTime);
+  writer.writeAdditionalData(recipeSearchResultDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -3898,6 +4513,30 @@ export const ManagementTaskStatusResponse_statusObject = {
 export const MoveScheduleDto_intentObject = {
   Swap: 'swap',
   Push: 'push',
+} as const;
+export const RecipeSearchReasonDto_sourceObject = {
+  NameMatch: 'name-match',
+  NotesMatch: 'notes-match',
+  RatingBoost: 'rating-boost',
+  VoteBoost: 'vote-boost',
+  PlannerFit: 'planner-fit',
+  InventoryFit: 'inventory-fit',
+  SemanticMatch: 'semantic-match',
+} as const;
+export const RecipeSearchRequestDto_modeObject = {
+  Standard: 'standard',
+  Agent: 'agent',
+} as const;
+export const RecipeSearchResponseDto_resultPathObject = {
+  LexicalOnly: 'lexical-only',
+  Hybrid: 'hybrid',
+  FallbackLexical: 'fallback-lexical',
+} as const;
+export const RecipeSearchResponseDto_searchModeObject = {
+  Standard: 'standard',
+  Agent: 'agent',
+  Similar: 'similar',
+  PantryAssisted: 'pantry-assisted',
 } as const;
 /**
  * "pending" while synthesis is in progress; "ready" once Name is set and either ImageCount > 0 (photo-upload path) or IsSynthesized = true (describe path)
