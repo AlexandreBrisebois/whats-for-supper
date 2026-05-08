@@ -37,8 +37,8 @@ The feature introduces:
     - Test that absent `order` parameter uses default ordering
     - _Requirements: 6.2, 6.4, 6.5, 6.7_
 
-- [ ] 3. Backend - Implement Library Summary Endpoint
-  - [ ] 3.1 Create GET /api/recipes/library-summary endpoint
+- [x] 3. Backend - Implement Library Summary Endpoint
+  - [x] 3.1 Create GET /api/recipes/library-summary endpoint
     - Create new endpoint in `RecipesController`
     - Implement efficient query with conditional aggregation for counts
     - Calculate `total`, `neverCooked`, and `ratings` (love/like/dislike/unrated)
@@ -46,7 +46,7 @@ The feature introduces:
     - Return `RecipeLibrarySummaryDto` wrapped in standard `data` envelope
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 7.10, 7.11_
   
-  - [ ]* 3.2 Write unit tests for library summary
+  - [x] 3.2 Write unit tests for library summary
     - Test that `total` count excludes soft-deleted recipes
     - Test that `neverCooked` count is accurate
     - Test that rating counts (love/like/dislike/unrated) are accurate
@@ -63,7 +63,7 @@ The feature introduces:
     - Implement actions: `setRecipes`, `appendRecipes`, `setCurrentIndex`, `setTotalCount`, `nextCard`, `previousCard`, `reset`
     - _Requirements: 1, 2_
   
-  - [ ]* 5.2 Write unit tests for browseStackStore
+  - [ ] 5.2 Write unit tests for browseStackStore
     - Test that `nextCard()` increments `currentIndex`
     - Test that `previousCard()` decrements `currentIndex` but not below 0
     - Test that `setRecipes()` replaces recipes array
@@ -82,7 +82,7 @@ The feature introduces:
     - NO voting logic, NO `hasFamilyInterest` prop, NO vote indicators
     - _Requirements: 2.1, 2.2, 3.1, 3.2, 3.3, 3.4, 3.5, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9, 10.10_
   
-  - [ ]* 6.2 Write unit tests for RecipeStackCard
+  - [ ] 6.2 Write unit tests for RecipeStackCard
     - Test that component renders with correct props
     - Test that swipe indicators appear at correct thresholds
     - Test that `onSwipeRight` is called when swiped right beyond threshold
@@ -103,7 +103,7 @@ The feature introduces:
     - Add accessible `aria-label` for toggle: "Add to discovery" or "Remove from discovery"
     - _Requirements: 4.1, 4.2, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11_
   
-  - [ ]* 7.2 Write unit tests for StackActionBar
+  - [ ] 7.2 Write unit tests for StackActionBar
     - Test that depth indicator renders with correct format
     - Test that discoverable toggle renders with correct icon state
     - Test that `onToggleDiscoverable` is called when toggle is tapped
@@ -128,7 +128,7 @@ The feature introduces:
     - Add CTA button with `data-testid="browse-all-empty-capture-cta"` that navigates to `/capture`
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
   
-  - [ ]* 8.3 Write unit tests for EndCard
+  - [ ] 8.3 Write unit tests for EndCard
     - Test that EndCard renders with correct content
     - Test that CTA navigates to `/capture` when tapped
     - _Requirements: 8.2, 8.3, 8.4, 8.5, 8.6_

@@ -50,6 +50,14 @@ public class RecipeController(
         return Ok(result);
     }
 
+    /// <summary>GET /api/recipes/library-summary — lightweight library health counts.</summary>
+    [HttpGet("library-summary")]
+    public async Task<IActionResult> LibrarySummary()
+    {
+        var summary = await recipeService.GetLibrarySummary();
+        return Ok(new { data = summary });
+    }
+
     /// <summary>GET /api/recipes/{id} — full detail for a single recipe.</summary>
     [HttpGet("{id:guid}")]
     [SkipWrapping]

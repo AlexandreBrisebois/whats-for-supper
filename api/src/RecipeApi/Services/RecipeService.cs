@@ -200,6 +200,39 @@ public class RecipeService(
         };
     }
 
+    /// <summary>
+    /// Returns a lightweight summary of the recipe library:
+    /// total count, never-cooked count, and per-rating counts.
+    /// All counts exclude soft-deleted recipes.
+    /// </summary>
+    public async Task<RecipeLibrarySummaryDto> GetLibrarySummary()
+    {
+        var recipes = await db.Recipes
+            .Where(r => r.DeletedAt == null)
+            .GroupBy(_ => 1)
+            .Select(g => new RecipeLibrarySummaryDto
+            {
+                Total = g.Count(),
+                NeverCooked = g.Count(r => r.LastCookedDate == null),
+                Ratings = new RecipeLibraryRatingsDto
+                {
+                    Love = g.Count(r => r.Rating == RecipeRating.Love),
+                    Like = g.Count(r => r.Rating == RecipeRating.Like),
+                    Dislike = g.Count(r => r.Rating == RecipeRating.Dislike),
+                    Unrated = g.Count(r => r.Rating == RecipeRating.Unknown),
+                }
+            })
+            .FirstOrDefaultAsync();
+
+        // If no recipes exist, return zeroed-out summary
+        return recipes ?? new RecipeLibrarySummaryDto
+        {
+            Total = 0,
+            NeverCooked = 0,
+            Ratings = new RecipeLibraryRatingsDto()
+        };
+    }
+
     /// <summary>Returns the full detail for a single recipe.</summary>
     public async Task<RecipeDetailResponseDto> GetRecipeDetail(Guid id)
     {
