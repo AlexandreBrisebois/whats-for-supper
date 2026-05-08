@@ -159,13 +159,17 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Discovery nudge via SSE | ✅ Complete |
 | Backup / restore (NAS-safe, LLM-skip on restore) | ✅ Complete |
 | NAS deployment (Synology / Unraid) | ✅ Running in production |
-| **Semantic recipe search** (hybrid lexical + vector, planner-aware, family-fit) | ✅ Complete |
-| **Recipe library management** (edit, soft delete, restore, Recycle Bin, discovery toggle) | ✅ Complete |
-| **Pantry/fridge/freezer photo search** (inventory-led ingredient boost) | ✅ Complete |
-| **Agent super-search** (long-form natural language → structured results) | ✅ Complete |
-| **Search index workflow** (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
-| **Failed Captures recovery** (Settings queue, retry with idempotency guard) | ✅ Complete |
-| **Dietician Agent** | ⚠️ TODO |
+| Semantic recipe search (hybrid lexical + vector, planner-aware, family-fit) | ✅ Complete |
+| Recipe library management (edit, soft delete, restore, Recycle Bin, discovery toggle) | ✅ Complete |
+| Pantry/fridge/freezer photo search (inventory-led ingredient boost) | ✅ Complete |
+| Agent super-search (long-form natural language → structured results) | ✅ Complete |
+| index workflow (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
+| Failed Captures recovery (Settings queue, retry with idempotency guard) | ✅ Complete |
+| Canadian Food Guide Classification | ⚠️ TODO |
+| Dietician Agent | ⚠️ TODO | depends on canadian food guide classification |
+| Dreaming | ⚠️ TODO | 
+| Demo Mode | ⚠️ TODO | depends on Dreaming |
+| Family health Profiles | ⚠️ TODO |
 
 ---
 

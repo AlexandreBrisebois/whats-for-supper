@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Check } from 'lucide-react';
-import { QuickCaptureTrigger, CookedSuccessCard, VotingNudgeCard } from './HomeSections';
+import {
+  QuickCaptureTrigger,
+  CookedSuccessCard,
+  VotingNudgeCard,
+  BrowseLibraryTrigger,
+} from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
@@ -441,6 +446,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       )}
 
       <QuickCaptureTrigger />
+
+      <BrowseLibraryTrigger testId="home-browse-all-trigger" />
 
       <AnimatePresence>
         {showCooksMode && currentRecipe && currentRecipe.id && (

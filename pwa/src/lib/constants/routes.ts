@@ -10,6 +10,7 @@ export const ROUTES = {
   DISCOVERY: '/discovery',
   PROFILE: '/profile',
   PROFILE_SETTINGS: '/profile/settings',
+  BROWSE_ALL_STACK: '/browse-all-stack',
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];

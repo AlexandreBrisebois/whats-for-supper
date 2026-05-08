@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Camera, ChevronRight, X, Vote } from 'lucide-react';
+import { Check, Camera, ChevronRight, X, Vote, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
 import { t } from '@/locales';
@@ -114,5 +114,35 @@ export function VotingNudgeCard({ plannedCount, onVote, onDismiss }: VotingNudge
         Vote Now →
       </button>
     </div>
+  );
+}
+
+export function BrowseLibraryTrigger({ testId }: { testId: string }) {
+  return (
+    <Link
+      href={ROUTES.BROWSE_ALL_STACK}
+      data-testid={testId}
+      className="group relative flex items-center justify-between w-full bg-white text-charcoal p-4 sm:p-6 rounded-[2.5rem] border-2 border-charcoal/5 transition-all active:scale-[0.98] hover:border-ochre/20"
+    >
+      <div className="flex items-center gap-3 sm:gap-5">
+        <div className="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-ochre/10 text-ochre transition-colors group-hover:bg-ochre group-hover:text-white">
+          <BookOpen size={28} strokeWidth={2} />
+        </div>
+        <div className="flex flex-col">
+          <span className="font-heading text-[1.05rem] sm:text-xl font-black tracking-tighter leading-none">
+            {t('home.browseLibrary', 'Browse your library')}
+          </span>
+          <span className="text-charcoal/40 text-[10px] font-black uppercase tracking-widest mt-1">
+            {t('home.browseLibrarySubtitle', 'Flip through your recipes')}
+          </span>
+        </div>
+      </div>
+      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border border-charcoal/10 flex items-center justify-center group-hover:border-ochre/30">
+        <ChevronRight
+          size={20}
+          className="text-charcoal/20 group-hover:text-ochre transition-all group-hover:translate-x-0.5"
+        />
+      </div>
+    </Link>
   );
 }

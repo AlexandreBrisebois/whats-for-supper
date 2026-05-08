@@ -11,6 +11,7 @@ import {
   Loader2,
   Camera,
   Trash2,
+  BookOpen,
 } from 'lucide-react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -28,6 +29,8 @@ import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
+import Link from 'next/link';
+import { ROUTES } from '@/lib/constants/routes';
 
 /**
  * RecipesPage / Search destination.
@@ -409,6 +412,33 @@ export default function RecipesPage() {
           );
         })}
       </div>
+
+      {/* Browse library trigger */}
+      <Link
+        href={ROUTES.BROWSE_ALL_STACK}
+        data-testid="browse-all-stack-trigger"
+        className="group relative flex items-center justify-between w-full bg-white text-charcoal p-4 rounded-[2.5rem] border-2 border-charcoal/5 transition-all active:scale-[0.98] hover:border-ochre/20"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-ochre/10 text-ochre transition-colors group-hover:bg-ochre group-hover:text-white">
+            <BookOpen size={24} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-heading text-[1.05rem] font-black tracking-tighter leading-none">
+              {t('recipes.browseLibrary', 'Browse your library')}
+            </span>
+            <span className="text-charcoal/40 text-[10px] font-black uppercase tracking-widest mt-1">
+              {t('recipes.browseLibrarySubtitle', 'Flip through your recipes')}
+            </span>
+          </div>
+        </div>
+        <div className="h-8 w-8 rounded-full border border-charcoal/10 flex items-center justify-center group-hover:border-ochre/30">
+          <ArrowRight
+            size={18}
+            className="text-charcoal/20 group-hover:text-ochre transition-all group-hover:translate-x-0.5"
+          />
+        </div>
+      </Link>
 
       {/* Results Section */}
       <div className="flex flex-col gap-6">

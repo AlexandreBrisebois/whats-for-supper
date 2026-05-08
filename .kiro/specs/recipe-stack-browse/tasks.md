@@ -183,14 +183,14 @@ The feature introduces:
     - Test that same card is shown after Recipe Detail Sheet closes
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 5.3, 5.4_
 
-- [ ] 11. Frontend - Add Entry Points
-  - [ ] 11.1 Add Home page trigger
+- [x] 11. Frontend - Add Entry Points
+  - [x] 11.1 Add Home page trigger
     - Add "Browse your library" trigger to Home page below Quick Capture
     - Render with `data-testid="home-browse-all-trigger"`
     - Wire trigger to open BrowseAllStack overlay
     - _Requirements: 1.1, 1.3_
   
-  - [ ] 11.2 Add Recipes page trigger
+  - [x] 11.2 Add Recipes page trigger
     - Add "Browse your library" trigger to Recipes page
     - Render with `data-testid="browse-all-stack-trigger"`
     - Wire trigger to open BrowseAllStack overlay

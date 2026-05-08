@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.kiota-check/
+dist/
+build/
+.swc/
+src/lib/api/generated/
+coverage/
+test-results/
+.last-run.json
+*.log
