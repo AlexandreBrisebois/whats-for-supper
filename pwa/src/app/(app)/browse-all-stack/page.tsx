@@ -114,7 +114,9 @@ export default function BrowseAllStackPage() {
         const currentRecipesCount = useBrowseStackStore.getState().recipes.length;
         useBrowseStackStore.setState({
           currentPage: page,
-          hasMorePages: (append ? currentRecipesCount + fetchedRecipes.length : fetchedRecipes.length) < paginationTotal,
+          hasMorePages:
+            (append ? currentRecipesCount + fetchedRecipes.length : fetchedRecipes.length) <
+            paginationTotal,
         });
       } catch (err) {
         console.error('BrowseAllStack: fetch failed', err);
@@ -162,7 +164,16 @@ export default function BrowseAllStackPage() {
         fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
       });
     }
-  }, [currentIndex, recipes.length, hasMorePages, isInitialLoading, isEndCard, currentPage, isDiscoverableOnly, fetchLibraryData]);
+  }, [
+    currentIndex,
+    recipes.length,
+    hasMorePages,
+    isInitialLoading,
+    isEndCard,
+    currentPage,
+    isDiscoverableOnly,
+    fetchLibraryData,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Navigation handlers
@@ -186,7 +197,15 @@ export default function BrowseAllStackPage() {
     }
 
     nextCard();
-  }, [isEndCard, currentIndex, recipes.length, hasMorePages, isPrefetching, nextCard, setCurrentIndex]);
+  }, [
+    isEndCard,
+    currentIndex,
+    recipes.length,
+    hasMorePages,
+    isPrefetching,
+    nextCard,
+    setCurrentIndex,
+  ]);
 
   const handleSwipeLeft = useCallback(() => {
     if (isEndCard) {
@@ -210,18 +229,21 @@ export default function BrowseAllStackPage() {
   // ---------------------------------------------------------------------------
   // Discoverable handlers
   // ---------------------------------------------------------------------------
-  
+
   // Individual curation (requirement 1.6)
-  const handleIndividualToggleDiscoverable = useCallback(async (recipeId: string, newValue: boolean) => {
-    await updateRecipe(recipeId, { isDiscoverable: newValue });
-    useBrowseStackStore.setState((s) => ({
-      recipes: s.recipes.map((r) => (r.id === recipeId ? { ...r, isDiscoverable: newValue } : r)),
-    }));
-  }, []);
+  const handleIndividualToggleDiscoverable = useCallback(
+    async (recipeId: string, newValue: boolean) => {
+      await updateRecipe(recipeId, { isDiscoverable: newValue });
+      useBrowseStackStore.setState((s) => ({
+        recipes: s.recipes.map((r) => (r.id === recipeId ? { ...r, isDiscoverable: newValue } : r)),
+      }));
+    },
+    []
+  );
 
   // Global toggle (requirement 2.3)
   const handleGlobalToggleDiscoverable = useCallback(() => {
-    setIsDiscoverableOnly(prev => !prev);
+    setIsDiscoverableOnly((prev) => !prev);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -304,7 +326,11 @@ export default function BrowseAllStackPage() {
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-2 min-h-0">
         {isInitialLoading && (
           <div className="flex flex-col items-center gap-4">
-            <Loader2 data-testid="browse-all-loader" className="animate-spin text-ochre" size={48} />
+            <Loader2
+              data-testid="browse-all-loader"
+              className="animate-spin text-ochre"
+              size={48}
+            />
             <p className="text-sm font-medium text-charcoal/50">Loading your library…</p>
           </div>
         )}
@@ -323,11 +349,16 @@ export default function BrowseAllStackPage() {
         )}
 
         {isEmpty && (
-          <div data-testid="browse-all-empty-state" className="flex flex-col items-center gap-5 text-center px-8">
+          <div
+            data-testid="browse-all-empty-state"
+            className="flex flex-col items-center gap-5 text-center px-8"
+          >
             <div className="flex items-center justify-center w-20 h-20 rounded-full bg-ochre-50 border-2 border-ochre-200">
               <Compass size={40} className="text-ochre-500" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight font-heading text-charcoal">Library is empty</h2>
+            <h2 className="text-2xl font-bold tracking-tight font-heading text-charcoal">
+              Library is empty
+            </h2>
             <button
               onClick={handleAddRecipe}
               className="mt-2 px-8 py-3 rounded-full bg-ochre text-white font-bold text-sm"
@@ -342,7 +373,10 @@ export default function BrowseAllStackPage() {
             <div className="relative flex-1 min-h-0">
               <AnimatePresence mode="popLayout">
                 {showLoader ? (
-                  <div data-testid="browse-all-loader" className="absolute inset-0 flex items-center justify-center">
+                  <div
+                    data-testid="browse-all-loader"
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
                     <Loader2 className="animate-spin text-ochre" size={48} />
                   </div>
                 ) : isEndCard ? (
@@ -386,13 +420,13 @@ export default function BrowseAllStackPage() {
                 onToggleIndividualCuration={handleIndividualToggleDiscoverable}
               />
             )}
-            
+
             {isEndCard && (
-               <div className="flex items-center justify-end px-6 py-4">
-                 <span className="text-sm font-black tabular-nums text-charcoal/50 tracking-tight">
-                   {totalCount} / {totalCount}
-                 </span>
-               </div>
+              <div className="flex items-center justify-end px-6 py-4">
+                <span className="text-sm font-black tabular-nums text-charcoal/50 tracking-tight">
+                  {totalCount} / {totalCount}
+                </span>
+              </div>
             )}
           </div>
         )}
@@ -403,8 +437,12 @@ export default function BrowseAllStackPage() {
           recipeId={detailRecipeId}
           plannerDayLabel={null}
           onClose={handleDetailSheetClose}
-          onUseForDay={async () => { handleDetailSheetClose(); }}
-          onFindSimilar={() => { handleDetailSheetClose(); }}
+          onUseForDay={async () => {
+            handleDetailSheetClose();
+          }}
+          onFindSimilar={() => {
+            handleDetailSheetClose();
+          }}
         />
       )}
     </div>

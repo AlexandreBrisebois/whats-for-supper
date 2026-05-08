@@ -283,8 +283,6 @@ export async function setupCommonRoutes(page: Page) {
     }
   );
 
-
-
   // GET /api/recipes/library-summary — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes/library-summary', async (route) => {
     await route.fulfill({
@@ -842,7 +840,6 @@ export async function setupCommonRoutes(page: Page) {
       body: JSON.stringify({ data: { queued: true } }),
     });
   });
-
 }
 
 // ---------------------------------------------------------------------------

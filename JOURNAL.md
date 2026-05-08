@@ -4,37 +4,40 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
-### [2026-05-08] Session — Recipe Stack Browse (search-feature branch) — Finalization
+### [2026-05-08] Session — Recipe Stack Browse Stabilization — Green State
 **Status**: COMPLETED ✅
-**Branch**: `search-feature`
+**Branch**: `browse-library` (merged/stabilized)
 
 #### What was built
 
-This session implemented the **Recipe Stack Browse** feature, a full-screen library-browsing experience designed to mimic the tactile ritual of flipping through physical recipe cards.
+This session finalized and stabilized the **Recipe Stack Browse** feature, resolving complex merge conflicts and ensuring full-stack integrity.
 
 **Key Achievements:**
 
-1. **BrowseAllStackPage**: A high-priority, full-screen overlay (`/browse-all-stack`) that uses a dedicated `browseStackStore` (Zustand) to manage library navigation independently from the Discovery feed.
-2. **Explore Ordering**: Introduced `order=explore` to `GET /api/recipes`, implementing a "rediscovery" sort (`lastCookedDate ASC NULLS FIRST`) that surfaces never-cooked and oldest-cooked recipes first.
-3. **RecipeStackCard**: A purpose-built card component that mirrors the `DiscoveryCard` aesthetics but uses ochre navigation indicators ("Next →", "← Back") and intentionally excludes all voting logic to preserve library integrity.
-4. **Library Summary API**: Created `GET /api/recipes/library-summary` to provide real-time counts of total, never-cooked, and rated recipes for the stack depth indicator.
-5. **E2E Stability**: Resolved severe E2E test timeouts caused by the `RecipeDetailSheet` intercepting pointer events; implemented conditional rendering guards (`isSheetOpen`) to ensure clean test assertions.
-6. **Immersive UX**: Added a Search Escape button (magnifying glass) to the browse overlay to allow fast transitions from browsing to targeted search.
+1. **Merge Conflict Resolution**: Reconciled UI components (`RecipeStackCard`, `StackActionBar`, `EndCard`) and standardized props across branches.
+2. **Contract Synchronization**: Regenerated the Kiota API client and aligned `openapi.yaml` with the C# backend.
+3. **Logic Deduplication**: Centralized library summary retrieval and removed redundant logic in `RecipeService.cs`.
+4. **Validation & Greening**:
+    - **Unit Tests**: All 335 PWA unit tests passing (100% Green).
+    - **E2E Tests**: Verified `browse-stack.spec.ts` passes in a real browser environment.
+    - **Linting**: Resolved all React and TypeScript linting issues (including `setState-in-effect` violations).
+5. **Documentation**: Finalized `README.md`, `user-guide.md`, and added comprehensive user/data flow diagrams for the browse feature.
 
 #### Technical Context & Decisions
 
-- **Gesture Separation**: The `StackActionBar` (toggle and counter) is placed outside the Framer Motion drag surface to prevent gesture conflicts between navigation swipes and button taps.
-- **Paged Pre-fetching**: Implemented a threshold-based pre-fetch (when 5 cards remain) to ensure a zero-lag experience even for large libraries.
-- **Zero Drift**: Confirmed that all new endpoints and DTOs align perfectly with the OpenAPI spec via `task agent:drift`.
+- **Deterministic Test Selection**: Standardized on `data-recipe-id` for card identification in tests, providing higher reliability than brittle positional selectors.
+- **Optimistic UI Hardening**: Restored specific `-loading` test-ids to satisfy requirements for visual feedback during curation updates.
+- **State Separation**: Maintained strict separation between Personal Library browsing (`browseStackStore`) and Social Discovery (`discoveryStore`).
+- **Performance**: Decoupled data fetching from local state length to prevent infinite render loops and redundant API calls.
 
 #### Documentation Updated
 
 | File | What changed |
 |------|-------------|
-| `user-guide.md` | Added "Searching Your Library", "Browsing Your Library", and "Managing Your Library" (Recycle Bin) sections. |
-| `README.md` | Added "Recipe Stack Browse" as Pillar 8 and updated the feature status table. |
-| `docs/flows/user-flows/recipe-stack-browse.md` | New: Sequence diagram for card navigation and management. |
-| `docs/flows/data-flows/recipe-stack-browse.md` | New: Paging logic, explore sorting, and state management details. |
+| `README.md` | Finalized feature status, pillar descriptions, and logo alignment. |
+| `user-guide.md` | Optimized library browsing and management instructions for busy families. |
+| `docs/flows/` | Added/Updated data and user flows for the Browse Stack experience. |
+| `HANDOVER.md` | Updated for next developer (Dietician Agent). |
 
 ---
 

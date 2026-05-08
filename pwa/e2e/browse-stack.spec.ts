@@ -26,16 +26,16 @@ test.describe('Recipe Stack Browse', () => {
   test('can open the browse stack from home and navigate cards', async ({ page }) => {
     // Open Browse All
     await page.getByTestId('browse-all-stack-trigger').click();
-    
+
     // Check overlay presence
     await expect(page.getByTestId('browse-all-stack-overlay')).toBeVisible();
     await expect(page.getByTestId('stack-card-front')).toBeVisible();
-    
+
     // Check counter
     await expect(page.getByTestId('stack-counter')).toHaveText(/1\s*\/\s*\d+/);
 
     // Swipe next (simulate by clicking the right area or finding the button if any)
-    // In our implementation, we rely on the RecipeStackCard's internal gesture, 
+    // In our implementation, we rely on the RecipeStackCard's internal gesture,
     // but we can trigger the onSwipeRight handler via the test.
     // For now, let's just check if we can see the first few recipes from the mock.
     const firstRecipeName = await page.getByTestId('stack-card-front').locator('h2').textContent();
@@ -54,13 +54,13 @@ test.describe('Recipe Stack Browse', () => {
 
   test('can toggle discoverable filter', async ({ page }) => {
     await page.getByTestId('browse-all-stack-trigger').click();
-    
+
     const toggle = page.getByTestId('stack-toggle-discoverable');
     await expect(toggle).toContainText('All Recipes');
-    
+
     await toggle.click();
     await expect(toggle).toContainText('Discoverable');
-    
+
     // Should trigger a reload (mocked API handles this)
     await expect(page.getByTestId('stack-card-front').first()).toBeVisible();
   });

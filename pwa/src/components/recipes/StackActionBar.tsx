@@ -23,7 +23,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
   onToggleIndividualCuration,
 }) => {
   const recipeId = currentRecipe.id ?? '';
-  
+
   // Individual curation state (optimistic)
   const [pendingValue, setPendingValue] = React.useState<boolean | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
@@ -68,7 +68,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
               : 'bg-white/5 hover:bg-white/10 text-white/70'
           }`}
           data-testid="stack-toggle-discoverable"
-          aria-label={isDiscoverableOnly ? "Show all recipes" : "Show discoverable only"}
+          aria-label={isDiscoverableOnly ? 'Show all recipes' : 'Show discoverable only'}
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-charcoal' : ''}`} />
           <span className="text-[10px] font-black uppercase tracking-wider">

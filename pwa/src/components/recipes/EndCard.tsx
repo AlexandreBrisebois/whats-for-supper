@@ -14,11 +14,11 @@ interface EndCardProps {
   onAddRecipe?: () => void;
 }
 
-export const EndCard: React.FC<EndCardProps> = ({ 
-  isEmpty = false, 
-  onSwipeRight, 
+export const EndCard: React.FC<EndCardProps> = ({
+  isEmpty = false,
+  onSwipeRight,
   onSwipeLeft,
-  onAddRecipe 
+  onAddRecipe,
 }) => {
   const router = useRouter();
   const x = useMotionValue(0);
@@ -80,12 +80,14 @@ export const EndCard: React.FC<EndCardProps> = ({
       animate={controls}
       onDragEnd={handleDragEnd}
       className="absolute inset-x-0 top-0 bottom-12 cursor-grab active:cursor-grabbing"
-      data-testid={isEmpty ? "browse-all-empty-state" : "browse-all-end-card"}
+      data-testid={isEmpty ? 'browse-all-empty-state' : 'browse-all-end-card'}
       whileTap={{ scale: 0.98 }}
     >
       <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-cream shadow-card border border-ochre/10 flex flex-col items-center justify-center px-8 py-12 gap-6">
         {/* Icon container */}
-        <div className={`flex items-center justify-center w-20 h-20 rounded-full border-2 ${isEmpty ? 'bg-ochre/10 border-ochre/20' : 'bg-sage/10 border-sage/20'}`}>
+        <div
+          className={`flex items-center justify-center w-20 h-20 rounded-full border-2 ${isEmpty ? 'bg-ochre/10 border-ochre/20' : 'bg-sage/10 border-sage/20'}`}
+        >
           {isEmpty ? (
             <Search size={40} className="text-ochre" />
           ) : (
@@ -95,28 +97,28 @@ export const EndCard: React.FC<EndCardProps> = ({
 
         {/* Heading */}
         <h2 className="text-3xl font-black tracking-tighter font-heading text-center text-charcoal leading-none">
-          {isEmpty ? "Your Library is Empty" : "What's for Supper?"}
+          {isEmpty ? 'Your Library is Empty' : "What's for Supper?"}
         </h2>
 
         {/* Supporting message */}
         <p className="text-base text-charcoal/60 text-center leading-snug max-w-xs font-medium">
-          {isEmpty 
-            ? "Start your collection by adding a favorite family recipe or capturing one from the web."
+          {isEmpty
+            ? 'Start your collection by adding a favorite family recipe or capturing one from the web.'
             : "You've flipped through your whole library. Did you find what you were looking for tonight?"}
         </p>
 
         {/* CTA button */}
         <button
-          data-testid={isEmpty ? "browse-all-empty-capture-cta" : "end-card-capture-cta"}
+          data-testid={isEmpty ? 'browse-all-empty-capture-cta' : 'end-card-capture-cta'}
           onClick={handleCaptureCta}
           className="group mt-2 flex items-center gap-3 rounded-full bg-charcoal px-8 py-4 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
         >
           <Plus size={20} strokeWidth={3} />
           <span className="font-black text-sm uppercase tracking-widest">
-            {isEmpty ? "Add New Recipe" : "Capture a Recipe"}
+            {isEmpty ? 'Add New Recipe' : 'Capture a Recipe'}
           </span>
         </button>
-        
+
         {!isEmpty && (
           <Link
             href={ROUTES.HOME}

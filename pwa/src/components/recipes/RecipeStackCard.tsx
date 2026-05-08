@@ -28,8 +28,8 @@ interface RecipeStackCardProps {
   isFront: boolean;
   stackIndex: number;
   onSwipeRight: () => void; // Navigate to next card
-  onSwipeLeft: () => void;  // Navigate to previous card
-  onTap: () => void;        // Open Recipe Detail Sheet
+  onSwipeLeft: () => void; // Navigate to previous card
+  onTap: () => void; // Open Recipe Detail Sheet
 }
 
 const formatDuration = (duration: string) => {

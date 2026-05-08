@@ -303,7 +303,9 @@ describe('StackActionBar — loading state', () => {
     fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
 
     await waitFor(() => {
-      const btn = screen.getByTestId('card-toggle-discovery-recipe-abc-loading') as HTMLButtonElement;
+      const btn = screen.getByTestId(
+        'card-toggle-discovery-recipe-abc-loading'
+      ) as HTMLButtonElement;
       expect(btn.disabled).toBe(true);
     });
 

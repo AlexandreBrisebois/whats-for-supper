@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
-import { BrowseLibraryTrigger } from "@/components/home/HomeSections";
+import { BrowseLibraryTrigger } from '@/components/home/HomeSections';
 
 /**
  * RecipesPage / Search destination.

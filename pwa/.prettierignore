@@ -4,7 +4,7 @@ node_modules/
 dist/
 build/
 .swc/
-src/lib/api/generated/
+# src/lib/api/generated/ (Removed to allow formatting sync)
 coverage/
 test-results/
 .last-run.json

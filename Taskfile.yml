@@ -298,7 +298,7 @@ tasks:
     dir: pwa
     cmds:
       - npm run api:generate
-      - npx prettier --config .prettierrc.json --write src/lib/api/generated
+      - npx prettier --config .prettierrc.json --write "src/lib/api/generated/**/*.ts"
 
   gen:client:sync:
     desc: "🔄 Regenerate Kiota client and stage changes (for local development)"
@@ -328,7 +328,7 @@ tasks:
         
         # 3. Format the temporary directory using the project's prettier config
         # This ensures we are comparing formatted code to formatted code
-        npx prettier --config .prettierrc.json --write "$CHECK_DIR" > /dev/null 2>&1
+        npx prettier --config .prettierrc.json --write "$CHECK_DIR/**/*.ts" > /dev/null 2>&1
         
         # 4. Compare the temporary directory with the actual generated client
         # We exclude the lock file from comparison because it contains relative paths that depend on the output directory
