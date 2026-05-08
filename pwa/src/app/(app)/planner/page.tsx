@@ -17,7 +17,6 @@ import {
 import { usePlannerStore } from '@/store/plannerStore';
 import { useWeekStore } from '@/store/weekStore';
 import type { UILocalScheduleDay } from '@/store/weekStore';
-import Image from 'next/image';
 import { lockSchedule, assignRecipeToDay, openVoting } from '@/lib/api/planner';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
@@ -729,12 +728,10 @@ const PlannerDayCard = memo(function PlannerDayCard({
             <div className="flex items-stretch">
               {day.recipe.image && (
                 <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center">
-                  <Image
+                  <img
                     src={getImageUrl(day.recipe.image)}
                     alt={day.recipe.name || 'Recipe'}
-                    fill
-                    className="object-cover"
-                    unoptimized
+                    className="absolute inset-0 h-full w-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}

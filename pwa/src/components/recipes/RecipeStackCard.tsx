@@ -82,8 +82,9 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   });
 
   // Swipe indicator opacity — ochre color, not sage/terracotta (requirement 3.3)
-  const nextOpacity = useTransform(x, [20, 80], [0, 1]);
-  const backOpacity = useTransform(x, [-80, -20], [1, 0]);
+  // Low thresholds so labels appear early enough for short thumb swipes
+  const nextOpacity = useTransform(x, [10, 45], [0, 1]);
+  const backOpacity = useTransform(x, [-45, -10], [1, 0]);
 
   const controls = useAnimation();
 

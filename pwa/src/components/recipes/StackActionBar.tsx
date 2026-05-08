@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Library, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Eye, EyeOff } from 'lucide-react';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
 interface StackActionBarProps {
@@ -52,14 +52,23 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
   };
 
   return (
-    <div className="flex justify-center w-full px-6 py-4">
+    <div className="flex flex-col items-center w-full px-6 py-4 gap-2">
+      {/* Depth indicator — lives above the pill, separate from actions */}
+      <div className="flex items-center gap-1.5" data-testid="stack-depth-indicator">
+        <span className="text-[11px] font-bold tabular-nums text-charcoal/40">
+          <span className="text-ochre font-black">{currentIndex + 1}</span>
+          <span className="mx-1 text-charcoal/25"> / </span>
+          <span>{totalCount}</span>
+        </span>
+      </div>
+
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="flex items-center gap-1 rounded-full bg-charcoal/90 p-1.5 text-white shadow-2xl backdrop-blur-xl border border-white/10"
         data-testid="stack-action-bar"
       >
-        {/* Global Toggle: All vs Discoverable */}
+        {/* Global Toggle: Library (all) vs Discovery (voteable only) */}
         <button
           onClick={onToggleGlobalFilter}
           className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 ${
@@ -72,25 +81,13 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-charcoal' : ''}`} />
           <span className="text-[10px] font-black uppercase tracking-wider">
-            {isDiscoverableOnly ? 'Curated' : 'All Recipes'}
+            {isDiscoverableOnly ? 'Discovery' : 'Library'}
           </span>
         </button>
 
         <div className="h-4 w-px bg-white/10 mx-1" />
 
-        {/* Counter */}
-        <div className="flex items-center gap-2 px-3 py-2" data-testid="stack-depth-indicator">
-          <Library className="h-3.5 w-3.5 text-ochre/80" />
-          <span className="text-[10px] font-bold tabular-nums text-white/90">
-            <span className="text-ochre">{currentIndex + 1}</span>
-            <span className="text-white/40 mx-1"> / </span>
-            <span className="text-white/60">{totalCount}</span>
-          </span>
-        </div>
-
-        <div className="h-4 w-px bg-white/10 mx-1" />
-
-        {/* Individual Curation Toggle */}
+        {/* Individual card: add/remove from Discovery */}
         <button
           onClick={handleIndividualToggle}
           disabled={isUpdating}
@@ -110,7 +107,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
             <EyeOff className="h-3.5 w-3.5 text-white/70" />
           )}
           <span className="text-[10px] font-black uppercase tracking-wider">
-            {isIndividualDiscoverable ? 'Visible' : 'Hidden'}
+            {isIndividualDiscoverable ? 'Discovery' : 'Hidden'}
           </span>
         </button>
       </motion.div>

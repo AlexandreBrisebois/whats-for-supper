@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Utensils, X } from 'lucide-react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useLibraryStore } from '@/store/libraryStore';
 import { getImageUrl } from '@/lib/imageUtils';
@@ -131,12 +130,10 @@ export function LibraryToast() {
                 <div className="flex-shrink-0 ml-3 my-3">
                   {current.imageUrl ? (
                     <div className="relative h-10 w-10 rounded-xl overflow-hidden">
-                      <Image
+                      <img
                         src={getImageUrl(current.imageUrl)}
                         alt={current.name}
-                        fill
-                        className="object-cover"
-                        unoptimized
+                        className="absolute inset-0 h-full w-full object-cover"
                       />
                     </div>
                   ) : (
@@ -222,12 +219,10 @@ export function LibraryToast() {
                 <div className="flex items-center gap-4 mb-6">
                   {current.imageUrl ? (
                     <div className="relative h-16 w-16 rounded-2xl overflow-hidden flex-shrink-0">
-                      <Image
+                      <img
                         src={getImageUrl(current.imageUrl)}
                         alt={current.name}
-                        fill
-                        className="object-cover"
-                        unoptimized
+                        className="absolute inset-0 h-full w-full object-cover"
                       />
                     </div>
                   ) : (

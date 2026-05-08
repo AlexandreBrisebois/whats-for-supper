@@ -314,16 +314,16 @@ test.describe('Browse All Stack — Card Navigation', () => {
     });
   });
 
-  // Requirement 2.3
-  test('first card does not wrap on swipe left', async ({ page }) => {
-    // On first card — swipe left should stay on first card
+  // Requirement 2.3 — backward infinite scroll: swipe left on first card wraps to last recipe
+  test('first card wraps to last recipe on swipe left', async ({ page }) => {
+    // On first card
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible();
 
     await swipeLeft(page);
 
-    // Should still be on first card
-    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible({
-      timeout: 3_000,
+    // Should land on the last recipe (RECIPE_CHICKEN is recipe 3 of 3)
+    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CHICKEN}`)).toBeVisible({
+      timeout: 5_000,
     });
     // End card should NOT appear
     await expect(page.getByTestId('browse-all-end-card')).not.toBeVisible();

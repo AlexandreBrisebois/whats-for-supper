@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { X, Clock, ChefHat, ArrowRightLeft, Trash2, Eye } from 'lucide-react';
 import { getRecipe, updateRecipe, deleteRecipe, type Recipe } from '@/lib/api/recipes';
 import { t } from '@/locales';
@@ -149,11 +148,10 @@ export function RecipeDetailSheet({
         ) : (
           <div className="overflow-y-auto px-6 pb-6 pt-4">
             <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-[2rem] bg-charcoal/5">
-              <Image
+              <img
                 src={recipe.imageUrl || '/placeholder-recipe.jpg'}
                 alt={recipe.name}
-                fill
-                className="object-cover"
+                className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
               />
             </div>
 
