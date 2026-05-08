@@ -196,8 +196,8 @@ The feature introduces:
     - Wire trigger to open BrowseAllStack overlay
     - _Requirements: 1.2, 1.3_
 
-- [ ] 12. E2E Tests - Write Playwright tests
-  - [ ] 12.1 Write browse-all-stack.spec.ts
+- [-] 12. E2E Tests - Write Playwright tests
+  - [x] 12.1 Write browse-all-stack.spec.ts
     - Create `pwa/e2e/browse-all-stack.spec.ts`
     - Test entry points: Home page trigger and Recipes page trigger open overlay
     - Test navigation: swipe right advances, swipe left returns, first card no-wrap, End Card behavior
