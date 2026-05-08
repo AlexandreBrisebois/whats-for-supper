@@ -145,6 +145,61 @@ public class RecipeService(
         };
     }
 
+    /// <summary>
+    /// Returns a paginated list of recipes ordered by Explore_Order:
+    /// lastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).
+    /// Soft-deleted recipes are excluded.
+    /// </summary>
+    public async Task<RecipeListResponseDto> GetRecipesListExplore(int page, int limit)
+    {
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 100);
+
+        var total = await db.Recipes.CountAsync(r => r.DeletedAt == null);
+
+        var entities = await db.Recipes
+            .Where(r => r.DeletedAt == null)
+            .OrderBy(r => r.LastCookedDate == null ? 0 : 1)
+            .ThenBy(r => r.LastCookedDate)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync();
+
+        var recipes = entities.Select(r => new RecipeDto
+        {
+            Id = r.Id,
+            Rating = (int)r.Rating,
+            Notes = r.Notes,
+            AddedBy = r.AddedBy,
+            Name = r.Name,
+            TotalTime = r.TotalTime,
+            SourceUrl = r.SourceUrl,
+            Description = r.Description,
+            Category = r.Category,
+            Difficulty = r.Difficulty,
+            ImageUrl = $"/api/recipes/{r.Id}/hero",
+            Images = Enumerable.Range(0, r.ImageCount).ToList(),
+            Ingredients = DeserializeIngredients(r.Ingredients),
+            RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
+            IsVegetarian = r.IsVegetarian,
+            IsHealthyChoice = r.IsHealthyChoice,
+            IsDiscoverable = r.IsDiscoverable,
+            CreatedAt = r.CreatedAt
+        }).ToList();
+
+        return new RecipeListResponseDto
+        {
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Recipes = recipes,
+            Pagination = new PaginationDto
+            {
+                Page = page,
+                Limit = limit,
+                Total = total
+            }
+        };
+    }
+
     /// <summary>Returns the full detail for a single recipe.</summary>
     public async Task<RecipeDetailResponseDto> GetRecipeDetail(Guid id)
     {

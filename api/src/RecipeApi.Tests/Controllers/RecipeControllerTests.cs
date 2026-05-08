@@ -97,6 +97,225 @@ public class RecipeControllerTests : IAsyncLifetime
         }
     }
 
+    // ── GET /api/recipes?order=explore ───────────────────────────────────────
+
+    [Fact]
+    public async Task GetRecipes_WithOrderExplore_Returns_Paginated_List()
+    {
+        var response = await _client.GetAsync("/api/recipes?order=explore&page=1&limit=10");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        Assert.True(doc.RootElement.TryGetProperty("recipes",    out var recipes),    "missing 'recipes'");
+        Assert.True(doc.RootElement.TryGetProperty("pagination", out var pagination), "missing 'pagination'");
+        Assert.Equal(JsonValueKind.Array, recipes.ValueKind);
+        Assert.True(pagination.TryGetProperty("page",  out _));
+        Assert.True(pagination.TryGetProperty("limit", out _));
+        Assert.True(pagination.TryGetProperty("total", out _));
+    }
+
+    [Fact]
+    public async Task GetRecipes_WithInvalidOrder_Returns_BadRequest()
+    {
+        var response = await _client.GetAsync("/api/recipes?order=invalid");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        // Response is wrapped in { data: { error: "..." } } by SuccessWrappingFilter
+        var data = root.TryGetProperty("data", out var d) ? d : root;
+        Assert.True(data.TryGetProperty("error", out var error), "missing 'error' field");
+        Assert.Contains("explore", error.GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetRecipes_WithOrderExplore_NeverCookedRecipes_AppearFirst()
+    {
+        // Arrange: seed one recipe with a lastCookedDate and one without
+        Guid neverCookedId;
+        Guid cookedId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var neverCooked = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Never Cooked",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 0,
+                LastCookedDate = null,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var cooked = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Already Cooked",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 0,
+                LastCookedDate = now.AddDays(-10),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(neverCooked, cooked);
+            await db.SaveChangesAsync();
+
+            neverCookedId = neverCooked.Id;
+            cookedId = cooked.Id;
+        }
+
+        // Act
+        var response = await _client.GetAsync("/api/recipes?order=explore&page=1&limit=20");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipes = doc.RootElement.GetProperty("recipes").EnumerateArray().ToList();
+
+        // Find positions of our two seeded recipes
+        var neverCookedIndex = recipes.FindIndex(r => r.GetProperty("id").GetGuid() == neverCookedId);
+        var cookedIndex       = recipes.FindIndex(r => r.GetProperty("id").GetGuid() == cookedId);
+
+        Assert.True(neverCookedIndex >= 0, "Never-cooked recipe not found in results");
+        Assert.True(cookedIndex >= 0,      "Cooked recipe not found in results");
+        Assert.True(neverCookedIndex < cookedIndex,
+            $"Never-cooked recipe (index {neverCookedIndex}) should appear before cooked recipe (index {cookedIndex})");
+    }
+
+    [Fact]
+    public async Task GetRecipes_WithOrderExplore_ExcludesSoftDeletedRecipes()
+    {
+        // Arrange: seed one active and one soft-deleted recipe
+        Guid activeId;
+        Guid deletedId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var active = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Active Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 0,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var deleted = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Deleted Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 0,
+                DeletedAt = now.AddDays(-1),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(active, deleted);
+            await db.SaveChangesAsync();
+
+            activeId  = active.Id;
+            deletedId = deleted.Id;
+        }
+
+        // Act
+        var response = await _client.GetAsync("/api/recipes?order=explore&page=1&limit=100");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipes = doc.RootElement.GetProperty("recipes").EnumerateArray().ToList();
+
+        var ids = recipes.Select(r => r.GetProperty("id").GetGuid()).ToHashSet();
+        Assert.Contains(activeId,  ids);
+        Assert.DoesNotContain(deletedId, ids);
+    }
+
+    [Fact]
+    public async Task GetRecipes_WithOrderExplore_OldestCookedAppearsBeforeRecentlyCooked()
+    {
+        // Arrange: two cooked recipes — one cooked long ago, one recently
+        Guid oldCookedId;
+        Guid recentCookedId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var oldCooked = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Old Cooked",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 0,
+                LastCookedDate = now.AddDays(-100),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var recentCooked = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Recent Cooked",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 0,
+                LastCookedDate = now.AddDays(-1),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(oldCooked, recentCooked);
+            await db.SaveChangesAsync();
+
+            oldCookedId    = oldCooked.Id;
+            recentCookedId = recentCooked.Id;
+        }
+
+        // Act
+        var response = await _client.GetAsync("/api/recipes?order=explore&page=1&limit=100");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipes = doc.RootElement.GetProperty("recipes").EnumerateArray().ToList();
+
+        var oldIndex    = recipes.FindIndex(r => r.GetProperty("id").GetGuid() == oldCookedId);
+        var recentIndex = recipes.FindIndex(r => r.GetProperty("id").GetGuid() == recentCookedId);
+
+        Assert.True(oldIndex >= 0,    "Old-cooked recipe not found in results");
+        Assert.True(recentIndex >= 0, "Recent-cooked recipe not found in results");
+        Assert.True(oldIndex < recentIndex,
+            $"Old-cooked recipe (index {oldIndex}) should appear before recently-cooked recipe (index {recentIndex})");
+    }
+
+    [Fact]
+    public async Task GetRecipes_WithoutOrderParam_UsesDefaultOrdering()
+    {
+        // Absent order param should still return 200 with the standard list shape
+        var response = await _client.GetAsync("/api/recipes?page=1&limit=10");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        Assert.True(doc.RootElement.TryGetProperty("recipes",    out _), "missing 'recipes'");
+        Assert.True(doc.RootElement.TryGetProperty("pagination", out _), "missing 'pagination'");
+    }
+
     // ── GET /api/recipes ──────────────────────────────────────────────────────
 
     [Fact]

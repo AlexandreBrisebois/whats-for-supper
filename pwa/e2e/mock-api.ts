@@ -304,6 +304,34 @@ export async function setupCommonRoutes(page: Page) {
     }
   });
 
+  // GET /api/recipes/library-summary — registered AFTER the wildcard so LIFO gives it priority
+  await page.route('**/api/recipes/library-summary', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          total: 3,
+          neverCooked: 1,
+          ratings: { love: 1, like: 1, dislike: 0, unrated: 1 },
+        },
+      }),
+    });
+  });
+
+  // GET /api/recipes?order=explore (Browse All Stack paged loading) — registered AFTER the wildcard so LIFO gives it priority
+  await page.route('**/api/recipes?**order=explore**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        recipes: [builders.recipe(), builders.recipe(), builders.recipe()],
+        pagination: { page: 1, limit: 20, total: 3 },
+      }),
+    });
+  });
+
   // GET /api/recipes/recommendations
   await page.route('**/api/recipes/recommendations', async (route) => {
     await route.fulfill({

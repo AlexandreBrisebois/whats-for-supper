@@ -32,14 +32,21 @@ public class RecipeController(
         return Accepted(new { id = recipeId });
     }
 
-    /// <summary>GET /api/recipes — paginated list, newest first.</summary>
+    /// <summary>GET /api/recipes — paginated list. Default: newest first. order=explore: lastCookedDate ASC NULLS FIRST.</summary>
     [HttpGet]
     [SkipWrapping]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
-        [FromQuery] int limit = 20)
+        [FromQuery] int limit = 20,
+        [FromQuery] string? order = null)
     {
-        var result = await recipeService.GetRecipesList(page, limit);
+        if (order is not null && !string.Equals(order, "explore", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { error = "Invalid order parameter. Allowed values: explore" });
+
+        var result = string.Equals(order, "explore", StringComparison.OrdinalIgnoreCase)
+            ? await recipeService.GetRecipesListExplore(page, limit)
+            : await recipeService.GetRecipesList(page, limit);
+
         return Ok(result);
     }
 

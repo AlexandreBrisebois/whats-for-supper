@@ -12,7 +12,7 @@ The feature introduces:
 
 ## Tasks
 
-- [ ] 1. Contract Gate - Update OpenAPI spec and regenerate clients
+- [x] 1. Contract Gate - Update OpenAPI spec and regenerate clients
   - Add `order` query parameter (enum: `["explore"]`) to `GET /api/recipes` in `specs/openapi.yaml`
   - Add `GET /api/recipes/library-summary` endpoint definition
   - Add `RecipeLibrarySummaryDto` schema with `total`, `neverCooked`, and `ratings` properties
@@ -21,15 +21,15 @@ The feature introduces:
   - Add mocks to `pwa/src/test/mock-api.ts` for `GET /api/recipes?order=explore` and `GET /api/recipes/library-summary`
   - _Requirements: 5, 6, 7, 12, 13_
 
-- [ ] 2. Backend - Implement Explore Order on GET /api/recipes
-  - [ ] 2.1 Add explore ordering logic to RecipesController
+- [x] 2. Backend - Implement Explore Order on GET /api/recipes
+  - [x] 2.1 Add explore ordering logic to RecipesController
     - Update `RecipesController.GetRecipes` to accept `order` query parameter
     - Implement `order=explore` branch with `lastCookedDate ASC NULLS FIRST` sort
     - Ensure soft-deleted recipes are excluded (`deletedAt IS NULL`)
     - Return HTTP 400 for invalid `order` values with descriptive error message
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.7_
   
-  - [ ]* 2.2 Write unit tests for explore ordering
+  - [x] 2.2 Write unit tests for explore ordering
     - Test that `order=explore` returns never-cooked recipes first
     - Test that never-cooked recipes are followed by oldest-cooked first
     - Test that soft-deleted recipes are excluded

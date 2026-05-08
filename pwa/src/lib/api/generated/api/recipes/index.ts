@@ -34,6 +34,11 @@ import {
 } from './item/index';
 // @ts-ignore
 import {
+  LibrarySummaryRequestBuilderRequestsMetadata,
+  type LibrarySummaryRequestBuilder,
+} from './librarySummary/index';
+// @ts-ignore
+import {
   RecommendationsRequestBuilderRequestsMetadata,
   type RecommendationsRequestBuilder,
 } from './recommendations/index';
@@ -46,6 +51,7 @@ import {
   MultipartBody,
   serializeMultipartBody,
   type AdditionalDataHolder,
+  type ApiError,
   type BaseRequestBuilder,
   type Guid,
   type KeysToExcludeForNavigationMetadata,
@@ -59,6 +65,17 @@ import {
   type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeListResponse400Error}
+ */
+// @ts-ignore
+export function createRecipeListResponse400ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeListResponse400Error;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -80,6 +97,21 @@ export function createRecipesPostResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipesPostResponse;
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeListResponse400Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeListResponse400Error(
+  recipeListResponse400Error: Partial<RecipeListResponse400Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    error: (n) => {
+      recipeListResponse400Error.errorEscaped = n.getStringValue();
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -112,6 +144,14 @@ export function deserializeIntoRecipesPostResponse_data(
       recipesPostResponse_data.id = n.getGuidValue();
     },
   };
+}
+export type GetOrderQueryParameterType =
+  (typeof GetOrderQueryParameterTypeObject)[keyof typeof GetOrderQueryParameterTypeObject];
+export interface RecipeListResponse400Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The error property
+   */
+  errorEscaped?: string | null;
 }
 export interface RecipesPostResponse extends AdditionalDataHolder, Parsable {
   /**
@@ -146,6 +186,10 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    */
   get importStatus(): ImportStatusRequestBuilder;
   /**
+   * The librarySummary property
+   */
+  get librarySummary(): LibrarySummaryRequestBuilder;
+  /**
    * The recommendations property
    */
   get recommendations(): RecommendationsRequestBuilder;
@@ -167,6 +211,7 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * List recipes
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeListResponse>}
+   * @throws {RecipeListResponse400Error} error when the service returns a 400 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<RecipesRequestBuilderGetQueryParameters> | undefined
@@ -205,7 +250,29 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
  */
 export interface RecipesRequestBuilderGetQueryParameters {
   limit?: number;
+  /**
+   * Sort order for recipes. When "explore" is specified, recipes are ordered bylastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).When absent, default ordering (newest-created first) is applied.Returns HTTP 400 for unrecognised values.
+   */
+  order?: GetOrderQueryParameterType;
   page?: number;
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeListResponse400Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeListResponse400Error(
+  writer: SerializationWriter,
+  recipeListResponse400Error: Partial<RecipeListResponse400Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeListResponse400Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('error', recipeListResponse400Error.errorEscaped);
+  writer.writeAdditionalData(recipeListResponse400Error.additionalData);
 }
 /**
  * Serializes information the current object
@@ -250,7 +317,10 @@ export function serializeRecipesPostResponse_data(
 /**
  * Uri template for the request builder.
  */
-export const RecipesRequestBuilderUriTemplate = '{+baseurl}/api/recipes{?limit*,page*}';
+export const RecipesRequestBuilderUriTemplate = '{+baseurl}/api/recipes{?limit*,order*,page*}';
+export const GetOrderQueryParameterTypeObject = {
+  Explore: 'explore',
+} as const;
 /**
  * Metadata for all the navigation properties in the request builder.
  */
@@ -275,6 +345,9 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
   importStatus: {
     requestsMetadata: ImportStatusRequestBuilderRequestsMetadata,
   },
+  librarySummary: {
+    requestsMetadata: LibrarySummaryRequestBuilderRequestsMetadata,
+  },
   recommendations: {
     requestsMetadata: RecommendationsRequestBuilderRequestsMetadata,
   },
@@ -292,6 +365,9 @@ export const RecipesRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: RecipesRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      400: createRecipeListResponse400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeListResponseFromDiscriminatorValue,
   },
