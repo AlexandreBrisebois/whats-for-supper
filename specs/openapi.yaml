@@ -358,6 +358,7 @@ components:
       properties:
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
+        isDiscoverable: { type: [boolean, 'null'] }
 
     DescribeRecipeDto:
       type: object

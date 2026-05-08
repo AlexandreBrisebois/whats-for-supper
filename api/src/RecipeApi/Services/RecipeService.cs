@@ -191,6 +191,9 @@ public class RecipeService(
         if (dto.Notes is not null)
             recipe.Notes = dto.Notes;
 
+        if (dto.IsDiscoverable.HasValue)
+            recipe.IsDiscoverable = dto.IsDiscoverable.Value;
+
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
 

@@ -371,7 +371,7 @@ contract change is in place.
 - Planner assignment still works.
 - `task review` passes.
 
-- [ ] Task 6 complete
+- [x] Task 6 complete
 
 ---
 
@@ -425,7 +425,7 @@ Watch it fail. Add the field to `openapi.yaml`. Regen client. Watch it pass.
 - E2E tests pass.
 - `task review` passes.
 
-- [ ] Task 7 complete
+- [x] Task 7 complete
 
 ---
 
@@ -487,7 +487,7 @@ Watch it fail. Implement the filter pill. Watch it pass.
 - E2E tests pass.
 - `task review` passes.
 
-- [ ] Task 8 complete
+- [x] Task 8 complete
 
 ---
 

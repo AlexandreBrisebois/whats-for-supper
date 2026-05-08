@@ -18,11 +18,14 @@ import {
   searchRecipes,
   type RecipeSearchResponse,
   type RecipeSearchResult,
+  type Recipe,
 } from '@/lib/api/recipes';
+import type { RecipeSearchFiltersDto } from '@/lib/api/generated/models/index';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { assignRecipeToDay } from '@/lib/api/planner';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
+import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 
 /**
  * RecipesPage / Search destination.
@@ -33,8 +36,9 @@ export default function RecipesPage() {
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [openDetailRecipeId] = useState<string | null>(null);
-  const [similarToRecipeId] = useState<string | null>(null);
+  const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
+  const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -44,17 +48,25 @@ export default function RecipesPage() {
   const parsedDayIndex = addToDay !== null ? parseInt(addToDay, 10) : undefined;
   const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
 
-  const runSearch = async (nextQuery: string) => {
+  const runSearch = async (
+    nextQuery: string,
+    nextSimilarToRecipeId?: string | null,
+    nextFilters?: RecipeSearchFiltersDto
+  ) => {
     setIsLoading(true);
     try {
+      const filters = nextFilters ?? activeFilters;
       const response = await searchRecipes({
         query: nextQuery,
         mode: 'standard',
         limit: 5,
         weekOffset: parsedWeekOffset,
         dayIndex: parsedDayIndex,
+        similarToRecipeId: nextSimilarToRecipeId ?? undefined,
+        filters: Object.keys(filters).length > 0 ? filters : undefined,
       });
       setData(response);
+      setSimilarToRecipeId(nextSimilarToRecipeId ?? null);
     } catch (error) {
       console.error('Failed to search recipes', error);
       setData({
@@ -80,6 +92,7 @@ export default function RecipesPage() {
           limit: 5,
           weekOffset: parsedWeekOffset,
           dayIndex: parsedDayIndex,
+          similarToRecipeId: undefined,
         });
 
         if (!isActive) return;
@@ -106,28 +119,45 @@ export default function RecipesPage() {
     };
   }, [parsedDayIndex, parsedWeekOffset]);
 
-  const handleSelectRecipe = async (recipe: RecipeSearchResult) => {
-    if (addToDay !== null && weekOffset !== null) {
-      setIsAssigning(true);
-      try {
-        await assignRecipeToDay(parseInt(weekOffset, 10), parseInt(addToDay, 10), {
-          id: recipe.id,
-          name: recipe.name,
-          image: recipe.imageUrl,
-        });
-        router.push(`/planner?success=1&dayIndex=${addToDay}`);
-      } catch (error) {
-        console.error('Failed to assign recipe:', error);
-        setIsAssigning(false);
-      }
-    } else {
-      // Normal recipe view logic
-      console.log('Viewing recipe:', recipe.id);
+  const handleOpenRecipe = (recipeId: string) => {
+    setOpenDetailRecipeId(recipeId);
+  };
+
+  const handleAssignRecipe = async (recipe: Recipe) => {
+    if (addToDay === null || weekOffset === null) {
+      return;
     }
+
+    setIsAssigning(true);
+    try {
+      await assignRecipeToDay(parseInt(weekOffset, 10), parseInt(addToDay, 10), {
+        id: recipe.id,
+        name: recipe.name,
+        image: recipe.imageUrl,
+      });
+      router.push(`/planner?success=1&dayIndex=${addToDay}`);
+    } catch (error) {
+      console.error('Failed to assign recipe:', error);
+      setIsAssigning(false);
+    }
+  };
+
+  const handleFindSimilar = (recipeId: string) => {
+    setOpenDetailRecipeId(null);
+    setQuery('');
+    void runSearch('', recipeId);
+  };
+
+  const handleFilterToggle = (key: keyof RecipeSearchFiltersDto) => {
+    const next = { ...activeFilters, [key]: activeFilters[key] ? null : true };
+    if (!next[key]) delete next[key];
+    setActiveFilters(next);
+    void runSearch(query, similarToRecipeId, next);
   };
 
   const { topPick, results } = data ?? { topPick: null, results: [] };
   const showEmptyState = !isLoading && topPick == null && results.length === 0;
+  const hasActiveFilters = Object.keys(activeFilters).length > 0;
 
   return (
     <div className="flex flex-col gap-8 pb-12">
@@ -209,6 +239,53 @@ export default function RecipesPage() {
         </button>
       </div>
 
+      {/* Quick filter pills */}
+      <div className="flex flex-wrap gap-2 px-1">
+        {(
+          [
+            {
+              key: 'newRecipes',
+              label: t('recipes.filterNew', 'New'),
+              testId: 'filter-new-recipes',
+            },
+            {
+              key: 'neverCooked',
+              label: t('recipes.filterNeverTried', 'Never Tried'),
+              testId: 'filter-never-tried',
+            },
+            {
+              key: 'familyFavorite',
+              label: t('recipes.filterFamilyFavorite', 'Family Favorite'),
+              testId: 'filter-family-favorite',
+            },
+            { key: 'quickOnly', label: t('recipes.filterQuick', 'Quick'), testId: 'filter-quick' },
+            {
+              key: 'notCookedInLongTime',
+              label: t('recipes.filterNotCookedLong', "It's Been a While"),
+              testId: 'filter-not-cooked-long-time',
+            },
+          ] as { key: keyof RecipeSearchFiltersDto; label: string; testId: string }[]
+        ).map(({ key, label, testId }) => {
+          const isActive = !!activeFilters[key];
+          return (
+            <button
+              key={key}
+              type="button"
+              data-testid={isActive ? `${testId}-active` : testId}
+              onClick={() => handleFilterToggle(key)}
+              className={cn(
+                'rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+                isActive
+                  ? 'border-terracotta bg-terracotta text-white'
+                  : 'border-charcoal/10 bg-white/70 text-charcoal'
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Results Section */}
       <div className="flex flex-col gap-6">
         {isLoading ? (
@@ -217,14 +294,16 @@ export default function RecipesPage() {
           </div>
         ) : !data ? null : showEmptyState ? (
           <div
-            data-testid="search-empty-state"
+            data-testid={hasActiveFilters ? 'filter-no-results' : 'search-empty-state'}
             className="rounded-[2rem] border border-dashed border-charcoal/15 bg-white/60 p-8 text-center shadow-sm"
           >
             <p className="text-lg font-black tracking-tight text-charcoal">
-              {t(
-                'recipes.searchEmptyTitle',
-                'No matches yet. Try a different description or clear filters.'
-              )}
+              {hasActiveFilters
+                ? t('recipes.filterNoResults', 'No matches with these filters. Try removing one.')
+                : t(
+                    'recipes.searchEmptyTitle',
+                    'No matches yet. Try a different description or clear filters.'
+                  )}
             </p>
             <button
               type="button"
@@ -253,7 +332,7 @@ export default function RecipesPage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
-                onClick={() => handleSelectRecipe(topPick)}
+                onClick={() => handleOpenRecipe(topPick.id)}
                 data-testid="recipe-card-top-pick"
                 className={cn(
                   'relative group cursor-pointer active:scale-[0.98] transition-all',
@@ -310,7 +389,7 @@ export default function RecipesPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + idx * 0.1 }}
-                  onClick={() => handleSelectRecipe(recipe)}
+                  onClick={() => handleOpenRecipe(recipe.id)}
                   data-testid={`recipe-card-${recipe.id}`}
                   className={cn(
                     'group flex flex-col gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-charcoal/5 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95',
@@ -355,6 +434,16 @@ export default function RecipesPage() {
         {openDetailRecipeId}
         {similarToRecipeId}
       </div>
+
+      {openDetailRecipeId && (
+        <RecipeDetailSheet
+          recipeId={openDetailRecipeId}
+          plannerDayLabel={addToDay !== null ? `Day ${parseInt(addToDay, 10) + 1}` : null}
+          onClose={() => setOpenDetailRecipeId(null)}
+          onUseForDay={handleAssignRecipe}
+          onFindSimilar={handleFindSimilar}
+        />
+      )}
     </div>
   );
 }

@@ -42,6 +42,18 @@ const MOCK_SEARCH_RESULTS = {
   ],
 };
 
+const MOCK_DETAIL_RECIPE = builders.recipe({
+  id: MOCK_IDS.RECIPE_LASAGNA,
+  name: 'Homemade Lasagna',
+  description: 'Layered comfort food for the whole family.',
+  imageUrl: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
+  totalTime: '45 min',
+  difficulty: 'Medium',
+  rating: 3,
+  notes: 'Family favorite on rainy nights.',
+  ingredients: ['Pasta', 'Tomato', 'Cheese'],
+});
+
 test.describe('Recipes Search Page', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -104,6 +116,31 @@ test.describe('Recipes Search Page', () => {
         }),
       });
     });
+
+    await page.route('**/api/recipes/*', async (route) => {
+      const method = route.request().method();
+
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: MOCK_DETAIL_RECIPE }),
+        });
+        return;
+      }
+
+      if (method === 'PATCH') {
+        const body = route.request().postDataJSON() as Record<string, unknown>;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: { ...MOCK_DETAIL_RECIPE, ...body } }),
+        });
+        return;
+      }
+
+      await route.fallback();
+    });
   });
 
   test('searches on Enter and shows the top pick result', async ({ page }) => {
@@ -135,5 +172,277 @@ test.describe('Recipes Search Page', () => {
 
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('search-empty-state')).toBeVisible();
+  });
+
+  test('opens and closes the recipe detail sheet without losing the search results', async ({
+    page,
+  }) => {
+    await page.goto('/recipes');
+
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+
+    await page.getByTestId('recipe-card-top-pick').click();
+
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await expect(page.getByTestId('recipe-detail-name')).toContainText(/Homemade Lasagna/i);
+
+    await page.getByTestId('action-close-sheet').click();
+
+    await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
+    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+  });
+
+  test('edits notes from the detail sheet and keeps the sheet open', async ({ page }) => {
+    let lastPatchBody: Record<string, unknown> | null = null;
+
+    await page.unroute('**/api/recipes/*');
+    await page.route('**/api/recipes/*', async (route) => {
+      const method = route.request().method();
+
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: MOCK_DETAIL_RECIPE }),
+        });
+        return;
+      }
+
+      if (method === 'PATCH') {
+        lastPatchBody = route.request().postDataJSON() as Record<string, unknown>;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: { ...MOCK_DETAIL_RECIPE, ...lastPatchBody } }),
+        });
+        return;
+      }
+
+      await route.fallback();
+    });
+
+    await page.goto('/recipes');
+
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await page.getByTestId('recipe-card-top-pick').click();
+
+    await expect(page.getByTestId('recipe-notes-input')).toBeVisible();
+    await page.getByTestId('recipe-notes-input').fill('kids loved it');
+
+    await expect.poll(() => lastPatchBody).toMatchObject({ notes: 'kids loved it' });
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+  });
+
+  test('uses planner mode CTA from the detail sheet and returns to the planner success state', async ({
+    page,
+  }) => {
+    let assignRequestBody: Record<string, unknown> | null = null;
+
+    await page.route('**/api/schedule/assign', async (route) => {
+      assignRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await page.goto('/recipes?addToDay=2&weekOffset=0');
+
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await page.getByTestId('recipe-card-top-pick').click();
+
+    await expect(page.getByTestId('action-use-for-day')).toBeVisible();
+    await page.getByTestId('action-use-for-day').click();
+
+    await expect
+      .poll(() => assignRequestBody)
+      .toMatchObject({
+        weekOffset: 0,
+        dayIndex: 2,
+        recipeId: MOCK_IDS.RECIPE_LASAGNA,
+      });
+    await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=2/);
+  });
+
+  test('tapping a filter pill marks it active and includes the filter in the next search request', async ({
+    page,
+  }) => {
+    let lastSearchBody: Record<string, unknown> | null = null;
+
+    await page.unroute('**/api/recipes/search');
+    await page.route('**/api/recipes/search', async (route) => {
+      lastSearchBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: null,
+            results: [],
+            appliedFilters: { neverCooked: true },
+            searchMode: 'standard',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('filter-never-tried')).toBeVisible();
+
+    await page.getByTestId('filter-never-tried').click();
+
+    await expect(page.getByTestId('filter-never-tried-active')).toBeVisible();
+    await expect.poll(() => (lastSearchBody as any)?.filters).toMatchObject({ neverCooked: true });
+
+    await expect(page.getByTestId('filter-no-results')).toBeVisible();
+  });
+
+  test('combining two filter pills sends both filters in the request', async ({ page }) => {
+    let lastSearchBody: Record<string, unknown> | null = null;
+
+    await page.unroute('**/api/recipes/search');
+    await page.route('**/api/recipes/search', async (route) => {
+      lastSearchBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: null,
+            results: [],
+            appliedFilters: {},
+            searchMode: 'standard',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('filter-never-tried').click();
+    await expect(page.getByTestId('filter-never-tried-active')).toBeVisible();
+
+    await page.getByTestId('filter-quick').click();
+    await expect(page.getByTestId('filter-quick-active')).toBeVisible();
+
+    await expect
+      .poll(() => (lastSearchBody as any)?.filters)
+      .toMatchObject({ neverCooked: true, quickOnly: true });
+  });
+
+  test('Find Similar fires a new search with similarToRecipeId set and the source recipe excluded', async ({
+    page,
+  }) => {
+    let lastSearchBody: Record<string, unknown> | null = null;
+
+    const SIMILAR_TOP_PICK = {
+      id: MOCK_IDS.RECIPE_STIR_FRY,
+      name: 'Chicken Stir Fry',
+      imageUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae',
+      totalTime: '20 min',
+      difficulty: 'Easy',
+      rating: 2,
+      isDiscoverable: true,
+      notes: null,
+      reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+      plannerFitNote: null,
+    };
+
+    await page.unroute('**/api/recipes/search');
+    await page.route('**/api/recipes/search', async (route) => {
+      lastSearchBody = route.request().postDataJSON() as Record<string, unknown>;
+      const similarId = (lastSearchBody as any)?.similarToRecipeId;
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: similarId ? SIMILAR_TOP_PICK : MOCK_SEARCH_RESULTS.topPick,
+            results: similarId ? [] : MOCK_SEARCH_RESULTS.secondary,
+            appliedFilters: {},
+            searchMode: similarId ? 'similar' : 'standard',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+
+    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+    await page.getByTestId('recipe-card-top-pick').click();
+
+    await expect(page.getByTestId('action-find-similar')).toBeVisible();
+    await page.getByTestId('action-find-similar').click();
+
+    await expect
+      .poll(() => lastSearchBody)
+      .toMatchObject({ similarToRecipeId: MOCK_IDS.RECIPE_LASAGNA });
+
+    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+    await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/Chicken Stir Fry/i);
+    await expect(
+      page.locator(`[data-testid="recipe-card-${MOCK_IDS.RECIPE_LASAGNA}"]`)
+    ).not.toBeVisible();
+  });
+
+  test('toggling discovery from the detail sheet calls PATCH with isDiscoverable without navigating', async ({
+    page,
+  }) => {
+    let lastPatchBody: Record<string, unknown> | null = null;
+
+    await page.unroute('**/api/recipes/*');
+    await page.route('**/api/recipes/*', async (route) => {
+      const method = route.request().method();
+
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: MOCK_DETAIL_RECIPE }),
+        });
+        return;
+      }
+
+      if (method === 'PATCH') {
+        lastPatchBody = route.request().postDataJSON() as Record<string, unknown>;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: { ...MOCK_DETAIL_RECIPE, ...lastPatchBody } }),
+        });
+        return;
+      }
+
+      await route.fallback();
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await page.getByTestId('recipe-card-top-pick').click();
+
+    await expect(page.getByTestId('action-toggle-discovery')).toBeVisible();
+    await page.getByTestId('action-toggle-discovery').click();
+
+    await expect.poll(() => lastPatchBody).toMatchObject({ isDiscoverable: expect.any(Boolean) });
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await expect(page).toHaveURL(/\/recipes/);
   });
 });

@@ -7,26 +7,57 @@ test.describe('Supper Planner', () => {
   test.beforeEach(async ({ page, baseURL }) => {
     await setupCommonRoutes(page);
 
-    // Override recommendations to provide a non-null topPick — the shared mock returns null
-    // which prevents recipe-card-top-pick from rendering (RecipesPage guards on {topPick && ...})
-    await page.route('**/api/recipes/recommendations', async (route) => {
+    // Override semantic search so the recipes page can render a Top Pick during planner handoff.
+    await page.route('**/api/recipes/search', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
-            topPick: builders.recipe({
+            topPick: {
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: 'Homemade Lasagna',
+              imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
+              totalTime: '45 min',
+              difficulty: 'Medium',
+              rating: 3,
+              isDiscoverable: true,
+              notes: null,
+              reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+              plannerFitNote: 'Not yet planned this week',
+            },
+            results: [],
+            appliedFilters: {},
+            searchMode: 'standard',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/recipes/*', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            recipe: builders.recipe({
               id: MOCK_IDS.RECIPE_LASAGNA,
               name: 'Homemade Lasagna',
               description: 'A classic family lasagna.',
               imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-              totalTime: 'PT45M',
+              totalTime: '45 min',
               difficulty: 'Medium',
+              rating: 3,
+              ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
+              notes: 'Family favorite.',
             }),
-            results: [],
-          },
-        }),
-      });
+          }),
+        });
+        return;
+      }
+
+      await route.fallback();
     });
 
     const baseUrl = baseURL || 'http://127.0.0.1:3000';
@@ -209,8 +240,10 @@ test.describe('Supper Planner', () => {
     // 3. Verify Planning Mode banner
     await expect(page.getByTestId('planning-mode-banner')).toBeVisible();
 
-    // 4. Select "Homemade Lasagna" (Top Pick)
+    // 4. Open the Top Pick detail sheet and confirm planner CTA
     await page.getByTestId('recipe-card-top-pick').click();
+    await expect(page.getByTestId('action-use-for-day')).toBeVisible();
+    await page.getByTestId('action-use-for-day').click();
 
     // 5. Verify redirect back to planner with success params
     await page.waitForURL(/\/planner\?success=1&dayIndex=2/);

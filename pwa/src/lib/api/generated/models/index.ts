@@ -1940,6 +1940,9 @@ export function deserializeIntoUpdateRecipeDto(
   updateRecipeDto: Partial<UpdateRecipeDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    isDiscoverable: (n) => {
+      updateRecipeDto.isDiscoverable = n.getBooleanValue();
+    },
     notes: (n) => {
       updateRecipeDto.notes = n.getStringValue();
     },
@@ -4016,6 +4019,7 @@ export function serializeUpdateRecipeDto(
   if (!updateRecipeDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeBooleanValue('isDiscoverable', updateRecipeDto.isDiscoverable);
   writer.writeStringValue('notes', updateRecipeDto.notes);
   writer.writeNumberValue('rating', updateRecipeDto.rating);
   writer.writeAdditionalData(updateRecipeDto.additionalData);
@@ -4327,6 +4331,10 @@ export interface TopPickDto extends AdditionalDataHolder, Parsable {
   prepTime?: string | null;
 }
 export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The isDiscoverable property
+   */
+  isDiscoverable?: boolean | null;
   /**
    * The notes property
    */

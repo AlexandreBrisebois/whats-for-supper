@@ -15,4 +15,7 @@ public class UpdateRecipeDto
     /// <summary>0 = Unknown, 1 = Dislike, 2 = Like, 3 = Love</summary>
     [JsonPropertyName("rating")]
     public int? Rating { get; set; }
+
+    [JsonPropertyName("isDiscoverable")]
+    public bool? IsDiscoverable { get; set; }
 }

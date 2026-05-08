@@ -17,6 +17,8 @@ export interface Recipe {
   difficulty: string;
   category: string;
   rating: number;
+  notes?: string | null;
+  isDiscoverable?: boolean;
   ingredients?: string[];
   isVegetarian?: boolean;
   isHealthyChoice?: boolean;
@@ -109,6 +111,8 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     difficulty: dto.difficulty || '',
     category: dto.category || '',
     rating: dto.rating || 0,
+    notes: dto.notes ?? null,
+    isDiscoverable: dto.isDiscoverable ?? false,
     ingredients: dto.ingredients ?? [],
     isVegetarian: dto.isVegetarian ?? false,
     isHealthyChoice: dto.isHealthyChoice ?? false,
@@ -218,16 +222,20 @@ export async function captureUrl(
 
 export async function updateRecipe(
   id: string,
-  updates: { notes?: string; rating?: number }
+  updates: { notes?: string; rating?: number; isDiscoverable?: boolean | null }
 ): Promise<void> {
   await apiClient.api.recipes.byId(id as any).patch({
     notes: updates.notes,
     rating: updates.rating,
+    isDiscoverable: updates.isDiscoverable,
   });
 }
 
 export async function searchRecipes(
-  request: Pick<RecipeSearchRequestDto, 'query' | 'mode' | 'limit' | 'weekOffset' | 'dayIndex'>
+  request: Pick<
+    RecipeSearchRequestDto,
+    'query' | 'mode' | 'limit' | 'weekOffset' | 'dayIndex' | 'similarToRecipeId' | 'filters'
+  >
 ): Promise<RecipeSearchResponse> {
   const result = await apiClient.api.recipes.search.post(request);
   const data = ((result as { data?: RecipeSearchResponseDto } | null | undefined)?.data ??

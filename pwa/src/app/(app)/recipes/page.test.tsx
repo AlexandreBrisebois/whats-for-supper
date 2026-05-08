@@ -3,11 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const searchRecipes = vi.fn();
+  const getRecipe = vi.fn();
+  const updateRecipe = vi.fn();
+  const assignRecipeToDay = vi.fn();
   const push = vi.fn();
   let searchParams = new URLSearchParams('');
 
   return {
     searchRecipes,
+    getRecipe,
+    updateRecipe,
+    assignRecipeToDay,
     push,
     setSearchParams: (value: string) => {
       searchParams = new URLSearchParams(value);
@@ -47,10 +53,12 @@ vi.mock('@/lib/utils', () => ({
 
 vi.mock('@/lib/api/recipes', () => ({
   searchRecipes: (...args: unknown[]) => mocks.searchRecipes(...args),
+  getRecipe: (...args: unknown[]) => mocks.getRecipe(...args),
+  updateRecipe: (...args: unknown[]) => mocks.updateRecipe(...args),
 }));
 
 vi.mock('@/lib/api/planner', () => ({
-  assignRecipeToDay: vi.fn(),
+  assignRecipeToDay: (...args: unknown[]) => mocks.assignRecipeToDay(...args),
 }));
 
 import RecipesPage from './page';
@@ -90,11 +98,30 @@ function makeSearchResponse(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeRecipeDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    id: '11111111-1111-1111-1111-111111111111',
+    name: 'Chicken Soup',
+    description: 'Comforting soup for busy weeknights.',
+    imageUrl: 'https://example.com/chicken-soup.jpg',
+    totalTime: '30 min',
+    difficulty: 'Easy',
+    category: 'Dinner',
+    rating: 2,
+    notes: 'Family favorite.',
+    ingredients: ['Chicken', 'Broth', 'Carrots'],
+    ...overrides,
+  };
+}
+
 describe('RecipesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.setSearchParams('');
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse());
+    mocks.getRecipe.mockResolvedValue(makeRecipeDetail());
+    mocks.updateRecipe.mockResolvedValue(undefined);
+    mocks.assignRecipeToDay.mockResolvedValue(undefined);
   });
 
   it('renders the search input immediately and the placeholder controls after load', async () => {
@@ -179,5 +206,254 @@ describe('RecipesPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('planning-mode-banner')).toBeInTheDocument();
     });
+  });
+
+  it('opens the detail sheet from a result card and closes it without re-running search or clearing results', async () => {
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
+    expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Family favorite.');
+    expect(screen.getByTestId('recipe-rating-selector')).toHaveValue('2');
+    expect(screen.getByTestId('action-save-for-tonight')).toBeInTheDocument();
+    expect(screen.getByTestId('action-find-similar')).toBeInTheDocument();
+    expect(screen.getByTestId('action-toggle-discovery')).toBeInTheDocument();
+    expect(screen.getByTestId('action-move-to-bin')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('action-close-sheet'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
+    });
+
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
+  });
+
+  it('edits notes and rating from the detail sheet using PATCH calls', async () => {
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('recipe-notes-input'), {
+      target: { value: 'kids loved it' },
+    });
+
+    await waitFor(() => {
+      expect(mocks.updateRecipe).toHaveBeenCalledWith(
+        '11111111-1111-1111-1111-111111111111',
+        expect.objectContaining({ notes: 'kids loved it' })
+      );
+    });
+
+    fireEvent.change(screen.getByTestId('recipe-rating-selector'), {
+      target: { value: '3' },
+    });
+
+    await waitFor(() => {
+      expect(mocks.updateRecipe).toHaveBeenCalledWith(
+        '11111111-1111-1111-1111-111111111111',
+        expect.objectContaining({ rating: 3 })
+      );
+    });
+
+    expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+  });
+
+  it('renders the planner CTA in planner mode and assigns the recipe back to the planner', async () => {
+    mocks.setSearchParams('addToDay=2&weekOffset=0');
+
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-use-for-day')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('action-use-for-day'));
+
+    await waitFor(() => {
+      expect(mocks.assignRecipeToDay).toHaveBeenCalledWith(0, 2, {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'Chicken Soup',
+        image: 'https://example.com/chicken-soup.jpg',
+      });
+    });
+
+    expect(mocks.push).toHaveBeenCalledWith('/planner?success=1&dayIndex=2');
+  });
+
+  describe('Quick filter pills', () => {
+    it('renders all 5 filter pills', async () => {
+      render(<RecipesPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-new-recipes')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
+      expect(screen.getByTestId('filter-family-favorite')).toBeInTheDocument();
+      expect(screen.getByTestId('filter-quick')).toBeInTheDocument();
+      expect(screen.getByTestId('filter-not-cooked-long-time')).toBeInTheDocument();
+    });
+
+    it('tapping a filter pill marks it active and fires a new search with the filter', async () => {
+      render(<RecipesPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('filter-never-tried'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-never-tried-active')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({ filters: expect.objectContaining({ neverCooked: true }) })
+        );
+      });
+    });
+
+    it('tapping an active filter pill deactivates it and re-runs search without that filter', async () => {
+      render(<RecipesPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-quick')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('filter-quick'));
+      await waitFor(() => expect(screen.getByTestId('filter-quick-active')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId('filter-quick-active'));
+      await waitFor(() => expect(screen.getByTestId('filter-quick')).toBeInTheDocument());
+      expect(screen.queryByTestId('filter-quick-active')).not.toBeInTheDocument();
+    });
+
+    it('combining two filters sends both in the request', async () => {
+      render(<RecipesPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('filter-never-tried'));
+      await waitFor(() =>
+        expect(screen.getByTestId('filter-never-tried-active')).toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByTestId('filter-quick'));
+      await waitFor(() => expect(screen.getByTestId('filter-quick-active')).toBeInTheDocument());
+
+      await waitFor(() => {
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            filters: expect.objectContaining({ neverCooked: true, quickOnly: true }),
+          })
+        );
+      });
+    });
+
+    it('shows filter-no-results when filters are active and search returns empty', async () => {
+      mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ topPick: null, results: [] }));
+
+      render(<RecipesPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('filter-never-tried'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-no-results')).toBeInTheDocument();
+      });
+    });
+  });
+
+  it('toggling discovery from the detail sheet calls PATCH with isDiscoverable and keeps the sheet open', async () => {
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-toggle-discovery')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('action-toggle-discovery'));
+
+    await waitFor(() => {
+      expect(mocks.updateRecipe).toHaveBeenCalledWith(
+        '11111111-1111-1111-1111-111111111111',
+        expect.objectContaining({ isDiscoverable: expect.any(Boolean) })
+      );
+    });
+
+    expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+  });
+
+  it('runs a similar search from the detail sheet with an empty query and the current recipe id', async () => {
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('recipe-search-input'), {
+      target: { value: 'chicken' },
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-find-similar')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('action-find-similar'));
+
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
+        query: '',
+        mode: 'standard',
+        limit: 5,
+        weekOffset: undefined,
+        dayIndex: undefined,
+        similarToRecipeId: '11111111-1111-1111-1111-111111111111',
+      });
+    });
+
+    expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
+    expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
   });
 });
