@@ -11,7 +11,7 @@ import { useFamily } from '@/hooks/useFamily';
 import { t, tWithVars } from '@/locales';
 
 export default function DiscoveryPage() {
-  const { setHasPendingCards, activeCategory, setActiveCategory } = useDiscoveryStore();
+  const { setHasPendingCards, setActiveCategory } = useDiscoveryStore();
   // Lift state to store — SSE can now update the stack without the page being mounted
   const recipes = useDiscoveryStore((s) => s.discoveryStack);
   const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
@@ -77,9 +77,16 @@ export default function DiscoveryPage() {
 
         // Nudge priority: read activeCategory from store at call-time (not from
         // the closure dep) so we don't re-trigger this effect when we set it below.
-        const storedCategory = useDiscoveryStore.getState().activeCategory;
-        const targetCategory = storedCategory ?? cats[0];
-        if (targetCategory) {
+        if (cats.length === 0) {
+          if (!ignore) {
+            setActiveCategory(null);
+            categoryIndexRef.current = 0;
+            useDiscoveryStore.getState().setStack([]);
+            stackIsLoadedRef.current = true;
+          }
+        } else {
+          const storedCategory = useDiscoveryStore.getState().activeCategory;
+          const targetCategory = storedCategory ?? cats[0];
           const index = cats.indexOf(targetCategory);
           const resolvedIndex = index !== -1 ? index : 0;
 

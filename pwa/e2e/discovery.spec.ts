@@ -81,6 +81,24 @@ test.describe('Discovery Flow', () => {
   });
 
   test('should swipe through all categories and show summary', async ({ page }) => {
+    // Each category returns MOCK_STACK on the first fetch (initial load / loadNextCategory),
+    // then [] on subsequent fetches — simulating that all recipes in that category were voted.
+    // Without this, the wrap-around in loadNextCategory would re-serve already-visited categories.
+    const categoryServed = new Set<string>();
+    await page.route(
+      (url) => url.pathname.endsWith('/api/discovery') && !url.pathname.includes('/vote'),
+      async (route) => {
+        const category = new URL(route.request().url()).searchParams.get('category') ?? '';
+        const firstTime = !categoryServed.has(category);
+        categoryServed.add(category);
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: firstTime ? MOCK_STACK : [] }),
+        });
+      }
+    );
+
     await page.goto('/discovery');
 
     await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
@@ -228,6 +246,23 @@ test.describe('Discovery Flow', () => {
   });
 
   test('refresh button should appear only after all categories are exhausted', async ({ page }) => {
+    // Same "first-serve only" mock as the summary test — wrap-around must not
+    // re-serve already-voted categories and prevent the empty state from appearing.
+    const categoryServed = new Set<string>();
+    await page.route(
+      (url) => url.pathname.endsWith('/api/discovery') && !url.pathname.includes('/vote'),
+      async (route) => {
+        const category = new URL(route.request().url()).searchParams.get('category') ?? '';
+        const firstTime = !categoryServed.has(category);
+        categoryServed.add(category);
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: firstTime ? MOCK_STACK : [] }),
+        });
+      }
+    );
+
     await page.goto('/discovery');
 
     await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
