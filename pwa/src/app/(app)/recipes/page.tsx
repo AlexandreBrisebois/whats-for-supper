@@ -27,6 +27,7 @@ import { assignRecipeToDay } from '@/lib/api/planner';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
 
 /**
  * RecipesPage / Search destination.
@@ -44,6 +45,7 @@ export default function RecipesPage() {
   const [isAssigning, setIsAssigning] = useState(false);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
   const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(null);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -545,6 +547,7 @@ export default function RecipesPage() {
         <button
           type="button"
           data-testid="recycle-bin-entry"
+          onClick={() => setIsTrashOpen(true)}
           className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
         >
           <Trash2 size={16} className="text-terracotta" />
@@ -566,6 +569,8 @@ export default function RecipesPage() {
           onFindSimilar={handleFindSimilar}
         />
       )}
+
+      {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
     </div>
   );
 }

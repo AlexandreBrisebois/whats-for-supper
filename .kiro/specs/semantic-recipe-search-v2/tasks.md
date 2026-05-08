@@ -972,7 +972,7 @@ navigate back → item no longer in trash. Watch it fail. Implement. Watch it pa
 - PWA unit tests pass.
 - `task review` passes.
 
-- [ ] Task 15 complete
+- [x] Task 15 complete
 
 ---
 

@@ -259,6 +259,34 @@ export async function searchRecipes(
   };
 }
 
+export type TrashItem = {
+  id: string;
+  name: string | null;
+  imageUrl: string | null;
+  deletedAt: string;
+  deletedBy: string | null;
+};
+
+export async function getTrashItems(): Promise<TrashItem[]> {
+  const result = await apiClient.api.recipes.trash.get();
+  const items = (result?.data as { items?: unknown[] } | null | undefined)?.items ?? [];
+  return items.map((item: unknown) => {
+    const i = item as Record<string, unknown>;
+    return {
+      id: (i.id as string) || '',
+      name: (i.name as string | null) ?? null,
+      imageUrl: (i.imageUrl as string | null) ?? null,
+      deletedAt:
+        i.deletedAt instanceof Date ? i.deletedAt.toISOString() : (i.deletedAt as string) || '',
+      deletedBy: (i.deletedBy as string | null) ?? null,
+    };
+  });
+}
+
+export async function restoreRecipe(id: string): Promise<void> {
+  await apiClient.api.recipes.byId(id as any).restore.post();
+}
+
 export async function getRecommendations(): Promise<RecommendationsResponse> {
   const result = await apiClient.api.recipes.recommendations.get();
   const data = result?.data;

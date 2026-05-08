@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => {
   const updateRecipe = vi.fn();
   const assignRecipeToDay = vi.fn();
   const submitInventoryCapture = vi.fn();
+  const getTrashItems = vi.fn();
+  const restoreRecipe = vi.fn();
   const push = vi.fn();
   let searchParams = new URLSearchParams('');
 
@@ -16,6 +18,8 @@ const mocks = vi.hoisted(() => {
     updateRecipe,
     assignRecipeToDay,
     submitInventoryCapture,
+    getTrashItems,
+    restoreRecipe,
     push,
     setSearchParams: (value: string) => {
       searchParams = new URLSearchParams(value);
@@ -57,6 +61,8 @@ vi.mock('@/lib/api/recipes', () => ({
   searchRecipes: (...args: unknown[]) => mocks.searchRecipes(...args),
   getRecipe: (...args: unknown[]) => mocks.getRecipe(...args),
   updateRecipe: (...args: unknown[]) => mocks.updateRecipe(...args),
+  getTrashItems: (...args: unknown[]) => mocks.getTrashItems(...args),
+  restoreRecipe: (...args: unknown[]) => mocks.restoreRecipe(...args),
 }));
 
 vi.mock('@/lib/api/inventory', () => ({
@@ -133,6 +139,8 @@ describe('RecipesPage', () => {
       inferredIngredients: ['chicken'],
       confidence: 0.9,
     });
+    mocks.getTrashItems.mockResolvedValue([]);
+    mocks.restoreRecipe.mockResolvedValue(undefined);
   });
 
   it('renders the search input immediately and the placeholder controls after load', async () => {
@@ -533,6 +541,111 @@ describe('RecipesPage', () => {
       // The popup should still be visible with a retry/busy message
       expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
     });
+  });
+
+  // ── Task 15: Recycle Bin UI ─────────────────────────────────────────────────
+
+  it('recycle-bin-entry is visible on the search surface', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('recycle-bin-entry')).toBeInTheDocument());
+  });
+
+  it('tapping recycle-bin-entry opens the trash view with trash-list', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('recycle-bin-entry')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('trash-list')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('recycle-bin-entry'));
+
+    await waitFor(() => expect(screen.getByTestId('trash-list')).toBeInTheDocument());
+  });
+
+  it('trash view renders items with trash-item-<id>, action-restore-<id>, action-purge-<id>', async () => {
+    const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    mocks.getTrashItems.mockResolvedValue([
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
+    ]);
+
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('recycle-bin-entry')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('recycle-bin-entry'));
+
+    await waitFor(() => expect(screen.getByTestId(`trash-item-${TRASH_ID}`)).toBeInTheDocument());
+    expect(screen.getByTestId(`action-restore-${TRASH_ID}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`action-purge-${TRASH_ID}`)).toBeInTheDocument();
+  });
+
+  it('tapping action-restore-<id> calls restoreRecipe and removes the item from the list', async () => {
+    const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    mocks.getTrashItems.mockResolvedValue([
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
+    ]);
+
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('recycle-bin-entry')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('recycle-bin-entry'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`action-restore-${TRASH_ID}`)).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByTestId(`action-restore-${TRASH_ID}`));
+
+    await waitFor(() => {
+      expect(mocks.restoreRecipe).toHaveBeenCalledWith(TRASH_ID);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(`trash-item-${TRASH_ID}`)).not.toBeInTheDocument();
+    });
+  });
+
+  it('trash view shows trash-empty-state when items array is empty', async () => {
+    mocks.getTrashItems.mockResolvedValue([]);
+
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('recycle-bin-entry')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('recycle-bin-entry'));
+
+    await waitFor(() => expect(screen.getByTestId('trash-empty-state')).toBeInTheDocument());
+  });
+
+  it('restore is available without any PIN challenge', async () => {
+    const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    mocks.getTrashItems.mockResolvedValue([
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
+    ]);
+
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('recycle-bin-entry')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('recycle-bin-entry'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`action-restore-${TRASH_ID}`)).toBeInTheDocument()
+    );
+
+    expect(screen.queryByTestId('elevated-pin-dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId(`action-restore-${TRASH_ID}`));
+
+    await waitFor(() => expect(mocks.restoreRecipe).toHaveBeenCalledWith(TRASH_ID));
+    expect(screen.queryByTestId('elevated-pin-dialog')).not.toBeInTheDocument();
   });
 
   // ── Task 12: Agent search UI ────────────────────────────────────────────────

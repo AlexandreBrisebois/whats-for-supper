@@ -519,6 +519,62 @@ test.describe('Recipes Search Page', () => {
     expect(inventoryCalled).toBe(false);
   });
 
+  // ── Task 15: Recycle Bin UI ─────────────────────────────────────────────────
+
+  test('tapping recycle-bin-entry opens the trash view with trash-list visible', async ({
+    page,
+  }) => {
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('recycle-bin-entry').click();
+
+    await expect(page.getByTestId('trash-list')).toBeVisible();
+  });
+
+  test('trash item with id shows, restore tap removes it from the list', async ({ page }) => {
+    await page.unroute('**/api/recipes/trash');
+    await page.route('**/api/recipes/trash', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: MOCK_IDS.RECIPE_IN_TRASH,
+                name: 'Deleted Lasagna',
+                imageUrl: null,
+                deletedAt: new Date().toISOString(),
+                deletedBy: null,
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('recycle-bin-entry').click();
+
+    await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_IN_TRASH}`)).toBeVisible();
+
+    await page.getByTestId(`action-restore-${MOCK_IDS.RECIPE_IN_TRASH}`).click();
+
+    await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_IN_TRASH}`)).not.toBeVisible();
+  });
+
+  test('empty trash shows trash-empty-state', async ({ page }) => {
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('recycle-bin-entry').click();
+
+    await expect(page.getByTestId('trash-empty-state')).toBeVisible();
+  });
+
   test('toggling discovery from the detail sheet calls PATCH with isDiscoverable without navigating', async ({
     page,
   }) => {
