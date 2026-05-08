@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
+
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using RecipeApi.Data;
@@ -127,6 +129,11 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
         builder.Services.AddScoped<RecipeSearchService>();
+        builder.Services.AddScoped<AgentSearchTranslationService>();
+        builder.Services.AddSingleton<InventoryCaptureService>();
+
+        // Stub IChatClient so AgentSearchTranslationService and InventoryCaptureService can be resolved in tests
+        builder.Services.AddSingleton<IChatClient>(new StubChatClient("""{"query":"","filters":{}}"""));
         builder.Services.AddScoped<RecipeImportService>();
         builder.Services.AddScoped<RecipeImportBulkService>();
         builder.Services.AddScoped<SettingsService>();

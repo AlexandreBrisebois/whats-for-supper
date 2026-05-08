@@ -22,6 +22,12 @@ import {
 } from './ingredients/index';
 // @ts-ignore
 import {
+  InventoryCapturesRequestBuilderNavigationMetadata,
+  InventoryCapturesRequestBuilderRequestsMetadata,
+  type InventoryCapturesRequestBuilder,
+} from './inventoryCaptures/index';
+// @ts-ignore
+import {
   ManagementRequestBuilderNavigationMetadata,
   type ManagementRequestBuilder,
 } from './management/index';
@@ -77,6 +83,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
    */
   get ingredients(): IngredientsRequestBuilder;
   /**
+   * The inventoryCaptures property
+   */
+  get inventoryCaptures(): InventoryCapturesRequestBuilder;
+  /**
    * The management property
    */
   get management(): ManagementRequestBuilder;
@@ -125,6 +135,10 @@ export const ApiRequestBuilderNavigationMetadata: Record<
   },
   ingredients: {
     navigationMetadata: IngredientsRequestBuilderNavigationMetadata,
+  },
+  inventoryCaptures: {
+    requestsMetadata: InventoryCapturesRequestBuilderRequestsMetadata,
+    navigationMetadata: InventoryCapturesRequestBuilderNavigationMetadata,
   },
   management: {
     navigationMetadata: ManagementRequestBuilderNavigationMetadata,

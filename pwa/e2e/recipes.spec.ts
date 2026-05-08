@@ -401,6 +401,124 @@ test.describe('Recipes Search Page', () => {
     ).not.toBeVisible();
   });
 
+  // ── Task 12: Agent search E2E ───────────────────────────────────────────────
+
+  test('agent search trigger opens agent input, submit fires mode:agent search and shows top pick', async ({
+    page,
+  }) => {
+    let lastSearchBody: Record<string, unknown> | null = null;
+
+    await page.unroute('**/api/recipes/search');
+    await page.route('**/api/recipes/search', async (route) => {
+      lastSearchBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: MOCK_SEARCH_RESULTS.topPick,
+            results: MOCK_SEARCH_RESULTS.secondary,
+            appliedFilters: {},
+            searchMode: 'agent',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('agent-search-trigger').click();
+    await expect(page.getByTestId('agent-search-input')).toBeVisible();
+
+    await page
+      .getByTestId('agent-search-input')
+      .fill('something fresh and quick my kids will like');
+    await page.getByTestId('agent-search-submit').click();
+
+    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+    await expect.poll(() => (lastSearchBody as any)?.mode).toBe('agent');
+
+    await expect(page.locator('[data-testid="chat-response"]')).toHaveCount(0);
+  });
+
+  test('agent search close hides the agent input and keeps existing results visible', async ({
+    page,
+  }) => {
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+
+    await page.getByTestId('agent-search-trigger').click();
+    await expect(page.getByTestId('agent-search-input')).toBeVisible();
+
+    await page.getByTestId('agent-search-close').click();
+    await expect(page.getByTestId('agent-search-input')).not.toBeVisible();
+    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+  });
+
+  // ── Task 13: Inventory capture E2E ─────────────────────────────────────────
+
+  test('camera trigger opens popup; submit fires inventory-captures and passes snapshotId to next search', async ({
+    page,
+  }) => {
+    let lastSearchBody: Record<string, unknown> | null = null;
+
+    await page.unroute('**/api/recipes/search');
+    await page.route('**/api/recipes/search', async (route) => {
+      lastSearchBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: MOCK_SEARCH_RESULTS.topPick,
+            results: [],
+            appliedFilters: {},
+            searchMode: 'pantry-assisted',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('inventory-camera-trigger').click();
+    await expect(page.getByTestId('inventory-capture-popup')).toBeVisible();
+
+    await page.getByTestId('inventory-capture-submit').click();
+
+    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+    await expect
+      .poll(() => (lastSearchBody as any)?.pantrySnapshotId)
+      .toBe(MOCK_IDS.INVENTORY_CAPTURE);
+  });
+
+  test('camera cancel closes popup without making any inventory API call', async ({ page }) => {
+    let inventoryCalled = false;
+    await page.route('**/api/inventory-captures', async (route) => {
+      inventoryCalled = true;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId('inventory-camera-trigger').click();
+    await expect(page.getByTestId('inventory-capture-popup')).toBeVisible();
+
+    await page.getByTestId('inventory-capture-cancel').click();
+    await expect(page.getByTestId('inventory-capture-popup')).not.toBeVisible();
+
+    expect(inventoryCalled).toBe(false);
+  });
+
   test('toggling discovery from the detail sheet calls PATCH with isDiscoverable without navigating', async ({
     page,
   }) => {

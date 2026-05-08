@@ -732,7 +732,7 @@ Watch it fail. Implement. Watch it pass.
 - API unit tests pass.
 - `task review` passes.
 
-- [ ] Task 12 complete
+- [x] Task 12 complete
 
 ---
 
@@ -827,7 +827,7 @@ await page.route('**/api/inventory-captures/*', async (route) => {
 - Temp files are cleaned up in all paths.
 - `task review` passes.
 
-- [ ] Task 13 complete
+- [x] Task 13 complete
 
 ---
 

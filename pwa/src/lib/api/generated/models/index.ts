@@ -152,6 +152,17 @@ export function createHealthCheckResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {InventoryCaptureResponse}
+ */
+// @ts-ignore
+export function createInventoryCaptureResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoInventoryCaptureResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ManagementTaskAcceptedResponse}
  */
 // @ts-ignore
@@ -914,6 +925,27 @@ export function deserializeIntoHealthCheckResponse_checks(
   healthCheckResponse_checks: Partial<HealthCheckResponse_checks> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
+}
+/**
+ * The deserialization information for the current model
+ * @param InventoryCaptureResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoInventoryCaptureResponse(
+  inventoryCaptureResponse: Partial<InventoryCaptureResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    confidence: (n) => {
+      inventoryCaptureResponse.confidence = n.getNumberValue();
+    },
+    inferredIngredients: (n) => {
+      inventoryCaptureResponse.inferredIngredients = n.getCollectionOfPrimitiveValues<string>();
+    },
+    snapshotId: (n) => {
+      inventoryCaptureResponse.snapshotId = n.getGuidValue();
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -2262,6 +2294,20 @@ export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
   timestamp?: Date | null;
 }
 export interface HealthCheckResponse_checks extends AdditionalDataHolder, Parsable {}
+export interface InventoryCaptureResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The confidence property
+   */
+  confidence?: number | null;
+  /**
+   * The inferredIngredients property
+   */
+  inferredIngredients?: string[] | null;
+  /**
+   * The snapshotId property
+   */
+  snapshotId?: Guid | null;
+}
 export interface ManagementTaskAcceptedResponse extends AdditionalDataHolder, Parsable {
   /**
    * The message property
@@ -3032,6 +3078,29 @@ export function serializeHealthCheckResponse_checks(
     return;
   }
   writer.writeAdditionalData(healthCheckResponse_checks.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param InventoryCaptureResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeInventoryCaptureResponse(
+  writer: SerializationWriter,
+  inventoryCaptureResponse: Partial<InventoryCaptureResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!inventoryCaptureResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('confidence', inventoryCaptureResponse.confidence);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'inferredIngredients',
+    inventoryCaptureResponse.inferredIngredients
+  );
+  writer.writeGuidValue('snapshotId', inventoryCaptureResponse.snapshotId);
+  writer.writeAdditionalData(inventoryCaptureResponse.additionalData);
 }
 /**
  * Serializes information the current object

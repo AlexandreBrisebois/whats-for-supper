@@ -104,6 +104,8 @@ try
     builder.Services.AddScoped<RecipeImportBulkService>();
     builder.Services.AddScoped<RecipeService>();
     builder.Services.AddScoped<RecipeSearchService>();
+    builder.Services.AddScoped<AgentSearchTranslationService>();
+    builder.Services.AddSingleton<InventoryCaptureService>();
     builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddScoped<ScheduleService>();

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   const getRecipe = vi.fn();
   const updateRecipe = vi.fn();
   const assignRecipeToDay = vi.fn();
+  const submitInventoryCapture = vi.fn();
   const push = vi.fn();
   let searchParams = new URLSearchParams('');
 
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => {
     getRecipe,
     updateRecipe,
     assignRecipeToDay,
+    submitInventoryCapture,
     push,
     setSearchParams: (value: string) => {
       searchParams = new URLSearchParams(value);
@@ -55,6 +57,10 @@ vi.mock('@/lib/api/recipes', () => ({
   searchRecipes: (...args: unknown[]) => mocks.searchRecipes(...args),
   getRecipe: (...args: unknown[]) => mocks.getRecipe(...args),
   updateRecipe: (...args: unknown[]) => mocks.updateRecipe(...args),
+}));
+
+vi.mock('@/lib/api/inventory', () => ({
+  submitInventoryCapture: (...args: unknown[]) => mocks.submitInventoryCapture(...args),
 }));
 
 vi.mock('@/lib/api/planner', () => ({
@@ -122,6 +128,11 @@ describe('RecipesPage', () => {
     mocks.getRecipe.mockResolvedValue(makeRecipeDetail());
     mocks.updateRecipe.mockResolvedValue(undefined);
     mocks.assignRecipeToDay.mockResolvedValue(undefined);
+    mocks.submitInventoryCapture.mockResolvedValue({
+      snapshotId: 'snap-123',
+      inferredIngredients: ['chicken'],
+      confidence: 0.9,
+    });
   });
 
   it('renders the search input immediately and the placeholder controls after load', async () => {
@@ -455,5 +466,142 @@ describe('RecipesPage', () => {
 
     expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
     expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
+  });
+
+  // ── Task 13: Inventory camera popup ─────────────────────────────────────────
+
+  it('inventory-camera-trigger tap opens the inventory-capture-popup', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('inventory-capture-popup')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
+  });
+
+  it('inventory-capture-popup renders submit and cancel buttons', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    expect(screen.getByTestId('inventory-capture-submit')).toBeInTheDocument();
+    expect(screen.getByTestId('inventory-capture-cancel')).toBeInTheDocument();
+  });
+
+  it('submitting the popup calls POST /api/inventory-captures and includes snapshotId in next search', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+    fireEvent.click(screen.getByTestId('inventory-capture-submit'));
+
+    await waitFor(() => {
+      expect(mocks.submitInventoryCapture).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pantrySnapshotId: 'snap-123' })
+      );
+    });
+  });
+
+  it('inventory-capture-cancel closes popup without making any API call', async () => {
+    const initialCallCount = mocks.searchRecipes.mock.calls.length;
+
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('inventory-capture-cancel'));
+
+    expect(screen.queryByTestId('inventory-capture-popup')).not.toBeInTheDocument();
+    // Cancel should not trigger any additional search calls
+    expect(mocks.searchRecipes.mock.calls.length).toBe(initialCallCount + 1); // only the initial mount call
+  });
+
+  it('popup shows busy message when capture returns busy status', async () => {
+    mocks.submitInventoryCapture.mockResolvedValueOnce({ busy: true, retryAfterSeconds: 30 });
+
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+    fireEvent.click(screen.getByTestId('inventory-capture-submit'));
+
+    await waitFor(() => {
+      // The popup should still be visible with a retry/busy message
+      expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
+    });
+  });
+
+  // ── Task 12: Agent search UI ────────────────────────────────────────────────
+
+  it('agent-search-trigger tap shows agent-search-input textarea', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('agent-search-trigger'));
+
+    expect(screen.getByTestId('agent-search-input')).toBeInTheDocument();
+  });
+
+  it('agent-search-submit calls searchRecipes with mode: "agent"', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('agent-search-trigger'));
+    fireEvent.change(screen.getByTestId('agent-search-input'), {
+      target: { value: 'something fresh and quick my kids will like' },
+    });
+    fireEvent.click(screen.getByTestId('agent-search-submit'));
+
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ mode: 'agent' })
+      );
+    });
+  });
+
+  it('agent search results render in the same recipe-card-top-pick template', async () => {
+    mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ searchMode: 'agent' }));
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('agent-search-trigger'));
+    fireEvent.change(screen.getByTestId('agent-search-input'), {
+      target: { value: 'something warm' },
+    });
+    fireEvent.click(screen.getByTestId('agent-search-submit'));
+
+    await waitFor(() => expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument());
+  });
+
+  it('agent search does NOT render a chat UI element', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('agent-search-trigger'));
+    fireEvent.change(screen.getByTestId('agent-search-input'), {
+      target: { value: 'something warm and filling' },
+    });
+    fireEvent.click(screen.getByTestId('agent-search-submit'));
+
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalled());
+
+    expect(screen.queryByTestId('chat-response')).not.toBeInTheDocument();
+  });
+
+  it('agent-search-close hides agent-search-input and keeps existing results visible', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('agent-search-trigger'));
+    expect(screen.getByTestId('agent-search-input')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('agent-search-close'));
+    expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
+    expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
   });
 });

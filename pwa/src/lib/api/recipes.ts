@@ -234,7 +234,14 @@ export async function updateRecipe(
 export async function searchRecipes(
   request: Pick<
     RecipeSearchRequestDto,
-    'query' | 'mode' | 'limit' | 'weekOffset' | 'dayIndex' | 'similarToRecipeId' | 'filters'
+    | 'query'
+    | 'mode'
+    | 'limit'
+    | 'weekOffset'
+    | 'dayIndex'
+    | 'similarToRecipeId'
+    | 'pantrySnapshotId'
+    | 'filters'
   >
 ): Promise<RecipeSearchResponse> {
   const result = await apiClient.api.recipes.search.post(request);

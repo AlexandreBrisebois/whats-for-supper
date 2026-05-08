@@ -11,6 +11,7 @@ namespace RecipeApi.Controllers;
 public class RecipeController(
     RecipeService recipeService,
     RecipeSearchService recipeSearchService,
+    AgentSearchTranslationService agentSearchTranslationService,
     ImageService imageService,
     RecipeImportService importService,
     RecipeImportBulkService bulkImportService) : ControllerBase
@@ -199,11 +200,15 @@ public class RecipeController(
         return Ok(response);
     }
 
-    /// <summary>POST /api/recipes/search — contract placeholder for semantic search.</summary>
+    /// <summary>POST /api/recipes/search — hybrid recipe search with optional agent translation.</summary>
     [HttpPost("search")]
     public async Task<IActionResult> Search([FromBody] RecipeSearchRequestDto dto, CancellationToken ct)
     {
-        var result = await recipeSearchService.SearchAsync(dto, ct);
+        var effectiveDto = string.Equals(dto.Mode, "agent", StringComparison.OrdinalIgnoreCase)
+            ? await agentSearchTranslationService.TranslateAsync(dto, ct)
+            : dto;
+
+        var result = await recipeSearchService.SearchAsync(effectiveDto, ct);
         return Ok(result);
     }
 

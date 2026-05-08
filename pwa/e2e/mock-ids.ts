@@ -20,4 +20,7 @@ export const MOCK_IDS = {
   RECIPE_TACOS: '660e8400-e29b-41d4-a716-446655440015',
   RECIPE_SPAGHETTI: '660e8400-e29b-41d4-a716-446655440016',
   RECIPE_GOTO_STUB: '660e8400-e29b-41d4-a716-446655440020', // stub created by POST /api/recipes/describe
+
+  // Inventory captures (Task 13)
+  INVENTORY_CAPTURE: '770e8400-e29b-41d4-a716-446655440030',
 };

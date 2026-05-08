@@ -20,6 +20,7 @@ import {
   type RecipeSearchResult,
   type Recipe,
 } from '@/lib/api/recipes';
+import { submitInventoryCapture } from '@/lib/api/inventory';
 import type { RecipeSearchFiltersDto } from '@/lib/api/generated/models/index';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { assignRecipeToDay } from '@/lib/api/planner';
@@ -33,6 +34,11 @@ import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
  */
 export default function RecipesPage() {
   const [query, setQuery] = useState('');
+  const [agentQuery, setAgentQuery] = useState('');
+  const [isAgentOpen, setIsAgentOpen] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isCameraBusy, setIsCameraBusy] = useState(false);
+  const [pantrySnapshotId, setPantrySnapshotId] = useState<string | null>(null);
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -51,11 +57,13 @@ export default function RecipesPage() {
   const runSearch = async (
     nextQuery: string,
     nextSimilarToRecipeId?: string | null,
-    nextFilters?: RecipeSearchFiltersDto
+    nextFilters?: RecipeSearchFiltersDto,
+    nextPantrySnapshotId?: string | null
   ) => {
     setIsLoading(true);
     try {
       const filters = nextFilters ?? activeFilters;
+      const snapshotId = nextPantrySnapshotId ?? pantrySnapshotId;
       const response = await searchRecipes({
         query: nextQuery,
         mode: 'standard',
@@ -63,6 +71,7 @@ export default function RecipesPage() {
         weekOffset: parsedWeekOffset,
         dayIndex: parsedDayIndex,
         similarToRecipeId: nextSimilarToRecipeId ?? undefined,
+        pantrySnapshotId: snapshotId ?? undefined,
         filters: Object.keys(filters).length > 0 ? filters : undefined,
       });
       setData(response);
@@ -148,6 +157,44 @@ export default function RecipesPage() {
     void runSearch('', recipeId);
   };
 
+  const handleAgentSubmit = () => {
+    if (!agentQuery.trim()) return;
+    setIsAgentOpen(false);
+    setIsLoading(true);
+    searchRecipes({
+      query: agentQuery,
+      mode: 'agent',
+      limit: 5,
+      weekOffset: parsedWeekOffset,
+      dayIndex: parsedDayIndex,
+    })
+      .then((response) => setData(response))
+      .catch(() =>
+        setData({
+          topPick: null,
+          results: [],
+          appliedFilters: {},
+          searchMode: 'agent',
+          resultPath: 'lexical-only',
+        })
+      )
+      .finally(() => setIsLoading(false));
+  };
+
+  const handleCameraSubmit = async (files: File[]) => {
+    setIsCameraBusy(false);
+    const result = await submitInventoryCapture(files);
+
+    if ('busy' in result) {
+      setIsCameraBusy(true);
+      return;
+    }
+
+    setIsCameraOpen(false);
+    setPantrySnapshotId(result.snapshotId);
+    void runSearch(query, similarToRecipeId, activeFilters, result.snapshotId);
+  };
+
   const handleFilterToggle = (key: keyof RecipeSearchFiltersDto) => {
     const next = { ...activeFilters, [key]: activeFilters[key] ? null : true };
     if (!next[key]) delete next[key];
@@ -220,24 +267,99 @@ export default function RecipesPage() {
         )}
       </motion.div>
 
-      <div className="flex items-center gap-3 px-1">
-        <button
-          type="button"
-          data-testid="agent-search-trigger"
-          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
-        >
-          <Sparkles size={16} className="text-terracotta" />
-          {t('recipes.agentSearch', 'Agent Search')}
-        </button>
-        <button
-          type="button"
-          data-testid="inventory-camera-trigger"
-          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
-        >
-          <Camera size={16} className="text-terracotta" />
-          {t('recipes.inventoryCamera', 'Use Camera')}
-        </button>
+      <div className="flex flex-col gap-3 px-1">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            data-testid="agent-search-trigger"
+            onClick={() => setIsAgentOpen((prev) => !prev)}
+            className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+          >
+            <Sparkles size={16} className="text-terracotta" />
+            {t('recipes.agentSearch', 'Agent Search')}
+          </button>
+          <button
+            type="button"
+            data-testid="inventory-camera-trigger"
+            onClick={() => {
+              setIsCameraOpen(true);
+              setIsCameraBusy(false);
+            }}
+            className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+          >
+            <Camera size={16} className="text-terracotta" />
+            {t('recipes.inventoryCamera', 'Use Camera')}
+          </button>
+        </div>
+
+        {isAgentOpen && (
+          <div className="flex flex-col gap-2">
+            <textarea
+              data-testid="agent-search-input"
+              value={agentQuery}
+              onChange={(e) => setAgentQuery(e.target.value)}
+              placeholder={t(
+                'recipes.agentSearchPlaceholder',
+                'Describe what you feel like tonight in your own words…'
+              )}
+              rows={3}
+              className="w-full rounded-2xl border-2 border-charcoal/10 bg-white/80 p-4 text-base font-medium text-charcoal placeholder:text-charcoal/30 focus:border-terracotta/30 focus:outline-none resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                data-testid="agent-search-submit"
+                onClick={handleAgentSubmit}
+                className="rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"
+              >
+                {t('recipes.agentSearchSubmit', 'Search')}
+              </button>
+              <button
+                type="button"
+                data-testid="agent-search-close"
+                onClick={() => setIsAgentOpen(false)}
+                className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
+              >
+                {t('recipes.cancel', 'Cancel')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {isCameraOpen && (
+        <div
+          data-testid="inventory-capture-popup"
+          className="rounded-2xl border border-charcoal/10 bg-white/90 p-5 shadow-lg flex flex-col gap-4"
+        >
+          <p className="text-sm font-bold text-charcoal">
+            {t('recipes.cameraPopupTitle', 'Take a photo of your pantry, fridge, or freezer')}
+          </p>
+          {isCameraBusy && (
+            <p className="text-sm text-terracotta font-medium">
+              {t('recipes.cameraBusy', "We're processing a lot right now. Try again in a moment.")}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-testid="inventory-capture-submit"
+              onClick={() => void handleCameraSubmit([])}
+              className="rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"
+            >
+              {t('recipes.cameraSubmit', 'Use Photo')}
+            </button>
+            <button
+              type="button"
+              data-testid="inventory-capture-cancel"
+              onClick={() => setIsCameraOpen(false)}
+              className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
+            >
+              {t('recipes.cancel', 'Cancel')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Quick filter pills */}
       <div className="flex flex-wrap gap-2 px-1">

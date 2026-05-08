@@ -687,6 +687,40 @@ components:
             - Deli
             - Grocery
 
+    # --- Inventory Captures ---
+    InventoryCaptureRequest:
+      type: object
+      properties:
+        photos:
+          type: array
+          items:
+            type: string
+            format: binary
+    InventoryCaptureResponse:
+      type: object
+      required: [snapshotId, inferredIngredients, confidence]
+      properties:
+        snapshotId:
+          type: string
+          format: uuid
+        inferredIngredients:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+    InventoryCaptureBusyResponse:
+      type: object
+      required: [status, retryAfterSeconds, message]
+      properties:
+        status:
+          type: string
+          enum: [busy]
+        retryAfterSeconds:
+          type: integer
+        message:
+          type: string
+
 paths:
   /api/stream:
     get:
@@ -1816,3 +1850,50 @@ paths:
                 data:
                   key: family_goto
                   value: { description: 'Our Family Spaghetti', recipeId: '660e8400-e29b-41d4-a716-446655440010' }
+
+  /api/inventory-captures:
+    post:
+      summary: Submit pantry photos and get an inventory snapshot
+      requestBody:
+        required: false
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InventoryCaptureRequest'
+      responses:
+        '200':
+          description: Snapshot created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/InventoryCaptureResponse' }
+        '202':
+          description: Vision model busy — retry later
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/InventoryCaptureBusyResponse' }
+
+  /api/inventory-captures/{id}:
+    get:
+      summary: Retrieve a pantry snapshot by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Snapshot found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/InventoryCaptureResponse' }
+        '404':
+          description: Snapshot not found or expired
