@@ -274,8 +274,7 @@ export default function RecipesPage() {
   const { topPick, results } = data ?? { topPick: null, results: [] };
   const showEmptyState = !isLoading && topPick == null && results.length === 0;
   const hasActiveFilters = Object.keys(activeFilters).length > 0;
-  const hasMoreResults =
-    data !== null && (topPick !== null || results.length > 0) && results.length >= limit - 1;
+  const hasMoreResults = data !== null && results.length >= limit;
 
   return (
     <div className="flex flex-col gap-6 pt-6 pb-12">
@@ -508,9 +507,13 @@ export default function RecipesPage() {
             >
               {isSubmittingPhotos
                 ? t('recipes.searching', 'Searching…')
-                : tWithVars('recipes.searchWithPhotos', `Search with ${pendingPhotos.length} photos`, {
-                    count: pendingPhotos.length,
-                  })}
+                : tWithVars(
+                    'recipes.searchWithPhotos',
+                    `Search with ${pendingPhotos.length} photos`,
+                    {
+                      count: pendingPhotos.length,
+                    }
+                  )}
             </button>
             <button
               type="button"

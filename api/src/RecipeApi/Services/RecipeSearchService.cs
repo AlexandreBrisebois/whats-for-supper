@@ -127,9 +127,14 @@ public partial class RecipeSearchService(
         candidates = await ApplyPantryBoostAsync(candidates, dto.PantrySnapshotId, ct);
 
         // 4. Map & Limit
-        var results = candidates
+        candidates = candidates
             .OrderByDescending(candidate => candidate.Score)
             .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
+            .ToList();
+
+        var topPick = candidates.FirstOrDefault();
+        var results = candidates
+            .Skip(topPick != null ? 1 : 0)
             .Take(limit)
             .Select(MapResult)
             .ToList();
@@ -141,7 +146,7 @@ public partial class RecipeSearchService(
 
         var response = new RecipeSearchResponseDto
         {
-            TopPick = results.FirstOrDefault(),
+            TopPick = topPick != null ? MapResult(topPick) : null,
             Results = results,
             AppliedFilters = appliedFilters,
             SearchMode = searchMode,
@@ -723,7 +728,10 @@ public partial class RecipeSearchService(
 
         return candidates.Select(candidate =>
         {
-            var recipeIngredients = DeserializeIngredients(candidate.Recipe.Ingredients)
+            var ingredientsJson = candidate.Recipe.Ingredients;
+            if (string.IsNullOrWhiteSpace(ingredientsJson)) return candidate;
+
+            var recipeIngredients = DeserializeIngredients(ingredientsJson)
                 .Select(Normalize)
                 .ToList();
 

@@ -53,7 +53,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Equal("Chicken Stir Fry", topPick.GetProperty("name").GetString());
 
         var results = data.GetProperty("results");
-        Assert.Contains(results.EnumerateArray(), result => result.GetProperty("name").GetString() == "Chicken Stir Fry");
+        Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("name").GetString() == "Chicken Stir Fry");
     }
 
     [Fact]
@@ -105,8 +105,10 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+        Assert.Equal("Chicken Stir Fry", topPick.GetProperty("name").GetString());
         var results = document.RootElement.GetProperty("results");
-        Assert.Contains(results.EnumerateArray(), result => result.GetProperty("name").GetString() == "Chicken Stir Fry");
+        Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("name").GetString() == "Chicken Stir Fry");
     }
 
     [Fact]
@@ -134,6 +136,10 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         using var document = await ReadDataAsync(response);
         var results = document.RootElement.GetProperty("results");
         Assert.True(results.GetArrayLength() <= 10);
+        // Ensure TopPick is not in results
+        var topPick = document.RootElement.GetProperty("topPick");
+        var topPickId = topPick.GetProperty("id").GetGuid();
+        Assert.DoesNotContain(results.EnumerateArray(), r => r.GetProperty("id").GetGuid() == topPickId);
     }
 
     [Fact]
@@ -178,8 +184,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = await ReadDataAsync(response);
-        var firstResult = document.RootElement.GetProperty("results")[0];
-        var firstReason = firstResult.GetProperty("reasons")[0];
+        var topPick = document.RootElement.GetProperty("topPick");
+        var firstReason = topPick.GetProperty("reasons")[0];
 
         Assert.False(string.IsNullOrWhiteSpace(firstReason.GetProperty("source").GetString()));
         Assert.False(string.IsNullOrWhiteSpace(firstReason.GetProperty("label").GetString()));
@@ -215,8 +221,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = await ReadDataAsync(response);
-        var results = document.RootElement.GetProperty("results");
-        Assert.Equal("Newest Recipe", results[0].GetProperty("name").GetString());
+        var topPick = document.RootElement.GetProperty("topPick");
+        Assert.Equal("Newest Recipe", topPick.GetProperty("name").GetString());
     }
 
     [Fact]
@@ -284,10 +290,12 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
         var results = document.RootElement.GetProperty("results");
 
         Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("id").GetGuid() == assignedRecipe.Id);
-        Assert.Contains(results.EnumerateArray(), result => result.GetProperty("id").GetGuid() == availableRecipe.Id);
+        var topPickId = topPick.GetProperty("id").GetGuid();
+        Assert.True(topPickId == availableRecipe.Id || results.EnumerateArray().Any(r => r.GetProperty("id").GetGuid() == availableRecipe.Id));
     }
 
     [Fact]
@@ -528,12 +536,10 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         using var document = await ReadDataAsync(response);
         var topPick = document.RootElement.GetProperty("topPick");
-        var votedResult = document.RootElement.GetProperty("results")
-            .EnumerateArray()
-            .Single(result => result.GetProperty("id").GetGuid() == votedRecipe.Id);
+        var results = document.RootElement.GetProperty("results");
 
         Assert.Equal(votedRecipe.Id, topPick.GetProperty("id").GetGuid());
-        Assert.Contains(votedResult.GetProperty("reasons").EnumerateArray(), reason =>
+        Assert.Contains(topPick.GetProperty("reasons").EnumerateArray(), reason =>
             reason.GetProperty("source").GetString() == "vote-boost" &&
             reason.GetProperty("label").GetString() == "Family has shown interest");
     }
@@ -549,18 +555,28 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         await SeedLikeVotesAsync(cappedRecipe.Id, 10);
         await SeedLikeVotesAsync(baselineRecipe.Id, 3);
 
+        // Explicitly set cappedRecipe as slightly newer to break ties
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var r = db.Recipes.Find(cappedRecipe.Id);
+            if (r != null) { r.CreatedAt = DateTimeOffset.UtcNow.AddSeconds(10); await db.SaveChangesAsync(); }
+        }
+
         var response = await PostSearchAsync(new { query = "chicken rice bowl" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
         var results = document.RootElement.GetProperty("results");
-        var cappedResult = results.EnumerateArray().Single(result => result.GetProperty("id").GetGuid() == cappedRecipe.Id);
-        var baselineResult = results.EnumerateArray().Single(result => result.GetProperty("id").GetGuid() == baselineRecipe.Id);
 
-        Assert.Contains(cappedResult.GetProperty("reasons").EnumerateArray(), reason =>
+        Assert.Equal(cappedRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Contains(topPick.GetProperty("reasons").EnumerateArray(), reason =>
             reason.GetProperty("source").GetString() == "vote-boost" &&
             reason.GetProperty("label").GetString() == "Family has shown interest");
+
+        var baselineResult = results.EnumerateArray().Single(result => result.GetProperty("id").GetGuid() == baselineRecipe.Id);
         Assert.Contains(baselineResult.GetProperty("reasons").EnumerateArray(), reason =>
             reason.GetProperty("source").GetString() == "vote-boost" &&
             reason.GetProperty("label").GetString() == "Family has shown interest");

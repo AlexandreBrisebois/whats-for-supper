@@ -4,6 +4,34 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-09] Session — Search UX & Intelligence Optimization
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+This session focused on optimizing the **Recipe Search UX** for the PWA, specifically addressing layout density, visual redundancy, and the quality of search results through pantry intelligence.
+
+**Key Achievements:**
+1. **Layout Modernization**: Increased vertical spacing (`pt-6`) on the search page and added glassmorphism to the Agent Search textarea, aligning it with the *Mère-Designer* premium UI standards.
+2. **Healthy Choice Filter**: Added an explicit `HealthyOnly` filter to the `RecipeSearchFiltersDto` and backend services. The agent now recognizes "healthy" intent in long-form text and automatically toggles the filter.
+3. **Pantry Boost**: Implemented a server-side scoring boost in `RecipeSearchService` that leverages `InventoryCaptureService` to prioritize recipes containing ingredients from user-uploaded photos.
+4. **Result Deduplication**: Restructured the search response to serve the highest-ranked result as a distinct `TopPick` and **explicitly exclude** it from the secondary `Results` list. This resolved React key conflicts and improved visual clarity.
+5. **Localization**: Updated English and French translation files with new keys for filters and UI labels.
+
+#### Technical Context & Decisions
+- **Zero Redundancy**: Moving the Top Pick out of the results collection ensures that the user never sees the same recipe twice on the search results screen, maximizing information density.
+- **Deduplication vs. Keys**: The separation of Top Pick and Results solved a persistent rendering issue where identical IDs in the Hero and Grid views caused React reconciliation conflicts.
+- **Pantry Normalization**: Ingredient matching between pantry photos and recipes is performed on normalized (lowercase, trimmed) strings to handle common data variations.
+
+#### Documentation Updated
+| File | What changed |
+|------|-------------|
+| `docs/search-experience-design.md` | Created new design document capturing the search UX and intelligence strategy. |
+| `HANDOVER.md` | Updated session entry for next developer. |
+| `JOURNAL.md` | Appended session summary to historical archive. |
+
+---
+
 ### [2026-05-09] Session — Search Indexing Resiliency & Workflow Migration
 **Status**: COMPLETED ✅
 **Branch**: `main` (Stabilized indexing)

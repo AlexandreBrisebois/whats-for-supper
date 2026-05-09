@@ -33,7 +33,14 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
    - Goal: Finalize "Fire-and-Forget" UX and hide incomplete recipes in `DiscoveryService.cs`.
    - Vertical slice: Ensure `MinimalCapture.tsx` redirects immediately and backend returns 401/403 if `X-Family-Member-Id` is missing for writes.
 
-4. **Phase 5: Production Polish (Upcoming)**
+4. **Phase 5: Search UX & Intelligence Optimization (COMPLETED ✅)**
+   - **Layout**: Resolved search page "squish" by adding `pt-6` padding. Refined Agent Search UI with glassmorphism.
+   - **Healthy Filter**: Implemented `HealthyOnly` toggle in backend and UI. Agent now recognizes "healthy" structured intent.
+   - **Pantry Boost**: Integrated camera snapshots into search ranking. Recipes matching pantry photos receive a `+10.0` score boost and clear labeling.
+   - **Deduplication**: Top Pick is now explicitly excluded from the secondary results list, resolving React key conflicts and visual redundancy.
+   - **Documentation**: Design details captured in `docs/search-experience-design.md`.
+
+5. **Phase 6: Production Polish (Upcoming)**
    - Finalize environment variables and Traefik TLS settings for the unified domain.
 
 ## Task 41 — Database Schema Audit (Completed)
