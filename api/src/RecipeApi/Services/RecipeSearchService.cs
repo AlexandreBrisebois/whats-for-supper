@@ -17,10 +17,10 @@ public partial class RecipeSearchService(
 {
     private const double PantryMatchBoost = 0.25;
     private const int DefaultLimit = 5;
-    private const int MaxLimit = 10;
-    private const int VectorCandidateLimit = 20;
+    private const int MaxLimit = 50;
+    private const int VectorCandidateLimit = 50;
     private const double ReasonThreshold = 0.3;
-    private const double MinimumCandidateScore = 0.2;
+    private const double MinimumCandidateScore = 0.15;
     private const double VectorSimilarityWeight = 0.6;
     private const double LexicalSimilarityWeight = 0.4;
     private const double PlannerGapBoost = 0.20;
@@ -31,6 +31,7 @@ public partial class RecipeSearchService(
     private const double BoostDislike = 0.10;
     private const double BoostVotesMax = 0.15;
     private const double BoostVotesRate = 0.05;
+    private const double PlannedDemotion = -10.0;
 
     public async Task<RecipeSearchResponseDto> SearchAsync(RecipeSearchRequestDto dto, CancellationToken ct = default)
     {
@@ -75,7 +76,7 @@ public partial class RecipeSearchService(
         else if (!string.IsNullOrWhiteSpace(query))
         {
             // Standard/Agent/Pantry Hybrid Search
-            var lexicalCandidates = await GetLexicalCandidatesAsync(recipesQuery, query, ct);
+            var lexicalCandidates = await GetLexicalCandidatesAsync(recipesQuery, query, appliedFilters, ct);
 
             if (embeddingProvider is not null)
             {
@@ -114,7 +115,7 @@ public partial class RecipeSearchService(
                 .OrderByDescending(recipe => recipe.CreatedAt)
                 .Take(MaxLimit)
                 .ToListAsync(ct);
-            candidates = BuildDefaultCandidates(recipes);
+            candidates = BuildDefaultCandidates(recipes, appliedFilters);
         }
 
         // 3. Reranking
@@ -127,13 +128,20 @@ public partial class RecipeSearchService(
         candidates = await ApplyPantryBoostAsync(candidates, dto.PantrySnapshotId, ct);
 
         // 4. Map & Limit
-        candidates = candidates
+        var finalCandidates = candidates
             .OrderByDescending(candidate => candidate.Score)
-            .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
-            .ToList();
+            .ThenByDescending(candidate => candidate.Recipe.CreatedAt);
 
-        var topPick = candidates.FirstOrDefault();
-        var results = candidates
+        if (dto.Filters?.NotCookedInLongTime == true)
+        {
+            // If explicitly looking for old recipes, prioritize by LastCookedDate ASC
+            finalCandidates = candidates
+                .OrderByDescending(c => c.Score)
+                .ThenBy(c => c.Recipe.LastCookedDate ?? DateTimeOffset.MinValue);
+        }
+
+        var topPick = finalCandidates.FirstOrDefault();
+        var results = finalCandidates
             .Skip(topPick != null ? 1 : 0)
             .Take(limit)
             .Select(MapResult)
@@ -175,9 +183,9 @@ public partial class RecipeSearchService(
         return response;
     }
 
-    private static List<RankedRecipe> BuildDefaultCandidates(List<Recipe> recipes)
+    private static List<RankedRecipe> BuildDefaultCandidates(List<Recipe> recipes, RecipeSearchFiltersDto? filters)
     {
-        return recipes
+        var candidates = recipes
             .Select(recipe => new RankedRecipe(
                 recipe,
                 0,
@@ -188,14 +196,28 @@ public partial class RecipeSearchService(
                 }],
                 null))
             .ToList();
+
+        if (filters?.QuickOnly == true)
+        {
+            candidates = candidates.Where(c => IsQuickRecipe(c.Recipe.TotalTime)).ToList();
+        }
+
+        return candidates;
     }
 
-    private static List<RankedRecipe> BuildRankedCandidates(List<Recipe> recipes, string query)
+    private static List<RankedRecipe> BuildRankedCandidates(List<Recipe> recipes, string query, RecipeSearchFiltersDto? filters)
     {
-        return recipes
+        var candidates = recipes
             .Select(recipe => RankRecipe(recipe, query))
             .Where(candidate => candidate.Score >= MinimumCandidateScore)
             .ToList();
+
+        if (filters?.QuickOnly == true)
+        {
+            candidates = candidates.Where(c => IsQuickRecipe(c.Recipe.TotalTime)).ToList();
+        }
+
+        return candidates;
     }
 
     private static RankedRecipe RankRecipe(Recipe recipe, string query)
@@ -328,8 +350,22 @@ public partial class RecipeSearchService(
             .ToHashSet();
 
         var reranked = candidates
-            .Where(candidate => !assignedRecipeIds.Contains(candidate.Recipe.Id))
-            .Select(candidate => ApplyPlannerSignals(candidate, schedule.BalanceSummary, query))
+            .Select(candidate =>
+            {
+                var isPlanned = assignedRecipeIds.Contains(candidate.Recipe.Id);
+                var updated = ApplyPlannerSignals(candidate, schedule.BalanceSummary, query);
+                if (isPlanned)
+                {
+                    var reasons = updated.Reasons.ToList();
+                    reasons.Add(new RecipeSearchReasonDto
+                    {
+                        Source = "planner-fit",
+                        Label = "Already planned for this week"
+                    });
+                    return updated with { Score = updated.Score + PlannedDemotion, Reasons = reasons };
+                }
+                return updated;
+            })
             .ToList();
 
         return reranked;
@@ -599,7 +635,7 @@ public partial class RecipeSearchService(
             // Fallback to lexical if no embedding
             var targetRecipe = await db.Recipes.FindAsync([similarToId], ct);
             if (targetRecipe is null) return [];
-            return await GetLexicalCandidatesAsync(recipesQuery.Where(r => r.Id != similarToId), targetRecipe.Name ?? "", ct);
+            return await GetLexicalCandidatesAsync(recipesQuery.Where(r => r.Id != similarToId), targetRecipe.Name ?? "", null, ct);
         }
 
         var candidates = await db.RecipeSearchDocuments
@@ -626,10 +662,11 @@ public partial class RecipeSearchService(
     private async Task<List<RankedRecipe>> GetLexicalCandidatesAsync(
         IQueryable<Recipe> recipesQuery,
         string query,
+        RecipeSearchFiltersDto? filters,
         CancellationToken ct)
     {
         var recipes = await recipesQuery.ToListAsync(ct);
-        return BuildRankedCandidates(recipes, query);
+        return BuildRankedCandidates(recipes, query, filters);
     }
 
     private List<RankedRecipe> MergeCandidates(
@@ -687,10 +724,9 @@ public partial class RecipeSearchService(
 
         if (filters.QuickOnly == true)
         {
-            // This is tricky in SQL due to string format of TotalTime.
-            // Requirement 5, AC 4: "totalTime parsed to <= 30 minutes"
-            // We'll filter in-memory if needed, but for now we try a simple keyword match if possible
-            query = query.Where(r => r.TotalTime != null && (r.TotalTime.Contains("min") || r.TotalTime.Contains("mins")));
+            // We'll filter this in memory in the service after fetching,
+            // but we can do a coarse filter here if we want.
+            // For now, let's keep it broad and filter in RankRecipe or BuildRankedCandidates.
         }
 
         if (filters.NotCookedInLongTime == true)

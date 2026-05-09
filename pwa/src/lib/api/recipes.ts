@@ -248,14 +248,16 @@ export async function searchRecipes(
   const data = ((result as { data?: RecipeSearchResponseDto } | null | undefined)?.data ??
     (result as RecipeSearchResponseDto | null | undefined)) as RecipeSearchResponseDto | undefined;
 
+  const results = (readField<RecipeSearchResultDto[]>(data, 'results') || [])
+    .map((recipe) => mapSearchResult(recipe))
+    .filter((recipe): recipe is RecipeSearchResult => recipe !== null);
+
   return {
-    topPick: mapSearchResult((data?.topPick as RecipeSearchResultDto | null | undefined) ?? null),
-    results: (data?.results || [])
-      .map((recipe) => mapSearchResult(recipe))
-      .filter((recipe): recipe is RecipeSearchResult => recipe !== null),
-    appliedFilters: (data?.appliedFilters as Record<string, boolean | null> | null) || {},
-    searchMode: data?.searchMode || null,
-    resultPath: data?.resultPath || null,
+    topPick: mapSearchResult(readField<RecipeSearchResultDto>(data, 'topPick') ?? null),
+    results,
+    appliedFilters: (readField<Record<string, boolean | null>>(data, 'appliedFilters')) || {},
+    searchMode: readField<string>(data, 'searchMode') || null,
+    resultPath: readField<string>(data, 'resultPath') || null,
   };
 }
 

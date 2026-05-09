@@ -216,6 +216,7 @@ public class RecipeController(
 
     /// <summary>POST /api/recipes/search — hybrid recipe search with optional agent translation.</summary>
     [HttpPost("search")]
+    [SkipWrapping]
     public async Task<IActionResult> Search([FromBody] RecipeSearchRequestDto dto, CancellationToken ct)
     {
         var effectiveDto = string.Equals(dto.Mode, "agent", StringComparison.OrdinalIgnoreCase)

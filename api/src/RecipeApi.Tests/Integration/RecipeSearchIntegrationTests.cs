@@ -135,7 +135,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         using var document = await ReadDataAsync(response);
         var results = document.RootElement.GetProperty("results");
-        Assert.True(results.GetArrayLength() <= 10);
+        Assert.True(results.GetArrayLength() <= 50);
         // Ensure TopPick is not in results
         var topPick = document.RootElement.GetProperty("topPick");
         var topPickId = topPick.GetProperty("id").GetGuid();
@@ -293,7 +293,14 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         var topPick = document.RootElement.GetProperty("topPick");
         var results = document.RootElement.GetProperty("results");
 
-        Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("id").GetGuid() == assignedRecipe.Id);
+        // NEW BEHAVIOR: Planned recipes are NOT excluded, they are just demoted.
+        // We verify that the assigned recipe is PRESENT but has the "already planned" reason.
+        var assigned = results.EnumerateArray().FirstOrDefault(r => r.GetProperty("id").GetGuid() == assignedRecipe.Id);
+        Assert.NotEqual(default, assigned.ValueKind);
+        Assert.Contains(assigned.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "planner-fit" &&
+            reason.GetProperty("label").GetString() == "Already planned for this week");
+
         var topPickId = topPick.GetProperty("id").GetGuid();
         Assert.True(topPickId == availableRecipe.Id || results.EnumerateArray().Any(r => r.GetProperty("id").GetGuid() == availableRecipe.Id));
     }

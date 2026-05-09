@@ -1409,17 +1409,13 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/RecipeSearchResponseDto' }
+              schema: { $ref: '#/components/schemas/RecipeSearchResponseDto' }
               example:
-                data:
-                  topPick: null
-                  results: []
-                  appliedFilters: {}
-                  searchMode: standard
-                  resultPath: lexical-only
+                topPick: null
+                results: []
+                appliedFilters: {}
+                searchMode: standard
+                resultPath: lexical-only
 
   /api/schedule:
     get:

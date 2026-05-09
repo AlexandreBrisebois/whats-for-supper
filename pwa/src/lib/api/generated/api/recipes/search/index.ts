@@ -11,51 +11,14 @@ import {
 } from '../../../models/index';
 // @ts-ignore
 import {
-  type AdditionalDataHolder,
   type BaseRequestBuilder,
   type Parsable,
   type ParsableFactory,
-  type ParseNode,
   type RequestConfiguration,
   type RequestInformation,
   type RequestsMetadata,
-  type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {SearchPostResponse}
- */
-// @ts-ignore
-export function createSearchPostResponseFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoSearchPostResponse;
-}
-/**
- * The deserialization information for the current model
- * @param SearchPostResponse The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoSearchPostResponse(
-  searchPostResponse: Partial<SearchPostResponse> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    data: (n) => {
-      searchPostResponse.data = n.getObjectValue<RecipeSearchResponseDto>(
-        createRecipeSearchResponseDtoFromDiscriminatorValue
-      );
-    },
-  };
-}
-export interface SearchPostResponse extends AdditionalDataHolder, Parsable {
-  /**
-   * The data property
-   */
-  data?: RecipeSearchResponseDto | null;
-}
 /**
  * Builds and executes requests for operations under /api/recipes/search
  */
@@ -64,12 +27,12 @@ export interface SearchRequestBuilder extends BaseRequestBuilder<SearchRequestBu
    * Search recipes
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {Promise<SearchPostResponse>}
+   * @returns {Promise<RecipeSearchResponseDto>}
    */
   post(
     body: RecipeSearchRequestDto,
     requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<SearchPostResponse | undefined>;
+  ): Promise<RecipeSearchResponseDto | undefined>;
   /**
    * Search recipes
    * @param body The request body
@@ -80,28 +43,6 @@ export interface SearchRequestBuilder extends BaseRequestBuilder<SearchRequestBu
     body: RecipeSearchRequestDto,
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param SearchPostResponse The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeSearchPostResponse(
-  writer: SerializationWriter,
-  searchPostResponse: Partial<SearchPostResponse> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!searchPostResponse || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeObjectValue<RecipeSearchResponseDto>(
-    'data',
-    searchPostResponse.data,
-    serializeRecipeSearchResponseDto
-  );
-  writer.writeAdditionalData(searchPostResponse.additionalData);
 }
 /**
  * Uri template for the request builder.
@@ -115,7 +56,7 @@ export const SearchRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: SearchRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     adapterMethodName: 'send',
-    responseBodyFactory: createSearchPostResponseFromDiscriminatorValue,
+    responseBodyFactory: createRecipeSearchResponseDtoFromDiscriminatorValue,
     requestBodyContentType: 'application/json',
     requestBodySerializer: serializeRecipeSearchRequestDto,
     requestInformationContentSetMethod: 'setContentFromParsable',
