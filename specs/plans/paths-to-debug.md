@@ -16,8 +16,6 @@ X -> rethink bottom of stack browser. touch zones are too small, it's hard to to
 
 X search with photo -> when in search with photo mode bring back the capture button from the capture card. visual language.
 
-X search with photo -> consistently "we're processing a lot right now, try again in a moment.
-
 X search -> it's been a while doesn't search anything. it should order oldest last cook to newest cook dates.
 
 X when I use the dices on the top pic in the search it always comes back with the same recipe. it should be different each time.

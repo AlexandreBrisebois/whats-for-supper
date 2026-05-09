@@ -10,6 +10,7 @@ import {
   ChefHat,
   Loader2,
   Camera,
+  Image as ImageIcon,
   BookOpen,
   Dices,
   Trash2,
@@ -517,23 +518,25 @@ export default function RecipesPage() {
           data-testid="inventory-capture-popup"
           className="flex flex-col gap-4 rounded-2xl border border-charcoal/10 bg-white/90 p-5 shadow-lg"
         >
-          {/* Add more buttons */}
-          <div className="flex gap-2">
+          {/* Large Capture Button */}
+          <div className="flex flex-col items-center gap-6 py-4">
             <button
               type="button"
               data-testid="inventory-take-photo"
               onClick={() => cameraInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white shadow-sm"
+              aria-label={t('recipes.takePhoto', 'Take Photo')}
+              className="flex h-24 w-24 items-center justify-center rounded-full bg-terracotta text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
             >
-              <Camera size={15} />
-              {t('recipes.takePhoto', 'Take Photo')}
+              <Camera size={32} strokeWidth={2} />
             </button>
+
             <button
               type="button"
               data-testid="inventory-choose-photos"
               onClick={() => galleryInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+              className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
             >
+              <ImageIcon size={14} />
               {t('recipes.choosePhotos', 'Choose from Library')}
             </button>
           </div>

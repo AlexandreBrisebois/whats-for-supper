@@ -55,8 +55,6 @@ describe('StackActionBar — depth indicator', () => {
         currentRecipe={defaultRecipe}
         currentIndex={2}
         totalCount={24}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -69,8 +67,6 @@ describe('StackActionBar — depth indicator', () => {
         currentRecipe={defaultRecipe}
         currentIndex={0}
         totalCount={10}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -83,8 +79,6 @@ describe('StackActionBar — depth indicator', () => {
         currentRecipe={defaultRecipe}
         currentIndex={0}
         totalCount={10}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -95,8 +89,6 @@ describe('StackActionBar — depth indicator', () => {
         currentRecipe={defaultRecipe}
         currentIndex={4}
         totalCount={10}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -115,8 +107,6 @@ describe('StackActionBar — container', () => {
         currentRecipe={defaultRecipe}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -135,8 +125,6 @@ describe('StackActionBar — discoverable toggle visual state', () => {
         currentRecipe={defaultRecipe}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -149,8 +137,6 @@ describe('StackActionBar — discoverable toggle visual state', () => {
         currentRecipe={makeRecipe({ isDiscoverable: false })}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -164,8 +150,6 @@ describe('StackActionBar — discoverable toggle visual state', () => {
         currentRecipe={makeRecipe({ isDiscoverable: true })}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -186,8 +170,6 @@ describe('StackActionBar — toggle interaction', () => {
         currentRecipe={makeRecipe({ isDiscoverable: false })}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={onToggle}
       />
     );
@@ -206,8 +188,6 @@ describe('StackActionBar — toggle interaction', () => {
         currentRecipe={makeRecipe({ isDiscoverable: true })}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={onToggle}
       />
     );
@@ -233,8 +213,6 @@ describe('StackActionBar — toggle interaction', () => {
         currentRecipe={makeRecipe({ isDiscoverable: false })}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={onToggle}
       />
     );
@@ -273,8 +251,6 @@ describe('StackActionBar — loading state', () => {
         currentRecipe={defaultRecipe}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={onToggle}
       />
     );
@@ -307,8 +283,6 @@ describe('StackActionBar — loading state', () => {
         currentRecipe={defaultRecipe}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={onToggle}
       />
     );
@@ -339,8 +313,6 @@ describe('StackActionBar — error handling', () => {
         currentRecipe={makeRecipe({ isDiscoverable: false })}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={onToggle}
       />
     );
@@ -364,8 +336,6 @@ describe('StackActionBar — error handling', () => {
         currentRecipe={defaultRecipe}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={onToggle}
       />
     );
@@ -392,8 +362,6 @@ describe('StackActionBar — card change sync', () => {
         currentRecipe={recipeA}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -407,8 +375,6 @@ describe('StackActionBar — card change sync', () => {
         currentRecipe={recipeB}
         currentIndex={1}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -427,8 +393,6 @@ describe('StackActionBar — card change sync', () => {
         currentRecipe={recipeA}
         currentIndex={0}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );
@@ -441,8 +405,6 @@ describe('StackActionBar — card change sync', () => {
         currentRecipe={recipeB}
         currentIndex={1}
         totalCount={5}
-        isDiscoverableOnly={false}
-        onToggleGlobalFilter={vi.fn()}
         onToggleIndividualCuration={vi.fn()}
       />
     );

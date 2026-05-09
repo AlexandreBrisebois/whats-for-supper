@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Microsoft.Extensions.AI;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace RecipeApi.Tests.Services;
@@ -18,7 +20,7 @@ public class InventoryCaptureServiceTests : IDisposable
     {
         _tempRoot = Path.Combine(Path.GetTempPath(), $"inv-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempRoot);
-        _service = new InventoryCaptureService(new StubChatClient(BuildVisionResponse()), _tempRoot);
+        _service = new InventoryCaptureService(new StubChatClient(BuildVisionResponse()), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
     }
 
     public void Dispose()
@@ -72,7 +74,7 @@ public class InventoryCaptureServiceTests : IDisposable
     [Fact]
     public async Task ProcessAsync_BusyResponse_WhenModelUnavailable()
     {
-        var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), _tempRoot);
+        var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
         var photos = new List<byte[]> { new byte[] { 0xFF, 0xD8 } };
 
         var (snapshot, busy) = await busyService.ProcessAsync(photos);
@@ -82,9 +84,30 @@ public class InventoryCaptureServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProcessAsync_SendsImagesToChatClient()
+    {
+        var chatClient = new MockChatClient(BuildVisionResponse());
+        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var photo1 = new byte[] { 0xFF, 0xD8, 0x01 };
+        var photo2 = new byte[] { 0xFF, 0xD8, 0x02 };
+        var photos = new List<byte[]> { photo1, photo2 };
+
+        await service.ProcessAsync(photos);
+
+        Assert.NotNull(chatClient.LastMessages);
+        var message = chatClient.LastMessages!.First();
+        Assert.Equal(ChatRole.User, message.Role);
+        
+        var dataContents = message.Contents.OfType<DataContent>().ToList();
+        Assert.Equal(2, dataContents.Count);
+        Assert.Equal(photo1, dataContents[0].Data.ToArray());
+        Assert.Equal(photo2, dataContents[1].Data.ToArray());
+    }
+
+    [Fact]
     public async Task ProcessAsync_DeletesTempPhotosOnBusy()
     {
-        var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), _tempRoot);
+        var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
         string? capturedDir = null;
         busyService.OnTempDirCreated = dir => capturedDir = dir;
 
@@ -93,6 +116,28 @@ public class InventoryCaptureServiceTests : IDisposable
 
         if (capturedDir is not null)
             Assert.False(Directory.Exists(capturedDir), "Temp dir should be deleted even on busy");
+    }
+
+    private class MockChatClient(string response) : IChatClient
+    {
+        public IEnumerable<ChatMessage>? LastMessages { get; private set; }
+
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastMessages = messages;
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, response)));
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default) => throw new NotImplementedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+        public void Dispose() { }
     }
 
     [Fact]

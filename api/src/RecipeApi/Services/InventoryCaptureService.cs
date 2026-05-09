@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 
 namespace RecipeApi.Services;
 
@@ -23,15 +24,17 @@ public sealed class InventoryCaptureService : IDisposable
         Path.Combine(Path.GetTempPath(), "pantry-captures");
 
     private readonly IChatClient _chatClient;
+    private readonly ILogger<InventoryCaptureService> _logger;
     private readonly string _tempBase;
     private readonly ConcurrentDictionary<Guid, (PantrySnapshot Snapshot, DateTimeOffset Expires)> _snapshots = new();
     private readonly Timer _sweepTimer;
 
     public Action<string>? OnTempDirCreated;
 
-    public InventoryCaptureService(IChatClient chatClient, string? tempBase = null)
+    public InventoryCaptureService(IChatClient chatClient, ILogger<InventoryCaptureService> logger, string? tempBase = null)
     {
         _chatClient = chatClient;
+        _logger = logger;
         _tempBase = tempBase ?? TempPhotosBaseDir;
         _sweepTimer = new Timer(_ => SweepExpired(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
@@ -59,18 +62,32 @@ public sealed class InventoryCaptureService : IDisposable
             }
 
             // Call vision model
-            var prompt = BuildVisionPrompt(photos.Count);
-            var response = await _chatClient.GetResponseAsync(prompt, cancellationToken: ct);
-            var ingredients = ParseIngredients(response.Text ?? string.Empty);
-            var confidence = ParseConfidence(response.Text ?? string.Empty);
+            var message = new ChatMessage(ChatRole.User, BuildVisionPrompt(photos.Count));
+            for (var i = 0; i < photos.Count; i++)
+            {
+                message.Contents.Add(new DataContent(photos[i], "image/jpeg"));
+            }
+
+            var response = await _chatClient.GetResponseAsync([message], new ChatOptions
+            {
+                Temperature = 0.1f,
+                ResponseFormat = ChatResponseFormat.Json
+            }, cancellationToken: ct);
+            var responseText = response.Text ?? string.Empty;
+
+            _logger.LogInformation("Vision model response: {Response}", responseText);
+
+            var ingredients = ParseIngredients(responseText);
+            var confidence = ParseConfidence(responseText);
 
             var snapshot = new PantrySnapshot(Guid.NewGuid(), ingredients, confidence);
             _snapshots[snapshot.SnapshotId] = (snapshot, DateTimeOffset.UtcNow.AddSeconds(SnapshotTtlSeconds));
 
             return (snapshot, false);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error processing inventory capture");
             return (null, true);
         }
         finally

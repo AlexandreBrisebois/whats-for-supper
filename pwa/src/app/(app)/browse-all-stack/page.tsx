@@ -369,12 +369,23 @@ export default function BrowseAllStackPage() {
           <X size={20} />
         </button>
 
-        <div className="flex flex-col items-center">
-          <h1 className="text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-            Library
-          </h1>
-          <div className="h-0.5 w-6 rounded-full bg-ochre mt-1" />
-        </div>
+        <button
+          onClick={handleGlobalToggleDiscoverable}
+          data-testid="stack-toggle-discoverable"
+          className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 border ${
+            isDiscoverableOnly
+              ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
+              : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
+          } backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2`}
+          aria-label={
+            isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
+          }
+        >
+          <Compass className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`} />
+          <span className="text-xs font-black tracking-wide uppercase">
+            {isDiscoverableOnly ? 'Discovery Recipes' : 'All Recipes'}
+          </span>
+        </button>
 
         <div className="flex items-center gap-2">
           <button
@@ -475,8 +486,6 @@ export default function BrowseAllStackPage() {
                 currentRecipe={currentRecipe}
                 currentIndex={currentIndex}
                 totalCount={totalCount}
-                isDiscoverableOnly={isDiscoverableOnly}
-                onToggleGlobalFilter={handleGlobalToggleDiscoverable}
                 onToggleIndividualCuration={handleIndividualToggleDiscoverable}
               />
             )}

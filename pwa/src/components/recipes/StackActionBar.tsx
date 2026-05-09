@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { t } from '@/locales';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
@@ -10,8 +9,6 @@ interface StackActionBarProps {
   currentRecipe: RecipeDto;
   currentIndex: number;
   totalCount: number;
-  isDiscoverableOnly: boolean;
-  onToggleGlobalFilter: () => void;
   onToggleIndividualCuration: (recipeId: string, newValue: boolean) => Promise<void>;
 }
 
@@ -19,8 +16,6 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
   currentRecipe,
   currentIndex,
   totalCount,
-  isDiscoverableOnly,
-  onToggleGlobalFilter,
   onToggleIndividualCuration,
 }) => {
   const recipeId = currentRecipe.id ?? '';
@@ -69,36 +64,15 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
         className="flex w-full max-w-md flex-col gap-2 rounded-[1.75rem] border border-charcoal/8 bg-white/85 p-2 shadow-glass backdrop-blur-2xl"
         data-testid="stack-action-bar"
       >
-        {/* Global Toggle: Library (all) vs Discovery (voteable only) */}
-        <button
-          onClick={onToggleGlobalFilter}
-          className={`flex min-h-11 items-center justify-center gap-2 rounded-[1.25rem] px-4 py-2 transition-all duration-300 ${isDiscoverableOnly
-            ? 'bg-ochre/15 text-ochre-800 border border-ochre/25 shadow-sm shadow-ochre/10'
-            : 'bg-cream text-charcoal/70 border border-charcoal/8 hover:bg-ochre/10 hover:text-charcoal'
-            }`}
-          data-testid="stack-toggle-discoverable"
-          aria-label={
-            isDiscoverableOnly
-              ? t('recipes.showingDiscovery', 'Showing recipes marked Discovery')
-              : t('recipes.showingAll', 'Showing all recipes')
-          }
-        >
-          <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-ochre' : ''}`} />
-          <span className="text-xs font-black tracking-wide">
-            {isDiscoverableOnly
-              ? t('navigation.discover', 'Discovery')
-              : t('recipes.allRecipes', 'All Recipes')}
-          </span>
-        </button>
-
         {/* Individual card: add/remove from Discovery */}
         <button
           onClick={handleIndividualToggle}
           disabled={isUpdating}
-          className={`flex min-h-12 items-center justify-between gap-4 rounded-[1.25rem] px-4 py-2.5 text-left transition-all duration-300 ${isIndividualDiscoverable
-            ? 'bg-sage/10 text-charcoal border border-sage/25 shadow-sm shadow-sage/10'
-            : 'bg-charcoal/5 text-charcoal/65 border border-charcoal/8 hover:bg-charcoal/8 hover:text-charcoal'
-            } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
+          className={`flex min-h-[5rem] items-center justify-between gap-4 rounded-[1.5rem] px-6 py-4 text-left transition-all duration-300 ${
+            isIndividualDiscoverable
+              ? 'bg-sage/15 text-charcoal border border-sage/30 shadow-sm shadow-sage/10'
+              : 'bg-charcoal/5 text-charcoal/65 border border-charcoal/8 hover:bg-charcoal/8 hover:text-charcoal'
+          } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
           data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
           aria-label={
             isIndividualDiscoverable
@@ -106,24 +80,26 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
               : t('recipes.turnOnDiscovery', 'Turn on Discovery for this recipe')
           }
         >
-          <span className="flex flex-col leading-tight">
-            <span className="text-xs font-black tracking-wide text-charcoal">
+          <span className="flex flex-col gap-0.5 leading-tight">
+            <span className="text-sm font-black tracking-wide text-charcoal">
               {t('planner.askFamily', 'Ask the Family')}
             </span>
-            <span className="text-[10px] font-bold text-charcoal/45">
+            <span className="text-[11px] font-bold text-charcoal/50">
               {t('discovery.showsInDiscovery', 'Shows in Discovery voting')}
             </span>
           </span>
-          <span
-            className={`relative h-7 w-12 rounded-full transition-colors duration-300 ${isIndividualDiscoverable ? 'bg-sage' : 'bg-charcoal/20'
-              }`}
+          <div
+            className={`relative h-8 w-14 rounded-full transition-colors duration-300 ${
+              isIndividualDiscoverable ? 'bg-sage' : 'bg-charcoal/20'
+            }`}
             aria-hidden="true"
           >
-            <span
-              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${isIndividualDiscoverable ? 'translate-x-6' : 'translate-x-1'
-                }`}
+            <div
+              className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                isIndividualDiscoverable ? 'translate-x-7' : 'translate-x-1'
+              }`}
             />
-          </span>
+          </div>
         </button>
       </motion.div>
     </div>

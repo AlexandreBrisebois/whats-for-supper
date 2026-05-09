@@ -9,15 +9,34 @@ http:
           Content-Type: text/event-stream
           Connection: keep-alive
 
-  # The sse-headers middleware is referenced by labels in the compose files
-  # to ensure EventSource connections are not buffered by Traefik.
+  routers:
+    api-stream:
+      rule: "Host(`pwa.wfs.localhost`) && Path(`/api/stream`)"
+      entryPoints:
+        - web
+      service: api
+      middlewares:
+        - sse-headers
+      priority: 100
+
+    api:
+      rule: "Host(`pwa.wfs.localhost`) && PathPrefix(`/api`)"
+      entryPoints:
+        - web
+      service: api
+
+    pwa:
+      rule: "Host(`pwa.wfs.localhost`)"
+      entryPoints:
+        - web
+      service: pwa
 
   services:
     api:
       loadBalancer:
         servers:
-          - url: "http://api:9001"
+          - url: "http://whats-for-supper-api:9001"
     pwa:
       loadBalancer:
         servers:
-          - url: "http://pwa:3000"
+          - url: "http://whats-for-supper-pwa:3000"
