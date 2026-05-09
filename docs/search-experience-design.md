@@ -19,22 +19,21 @@ We introduced the **Healthy Choice** filter to simplify daily meal planning:
 - **Agent Intelligence**: Updated the `AgentSearchTranslationService` LLM prompt to recognize "healthy" intent. The agent now automatically activates the `HealthyOnly` filter when users ask for "something light," "healthy," or "diet-friendly."
 - **Localization**: Added full English (`en`) and French (`fr`) translation keys for all search labels and filters.
 
-## 3. Pantry-Aware Ranking (Pantry Boost)
-To bridge the gap between "What's in my kitchen" and "What's for supper," we implemented a photo-assisted ranking boost:
-- **Logic**: The search engine retrieves the most recent temporary pantry snapshot (captured via camera).
-- **Matching**: We perform an intersection between pantry ingredients and recipe ingredients (normalized for case and whitespace).
-- **Boost**: Matching recipes receive a score boost (`+10.0`) to ensure they appear as "Top Picks."
-- **Transparency**: Recipes that match the pantry are marked with a clear reason: *"Uses X ingredients from your camera photos."*
+### 4. RAG Re-ranking (Agent Mode)
+To provide decisive, high-quality recommendations, we implemented a two-pass search pipeline for Agent Mode:
+- **Retrieval**: The system first performs a hybrid search (Trigram + Vector) to find the top candidates.
+- **Planner Context**: If a `WeekOffset` is provided, the system fetches the names and dietary profiles of recipes already scheduled for that week. It uses the `WeeklyBalanceScorer` to generate deterministic dietary goals (e.g., "Add more plant-based protein").
+- **LLM Rerank**: Gemini receives the original query, the current week's menu, and the dietary goals. It selects the single best **Top Pick** and generates a personalized **Planner Fit Note** explaining the choice (e.g., "I picked this light Mediterranean salad to balance out the heavier meat dishes you've planned this week!").
+- **Transient Reasoning**: These AI insights are displayed for decision support on the search page but are not persisted, keeping the database clean.
 
-## 4. Result Deduplication & Structure
-To reduce cognitive load and visual redundancy, we restructured the API response:
-- **Top Pick Isolation**: The highest-ranked candidate is served as the `TopPick`. This item is now **explicitly excluded** from the secondary `Results` list.
-- **Conflict Resolution**: This change resolved React key conflicts where identical IDs were rendered in the Hero and Grid views simultaneously, causing intermittent "non-rendering" artifacts.
-- **Pagination**: The `hasMore` logic in the PWA was updated to check for `results.length >= limit`, ensuring accurate "Show More" behavior with the new separated structure.
+### 5. UI Structure & Balancing (1+6 Grid)
+To ensure a premium, balanced layout on all devices:
+- **1+6 Rule**: Search results are now capped at exactly **1 Top Pick** (the hero) and **6 secondary results** (the grid).
+- **Decisive UI**: The Top Pick is prominently featured with its AI justification (in Agent mode) or match reason (in Standard mode).
+- **Glassmorphic AI Card**: Agent recommendations are housed in a luminous, glassmorphic container (`backdrop-blur-xl`, `bg-white/10`) with a "Sparkles" animation, signaling the Personal Chef persona.
 
-## 5. Verification
+## 6. Verification
 - **Contract Integrity**: All changes remain 100% compliant with `specs/openapi.yaml`.
 - **Testing**:
-  - 19 backend integration tests passed (verifying deduplication and ranking).
-  - 6 agent translation tests passed.
-  - 38 PWA unit tests passed for the search page.
+  - 524 backend integration tests passed (verifying re-ranking, balance context, and ranking).
+  - 338 PWA unit tests passed, including new grid limit and AI reason rendering.

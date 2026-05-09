@@ -73,9 +73,14 @@ You don't need to be precise. Type like you talk: "chicken pasta tonight", "quic
 
 Search is **planner-aware**. If you open search from a day in your planner, it automatically hides recipes you've already planned for other days and highlights ones that help balance your week.
 
-Use the **"Healthy"** filter to quickly find light and nutritious meals. If you have a complex request, tap the **Stars icon** to use "Agent Search" — you can type long-form sentences like "something with chicken but not too heavy" and the AI will find the best matches for you.
+Use the **"Healthy"** filter to quickly find light and nutritious meals. If you have a complex request, tap the **Stars icon** to use "Agent Search." You can type long-form sentences like "something with chicken but not too heavy" and the AI will find the best matches for you.
 
-Search saves you from scrolling through hundreds of recipes to find "that one thing."
+When in Agent mode, the app becomes your **Personal Chef**:
+- **Menu Awareness**: The agent looks at what you've already planned for the week to ensure variety (e.g., suggesting a light stir-fry if you already have several pasta nights scheduled).
+- **Dietary Balance**: It prioritizes recipes that help you meet your weekly nutritional goals (like adding more whole grains or plant-based proteins).
+- **Personalized Reasoning**: Every "Top Pick" comes with a personalized explanation of why it fits your current plan and craving.
+
+Search saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
 
 ---
 
