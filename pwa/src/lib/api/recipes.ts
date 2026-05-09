@@ -1,5 +1,6 @@
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
+import { usePlannerStore } from '@/store/plannerStore';
 import type {
   RecipeDto,
   RecommendationResultDto,
@@ -244,7 +245,28 @@ export async function searchRecipes(
     | 'filters'
   >
 ): Promise<RecipeSearchResponse> {
-  const result = await apiClient.api.recipes.search.post(request);
+  const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
+  const { sseConnectionId, localMoveSeq, confirmedMoveSeq } = usePlannerStore.getState();
+  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/search`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(familyMemberId ? { 'X-Family-Member-Id': familyMemberId } : {}),
+      ...(sseConnectionId ? { 'X-SSE-Connection-ID': sseConnectionId } : {}),
+      ...(localMoveSeq > confirmedMoveSeq ? { 'X-Move-Seq': String(localMoveSeq) } : {}),
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Recipe search failed with status ${response.status}`);
+  }
+
+  const result = (await response.json()) as
+    | { data?: RecipeSearchResponseDto }
+    | RecipeSearchResponseDto
+    | null
+    | undefined;
   const data = ((result as { data?: RecipeSearchResponseDto } | null | undefined)?.data ??
     (result as RecipeSearchResponseDto | null | undefined)) as RecipeSearchResponseDto | undefined;
 

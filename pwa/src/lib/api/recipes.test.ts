@@ -31,6 +31,16 @@ vi.mock('@/store/familyStore', () => ({
   },
 }));
 
+vi.mock('@/store/plannerStore', () => ({
+  usePlannerStore: {
+    getState: () => ({
+      sseConnectionId: null,
+      localMoveSeq: 0,
+      confirmedMoveSeq: 0,
+    }),
+  },
+}));
+
 vi.mock('./api-client', () => ({
   apiClient: {
     api: {
@@ -87,10 +97,15 @@ describe('createRecipe', () => {
 describe('searchRecipes', () => {
   beforeEach(() => {
     recipesApiMocks.searchPost.mockReset();
+    fetchMock.mockReset();
+    mockGetState.mockReturnValue({ selectedFamilyMemberId: 'family-123' });
+    vi.stubGlobal('fetch', fetchMock);
   });
 
-  it('posts the query to the generated search endpoint and normalizes the response', async () => {
-    recipesApiMocks.searchPost.mockResolvedValue({
+  it('posts the query to the search endpoint and normalizes the response', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
       data: {
         topPick: {
           id: '11111111-1111-1111-1111-111111111111',
@@ -122,15 +137,22 @@ describe('searchRecipes', () => {
         searchMode: 'standard',
         resultPath: 'lexical-only',
       },
+      }),
     });
 
     const result = await searchRecipes({ query: 'chicken', mode: 'standard', limit: 5 });
 
-    expect(recipesApiMocks.searchPost).toHaveBeenCalledWith({
-      query: 'chicken',
-      mode: 'standard',
-      limit: 5,
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:5052/api/recipes/search',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Family-Member-Id': 'family-123',
+        },
+        body: JSON.stringify({ query: 'chicken', mode: 'standard', limit: 5 }),
+      })
+    );
     expect(result.topPick?.name).toBe('Chicken Soup');
     expect(result.results).toHaveLength(1);
     expect(result.results[0]).toMatchObject({
@@ -143,7 +165,9 @@ describe('searchRecipes', () => {
   });
 
   it('also supports a direct RecipeSearchResponseDto shape', async () => {
-    recipesApiMocks.searchPost.mockResolvedValue({
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
       topPick: {
         id: '11111111-1111-1111-1111-111111111111',
         name: 'Chicken Soup',
@@ -160,6 +184,7 @@ describe('searchRecipes', () => {
       appliedFilters: {},
       searchMode: 'standard',
       resultPath: 'lexical-only',
+      }),
     });
 
     const result = await searchRecipes({ query: 'chicken', mode: 'standard', limit: 5 });
@@ -169,8 +194,10 @@ describe('searchRecipes', () => {
     expect(result.resultPath).toBe('lexical-only');
   });
 
-  it('recovers topPick fields from Kiota additionalData and treats empty marker objects as null', async () => {
-    recipesApiMocks.searchPost.mockResolvedValue({
+  it('recovers topPick fields from additionalData and treats empty marker objects as null', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
       data: {
         topPick: {
           additionalData: {
@@ -191,13 +218,16 @@ describe('searchRecipes', () => {
         searchMode: 'standard',
         resultPath: 'lexical-only',
       },
+      }),
     });
 
     const recovered = await searchRecipes({ query: 'lasagna', mode: 'standard', limit: 5 });
     expect(recovered.topPick?.name).toBe('Homemade Lasagna');
     expect(recovered.topPick?.reasons[0]?.label).toBe('Name matches your search');
 
-    recipesApiMocks.searchPost.mockResolvedValue({
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
       data: {
         topPick: { additionalData: {} },
         results: [],
@@ -205,6 +235,7 @@ describe('searchRecipes', () => {
         searchMode: 'standard',
         resultPath: 'lexical-only',
       },
+      }),
     });
 
     const emptyMarker = await searchRecipes({ query: 'missing', mode: 'standard', limit: 5 });

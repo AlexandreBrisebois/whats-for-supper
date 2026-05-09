@@ -38,7 +38,9 @@ flowchart TD
     D --> F[Alternates 2–5]
     E --> G[Open recipe detail sheet]
     F --> G
-    G --> H[Use for planner / Save for tonight]
+    G --> H{Entry context}
+    H -->|Planner| H1[Add it to target day]
+    H -->|Discovery/Search| H2[Cook this → Cook it tonight / Plan for later]
     G --> I[Save notes / set rating]
     G --> J[Toggle discovery]
     G --> K[Find similar]
@@ -83,7 +85,7 @@ flowchart TD
 
 ## Planner-Aware Search Flow
 
-When search is opened from the Planner (`/recipes?addToDay=X&weekOffset=Y`):
+When search is opened from the Planner (`/recipes?addToDay=X&weekOffset=Y`), the page enters planner mode and preserves the target slot until the user either assigns a recipe or cancels.
 
 ```mermaid
 sequenceDiagram
@@ -94,15 +96,16 @@ sequenceDiagram
     participant Detail as Recipe Detail Sheet
     participant API as Search API
 
-    User->>Planner: Tap "Search Library" on a day
+    User->>Planner: Tap "Search Library" from a day
     Planner->>Search: Navigate to /recipes?addToDay=X&weekOffset=Y
     Search->>Search: Render planning-mode banner (data-testid="planning-mode-banner")
     Search->>API: POST /api/recipes/search with weekOffset + dayIndex
     API-->>Search: Top Pick + results + planner-fit reasons
     User->>Search: Tap a result card
     Search->>Detail: Open recipe detail sheet (data-testid="recipe-detail-sheet")
-    User->>Detail: Tap "Use for Day X" (data-testid="action-use-for-day")
-    Detail->>Planner: Assign recipe and return to planner
+    Detail-->>User: Show "Add it to {Day}" (data-testid="action-add-to-day")
+    User->>Detail: Tap "Add it to {Day}"
+    Detail->>Planner: Assign recipe and return to planner with success highlight
 ```
 
 ### Planner reranking rules
@@ -117,6 +120,42 @@ sequenceDiagram
 1. Planner context (`addToDay`, `weekOffset`) is read on mount and held in component state — it does not drive re-renders on URL change.
 2. The user can cancel back to the planner with `data-testid="planning-mode-cancel"` without losing the planner state.
 3. Opening and closing the detail sheet does not trigger a new search call.
+4. Planner-mode recipe details skip the discovery pivot and go straight to the assignment CTA.
+
+---
+
+## Discovery Action Pivot
+
+When search is opened normally (no `addToDay` URL parameter), choosing a recipe is intentionally a two-step decision:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Search as /recipes
+    participant Detail as Recipe Detail Sheet
+    participant Planner
+    participant Home
+
+    User->>Search: Open recipe detail from Top Pick or results
+    Search->>Detail: Show "Cook this" (data-testid="action-cook-this")
+    User->>Detail: Tap "Cook this"
+    Detail-->>User: Reveal "Cook it tonight" and "Plan for later"
+    alt Cook it tonight
+        User->>Detail: Tap "Cook it tonight" (data-testid="action-cook-tonight")
+        Detail->>Home: Assign to tonight and navigate home
+    else Plan for later
+        User->>Detail: Tap "Plan for later" (data-testid="action-plan-later")
+        Detail->>Planner: Assign to the first empty slot in the current week
+    end
+```
+
+### Pivot intent
+
+- **Cook this** is a commitment prompt, not the final destination.
+- **Cook it tonight** is for immediate supper recovery and should return the user to the home flow.
+- **Plan for later** keeps the choice useful without forcing the user to pick a specific day from the search surface.
+- The pivot is hidden in planner mode because the day has already been chosen.
 
 ---
 
@@ -129,7 +168,7 @@ flowchart TD
     C --> D[API uses recipe embedding as query vector]
     D --> E[Top Pick + up to 4 similar alternates returned]
     E --> F[Same detail sheet and actions as normal search]
-    F --> G[User selects Use This One — data-testid=action-use-this-one]
+    F --> G[User selects via planner CTA or discovery pivot]
 ```
 
 When the target recipe's embedding is not yet available (`index_status = pending` or `stale`), similar search falls back to lexical matching against the recipe's normalized document text.
@@ -138,11 +177,11 @@ When the target recipe's embedding is not yet available (`index_status = pending
 
 ## Recipe Detail Sheet — Action Map
 
-| Context | Primary CTA `data-testid` | Label |
-|---------|--------------------------|-------|
-| Planner mode (`addToDay` in URL) | `action-use-for-day` | "Use for Day X" |
-| Standard library/search | `action-save-for-tonight` | "Save for Tonight" |
-| Similar mode (from Find Similar) | `action-use-this-one` | "Use This One" |
+| Context | Initial CTA `data-testid` | Label | Follow-up |
+|---------|---------------------------|-------|-----------|
+| Planner mode (`addToDay` in URL) | `action-add-to-day` | "Add it to {Day}" | Assigns to the target planner day and returns to planner |
+| Standard library/search | `action-cook-this` | "Cook this" | Reveals `action-cook-tonight` and `action-plan-later` |
+| Similar mode (from Find Similar) | `action-cook-this` | "Cook this" | Same discovery pivot unless planner context is present |
 
 Secondary actions always available:
 
@@ -258,7 +297,7 @@ The user does not need stack traces to recover.
 | Surface | Primary action | Secondary action | Escape hatch |
 |---------|---------------|-----------------|--------------|
 | Search page | Open Top Pick or result | Toggle quick filter | Clear query |
-| Recipe detail sheet | Use / Save / Select | Find similar, discovery toggle, move to bin | Close — same results |
+| Recipe detail sheet | Add to planner day or Cook this pivot | Find similar, discovery toggle, move to bin | Close — same results |
 | Recycle Bin | Restore | Permanent delete (PIN required) | Back to library |
 | Failed Captures | Retry | View friendly reason | Leave item for later |
 

@@ -554,6 +554,7 @@ export default function PlannerPage() {
             }}
             onSelect={handleQuickFindSelect}
             weekOffset={currentWeekOffset}
+            dayIndex={selectedDayIndex}
           />
         )}
       </AnimatePresence>

@@ -5,6 +5,8 @@ import { X, Clock, ChefHat, ArrowRightLeft, Trash2, Eye, Check } from 'lucide-re
 import { getRecipe, updateRecipe, deleteRecipe, type Recipe } from '@/lib/api/recipes';
 import { t } from '@/locales';
 
+import { useWeekStore } from '@/store/weekStore';
+
 const RATING_OPTIONS = [
   { value: 1, emoji: '👎', label: 'Dislike' },
   { value: 2, emoji: '👍', label: 'Like' },
@@ -15,7 +17,7 @@ interface RecipeDetailSheetProps {
   recipeId: string;
   plannerDayLabel: string | null;
   onClose: () => void;
-  onUseForDay: (recipe: Recipe) => Promise<void>;
+  onUseForDay: (recipe: Recipe, specificDayIndex?: number) => Promise<void>;
   onFindSimilar: (recipeId: string) => void;
 }
 
@@ -33,6 +35,7 @@ export function RecipeDetailSheet({
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingAction, setIsSavingAction] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
+  const [showActionPivot, setShowActionPivot] = useState(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -103,6 +106,29 @@ export function RecipeDetailSheet({
     }
   };
 
+  const handlePlanForLater = async () => {
+    if (!recipe) return;
+    setIsSavingAction(true);
+    try {
+      // Find first empty slot in current week
+      const schedule = useWeekStore.getState().schedule;
+      const emptySlot = schedule.find((d) => !d.recipe);
+
+      if (emptySlot) {
+        // Find index of empty slot
+        const dayIndex = schedule.indexOf(emptySlot);
+        await onUseForDay(recipe, dayIndex);
+      } else {
+        // If no slot this week, just use the standard "Plan" (which might go to tomorrow or next week)
+        // For now, we'll just fall back to handleUseRecipe (tonight) if no slot found,
+        // but ideally we'd find the first slot regardless of week.
+        await onUseForDay(recipe);
+      }
+    } finally {
+      setIsSavingAction(false);
+    }
+  };
+
   const handleMoveToBin = async () => {
     if (!recipe) return;
     setIsSavingAction(true);
@@ -116,10 +142,10 @@ export function RecipeDetailSheet({
     }
   };
 
-  const primaryActionTestId = plannerDayLabel ? 'action-use-for-day' : 'action-save-for-tonight';
+  const primaryActionTestId = plannerDayLabel ? 'action-add-to-day' : 'action-cook-this';
   const primaryActionLabel = plannerDayLabel
-    ? t('recipes.useForDay', `Use for ${plannerDayLabel}`)
-    : t('recipes.cookThisTonight', 'Cook This Tonight');
+    ? `Add it to ${plannerDayLabel}`
+    : 'Cook this';
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center px-4 pb-4 sm:items-center">
@@ -270,15 +296,38 @@ export function RecipeDetailSheet({
             </div>
 
             <div className="flex flex-col gap-3 border-t border-charcoal/8 pt-5 sm:flex-row sm:flex-wrap">
-              <button
-                type="button"
-                data-testid={primaryActionTestId}
-                onClick={() => void handleUseRecipe()}
-                disabled={isSavingAction}
-                className="inline-flex items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
-              >
-                {primaryActionLabel}
-              </button>
+              {!showActionPivot ? (
+                <button
+                  type="button"
+                  data-testid={primaryActionTestId}
+                  onClick={() => (plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true))}
+                  disabled={isSavingAction}
+                  className="inline-flex items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                >
+                  {primaryActionLabel}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    data-testid="action-cook-tonight"
+                    onClick={() => void handleUseRecipe()}
+                    disabled={isSavingAction}
+                    className="inline-flex items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  >
+                    Cook it tonight
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="action-plan-later"
+                    onClick={() => void handlePlanForLater()}
+                    disabled={isSavingAction}
+                    className="inline-flex items-center justify-center rounded-full bg-ochre px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-ochre/90 disabled:opacity-60"
+                  >
+                    Plan for later
+                  </button>
+                </>
+              )}
 
               <button
                 type="button"

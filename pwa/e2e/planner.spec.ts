@@ -242,8 +242,8 @@ test.describe('Supper Planner', () => {
 
     // 4. Open the Top Pick detail sheet and confirm planner CTA
     await page.getByTestId('recipe-card-top-pick').click();
-    await expect(page.getByTestId('action-use-for-day')).toBeVisible();
-    await page.getByTestId('action-use-for-day').click();
+    await expect(page.getByTestId('action-add-to-day')).toBeVisible();
+    await page.getByTestId('action-add-to-day').click();
 
     // 5. Verify redirect back to planner with success params
     await page.waitForURL(/\/planner\?success=1&dayIndex=2/);

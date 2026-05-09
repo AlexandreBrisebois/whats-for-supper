@@ -68,6 +68,12 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   ];
   const hideHeader = mainAppRoutes.includes(pathname as any);
 
+  const usesStackBackground =
+    pathname === ROUTES.HOME ||
+    pathname === ROUTES.DISCOVERY ||
+    pathname === ROUTES.PROFILE ||
+    pathname === '/recipes' ||
+    pathname === '/profile/settings';
   const isDiscovery = pathname === ROUTES.DISCOVERY;
   const isHome = pathname === ROUTES.HOME;
   const isPlanner = pathname === ROUTES.PLANNER;
@@ -84,9 +90,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
         hideNavigation={isCapture || isBrowseAllStack}
         hideHeader={hideHeader || isBrowseAllStack}
         isFluid={isHome || isDiscovery || isPlanner || isCapture || isBrowseAllStack}
-        className={
-          pathname === ROUTES.HOME ? 'solar-earth-bg' : isDiscovery ? 'vibrant-discovery-bg' : ''
-        }
+        className={usesStackBackground ? 'solar-earth-bg' : ''}
       >
         {children}
       </Layout>

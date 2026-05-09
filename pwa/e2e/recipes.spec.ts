@@ -258,8 +258,8 @@ test.describe('Recipes Search Page', () => {
     await page.getByTestId('recipe-search-input').press('Enter');
     await page.getByTestId('recipe-card-top-pick').click();
 
-    await expect(page.getByTestId('action-use-for-day')).toBeVisible();
-    await page.getByTestId('action-use-for-day').click();
+    await expect(page.getByTestId('action-add-to-day')).toBeVisible();
+    await page.getByTestId('action-add-to-day').click();
 
     await expect
       .poll(() => assignRequestBody)

@@ -14,9 +14,15 @@ interface QuickFindModalProps {
   onClose: () => void;
   onSelect: (recipe: any) => void;
   weekOffset?: number;
+  dayIndex?: number | null;
 }
 
-export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindModalProps) {
+export function QuickFindModal({
+  onClose,
+  onSelect,
+  weekOffset = 0,
+  dayIndex = null,
+}: QuickFindModalProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [recipes, setRecipes] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -70,6 +76,11 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
 
   const isNudgeCard = recipes.length > 0 && currentIndex === 4;
   const currentRecipe = recipes[currentIndex];
+
+  const searchUrl =
+    dayIndex !== null
+      ? `/recipes?addToDay=${dayIndex}&weekOffset=${weekOffset}`
+      : '/recipes';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">
@@ -135,7 +146,8 @@ export function QuickFindModal({ onClose, onSelect, weekOffset = 0 }: QuickFindM
                         you&apos;re craving.
                       </p>
                       <a
-                        href="/recipes"
+                        href={searchUrl}
+                        data-testid="quick-find-search-library"
                         className="inline-flex items-center justify-center w-full h-16 rounded-2xl bg-ochre text-white font-black uppercase tracking-widest text-[11px] shadow-lg shadow-ochre/20"
                       >
                         Search Library

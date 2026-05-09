@@ -481,6 +481,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           <QuickFindModal
             onClose={() => setRecoveryFlow({ kind: 'closed' })}
             onSelect={handleQuickFindSelect}
+            dayIndex={(new Date().getDay() + 6) % 7}
           />
         )}
       </AnimatePresence>

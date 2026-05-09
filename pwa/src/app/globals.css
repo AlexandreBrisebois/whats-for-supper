@@ -136,11 +136,6 @@
       0 0 0 1px rgba(225, 173, 1, 0.05);
   }
 
-  .vibrant-discovery-bg {
-    background: radial-gradient(circle at center, #fdfcf0 0%, #f9f3d9 100%);
-    min-height: 100vh;
-  }
-
   @keyframes pulse-ochre {
     0% {
       box-shadow: 0 0 0 0 rgba(225, 173, 1, 0.4);

@@ -12,6 +12,7 @@ import {
   Camera,
   BookOpen,
   Dices,
+  Trash2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { searchRecipes, type RecipeSearchResponse, type Recipe } from '@/lib/api/recipes';
@@ -22,6 +23,7 @@ import { assignRecipeToDay } from '@/lib/api/planner';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
 
 type SearchMode = 'standard' | 'agent' | 'camera';
 
@@ -29,10 +31,23 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 
 function resolveDayName(weekOffset: number, dayIndex: number): string {
   const today = new Date();
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay() + weekOffset * 7);
-  const target = new Date(startOfWeek);
-  target.setDate(startOfWeek.getDate() + dayIndex);
+  // Get start of CURRENT week (Monday)
+  const currentMonday = new Date(today);
+  currentMonday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  currentMonday.setHours(0, 0, 0, 0);
+
+  // Get target date
+  const target = new Date(currentMonday);
+  target.setDate(currentMonday.getDate() + dayIndex + weekOffset * 7);
+
+  // Check if target is today
+  const todayDate = new Date(today);
+  todayDate.setHours(0, 0, 0, 0);
+
+  if (target.getTime() === todayDate.getTime()) {
+    return 'Tonight';
+  }
+
   return WEEKDAYS[target.getDay()];
 }
 
@@ -51,6 +66,7 @@ export default function RecipesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
+  const [showRecycleBin, setShowRecycleBin] = useState(false);
   const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
   const [limit, setLimit] = useState(INITIAL_LIMIT);
@@ -67,10 +83,15 @@ export default function RecipesPage() {
   const parsedDayIndex = addToDay !== null ? parseInt(addToDay, 10) : undefined;
   const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
 
-  const dayName =
-    parsedDayIndex !== undefined && parsedWeekOffset !== undefined
-      ? resolveDayName(parsedWeekOffset, parsedDayIndex)
-      : null;
+  let dayName: string | null = null;
+  try {
+    dayName =
+      parsedDayIndex !== undefined && parsedWeekOffset !== undefined
+        ? resolveDayName(parsedWeekOffset, parsedDayIndex)
+        : null;
+  } catch (err) {
+    console.error('[RecipesPage] resolveDayName error:', err);
+  }
 
   const runSearch = useCallback(
     async (
@@ -164,20 +185,56 @@ export default function RecipesPage() {
     setOpenDetailRecipeId(recipeId);
   };
 
-  const handleAssignRecipe = async (recipe: Recipe) => {
-    if (addToDay === null || weekOffset === null) return;
+  const handleAssignRecipe = async (recipe: Recipe, specificDayIndex?: number) => {
+    // If specificDayIndex is provided, it's the "Plan for later" flow from discovery
+    if (specificDayIndex !== undefined) {
+      setIsAssigning(true);
+      try {
+        await assignRecipeToDay(0, specificDayIndex, {
+          id: recipe.id,
+          name: recipe.name,
+          image: recipe.imageUrl,
+        });
+        router.push(`/planner?success=1&dayIndex=${specificDayIndex}&weekOffset=0`);
+      } catch (error) {
+        console.error('Failed to assign recipe:', error);
+        setIsAssigning(false);
+      }
+      return;
+    }
 
-    setIsAssigning(true);
-    try {
-      await assignRecipeToDay(parseInt(weekOffset, 10), parseInt(addToDay, 10), {
-        id: recipe.id,
-        name: recipe.name,
-        image: recipe.imageUrl,
-      });
-      router.push(`/planner?success=1&dayIndex=${addToDay}`);
-    } catch (error) {
-      console.error('Failed to assign recipe:', error);
-      setIsAssigning(false);
+    // Otherwise, it's either "Add it to {day}" (planner flow) or "Cook it tonight" (discovery flow)
+    if (addToDay !== null && weekOffset !== null) {
+      // Planner flow
+      setIsAssigning(true);
+      try {
+        const d = parseInt(addToDay, 10);
+        const w = parseInt(weekOffset, 10);
+        await assignRecipeToDay(w, d, {
+          id: recipe.id,
+          name: recipe.name,
+          image: recipe.imageUrl,
+        });
+        router.push(`/planner?success=1&dayIndex=${d}&weekOffset=${w}`);
+      } catch (error) {
+        console.error('Failed to assign recipe:', error);
+        setIsAssigning(false);
+      }
+    } else {
+      // Discovery flow - Cook it tonight
+      const todayIndex = (new Date().getDay() + 6) % 7;
+      setIsAssigning(true);
+      try {
+        await assignRecipeToDay(0, todayIndex, {
+          id: recipe.id,
+          name: recipe.name,
+          image: recipe.imageUrl,
+        });
+        router.push('/home');
+      } catch (error) {
+        console.error('Failed to assign recipe:', error);
+        setIsAssigning(false);
+      }
     }
   };
 
@@ -212,7 +269,6 @@ export default function RecipesPage() {
   };
 
   const handleCameraSubmit = async () => {
-    if (pendingPhotos.length === 0) return;
     setIsCameraBusy(false);
     setIsSubmittingPhotos(true);
     try {
@@ -291,12 +347,12 @@ export default function RecipesPage() {
             </p>
             <p className="text-sm font-bold text-charcoal">
               {dayName
-                ? tWithVars('recipes.selectMealForDay', `Select a meal for ${dayName}`, {
+                ? tWithVars('recipes.selectMealForDay', `Planning for ${dayName}`, {
                     day: dayName,
                   })
                 : tWithVars(
                     'recipes.selectMealForDayNum',
-                    `Select a meal for Day ${parseInt(addToDay) + 1}`,
+                    `Planning for Day ${parseInt(addToDay) + 1}`,
                     { day: parseInt(addToDay) + 1 }
                   )}
             </p>
@@ -312,7 +368,7 @@ export default function RecipesPage() {
       )}
 
       {/* Mode selector */}
-      <div className="flex gap-2 px-1">
+      <div className="flex flex-wrap gap-2 px-1">
         <button
           type="button"
           data-testid="agent-search-trigger"
@@ -346,6 +402,23 @@ export default function RecipesPage() {
             className={searchMode === 'camera' ? 'text-white' : 'text-terracotta'}
           />
           {t('recipes.inventoryCamera', 'Use Camera')}
+        </button>
+        <a
+          href="/browse-all-stack"
+          data-testid="browse-all-stack-trigger"
+          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm transition-colors"
+        >
+          <BookOpen size={16} className="text-terracotta" />
+          {t('recipes.browseLibrary', 'Browse Library')}
+        </a>
+        <button
+          type="button"
+          data-testid="recycle-bin-entry"
+          onClick={() => setShowRecycleBin(true)}
+          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm transition-colors"
+        >
+          <Trash2 size={16} className="text-terracotta" />
+          {t('recipes.recycleBin', 'Recycle Bin')}
         </button>
       </div>
 
@@ -502,7 +575,7 @@ export default function RecipesPage() {
               type="button"
               data-testid="inventory-capture-submit"
               onClick={() => void handleCameraSubmit()}
-              disabled={pendingPhotos.length === 0 || isSubmittingPhotos}
+              disabled={isSubmittingPhotos}
               className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-40"
             >
               {isSubmittingPhotos
@@ -794,6 +867,8 @@ export default function RecipesPage() {
           onFindSimilar={handleFindSimilar}
         />
       )}
+
+      {showRecycleBin && <RecycleBinSheet onClose={() => setShowRecycleBin(false)} />}
     </div>
   );
 }

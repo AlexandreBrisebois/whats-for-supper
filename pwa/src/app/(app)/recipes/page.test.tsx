@@ -269,7 +269,7 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
     expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Family favorite.');
     expect(screen.getByRole('button', { name: 'Like' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('action-save-for-tonight')).toBeInTheDocument();
+    expect(screen.getByTestId('action-cook-this')).toBeInTheDocument();
     expect(screen.getByTestId('action-find-similar')).toBeInTheDocument();
     expect(screen.getByTestId('action-toggle-discovery')).toBeInTheDocument();
     expect(screen.getByTestId('action-move-to-bin')).toBeInTheDocument();
@@ -333,10 +333,10 @@ describe('RecipesPage', () => {
     fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('action-use-for-day')).toBeInTheDocument();
+      expect(screen.getByTestId('action-add-to-day')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('action-use-for-day'));
+    fireEvent.click(screen.getByTestId('action-add-to-day'));
 
     await waitFor(() => {
       expect(mocks.assignRecipeToDay).toHaveBeenCalledWith(0, 2, {
@@ -346,7 +346,7 @@ describe('RecipesPage', () => {
       });
     });
 
-    expect(mocks.push).toHaveBeenCalledWith('/planner?success=1&dayIndex=2');
+    expect(mocks.push).toHaveBeenCalledWith('/planner?success=1&dayIndex=2&weekOffset=0');
   });
 
   describe('Quick filter pills', () => {
@@ -523,13 +523,13 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('inventory-capture-cancel')).toBeInTheDocument();
   });
 
-  it('submit button is disabled until at least one photo is added', async () => {
+  it('submit button stays available and updates the photo count as photos are added', async () => {
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
     const submitBtn = screen.getByTestId('inventory-capture-submit');
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).not.toBeDisabled();
     expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
 
     // Mock adding a photo
@@ -537,12 +537,11 @@ describe('RecipesPage', () => {
     const input = screen.getByTestId('inventory-camera-input');
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(submitBtn).not.toBeDisabled();
     expect(submitBtn).toHaveTextContent(/Search with 1 photo/i);
     expect(screen.getByTestId('remove-photo-0')).toBeInTheDocument();
   });
 
-  it('removing a photo updates the count and disables submit if queue becomes empty', async () => {
+  it('removing a photo updates the count and keeps submit available when the queue becomes empty', async () => {
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
@@ -556,7 +555,7 @@ describe('RecipesPage', () => {
 
     fireEvent.click(screen.getByTestId('remove-photo-0'));
 
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).not.toBeDisabled();
     expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
   });
 
@@ -598,7 +597,7 @@ describe('RecipesPage', () => {
 
     // Re-open to check if queue was cleared
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
-    expect(screen.getByTestId('inventory-capture-submit')).toBeDisabled();
+    expect(screen.getByTestId('inventory-capture-submit')).not.toBeDisabled();
   });
 
   it('popup shows busy message when capture returns busy status', async () => {

@@ -4,6 +4,33 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-09] Session — Recipe Action Pivot & E2E Stabilization
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+This session implemented the **Recipe Action Pivot** feature, allowing the UI to dynamically switch between "Cook it tonight" and "Add it to {day}" based on navigation context.
+
+**Key Achievements:**
+1. **Context-Aware UI**: `RecipesPage` and `RecipeDetailSheet` now pivot labels and logic based on `addToDay` and `weekOffset` URL parameters.
+2. **Planner Integration**: "Quick Find" in the Planner now propagates specific slot context to the Search page.
+3. **Discovery Pivot**: Discovery-origin details now show `Cook this` first, then reveal `Cook it tonight` and `Plan for later`.
+4. **E2E Mocking Hardened (ADR 040)**: Identified and fixed a critical Playwright bug where `route.continue()` was bypassing layered mocks. Established `route.fallback()` as the repo-standard for test-specific overrides.
+5. **Search Client Stabilization**: `searchRecipes` now uses a native fetch wrapper for `/api/recipes/search` to avoid Kiota nullable-union deserialization turning valid `topPick` payloads into empty marker objects.
+
+#### Technical Context & Decisions
+- **ADR 040**: Memorialized the requirement to use `route.fallback()` in Playwright to preserve the mocking hierarchy (Safety Gate -> Common Baseline -> Test Override).
+- **Mock fidelity**: `action-pivot.spec.ts` uses high-fidelity raw search result payloads so `mapSearchResult` receives the required fields (`id`, `name`, `imageUrl`, `totalTime`, `difficulty`, etc.).
+- **Unit contract alignment**: `RecipesPage` unit tests now assert the new CTA IDs (`action-cook-this`, `action-add-to-day`) and the planner redirect with `weekOffset`.
+
+#### Verification
+- `npm run test:unit -- src/app/(app)/recipes/page.test.tsx` — ✅ 38 passed.
+- `npx playwright test e2e/action-pivot.spec.ts` — ✅ 4 passed.
+- `npx playwright test e2e/planner-full-cycle.spec.ts` — ✅ 5 passed.
+- `task gate` — ✅ passed: 338 unit tests passed, 180 E2E tests passed, 1 skipped, Kiota client check passed, schema drift check passed.
+
+---
+
 ### [2026-05-09] Session — Search UX & Intelligence Optimization
 **Status**: COMPLETED ✅
 **Branch**: `main`
