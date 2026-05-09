@@ -14,11 +14,7 @@ import {
   Dices,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import {
-  searchRecipes,
-  type RecipeSearchResponse,
-  type Recipe,
-} from '@/lib/api/recipes';
+import { searchRecipes, type RecipeSearchResponse, type Recipe } from '@/lib/api/recipes';
 import { submitInventoryCapture } from '@/lib/api/inventory';
 import type { RecipeSearchFiltersDto } from '@/lib/api/generated/models/index';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -48,6 +44,8 @@ export default function RecipesPage() {
   const [agentQuery, setAgentQuery] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('standard');
   const [isCameraBusy, setIsCameraBusy] = useState(false);
+  const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
+  const [isSubmittingPhotos, setIsSubmittingPhotos] = useState(false);
   const [pantrySnapshotId, setPantrySnapshotId] = useState<string | null>(null);
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +56,8 @@ export default function RecipesPage() {
   const [limit, setLimit] = useState(INITIAL_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -211,18 +211,30 @@ export default function RecipesPage() {
       .finally(() => setIsLoading(false));
   };
 
-  const handleCameraSubmit = async (files: File[]) => {
+  const handleCameraSubmit = async () => {
+    if (pendingPhotos.length === 0) return;
     setIsCameraBusy(false);
-    const result = await submitInventoryCapture(files);
-
-    if ('busy' in result) {
-      setIsCameraBusy(true);
-      return;
+    setIsSubmittingPhotos(true);
+    try {
+      const result = await submitInventoryCapture(pendingPhotos);
+      if ('busy' in result) {
+        setIsCameraBusy(true);
+        return;
+      }
+      setPendingPhotos([]);
+      setSearchMode('standard');
+      setPantrySnapshotId(result.snapshotId);
+      void runSearch(query, similarToRecipeId, activeFilters, result.snapshotId);
+    } finally {
+      setIsSubmittingPhotos(false);
     }
+  };
 
-    setSearchMode('standard');
-    setPantrySnapshotId(result.snapshotId);
-    void runSearch(query, similarToRecipeId, activeFilters, result.snapshotId);
+  const handlePhotoInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+    setPendingPhotos((prev) => [...prev, ...files]);
+    event.target.value = '';
   };
 
   const handleFilterToggle = (key: keyof RecipeSearchFiltersDto) => {
@@ -300,17 +312,6 @@ export default function RecipesPage() {
         </motion.div>
       )}
 
-      {/* Browse Library — compact header row */}
-      <a
-        href="/browse-all-stack"
-        data-testid="browse-all-stack-trigger"
-        className="flex items-center gap-1.5 px-1 text-[11px] font-black uppercase tracking-[0.15em] text-sage hover:text-sage/80 transition-colors"
-      >
-        <BookOpen size={13} />
-        {t('recipes.browseLibrary', 'Browse Library')}
-        <ArrowRight size={13} />
-      </a>
-
       {/* Mode selector */}
       <div className="flex gap-2 px-1">
         <button
@@ -324,7 +325,10 @@ export default function RecipesPage() {
               : 'border-charcoal/10 bg-white/70 text-charcoal'
           )}
         >
-          <Sparkles size={16} className={searchMode === 'agent' ? 'text-white' : 'text-terracotta'} />
+          <Sparkles
+            size={16}
+            className={searchMode === 'agent' ? 'text-white' : 'text-terracotta'}
+          />
           {t('recipes.agentSearch', 'Agent Search')}
         </button>
         <button
@@ -338,7 +342,10 @@ export default function RecipesPage() {
               : 'border-charcoal/10 bg-white/70 text-charcoal'
           )}
         >
-          <Camera size={16} className={searchMode === 'camera' ? 'text-white' : 'text-terracotta'} />
+          <Camera
+            size={16}
+            className={searchMode === 'camera' ? 'text-white' : 'text-terracotta'}
+          />
           {t('recipes.inventoryCamera', 'Use Camera')}
         </button>
       </div>
@@ -413,34 +420,107 @@ export default function RecipesPage() {
         </motion.div>
       )}
 
+      {/* Hidden file inputs */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        data-testid="inventory-camera-input"
+        className="hidden"
+        onChange={handlePhotoInput}
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        data-testid="inventory-gallery-input"
+        className="hidden"
+        onChange={handlePhotoInput}
+      />
+
+      {/* Camera photo queue panel */}
       {searchMode === 'camera' && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           data-testid="inventory-capture-popup"
-          className="rounded-2xl border border-charcoal/10 bg-white/90 p-5 shadow-lg flex flex-col gap-4"
+          className="flex flex-col gap-4 rounded-2xl border border-charcoal/10 bg-white/90 p-5 shadow-lg"
         >
-          <p className="text-sm font-bold text-charcoal">
-            {t('recipes.cameraPopupTitle', 'Take a photo of your pantry, fridge, or freezer')}
-          </p>
+          {/* Add more buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-testid="inventory-take-photo"
+              onClick={() => cameraInputRef.current?.click()}
+              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white shadow-sm"
+            >
+              <Camera size={15} />
+              {t('recipes.takePhoto', 'Take Photo')}
+            </button>
+            <button
+              type="button"
+              data-testid="inventory-choose-photos"
+              onClick={() => galleryInputRef.current?.click()}
+              className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+            >
+              {t('recipes.choosePhotos', 'Choose from Library')}
+            </button>
+          </div>
+
+          {/* Photo preview strip */}
+          {pendingPhotos.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {pendingPhotos.map((file, i) => (
+                <div key={i} className="relative h-20 w-20 overflow-hidden rounded-xl shadow-sm">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Photo ${i + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    data-testid={`remove-photo-${i}`}
+                    onClick={() => setPendingPhotos((prev) => prev.filter((_, j) => j !== i))}
+                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-charcoal/70 text-white text-xs font-black leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {isCameraBusy && (
             <p className="text-sm text-terracotta font-medium">
               {t('recipes.cameraBusy', "We're processing a lot right now. Try again in a moment.")}
             </p>
           )}
+
           <div className="flex gap-2">
             <button
               type="button"
               data-testid="inventory-capture-submit"
-              onClick={() => void handleCameraSubmit([])}
-              className="rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"
+              onClick={() => void handleCameraSubmit()}
+              disabled={pendingPhotos.length === 0 || isSubmittingPhotos}
+              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-40"
             >
-              {t('recipes.cameraSubmit', 'Use Photo')}
+              {isSubmittingPhotos
+                ? t('recipes.searching', 'Searching…')
+                : t(
+                    'recipes.searchWithPhotos',
+                    `Search with ${pendingPhotos.length} photo${pendingPhotos.length !== 1 ? 's' : ''}`
+                  )}
             </button>
             <button
               type="button"
               data-testid="inventory-capture-cancel"
-              onClick={() => setSearchMode('standard')}
+              onClick={() => {
+                setSearchMode('standard');
+                setPendingPhotos([]);
+                setIsCameraBusy(false);
+              }}
               className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
             >
               {t('recipes.cancel', 'Cancel')}
@@ -449,63 +529,61 @@ export default function RecipesPage() {
         </motion.div>
       )}
 
-      {/* Filter pills — hidden in camera mode */}
-      {searchMode !== 'camera' && (
-        <div className="flex flex-col gap-2 px-1">
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-            {t('recipes.filterBy', 'Filter by')}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                {
-                  key: 'newRecipes',
-                  label: t('recipes.filterNew', 'New'),
-                  testId: 'filter-new-recipes',
-                },
-                {
-                  key: 'neverCooked',
-                  label: t('recipes.filterNeverTried', 'Never Tried'),
-                  testId: 'filter-never-tried',
-                },
-                {
-                  key: 'familyFavorite',
-                  label: t('recipes.filterFamilyFavorite', 'Family Favorite'),
-                  testId: 'filter-family-favorite',
-                },
-                {
-                  key: 'quickOnly',
-                  label: t('recipes.filterQuick', 'Quick'),
-                  testId: 'filter-quick',
-                },
-                {
-                  key: 'notCookedInLongTime',
-                  label: t('recipes.filterNotCookedLong', "It's Been a While"),
-                  testId: 'filter-not-cooked-long-time',
-                },
-              ] as { key: keyof RecipeSearchFiltersDto; label: string; testId: string }[]
-            ).map(({ key, label, testId }) => {
-              const isActive = !!activeFilters[key];
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  data-testid={isActive ? `${testId}-active` : testId}
-                  onClick={() => handleFilterToggle(key)}
-                  className={cn(
-                    'rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
-                    isActive
-                      ? 'border-terracotta bg-terracotta text-white'
-                      : 'border-charcoal/10 bg-white/70 text-charcoal'
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+      {/* Filter pills */}
+      <div className="flex flex-col gap-2 px-1">
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40">
+          {t('recipes.filterBy', 'Filter by')}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              {
+                key: 'newRecipes',
+                label: t('recipes.filterNew', 'New'),
+                testId: 'filter-new-recipes',
+              },
+              {
+                key: 'neverCooked',
+                label: t('recipes.filterNeverTried', 'Never Tried'),
+                testId: 'filter-never-tried',
+              },
+              {
+                key: 'familyFavorite',
+                label: t('recipes.filterFamilyFavorite', 'Family Favorite'),
+                testId: 'filter-family-favorite',
+              },
+              {
+                key: 'quickOnly',
+                label: t('recipes.filterQuick', 'Quick'),
+                testId: 'filter-quick',
+              },
+              {
+                key: 'notCookedInLongTime',
+                label: t('recipes.filterNotCookedLong', "It's Been a While"),
+                testId: 'filter-not-cooked-long-time',
+              },
+            ] as { key: keyof RecipeSearchFiltersDto; label: string; testId: string }[]
+          ).map(({ key, label, testId }) => {
+            const isActive = !!activeFilters[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                data-testid={isActive ? `${testId}-active` : testId}
+                onClick={() => handleFilterToggle(key)}
+                className={cn(
+                  'rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+                  isActive
+                    ? 'border-terracotta bg-terracotta text-white'
+                    : 'border-charcoal/10 bg-white/70 text-charcoal'
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* Results Section */}
       <div className="flex flex-col gap-6">
@@ -667,9 +745,7 @@ export default function RecipesPage() {
                   disabled={isLoadingMore}
                   className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-6 py-2.5 text-sm font-bold text-charcoal shadow-sm disabled:opacity-50"
                 >
-                  {isLoadingMore ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : null}
+                  {isLoadingMore ? <Loader2 size={14} className="animate-spin" /> : null}
                   {t('recipes.showMore', 'Show more')}
                 </button>
               </div>
@@ -686,7 +762,9 @@ export default function RecipesPage() {
       {openDetailRecipeId && (
         <RecipeDetailSheet
           recipeId={openDetailRecipeId}
-          plannerDayLabel={dayName ?? (addToDay !== null ? `Day ${parseInt(addToDay, 10) + 1}` : null)}
+          plannerDayLabel={
+            dayName ?? (addToDay !== null ? `Day ${parseInt(addToDay, 10) + 1}` : null)
+          }
           onClose={() => setOpenDetailRecipeId(null)}
           onUseForDay={handleAssignRecipe}
           onFindSimilar={handleFindSimilar}

@@ -119,7 +119,7 @@ export function RecipeDetailSheet({
   const primaryActionTestId = plannerDayLabel ? 'action-use-for-day' : 'action-save-for-tonight';
   const primaryActionLabel = plannerDayLabel
     ? t('recipes.useForDay', `Use for ${plannerDayLabel}`)
-    : t('recipes.saveForTonight', 'Save for Tonight');
+    : t('recipes.cookThisTonight', 'Cook This Tonight');
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center px-4 pb-4 sm:items-center">

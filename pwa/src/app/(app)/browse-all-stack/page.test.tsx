@@ -524,7 +524,9 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
 
   it('recycle-bin-entry opens the recycle bin sheet and close button dismisses it', async () => {
     render(<BrowseAllStackPage />);
-    await waitFor(() => expect(screen.getByTestId('browse-all-stack-container')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-all-stack-container')).toBeInTheDocument()
+    );
 
     expect(screen.queryByTestId('trash-list')).not.toBeInTheDocument();
 

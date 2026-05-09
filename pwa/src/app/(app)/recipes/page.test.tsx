@@ -76,6 +76,9 @@ vi.mock('@/lib/api/planner', () => ({
   assignRecipeToDay: (...args: unknown[]) => mocks.assignRecipeToDay(...args),
 }));
 
+if (typeof window !== 'undefined') {
+  window.URL.createObjectURL = vi.fn(() => 'mock-url');
+}
 
 import RecipesPage from './page';
 import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
@@ -158,7 +161,6 @@ describe('RecipesPage', () => {
     });
 
     expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument();
-    expect(screen.getByTestId('browse-all-stack-trigger')).toBeInTheDocument();
   });
 
   it('fires recipe search on mount and again when Enter is pressed with the current query', async () => {
@@ -498,6 +500,8 @@ describe('RecipesPage', () => {
 
   // ── Task 13: Inventory camera popup ─────────────────────────────────────────
 
+  // ── Task 13: Inventory camera popup ─────────────────────────────────────────
+
   it('inventory-camera-trigger tap opens the inventory-capture-popup', async () => {
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
@@ -508,19 +512,63 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
   });
 
-  it('inventory-capture-popup renders submit and cancel buttons', async () => {
+  it('inventory-capture-popup renders take photo, choose photos, submit and cancel buttons', async () => {
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
+    expect(screen.getByTestId('inventory-take-photo')).toBeInTheDocument();
+    expect(screen.getByTestId('inventory-choose-photos')).toBeInTheDocument();
     expect(screen.getByTestId('inventory-capture-submit')).toBeInTheDocument();
     expect(screen.getByTestId('inventory-capture-cancel')).toBeInTheDocument();
+  });
+
+  it('submit button is disabled until at least one photo is added', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    const submitBtn = screen.getByTestId('inventory-capture-submit');
+    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
+
+    // Mock adding a photo
+    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
+    const input = screen.getByTestId('inventory-camera-input');
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(submitBtn).not.toBeDisabled();
+    expect(submitBtn).toHaveTextContent(/Search with 1 photo/i);
+    expect(screen.getByTestId('remove-photo-0')).toBeInTheDocument();
+  });
+
+  it('removing a photo updates the count and disables submit if queue becomes empty', async () => {
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
+    const input = screen.getByTestId('inventory-camera-input');
+    fireEvent.change(input, { target: { files: [file] } });
+
+    const submitBtn = screen.getByTestId('inventory-capture-submit');
+    expect(submitBtn).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('remove-photo-0'));
+
+    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
   });
 
   it('submitting the popup calls POST /api/inventory-captures and includes snapshotId in next search', async () => {
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
+    const input = screen.getByTestId('inventory-camera-input');
+    fireEvent.change(input, { target: { files: [file] } });
+
     fireEvent.click(screen.getByTestId('inventory-capture-submit'));
 
     await waitFor(() => {
@@ -534,19 +582,23 @@ describe('RecipesPage', () => {
     });
   });
 
-  it('inventory-capture-cancel closes popup without making any API call', async () => {
-    const initialCallCount = mocks.searchRecipes.mock.calls.length;
-
+  it('inventory-capture-cancel closes popup and clears queue', async () => {
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
+    const input = screen.getByTestId('inventory-camera-input');
+    fireEvent.change(input, { target: { files: [file] } });
 
     expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('inventory-capture-cancel'));
 
     expect(screen.queryByTestId('inventory-capture-popup')).not.toBeInTheDocument();
-    // Cancel should not trigger any additional search calls
-    expect(mocks.searchRecipes.mock.calls.length).toBe(initialCallCount + 1); // only the initial mount call
+
+    // Re-open to check if queue was cleared
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+    expect(screen.getByTestId('inventory-capture-submit')).toBeDisabled();
   });
 
   it('popup shows busy message when capture returns busy status', async () => {
@@ -555,6 +607,11 @@ describe('RecipesPage', () => {
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
+    const input = screen.getByTestId('inventory-camera-input');
+    fireEvent.change(input, { target: { files: [file] } });
+
     fireEvent.click(screen.getByTestId('inventory-capture-submit'));
 
     await waitFor(() => {
@@ -568,7 +625,13 @@ describe('RecipesPage', () => {
   it('trash view renders items with trash-item-<id>, action-restore-<id>, action-purge-<id>', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     render(<RecycleBinSheet onClose={vi.fn()} />);
     await waitFor(() => expect(screen.getByTestId(`trash-item-${TRASH_ID}`)).toBeInTheDocument());
@@ -579,13 +642,23 @@ describe('RecipesPage', () => {
   it('tapping action-restore-<id> calls restoreRecipe and removes the item from the list', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     render(<RecycleBinSheet onClose={vi.fn()} />);
-    await waitFor(() => expect(screen.getByTestId(`action-restore-${TRASH_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`action-restore-${TRASH_ID}`)).toBeInTheDocument()
+    );
     fireEvent.click(screen.getByTestId(`action-restore-${TRASH_ID}`));
     await waitFor(() => expect(mocks.restoreRecipe).toHaveBeenCalledWith(TRASH_ID));
-    await waitFor(() => expect(screen.queryByTestId(`trash-item-${TRASH_ID}`)).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByTestId(`trash-item-${TRASH_ID}`)).not.toBeInTheDocument()
+    );
   });
 
   it('trash view shows trash-empty-state when items array is empty', async () => {
@@ -597,10 +670,18 @@ describe('RecipesPage', () => {
   it('restore is available without any PIN challenge', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     render(<RecycleBinSheet onClose={vi.fn()} />);
-    await waitFor(() => expect(screen.getByTestId(`action-restore-${TRASH_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`action-restore-${TRASH_ID}`)).toBeInTheDocument()
+    );
     expect(screen.queryByTestId('elevated-pin-dialog')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId(`action-restore-${TRASH_ID}`));
     await waitFor(() => expect(mocks.restoreRecipe).toHaveBeenCalledWith(TRASH_ID));
@@ -612,7 +693,13 @@ describe('RecipesPage', () => {
   it('tapping action-purge-<id> opens elevated-pin-dialog', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     render(<RecycleBinSheet onClose={vi.fn()} />);
     await waitFor(() => expect(screen.getByTestId(`action-purge-${TRASH_ID}`)).toBeInTheDocument());
@@ -624,7 +711,13 @@ describe('RecipesPage', () => {
   it('elevated-pin-dialog renders elevated-pin-input field', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     render(<RecycleBinSheet onClose={vi.fn()} />);
     await waitFor(() => expect(screen.getByTestId(`action-purge-${TRASH_ID}`)).toBeInTheDocument());
@@ -635,7 +728,13 @@ describe('RecipesPage', () => {
   it('correct PIN submission calls purgeRecipe with X-Elevated-Pin and removes item from list', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     mocks.purgeRecipe.mockResolvedValue(undefined);
     render(<RecycleBinSheet onClose={vi.fn()} />);
@@ -645,27 +744,43 @@ describe('RecipesPage', () => {
     fireEvent.change(screen.getByTestId('elevated-pin-input'), { target: { value: '1234' } });
     fireEvent.submit(screen.getByTestId('elevated-pin-dialog'));
     await waitFor(() => expect(mocks.purgeRecipe).toHaveBeenCalledWith(TRASH_ID, '1234'));
-    await waitFor(() => expect(screen.queryByTestId(`trash-item-${TRASH_ID}`)).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByTestId(`trash-item-${TRASH_ID}`)).not.toBeInTheDocument()
+    );
   });
 
   it('cancelling PIN dialog does NOT call purgeRecipe', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     render(<RecycleBinSheet onClose={vi.fn()} />);
     await waitFor(() => expect(screen.getByTestId(`action-purge-${TRASH_ID}`)).toBeInTheDocument());
     fireEvent.click(screen.getByTestId(`action-purge-${TRASH_ID}`));
     await waitFor(() => expect(screen.getByTestId('elevated-pin-dialog')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('elevated-pin-cancel'));
-    await waitFor(() => expect(screen.queryByTestId('elevated-pin-dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByTestId('elevated-pin-dialog')).not.toBeInTheDocument()
+    );
     expect(mocks.purgeRecipe).not.toHaveBeenCalled();
   });
 
   it('wrong PIN shows elevated-pin-error in the dialog', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     mocks.purgeRecipe.mockRejectedValue(Object.assign(new Error('Forbidden'), { status: 403 }));
     render(<RecycleBinSheet onClose={vi.fn()} />);
@@ -681,7 +796,13 @@ describe('RecipesPage', () => {
   it('on purge success HTTP 200, item is removed from trash list', async () => {
     const TRASH_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     mocks.getTrashItems.mockResolvedValue([
-      { id: TRASH_ID, name: 'Old Soup', imageUrl: null, deletedAt: '2026-05-01T00:00:00Z', deletedBy: null },
+      {
+        id: TRASH_ID,
+        name: 'Old Soup',
+        imageUrl: null,
+        deletedAt: '2026-05-01T00:00:00Z',
+        deletedBy: null,
+      },
     ]);
     mocks.purgeRecipe.mockResolvedValue(undefined);
     render(<RecycleBinSheet onClose={vi.fn()} />);
@@ -690,7 +811,9 @@ describe('RecipesPage', () => {
     await waitFor(() => expect(screen.getByTestId('elevated-pin-input')).toBeInTheDocument());
     fireEvent.change(screen.getByTestId('elevated-pin-input'), { target: { value: '1234' } });
     fireEvent.submit(screen.getByTestId('elevated-pin-dialog'));
-    await waitFor(() => expect(screen.queryByTestId(`trash-item-${TRASH_ID}`)).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByTestId(`trash-item-${TRASH_ID}`)).not.toBeInTheDocument()
+    );
     expect(screen.queryByTestId('elevated-pin-dialog')).not.toBeInTheDocument();
   });
 
