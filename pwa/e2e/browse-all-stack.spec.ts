@@ -631,3 +631,18 @@ test.describe('Browse All Stack — End Card', () => {
     await expect(page.getByTestId('browse-all-search-trigger')).toBeVisible();
   });
 });
+
+test.describe('Browse All Stack — Recycle Bin', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupBrowseAllStack(page);
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('recycle bin entry is visible and opens the trash view', async ({ page }) => {
+    await expect(page.getByTestId('recycle-bin-entry')).toBeVisible();
+    await page.getByTestId('recycle-bin-entry').click();
+
+    await expect(page.getByTestId('trash-list')).toBeVisible();
+  });
+});

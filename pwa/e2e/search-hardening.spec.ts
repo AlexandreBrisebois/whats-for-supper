@@ -113,6 +113,34 @@ async function setupPage(page: import('@playwright/test').Page) {
       });
       return;
     }
+    // Library summary mock for Browse Library navigation
+    await page.route('**/api/recipes/library-summary', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            total: 1,
+            neverCooked: 0,
+            ratings: { love: 0, like: 0, dislike: 0, unrated: 1 },
+          },
+        }),
+      });
+    });
+
+    // Recipes list mock for Browse Library navigation
+    await page.route('**/api/recipes?**order=explore**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          updatedAt: new Date().toISOString(),
+          recipes: [MOCK_SEARCH_TOP_PICK],
+          pagination: { page: 1, limit: 20, total: 1 },
+        }),
+      });
+    });
+
     await route.fallback();
   });
 }
@@ -212,7 +240,9 @@ test.describe('Scenario 4 — soft-delete → restore → hard-delete lifecycle'
     ).not.toBeVisible();
     expect(deleteCalled).toBe(true);
 
-    // 4. Open recycle bin — deleted item is there
+    // 4. Open recycle bin from Browse Library — deleted item is there
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
     await page.getByTestId('recycle-bin-entry').click();
     await expect(page.getByTestId('trash-list')).toBeVisible();
     await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible();
@@ -233,8 +263,8 @@ test.describe('Scenario 4 — soft-delete → restore → hard-delete lifecycle'
       });
     });
 
-    await page.goto('/recipes');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
 
     await page.getByTestId('recycle-bin-entry').click();
     await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_IN_TRASH}`)).toBeVisible();
@@ -477,8 +507,8 @@ test.describe('Scenario 9 — purge blocked: PIN not configured', () => {
       });
     });
 
-    await page.goto('/recipes');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
 
     await page.getByTestId('recycle-bin-entry').click();
     await expect(page.getByTestId(`trash-item-${MOCK_IDS.RECIPE_IN_TRASH}`)).toBeVisible();

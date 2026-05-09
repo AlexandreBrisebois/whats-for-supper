@@ -79,15 +79,15 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
           }`}
           data-testid="stack-toggle-discoverable"
           aria-label={
-            isDiscoverableOnly 
-              ? t('recipes.showingDiscovery', 'Showing recipes marked Discovery') 
+            isDiscoverableOnly
+              ? t('recipes.showingDiscovery', 'Showing recipes marked Discovery')
               : t('recipes.showingAll', 'Showing all recipes')
           }
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-ochre' : ''}`} />
           <span className="text-xs font-black tracking-wide">
-            {isDiscoverableOnly 
-              ? t('navigation.discover', 'Discovery') 
+            {isDiscoverableOnly
+              ? t('navigation.discover', 'Discovery')
               : t('recipes.allRecipes', 'All Recipes')}
           </span>
         </button>

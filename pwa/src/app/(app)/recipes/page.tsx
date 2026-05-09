@@ -23,7 +23,6 @@ import { assignRecipeToDay } from '@/lib/api/planner';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
-import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
 
 type SearchMode = 'standard' | 'agent' | 'camera';
 
@@ -66,7 +65,6 @@ export default function RecipesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
-  const [showRecycleBin, setShowRecycleBin] = useState(false);
   const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
   const [limit, setLimit] = useState(INITIAL_LIMIT);
@@ -411,15 +409,6 @@ export default function RecipesPage() {
           <BookOpen size={16} className="text-terracotta" />
           {t('recipes.browseLibrary', 'Browse Library')}
         </a>
-        <button
-          type="button"
-          data-testid="recycle-bin-entry"
-          onClick={() => setShowRecycleBin(true)}
-          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm transition-colors"
-        >
-          <Trash2 size={16} className="text-terracotta" />
-          {t('recipes.recycleBin', 'Recycle Bin')}
-        </button>
       </div>
 
       {/* Single active canvas */}
@@ -867,8 +856,6 @@ export default function RecipesPage() {
           onFindSimilar={handleFindSimilar}
         />
       )}
-
-      {showRecycleBin && <RecycleBinSheet onClose={() => setShowRecycleBin(false)} />}
     </div>
   );
 }

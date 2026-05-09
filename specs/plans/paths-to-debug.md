@@ -14,8 +14,6 @@
 
 X -> rethink bottom of stack browser. touch zones are too small, it's hard to toggle. 
 
-X search -> remove recycling bin
-
 X search with photo -> when in search with photo mode bring back the capture button from the capture card. visual language.
 
 X search with photo -> consistently "we're processing a lot right now, try again in a moment.
