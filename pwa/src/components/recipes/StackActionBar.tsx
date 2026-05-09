@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
 interface StackActionBarProps {
@@ -65,49 +65,63 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="flex items-center gap-1 rounded-full bg-charcoal/80 p-1.5 text-white shadow-glass backdrop-blur-2xl border border-white/10"
+        className="flex w-full max-w-md flex-col gap-2 rounded-[1.75rem] border border-charcoal/8 bg-white/85 p-2 shadow-glass backdrop-blur-2xl"
         data-testid="stack-action-bar"
       >
         {/* Global Toggle: Library (all) vs Discovery (voteable only) */}
         <button
           onClick={onToggleGlobalFilter}
-          className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 ${
+          className={`flex min-h-11 items-center justify-center gap-2 rounded-[1.25rem] px-4 py-2 transition-all duration-300 ${
             isDiscoverableOnly
-              ? 'bg-ochre/20 text-ochre border border-ochre/40 shadow-[0_0_20px_rgba(225,173,1,0.2)]'
-              : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
+              ? 'bg-ochre/15 text-ochre-800 border border-ochre/25 shadow-sm shadow-ochre/10'
+              : 'bg-cream text-charcoal/70 border border-charcoal/8 hover:bg-ochre/10 hover:text-charcoal'
           }`}
           data-testid="stack-toggle-discoverable"
           aria-label={
-            isDiscoverableOnly ? 'Filter: showing Discovery only' : 'Filter: showing full Library'
+            isDiscoverableOnly
+              ? 'Showing recipes marked Ask the Family'
+              : 'Showing all recipes'
           }
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-ochre' : ''}`} />
-          <span className="text-[10px] font-black uppercase tracking-wider">
-            {isDiscoverableOnly ? 'Filter: Discovery' : 'Filter: Library'}
+          <span className="text-xs font-black tracking-wide">
+            {isDiscoverableOnly ? 'Ask the Family' : 'All Recipes'}
           </span>
         </button>
-
-        <div className="h-4 w-px bg-white/10 mx-1" />
 
         {/* Individual card: add/remove from Discovery */}
         <button
           onClick={handleIndividualToggle}
           disabled={isUpdating}
-          className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 ${
+          className={`flex min-h-12 items-center justify-between gap-4 rounded-[1.25rem] px-4 py-2.5 text-left transition-all duration-300 ${
             isIndividualDiscoverable
-              ? 'bg-sage/20 text-sage border border-sage/40 shadow-[0_0_20px_rgba(138,154,91,0.2)]'
-              : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
+              ? 'bg-sage/10 text-charcoal border border-sage/25 shadow-sm shadow-sage/10'
+              : 'bg-charcoal/5 text-charcoal/65 border border-charcoal/8 hover:bg-charcoal/8 hover:text-charcoal'
           } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
           data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
-          aria-label={isIndividualDiscoverable ? 'Hide from proposals' : 'Propose to family'}
+          aria-label={
+            isIndividualDiscoverable
+              ? 'Turn off Ask the Family for this recipe'
+              : 'Turn on Ask the Family for this recipe'
+          }
         >
-          {isIndividualDiscoverable ? (
-            <Eye className="h-3.5 w-3.5 text-sage fill-sage" />
-          ) : (
-            <EyeOff className="h-3.5 w-3.5" />
-          )}
-          <span className="text-[10px] font-black uppercase tracking-wider">
-            {isIndividualDiscoverable ? 'Propose' : 'Hidden'}
+          <span className="flex flex-col leading-tight">
+            <span className="text-xs font-black tracking-wide text-charcoal">Ask the Family</span>
+            <span className="text-[10px] font-bold text-charcoal/45">
+              Shows in Discovery voting
+            </span>
+          </span>
+          <span
+            className={`relative h-7 w-12 rounded-full transition-colors duration-300 ${
+              isIndividualDiscoverable ? 'bg-sage' : 'bg-charcoal/20'
+            }`}
+            aria-hidden="true"
+          >
+            <span
+              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
+                isIndividualDiscoverable ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
           </span>
         </button>
       </motion.div>

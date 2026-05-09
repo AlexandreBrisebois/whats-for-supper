@@ -130,7 +130,7 @@ describe('StackActionBar — discoverable toggle visual state', () => {
     expect(screen.getByTestId('card-toggle-discovery-recipe-abc')).toBeTruthy();
   });
 
-  it('renders aria-label "Propose to family" when isDiscoverable is false', () => {
+  it('renders aria-label "Turn on Ask the Family for this recipe" when isDiscoverable is false', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: false })}
@@ -142,10 +142,10 @@ describe('StackActionBar — discoverable toggle visual state', () => {
       />
     );
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
-    expect(btn.getAttribute('aria-label')).toBe('Propose to family');
+    expect(btn.getAttribute('aria-label')).toBe('Turn on Ask the Family for this recipe');
   });
 
-  it('renders aria-label "Hide from proposals" when isDiscoverable is true', () => {
+  it('renders aria-label "Turn off Ask the Family for this recipe" when isDiscoverable is true', () => {
     render(
       <StackActionBar
         currentRecipe={makeRecipe({ isDiscoverable: true })}
@@ -157,7 +157,7 @@ describe('StackActionBar — discoverable toggle visual state', () => {
       />
     );
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
-    expect(btn.getAttribute('aria-label')).toBe('Hide from proposals');
+    expect(btn.getAttribute('aria-label')).toBe('Turn off Ask the Family for this recipe');
   });
 });
 
@@ -227,13 +227,13 @@ describe('StackActionBar — toggle interaction', () => {
     );
 
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
-    expect(btn.getAttribute('aria-label')).toBe('Propose to family');
+    expect(btn.getAttribute('aria-label')).toBe('Turn on Ask the Family for this recipe');
 
     fireEvent.click(btn);
 
     // Optimistic update should flip the label immediately
     await waitFor(() => {
-      expect(btn.getAttribute('aria-label')).toBe('Hide from proposals');
+      expect(btn.getAttribute('aria-label')).toBe('Turn off Ask the Family for this recipe');
     });
 
     // Resolve the promise
@@ -333,13 +333,13 @@ describe('StackActionBar — error handling', () => {
     );
 
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
-    expect(btn.getAttribute('aria-label')).toBe('Propose to family');
+    expect(btn.getAttribute('aria-label')).toBe('Turn on Ask the Family for this recipe');
 
     fireEvent.click(btn);
 
     // After rejection, should revert back to original state
     await waitFor(() => {
-      expect(btn.getAttribute('aria-label')).toBe('Propose to family');
+      expect(btn.getAttribute('aria-label')).toBe('Turn on Ask the Family for this recipe');
     });
   });
 
@@ -386,7 +386,7 @@ describe('StackActionBar — card change sync', () => {
     );
 
     expect(screen.getByTestId('card-toggle-discovery-recipe-a').getAttribute('aria-label')).toBe(
-      'Propose to family'
+      'Turn on Ask the Family for this recipe'
     );
 
     rerender(
@@ -401,7 +401,7 @@ describe('StackActionBar — card change sync', () => {
     );
 
     expect(screen.getByTestId('card-toggle-discovery-recipe-b').getAttribute('aria-label')).toBe(
-      'Hide from proposals'
+      'Turn off Ask the Family for this recipe'
     );
   });
 
