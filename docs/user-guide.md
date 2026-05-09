@@ -73,6 +73,8 @@ You don't need to be precise. Type like you talk: "chicken pasta tonight", "quic
 
 Search is **planner-aware**. If you open search from a day in your planner, it automatically hides recipes you've already planned for other days and highlights ones that help balance your week.
 
+Use the **"Healthy"** filter to quickly find light and nutritious meals. If you have a complex request, tap the **Stars icon** to use "Agent Search" — you can type long-form sentences like "something with chicken but not too heavy" and the AI will find the best matches for you.
+
 Search saves you from scrolling through hundreds of recipes to find "that one thing."
 
 ---
@@ -96,6 +98,7 @@ You can add a recipe three ways:
 - **Photo** — snap a page from a cookbook or a screenshot
 - **URL** — share a link from any recipe site
 - **Describe it** — type a few words and let the app fill in the details
+- **Pantry Search** — tap the **Camera icon** on the search page to snap photos of your fridge, freezer, or pantry. The app will identify the ingredients you have on hand and prioritize recipes that use them.
 
 After you submit, the recipe queues while it's being processed. You'll get a notification the moment it's ready in your library.
 

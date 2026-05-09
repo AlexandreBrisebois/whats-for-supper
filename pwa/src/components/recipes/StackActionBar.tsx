@@ -65,7 +65,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="flex items-center gap-1 rounded-full bg-charcoal/90 p-1.5 text-white shadow-2xl backdrop-blur-xl border border-white/10"
+        className="flex items-center gap-1 rounded-full bg-charcoal/80 p-1.5 text-white shadow-glass backdrop-blur-2xl border border-white/10"
         data-testid="stack-action-bar"
       >
         {/* Global Toggle: Library (all) vs Discovery (voteable only) */}
@@ -73,15 +73,15 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
           onClick={onToggleGlobalFilter}
           className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 ${
             isDiscoverableOnly
-              ? 'bg-ochre text-charcoal shadow-[0_0_15px_rgba(224,159,31,0.3)]'
-              : 'bg-white/5 hover:bg-white/10 text-white/70'
+              ? 'bg-ochre/20 text-ochre border border-ochre/40 shadow-[0_0_20px_rgba(225,173,1,0.2)]'
+              : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
           }`}
           data-testid="stack-toggle-discoverable"
           aria-label={
             isDiscoverableOnly ? 'Filter: showing Discovery only' : 'Filter: showing full Library'
           }
         >
-          <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-charcoal' : ''}`} />
+          <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-ochre' : ''}`} />
           <span className="text-[10px] font-black uppercase tracking-wider">
             {isDiscoverableOnly ? 'Filter: Discovery' : 'Filter: Library'}
           </span>
@@ -95,16 +95,16 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
           disabled={isUpdating}
           className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 ${
             isIndividualDiscoverable
-              ? 'bg-sage text-charcoal shadow-[0_0_15px_rgba(125,142,125,0.3)]'
-              : 'bg-white/5 hover:bg-white/10 text-white/70'
+              ? 'bg-sage/20 text-sage border border-sage/40 shadow-[0_0_20px_rgba(138,154,91,0.2)]'
+              : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
           } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
           data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
           aria-label={isIndividualDiscoverable ? 'Hide from proposals' : 'Propose to family'}
         >
           {isIndividualDiscoverable ? (
-            <Eye className="h-3.5 w-3.5 text-charcoal fill-charcoal" />
+            <Eye className="h-3.5 w-3.5 text-sage fill-sage" />
           ) : (
-            <EyeOff className="h-3.5 w-3.5 text-white/70" />
+            <EyeOff className="h-3.5 w-3.5" />
           )}
           <span className="text-[10px] font-black uppercase tracking-wider">
             {isIndividualDiscoverable ? 'Propose' : 'Hidden'}
