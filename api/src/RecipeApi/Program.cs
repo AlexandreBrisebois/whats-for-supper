@@ -120,6 +120,7 @@ try
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<SearchIndexWorkflow>();
     builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
+    builder.Services.AddSingleton<IEmbeddingProvider, GeminiEmbeddingProvider>();
 
     // ── Workflow Processors Registration ─────────────────────────────────────
     // Each IWorkflowProcessor handles a specific task type in YAML workflows.
@@ -164,6 +165,7 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, CategorizeIngredientsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, ClassifyDietaryProfileProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),
        "BackupDatabase"));
@@ -213,6 +215,8 @@ try
         })
         .GetChatClient(modelId)
         .AsIChatClient());
+
+    builder.Services.AddScoped<IEmbeddingProvider, GeminiEmbeddingProvider>();
 
     // ── Database ─────────────────────────────────────────────────────────────
     // Resolve the connection string lazily (at first DbContext creation) so that

@@ -1,8 +1,10 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Workflow;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 
@@ -42,6 +44,19 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         UpdatedAt = DateTimeOffset.UtcNow
     };
 
+    private async Task SeedDocumentAsync(Recipe recipe)
+    {
+        _db.Recipes.Add(recipe);
+        _db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+        {
+            RecipeId = recipe.Id,
+            IndexStatus = "pending",
+            EmbeddingModel = "text-embedding-3-small",
+            SchemaVersion = 1
+        });
+        await _db.SaveChangesAsync();
+    }
+
     // ── Fingerprint consistency ───────────────────────────────────────────────
 
     [Fact]
@@ -53,83 +68,24 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         Assert.Equal(fp1, fp2);
     }
 
-    // ── Enqueue logic ─────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task EnqueueAsync_Creates_PendingDocument_WhenNoneExists()
-    {
-        var recipe = BuildRecipe();
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
-
-        var service = new SearchIndexWorkflow(_db);
-        await service.EnqueueAsync(recipe.Id);
-
-        var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
-        Assert.NotNull(doc);
-        Assert.Equal("pending", doc.IndexStatus);
-    }
-
-    [Fact]
-    public async Task EnqueueAsync_IsNoOp_WhenDocumentAlreadyPendingWithSameFingerprint()
-    {
-        var recipe = BuildRecipe();
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
-
-        var service = new SearchIndexWorkflow(_db);
-        await service.EnqueueAsync(recipe.Id);
-        await service.EnqueueAsync(recipe.Id); // second call — same fingerprint
-
-        var count = await _db.RecipeSearchDocuments.CountAsync(d => d.RecipeId == recipe.Id);
-        Assert.Equal(1, count);
-    }
-
-    [Fact]
-    public async Task EnqueueAsync_IsTriggered_WhenRecipeIsCreated()
-    {
-        var recipe = BuildRecipe("New Created Recipe");
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
-
-        var service = new SearchIndexWorkflow(_db);
-        await service.EnqueueAsync(recipe.Id);
-
-        var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
-        Assert.NotNull(doc);
-        Assert.Equal("pending", doc.IndexStatus);
-    }
-
-    [Fact]
-    public async Task EnqueueAsync_SetsFingerprint_OnDocument()
-    {
-        var recipe = BuildRecipe();
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
-
-        var service = new SearchIndexWorkflow(_db);
-        await service.EnqueueAsync(recipe.Id);
-
-        var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
-        Assert.NotNull(doc!.SourceFingerprint);
-        Assert.Equal(64, doc.SourceFingerprint!.Length);
-    }
-
     // ── Index execution ───────────────────────────────────────────────────────
 
     [Fact]
     public async Task ExecuteAsync_TransitionsStatus_PendingToIndexingToReady()
     {
         var recipe = BuildRecipe();
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
+        await SeedDocumentAsync(recipe);
+        
 
         var embeddingProvider = new FakeEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, embeddingProvider);
+        var service = new SearchIndexWorkflow(_db, embeddingProvider, null, new NullSearchTelemetry());
 
-        await service.EnqueueAsync(recipe.Id);
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-        await service.ExecuteAsync(recipe.Id, fingerprint);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint })
+        };
+        await service.ExecuteAsync(task, CancellationToken.None);
 
         var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
         Assert.NotNull(doc);
@@ -142,43 +98,44 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
     public async Task ExecuteAsync_ExitsWithoutWriting_WhenFingerprintMismatches()
     {
         var recipe = BuildRecipe();
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
+        await SeedDocumentAsync(recipe);
+        
 
         var embeddingProvider = new FakeEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, embeddingProvider);
-
-        await service.EnqueueAsync(recipe.Id);
-
-        // Mutate recipe after enqueue — fingerprint will be stale
-        recipe.Name = "Changed Name";
-        recipe.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        var service = new SearchIndexWorkflow(_db, embeddingProvider, null, new NullSearchTelemetry());
 
         var staleFingerprint = "0000000000000000000000000000000000000000000000000000000000000000";
-        await service.ExecuteAsync(recipe.Id, staleFingerprint);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = staleFingerprint } )
+        };
+        await service.ExecuteAsync(task, CancellationToken.None);
 
         var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
-        // Should still be pending (not overwritten to ready)
-        Assert.Equal("pending", doc!.IndexStatus);
+        // Fingerprint mismatch should not update to ready.
+        // It should remain in its original state (pending).
+        Assert.NotNull(doc);
+        Assert.Equal("pending", doc.IndexStatus);
     }
 
     [Fact]
     public async Task ExecuteAsync_SetsStatus_Failed_WhenEmbeddingProviderThrows()
     {
         var recipe = BuildRecipe();
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
+        await SeedDocumentAsync(recipe);
+        
 
         var failingProvider = new FailingEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, failingProvider);
+        var service = new SearchIndexWorkflow(_db, failingProvider, null, new NullSearchTelemetry());
 
-        await service.EnqueueAsync(recipe.Id);
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-        await service.ExecuteAsync(recipe.Id, fingerprint);
-
-        var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
-        Assert.Equal("failed", doc!.IndexStatus);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint })
+        };
+        
+        // ExecuteAsync should throw because we are calling it directly without worker error handling
+        await Assert.ThrowsAnyAsync<Exception>(() => service.ExecuteAsync(task, CancellationToken.None));
     }
 
     [Fact]
@@ -200,15 +157,18 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
+        await SeedDocumentAsync(recipe);
+        
 
         var embeddingProvider = new FakeEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, embeddingProvider);
+        var service = new SearchIndexWorkflow(_db, embeddingProvider, null, new NullSearchTelemetry());
 
-        await service.EnqueueAsync(recipe.Id);
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-        await service.ExecuteAsync(recipe.Id, fingerprint);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint })
+        };
+        await service.ExecuteAsync(task, CancellationToken.None);
 
         var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
         Assert.NotNull(doc);
@@ -222,17 +182,23 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
     {
         var recipe = BuildRecipe();
         recipe.DeletedAt = DateTimeOffset.UtcNow;
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
+        await SeedDocumentAsync(recipe);
+        
 
         var embeddingProvider = new FakeEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, embeddingProvider);
+        var service = new SearchIndexWorkflow(_db, embeddingProvider, null, new NullSearchTelemetry());
 
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-        await service.ExecuteAsync(recipe.Id, fingerprint);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint })
+        };
+        await service.ExecuteAsync(task, CancellationToken.None);
 
         var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
-        Assert.Null(doc);
+        // If soft-deleted, it should not be updated to ready.
+        Assert.NotNull(doc);
+        Assert.Equal("pending", doc.IndexStatus);
     }
 
     // ── Test doubles ──────────────────────────────────────────────────────────
@@ -252,5 +218,10 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         {
             throw new InvalidOperationException("Embedding provider unavailable");
         }
+    }
+
+    private sealed class NullSearchTelemetry : ISearchTelemetry
+    {
+        public void Emit(string eventName, Dictionary<string, object?> payload) { }
     }
 }

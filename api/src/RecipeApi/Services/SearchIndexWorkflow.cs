@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Models;
+using RecipeApi.Workflow;
 
 namespace RecipeApi.Services;
 
@@ -9,58 +10,40 @@ public class SearchIndexWorkflow(
     RecipeDbContext db,
     IEmbeddingProvider? embeddingProvider = null,
     ILogger<SearchIndexWorkflow>? logger = null,
-    ISearchTelemetry? telemetry = null)
+    ISearchTelemetry? telemetry = null) : IWorkflowProcessor
 {
+    public string ProcessorName => "IndexRecipeSearch";
+
     private static readonly string EmbeddingModelId =
         Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "text-embedding-3-small";
 
     /// <summary>
-    /// Enqueues a search index job for the given recipe.
-    /// No-op if a pending document with the same fingerprint already exists.
+    /// Implementation of IWorkflowProcessor. Picked up by the WorkflowWorker.
     /// </summary>
-    public async Task EnqueueAsync(Guid recipeId, CancellationToken ct = default)
+    public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
-        var recipe = await db.Recipes.AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == recipeId, ct);
-        if (recipe is null) return;
+        if (string.IsNullOrEmpty(task.Payload))
+            throw new ArgumentException("Task payload is empty.");
 
-        var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
+        using var docJson = JsonDocument.Parse(task.Payload);
+        if (!docJson.RootElement.TryGetProperty("recipeId", out var idProp))
+            throw new ArgumentException("Task payload does not contain recipeId.");
 
-        var existing = await db.RecipeSearchDocuments.FindAsync([recipeId], ct);
-        if (existing is not null)
-        {
-            // Dedup: already pending with the same fingerprint → no-op
-            if (existing.IndexStatus == "pending" && existing.SourceFingerprint == fingerprint)
-                return;
+        var recipeId = idProp.GetGuid();
+        var jobFingerprint = docJson.RootElement.TryGetProperty("fingerprint", out var fpProp)
+            ? fpProp.GetString() ?? string.Empty
+            : string.Empty;
 
-            // Update to pending with new fingerprint
-            existing.IndexStatus = "pending";
-            existing.SourceFingerprint = fingerprint;
-            existing.EmbeddingModel = EmbeddingModelId;
-        }
-        else
-        {
-            db.RecipeSearchDocuments.Add(new RecipeSearchDocument
-            {
-                RecipeId = recipeId,
-                DocumentText = string.Empty,
-                SearchMetadata = "{}",
-                IndexStatus = "pending",
-                SourceFingerprint = fingerprint,
-                EmbeddingModel = EmbeddingModelId,
-                SchemaVersion = 1
-            });
-        }
+        await IndexRecipeInternalAsync(recipeId, jobFingerprint, ct);
 
-        await db.SaveChangesAsync(ct);
+        return new { Message = $"Indexed recipe {recipeId}" };
     }
 
     /// <summary>
-    /// Executes the indexing job for a recipe.
+    /// Logic for indexing a single recipe. 
     /// Exits without writing if the job fingerprint is stale (recipe changed since enqueue).
-    /// Sets index_status = 'failed' if the embedding provider throws.
     /// </summary>
-    public async Task ExecuteAsync(Guid recipeId, string jobFingerprint, CancellationToken ct = default)
+    private async Task IndexRecipeInternalAsync(Guid recipeId, string jobFingerprint, CancellationToken ct)
     {
         var recipe = await db.Recipes.AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == recipeId, ct);
@@ -74,7 +57,7 @@ public class SearchIndexWorkflow(
 
         // Stale-job guard: compare current fingerprint with job fingerprint
         var currentFingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-        if (currentFingerprint != jobFingerprint)
+        if (!string.IsNullOrEmpty(jobFingerprint) && currentFingerprint != jobFingerprint)
         {
             logger?.LogInformation("Skipping index job for recipe {RecipeId} — fingerprint mismatch (stale job)", recipeId);
             telemetry?.Emit(SearchTelemetryEvents.IndexJobStale, new()
@@ -123,6 +106,9 @@ public class SearchIndexWorkflow(
         }
         catch (Exception ex)
         {
+            // We set failed here, but the WorkflowWorker will handle retries 
+            // if we throw the exception up. We'll mark as failed for immediate 
+            // visibility in the search UI, but allow the worker to retry.
             doc.IndexStatus = "failed";
             await db.SaveChangesAsync(ct);
             sw.Stop();
@@ -132,14 +118,17 @@ public class SearchIndexWorkflow(
                 ["recipeId"] = recipeId.ToString(),
                 ["error"] = ex.Message
             });
+
+            // Re-throw to trigger WorkflowWorker retry mechanism
+            throw;
         }
     }
 
     /// <summary>
     /// Processes all recipes with index_status in (pending, stale, failed) in batches.
-    /// Idempotent and safe to rerun.
+    /// This now enqueues workflow tasks instead of processing directly.
     /// </summary>
-    public async Task BackfillAsync(CancellationToken ct = default)
+    public async Task BackfillAsync(IWorkflowOrchestrator orchestrator, CancellationToken ct = default)
     {
         var pendingIds = await db.RecipeSearchDocuments
             .AsNoTracking()
@@ -147,11 +136,17 @@ public class SearchIndexWorkflow(
             .Select(d => new { d.RecipeId, d.SourceFingerprint })
             .ToListAsync(ct);
 
+        logger?.LogInformation("BackfillAsync: Found {Count} pending documents to trigger workflows for.", pendingIds.Count);
+
         foreach (var item in pendingIds)
         {
             if (ct.IsCancellationRequested) break;
-            if (item.SourceFingerprint is null) continue;
-            await ExecuteAsync(item.RecipeId, item.SourceFingerprint, ct);
+
+            await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
+            {
+                ["recipeId"] = item.RecipeId.ToString(),
+                ["fingerprint"] = item.SourceFingerprint ?? string.Empty
+            });
         }
     }
 
@@ -164,7 +159,7 @@ public class SearchIndexWorkflow(
         if (!string.IsNullOrWhiteSpace(recipe.Description))
             parts.Add(recipe.Description + ".");
 
-        var ingredients = DeserializeIngredients(recipe.Ingredients);
+        var ingredients = RecipeService.DeserializeIngredients(recipe.Ingredients);
         if (ingredients.Count > 0)
             parts.Add($"Ingredients: {string.Join(", ", ingredients)}.");
 
@@ -180,12 +175,5 @@ public class SearchIndexWorkflow(
             parts.Add($"Difficulty: {recipe.Difficulty}.");
 
         return string.Join(" ", parts);
-    }
-
-    private static List<string> DeserializeIngredients(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return [];
-        try { return JsonSerializer.Deserialize<List<string>>(json) ?? []; }
-        catch { return []; }
     }
 }

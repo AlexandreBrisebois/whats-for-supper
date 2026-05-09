@@ -170,7 +170,11 @@ public class HybridSearchTests : IAsyncLifetime
 
         // Use a fake embedding provider via a new workflow instance
         var workflow = scope.ServiceProvider.GetRequiredService<SearchIndexWorkflow>();
-        await workflow.ExecuteAsync(recipe.Id, fingerprint);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint })
+        };
+        await workflow.ExecuteAsync(task, CancellationToken.None);
 
         var doc = await db.RecipeSearchDocuments.FindAsync(recipe.Id);
         // Without an embedding provider configured, the status may remain pending or become failed
@@ -215,7 +219,11 @@ public class HybridSearchTests : IAsyncLifetime
 
         // Execute with a stale (wrong) fingerprint
         var staleFingerprint = "0000000000000000000000000000000000000000000000000000000000000000";
-        await workflow.ExecuteAsync(recipe.Id, staleFingerprint);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = staleFingerprint })
+        };
+        await workflow.ExecuteAsync(task, CancellationToken.None);
 
         var doc = await db.RecipeSearchDocuments.FindAsync(recipe.Id);
         Assert.Equal("ready", doc!.IndexStatus);

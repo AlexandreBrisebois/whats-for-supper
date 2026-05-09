@@ -54,11 +54,12 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
         {
             using var scope = scopeFactory.CreateScope();
             var searchWorkflow = scope.ServiceProvider.GetRequiredService<SearchIndexWorkflow>();
+            var orchestrator = scope.ServiceProvider.GetRequiredService<IWorkflowOrchestrator>();
 
             try
             {
                 // Use CancellationToken.None so it doesn't cancel when the HTTP request finishes
-                await searchWorkflow.BackfillAsync(CancellationToken.None);
+                await searchWorkflow.BackfillAsync(orchestrator, CancellationToken.None);
             }
             catch (Exception ex)
             {

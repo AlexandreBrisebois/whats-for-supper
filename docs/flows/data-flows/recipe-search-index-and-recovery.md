@@ -182,42 +182,49 @@ This exact field set and sort order is the single source of truth, implemented i
 
 ### Index enqueue trigger points
 
-A `SearchIndexWorkflow.EnqueueAsync` call is made when a recipe is:
+A `SearchIndexWorkflow` workflow is triggered when a recipe is:
 - created,
 - updated in: `name`, `description`, `ingredients`, `notes`, `rating`, `isDiscoverable`, `dietaryProfile`, `category`, `totalTime`,
 - restored from the Recycle Bin.
 
-Enqueue is idempotent: if `index_status = pending` already exists for the same `(recipeId, fingerprint)`, the call is a no-op.
+The trigger uses the `IWorkflowOrchestrator` to enqueue an `index-recipe-search` workflow.
 
 ---
 
 ## Search Index Workflow
 
+Search indexing is now a first-class workflow managed by the `WorkflowWorker`. This provides built-in resilience, exponential backoff retries, and centralized observability.
+
 ```mermaid
 sequenceDiagram
     autonumber
     participant App as API Service
-    participant WF as SearchIndexWorkflow
-    participant Embed as IEmbeddingProvider
+    participant Orch as IWorkflowOrchestrator
+    participant Worker as WorkflowWorker
+    participant WF as SearchIndexWorkflow (Processor)
+    participant Embed as IEmbeddingProvider (Native HTTP)
     participant DB as Postgres/pgvector
 
-    App->>WF: EnqueueAsync(recipeId)
-    WF->>DB: Read recipe + compute current fingerprint
-    WF->>DB: Upsert recipe_search_documents — index_status = pending
-    Note over WF: Job picked up by background worker
-
+    App->>Orch: TriggerAsync("index-recipe-search", {recipeId, fingerprint})
+    Orch->>DB: INSERT workflow_instances & workflow_tasks (status: pending)
+    Note over Worker: Worker polls for pending tasks
+    
+    Worker->>WF: ExecuteAsync(task)
     WF->>DB: Read recipe + recompute fingerprint
     WF->>DB: Compare job fingerprint vs current fingerprint
     alt fingerprint matches
         WF->>WF: Build document_text + search_metadata
-        WF->>DB: Set index_status = indexing
-        WF->>Embed: GenerateEmbeddingAsync(document_text, model)
+        WF->>Embed: GenerateAsync(document_text)
         Embed-->>WF: float[] vector[1536]
-        WF->>DB: Upsert recipe_search_documents — index_status = ready
-        WF->>WF: Emit recipe_index_job_completed
+        WF->>DB: Upsert recipe_search_documents (index_status: ready)
+        WF-->>Worker: Success
     else fingerprint mismatch — recipe changed since enqueue
-        WF->>WF: Exit without writing — emit recipe_index_job_stale
+        WF-->>Worker: Success (Skipped)
     end
+
+    Note over Worker: Failure Path
+    WF-->>Worker: Exception (API Timeout/Error)
+    Worker->>DB: Schedule retry with exponential backoff (10 attempts)
 ```
 
 ### `index_status` transitions

@@ -4,11 +4,11 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 
 ## Next Session Entry Points
 
-0. **Recipe Stack Browse Stabilization (COMPLETED - GREEN STATE ✅)**
-   - Successfully reconciled merge conflicts and achieved 100% test pass rate (335/335).
-   - **Fixed Client Drift**: Removed `src/lib/api/generated/` from `.prettierignore` and updated `Taskfile.yml` to ensure recursive formatting.
-   - All pre-commit hooks and `gen:client:check` now pass definitively.
-   - Foundation is production-ready for the **Dietician Agent** work.
+0. **Search Indexing Resiliency & Workflow Migration (COMPLETED ✅)**
+   - Search indexing is now a first-class workflow (`index-recipe-search`).
+   - Automated retries (10 attempts) and background processing are verified and active.
+   - **Native HTTP Provider**: Currently using a raw `HttpClient` provider in `GeminiEmbeddingProvider.cs` to resolve SDK compilation issues. **Review needed** for future SDK-based migration.
+   - All 28+ recipes successfully enqueued via the `/api/management/backfill-search` endpoint.
 
 1. **SSE Workflow — URL Capture & Social Coordination (Ready to Start)**
    - Three E2E tests are skipped with `// TODO: revisit when SSE ...` comments that mark the integration points:

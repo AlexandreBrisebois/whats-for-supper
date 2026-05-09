@@ -1,8 +1,10 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Workflow;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 
@@ -32,11 +34,18 @@ public class SearchTelemetryTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
-    private async Task SeedRecipeAsync(Recipe recipe)
+    private async Task SeedDocumentAsync(Recipe recipe)
     {
         using var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         db.Recipes.Add(recipe);
+        db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+        {
+            RecipeId = recipe.Id,
+            IndexStatus = "pending",
+            EmbeddingModel = "text-embedding-3-small",
+            SchemaVersion = 1
+        });
         await db.SaveChangesAsync();
     }
 
@@ -46,7 +55,7 @@ public class SearchTelemetryTests : IAsyncLifetime
         AddedBy = _factory.DefaultFamilyMemberId,
         Name = name,
         Description = "Test description",
-        Ingredients = """["chicken"]""",
+        Ingredients = "[\"chicken\"]",
         CreatedAt = DateTimeOffset.UtcNow,
         UpdatedAt = DateTimeOffset.UtcNow
     };
@@ -56,7 +65,7 @@ public class SearchTelemetryTests : IAsyncLifetime
     [Fact]
     public async Task Search_Emits_RecipeSearchRequested_Event()
     {
-        await SeedRecipeAsync(BuildRecipe("Test Recipe"));
+        await SeedDocumentAsync(BuildRecipe("Test Recipe"));
         var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var searchService = scope.ServiceProvider.GetRequiredService<RecipeSearchService>();
 
@@ -73,7 +82,7 @@ public class SearchTelemetryTests : IAsyncLifetime
     [Fact]
     public async Task Search_Emits_RecipeSearchCompleted_Event()
     {
-        await SeedRecipeAsync(BuildRecipe("Chicken Soup"));
+        await SeedDocumentAsync(BuildRecipe("Chicken Soup"));
         var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var searchService = scope.ServiceProvider.GetRequiredService<RecipeSearchService>();
 
@@ -106,15 +115,15 @@ public class SearchTelemetryTests : IAsyncLifetime
     public async Task SearchIndexWorkflow_Emits_JobCompleted_OnSuccess()
     {
         var recipe = BuildRecipe("Index Completed Recipe");
-        await SeedRecipeAsync(recipe);
+        await SeedDocumentAsync(recipe);
 
         var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var workflow = new SearchIndexWorkflow(db, new FakeEmbeddingProvider(), telemetry: _telemetry);
 
-        await workflow.EnqueueAsync(recipe.Id);
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-        await workflow.ExecuteAsync(recipe.Id, fingerprint);
+        var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint }) };
+        await workflow.ExecuteAsync(task, CancellationToken.None);
 
         Assert.Contains(_telemetry.Events, e => e.Name == SearchTelemetryEvents.IndexJobCompleted);
         var evt = _telemetry.Events.First(e => e.Name == SearchTelemetryEvents.IndexJobCompleted);
@@ -126,15 +135,16 @@ public class SearchTelemetryTests : IAsyncLifetime
     public async Task SearchIndexWorkflow_Emits_JobFailed_OnEmbeddingError()
     {
         var recipe = BuildRecipe("Index Failed Recipe");
-        await SeedRecipeAsync(recipe);
+        await SeedDocumentAsync(recipe);
 
         var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var workflow = new SearchIndexWorkflow(db, new FailingEmbeddingProvider(), telemetry: _telemetry);
 
-        await workflow.EnqueueAsync(recipe.Id);
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-        await workflow.ExecuteAsync(recipe.Id, fingerprint);
+        var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint }) };
+        
+        await Assert.ThrowsAnyAsync<Exception>(() => workflow.ExecuteAsync(task, CancellationToken.None));
 
         Assert.Contains(_telemetry.Events, e => e.Name == SearchTelemetryEvents.IndexJobFailed);
         var evt = _telemetry.Events.First(e => e.Name == SearchTelemetryEvents.IndexJobFailed);
@@ -146,15 +156,18 @@ public class SearchTelemetryTests : IAsyncLifetime
     public async Task SearchIndexWorkflow_Emits_JobStale_WhenFingerprintMismatch()
     {
         var recipe = BuildRecipe("Stale Job Recipe");
-        await SeedRecipeAsync(recipe);
+        await SeedDocumentAsync(recipe);
 
         var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var workflow = new SearchIndexWorkflow(db, new FakeEmbeddingProvider(), telemetry: _telemetry);
 
-        await workflow.EnqueueAsync(recipe.Id);
         var staleFingerprint = "0000000000000000000000000000000000000000000000000000000000000000";
-        await workflow.ExecuteAsync(recipe.Id, staleFingerprint);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = staleFingerprint })
+        };
+        await workflow.ExecuteAsync(task, CancellationToken.None);
 
         Assert.Contains(_telemetry.Events, e => e.Name == SearchTelemetryEvents.IndexJobStale);
         var evt = _telemetry.Events.First(e => e.Name == SearchTelemetryEvents.IndexJobStale);

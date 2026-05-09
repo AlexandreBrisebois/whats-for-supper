@@ -4,6 +4,35 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-09] Session — Search Indexing Resiliency & Workflow Migration
+**Status**: COMPLETED ✅
+**Branch**: `main` (Stabilized indexing)
+
+#### What was built
+This session focused on transitioning the "Semantic Recipe Search" indexing logic from a synchronous service to a resilient, asynchronous workflow processed by the system's `WorkflowWorker` harness.
+
+**Key Achievements:**
+1. **Workflow Refactoring**: Refactored `SearchIndexWorkflow.cs` to implement the `IWorkflowProcessor` interface. This allows individual recipe indexing jobs to be managed by the `WorkflowOrchestrator`, providing built-in retry logic and state observability.
+2. **Workflow Definition**: Created and seeded `index-recipe-search.yaml` to define the new search indexing workflow.
+3. **API Integration**: Updated `RecipeService.cs` to trigger `index-recipe-search` workflows whenever a recipe is created, updated, or restored.
+4. **Management Refactoring**: Restored the `/api/management/backfill-search` endpoint as an asynchronous background task that triggers 28+ workflows in a single call.
+5. **Native HTTP Resilience**: Implemented a native `HttpClient`-based `GeminiEmbeddingProvider` to bypass current SDK dependency resolution issues, ensuring immediate stability for vector indexing.
+
+#### Technical Context & Decisions
+- **Resiliency over Synchronicity**: Moving indexing into the workflow engine resolves the "failed status" trap where transient API errors from Gemini caused permanent indexing failures.
+- **ADR 041**: Formally documented the migration of search indexing to the workflow engine.
+- **SDK Bypass**: Used a native HTTP provider for embeddings to resolve a compilation mismatch with the `Microsoft.Extensions.AI` package.
+
+#### Documentation Updated
+| File | What changed |
+|------|-------------|
+| `docs/flows/data-flows/recipe-search-index-and-recovery.md` | Updated to reflect the workflow-based sequence and retry logic. |
+| `specs/decisions/041-*.md` | Created ADR 041. |
+| `JOURNAL.md` / `HANDOVER.md` | Updated session history and handoff notes. |
+
+---
+
+
 ### [2026-05-08] Session — Recipe Stack Browse Stabilization — Green State
 **Status**: COMPLETED ✅
 **Branch**: `browse-library` (merged/stabilized)

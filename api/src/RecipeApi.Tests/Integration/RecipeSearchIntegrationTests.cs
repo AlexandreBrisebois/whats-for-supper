@@ -110,9 +110,9 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Search_Clamps_To_Five_Results()
+    public async Task Search_Clamps_To_MaxLimit()
     {
-        for (var index = 0; index < 7; index++)
+        for (var index = 0; index < 12; index++)
         {
             await SeedRecipeAsync(new Recipe
             {
@@ -133,7 +133,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         using var document = await ReadDataAsync(response);
         var results = document.RootElement.GetProperty("results");
-        Assert.True(results.GetArrayLength() <= 5);
+        Assert.True(results.GetArrayLength() <= 10);
     }
 
     [Fact]

@@ -267,7 +267,11 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
 
         // Simulate a stale job arriving with wrong fingerprint — should NOT overwrite
         var staleFingerprint = "0000000000000000000000000000000000000000000000000000000000000000";
-        await _workflow.ExecuteAsync(recipe.Id, staleFingerprint);
+        var task = new WorkflowTask 
+        { 
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = staleFingerprint })
+        };
+        await _workflow.ExecuteAsync(task, CancellationToken.None);
 
         var afterStaleJob = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
         Assert.Equal("ready", afterStaleJob!.IndexStatus);

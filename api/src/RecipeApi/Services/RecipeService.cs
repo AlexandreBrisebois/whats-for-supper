@@ -74,8 +74,14 @@ public class RecipeService(
         await db.SaveChangesAsync();
 
         // Enqueue search index job for new recipe
-        try { await searchIndex.EnqueueAsync(recipeId); }
-        catch (Exception ex) { logger.LogError(ex, "Failed to enqueue search index for new recipe {RecipeId}", recipeId); }
+        try
+        {
+            await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.ToString()
+            });
+        }
+        catch (Exception ex) { logger.LogError(ex, "Failed to trigger search index for new recipe {RecipeId}", recipeId); }
 
         // Trigger the recipe-import workflow asynchronously.
         // This queues the background extraction (OCR/AI) of the recipe content from photos.
@@ -310,8 +316,14 @@ public class RecipeService(
         // Re-enqueue search index when search-relevant fields changed
         if (dto.Notes is not null || dto.Rating.HasValue || dto.IsDiscoverable.HasValue)
         {
-            try { await searchIndex.EnqueueAsync(id); }
-            catch (Exception ex) { logger.LogError(ex, "Failed to enqueue search index for updated recipe {RecipeId}", id); }
+            try
+            {
+                await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
+                {
+                    ["recipeId"] = id.ToString()
+                });
+            }
+            catch (Exception ex) { logger.LogError(ex, "Failed to trigger search index for updated recipe {RecipeId}", id); }
         }
 
         // Keep recipe.info on disk in sync with the DB
@@ -563,7 +575,10 @@ public class RecipeService(
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
 
-        await searchIndex.EnqueueAsync(id);
+        await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
+        {
+            ["recipeId"] = id.ToString()
+        });
 
         return MapToDetailResponse(recipe);
     }

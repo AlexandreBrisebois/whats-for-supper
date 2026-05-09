@@ -1,0 +1,10 @@
+name: index-recipe-search
+parameters:
+  - recipeId
+  - fingerprint
+tasks:
+  - name: index_job
+    processor: IndexRecipeSearch
+    payload:
+      recipeId: "{{ recipeId }}"
+      fingerprint: "{{ fingerprint }}"

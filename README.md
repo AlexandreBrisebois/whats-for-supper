@@ -166,13 +166,9 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Recipe library management (edit, soft delete, restore, Recycle Bin, discovery toggle) | ✅ Complete |
 | Pantry/fridge/freezer photo search (inventory-led ingredient boost) | ✅ Complete |
 | Agent super-search (long-form natural language → structured results) | ✅ Complete |
-| index workflow (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
+| Resilient search indexing workflow (pgvector, background retry, ADR 041) | ✅ Complete |
 | Failed Captures recovery (Settings queue, retry with idempotency guard) | ✅ Complete |
 | Recipe Library Browse (immersive card-flip library discovery) | ✅ Complete |
-| Pantry/fridge/freezer photo search (inventory-led ingredient boost) | ✅ Complete |
-| Agent super-search (long-form natural language → structured results) | ✅ Complete |
-| Search index workflow (pgvector embeddings, backup/restore sidecar) | ✅ Complete |
-| Failed Captures recovery (Settings queue, retry with idempotency guard) | ✅ Complete |
 | Canadian Food Guide Classification | ⚠️ TODO | [spec](.kiro/specs/cnf-data-ingestion)
 | Dietician Agent | ⚠️ TODO | depends on canadian food guide classification | [spec](.kiro/specs/dietitian-agent-phase2)
 | Dreaming | ⚠️ TODO | [spec](.kiro/specs/dreaming)
