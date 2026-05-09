@@ -37,6 +37,16 @@ All work in this repo is governed by the following non‑negotiable principles:
 - **Premium Engineering Posture**  
   No zombie code, no speculative abstractions, no "while I'm in here" refactors outside the current task's scope.
 
+- **Surgical Maintenance (The Scalpel Doctrine)**  
+  When resolving bugs or unexpected behavior, you must:
+  1. **Diagnostic Interview**: Build 100% shared understanding with the user before acting. Ask what changed, if tests are still valid, and where the "blind spots" are.
+  2. **Pre-mortem**: Before applying a fix, state what could break and how you are mitigating it.
+  3. **Minimal Impact**: Prioritize the smallest possible change (the scalpel) over large refactors (the sledgehammer).
+
+- **Vertical Trace (Tracer Bullet)**  
+  Before implementing or fixing complex logic, you must follow the data vertically across all layers (UI ↔ Client ↔ Seam ↔ API ↔ DB).  
+  Use the **`tracer`** skill to map the execution path, identify the seams, and manage context. This drives intent and prevents tangential bloat.
+
 For detailed doctrine, see:
 
 - `.agents/core/mission.md`
@@ -56,13 +66,16 @@ When making any change, follow this authority chain:
    - `specs/features/<feature>/design.md`
    - `.kiro/specs/<feature>/tasks.md`
 
-3. **Implementation Plan (if active)**
+3. **Tracer Map (Discovery Reference)**
+   - The output of the **`tracer`** skill for the active vertical slice.
+
+4. **Implementation Plan (if active)**
    - `specs/plans/YYYY-MM-DD-<feature>.md`
 
-4. **Tests**  
+5. **Tests**  
    - Unit, integration, and end‑to‑end tests that enforce the contract.
 
-5. **Implementation**  
+6. **Implementation**  
    - Backend, mock API, PWA code.
 
 **Never** implement logic that contradicts the contract or feature spec.  
@@ -223,6 +236,7 @@ When you start a piece of work:
    - Define a bounded task with a clear "done" state.  
    - **Minimal footprint**: Before committing to a plan, ask what is the smallest change that achieves this goal. Reject any planned step that cannot be directly traced back to the task's stated outcome. Surface "while I'm in here" improvements separately rather than folding them in. See `.agents/core/context-loading.md §3`.
    - **Mandatory**: For any multi-file or non-trivial work, use the **`prompt-planner`** skill to decompose the request.
+   - **Tracer First**: If the implementation path is ambiguous or involves multiple layers, use the **`tracer`** skill to map the path before planning.
    - Decompose into **Vertical Slices** (Contract -> DB -> API -> UI -> Test) following the Kiro-inspired spec structure in `specs/features/`.
    - Get explicit approval on the "Workstream Map" before launching prompts.
 

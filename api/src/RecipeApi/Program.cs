@@ -120,7 +120,6 @@ try
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<SearchIndexWorkflow>();
     builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
-    builder.Services.AddSingleton<IEmbeddingProvider, GeminiEmbeddingProvider>();
 
     // ── Workflow Processors Registration ─────────────────────────────────────
     // Each IWorkflowProcessor handles a specific task type in YAML workflows.

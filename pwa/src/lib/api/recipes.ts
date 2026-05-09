@@ -255,7 +255,7 @@ export async function searchRecipes(
   return {
     topPick: mapSearchResult(readField<RecipeSearchResultDto>(data, 'topPick') ?? null),
     results,
-    appliedFilters: (readField<Record<string, boolean | null>>(data, 'appliedFilters')) || {},
+    appliedFilters: readField<Record<string, boolean | null>>(data, 'appliedFilters') || {},
     searchMode: readField<string>(data, 'searchMode') || null,
     resultPath: readField<string>(data, 'resultPath') || null,
   };

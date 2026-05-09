@@ -3,6 +3,8 @@
 ## 1. Context principle
 Agents must load the minimum context required to safely and accurately complete the current task. Over-loading context increases token consumption, dilutes focus, and raises the risk of hallucination or unintended side effects.
 
+**Surgical Context Discipline**: Do not perform broad `grep` or `list_dir` searches. Use the **`tracer`** skill to establish vertical context. State your intent and what you are seeking before reading new files to allow for user intervention.
+
 ## 2. Minimum necessary context
 Always prefer targeted, active task context over broad, repo-wide reads. Read only the files directly impacted by the current objective, their immediate dependencies, and the specific specifications governing those features. 
 

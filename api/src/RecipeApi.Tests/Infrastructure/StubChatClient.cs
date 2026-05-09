@@ -17,7 +17,23 @@ public sealed class StubChatClient(string? response, bool throwOnCall = false) :
         if (throwOnCall)
             throw new InvalidOperationException("Simulated model unavailable");
 
-        var reply = new ChatResponse(new ChatMessage(ChatRole.Assistant, response ?? string.Empty));
+        var text = messages.FirstOrDefault()?.Text ?? string.Empty;
+        var finalResponse = response;
+
+        if (finalResponse == null)
+        {
+            // Smart Stubbing: Detect if this is a translation or a re-ranking call
+            if (text.Contains("selectedRecipeId"))
+            {
+                finalResponse = """{"selectedRecipeId":"00000000-0000-0000-0000-000000000000","reason":"Stubbed RAG Reason"}""";
+            }
+            else if (text.Contains("query translator"))
+            {
+                 finalResponse = """{"query":"","filters":{}}""";
+            }
+        }
+
+        var reply = new ChatResponse(new ChatMessage(ChatRole.Assistant, finalResponse ?? string.Empty));
         return Task.FromResult(reply);
     }
 

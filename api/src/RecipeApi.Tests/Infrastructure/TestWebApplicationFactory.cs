@@ -133,6 +133,11 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipeSearchService>();
         builder.Services.AddScoped<AgentSearchTranslationService>();
         builder.Services.AddSingleton<InventoryCaptureService>();
+        
+        var mockEmbedding = new Mock<IEmbeddingProvider>();
+        mockEmbedding.Setup(e => e.GenerateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new float[1536]);
+        builder.Services.AddSingleton<IEmbeddingProvider>(mockEmbedding.Object);
 
         // Stub IChatClient so AgentSearchTranslationService and InventoryCaptureService can be resolved in tests
         builder.Services.AddSingleton<IChatClient>(new StubChatClient("""{"query":"","filters":{}}"""));

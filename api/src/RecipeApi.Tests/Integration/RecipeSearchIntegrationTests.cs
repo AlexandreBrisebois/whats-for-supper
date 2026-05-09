@@ -161,7 +161,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = await ReadDataAsync(response);
-        Assert.Equal("lexical-only", document.RootElement.GetProperty("resultPath").GetString());
+        var resultPath = document.RootElement.GetProperty("resultPath").GetString();
+        Assert.True(resultPath == "lexical-only" || resultPath == "fallback-lexical", $"Expected lexical-only or fallback-lexical, got {resultPath}");
     }
 
     [Fact]

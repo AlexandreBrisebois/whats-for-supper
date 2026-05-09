@@ -33,10 +33,33 @@ public class AgentSearchTranslationService(IChatClient chatClient)
         }
 
         Rules:
-        - "query" should be 1-5 keywords distilled from the intent.
+        - "query" should be 1-3 CONCISE keywords distilled from the intent (e.g. "spicy pasta", not "I want a spicy pasta dish").
         - Only include filter fields that clearly apply. Omit the rest.
         - Never invent recipe names. Never respond with a chat message.
         - If the intent is unclear, return {"query": "<original text>", "filters": {}}.
+        """;
+
+    private static readonly string RerankPrompt =
+        """
+        You are a master chef and personal dietician. You are helping a user pick the best
+        recipe from a short list of candidates based on their specific request.
+
+        Original User Request: {0}
+        
+        Planned for this week (Avoid repeating these if possible):
+        {1}
+        
+        Dietary Goals for this week:
+        {2}
+
+        Candidate Recipes:
+        {3}
+
+        Respond ONLY with valid JSON in this exact shape:
+        {
+          "selectedRecipeId": "<guid>",
+          "reason": "<short, engaging 1-sentence explanation of why this was picked>"
+        }
         """;
 
     public async Task<RecipeSearchRequestDto> TranslateAsync(
@@ -74,6 +97,50 @@ public class AgentSearchTranslationService(IChatClient chatClient)
         catch (Exception)
         {
             return FallbackRequest(input);
+        }
+    }
+
+    /// <summary>
+    /// RAG Pass: Takes the original natural language query and the top candidates
+    /// from retrieval, and asks the LLM to select the absolute best fit.
+    /// </summary>
+    public async Task<(Guid? SelectedId, string? Reason)> RerankAsync(
+        string originalQuery,
+        List<RecipeSearchResultDto> candidates,
+        List<string>? weekContext = null,
+        List<string>? recommendations = null,
+        CancellationToken ct = default)
+    {
+        if (candidates.Count == 0) return (null, null);
+
+        var candidateList = string.Join("\n", candidates.Select(c =>
+            $"- [{c.Id}] {c.Name}: {c.Description} (Match Score: {c.Score:F2})"));
+
+        var plannedList = (weekContext == null || weekContext.Count == 0)
+            ? "Nothing planned yet."
+            : string.Join(", ", weekContext);
+
+        var goalsList = (recommendations == null || recommendations.Count == 0)
+            ? "All dietary targets met! Focus on variety."
+            : string.Join("\n- ", recommendations);
+
+        var prompt = string.Format(RerankPrompt, originalQuery, plannedList, goalsList, candidateList);
+
+        try
+        {
+            var completion = await chatClient.GetResponseAsync(prompt, cancellationToken: ct);
+            var responseText = completion.Text?.Trim() ?? string.Empty;
+
+            var parsed = JsonSerializer.Deserialize<AgentRerankResult>(
+                responseText,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            return (parsed?.SelectedRecipeId, parsed?.Reason);
+        }
+        catch (Exception)
+        {
+            // If re-ranking fails, let the caller fall back to the first candidate
+            return (null, null);
         }
     }
 
@@ -133,5 +200,14 @@ public class AgentSearchTranslationService(IChatClient chatClient)
 
         [JsonPropertyName("healthyOnly")]
         public bool? HealthyOnly { get; set; }
+    }
+
+    private sealed class AgentRerankResult
+    {
+        [JsonPropertyName("selectedRecipeId")]
+        public Guid? SelectedRecipeId { get; set; }
+
+        [JsonPropertyName("reason")]
+        public string? Reason { get; set; }
     }
 }

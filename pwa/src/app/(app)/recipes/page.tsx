@@ -36,8 +36,8 @@ function resolveDayName(weekOffset: number, dayIndex: number): string {
   return WEEKDAYS[target.getDay()];
 }
 
-const INITIAL_LIMIT = 5;
-const PAGE_SIZE = 5;
+const INITIAL_LIMIT = 6;
+const PAGE_SIZE = 6;
 
 export default function RecipesPage() {
   const [query, setQuery] = useState('');
@@ -689,10 +689,27 @@ export default function RecipesPage() {
                         <ChefHat size={10} /> {topPick.difficulty}
                       </span>
                     </div>
-                    <h3 className="text-3xl font-black tracking-tighter leading-none">
+                    <h3 className="text-3xl font-black tracking-tighter leading-none mb-1">
                       {topPick.name}
                     </h3>
-                    {topPick.reasons.length > 0 && (
+                    {topPick.plannerFitNote && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-[0_0_30px_rgba(255,255,255,0.05)] relative overflow-hidden group/reason"
+                      >
+                        <div className="absolute top-0 left-0 w-1 h-full bg-ochre shadow-[0_0_10px_rgba(255,180,0,0.5)]" />
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5">
+                            <Sparkles size={16} className="text-ochre animate-pulse" />
+                          </div>
+                          <p className="text-white font-bold text-sm leading-snug tracking-tight">
+                            {topPick.plannerFitNote}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                    {!topPick.plannerFitNote && topPick.reasons.length > 0 && (
                       <p className="text-white/70 text-sm font-medium line-clamp-2 max-w-[90%] leading-snug">
                         {topPick.reasons[0].label}
                       </p>

@@ -10,6 +10,9 @@ public class RecipeSearchRequestDto
     [JsonPropertyName("mode")]
     public string? Mode { get; set; }
 
+    [JsonPropertyName("originalQuery")]
+    public string? OriginalQuery { get; set; }
+
     [JsonPropertyName("similarToRecipeId")]
     public Guid? SimilarToRecipeId { get; set; }
 

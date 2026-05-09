@@ -170,7 +170,7 @@ describe('RecipesPage', () => {
       expect(mocks.searchRecipes).toHaveBeenCalledWith({
         query: '',
         mode: 'standard',
-        limit: 5,
+        limit: 6,
         weekOffset: undefined,
         dayIndex: undefined,
       });
@@ -189,7 +189,7 @@ describe('RecipesPage', () => {
       expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
         query: 'chicken',
         mode: 'standard',
-        limit: 5,
+        limit: 6,
         weekOffset: undefined,
         dayIndex: undefined,
       });
@@ -487,7 +487,7 @@ describe('RecipesPage', () => {
       expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
         query: '',
         mode: 'standard',
-        limit: 5,
+        limit: 6,
         weekOffset: undefined,
         dayIndex: undefined,
         similarToRecipeId: '11111111-1111-1111-1111-111111111111',

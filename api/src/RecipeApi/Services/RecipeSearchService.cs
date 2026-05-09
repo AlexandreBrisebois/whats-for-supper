@@ -13,10 +13,11 @@ public partial class RecipeSearchService(
     ScheduleService scheduleService,
     InventoryCaptureService inventoryCaptureService,
     IEmbeddingProvider? embeddingProvider = null,
+    AgentSearchTranslationService? agentTranslator = null,
     ISearchTelemetry? telemetry = null)
 {
     private const double PantryMatchBoost = 0.25;
-    private const int DefaultLimit = 5;
+    private const int DefaultLimit = 6;
     private const int MaxLimit = 50;
     private const int VectorCandidateLimit = 50;
     private const double ReasonThreshold = 0.3;
@@ -96,7 +97,7 @@ public partial class RecipeSearchService(
                     resultPath = "fallback-lexical";
                     telemetry?.Emit(SearchTelemetryEvents.SearchFallbackServed, new() { ["reason"] = "vector_timeout" });
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     candidates = lexicalCandidates;
                     resultPath = "fallback-lexical";
@@ -141,8 +142,48 @@ public partial class RecipeSearchService(
         }
 
         var topPick = finalCandidates.FirstOrDefault();
-        var results = finalCandidates
-            .Skip(topPick != null ? 1 : 0)
+        var resultsList = finalCandidates.Skip(topPick != null ? 1 : 0).ToList();
+
+        // 3.5 RAG Pass (Agent Mode Only)
+        // If in Agent mode and we have candidates, let the LLM pick the best one and explain why.
+        RecipeSearchResultDto? finalTopPick = topPick != null ? MapResult(topPick) : null;
+        if (searchMode == "agent" && agentTranslator != null && resultsList.Count > 0 && !string.IsNullOrWhiteSpace(dto.OriginalQuery))
+        {
+            var candidatesToRerank = resultsList.Take(5).Select(MapResult).ToList();
+            if (finalTopPick != null) candidatesToRerank.Insert(0, finalTopPick);
+
+            // Fetch current week context for better variety/RAG recommendations
+            var weekContext = new List<string>();
+            var recommendations = new List<string>();
+            if (dto.WeekOffset.HasValue)
+            {
+                var context = await GetWeekDietaryContextAsync(dto.WeekOffset.Value, ct);
+                weekContext = context.Names;
+                recommendations = context.Recommendations;
+            }
+
+            var (selectedId, reason) = await agentTranslator.RerankAsync(dto.OriginalQuery, candidatesToRerank, weekContext, recommendations, ct);
+
+            if (selectedId.HasValue)
+            {
+                // Re-shuffle to put the LLM-selected recipe at the top
+                var allFound = resultsList.ToList();
+                if (topPick != null) allFound.Insert(0, topPick);
+
+                var selected = allFound.FirstOrDefault(c => c.Recipe.Id == selectedId.Value);
+                if (selected != null)
+                {
+                    finalTopPick = MapResult(selected);
+                    finalTopPick.PlannerFitNote = reason; // Use the AI reason as the note
+
+                    resultsList = allFound
+                        .Where(c => c.Recipe.Id != selectedId.Value)
+                        .ToList();
+                }
+            }
+        }
+
+        var results = resultsList
             .Take(limit)
             .Select(MapResult)
             .ToList();
@@ -154,7 +195,7 @@ public partial class RecipeSearchService(
 
         var response = new RecipeSearchResponseDto
         {
-            TopPick = topPick != null ? MapResult(topPick) : null,
+            TopPick = finalTopPick,
             Results = results,
             AppliedFilters = appliedFilters,
             SearchMode = searchMode,
@@ -465,6 +506,41 @@ public partial class RecipeSearchService(
             || string.Equals(dietaryProfile.ProteinSource, "Mixed", StringComparison.OrdinalIgnoreCase);
     }
 
+    private record WeekDietaryContext(List<string> Names, List<string> Recommendations);
+
+    private async Task<WeekDietaryContext> GetWeekDietaryContextAsync(int weekOffset, CancellationToken ct)
+    {
+        var (monday, sunday) = GetWeekBounds(weekOffset);
+
+        var scheduledRecipes = await db.CalendarEvents
+            .AsNoTracking()
+            .Where(e => e.Date >= monday && e.Date <= sunday && e.RecipeId != null)
+            .Select(e => e.Recipe)
+            .ToListAsync(ct);
+
+        var names = scheduledRecipes
+            .Where(r => r != null)
+            .Select(r => r!.Name!)
+            .ToList();
+
+        var profiles = scheduledRecipes
+            .Select(r => r?.DietaryProfile != null ? JsonSerializer.Deserialize<RecipeDietaryProfile>(r.DietaryProfile) : null)
+            .ToList();
+
+        var balance = WeeklyBalanceScorer.Compute(profiles);
+
+        return new WeekDietaryContext(names, balance.Recommendations.ToList());
+    }
+
+    private static (DateOnly Monday, DateOnly Sunday) GetWeekBounds(int weekOffset)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
+        var monday = today.AddDays(-daysToMonday + weekOffset * 7);
+        var sunday = monday.AddDays(6);
+        return (monday, sunday);
+    }
+
     private static RecipeSearchResultDto MapResult(RankedRecipe candidate)
     {
         var recipe = candidate.Recipe;
@@ -472,6 +548,8 @@ public partial class RecipeSearchService(
         {
             Id = recipe.Id,
             Name = recipe.Name,
+            Description = recipe.Description,
+            Score = candidate.Score,
             ImageUrl = $"/api/recipes/{recipe.Id}/hero",
             TotalTime = recipe.TotalTime,
             Difficulty = recipe.Difficulty,

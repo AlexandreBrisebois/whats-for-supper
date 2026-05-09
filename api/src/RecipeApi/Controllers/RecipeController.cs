@@ -219,9 +219,12 @@ public class RecipeController(
     [SkipWrapping]
     public async Task<IActionResult> Search([FromBody] RecipeSearchRequestDto dto, CancellationToken ct)
     {
+        var originalQuery = dto.Query;
         var effectiveDto = string.Equals(dto.Mode, "agent", StringComparison.OrdinalIgnoreCase)
             ? await agentSearchTranslationService.TranslateAsync(dto, ct)
             : dto;
+
+        effectiveDto.OriginalQuery = originalQuery;
 
         var result = await recipeSearchService.SearchAsync(effectiveDto, ct);
         return Ok(result);
