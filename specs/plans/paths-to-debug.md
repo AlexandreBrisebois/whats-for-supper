@@ -12,11 +12,7 @@
 
 6) [fail] home page (already have recipe for today) -> tap tonight's menu -> change plan -> find something quick -> skip to end -> search library -> select top pick -> add it tonight (should be cook it tonight) -> does not go into recovery flow, it overrites the recipe. 
 
-X -> planner label changed. was Planner, now Weekly Planner. 
-
 X -> rethink bottom of stack browser. touch zones are too small, it's hard to toggle. 
-
-X -> stack browser change Ask the Family to Discovery for clarity.
 
 X search -> remove recycling bin
 

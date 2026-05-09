@@ -262,7 +262,8 @@
     "medium": "Moyen",
     "pass": "Passer",
     "prep": "Prépa",
-    "refreshFeed": "Actualiser"
+    "refreshFeed": "Actualiser",
+    "showsInDiscovery": "S'affiche dans les votes de Découverte"
   },
   "recipes": {
     "planningMode": "Mode Planning",
@@ -313,7 +314,12 @@
     "selectMealForDayNum": "Prévu pour le jour {{day}}",
     "showInDiscovery": "Afficher dans la découverte",
     "trashEmpty": "Votre corbeille est vide.",
-    "unknownRecipe": "Recette inconnue"
+    "unknownRecipe": "Recette inconnue",
+    "allRecipes": "Toutes les recettes",
+    "showingDiscovery": "Affichage des recettes marquées Découverte",
+    "showingAll": "Affichage de toutes les recettes",
+    "turnOffDiscovery": "Masquer de la Découverte pour cette recette",
+    "turnOnDiscovery": "Afficher dans la Découverte pour cette recette"
   },
   "settings": {
     "failedCaptures": "Captures échouées",

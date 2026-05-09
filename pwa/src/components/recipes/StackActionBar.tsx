@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
+import { t } from '@/locales';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
 interface StackActionBarProps {
@@ -78,12 +79,16 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
           }`}
           data-testid="stack-toggle-discoverable"
           aria-label={
-            isDiscoverableOnly ? 'Showing recipes marked Ask the Family' : 'Showing all recipes'
+            isDiscoverableOnly 
+              ? t('recipes.showingDiscovery', 'Showing recipes marked Discovery') 
+              : t('recipes.showingAll', 'Showing all recipes')
           }
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-ochre' : ''}`} />
           <span className="text-xs font-black tracking-wide">
-            {isDiscoverableOnly ? 'Ask the Family' : 'All Recipes'}
+            {isDiscoverableOnly 
+              ? t('navigation.discover', 'Discovery') 
+              : t('recipes.allRecipes', 'All Recipes')}
           </span>
         </button>
 
@@ -99,14 +104,16 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
           data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
           aria-label={
             isIndividualDiscoverable
-              ? 'Turn off Ask the Family for this recipe'
-              : 'Turn on Ask the Family for this recipe'
+              ? t('recipes.turnOffDiscovery', 'Turn off Discovery for this recipe')
+              : t('recipes.turnOnDiscovery', 'Turn on Discovery for this recipe')
           }
         >
           <span className="flex flex-col leading-tight">
-            <span className="text-xs font-black tracking-wide text-charcoal">Ask the Family</span>
+            <span className="text-xs font-black tracking-wide text-charcoal">
+              {t('navigation.discover', 'Discovery')}
+            </span>
             <span className="text-[10px] font-bold text-charcoal/45">
-              Shows in Discovery voting
+              {t('discovery.showsInDiscovery', 'Shows in Discovery voting')}
             </span>
           </span>
           <span

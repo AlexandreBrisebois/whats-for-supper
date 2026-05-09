@@ -249,8 +249,8 @@ test.describe('Supper Planner', () => {
     await page.waitForURL(/\/planner\?success=1&dayIndex=2/);
     await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=2/);
 
-    // 6. Verify success feedback (ring/pulse) on the card
-    await expect(targetCard.getByTestId('success-ring')).toBeVisible({ timeout: 10_000 });
+    // 6. Verify success feedback (ring) on the card
+    await expect(targetCard).toHaveClass(/ring-sage/, { timeout: 10_000 });
   });
 
   test('should trigger Cook Mode from a recipe card and navigate steps', async ({ page }) => {

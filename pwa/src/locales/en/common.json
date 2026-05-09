@@ -262,7 +262,8 @@
     "medium": "Medium",
     "pass": "PASS",
     "prep": "Prep",
-    "refreshFeed": "Refresh Feed"
+    "refreshFeed": "Refresh Feed",
+    "showsInDiscovery": "Shows in Discovery voting"
   },
   "recipes": {
     "planningMode": "Planning Mode",
@@ -313,7 +314,12 @@
     "selectMealForDayNum": "Planning for Day {{day}}",
     "showInDiscovery": "Show in Discovery",
     "trashEmpty": "Your Recycle Bin is empty.",
-    "unknownRecipe": "Unknown Recipe"
+    "unknownRecipe": "Unknown Recipe",
+    "allRecipes": "All Recipes",
+    "showingDiscovery": "Showing recipes marked Discovery",
+    "showingAll": "Showing all recipes",
+    "turnOffDiscovery": "Turn off Discovery for this recipe",
+    "turnOnDiscovery": "Turn on Discovery for this recipe"
   },
   "settings": {
     "failedCaptures": "Failed Captures",

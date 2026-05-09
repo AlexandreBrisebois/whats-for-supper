@@ -56,7 +56,7 @@ test.describe('Recipe Stack Browse', () => {
     await expect(toggle).toContainText('All Recipes');
 
     await toggle.click();
-    await expect(toggle).toContainText('Ask the Family');
+    await expect(toggle).toContainText('Discovery');
 
     // Should trigger a reload (mocked API handles this)
     await expect(page.getByTestId('stack-card-front').first()).toBeVisible();
