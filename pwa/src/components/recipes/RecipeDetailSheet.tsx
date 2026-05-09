@@ -5,8 +5,6 @@ import { X, Clock, ChefHat, ArrowRightLeft, Trash2, Eye, Check } from 'lucide-re
 import { getRecipe, updateRecipe, deleteRecipe, type Recipe } from '@/lib/api/recipes';
 import { t } from '@/locales';
 
-import { useWeekStore } from '@/store/weekStore';
-
 const RATING_OPTIONS = [
   { value: 1, emoji: '👎', label: 'Dislike' },
   { value: 2, emoji: '👍', label: 'Like' },
@@ -18,6 +16,7 @@ interface RecipeDetailSheetProps {
   plannerDayLabel: string | null;
   onClose: () => void;
   onUseForDay: (recipe: Recipe, specificDayIndex?: number) => Promise<void>;
+  onPlanForLater?: (recipe: Recipe) => Promise<void>;
   onFindSimilar: (recipeId: string) => void;
 }
 
@@ -26,6 +25,7 @@ export function RecipeDetailSheet({
   plannerDayLabel,
   onClose,
   onUseForDay,
+  onPlanForLater,
   onFindSimilar,
 }: RecipeDetailSheetProps) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -110,20 +110,7 @@ export function RecipeDetailSheet({
     if (!recipe) return;
     setIsSavingAction(true);
     try {
-      // Find first empty slot in current week
-      const schedule = useWeekStore.getState().schedule;
-      const emptySlot = schedule.find((d) => !d.recipe);
-
-      if (emptySlot) {
-        // Find index of empty slot
-        const dayIndex = schedule.indexOf(emptySlot);
-        await onUseForDay(recipe, dayIndex);
-      } else {
-        // If no slot this week, just use the standard "Plan" (which might go to tomorrow or next week)
-        // For now, we'll just fall back to handleUseRecipe (tonight) if no slot found,
-        // but ideally we'd find the first slot regardless of week.
-        await onUseForDay(recipe);
-      }
+      await (onPlanForLater ? onPlanForLater(recipe) : onUseForDay(recipe));
     } finally {
       setIsSavingAction(false);
     }

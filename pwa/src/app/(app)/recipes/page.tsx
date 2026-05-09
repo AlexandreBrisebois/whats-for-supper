@@ -20,10 +20,18 @@ import { searchRecipes, type RecipeSearchResponse, type Recipe } from '@/lib/api
 import { submitInventoryCapture } from '@/lib/api/inventory';
 import type { RecipeSearchFiltersDto } from '@/lib/api/generated/models/index';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { assignRecipeToDay } from '@/lib/api/planner';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
+import {
+  assignRecipeToEmptySlot,
+  findFirstOpenPlannerSlot,
+  getPlannerSlot,
+  resolveOccupiedSlot,
+  type AssignmentRecipe,
+  type PlannerSlot,
+} from '@/lib/planner/slotAssignment';
 
 type SearchMode = 'standard' | 'agent' | 'camera';
 
@@ -70,6 +78,11 @@ export default function RecipesPage() {
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
   const [limit, setLimit] = useState(INITIAL_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [pendingRecovery, setPendingRecovery] = useState<{
+    slot: PlannerSlot;
+    recipe: AssignmentRecipe;
+    navigateTo: { weekOffset: number; dayIndex: number; home?: boolean };
+  } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -184,17 +197,46 @@ export default function RecipesPage() {
     setOpenDetailRecipeId(recipeId);
   };
 
+  const toAssignmentRecipe = (recipe: Recipe): AssignmentRecipe => ({
+    id: recipe.id,
+    name: recipe.name,
+    image: recipe.imageUrl,
+  });
+
+  const assignWithRecoveryGuard = async (
+    weekOffsetValue: number,
+    dayIndexValue: number,
+    recipe: Recipe,
+    options: { home?: boolean } = {}
+  ) => {
+    const assignmentRecipe = toAssignmentRecipe(recipe);
+    const slot = await getPlannerSlot(weekOffsetValue, dayIndexValue);
+
+    if (slot?.recipe) {
+      setPendingRecovery({
+        slot,
+        recipe: assignmentRecipe,
+        navigateTo: { weekOffset: weekOffsetValue, dayIndex: dayIndexValue, home: options.home },
+      });
+      return;
+    }
+
+    await assignRecipeToEmptySlot(weekOffsetValue, dayIndexValue, assignmentRecipe);
+    if (options.home) {
+      router.push('/home');
+    } else {
+      router.push(
+        `/planner?success=1&dayIndex=${dayIndexValue}&weekOffset=${weekOffsetValue}`
+      );
+    }
+  };
+
   const handleAssignRecipe = async (recipe: Recipe, specificDayIndex?: number) => {
     // If specificDayIndex is provided, it's the "Plan for later" flow from discovery
     if (specificDayIndex !== undefined) {
       setIsAssigning(true);
       try {
-        await assignRecipeToDay(0, specificDayIndex, {
-          id: recipe.id,
-          name: recipe.name,
-          image: recipe.imageUrl,
-        });
-        router.push(`/planner?success=1&dayIndex=${specificDayIndex}&weekOffset=0`);
+        await assignWithRecoveryGuard(0, specificDayIndex, recipe);
       } catch (error) {
         console.error('Failed to assign recipe:', error);
         setIsAssigning(false);
@@ -209,12 +251,7 @@ export default function RecipesPage() {
       try {
         const d = parseInt(addToDay, 10);
         const w = parseInt(weekOffset, 10);
-        await assignRecipeToDay(w, d, {
-          id: recipe.id,
-          name: recipe.name,
-          image: recipe.imageUrl,
-        });
-        router.push(`/planner?success=1&dayIndex=${d}&weekOffset=${w}`);
+        await assignWithRecoveryGuard(w, d, recipe);
       } catch (error) {
         console.error('Failed to assign recipe:', error);
         setIsAssigning(false);
@@ -224,16 +261,56 @@ export default function RecipesPage() {
       const todayIndex = (new Date().getDay() + 6) % 7;
       setIsAssigning(true);
       try {
-        await assignRecipeToDay(0, todayIndex, {
-          id: recipe.id,
-          name: recipe.name,
-          image: recipe.imageUrl,
-        });
-        router.push('/home');
+        await assignWithRecoveryGuard(0, todayIndex, recipe, { home: true });
       } catch (error) {
         console.error('Failed to assign recipe:', error);
         setIsAssigning(false);
       }
+    }
+  };
+
+  const handlePlanForLater = async (recipe: Recipe) => {
+    setIsAssigning(true);
+    try {
+      const openSlot = await findFirstOpenPlannerSlot(0);
+      if (!openSlot) {
+        setIsAssigning(false);
+        return;
+      }
+
+      await assignRecipeToEmptySlot(openSlot.weekOffset, openSlot.dayIndex, toAssignmentRecipe(recipe));
+      router.push(
+        `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}`
+      );
+    } catch (error) {
+      console.error('Failed to plan recipe for later:', error);
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRecoveryAction = async (action: string) => {
+    if (!pendingRecovery) return;
+    if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
+
+    setIsAssigning(true);
+    try {
+      await resolveOccupiedSlot(pendingRecovery.slot, action);
+      await assignRecipeToEmptySlot(
+        pendingRecovery.navigateTo.weekOffset,
+        pendingRecovery.navigateTo.dayIndex,
+        pendingRecovery.recipe
+      );
+
+      const { weekOffset: targetWeekOffset, dayIndex, home } = pendingRecovery.navigateTo;
+      setPendingRecovery(null);
+      if (home) {
+        router.push('/home');
+      } else {
+        router.push(`/planner?success=1&dayIndex=${dayIndex}&weekOffset=${targetWeekOffset}`);
+      }
+    } catch (error) {
+      console.error('Failed recovery action:', error);
+      setIsAssigning(false);
     }
   };
 
@@ -864,7 +941,18 @@ export default function RecipesPage() {
           }
           onClose={() => setOpenDetailRecipeId(null)}
           onUseForDay={handleAssignRecipe}
+          onPlanForLater={handlePlanForLater}
           onFindSimilar={handleFindSimilar}
+        />
+      )}
+
+      {pendingRecovery && (
+        <SkipRecoveryDialog
+          isOpen={true}
+          step={2}
+          onClose={() => setPendingRecovery(null)}
+          onBack={() => setPendingRecovery(null)}
+          onAction={handleRecoveryAction}
         />
       )}
     </div>

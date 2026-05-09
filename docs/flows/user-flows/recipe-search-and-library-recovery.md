@@ -122,6 +122,49 @@ sequenceDiagram
 3. Opening and closing the detail sheet does not trigger a new search call.
 4. Planner-mode recipe details skip the discovery pivot and go straight to the assignment CTA.
 
+### Occupied-slot recovery invariant
+
+Any action that assigns a recipe into a day/meal slot must first determine whether that slot already contains a recipe. If the target slot is occupied, the app must open the recovery flow instead of overwriting the existing recipe.
+
+This invariant applies regardless of entry surface:
+
+| Entry surface | Target slot | Empty-slot behavior | Occupied-slot behavior |
+|---------------|-------------|---------------------|------------------------|
+| Planner day card → Quick Find → Select | Selected planner day | Assign selected recipe directly | Open recovery flow for that selected day |
+| Planner day card → Quick Find → Search Library → result → Add it to day | Selected planner day | Assign selected recipe directly | Open recovery flow for that selected day |
+| Home → Browse Library/Search → recipe → Cook this → Cook it tonight | Today's slot | Assign selected recipe to today | Open recovery flow for today |
+| Home → Tonight's Menu → Change Plan → Quick Find/Search Library → Select/Add | Today's slot | Assign selected recipe to today | Open recovery flow for today |
+
+The recovery flow owns the decision about what happens to the existing recipe: move it to tomorrow, move it to next week, or drop it. The new selected recipe is only assigned after the user resolves the existing slot.
+
+Copy must reflect intent. In a home/today context, the final CTA should read **"Cook it tonight"**, not **"Add it tonight"** or **"Add it to Tonight"**.
+
+### Plan-for-later placement rule
+
+When the user chooses **Plan for later** from a recipe detail sheet, the app must look forward from the active week until it finds the first free planner slot.
+
+- If the current week has an empty slot, assign there and navigate to the current week planner.
+- If the current week is full, continue into next week, then week +2, and so on until an empty slot is found.
+- After assignment, navigate to `/planner` with the matching `weekOffset`, `dayIndex`, and success highlight so the user sees where the recipe landed.
+- This path still obeys the occupied-slot recovery invariant: it only auto-assigns to an empty slot.
+
+The user should never have to manually hunt for where the app placed the recipe.
+
+### Future-week return affordance
+
+When the planner is showing any week other than the active/current week, show a compact **This week** pill in the planner header.
+
+- Placement: directly beneath the date range, beside the planned-count badge.
+- Visibility: only when `currentWeekOffset !== 0`.
+- Action: one tap sets `weekOffset` back to `0`.
+- Copy: `This week`.
+- `data-testid`: `planner-this-week-pill`.
+
+Mère-Designer rationale:
+
+- **Why:** Future-week navigation is useful, but it creates orientation cost. A persistent return affordance reduces cognitive load without interrupting planning.
+- **How:** A parent can follow the app to week +2 after "Plan for later," confirm the placement, then snap back to tonight's real planning context with one thumb tap.
+
 ---
 
 ## Discovery Action Pivot

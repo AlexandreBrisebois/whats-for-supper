@@ -33,6 +33,11 @@ import { GroceryList } from '@/components/planner/GroceryList';
 import { BalanceIndicator } from '@/components/planner/BalanceIndicator';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
+import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
+import {
+  type AssignmentRecipe,
+  resolveOccupiedSlot,
+} from '@/lib/planner/slotAssignment';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -51,6 +56,15 @@ export default function PlannerPage() {
   const [pendingQuickFindDayIndex, setPendingQuickFindDayIndex] = useState<number | null>(null);
   const [successDay, setSuccessDay] = useState<number | null>(null);
   const [activeCookMode, setActiveCookMode] = useState<UILocalScheduleDay | null>(null);
+  const [pendingRecovery, setPendingRecovery] = useState<{
+    slot: {
+      weekOffset: number;
+      dayIndex: number;
+      date: string;
+      recipe: any;
+    };
+    recipe: AssignmentRecipe;
+  } | null>(null);
   const { setHasPendingCards } = useDiscoveryStore();
   const searchParams = useSearchParams();
   const successParam = searchParams.get('success');
@@ -170,26 +184,62 @@ export default function PlannerPage() {
 
   const handleQuickFindSelect = async (recipe: any) => {
     if (selectedDayIndex === null) return;
-    useWeekStore.getState().assignRecipe(selectedDayIndex, {
+    const selectedDay = schedule[selectedDayIndex];
+    const nextRecipe = {
       id: recipe.id,
       name: recipe.name ?? null,
       image: recipe.image ?? '',
+    };
+
+    if (selectedDay?.recipe?.id && selectedDay.date) {
+      setPendingRecovery({
+        slot: {
+          weekOffset: currentWeekOffset,
+          dayIndex: selectedDayIndex,
+          date: selectedDay.date,
+          recipe: selectedDay.recipe,
+        },
+        recipe: nextRecipe,
+      });
+      setShowQuickFind(false);
+      return;
+    }
+
+    useWeekStore.getState().assignRecipe(selectedDayIndex, {
+      id: nextRecipe.id,
+      name: nextRecipe.name,
+      image: nextRecipe.image,
     });
 
     // Propagate to todayStore if this is today's slot
     const assignedDate = schedule[selectedDayIndex]?.date;
     if (currentWeekOffset === 0 && assignedDate === getTodayString()) {
-      useTodayStore.getState().assignRecipe({
-        id: recipe.id,
-        name: recipe.name ?? null,
-        image: recipe.image ?? '',
-      });
+      useTodayStore.getState().assignRecipe(nextRecipe);
     }
 
     setShowQuickFind(false);
     setShowPivot(null);
     setSelectedDayIndex(null);
     setPendingQuickFindDayIndex(null);
+  };
+
+  const handleRecoveryAction = async (action: string) => {
+    if (!pendingRecovery) return;
+    if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
+
+    const { slot, recipe } = pendingRecovery;
+    await resolveOccupiedSlot(slot, action);
+    useWeekStore.getState().assignRecipe(slot.dayIndex, recipe);
+
+    if (slot.weekOffset === 0 && slot.date === getTodayString()) {
+      useTodayStore.getState().assignRecipe(recipe);
+    }
+
+    setPendingRecovery(null);
+    setShowPivot(null);
+    setSelectedDayIndex(null);
+    setPendingQuickFindDayIndex(null);
+    await useWeekStore.getState().init(currentWeekOffset);
   };
 
   const handleSearchPath = () => {
@@ -370,6 +420,16 @@ export default function PlannerPage() {
                       {t('planner.closeVoting', 'Close Voting')}
                     </button>
                   </div>
+                )}
+                {currentWeekOffset !== 0 && (
+                  <button
+                    type="button"
+                    data-testid="planner-this-week-pill"
+                    onClick={() => setWeekOffset(0)}
+                    className="flex items-center space-x-1 text-terracotta font-bold text-[9px] bg-terracotta/5 px-2 py-1 rounded-full border border-terracotta/10 uppercase tracking-widest active:scale-95 transition-all"
+                  >
+                    {t('planner.thisWeek', 'This week')}
+                  </button>
                 )}
               </div>
             </div>
@@ -578,6 +638,18 @@ export default function PlannerPage() {
                 console.warn('Failed to mark cooked from planner:', err);
               }
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {pendingRecovery && (
+          <SkipRecoveryDialog
+            isOpen={true}
+            step={2}
+            onClose={() => setPendingRecovery(null)}
+            onBack={() => setPendingRecovery(null)}
+            onAction={handleRecoveryAction}
           />
         )}
       </AnimatePresence>

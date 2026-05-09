@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   const getRecipe = vi.fn();
   const updateRecipe = vi.fn();
   const assignRecipeToDay = vi.fn();
+  const getSchedule = vi.fn();
   const submitInventoryCapture = vi.fn();
   const getTrashItems = vi.fn();
   const restoreRecipe = vi.fn();
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => {
     getRecipe,
     updateRecipe,
     assignRecipeToDay,
+    getSchedule,
     submitInventoryCapture,
     getTrashItems,
     restoreRecipe,
@@ -74,6 +76,8 @@ vi.mock('@/lib/api/inventory', () => ({
 
 vi.mock('@/lib/api/planner', () => ({
   assignRecipeToDay: (...args: unknown[]) => mocks.assignRecipeToDay(...args),
+  getSchedule: (...args: unknown[]) => mocks.getSchedule(...args),
+  normalizeScheduleRecipe: (recipe: unknown) => recipe ?? null,
 }));
 
 if (typeof window !== 'undefined') {
@@ -141,6 +145,15 @@ describe('RecipesPage', () => {
     mocks.getRecipe.mockResolvedValue(makeRecipeDetail());
     mocks.updateRecipe.mockResolvedValue(undefined);
     mocks.assignRecipeToDay.mockResolvedValue(undefined);
+    mocks.getSchedule.mockResolvedValue({
+      weekOffset: 0,
+      days: Array.from({ length: 7 }, (_, index) => ({
+        day: `Day ${index + 1}`,
+        date: `2026-05-${String(4 + index).padStart(2, '0')}`,
+        recipe: null,
+        status: 0,
+      })),
+    });
     mocks.submitInventoryCapture.mockResolvedValue({
       snapshotId: 'snap-123',
       inferredIngredients: ['chicken'],

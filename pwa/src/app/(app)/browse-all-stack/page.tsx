@@ -3,16 +3,24 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { X, Search, Loader2, Compass, Trash2 } from 'lucide-react';
+import { X, Search, Loader2, Compass, Recycle } from 'lucide-react';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
+import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { useBrowseStackStore } from '@/store/browseStackStore';
 import { apiClient } from '@/lib/api/api-client';
-import { updateRecipe } from '@/lib/api/recipes';
-import { assignRecipeToDay } from '@/lib/api/planner';
+import { updateRecipe, type Recipe } from '@/lib/api/recipes';
+import {
+  assignRecipeToEmptySlot,
+  findFirstOpenPlannerSlot,
+  getPlannerSlot,
+  resolveOccupiedSlot,
+  type AssignmentRecipe,
+  type PlannerSlot,
+} from '@/lib/planner/slotAssignment';
 import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipes/index';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
@@ -56,6 +64,11 @@ export default function BrowseAllStackPage() {
   // Recipe Detail Sheet state — freeze stack while open
   const [detailRecipeId, setDetailRecipeId] = useState<string | null>(null);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [pendingRecovery, setPendingRecovery] = useState<{
+    slot: PlannerSlot;
+    recipe: AssignmentRecipe;
+    navigateTo: { weekOffset: number; dayIndex: number };
+  } | null>(null);
 
   // Ref to track whether a prefetch is already in flight (avoid duplicate requests)
   const prefetchInFlightRef = useRef(false);
@@ -295,6 +308,69 @@ export default function BrowseAllStackPage() {
     setDetailRecipeId(null);
   }, []);
 
+  const toAssignmentRecipe = (recipe: Recipe): AssignmentRecipe => ({
+    id: recipe.id,
+    name: recipe.name ?? null,
+    image: recipe.imageUrl ?? '',
+  });
+
+  const handleCookTonight = useCallback(
+    async (recipe: Recipe) => {
+      const todayIndex = (new Date().getDay() + 6) % 7;
+      const assignmentRecipe = toAssignmentRecipe(recipe);
+      const slot = await getPlannerSlot(0, todayIndex);
+
+      if (slot?.recipe) {
+        setPendingRecovery({
+          slot,
+          recipe: assignmentRecipe,
+          navigateTo: { weekOffset: 0, dayIndex: todayIndex },
+        });
+        return;
+      }
+
+      await assignRecipeToEmptySlot(0, todayIndex, assignmentRecipe);
+      router.push(`/planner?success=1&dayIndex=${todayIndex}&weekOffset=0`);
+    },
+    [router]
+  );
+
+  const handlePlanForLater = useCallback(
+    async (recipe: Recipe) => {
+      const openSlot = await findFirstOpenPlannerSlot(0);
+      if (!openSlot) return;
+
+      await assignRecipeToEmptySlot(
+        openSlot.weekOffset,
+        openSlot.dayIndex,
+        toAssignmentRecipe(recipe)
+      );
+      router.push(
+        `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}`
+      );
+    },
+    [router]
+  );
+
+  const handleRecoveryAction = useCallback(
+    async (action: string) => {
+      if (!pendingRecovery) return;
+      if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
+
+      await resolveOccupiedSlot(pendingRecovery.slot, action);
+      await assignRecipeToEmptySlot(
+        pendingRecovery.navigateTo.weekOffset,
+        pendingRecovery.navigateTo.dayIndex,
+        pendingRecovery.recipe
+      );
+
+      const { weekOffset, dayIndex } = pendingRecovery.navigateTo;
+      setPendingRecovery(null);
+      router.push(`/planner?success=1&dayIndex=${dayIndex}&weekOffset=${weekOffset}`);
+    },
+    [pendingRecovery, router]
+  );
+
   // ---------------------------------------------------------------------------
   // Discoverable handlers
   // ---------------------------------------------------------------------------
@@ -372,7 +448,7 @@ export default function BrowseAllStackPage() {
         <button
           onClick={handleGlobalToggleDiscoverable}
           data-testid="stack-toggle-discoverable"
-          className={`flex items-center gap-2 rounded-full px-4 py-2 transition-all duration-300 border ${
+          className={`flex h-11 items-center gap-2 rounded-full px-4 transition-all duration-300 border ${
             isDiscoverableOnly
               ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
               : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
@@ -395,7 +471,7 @@ export default function BrowseAllStackPage() {
             onClick={() => setIsTrashOpen(true)}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
           >
-            <Trash2 size={20} />
+            <Recycle size={20} />
           </button>
           <button
             type="button"
@@ -506,18 +582,21 @@ export default function BrowseAllStackPage() {
           recipeId={detailRecipeId}
           plannerDayLabel={null}
           onClose={handleDetailSheetClose}
-          onUseForDay={async (recipe) => {
-            const todayIndex = (new Date().getDay() + 6) % 7;
-            await assignRecipeToDay(0, todayIndex, {
-              id: recipe.id,
-              name: recipe.name ?? null,
-              image: recipe.imageUrl ?? '',
-            });
-            router.push(`/planner?success=1&dayIndex=${todayIndex}`);
-          }}
+          onUseForDay={handleCookTonight}
+          onPlanForLater={handlePlanForLater}
           onFindSimilar={() => {
             handleDetailSheetClose();
           }}
+        />
+      )}
+
+      {pendingRecovery && (
+        <SkipRecoveryDialog
+          isOpen={true}
+          step={2}
+          onClose={() => setPendingRecovery(null)}
+          onBack={() => setPendingRecovery(null)}
+          onAction={handleRecoveryAction}
         />
       )}
     </div>

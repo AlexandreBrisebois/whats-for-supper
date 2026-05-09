@@ -48,7 +48,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center w-full px-6 py-4 gap-2">
+    <div className="flex flex-col items-center w-full py-4 gap-2">
       {/* Depth indicator — lives above the pill, separate from actions */}
       <div className="flex items-center gap-1.5" data-testid="stack-depth-indicator">
         <span className="text-[11px] font-bold tabular-nums text-charcoal/40">
@@ -61,7 +61,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="flex w-full max-w-md flex-col gap-2 rounded-[1.75rem] border border-charcoal/8 bg-white/85 p-2 shadow-glass backdrop-blur-2xl"
+        className="flex w-full flex-col gap-2 rounded-[1.75rem] border border-charcoal/8 bg-white/85 p-2 shadow-glass backdrop-blur-2xl"
         data-testid="stack-action-bar"
       >
         {/* Individual card: add/remove from Discovery */}
