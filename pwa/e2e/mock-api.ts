@@ -644,6 +644,15 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // POST /api/management/backfill-search
+  await page.route('**/api/management/backfill-search', async (route) => {
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'Search index backfill triggered in the background.' }),
+    });
+  });
+
   // POST /api/management/seed
   await page.route('**/api/management/seed', async (route) => {
     await route.fulfill({

@@ -20,6 +20,31 @@
     "error": "Something went wrong",
     "success": "Done!"
   },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "deleting": "Deleting...",
+    "loading": "Loading..."
+  },
+  "errors": {
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "The page you're looking for doesn't exist.",
+    "goHome": "Go home",
+    "genericTitle": "Something went wrong",
+    "genericDescription": "An unexpected error occurred. Please try again.",
+    "tryAgain": "Try again"
+  },
+  "landing": {
+    "title": "What's for Supper?",
+    "subtitle": "Capture recipes, plan your week, discover what to cook next.",
+    "getStarted": "Get Started"
+  },
+  "invite": {
+    "invalidTitle": "Invalid invite link",
+    "invalidDescription": "This link may have expired or been tampered with.",
+    "goToWelcome": "Go to welcome",
+    "joiningFamily": "Joining your family..."
+  },
   "progress": {
     "step": "Step {{current}} of {{total}}"
   },
@@ -42,7 +67,22 @@
     "choosePhotos": "Choose Photos",
     "linkCaptured": "Link Captured!",
     "processing": "Recipe captured! Processing...",
-    "processingSubtext": "We're extracting the ingredients and instructions. We'll notify you when it's ready."
+    "processingSubtext": "We're extracting the ingredients and instructions. We'll notify you when it's ready.",
+    "addRecipe": "Add a Recipe",
+    "appreciation": "Appreciation",
+    "clearAll": "Clear All",
+    "mainDish": "Main Dish",
+    "notes": "Notes (Optional)",
+    "notesPlaceholder": "Any tweaks for next time?",
+    "photosCount": "Photos ({{count}})",
+    "pickFromGallery": "Pick from Gallery",
+    "removePhoto": "Remove photo",
+    "takePhoto": "Take a photo",
+    "rating": {
+      "1": "Not for me",
+      "2": "It was OK",
+      "3": "Loved it!"
+    }
   },
   "profile": {
     "title": "Who's Eating?",
@@ -52,7 +92,14 @@
     "pickSomethingElse": "Find something quick",
     "english": "English",
     "french": "French",
-    "loading": "Loading family members…"
+    "loading": "Loading family members…",
+    "closeMemberMenu": "Close member menu",
+    "invite": "Invite",
+    "manageFamily": "Manage Family",
+    "openMemberMenu": "Open member menu",
+    "selectMember": "Select Member",
+    "settings": "Settings",
+    "settingsSubtitle": "Family & app preferences"
   },
   "family": {
     "addPrompt": "Don't see your name? Add it",
@@ -65,7 +112,8 @@
     "nameLabel": "Name",
     "namePlaceholder": "e.g. Alex",
     "addMemberButton": "Add Member",
-    "nameError": "Please enter a name."
+    "nameError": "Please enter a name.",
+    "editNameFor": "Edit name for {{name}}"
   },
   "auth": {
     "welcomeTitle": "What's For Supper?",
@@ -76,13 +124,22 @@
     "checking": "Checking...",
     "enter": "Enter",
     "onboardingTitle": "Who are you?",
-    "onboardingSubtitle": "Select your profile to start planning"
+    "onboardingSubtitle": "Select your profile to start planning",
+    "switchMember": "Switch Member",
+    "switchMemberSubtitle": "Select a different name to change perspective"
   },
   "nav": {
     "home": "Home",
     "search": "Search",
     "discover": "Discover",
     "planner": "Planner",
+    "profile": "Profile"
+  },
+  "navigation": {
+    "home": "Home",
+    "search": "Search",
+    "discover": "Discovery",
+    "planner": "Weekly Planner",
     "profile": "Profile"
   },
   "home": {
@@ -122,7 +179,16 @@
     "keepItLater": "Keep it for later",
     "dropIt": "Drop It",
     "maybeAnotherTime": "Maybe another time",
-    "goBack": "Go back"
+    "goBack": "Go back",
+    "browseLibrary": "Browse your library",
+    "browseLibrarySubtitle": "Flip through your recipes",
+    "dominoShift": "Pushes your week forward",
+    "dropTonight": "Just Drop Tonight",
+    "moveFirstSlot": "Moves to the first open slot",
+    "moveTomorrow": "Move to Tomorrow",
+    "preparingRecipe": "Preparing recipe…",
+    "saveForNextWeek": "Save for Next Week",
+    "unplanCompletely": "Remove it from the plan"
   },
   "planner": {
     "planner": "Planner",
@@ -137,7 +203,14 @@
     "weekFinalized": "Week finalized",
     "discoveryVotesPurged": "Discovery votes purged and dates updated.",
     "planNextWeek": "Plan next week",
-    "menusIn": "Menu's In!"
+    "menusIn": "Menu's In!",
+    "addVariety": "Add more variety to balance your week.",
+    "balancedWeek": "Balanced Week",
+    "cfgBalanced": "Your menu hits Canada's Food Guide targets!",
+    "choosePathLabel": "Planner options",
+    "choosePathTitle": "Choose your path",
+    "closeVoting": "Close Voting",
+    "diversify": "Diversify"
   },
   "grocery": {
     "smartShopping": "Smart Shopping",
@@ -163,6 +236,9 @@
     "plantPowered": "Plant-Powered Choice!",
     "healthyPick": "Healthy Pick!",
     "extractionInProgress": "Extraction in progress... we're still identifying the exact quantities.",
+    "checkAndPrep": "Check & Prep",
+    "ingredientsReady": "Check off your ingredients before you start cooking.",
+    "letsCook": "Let's Cook",
     "back": "Back",
     "done": "Done",
     "next": "Next",
@@ -173,10 +249,19 @@
   },
   "discovery": {
     "wrap": "That's a wrap!",
+    "wrapUpTitle": "That's a wrap!",
     "matchesFound": "You found {{count}} matches with your family! Ready to get cooking?",
     "seenEverything": "You've seen everything for now. Why not add some fresh ideas?",
+    "noMoreRecipes": "You've seen everything for now. Why not add some fresh ideas?",
     "goToPlanner": "Go to Planner",
     "captureNewRecipe": "Capture a New Recipe",
+    "captureNew": "Capture a New Recipe",
+    "diff": "Diff",
+    "love": "LOVE",
+    "match": "MATCH!",
+    "medium": "Medium",
+    "pass": "PASS",
+    "prep": "Prep",
     "refreshFeed": "Refresh Feed"
   },
   "recipes": {
@@ -207,6 +292,34 @@
     "browseLibrary": "Browse Library",
     "searchEmptyTitle": "No matches yet. Try a different description or clear filters.",
     "filterNoResults": "No matches with these filters. Try removing one.",
-    "showMore": "Show more"
+    "showMore": "Show more",
+    "confirmDelete": "Permanently Delete Recipe",
+    "confirmDeleteButton": "Delete Forever",
+    "confirmDeleteDescription": "This action cannot be undone. Enter your PIN to confirm.",
+    "detailTitle": "Recipe detail",
+    "findSimilar": "Find Similar",
+    "hideFromDiscovery": "Hide from Discovery",
+    "ingredients": "Ingredients",
+    "loadingDetail": "Loading recipe...",
+    "moveToBin": "Move to Bin",
+    "notes": "Notes",
+    "pinPlaceholder": "Enter PIN",
+    "purge": "Delete",
+    "purgeError": "Incorrect PIN or permanent delete is not available.",
+    "rating": "Rating",
+    "recycleBin": "Recycle Bin",
+    "restore": "Restore",
+    "selectMealForDay": "Planning for {{day}}",
+    "selectMealForDayNum": "Planning for Day {{day}}",
+    "showInDiscovery": "Show in Discovery",
+    "trashEmpty": "Your Recycle Bin is empty.",
+    "unknownRecipe": "Unknown Recipe"
+  },
+  "settings": {
+    "failedCaptures": "Failed Captures",
+    "noFailedCaptures": "No failed captures. All imports completed successfully.",
+    "retry": "Retry",
+    "retryError": "Retry failed. Please try again.",
+    "retrying": "Retrying..."
   }
 }

@@ -6,6 +6,7 @@ import { useFamily } from '@/hooks/useFamily';
 import { useOnboardingStore } from '@/store/onboardingStore';
 
 import { validateHearthSecret, setHearthCookie, setFamilyMemberCookie } from '@/lib/auth';
+import { t } from '@/locales';
 
 export default function InvitePage() {
   const router = useRouter();
@@ -53,12 +54,14 @@ export default function InvitePage() {
   if (status === 'error') {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 bg-cream">
-        <h1 className="text-2xl font-bold text-charcoal">Invalid invite link</h1>
+        <h1 className="text-2xl font-bold text-charcoal">
+          {t('invite.invalidTitle', 'Invalid invite link')}
+        </h1>
         <p className="text-sm text-charcoal/60">
-          This link may have expired or been tampered with.
+          {t('invite.invalidDescription', 'This link may have expired or been tampered with.')}
         </p>
         <a href="/welcome" className="text-ochre underline text-sm">
-          Go to welcome
+          {t('invite.goToWelcome', 'Go to welcome')}
         </a>
       </main>
     );
@@ -66,7 +69,9 @@ export default function InvitePage() {
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-cream">
-      <p className="text-sm text-charcoal/60">Joining your family…</p>
+      <p className="text-sm text-charcoal/60">
+        {t('invite.joiningFamily', 'Joining your family…')}
+      </p>
     </main>
   );
 }

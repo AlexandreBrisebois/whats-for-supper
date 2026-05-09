@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 
 import { ROUTES } from '@/lib/constants/routes';
+import { t } from '@/locales';
 
 /**
  * Splash / landing page — shown to first-time visitors.
@@ -10,9 +13,11 @@ export default function LandingPage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6 py-12">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-indigo">What&apos;s for Supper?</h1>
+        <h1 className="text-4xl font-bold text-indigo">
+          {t('landing.title', "What's for Supper?")}
+        </h1>
         <p className="mt-3 text-lg text-charcoal-400">
-          Capture recipes, plan your week, discover what to cook next.
+          {t('landing.subtitle', 'Capture recipes, plan your week, discover what to cook next.')}
         </p>
       </div>
 
@@ -20,7 +25,7 @@ export default function LandingPage() {
         href={ROUTES.ONBOARDING}
         className="rounded-2xl bg-indigo px-8 py-4 text-lg font-semibold text-lavender shadow-card transition-opacity hover:opacity-90 active:opacity-75"
       >
-        Get Started
+        {t('landing.getStarted', 'Get Started')}
       </Link>
     </main>
   );

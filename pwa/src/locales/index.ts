@@ -2,17 +2,43 @@ import type { Locale } from '@/lib/i18n';
 
 import enCommon from './en/common.json';
 import enHints from './en/hints.json';
+import enJourneys from './en/journeys.json';
 import frCommon from './fr/common.json';
 import frHints from './fr/hints.json';
+import frJourneys from './fr/journeys.json';
 
 export type { Locale };
 
 const LOCALE_KEY = 'locale';
 
+function mergeTranslations(...tables: Array<Record<string, unknown>>): Record<string, unknown> {
+  return tables.reduce<Record<string, unknown>>((merged, table) => {
+    for (const [key, value] of Object.entries(table)) {
+      const existing = merged[key];
+      if (
+        existing &&
+        value &&
+        typeof existing === 'object' &&
+        typeof value === 'object' &&
+        !Array.isArray(existing) &&
+        !Array.isArray(value)
+      ) {
+        merged[key] = mergeTranslations(
+          existing as Record<string, unknown>,
+          value as Record<string, unknown>
+        );
+      } else {
+        merged[key] = value;
+      }
+    }
+    return merged;
+  }, {});
+}
+
 // Eagerly merged translation tables — small enough for Phase 0
 const translations: Record<Locale, Record<string, unknown>> = {
-  en: { ...enCommon, ...enHints },
-  fr: { ...frCommon, ...frHints },
+  en: mergeTranslations(enCommon, enHints, enJourneys),
+  fr: mergeTranslations(frCommon, frHints, frJourneys),
 };
 
 export function getLocale(): Locale {

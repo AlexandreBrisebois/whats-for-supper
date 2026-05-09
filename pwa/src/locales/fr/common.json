@@ -20,6 +20,31 @@
     "error": "Une erreur est survenue",
     "success": "Terminé !"
   },
+  "common": {
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "deleting": "Suppression...",
+    "loading": "Chargement..."
+  },
+  "errors": {
+    "notFoundTitle": "Page introuvable",
+    "notFoundDescription": "La page que vous cherchez n'existe pas.",
+    "goHome": "Retour à l'accueil",
+    "genericTitle": "Une erreur est survenue",
+    "genericDescription": "Une erreur inattendue est survenue. Veuillez réessayer.",
+    "tryAgain": "Réessayer"
+  },
+  "landing": {
+    "title": "Qu'est-ce qu'on mange ?",
+    "subtitle": "Capturez des recettes, planifiez la semaine et découvrez quoi cuisiner.",
+    "getStarted": "Commencer"
+  },
+  "invite": {
+    "invalidTitle": "Lien d'invitation invalide",
+    "invalidDescription": "Ce lien a peut-être expiré ou été modifié.",
+    "goToWelcome": "Aller à l'accueil",
+    "joiningFamily": "Connexion à votre famille..."
+  },
   "progress": {
     "step": "Étape {{current}} sur {{total}}"
   },
@@ -42,17 +67,39 @@
     "choosePhotos": "Choisir des photos",
     "linkCaptured": "Lien capturé !",
     "processing": "Traitement de votre recette...",
-    "processingSubtext": "Nous extrayons les ingrédients et les instructions. Nous vous préviendrons quand ce sera prêt."
+    "processingSubtext": "Nous extrayons les ingrédients et les instructions. Nous vous préviendrons quand ce sera prêt.",
+    "addRecipe": "Ajouter une recette",
+    "appreciation": "Appréciation",
+    "clearAll": "Tout effacer",
+    "mainDish": "Plat principal",
+    "notes": "Notes (facultatif)",
+    "notesPlaceholder": "Des ajustements pour la prochaine fois ?",
+    "photosCount": "Photos ({{count}})",
+    "pickFromGallery": "Choisir dans la galerie",
+    "removePhoto": "Retirer la photo",
+    "takePhoto": "Prendre une photo",
+    "rating": {
+      "1": "Pas pour moi",
+      "2": "C'était correct",
+      "3": "On a adoré !"
+    }
   },
   "profile": {
     "title": "Qui mange ?",
     "subtitle": "Changer de membre ou gérer votre groupe.",
     "activeMember": "Membre actif",
     "language": "Langue",
-    "selectLanguage": "Choisir la langue de l'interface",
     "pickSomethingElse": "Trouver quelque chose de rapide",
+    "english": "Anglais",
     "french": "Français",
-    "loading": "Chargement des membres…"
+    "loading": "Chargement des membres…",
+    "closeMemberMenu": "Fermer le menu des membres",
+    "invite": "Inviter",
+    "manageFamily": "Gérer la famille",
+    "openMemberMenu": "Ouvrir le menu des membres",
+    "selectMember": "Choisir un membre",
+    "settings": "Paramètres",
+    "settingsSubtitle": "Préférences famille et application"
   },
   "family": {
     "addPrompt": "Vous ne voyez pas votre nom ? Ajoutez-le",
@@ -65,7 +112,8 @@
     "nameLabel": "Nom",
     "namePlaceholder": "ex: Alex",
     "addMemberButton": "Ajouter le membre",
-    "nameError": "Veuillez entrer un nom."
+    "nameError": "Veuillez entrer un nom.",
+    "editNameFor": "Modifier le nom de {{name}}"
   },
   "auth": {
     "welcomeTitle": "Qu'est-ce qu'on mange ?",
@@ -76,13 +124,22 @@
     "checking": "Vérification...",
     "enter": "Entrer",
     "onboardingTitle": "C'est qui ?",
-    "onboardingSubtitle": "Choisissez votre profil pour commencer"
+    "onboardingSubtitle": "Choisissez votre profil pour commencer",
+    "switchMember": "Changer de membre",
+    "switchMemberSubtitle": "Choisissez un autre nom pour changer de perspective"
   },
   "nav": {
     "home": "Accueil",
     "search": "Chercher",
     "discover": "Découvrir",
     "planner": "Planning",
+    "profile": "Profil"
+  },
+  "navigation": {
+    "home": "Accueil",
+    "search": "Chercher",
+    "discover": "Découverte",
+    "planner": "Planning hebdo",
     "profile": "Profil"
   },
   "home": {
@@ -122,7 +179,16 @@
     "keepItLater": "Garder pour plus tard",
     "dropIt": "Abandonner",
     "maybeAnotherTime": "Peut-être une autre fois",
-    "goBack": "Retour"
+    "goBack": "Retour",
+    "browseLibrary": "Parcourir votre bibliothèque",
+    "browseLibrarySubtitle": "Feuilletez vos recettes",
+    "dominoShift": "Décale votre semaine",
+    "dropTonight": "Retirer ce soir",
+    "moveFirstSlot": "Déplace au premier créneau libre",
+    "moveTomorrow": "Déplacer à demain",
+    "preparingRecipe": "Préparation de la recette…",
+    "saveForNextWeek": "Garder pour la semaine prochaine",
+    "unplanCompletely": "Retirer du planning"
   },
   "planner": {
     "planner": "Planning",
@@ -137,7 +203,14 @@
     "weekFinalized": "Semaine finalisée",
     "discoveryVotesPurged": "Votes purgés et dates mises à jour.",
     "planNextWeek": "Prévoir la semaine prochaine",
-    "menusIn": "C'est validé !"
+    "menusIn": "C'est validé !",
+    "addVariety": "Ajoutez plus de variété pour équilibrer la semaine.",
+    "balancedWeek": "Semaine équilibrée",
+    "cfgBalanced": "Votre menu respecte les cibles du Guide alimentaire canadien !",
+    "choosePathLabel": "Options du planning",
+    "choosePathTitle": "Choisir une option",
+    "closeVoting": "Fermer le vote",
+    "diversify": "Diversifier"
   },
   "grocery": {
     "smartShopping": "Courses Intelligentes",
@@ -163,6 +236,9 @@
     "plantPowered": "Choix Végétarien !",
     "healthyPick": "Choix Santé !",
     "extractionInProgress": "Extraction en cours... identification des quantités.",
+    "checkAndPrep": "Vérifier et préparer",
+    "ingredientsReady": "Cochez vos ingrédients avant de commencer à cuisiner.",
+    "letsCook": "On cuisine",
     "back": "Retour",
     "done": "Terminé",
     "next": "Suivant",
@@ -173,10 +249,19 @@
   },
   "discovery": {
     "wrap": "C'est tout pour aujourd'hui !",
+    "wrapUpTitle": "C'est tout pour aujourd'hui !",
     "matchesFound": "Vous avez trouvé {{count}} matchs avec votre famille ! On cuisine ?",
     "seenEverything": "Vous avez tout vu pour le moment. De nouvelles idées ?",
+    "noMoreRecipes": "Vous avez tout vu pour le moment. De nouvelles idées ?",
     "goToPlanner": "Aller au Planning",
     "captureNewRecipe": "Capturer une Recette",
+    "captureNew": "Capturer une recette",
+    "diff": "Diff.",
+    "love": "J'adore",
+    "match": "Match !",
+    "medium": "Moyen",
+    "pass": "Passer",
+    "prep": "Prépa",
     "refreshFeed": "Actualiser"
   },
   "recipes": {
@@ -207,6 +292,34 @@
     "browseLibrary": "Voir la bibliothèque",
     "searchEmptyTitle": "Aucun résultat. Essayez une autre description ou effacez les filtres.",
     "filterNoResults": "Aucun résultat avec ces filtres. Essayez d'en enlever un.",
-    "showMore": "Voir plus"
+    "showMore": "Voir plus",
+    "confirmDelete": "Supprimer définitivement la recette",
+    "confirmDeleteButton": "Supprimer pour toujours",
+    "confirmDeleteDescription": "Cette action est irréversible. Entrez votre NIP pour confirmer.",
+    "detailTitle": "Détail de la recette",
+    "findSimilar": "Trouver similaire",
+    "hideFromDiscovery": "Masquer de la découverte",
+    "ingredients": "Ingrédients",
+    "loadingDetail": "Chargement de la recette...",
+    "moveToBin": "Mettre à la corbeille",
+    "notes": "Notes",
+    "pinPlaceholder": "Entrer le NIP",
+    "purge": "Supprimer",
+    "purgeError": "NIP incorrect ou suppression définitive indisponible.",
+    "rating": "Note",
+    "recycleBin": "Corbeille",
+    "restore": "Restaurer",
+    "selectMealForDay": "Prévu pour {{day}}",
+    "selectMealForDayNum": "Prévu pour le jour {{day}}",
+    "showInDiscovery": "Afficher dans la découverte",
+    "trashEmpty": "Votre corbeille est vide.",
+    "unknownRecipe": "Recette inconnue"
+  },
+  "settings": {
+    "failedCaptures": "Captures échouées",
+    "noFailedCaptures": "Aucune capture échouée. Tous les imports sont terminés.",
+    "retry": "Réessayer",
+    "retryError": "La tentative a échoué. Réessayez.",
+    "retrying": "Nouvel essai..."
   }
 }
