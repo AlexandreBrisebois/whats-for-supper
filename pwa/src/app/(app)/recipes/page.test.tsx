@@ -687,4 +687,48 @@ describe('RecipesPage', () => {
     expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
     expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
   });
+
+  it('blurs the search input when Enter is pressed', async () => {
+    render(<RecipesPage />);
+    const input = screen.getByTestId('recipe-search-input') as HTMLInputElement;
+    input.focus();
+    expect(input).toHaveFocus();
+
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    expect(input).not.toHaveFocus();
+  });
+
+  it('submits and blurs the agent search textarea when Enter (without Shift) is pressed', async () => {
+    render(<RecipesPage />);
+    fireEvent.click(screen.getByTestId('agent-search-trigger'));
+
+    const textarea = screen.getByTestId('agent-search-input') as HTMLTextAreaElement;
+    textarea.focus();
+    expect(textarea).toHaveFocus();
+
+    fireEvent.change(textarea, { target: { value: 'healthy lunch' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', shiftKey: false });
+
+    expect(textarea).not.toHaveFocus();
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: 'healthy lunch', mode: 'agent' })
+      );
+    });
+  });
+
+  it('does NOT submit agent search when Shift+Enter is pressed in textarea', async () => {
+    render(<RecipesPage />);
+    fireEvent.click(screen.getByTestId('agent-search-trigger'));
+
+    const textarea = screen.getByTestId('agent-search-input') as HTMLTextAreaElement;
+    textarea.focus();
+
+    const callsBefore = mocks.searchRecipes.mock.calls.length;
+    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', shiftKey: true });
+
+    expect(textarea).toHaveFocus();
+    expect(mocks.searchRecipes.mock.calls.length).toBe(callsBefore);
+  });
 });

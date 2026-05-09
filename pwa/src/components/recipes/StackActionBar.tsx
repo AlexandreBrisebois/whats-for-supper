@@ -72,11 +72,10 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
         {/* Global Toggle: Library (all) vs Discovery (voteable only) */}
         <button
           onClick={onToggleGlobalFilter}
-          className={`flex min-h-11 items-center justify-center gap-2 rounded-[1.25rem] px-4 py-2 transition-all duration-300 ${
-            isDiscoverableOnly
-              ? 'bg-ochre/15 text-ochre-800 border border-ochre/25 shadow-sm shadow-ochre/10'
-              : 'bg-cream text-charcoal/70 border border-charcoal/8 hover:bg-ochre/10 hover:text-charcoal'
-          }`}
+          className={`flex min-h-11 items-center justify-center gap-2 rounded-[1.25rem] px-4 py-2 transition-all duration-300 ${isDiscoverableOnly
+            ? 'bg-ochre/15 text-ochre-800 border border-ochre/25 shadow-sm shadow-ochre/10'
+            : 'bg-cream text-charcoal/70 border border-charcoal/8 hover:bg-ochre/10 hover:text-charcoal'
+            }`}
           data-testid="stack-toggle-discoverable"
           aria-label={
             isDiscoverableOnly
@@ -96,11 +95,10 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
         <button
           onClick={handleIndividualToggle}
           disabled={isUpdating}
-          className={`flex min-h-12 items-center justify-between gap-4 rounded-[1.25rem] px-4 py-2.5 text-left transition-all duration-300 ${
-            isIndividualDiscoverable
-              ? 'bg-sage/10 text-charcoal border border-sage/25 shadow-sm shadow-sage/10'
-              : 'bg-charcoal/5 text-charcoal/65 border border-charcoal/8 hover:bg-charcoal/8 hover:text-charcoal'
-          } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
+          className={`flex min-h-12 items-center justify-between gap-4 rounded-[1.25rem] px-4 py-2.5 text-left transition-all duration-300 ${isIndividualDiscoverable
+            ? 'bg-sage/10 text-charcoal border border-sage/25 shadow-sm shadow-sage/10'
+            : 'bg-charcoal/5 text-charcoal/65 border border-charcoal/8 hover:bg-charcoal/8 hover:text-charcoal'
+            } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
           data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
           aria-label={
             isIndividualDiscoverable
@@ -110,22 +108,20 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
         >
           <span className="flex flex-col leading-tight">
             <span className="text-xs font-black tracking-wide text-charcoal">
-              {t('navigation.discover', 'Discovery')}
+              {t('planner.askFamily', 'Ask the Family')}
             </span>
             <span className="text-[10px] font-bold text-charcoal/45">
               {t('discovery.showsInDiscovery', 'Shows in Discovery voting')}
             </span>
           </span>
           <span
-            className={`relative h-7 w-12 rounded-full transition-colors duration-300 ${
-              isIndividualDiscoverable ? 'bg-sage' : 'bg-charcoal/20'
-            }`}
+            className={`relative h-7 w-12 rounded-full transition-colors duration-300 ${isIndividualDiscoverable ? 'bg-sage' : 'bg-charcoal/20'
+              }`}
             aria-hidden="true"
           >
             <span
-              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
-                isIndividualDiscoverable ? 'translate-x-6' : 'translate-x-1'
-              }`}
+              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${isIndividualDiscoverable ? 'translate-x-6' : 'translate-x-1'
+                }`}
             />
           </span>
         </button>

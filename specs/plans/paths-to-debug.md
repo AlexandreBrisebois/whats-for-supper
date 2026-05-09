@@ -20,8 +20,4 @@ X search with photo -> consistently "we're processing a lot right now, try again
 
 X search -> it's been a while doesn't search anything. it should order oldest last cook to newest cook dates.
 
-I want the same style and color labels for the swipe actions on the stack browser. same behavior. visual language.
-
-on the search page when I type and hit enter I want the keyboard to drop so I can see the results.
-
 X when I use the dices on the top pic in the search it always comes back with the same recipe. it should be different each time.

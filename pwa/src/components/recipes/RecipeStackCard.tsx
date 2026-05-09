@@ -9,6 +9,8 @@ import {
   PanInfo,
   useMotionValueEvent,
 } from 'framer-motion';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { t } from '@/locales';
 
 // ---------------------------------------------------------------------------
 // RecipeStackCard
@@ -81,10 +83,12 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
     }
   });
 
-  // Swipe indicator opacity — ochre color, not sage/terracotta (requirement 3.3)
-  // Low thresholds so labels appear early enough for short thumb swipes
-  const nextOpacity = useTransform(x, [10, 45], [0, 1]);
-  const backOpacity = useTransform(x, [-45, -10], [1, 0]);
+  // Swipe indicator opacity & scale — matching DiscoveryCard visual language
+  const nextOpacity = useTransform(x, [20, 60], [0, 1]);
+  const backOpacity = useTransform(x, [-60, -20], [1, 0]);
+
+  const nextScale = useTransform(x, [0, 100], [0.5, 1.5]);
+  const backScale = useTransform(x, [0, -100], [0.5, 1.5]);
 
   const controls = useAnimation();
 
@@ -206,25 +210,37 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
             className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />
 
-          {/* Swipe direction indicators — ochre color, navigation only (requirements 3.1, 3.2, 3.3) */}
+          {/* Swipe direction indicators — Ghost style aligned with Discovery voting */}
           {isFront && (
             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-              {/* Next → indicator (swipe right) */}
+              {/* Next indicator (swipe right) - Sage color */}
               <motion.div
-                style={{ opacity: nextOpacity }}
+                style={{
+                  opacity: nextOpacity,
+                  scale: nextScale,
+                }}
                 data-testid="stack-swipe-next-indicator"
-                className="absolute flex flex-col items-center gap-2 rounded-full bg-ochre/30 px-8 py-6 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center gap-2 rounded-full bg-sage/30 p-8 text-white backdrop-blur-md shadow-2xl"
               >
-                <span className="text-xl font-black tracking-widest text-ochre-700">Next →</span>
+                <ChevronRight size={48} />
+                <span className="text-xl font-black tracking-widest">
+                  {t('buttons.next', 'NEXT')}
+                </span>
               </motion.div>
 
-              {/* ← Back indicator (swipe left) */}
+              {/* Back indicator (swipe left) - Terracotta color */}
               <motion.div
-                style={{ opacity: backOpacity }}
+                style={{
+                  opacity: backOpacity,
+                  scale: backScale,
+                }}
                 data-testid="stack-swipe-back-indicator"
-                className="absolute flex flex-col items-center gap-2 rounded-full bg-ochre/30 px-8 py-6 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center gap-2 rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
               >
-                <span className="text-xl font-black tracking-widest text-ochre-700">← Back</span>
+                <ChevronLeft size={48} />
+                <span className="text-xl font-black tracking-widest">
+                  {t('buttons.back', 'BACK')}
+                </span>
               </motion.div>
             </div>
           )}

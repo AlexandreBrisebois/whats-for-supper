@@ -429,6 +429,7 @@ export default function RecipesPage() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 if (debounceRef.current) clearTimeout(debounceRef.current);
+                (e.target as HTMLInputElement).blur();
                 void runSearch(query);
               }
             }}
@@ -453,6 +454,13 @@ export default function RecipesPage() {
             data-testid="agent-search-input"
             value={agentQuery}
             onChange={(e) => setAgentQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                (e.target as HTMLTextAreaElement).blur();
+                handleAgentSubmit();
+              }
+            }}
             placeholder={t(
               'recipes.agentSearchPlaceholder',
               'Describe what you feel like tonight in your own words…'

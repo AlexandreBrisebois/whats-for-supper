@@ -21,6 +21,7 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 
 ## Recently Completed
 
+- **RecipeStackCard Test Alignment (2026-05-09):** Synchronized unit test expectations with the icon-based swipe indicator implementation (removed legacy `→`/`←` text arrows). Verified that all 333 PWA unit tests pass.
 - **Recipe Action Pivot (2026-05-09):** Implemented and stabilized. Planner-origin search now shows `Add it to {Day}` and assigns back to the selected planner slot; discovery-origin search shows `Cook this`, then pivots to `Cook it tonight` / `Plan for later`. `task gate` is green after hardening the E2E mocks and updating unit/E2E expectations.
 
 ## Standing Notes

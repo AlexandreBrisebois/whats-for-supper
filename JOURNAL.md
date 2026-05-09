@@ -4,6 +4,19 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-09] Session — RecipeStackCard Test Alignment
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was fixed
+Synchronized unit test expectations in `RecipeStackCard.test.tsx` with the current UI implementation. The component had been updated to use `lucide-react` icons for swipe indicators, but the tests were still asserting the presence of legacy text arrows (`→` and `←`).
+
+#### Verification
+- `npm run test:unit -- src/components/recipes/RecipeStackCard.test.tsx` — ✅ 22 passed.
+- `task test:unit` — ✅ 333 passed (all PWA unit tests).
+
+---
+
 ### [2026-05-09] Session — Recipe Action Pivot & E2E Stabilization
 **Status**: COMPLETED ✅
 **Branch**: `main`
