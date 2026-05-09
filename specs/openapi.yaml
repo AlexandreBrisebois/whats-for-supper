@@ -591,6 +591,14 @@ components:
         message: { type: string }
         taskId: { type: string, format: uuid }
 
+    ManagementBackfillSearchAcceptedResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: Search index backfill triggered in the background.
+
     # --- Import ---
     RecipeImportTriggerResponseDto:
       type: object
@@ -1773,6 +1781,16 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
+
+  /api/management/backfill-search:
+    post:
+      summary: Trigger a search index backfill
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementBackfillSearchAcceptedResponse' }
 
   /api/management/status:
     get:

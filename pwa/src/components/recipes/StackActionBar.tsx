@@ -78,9 +78,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
           }`}
           data-testid="stack-toggle-discoverable"
           aria-label={
-            isDiscoverableOnly
-              ? 'Showing recipes marked Ask the Family'
-              : 'Showing all recipes'
+            isDiscoverableOnly ? 'Showing recipes marked Ask the Family' : 'Showing all recipes'
           }
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-ochre' : ''}`} />

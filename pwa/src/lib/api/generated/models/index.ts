@@ -265,6 +265,17 @@ export function createInventoryCaptureResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ManagementBackfillSearchAcceptedResponse}
+ */
+// @ts-ignore
+export function createManagementBackfillSearchAcceptedResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoManagementBackfillSearchAcceptedResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ManagementTaskAcceptedResponse}
  */
 // @ts-ignore
@@ -1203,6 +1214,23 @@ export function deserializeIntoInventoryCaptureResponse(
     },
     snapshotId: (n) => {
       inventoryCaptureResponse.snapshotId = n.getGuidValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param ManagementBackfillSearchAcceptedResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoManagementBackfillSearchAcceptedResponse(
+  managementBackfillSearchAcceptedResponse:
+    | Partial<ManagementBackfillSearchAcceptedResponse>
+    | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      managementBackfillSearchAcceptedResponse.message = n.getStringValue();
     },
   };
 }
@@ -2694,6 +2722,12 @@ export interface InventoryCaptureResponse extends AdditionalDataHolder, Parsable
    */
   snapshotId?: Guid | null;
 }
+export interface ManagementBackfillSearchAcceptedResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The message property
+   */
+  message?: string | null;
+}
 export interface ManagementTaskAcceptedResponse extends AdditionalDataHolder, Parsable {
   /**
    * The message property
@@ -3645,6 +3679,27 @@ export function serializeInventoryCaptureResponse(
   );
   writer.writeGuidValue('snapshotId', inventoryCaptureResponse.snapshotId);
   writer.writeAdditionalData(inventoryCaptureResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ManagementBackfillSearchAcceptedResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeManagementBackfillSearchAcceptedResponse(
+  writer: SerializationWriter,
+  managementBackfillSearchAcceptedResponse:
+    | Partial<ManagementBackfillSearchAcceptedResponse>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!managementBackfillSearchAcceptedResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', managementBackfillSearchAcceptedResponse.message);
+  writer.writeAdditionalData(managementBackfillSearchAcceptedResponse.additionalData);
 }
 /**
  * Serializes information the current object

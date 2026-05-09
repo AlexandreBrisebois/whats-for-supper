@@ -1198,6 +1198,42 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/management/backfill-search': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Trigger a search index backfill */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ManagementBackfillSearchAcceptedResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/management/status': {
     parameters: {
       query?: never;
@@ -2118,6 +2154,9 @@ export interface components {
       message: string;
       /** Format: uuid */
       taskId: string;
+    };
+    ManagementBackfillSearchAcceptedResponse: {
+      message: string;
     };
     RecipeImportTriggerResponseDto: {
       /** Format: uuid */
