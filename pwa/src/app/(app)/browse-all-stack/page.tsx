@@ -3,11 +3,12 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { X, Search, Loader2, Compass } from 'lucide-react';
+import { X, Search, Loader2, Compass, Trash2 } from 'lucide-react';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
 import { useBrowseStackStore } from '@/store/browseStackStore';
 import { apiClient } from '@/lib/api/api-client';
 import { updateRecipe } from '@/lib/api/recipes';
@@ -53,6 +54,7 @@ export default function BrowseAllStackPage() {
 
   // Recipe Detail Sheet state — freeze stack while open
   const [detailRecipeId, setDetailRecipeId] = useState<string | null>(null);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
 
   // Ref to track whether a prefetch is already in flight (avoid duplicate requests)
   const prefetchInFlightRef = useRef(false);
@@ -378,16 +380,29 @@ export default function BrowseAllStackPage() {
           <div className="h-0.5 w-6 rounded-full bg-ochre mt-1" />
         </div>
 
-        <button
-          type="button"
-          data-testid="browse-all-search-trigger"
-          aria-label="Search recipes"
-          onClick={handleSearchEscape}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
-        >
-          <Search size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="recycle-bin-entry"
+            aria-label="Recycle bin"
+            onClick={() => setIsTrashOpen(true)}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+          >
+            <Trash2 size={20} />
+          </button>
+          <button
+            type="button"
+            data-testid="browse-all-search-trigger"
+            aria-label="Search recipes"
+            onClick={handleSearchEscape}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+          >
+            <Search size={20} />
+          </button>
+        </div>
       </div>
+
+      {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
 
       {/* Main content area */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-2 min-h-0">

@@ -250,11 +250,15 @@ export function RecipeDetailSheet({
                               : 'opacity-35 hover:opacity-70',
                           ].join(' ')}
                         >
-                          <span className="text-3xl" aria-hidden>{emoji}</span>
-                          <span className={[
-                            'text-[9px] font-black uppercase tracking-wider',
-                            isSelected ? 'text-charcoal' : 'text-charcoal/50',
-                          ].join(' ')}>
+                          <span className="text-3xl" aria-hidden>
+                            {emoji}
+                          </span>
+                          <span
+                            className={[
+                              'text-[9px] font-black uppercase tracking-wider',
+                              isSelected ? 'text-charcoal' : 'text-charcoal/50',
+                            ].join(' ')}
+                          >
                             {label}
                           </span>
                         </button>

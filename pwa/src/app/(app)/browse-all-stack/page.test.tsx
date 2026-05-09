@@ -148,6 +148,16 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
   ),
 }));
 
+vi.mock('@/components/recipes/RecycleBinSheet', () => ({
+  RecycleBinSheet: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="trash-list">
+      <button data-testid="recycle-bin-close" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  ),
+}));
+
 // ---------------------------------------------------------------------------
 // Import component AFTER mocks
 // ---------------------------------------------------------------------------
@@ -510,5 +520,24 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
 
     // No additional API calls should have been made on close
     expect(mocks.recipesGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('recycle-bin-entry opens the recycle bin sheet and close button dismisses it', async () => {
+    render(<BrowseAllStackPage />);
+    await waitFor(() => expect(screen.getByTestId('browse-all-stack-container')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('trash-list')).not.toBeInTheDocument();
+
+    act(() => {
+      screen.getByTestId('recycle-bin-entry').click();
+    });
+
+    expect(screen.getByTestId('trash-list')).toBeInTheDocument();
+
+    act(() => {
+      screen.getByTestId('recycle-bin-close').click();
+    });
+
+    await waitFor(() => expect(screen.queryByTestId('trash-list')).not.toBeInTheDocument());
   });
 });

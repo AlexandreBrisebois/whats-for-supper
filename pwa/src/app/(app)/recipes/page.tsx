@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search as SearchIcon,
   Star,
@@ -10,14 +10,13 @@ import {
   ChefHat,
   Loader2,
   Camera,
-  Trash2,
   BookOpen,
+  Dices,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   searchRecipes,
   type RecipeSearchResponse,
-  type RecipeSearchResult,
   type Recipe,
 } from '@/lib/api/recipes';
 import { submitInventoryCapture } from '@/lib/api/inventory';
@@ -27,18 +26,27 @@ import { assignRecipeToDay } from '@/lib/api/planner';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
-import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
-import { BrowseLibraryTrigger } from '@/components/home/HomeSections';
 
-/**
- * RecipesPage / Search destination.
- * Focuses on a search-first experience with a Top Pick highlight.
- */
+type SearchMode = 'standard' | 'agent' | 'camera';
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function resolveDayName(weekOffset: number, dayIndex: number): string {
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay() + weekOffset * 7);
+  const target = new Date(startOfWeek);
+  target.setDate(startOfWeek.getDate() + dayIndex);
+  return WEEKDAYS[target.getDay()];
+}
+
+const INITIAL_LIMIT = 5;
+const PAGE_SIZE = 5;
+
 export default function RecipesPage() {
   const [query, setQuery] = useState('');
   const [agentQuery, setAgentQuery] = useState('');
-  const [isAgentOpen, setIsAgentOpen] = useState(false);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>('standard');
   const [isCameraBusy, setIsCameraBusy] = useState(false);
   const [pantrySnapshotId, setPantrySnapshotId] = useState<string | null>(null);
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
@@ -46,8 +54,10 @@ export default function RecipesPage() {
   const [isAssigning, setIsAssigning] = useState(false);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
   const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(null);
-  const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
+  const [limit, setLimit] = useState(INITIAL_LIMIT);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -57,41 +67,51 @@ export default function RecipesPage() {
   const parsedDayIndex = addToDay !== null ? parseInt(addToDay, 10) : undefined;
   const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
 
-  const runSearch = async (
-    nextQuery: string,
-    nextSimilarToRecipeId?: string | null,
-    nextFilters?: RecipeSearchFiltersDto,
-    nextPantrySnapshotId?: string | null
-  ) => {
-    setIsLoading(true);
-    try {
-      const filters = nextFilters ?? activeFilters;
-      const snapshotId = nextPantrySnapshotId ?? pantrySnapshotId;
-      const response = await searchRecipes({
-        query: nextQuery,
-        mode: 'standard',
-        limit: 5,
-        weekOffset: parsedWeekOffset,
-        dayIndex: parsedDayIndex,
-        similarToRecipeId: nextSimilarToRecipeId ?? undefined,
-        pantrySnapshotId: snapshotId ?? undefined,
-        filters: Object.keys(filters).length > 0 ? filters : undefined,
-      });
-      setData(response);
-      setSimilarToRecipeId(nextSimilarToRecipeId ?? null);
-    } catch (error) {
-      console.error('Failed to search recipes', error);
-      setData({
-        topPick: null,
-        results: [],
-        appliedFilters: {},
-        searchMode: 'standard',
-        resultPath: 'lexical-only',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const dayName =
+    parsedDayIndex !== undefined && parsedWeekOffset !== undefined
+      ? resolveDayName(parsedWeekOffset, parsedDayIndex)
+      : null;
+
+  const runSearch = useCallback(
+    async (
+      nextQuery: string,
+      nextSimilarToRecipeId?: string | null,
+      nextFilters?: RecipeSearchFiltersDto,
+      nextPantrySnapshotId?: string | null,
+      nextLimit?: number
+    ) => {
+      setIsLoading(true);
+      try {
+        const filters = nextFilters ?? activeFilters;
+        const snapshotId = nextPantrySnapshotId ?? pantrySnapshotId;
+        const resolvedLimit = nextLimit ?? limit;
+        const response = await searchRecipes({
+          query: nextQuery,
+          mode: 'standard',
+          limit: resolvedLimit,
+          weekOffset: parsedWeekOffset,
+          dayIndex: parsedDayIndex,
+          similarToRecipeId: nextSimilarToRecipeId ?? undefined,
+          pantrySnapshotId: snapshotId ?? undefined,
+          filters: Object.keys(filters).length > 0 ? filters : undefined,
+        });
+        setData(response);
+        setSimilarToRecipeId(nextSimilarToRecipeId ?? null);
+      } catch (error) {
+        console.error('Failed to search recipes', error);
+        setData({
+          topPick: null,
+          results: [],
+          appliedFilters: {},
+          searchMode: 'standard',
+          resultPath: 'lexical-only',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [activeFilters, pantrySnapshotId, limit, parsedWeekOffset, parsedDayIndex]
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -101,7 +121,7 @@ export default function RecipesPage() {
         const response = await searchRecipes({
           query: '',
           mode: 'standard',
-          limit: 5,
+          limit: INITIAL_LIMIT,
           weekOffset: parsedWeekOffset,
           dayIndex: parsedDayIndex,
           similarToRecipeId: undefined,
@@ -131,14 +151,21 @@ export default function RecipesPage() {
     };
   }, [parsedDayIndex, parsedWeekOffset]);
 
+  // Debounced search-as-you-type
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void runSearch(value, similarToRecipeId, activeFilters, pantrySnapshotId, limit);
+    }, 300);
+  };
+
   const handleOpenRecipe = (recipeId: string) => {
     setOpenDetailRecipeId(recipeId);
   };
 
   const handleAssignRecipe = async (recipe: Recipe) => {
-    if (addToDay === null || weekOffset === null) {
-      return;
-    }
+    if (addToDay === null || weekOffset === null) return;
 
     setIsAssigning(true);
     try {
@@ -162,12 +189,12 @@ export default function RecipesPage() {
 
   const handleAgentSubmit = () => {
     if (!agentQuery.trim()) return;
-    setIsAgentOpen(false);
+    setSearchMode('standard');
     setIsLoading(true);
     searchRecipes({
       query: agentQuery,
       mode: 'agent',
-      limit: 5,
+      limit,
       weekOffset: parsedWeekOffset,
       dayIndex: parsedDayIndex,
     })
@@ -193,7 +220,7 @@ export default function RecipesPage() {
       return;
     }
 
-    setIsCameraOpen(false);
+    setSearchMode('standard');
     setPantrySnapshotId(result.snapshotId);
     void runSearch(query, similarToRecipeId, activeFilters, result.snapshotId);
   };
@@ -205,12 +232,41 @@ export default function RecipesPage() {
     void runSearch(query, similarToRecipeId, next);
   };
 
+  const handleShowMore = async () => {
+    const nextLimit = limit + PAGE_SIZE;
+    setLimit(nextLimit);
+    setIsLoadingMore(true);
+    try {
+      const response = await searchRecipes({
+        query,
+        mode: 'standard',
+        limit: nextLimit,
+        weekOffset: parsedWeekOffset,
+        dayIndex: parsedDayIndex,
+        similarToRecipeId: similarToRecipeId ?? undefined,
+        pantrySnapshotId: pantrySnapshotId ?? undefined,
+        filters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
+      });
+      setData(response);
+    } catch {
+      // keep existing results
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleFeelLucky = () => {
+    void runSearch(query, null, activeFilters, pantrySnapshotId, limit);
+  };
+
   const { topPick, results } = data ?? { topPick: null, results: [] };
   const showEmptyState = !isLoading && topPick == null && results.length === 0;
   const hasActiveFilters = Object.keys(activeFilters).length > 0;
+  const hasMoreResults =
+    data !== null && (topPick !== null || results.length > 0) && results.length >= limit - 1;
 
   return (
-    <div className="flex flex-col gap-8 pb-12">
+    <div className="flex flex-col gap-6 pb-12">
       {addToDay !== null && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -223,13 +279,15 @@ export default function RecipesPage() {
               {t('recipes.planningMode', 'Planning Mode')}
             </p>
             <p className="text-sm font-bold text-charcoal">
-              {tWithVars(
-                'recipes.selectMealForDay',
-                `Select a meal for Day ${parseInt(addToDay) + 1}`,
-                {
-                  day: parseInt(addToDay) + 1,
-                }
-              )}
+              {dayName
+                ? tWithVars('recipes.selectMealForDay', `Select a meal for ${dayName}`, {
+                    day: dayName,
+                  })
+                : tWithVars(
+                    'recipes.selectMealForDayNum',
+                    `Select a meal for Day ${parseInt(addToDay) + 1}`,
+                    { day: parseInt(addToDay) + 1 }
+                  )}
             </p>
           </div>
           <button
@@ -241,97 +299,124 @@ export default function RecipesPage() {
           </button>
         </motion.div>
       )}
-      {/* Search zone — always rendered so tests can locate it immediately */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative group mt-2"
+
+      {/* Browse Library — compact header row */}
+      <a
+        href="/browse-all-stack"
+        data-testid="browse-all-stack-trigger"
+        className="flex items-center gap-1.5 px-1 text-[11px] font-black uppercase tracking-[0.15em] text-sage hover:text-sage/80 transition-colors"
       >
-        <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-charcoal/30 group-focus-within:text-terracotta transition-colors z-10">
-          <SearchIcon size={24} strokeWidth={2.5} />
-        </div>
-        <input
-          type="text"
-          value={query}
-          data-testid="recipe-search-input"
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              void runSearch(query);
-            }
-          }}
-          placeholder={t('recipes.searchPlaceholder', 'Something spicy for 4...')}
-          className="w-full bg-white/70 backdrop-blur-md border-2 border-charcoal/5 rounded-[2rem] py-5 pl-16 pr-8 text-lg font-bold text-charcoal placeholder:text-charcoal/20 focus:outline-none focus:border-terracotta/20 transition-all shadow-card focus:shadow-xl focus:bg-white"
-        />
-        {query && (
-          <div className="absolute right-6 top-1/2 -translate-y-1/2">
-            <Sparkles size={20} className="text-terracotta animate-pulse" />
-          </div>
-        )}
-      </motion.div>
+        <BookOpen size={13} />
+        {t('recipes.browseLibrary', 'Browse Library')}
+        <ArrowRight size={13} />
+      </a>
 
-      <div className="flex flex-col gap-3 px-1">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            data-testid="agent-search-trigger"
-            onClick={() => setIsAgentOpen((prev) => !prev)}
-            className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
-          >
-            <Sparkles size={16} className="text-terracotta" />
-            {t('recipes.agentSearch', 'Agent Search')}
-          </button>
-          <button
-            type="button"
-            data-testid="inventory-camera-trigger"
-            onClick={() => {
-              setIsCameraOpen(true);
-              setIsCameraBusy(false);
-            }}
-            className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
-          >
-            <Camera size={16} className="text-terracotta" />
-            {t('recipes.inventoryCamera', 'Use Camera')}
-          </button>
-        </div>
-
-        {isAgentOpen && (
-          <div className="flex flex-col gap-2">
-            <textarea
-              data-testid="agent-search-input"
-              value={agentQuery}
-              onChange={(e) => setAgentQuery(e.target.value)}
-              placeholder={t(
-                'recipes.agentSearchPlaceholder',
-                'Describe what you feel like tonight in your own words…'
-              )}
-              rows={3}
-              className="w-full rounded-2xl border-2 border-charcoal/10 bg-white/80 p-4 text-base font-medium text-charcoal placeholder:text-charcoal/30 focus:border-terracotta/30 focus:outline-none resize-none"
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                data-testid="agent-search-submit"
-                onClick={handleAgentSubmit}
-                className="rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"
-              >
-                {t('recipes.agentSearchSubmit', 'Search')}
-              </button>
-              <button
-                type="button"
-                data-testid="agent-search-close"
-                onClick={() => setIsAgentOpen(false)}
-                className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
-              >
-                {t('recipes.cancel', 'Cancel')}
-              </button>
-            </div>
-          </div>
-        )}
+      {/* Mode selector */}
+      <div className="flex gap-2 px-1">
+        <button
+          type="button"
+          data-testid="agent-search-trigger"
+          onClick={() => setSearchMode(searchMode === 'agent' ? 'standard' : 'agent')}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+            searchMode === 'agent'
+              ? 'border-terracotta bg-terracotta text-white'
+              : 'border-charcoal/10 bg-white/70 text-charcoal'
+          )}
+        >
+          <Sparkles size={16} className={searchMode === 'agent' ? 'text-white' : 'text-terracotta'} />
+          {t('recipes.agentSearch', 'Agent Search')}
+        </button>
+        <button
+          type="button"
+          data-testid="inventory-camera-trigger"
+          onClick={() => setSearchMode(searchMode === 'camera' ? 'standard' : 'camera')}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+            searchMode === 'camera'
+              ? 'border-terracotta bg-terracotta text-white'
+              : 'border-charcoal/10 bg-white/70 text-charcoal'
+          )}
+        >
+          <Camera size={16} className={searchMode === 'camera' ? 'text-white' : 'text-terracotta'} />
+          {t('recipes.inventoryCamera', 'Use Camera')}
+        </button>
       </div>
 
-      {isCameraOpen && (
-        <div
+      {/* Single active canvas */}
+      {searchMode === 'standard' && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative group"
+        >
+          <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-charcoal/30 group-focus-within:text-terracotta transition-colors z-10">
+            <SearchIcon size={24} strokeWidth={2.5} />
+          </div>
+          <input
+            type="text"
+            value={query}
+            data-testid="recipe-search-input"
+            onChange={(e) => handleQueryChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (debounceRef.current) clearTimeout(debounceRef.current);
+                void runSearch(query);
+              }
+            }}
+            placeholder={t('recipes.searchPlaceholder', 'Something spicy for 4...')}
+            className="w-full bg-white/70 backdrop-blur-md border-2 border-charcoal/5 rounded-[2rem] py-5 pl-16 pr-8 text-lg font-bold text-charcoal placeholder:text-charcoal/20 focus:outline-none focus:border-terracotta/20 transition-all shadow-card focus:shadow-xl focus:bg-white"
+          />
+          {query && (
+            <div className="absolute right-6 top-1/2 -translate-y-1/2">
+              <Sparkles size={20} className="text-terracotta animate-pulse" />
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {searchMode === 'agent' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col gap-2"
+        >
+          <textarea
+            data-testid="agent-search-input"
+            value={agentQuery}
+            onChange={(e) => setAgentQuery(e.target.value)}
+            placeholder={t(
+              'recipes.agentSearchPlaceholder',
+              'Describe what you feel like tonight in your own words…'
+            )}
+            rows={3}
+            className="w-full rounded-2xl border-2 border-charcoal/10 bg-white/80 p-4 text-base font-medium text-charcoal placeholder:text-charcoal/30 focus:border-terracotta/30 focus:outline-none resize-none"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-testid="agent-search-submit"
+              onClick={handleAgentSubmit}
+              className="rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"
+            >
+              {t('recipes.agentSearchSubmit', 'Search')}
+            </button>
+            <button
+              type="button"
+              data-testid="agent-search-close"
+              onClick={() => setSearchMode('standard')}
+              className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
+            >
+              {t('recipes.cancel', 'Cancel')}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {searchMode === 'camera' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
           data-testid="inventory-capture-popup"
           className="rounded-2xl border border-charcoal/10 bg-white/90 p-5 shadow-lg flex flex-col gap-4"
         >
@@ -355,64 +440,72 @@ export default function RecipesPage() {
             <button
               type="button"
               data-testid="inventory-capture-cancel"
-              onClick={() => setIsCameraOpen(false)}
+              onClick={() => setSearchMode('standard')}
               className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
             >
               {t('recipes.cancel', 'Cancel')}
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Quick filter pills */}
-      <div className="flex flex-wrap gap-2 px-1">
-        {(
-          [
-            {
-              key: 'newRecipes',
-              label: t('recipes.filterNew', 'New'),
-              testId: 'filter-new-recipes',
-            },
-            {
-              key: 'neverCooked',
-              label: t('recipes.filterNeverTried', 'Never Tried'),
-              testId: 'filter-never-tried',
-            },
-            {
-              key: 'familyFavorite',
-              label: t('recipes.filterFamilyFavorite', 'Family Favorite'),
-              testId: 'filter-family-favorite',
-            },
-            { key: 'quickOnly', label: t('recipes.filterQuick', 'Quick'), testId: 'filter-quick' },
-            {
-              key: 'notCookedInLongTime',
-              label: t('recipes.filterNotCookedLong', "It's Been a While"),
-              testId: 'filter-not-cooked-long-time',
-            },
-          ] as { key: keyof RecipeSearchFiltersDto; label: string; testId: string }[]
-        ).map(({ key, label, testId }) => {
-          const isActive = !!activeFilters[key];
-          return (
-            <button
-              key={key}
-              type="button"
-              data-testid={isActive ? `${testId}-active` : testId}
-              onClick={() => handleFilterToggle(key)}
-              className={cn(
-                'rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
-                isActive
-                  ? 'border-terracotta bg-terracotta text-white'
-                  : 'border-charcoal/10 bg-white/70 text-charcoal'
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Browse library trigger — requirement 1.2, 14.1 */}
-      <BrowseLibraryTrigger testId="browse-all-stack-trigger" />
+      {/* Filter pills — hidden in camera mode */}
+      {searchMode !== 'camera' && (
+        <div className="flex flex-col gap-2 px-1">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40">
+            {t('recipes.filterBy', 'Filter by')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                {
+                  key: 'newRecipes',
+                  label: t('recipes.filterNew', 'New'),
+                  testId: 'filter-new-recipes',
+                },
+                {
+                  key: 'neverCooked',
+                  label: t('recipes.filterNeverTried', 'Never Tried'),
+                  testId: 'filter-never-tried',
+                },
+                {
+                  key: 'familyFavorite',
+                  label: t('recipes.filterFamilyFavorite', 'Family Favorite'),
+                  testId: 'filter-family-favorite',
+                },
+                {
+                  key: 'quickOnly',
+                  label: t('recipes.filterQuick', 'Quick'),
+                  testId: 'filter-quick',
+                },
+                {
+                  key: 'notCookedInLongTime',
+                  label: t('recipes.filterNotCookedLong', "It's Been a While"),
+                  testId: 'filter-not-cooked-long-time',
+                },
+              ] as { key: keyof RecipeSearchFiltersDto; label: string; testId: string }[]
+            ).map(({ key, label, testId }) => {
+              const isActive = !!activeFilters[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  data-testid={isActive ? `${testId}-active` : testId}
+                  onClick={() => handleFilterToggle(key)}
+                  className={cn(
+                    'rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+                    isActive
+                      ? 'border-terracotta bg-terracotta text-white'
+                      : 'border-charcoal/10 bg-white/70 text-charcoal'
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Results Section */}
       <div className="flex flex-col gap-6">
@@ -423,7 +516,7 @@ export default function RecipesPage() {
         ) : !data ? null : showEmptyState ? (
           <div
             data-testid={hasActiveFilters ? 'filter-no-results' : 'search-empty-state'}
-            className="rounded-[2rem] border border-dashed border-charcoal/15 bg-white/60 p-8 text-center shadow-sm"
+            className="rounded-[2rem] border border-dashed border-charcoal/15 bg-white/60 p-8 text-center shadow-sm flex flex-col items-center gap-4"
           >
             <p className="text-lg font-black tracking-tight text-charcoal">
               {hasActiveFilters
@@ -433,13 +526,22 @@ export default function RecipesPage() {
                     'No matches yet. Try a different description or clear filters.'
                   )}
             </p>
-            <button
-              type="button"
-              onClick={() => void runSearch('')}
-              className="mt-4 inline-flex rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white shadow-sm"
-            >
-              {t('recipes.clearFilters', 'Clear Filters')}
-            </button>
+            <div className="flex gap-3 flex-wrap justify-center">
+              <button
+                type="button"
+                onClick={() => void runSearch('')}
+                className="inline-flex rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white shadow-sm"
+              >
+                {t('recipes.clearFilters', 'Clear Filters')}
+              </button>
+              <a
+                href="/browse-all-stack"
+                className="inline-flex items-center gap-1.5 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+              >
+                <BookOpen size={14} />
+                {t('recipes.browseLibrary', 'Browse Library')}
+              </a>
+            </div>
           </div>
         ) : (
           <>
@@ -470,6 +572,20 @@ export default function RecipesPage() {
                 <div className="absolute top-5 left-5 z-20 bg-ochre text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg flex items-center gap-1.5">
                   <Star size={12} fill="currentColor" /> {t('recipes.topPick', 'Top Pick')}
                 </div>
+
+                {/* Feeling Lucky refresh button */}
+                <button
+                  type="button"
+                  data-testid="top-pick-feeling-lucky"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleFeelLucky();
+                  }}
+                  className="absolute top-5 right-5 z-20 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all"
+                  aria-label="Surprise me — show a different pick"
+                >
+                  <Dices size={16} />
+                </button>
 
                 <div className="relative w-full aspect-[16/10] min-h-[240px] rounded-[2.5rem] overflow-hidden shadow-2xl glass-solar border border-white/20">
                   <img
@@ -540,20 +656,26 @@ export default function RecipesPage() {
                 </motion.div>
               ))}
             </div>
+
+            {/* Show more */}
+            {hasMoreResults && (
+              <div className="flex justify-center px-1">
+                <button
+                  type="button"
+                  data-testid="show-more-results"
+                  onClick={() => void handleShowMore()}
+                  disabled={isLoadingMore}
+                  className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-6 py-2.5 text-sm font-bold text-charcoal shadow-sm disabled:opacity-50"
+                >
+                  {isLoadingMore ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : null}
+                  {t('recipes.showMore', 'Show more')}
+                </button>
+              </div>
+            )}
           </>
         )}
-      </div>
-
-      <div className="flex items-center justify-start px-1">
-        <button
-          type="button"
-          data-testid="recycle-bin-entry"
-          onClick={() => setIsTrashOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
-        >
-          <Trash2 size={16} className="text-terracotta" />
-          {t('recipes.recycleBin', 'Recycle Bin')}
-        </button>
       </div>
 
       <div className="sr-only" aria-hidden="true">
@@ -564,14 +686,12 @@ export default function RecipesPage() {
       {openDetailRecipeId && (
         <RecipeDetailSheet
           recipeId={openDetailRecipeId}
-          plannerDayLabel={addToDay !== null ? `Day ${parseInt(addToDay, 10) + 1}` : null}
+          plannerDayLabel={dayName ?? (addToDay !== null ? `Day ${parseInt(addToDay, 10) + 1}` : null)}
           onClose={() => setOpenDetailRecipeId(null)}
           onUseForDay={handleAssignRecipe}
           onFindSimilar={handleFindSimilar}
         />
       )}
-
-      {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
     </div>
   );
 }

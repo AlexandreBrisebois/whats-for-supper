@@ -77,7 +77,9 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
               : 'bg-white/5 hover:bg-white/10 text-white/70'
           }`}
           data-testid="stack-toggle-discoverable"
-          aria-label={isDiscoverableOnly ? 'Filter: showing Discovery only' : 'Filter: showing full Library'}
+          aria-label={
+            isDiscoverableOnly ? 'Filter: showing Discovery only' : 'Filter: showing full Library'
+          }
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-charcoal' : ''}`} />
           <span className="text-[10px] font-black uppercase tracking-wider">
@@ -97,9 +99,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
               : 'bg-white/5 hover:bg-white/10 text-white/70'
           } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
           data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
-          aria-label={
-            isIndividualDiscoverable ? 'Hide from proposals' : 'Propose to family'
-          }
+          aria-label={isIndividualDiscoverable ? 'Hide from proposals' : 'Propose to family'}
         >
           {isIndividualDiscoverable ? (
             <Eye className="h-3.5 w-3.5 text-charcoal fill-charcoal" />
