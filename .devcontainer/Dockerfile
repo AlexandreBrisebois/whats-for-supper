@@ -4,7 +4,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu
 # Install Task (Taskfile runner)
 RUN apt-get update \
     && apt-get install -y curl \
-    && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+    && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin v3.41.0
 
 # Install .NET 8 SDK
 RUN curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 8.0 --install-dir /usr/share/dotnet \

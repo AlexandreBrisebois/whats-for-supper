@@ -22,6 +22,8 @@ services:
       GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
       GEMINI_ENDPOINT: ${GEMINI_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/openai/}
       HEARTH_SECRET: ${HEARTH_SECRET}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_RESTORE_CRON_UTC: "${DEMO_RESTORE_CRON_UTC:-0 3 * * *}"
 
     depends_on:
       postgres:

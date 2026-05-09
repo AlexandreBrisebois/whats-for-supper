@@ -12,7 +12,7 @@ sudo apt-get install -y \
 
 # Install Task (go-task)
 echo "Installing Taskfile CLI..."
-sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin v3.41.0
 
 # Install Python dependencies for your automation
 echo "Installing Python dependencies..."
