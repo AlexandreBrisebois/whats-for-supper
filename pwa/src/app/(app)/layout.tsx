@@ -13,6 +13,7 @@ import { RecipeFailureBanner } from '@/components/capture/RecipeFailureBanner';
 import { useEffect } from 'react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useCaptureStore } from '@/store/captureStore';
+import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -68,15 +69,16 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   ];
   const hideHeader = mainAppRoutes.includes(pathname as any);
 
-  const usesStackBackground =
-    pathname === ROUTES.HOME ||
-    pathname === ROUTES.DISCOVERY ||
-    pathname === ROUTES.PROFILE ||
-    pathname === '/recipes' ||
-    pathname === '/profile/settings';
   const isDiscovery = pathname === ROUTES.DISCOVERY;
   const isHome = pathname === ROUTES.HOME;
   const isPlanner = pathname === ROUTES.PLANNER;
+
+  const usesStackBackground =
+    isHome ||
+    isDiscovery ||
+    pathname === ROUTES.PROFILE ||
+    pathname === '/recipes' ||
+    pathname === '/profile/settings';
 
   return (
     <>
@@ -91,6 +93,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
         hideHeader={hideHeader || isBrowseAllStack}
         isFluid={isHome || isDiscovery || isPlanner || isCapture || isBrowseAllStack}
         className={usesStackBackground ? 'solar-earth-bg' : ''}
+        showBackgroundBlobs={isHome || isDiscovery}
       >
         {children}
       </Layout>

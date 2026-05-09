@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Header } from './Header';
 import { Navigation } from './Navigation';
+import { BackgroundBlobs } from '../ui/BackgroundBlobs';
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,6 +22,8 @@ interface LayoutProps {
   mainClassName?: string;
   /** Additional classes for the root container */
   className?: string;
+  /** Whether to show animated background blobs */
+  showBackgroundBlobs?: boolean;
 }
 
 export function Layout({
@@ -33,14 +36,11 @@ export function Layout({
   isFluid = false,
   mainClassName = '',
   className = '',
+  showBackgroundBlobs = false,
 }: LayoutProps) {
   return (
     <div className={`relative flex min-h-dvh flex-col bg-cream overflow-x-hidden ${className}`}>
-      {/* Organic Background Elements */}
-      <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
-      <div className="blob blob-ochre top-1/4 -right-10 animate-[pulse_10s_infinite]" />
-      <div className="blob blob-sage -bottom-20 left-1/4 animate-[pulse_12s_infinite]" />
-
+      {showBackgroundBlobs && <BackgroundBlobs />}
       {/* Header */}
       {!hideHeader && <Header title={title} leftAction={leftAction} rightAction={rightAction} />}
 

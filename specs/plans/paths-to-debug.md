@@ -20,10 +20,6 @@ X search with photo -> consistently "we're processing a lot right now, try again
 
 X search -> it's been a while doesn't search anything. it should order oldest last cook to newest cook dates.
 
-when I search with find similar is tehre a similarity score we can use to cut off recipes that shouldn't be there ?
-
-I want the colors from the stack broweser in discovery.
-
 I want the same style and color labels for the swipe actions on the stack browser. same behavior. visual language.
 
 on the search page when I type and hit enter I want the keyboard to drop so I can see the results.

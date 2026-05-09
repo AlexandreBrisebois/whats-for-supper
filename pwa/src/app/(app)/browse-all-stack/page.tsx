@@ -15,6 +15,7 @@ import { updateRecipe } from '@/lib/api/recipes';
 import { assignRecipeToDay } from '@/lib/api/planner';
 import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipes/index';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
+import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 
 // ---------------------------------------------------------------------------
 // BrowseAllStack page
@@ -354,12 +355,7 @@ export default function BrowseAllStackPage() {
       data-testid="browse-all-stack-container"
       className="fixed inset-0 z-50 flex flex-col bg-cream overflow-hidden"
     >
-      {/* Organic background blobs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
-        <div className="blob blob-ochre top-1/4 -right-10 animate-[pulse_10s_infinite]" />
-        <div className="blob blob-sage -bottom-20 left-1/4 animate-[pulse_12s_infinite]" />
-      </div>
+      <BackgroundBlobs />
 
       {/* Top bar: exit (left) + search escape (right) */}
       <div className="relative z-10 flex items-center justify-between px-6 pt-safe-top pt-4 pb-2 shrink-0">
