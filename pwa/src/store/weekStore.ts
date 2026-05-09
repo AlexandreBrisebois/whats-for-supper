@@ -97,7 +97,8 @@ const generateUiId = (): string =>
  */
 function buildScheduleDays(
   scheduleData: NonNullable<Awaited<ReturnType<typeof getSchedule>>>,
-  defaultsData?: Awaited<ReturnType<typeof getSmartDefaults>>
+  defaultsData?: Awaited<ReturnType<typeof getSmartDefaults>>,
+  existingDays?: UILocalScheduleDay[]
 ): UILocalScheduleDay[] {
   if (!scheduleData.days) return [];
 
@@ -110,7 +111,9 @@ function buildScheduleDays(
     // Must be a random UUID, NOT derived from date. After reorderLocally reconciles
     // day/date back to fixed slots, a date-based _uiId would end up at the wrong
     // slot index, causing Framer Motion to remount items and snap them back visually.
-    const stableUiId = generateUiId();
+    // However, we reuse the existing ID if available at this index to prevent
+    // unnecessary "flashing" during server syncs (BS-20).
+    const stableUiId = existingDays?.[index]?._uiId ?? generateUiId();
     const recipe = normalizeScheduleRecipe(day.recipe);
 
     if (recipe) {
@@ -188,7 +191,11 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       const defaultsData =
         weekOffset === 0 && status === 1 ? await getSmartDefaults(weekOffset) : null;
 
-      const mergedDays = buildScheduleDays(scheduleData, defaultsData ?? undefined);
+      const mergedDays = buildScheduleDays(
+        scheduleData,
+        defaultsData ?? undefined,
+        get().schedule
+      );
 
       // Restore persisted grocery state from API if present.
       // groceryState is a Kiota AdditionalDataHolder — the actual key/value pairs
@@ -339,7 +346,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
           getSmartDefaults(0),
         ]);
         if (scheduleData) {
-          set({ schedule: buildScheduleDays(scheduleData, defaultsData) });
+          set({ schedule: buildScheduleDays(scheduleData, defaultsData, get().schedule) });
         }
       }
     } catch {
@@ -389,7 +396,8 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         set({
           schedule: buildScheduleDays(
             data,
-            get().weekOffset === 0 && status === 1 ? await getSmartDefaults(0) : undefined
+            get().weekOffset === 0 && status === 1 ? await getSmartDefaults(0) : undefined,
+            get().schedule
           ),
           status,
           lastSyncedAt: Date.now(),
@@ -449,7 +457,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       plannerStore.setDeferredWeekSnapshot(null);
     }
 
-    const mergedDays = buildScheduleDays(schedule);
+    const mergedDays = buildScheduleDays(schedule, undefined, get().schedule);
     const prev = get().schedule;
 
     // Preserve smart-defaults metadata for pending slots that the snapshot does not

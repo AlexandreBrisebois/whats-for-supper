@@ -389,8 +389,8 @@ export default function PlannerPage() {
 
       {/* Main Content */}
       <main className="px-4 sm:px-6 py-5 sm:py-7 overflow-x-hidden max-w-[27rem] sm:max-w-sm mx-auto w-full">
-        <AnimatePresence mode="wait">
-          {isLoading ? (
+        <AnimatePresence>
+          {isLoading && schedule.length === 0 ? (
             <motion.div
               key="loading"
               initial={{ opacity: 0 }}
@@ -673,18 +673,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
       data-date={day.date}
       id={`day-card-${index}`}
     >
-      <AnimatePresence>
-        {successDay === index && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 0.1, scale: 1.5 }}
-            exit={{ opacity: 0 }}
-            data-testid="success-ring"
-            className="absolute inset-0 bg-sage rounded-full pointer-events-none"
-            transition={{ duration: 1, repeat: Infinity }}
-          />
-        )}
-      </AnimatePresence>
 
       <motion.div
         whileTap={{ scale: 0.98 }}
