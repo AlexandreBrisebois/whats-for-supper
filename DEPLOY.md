@@ -141,6 +141,21 @@ Reads all `recipe.info` files from `DATA_ROOT` and reconstructs the database. Di
 
 > **NAS tip:** Point `DATA_ROOT` at a shared folder on your NAS that is already covered by your regular backup routine (e.g. Synology Hyper Backup). Recipe images are large; factor them into your backup storage estimates.
 
+### Dreaming maintenance cycle
+
+The API seeds a recurring `dreaming` workflow on startup. Each run prunes completed/failed workflow history older than 7 days, starts the existing `db-backup` workflow, writes a Markdown report under `DATA_ROOT/reports/`, and schedules the next `dreaming` run.
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `DREAMING_CRON_UTC` | `0 3 * * *` | UTC cron expression for the next Dreaming run |
+
+Example:
+
+```env
+# Run Dreaming every day at 03:00 UTC
+DREAMING_CRON_UTC=0 3 * * *
+```
+
 ---
 
 ## 8. Semantic search configuration
@@ -199,7 +214,7 @@ See [`docker/.env.example`](docker/.env.example) for the full annotated referenc
 |-------|-----------|
 | Infrastructure | `TRAEFIK_HTTP_PORT`, `TRAEFIK_ADMIN_PORT`, `CLOUDFLARE_TUNNEL_TOKEN`, `DOMAIN_NAME` |
 | Database | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_CONNECTION_STRING` |
-| API | `API_HOST`, `API_PORT`, `ASPNETCORE_ENVIRONMENT` |
+| API | `API_HOST`, `API_PORT`, `ASPNETCORE_ENVIRONMENT`, `DREAMING_CRON_UTC` |
 | PWA | `PWA_HOST`, `NEXT_PUBLIC_API_BASE_URL`, `HEARTH_SECRET`, `NEXT_PUBLIC_COOKIE_DOMAIN` |
 | AI | `GEMINI_API_KEY`, `GEMINI_MODEL_ID`, `GEMINI_ENDPOINT` |
 | Search | `EMBEDDING_MODEL_ID` |

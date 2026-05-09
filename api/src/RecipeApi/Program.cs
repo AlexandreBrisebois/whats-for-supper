@@ -114,11 +114,14 @@ try
     builder.Services.AddScoped<GroceryRecomputeService>();
     builder.Services.AddScoped<IngredientCategoryService>();
     builder.Services.AddScoped<SettingsService>();
+    builder.Services.AddSingleton<IClock, SystemClock>();
+    builder.Services.AddSingleton<CronScheduleCalculator>();
 
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<SearchIndexWorkflow>();
+    builder.Services.AddScoped<DreamingWorkflowSeeder>();
     builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
 
     // ── Workflow Processors Registration ─────────────────────────────────────
@@ -165,16 +168,29 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, ClassifyDietaryProfileProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
+    builder.Services.AddScoped<IWorkflowProcessor, WorkflowProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
        "BackupDatabase"));
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
        "RestoreDatabase"));
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
        "DisasterRecovery"));
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
+       "PruneWorkflows"));
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
+       "GenerateDreamingReport"));
 
+    builder.Services.AddHostedService<DreamingWorkflowSeederHostedService>();
     builder.Services.AddHostedService<WorkflowWorker>();
     builder.Services.Configure<WorkflowRetryOptions>(builder.Configuration.GetSection("WorkflowRetry"));
 

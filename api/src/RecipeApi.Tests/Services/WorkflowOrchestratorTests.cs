@@ -180,4 +180,66 @@ tasks:
         Assert.Equal(TaskStatus.Waiting, heroTask.Status);
         Assert.Contains(recipeId, heroTask.Payload!);
     }
+
+    [Fact]
+    public async Task TriggerAsync_WithScheduledAt_AssignsScheduleToRootPendingTasksOnly()
+    {
+        // Arrange
+        var yaml = @"
+name: scheduled_test
+parameters: []
+tasks:
+  - name: root_a
+    processor: RootA
+  - name: root_b
+    processor: RootB
+  - name: dependent
+    processor: Dependent
+    depends_on: [root_a, root_b]
+";
+        await _storage.SaveAsync("workflows", "scheduled_test.yaml", yaml);
+        var scheduledAt = new DateTimeOffset(2026, 5, 10, 3, 0, 0, TimeSpan.Zero);
+
+        // Act
+        var instance = await _orchestrator.TriggerAsync("scheduled_test", [], scheduledAt);
+
+        // Assert
+        var tasks = await _dbContext.WorkflowTasks
+            .Where(t => t.InstanceId == instance.Id)
+            .ToListAsync();
+
+        var rootTasks = tasks.Where(t => t.TaskName.StartsWith("root_")).ToList();
+        Assert.Equal(2, rootTasks.Count);
+        Assert.All(rootTasks, task =>
+        {
+            Assert.Equal(TaskStatus.Pending, task.Status);
+            Assert.Equal(scheduledAt, task.ScheduledAt);
+        });
+
+        var dependent = Assert.Single(tasks, t => t.TaskName == "dependent");
+        Assert.Equal(TaskStatus.Waiting, dependent.Status);
+        Assert.Null(dependent.ScheduledAt);
+    }
+
+    [Fact]
+    public async Task TriggerAsync_WithoutScheduledAt_LeavesRootTaskScheduleEmpty()
+    {
+        // Arrange
+        var yaml = @"
+name: unscheduled_test
+parameters: []
+tasks:
+  - name: root
+    processor: Root
+";
+        await _storage.SaveAsync("workflows", "unscheduled_test.yaml", yaml);
+
+        // Act
+        var instance = await _orchestrator.TriggerAsync("unscheduled_test", []);
+
+        // Assert
+        var task = await _dbContext.WorkflowTasks.SingleAsync(t => t.InstanceId == instance.Id);
+        Assert.Equal(TaskStatus.Pending, task.Status);
+        Assert.Null(task.ScheduledAt);
+    }
 }

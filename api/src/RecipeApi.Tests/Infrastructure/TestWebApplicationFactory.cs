@@ -144,6 +144,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipeImportService>();
         builder.Services.AddScoped<RecipeImportBulkService>();
         builder.Services.AddScoped<SettingsService>();
+        builder.Services.AddSingleton<IClock, SystemClock>();
+        builder.Services.AddSingleton<CronScheduleCalculator>();
         builder.Services.AddScoped<ManagementService>();
         builder.Services.AddScoped<SearchIndexWorkflow>();
         if (_telemetry is not null)
@@ -154,8 +156,11 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<IWorkflowOrchestrator>(sp =>
         {
             var mock = new Mock<IWorkflowOrchestrator>();
-            mock.Setup(o => o.TriggerAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
-                .ReturnsAsync((string workflowId, Dictionary<string, string> parameters) =>
+            mock.Setup(o => o.TriggerAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<Dictionary<string, string>>(),
+                    It.IsAny<DateTimeOffset?>()))
+                .ReturnsAsync((string workflowId, Dictionary<string, string> parameters, DateTimeOffset? scheduledAt) =>
                 {
                     var instance = new WorkflowInstance
                     {
@@ -168,6 +173,17 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                     };
                     var db = sp.GetRequiredService<RecipeDbContext>();
                     db.WorkflowInstances.Add(instance);
+                    db.WorkflowTasks.Add(new WorkflowTask
+                    {
+                        TaskId = Guid.NewGuid(),
+                        InstanceId = instance.Id,
+                        TaskName = "mock",
+                        ProcessorName = "Mock",
+                        Status = RecipeApi.Models.TaskStatus.Pending,
+                        ScheduledAt = scheduledAt,
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    });
                     db.SaveChanges(); // Sync save is fine for mock
                     return instance;
                 });

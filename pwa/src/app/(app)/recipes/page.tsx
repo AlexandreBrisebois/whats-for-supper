@@ -225,9 +225,7 @@ export default function RecipesPage() {
     if (options.home) {
       router.push('/home');
     } else {
-      router.push(
-        `/planner?success=1&dayIndex=${dayIndexValue}&weekOffset=${weekOffsetValue}`
-      );
+      router.push(`/planner?success=1&dayIndex=${dayIndexValue}&weekOffset=${weekOffsetValue}`);
     }
   };
 
@@ -278,7 +276,11 @@ export default function RecipesPage() {
         return;
       }
 
-      await assignRecipeToEmptySlot(openSlot.weekOffset, openSlot.dayIndex, toAssignmentRecipe(recipe));
+      await assignRecipeToEmptySlot(
+        openSlot.weekOffset,
+        openSlot.dayIndex,
+        toAssignmentRecipe(recipe)
+      );
       router.push(
         `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}`
       );

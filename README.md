@@ -161,6 +161,7 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Weekly balance indicator | ✅ Complete |
 | Discovery nudge via SSE | ✅ Complete |
 | Backup / restore (NAS-safe, LLM-skip on restore) | ✅ Complete |
+| Dreaming maintenance workflow (nightly prune, backup trigger, report, self-reschedule) | ✅ Complete |
 | NAS deployment (Synology / Unraid) | ✅ Running in production |
 | Semantic recipe search (hybrid lexical + vector, planner-aware, family-fit) | ✅ Complete |
 | Recipe library management (edit, soft delete, restore, Recycle Bin, discovery toggle) | ✅ Complete |
@@ -171,7 +172,7 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Recipe Library Browse (immersive card-flip library discovery) | ✅ Complete |
 | Canadian Food Guide Classification | ⚠️ TODO | [spec](.kiro/specs/cnf-data-ingestion)
 | Dietician Agent | ⚠️ TODO | depends on canadian food guide classification | [spec](.kiro/specs/dietitian-agent-phase2)
-| Dreaming | ⚠️ TODO | [spec](.kiro/specs/dreaming)
+| Dreaming | ✅ Complete | [spec](.kiro/specs/dreaming)
 | Demo Mode | ⚠️ TODO | depends on Dreaming | [spec](.kiro/specs/demo-mode)
 | Family health Profiles | ⚠️ TODO | [spec](.kiro/specs/family-health-profiles)
 
@@ -188,6 +189,8 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | [`docs/flows/`](docs/flows/) | Data flows, user flows, and architecture diagrams |
 | [`docs/flows/user-flows/recipe-search-and-library-recovery.md`](docs/flows/user-flows/recipe-search-and-library-recovery.md) | Search UX: input paths, planner mode, Recycle Bin, Failed Captures |
 | [`docs/flows/data-flows/recipe-search-index-and-recovery.md`](docs/flows/data-flows/recipe-search-index-and-recovery.md) | Hybrid search pipeline, indexing workflow, backup/restore sidecar |
+| [`docs/flows/data-flows/dreaming-maintenance-workflow.md`](docs/flows/data-flows/dreaming-maintenance-workflow.md) | Recurring Dreaming maintenance workflow, reports, and self-rescheduling |
+| [`docs/flows/user-flows/dreaming-maintenance-operations.md`](docs/flows/user-flows/dreaming-maintenance-operations.md) | Operator flow for reviewing Dreaming reports and restoring the chain |
 | [`api/docs/DIETARY_CATEGORIZATION.md`](api/docs/DIETARY_CATEGORIZATION.md) | AI usage, CFG classification, FOP flags |
 
 ---

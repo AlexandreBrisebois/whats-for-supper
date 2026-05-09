@@ -105,6 +105,39 @@ public class InventoryCaptureServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProcessAsync_UsesAgentCompatibleChatOptions()
+    {
+        var chatClient = new MockChatClient(BuildVisionResponse());
+        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+
+        await service.ProcessAsync([new byte[] { 0xFF, 0xD8 }]);
+
+        Assert.NotNull(chatClient.LastOptions);
+        Assert.Equal(0.1f, chatClient.LastOptions!.Temperature);
+        Assert.Equal(8192, chatClient.LastOptions.MaxOutputTokens);
+        Assert.Null(chatClient.LastOptions.ResponseFormat);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_SanitizesJsonWrappedInMarkdown()
+    {
+        var response = """
+            Here is the inventory:
+            ```json
+            {"ingredients":["eggs","cheddar"],"confidence":0.72}
+            ```
+            """;
+        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+
+        var (snapshot, busy) = await service.ProcessAsync([new byte[] { 0xFF, 0xD8 }]);
+
+        Assert.False(busy);
+        Assert.NotNull(snapshot);
+        Assert.Equal(["eggs", "cheddar"], snapshot!.InferredIngredients);
+        Assert.Equal(0.72, snapshot.Confidence);
+    }
+
+    [Fact]
     public async Task ProcessAsync_DeletesTempPhotosOnBusy()
     {
         var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
@@ -121,6 +154,7 @@ public class InventoryCaptureServiceTests : IDisposable
     private class MockChatClient(string response) : IChatClient
     {
         public IEnumerable<ChatMessage>? LastMessages { get; private set; }
+        public ChatOptions? LastOptions { get; private set; }
 
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
@@ -128,6 +162,7 @@ public class InventoryCaptureServiceTests : IDisposable
             CancellationToken cancellationToken = default)
         {
             LastMessages = messages;
+            LastOptions = options;
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, response)));
         }
 

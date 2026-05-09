@@ -36,7 +36,10 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
     }
 
 
-    public async Task<WorkflowInstance> TriggerAsync(string workflowId, Dictionary<string, string> parameters)
+    public async Task<WorkflowInstance> TriggerAsync(
+        string workflowId,
+        Dictionary<string, string> parameters,
+        DateTimeOffset? scheduledAt = null)
     {
         var definition = await GetDefinitionAsync(workflowId);
 
@@ -68,6 +71,7 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
                 TaskName = taskDef.Name,
                 ProcessorName = taskDef.Processor,
                 Status = taskDef.DependsOn.Any() ? TaskStatus.Waiting : TaskStatus.Pending,
+                ScheduledAt = !taskDef.DependsOn.Any() ? scheduledAt : null,
                 DependsOn = taskDef.DependsOn.ToArray(),
                 Payload = SubstituteVariables(taskDef.Payload, parameters)
             };

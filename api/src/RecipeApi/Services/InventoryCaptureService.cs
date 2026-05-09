@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using RecipeApi.Utils;
 
 namespace RecipeApi.Services;
 
@@ -25,16 +27,18 @@ public sealed class InventoryCaptureService : IDisposable
 
     private readonly IChatClient _chatClient;
     private readonly ILogger<InventoryCaptureService> _logger;
+    private readonly IConfiguration? _configuration;
     private readonly string _tempBase;
     private readonly ConcurrentDictionary<Guid, (PantrySnapshot Snapshot, DateTimeOffset Expires)> _snapshots = new();
     private readonly Timer _sweepTimer;
 
     public Action<string>? OnTempDirCreated;
 
-    public InventoryCaptureService(IChatClient chatClient, ILogger<InventoryCaptureService> logger, string? tempBase = null)
+    public InventoryCaptureService(IChatClient chatClient, ILogger<InventoryCaptureService> logger, string? tempBase = null, IConfiguration? configuration = null)
     {
         _chatClient = chatClient;
         _logger = logger;
+        _configuration = configuration;
         _tempBase = tempBase ?? TempPhotosBaseDir;
         _sweepTimer = new Timer(_ => SweepExpired(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
@@ -61,24 +65,27 @@ public sealed class InventoryCaptureService : IDisposable
                 await File.WriteAllBytesAsync(path, photos[i], ct);
             }
 
-            // Call vision model
+            // Call vision model through the same agent path used by recipe extraction.
             var message = new ChatMessage(ChatRole.User, BuildVisionPrompt(photos.Count));
             for (var i = 0; i < photos.Count; i++)
             {
                 message.Contents.Add(new DataContent(photos[i], "image/jpeg"));
             }
 
-            var response = await _chatClient.GetResponseAsync([message], new ChatOptions
-            {
-                Temperature = 0.1f,
-                ResponseFormat = ChatResponseFormat.Json
-            }, cancellationToken: ct);
+            var agent = _chatClient.AsAIAgent(
+                name: "InventoryCapture",
+                instructions: "You identify visible food inventory from pantry, fridge, and freezer photos.");
+            var response = await agent.RunAsync(
+                messages: [message],
+                options: GetChatOptions(),
+                cancellationToken: ct);
             var responseText = response.Text ?? string.Empty;
 
             _logger.LogInformation("Vision model response: {Response}", responseText);
 
-            var ingredients = ParseIngredients(responseText);
-            var confidence = ParseConfidence(responseText);
+            var sanitizedResponse = JsonUtils.SanitizeJson(responseText);
+            var ingredients = ParseIngredients(sanitizedResponse);
+            var confidence = ParseConfidence(sanitizedResponse);
 
             var snapshot = new PantrySnapshot(Guid.NewGuid(), ingredients, confidence);
             _snapshots[snapshot.SnapshotId] = (snapshot, DateTimeOffset.UtcNow.AddSeconds(SnapshotTtlSeconds));
@@ -110,6 +117,18 @@ public sealed class InventoryCaptureService : IDisposable
         "List the visible ingredients as a JSON object: " +
         "{\"ingredients\": [\"item1\", \"item2\"], \"confidence\": 0.85}. " +
         "Only include clearly visible food items. Respond with valid JSON only.";
+
+    private ChatClientAgentRunOptions GetChatOptions()
+    {
+        return new ChatClientAgentRunOptions
+        {
+            ChatOptions = new ChatOptions
+            {
+                Temperature = 0.1f,
+                MaxOutputTokens = _configuration?.GetValue<int?>("GEMINI_MAX_OUTPUT_TOKENS") ?? 8192
+            }
+        };
+    }
 
     private static IReadOnlyList<string> ParseIngredients(string json)
     {

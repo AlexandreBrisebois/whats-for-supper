@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -7,11 +8,16 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
+public record WorkflowPruneResult(int PrunedInstances, int PrunedTasks);
+
+public record DreamingReportResult(string Path, int FailedWorkflows, int StuckWorkflows);
+
 public class ManagementService(
     RecipeDbContext db,
     IRecipeStore recipeStore,
     RecipesRootResolver recipesRoot,
     DataRootResolver dataRoot,
+    IClock clock,
     ILogger<ManagementService> logger)
 {
     private string DataRoot => dataRoot.Root;
@@ -196,6 +202,145 @@ public class ManagementService(
         logger.LogInformation("Backed up {Count} search index sidecars", sidecarCount);
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
+    }
+
+    public async Task<WorkflowPruneResult> PruneWorkflowsAsync(int retentionDays, CancellationToken ct = default)
+    {
+        var cutoff = clock.UtcNow.AddDays(-retentionDays);
+        var instances = await db.WorkflowInstances
+            .Include(i => i.Tasks)
+            .Where(i =>
+                (i.Status == WorkflowStatus.Completed || i.Status == WorkflowStatus.Failed)
+                && i.UpdatedAt < cutoff)
+            .ToListAsync(ct);
+
+        var taskCount = instances.Sum(i => i.Tasks.Count);
+        db.WorkflowInstances.RemoveRange(instances);
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Pruned {InstanceCount} workflow instances and {TaskCount} workflow tasks older than {Cutoff}",
+            instances.Count,
+            taskCount,
+            cutoff);
+
+        return new WorkflowPruneResult(instances.Count, taskCount);
+    }
+
+    public async Task<DreamingReportResult> GenerateDreamingReportAsync(
+        WorkflowPruneResult? pruneResult = null,
+        CancellationToken ct = default)
+    {
+        pruneResult ??= new WorkflowPruneResult(0, 0);
+        var now = clock.UtcNow;
+        var since = now.AddHours(-24);
+        var stuckCutoff = now.AddHours(-1);
+
+        var recentFailures = await db.WorkflowInstances
+            .AsNoTracking()
+            .Include(i => i.Tasks)
+            .Where(i => i.Status == WorkflowStatus.Failed && i.UpdatedAt >= since)
+            .OrderByDescending(i => i.UpdatedAt)
+            .ToListAsync(ct);
+
+        var stuckWorkflows = await db.WorkflowInstances
+            .AsNoTracking()
+            .Include(i => i.Tasks)
+            .Where(i =>
+                (i.Status == WorkflowStatus.Processing || i.Status == WorkflowStatus.Pending)
+                && i.UpdatedAt < stuckCutoff)
+            .OrderBy(i => i.UpdatedAt)
+            .ToListAsync(ct);
+
+        var latestBackup = await db.WorkflowInstances
+            .AsNoTracking()
+            .Where(i => i.WorkflowId == "db-backup")
+            .OrderByDescending(i => i.UpdatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        var reportsRoot = Path.Combine(DataRoot, "reports");
+        Directory.CreateDirectory(reportsRoot);
+        var reportPath = Path.Combine(reportsRoot, $"dreaming-{now:yyyy-MM-dd}.md");
+        var markdown = BuildDreamingReport(now, pruneResult, latestBackup, recentFailures, stuckWorkflows);
+        await File.WriteAllTextAsync(reportPath, markdown, ct);
+
+        logger.LogInformation(
+            "Generated Dreaming report at {Path}; failures={Failures}; stuck={Stuck}",
+            reportPath,
+            recentFailures.Count,
+            stuckWorkflows.Count);
+
+        return new DreamingReportResult(reportPath, recentFailures.Count, stuckWorkflows.Count);
+    }
+
+    private static string BuildDreamingReport(
+        DateTimeOffset now,
+        WorkflowPruneResult pruneResult,
+        WorkflowInstance? latestBackup,
+        List<WorkflowInstance> recentFailures,
+        List<WorkflowInstance> stuckWorkflows)
+    {
+        var report = new StringBuilder();
+        report.AppendLine("# Dreaming Report");
+        report.AppendLine();
+        report.AppendLine($"Generated: {now:O}");
+        report.AppendLine();
+        report.AppendLine("## Summary");
+        report.AppendLine();
+        report.AppendLine($"- Pruned workflow instances: {pruneResult.PrunedInstances}");
+        report.AppendLine($"- Pruned workflow tasks: {pruneResult.PrunedTasks}");
+        report.AppendLine($"- Failed workflows in last 24h: {recentFailures.Count}");
+        report.AppendLine($"- Stuck workflows: {stuckWorkflows.Count}");
+        report.AppendLine();
+        report.AppendLine("## Backup Status");
+        report.AppendLine();
+        if (latestBackup == null)
+        {
+            report.AppendLine("- No db-backup workflow history found.");
+        }
+        else
+        {
+            report.AppendLine($"- db-backup: {latestBackup.Status} at {latestBackup.UpdatedAt:O}");
+        }
+
+        report.AppendLine();
+        report.AppendLine("## Failed Workflows");
+        report.AppendLine();
+        if (recentFailures.Count == 0)
+        {
+            report.AppendLine("- None.");
+        }
+        else
+        {
+            foreach (var failure in recentFailures)
+            {
+                var errors = failure.Tasks
+                    .Where(t => !string.IsNullOrWhiteSpace(t.ErrorMessage))
+                    .Select(t => $"{t.TaskName}: {t.ErrorMessage}");
+                report.AppendLine($"- {failure.WorkflowId} ({failure.Id}) at {failure.UpdatedAt:O}");
+                foreach (var error in errors)
+                {
+                    report.AppendLine($"  - {error}");
+                }
+            }
+        }
+
+        report.AppendLine();
+        report.AppendLine("## Keep an eye on these");
+        report.AppendLine();
+        if (stuckWorkflows.Count == 0)
+        {
+            report.AppendLine("- None.");
+        }
+        else
+        {
+            foreach (var stuck in stuckWorkflows)
+            {
+                report.AppendLine($"- {stuck.WorkflowId} ({stuck.Id}) has been {stuck.Status} since {stuck.UpdatedAt:O}");
+            }
+        }
+
+        return report.ToString();
     }
 
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)

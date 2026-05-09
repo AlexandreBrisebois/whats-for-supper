@@ -40,7 +40,11 @@ export async function assignRecipeToEmptySlot(
 }
 
 export async function findFirstOpenPlannerSlot(startWeekOffset = 0, maxWeeksToScan = 12) {
-  for (let weekOffset = startWeekOffset; weekOffset < startWeekOffset + maxWeeksToScan; weekOffset++) {
+  for (
+    let weekOffset = startWeekOffset;
+    weekOffset < startWeekOffset + maxWeeksToScan;
+    weekOffset++
+  ) {
     const schedule = await getSchedule(weekOffset);
     const dayIndex = schedule?.days?.findIndex((day) => !normalizeScheduleRecipe(day.recipe));
     if (dayIndex !== undefined && dayIndex >= 0) {

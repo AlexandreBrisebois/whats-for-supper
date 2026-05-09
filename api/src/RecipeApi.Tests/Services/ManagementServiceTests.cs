@@ -6,6 +6,7 @@ using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
+using TaskStatus = RecipeApi.Models.TaskStatus;
 
 namespace RecipeApi.Tests.Services;
 
@@ -39,6 +40,7 @@ public class ManagementServiceTests : IAsyncLifetime
         .GetRequiredService<DataRootResolver>().Root;
 
     private string CsvPath => Path.Combine(DataRoot, "ingredient-categories.csv");
+    private string ReportsRoot => Path.Combine(DataRoot, "reports");
 
     // ── Backup step 5 ─────────────────────────────────────────────────────────
 
@@ -193,6 +195,76 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Equal(3, lines.Length); // header + 2 rows
     }
 
+    [Fact]
+    public async Task PruneWorkflowsAsync_RemovesOnlyOldTerminalWorkflowHistory()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var oldCompleted = Workflow("old-completed", WorkflowStatus.Completed, now.AddDays(-8));
+        var oldFailed = Workflow("old-failed", WorkflowStatus.Failed, now.AddDays(-9));
+        var recentCompleted = Workflow("recent-completed", WorkflowStatus.Completed, now.AddDays(-2));
+        var oldProcessing = Workflow("old-processing", WorkflowStatus.Processing, now.AddDays(-10));
+        _db.WorkflowInstances.AddRange(oldCompleted, oldFailed, recentCompleted, oldProcessing);
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _service.PruneWorkflowsAsync(7);
+
+        // Assert
+        Assert.Equal(2, result.PrunedInstances);
+        Assert.Equal(2, result.PrunedTasks);
+
+        var remainingWorkflowIds = await _db.WorkflowInstances
+            .Select(w => w.WorkflowId)
+            .ToListAsync();
+        Assert.DoesNotContain("old-completed", remainingWorkflowIds);
+        Assert.DoesNotContain("old-failed", remainingWorkflowIds);
+        Assert.Contains("recent-completed", remainingWorkflowIds);
+        Assert.Contains("old-processing", remainingWorkflowIds);
+    }
+
+    [Fact]
+    public async Task GenerateDreamingReportAsync_WritesMarkdownWithFailuresAndStuckWorkflows()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        _db.WorkflowInstances.Add(Workflow(
+            "failed-import",
+            WorkflowStatus.Failed,
+            now.AddHours(-2),
+            taskStatus: TaskStatus.Failed,
+            errorMessage: "Extraction failed"));
+        _db.WorkflowInstances.Add(Workflow(
+            "stuck-import",
+            WorkflowStatus.Processing,
+            now.AddHours(-2),
+            taskStatus: TaskStatus.Processing));
+        _db.WorkflowInstances.Add(Workflow(
+            "db-backup",
+            WorkflowStatus.Completed,
+            now.AddMinutes(-10)));
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _service.GenerateDreamingReportAsync(new WorkflowPruneResult(3, 4));
+
+        // Assert
+        Assert.True(File.Exists(result.Path));
+        Assert.StartsWith(ReportsRoot, result.Path);
+        Assert.Equal(1, result.FailedWorkflows);
+        Assert.Equal(1, result.StuckWorkflows);
+
+        var markdown = await File.ReadAllTextAsync(result.Path);
+        Assert.Contains("# Dreaming Report", markdown);
+        Assert.Contains("Pruned workflow instances: 3", markdown);
+        Assert.Contains("Pruned workflow tasks: 4", markdown);
+        Assert.Contains("db-backup", markdown);
+        Assert.Contains("failed-import", markdown);
+        Assert.Contains("Extraction failed", markdown);
+        Assert.Contains("Keep an eye on these", markdown);
+        Assert.Contains("stuck-import", markdown);
+    }
+
     // ── Restore step 8 ────────────────────────────────────────────────────────
 
     [Fact]
@@ -214,6 +286,37 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Equal(2, categories.Count);
         Assert.Contains(categories, c => c.NormalizedKey == "chicken breast" && c.GrocerySection == "Meat");
         Assert.Contains(categories, c => c.NormalizedKey == "tomato sauce" && c.GrocerySection == "Pantry");
+    }
+
+    private static WorkflowInstance Workflow(
+        string workflowId,
+        WorkflowStatus status,
+        DateTimeOffset updatedAt,
+        TaskStatus taskStatus = TaskStatus.Completed,
+        string? errorMessage = null)
+    {
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = workflowId,
+            Status = status,
+            CreatedAt = updatedAt.AddMinutes(-5),
+            UpdatedAt = updatedAt
+        };
+
+        instance.Tasks.Add(new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "task",
+            ProcessorName = "Processor",
+            Status = taskStatus,
+            ErrorMessage = errorMessage,
+            CreatedAt = updatedAt.AddMinutes(-5),
+            UpdatedAt = updatedAt
+        });
+
+        return instance;
     }
 
     [Fact]

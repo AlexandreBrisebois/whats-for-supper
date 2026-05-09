@@ -1,0 +1,28 @@
+name: dreaming
+parameters: []
+tasks:
+  - name: prune
+    processor: PruneWorkflows
+    payload:
+      retentionDays: 7
+
+  - name: backup
+    processor: StartWorkflow
+    payload:
+      workflowId: db-backup
+
+  - name: report
+    processor: GenerateDreamingReport
+    depends_on:
+      - prune
+      - backup
+    payload: {}
+
+  - name: reschedule
+    processor: StartWorkflow
+    depends_on:
+      - report
+    payload:
+      workflowId: dreaming
+      schedule:
+        cron: "${DREAMING_CRON_UTC:-0 3 * * *}"

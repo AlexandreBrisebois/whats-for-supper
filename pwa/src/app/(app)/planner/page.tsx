@@ -34,10 +34,7 @@ import { BalanceIndicator } from '@/components/planner/BalanceIndicator';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
-import {
-  type AssignmentRecipe,
-  resolveOccupiedSlot,
-} from '@/lib/planner/slotAssignment';
+import { type AssignmentRecipe, resolveOccupiedSlot } from '@/lib/planner/slotAssignment';
 
 export default function PlannerPage() {
   const router = useRouter();
