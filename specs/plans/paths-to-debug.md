@@ -18,8 +18,6 @@ X search with photo -> when in search with photo mode bring back the capture but
 
 X search with photo -> consistently "we're processing a lot right now, try again in a moment.
 
-X regression -> capture with photo does not open the camrea directly.
-
 X search -> it's been a while doesn't search anything. it should order oldest last cook to newest cook dates.
 
 when I search with find similar is tehre a similarity score we can use to cut off recipes that shouldn't be there ?

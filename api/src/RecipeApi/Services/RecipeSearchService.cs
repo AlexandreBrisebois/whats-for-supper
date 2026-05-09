@@ -22,6 +22,7 @@ public partial class RecipeSearchService(
     private const int VectorCandidateLimit = 50;
     private const double ReasonThreshold = 0.3;
     private const double MinimumCandidateScore = 0.15;
+    private const double SimilarityThreshold = 0.7; // Threshold for "Find Similar" and Vector search
     private const double VectorSimilarityWeight = 0.6;
     private const double LexicalSimilarityWeight = 0.4;
     private const double PlannerGapBoost = 0.20;
@@ -683,6 +684,7 @@ public partial class RecipeSearchService(
             .FromSqlInterpolated($@"
                 SELECT * FROM recipe_search_documents
                 WHERE embedding IS NOT NULL
+                AND embedding <=> ({queryVectorJson})::vector < {1.0 - SimilarityThreshold}
                 ORDER BY embedding <=> ({queryVectorJson})::vector
                 LIMIT {VectorCandidateLimit}")
             .AsNoTracking()
@@ -693,7 +695,7 @@ public partial class RecipeSearchService(
         return vectorCandidates
             .Select(d => new RankedRecipe(
                 d.Recipe!,
-                1.0, // Placeholder score, will be merged
+                CalculateCosineSimilarity(queryVector, d.Embedding),
                 [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Matches the meaning of your search" }],
                 null))
             .ToList();
@@ -721,6 +723,7 @@ public partial class RecipeSearchService(
                 SELECT * FROM recipe_search_documents
                 WHERE recipe_id != {similarToId}
                 AND embedding IS NOT NULL
+                AND embedding <=> ({targetDoc.EmbeddingJson})::vector < {1.0 - SimilarityThreshold}
                 ORDER BY embedding <=> ({targetDoc.EmbeddingJson})::vector
                 LIMIT {VectorCandidateLimit}")
             .AsNoTracking()
@@ -728,13 +731,44 @@ public partial class RecipeSearchService(
             .Where(d => recipesQuery.Select(r => r.Id).Contains(d.RecipeId))
             .ToListAsync(ct);
 
+        var targetVector = targetDoc.Embedding;
+
         return candidates
             .Select(d => new RankedRecipe(
                 d.Recipe!,
-                1.0,
+                CalculateCosineSimilarity(targetVector, d.Embedding),
                 [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Similar to " + (targetDoc.Recipe?.Name ?? "original") }],
                 null))
             .ToList();
+    }
+
+    private static double CalculateCosineSimilarity(float[]? vector1, float[]? vector2)
+    {
+        if (vector1 == null || vector2 == null || vector1.Length != vector2.Length)
+        {
+            return 0;
+        }
+
+        double dotProduct = 0;
+        double magnitude1 = 0;
+        double magnitude2 = 0;
+
+        for (int i = 0; i < vector1.Length; i++)
+        {
+            dotProduct += vector1[i] * vector2[i];
+            magnitude1 += vector1[i] * vector1[i];
+            magnitude2 += vector2[i] * vector2[i];
+        }
+
+        magnitude1 = Math.Sqrt(magnitude1);
+        magnitude2 = Math.Sqrt(magnitude2);
+
+        if (magnitude1 == 0 || magnitude2 == 0)
+        {
+            return 0;
+        }
+
+        return dotProduct / (magnitude1 * magnitude2);
     }
 
     private async Task<List<RankedRecipe>> GetLexicalCandidatesAsync(

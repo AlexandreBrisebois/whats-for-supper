@@ -618,8 +618,6 @@ describe('RecipesPage', () => {
     });
   });
 
-
-
   // ── Task 12: Agent search UI ────────────────────────────────────────────────
 
   it('agent-search-trigger tap shows agent-search-input textarea', async () => {

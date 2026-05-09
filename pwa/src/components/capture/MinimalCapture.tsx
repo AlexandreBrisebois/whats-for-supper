@@ -198,6 +198,14 @@ export default function MinimalCapture({
     galleryInputRef.current?.click();
   };
 
+  // Auto-trigger camera if mode is 'photo' (e.g. from Family GOTO)
+  useEffect(() => {
+    if (mode === 'photo') {
+      handleCapture();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     files.forEach((file) => addImage(file));
@@ -507,6 +515,7 @@ export default function MinimalCapture({
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              capture="environment"
               className="hidden"
               aria-label={t('capture.takePhoto', 'Take a photo')}
               title={t('capture.takePhoto', 'Take a photo')}
