@@ -186,6 +186,27 @@
     "searchPlaceholder": "Something spicy for 4...",
     "recommendations": "Top Picks",
     "agentsRecommendations": "Agent's Recommendations",
-    "topPick": "Top Pick"
+    "topPick": "Top Pick",
+    "filterBy": "Filter by",
+    "filterNew": "New",
+    "filterNeverTried": "Never Tried",
+    "filterFamilyFavorite": "Family Favorite",
+    "filterQuick": "Quick",
+    "filterNotCookedLong": "It's Been a While",
+    "filterHealthy": "Healthy Choice",
+    "agentSearch": "Agent Search",
+    "inventoryCamera": "Use Camera",
+    "agentSearchPlaceholder": "Describe what you feel like tonight in your own words…",
+    "agentSearchSubmit": "Search",
+    "takePhoto": "Take Photo",
+    "choosePhotos": "Choose from Library",
+    "searching": "Searching…",
+    "searchWithPhotos": "Search with {{count}} photos",
+    "cameraBusy": "We're processing a lot right now. Try again in a moment.",
+    "clearFilters": "Clear Filters",
+    "browseLibrary": "Browse Library",
+    "searchEmptyTitle": "No matches yet. Try a different description or clear filters.",
+    "filterNoResults": "No matches with these filters. Try removing one.",
+    "showMore": "Show more"
   }
 }

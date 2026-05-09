@@ -27,7 +27,8 @@ public class AgentSearchTranslationService(IChatClient chatClient)
             "neverCooked": <true or omit>,
             "familyFavorite": <true or omit>,
             "newRecipes": <true or omit>,
-            "notCookedInLongTime": <true or omit>
+            "notCookedInLongTime": <true or omit>,
+            "healthyOnly": <true or omit>
           }
         }
 
@@ -98,7 +99,8 @@ public class AgentSearchTranslationService(IChatClient chatClient)
             NeverCooked = filters.NeverCooked,
             FamilyFavorite = filters.FamilyFavorite,
             NewRecipes = filters.NewRecipes,
-            NotCookedInLongTime = filters.NotCookedInLongTime
+            NotCookedInLongTime = filters.NotCookedInLongTime,
+            HealthyOnly = filters.HealthyOnly
         };
         return dto;
     }
@@ -128,5 +130,8 @@ public class AgentSearchTranslationService(IChatClient chatClient)
 
         [JsonPropertyName("notCookedInLongTime")]
         public bool? NotCookedInLongTime { get; set; }
+
+        [JsonPropertyName("healthyOnly")]
+        public bool? HealthyOnly { get; set; }
     }
 }

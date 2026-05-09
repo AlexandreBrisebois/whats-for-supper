@@ -278,7 +278,7 @@ export default function RecipesPage() {
     data !== null && (topPick !== null || results.length > 0) && results.length >= limit - 1;
 
   return (
-    <div className="flex flex-col gap-6 pb-12">
+    <div className="flex flex-col gap-6 pt-6 pb-12">
       {addToDay !== null && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -397,7 +397,7 @@ export default function RecipesPage() {
               'Describe what you feel like tonight in your own words…'
             )}
             rows={3}
-            className="w-full rounded-2xl border-2 border-charcoal/10 bg-white/80 p-4 text-base font-medium text-charcoal placeholder:text-charcoal/30 focus:border-terracotta/30 focus:outline-none resize-none"
+            className="w-full rounded-2xl border-2 border-charcoal/5 bg-white/60 backdrop-blur-md p-4 text-base font-bold text-charcoal placeholder:text-charcoal/20 focus:border-terracotta/20 focus:outline-none resize-none shadow-sm transition-all"
           />
           <div className="flex gap-2">
             <button
@@ -508,10 +508,9 @@ export default function RecipesPage() {
             >
               {isSubmittingPhotos
                 ? t('recipes.searching', 'Searching…')
-                : t(
-                    'recipes.searchWithPhotos',
-                    `Search with ${pendingPhotos.length} photo${pendingPhotos.length !== 1 ? 's' : ''}`
-                  )}
+                : tWithVars('recipes.searchWithPhotos', `Search with ${pendingPhotos.length} photos`, {
+                    count: pendingPhotos.length,
+                  })}
             </button>
             <button
               type="button"
@@ -561,6 +560,11 @@ export default function RecipesPage() {
                 key: 'notCookedInLongTime',
                 label: t('recipes.filterNotCookedLong', "It's Been a While"),
                 testId: 'filter-not-cooked-long-time',
+              },
+              {
+                key: 'healthyOnly',
+                label: t('recipes.filterHealthy', 'Healthy Choice'),
+                testId: 'filter-healthy',
               },
             ] as { key: keyof RecipeSearchFiltersDto; label: string; testId: string }[]
           ).map(({ key, label, testId }) => {

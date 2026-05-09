@@ -11,9 +11,11 @@ namespace RecipeApi.Services;
 public partial class RecipeSearchService(
     RecipeDbContext db,
     ScheduleService scheduleService,
+    InventoryCaptureService inventoryCaptureService,
     IEmbeddingProvider? embeddingProvider = null,
     ISearchTelemetry? telemetry = null)
 {
+    private const double PantryMatchBoost = 0.25;
     private const int DefaultLimit = 5;
     private const int MaxLimit = 10;
     private const int VectorCandidateLimit = 20;
@@ -122,6 +124,7 @@ public partial class RecipeSearchService(
         }
 
         candidates = await ApplyFamilyFitRerankingAsync(candidates, ct);
+        candidates = await ApplyPantryBoostAsync(candidates, dto.PantrySnapshotId, ct);
 
         // 4. Map & Limit
         var results = candidates
@@ -696,7 +699,50 @@ public partial class RecipeSearchService(
             query = query.Where(r => r.IsDiscoverable);
         }
 
+        if (filters.HealthyOnly == true)
+        {
+            query = query.Where(r => r.IsHealthyChoice);
+        }
+
         return query;
+    }
+
+    private async Task<List<RankedRecipe>> ApplyPantryBoostAsync(
+        List<RankedRecipe> candidates,
+        Guid? pantrySnapshotId,
+        CancellationToken ct)
+    {
+        if (pantrySnapshotId == null || candidates.Count == 0) return candidates;
+
+        var snapshot = inventoryCaptureService.GetSnapshot(pantrySnapshotId.Value);
+        if (snapshot == null || snapshot.InferredIngredients.Count == 0) return candidates;
+
+        var pantryIngredients = snapshot.InferredIngredients
+            .Select(Normalize)
+            .ToHashSet();
+
+        return candidates.Select(candidate =>
+        {
+            var recipeIngredients = DeserializeIngredients(candidate.Recipe.Ingredients)
+                .Select(Normalize)
+                .ToList();
+
+            var matches = recipeIngredients.Where(pantryIngredients.Contains).ToList();
+            if (matches.Count > 0)
+            {
+                var score = candidate.Score + PantryMatchBoost;
+                var reasons = candidate.Reasons.ToList();
+                reasons.Add(new RecipeSearchReasonDto
+                {
+                    Source = "pantry-match",
+                    Label = $"Uses {matches.Count} ingredients from your camera photos"
+                });
+
+                return candidate with { Score = score, Reasons = reasons };
+            }
+
+            return candidate;
+        }).ToList();
     }
 
     private sealed record RankedRecipe(

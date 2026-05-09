@@ -19,6 +19,9 @@ public class RecipeSearchFiltersDto
     [JsonPropertyName("notCookedInLongTime")]
     public bool? NotCookedInLongTime { get; set; }
 
+    [JsonPropertyName("healthyOnly")]
+    public bool? HealthyOnly { get; set; }
+
     [JsonPropertyName("discoverableOnly")]
     public bool? DiscoverableOnly { get; set; }
 }

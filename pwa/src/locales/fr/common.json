@@ -186,6 +186,27 @@
     "searchPlaceholder": "Un truc épicé pour 4...",
     "recommendations": "Meilleurs choix",
     "agentsRecommendations": "Recommandations de l'Agent",
-    "topPick": "Le Top"
+    "topPick": "Le Top",
+    "filterBy": "Filtrer par",
+    "filterNew": "Nouveau",
+    "filterNeverTried": "Jamais goûté",
+    "filterFamilyFavorite": "Préféré de la famille",
+    "filterQuick": "Rapide",
+    "filterNotCookedLong": "Ça fait longtemps",
+    "filterHealthy": "Choix Santé",
+    "agentSearch": "Recherche Agent",
+    "inventoryCamera": "Utiliser Caméra",
+    "agentSearchPlaceholder": "Décrivez ce qui vous ferait plaisir ce soir…",
+    "agentSearchSubmit": "Chercher",
+    "takePhoto": "Prendre Photo",
+    "choosePhotos": "Depuis la bibliothèque",
+    "searching": "Recherche…",
+    "searchWithPhotos": "Chercher avec {{count}} photos",
+    "cameraBusy": "Nous sommes très occupés. Réessayez dans un instant.",
+    "clearFilters": "Effacer les filtres",
+    "browseLibrary": "Voir la bibliothèque",
+    "searchEmptyTitle": "Aucun résultat. Essayez une autre description ou effacez les filtres.",
+    "filterNoResults": "Aucun résultat avec ces filtres. Essayez d'en enlever un.",
+    "showMore": "Voir plus"
   }
 }
