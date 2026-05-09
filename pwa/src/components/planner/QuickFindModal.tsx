@@ -78,9 +78,7 @@ export function QuickFindModal({
   const currentRecipe = recipes[currentIndex];
 
   const searchUrl =
-    dayIndex !== null
-      ? `/recipes?addToDay=${dayIndex}&weekOffset=${weekOffset}`
-      : '/recipes';
+    dayIndex !== null ? `/recipes?addToDay=${dayIndex}&weekOffset=${weekOffset}` : '/recipes';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">

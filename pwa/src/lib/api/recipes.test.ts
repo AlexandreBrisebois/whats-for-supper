@@ -106,37 +106,37 @@ describe('searchRecipes', () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
-      data: {
-        topPick: {
-          id: '11111111-1111-1111-1111-111111111111',
-          name: 'Chicken Soup',
-          imageUrl: 'https://example.com/chicken-soup.jpg',
-          totalTime: '30 min',
-          difficulty: 'Easy',
-          rating: 2,
-          isDiscoverable: true,
-          notes: 'weeknight staple',
-          reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-          plannerFitNote: null,
-        },
-        results: [
-          {
-            id: '22222222-2222-2222-2222-222222222222',
-            name: 'Chicken Pasta',
-            imageUrl: 'https://example.com/chicken-pasta.jpg',
-            totalTime: '25 min',
+        data: {
+          topPick: {
+            id: '11111111-1111-1111-1111-111111111111',
+            name: 'Chicken Soup',
+            imageUrl: 'https://example.com/chicken-soup.jpg',
+            totalTime: '30 min',
             difficulty: 'Easy',
-            rating: 1,
+            rating: 2,
             isDiscoverable: true,
-            notes: null,
+            notes: 'weeknight staple',
             reasons: [{ source: 'name-match', label: 'Name matches your search' }],
             plannerFitNote: null,
           },
-        ],
-        appliedFilters: {},
-        searchMode: 'standard',
-        resultPath: 'lexical-only',
-      },
+          results: [
+            {
+              id: '22222222-2222-2222-2222-222222222222',
+              name: 'Chicken Pasta',
+              imageUrl: 'https://example.com/chicken-pasta.jpg',
+              totalTime: '25 min',
+              difficulty: 'Easy',
+              rating: 1,
+              isDiscoverable: true,
+              notes: null,
+              reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+              plannerFitNote: null,
+            },
+          ],
+          appliedFilters: {},
+          searchMode: 'standard',
+          resultPath: 'lexical-only',
+        },
       }),
     });
 
@@ -168,22 +168,22 @@ describe('searchRecipes', () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
-      topPick: {
-        id: '11111111-1111-1111-1111-111111111111',
-        name: 'Chicken Soup',
-        imageUrl: 'https://example.com/chicken-soup.jpg',
-        totalTime: '30 min',
-        difficulty: 'Easy',
-        rating: 2,
-        isDiscoverable: true,
-        notes: 'weeknight staple',
-        reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-        plannerFitNote: null,
-      },
-      results: [],
-      appliedFilters: {},
-      searchMode: 'standard',
-      resultPath: 'lexical-only',
+        topPick: {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'Chicken Soup',
+          imageUrl: 'https://example.com/chicken-soup.jpg',
+          totalTime: '30 min',
+          difficulty: 'Easy',
+          rating: 2,
+          isDiscoverable: true,
+          notes: 'weeknight staple',
+          reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+          plannerFitNote: null,
+        },
+        results: [],
+        appliedFilters: {},
+        searchMode: 'standard',
+        resultPath: 'lexical-only',
       }),
     });
 
@@ -198,26 +198,26 @@ describe('searchRecipes', () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-      data: {
-        topPick: {
-          additionalData: {
-            id: '33333333-3333-3333-3333-333333333333',
-            name: 'Homemade Lasagna',
-            imageUrl: 'https://example.com/lasagna.jpg',
-            totalTime: '45 min',
-            difficulty: 'Medium',
-            rating: 3,
-            isDiscoverable: true,
-            notes: null,
-            reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-            plannerFitNote: null,
+        data: {
+          topPick: {
+            additionalData: {
+              id: '33333333-3333-3333-3333-333333333333',
+              name: 'Homemade Lasagna',
+              imageUrl: 'https://example.com/lasagna.jpg',
+              totalTime: '45 min',
+              difficulty: 'Medium',
+              rating: 3,
+              isDiscoverable: true,
+              notes: null,
+              reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+              plannerFitNote: null,
+            },
           },
+          results: [],
+          appliedFilters: {},
+          searchMode: 'standard',
+          resultPath: 'lexical-only',
         },
-        results: [],
-        appliedFilters: {},
-        searchMode: 'standard',
-        resultPath: 'lexical-only',
-      },
       }),
     });
 
@@ -228,13 +228,13 @@ describe('searchRecipes', () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-      data: {
-        topPick: { additionalData: {} },
-        results: [],
-        appliedFilters: {},
-        searchMode: 'standard',
-        resultPath: 'lexical-only',
-      },
+        data: {
+          topPick: { additionalData: {} },
+          results: [],
+          appliedFilters: {},
+          searchMode: 'standard',
+          resultPath: 'lexical-only',
+        },
       }),
     });
 

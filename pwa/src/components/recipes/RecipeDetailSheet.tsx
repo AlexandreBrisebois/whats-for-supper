@@ -143,9 +143,7 @@ export function RecipeDetailSheet({
   };
 
   const primaryActionTestId = plannerDayLabel ? 'action-add-to-day' : 'action-cook-this';
-  const primaryActionLabel = plannerDayLabel
-    ? `Add it to ${plannerDayLabel}`
-    : 'Cook this';
+  const primaryActionLabel = plannerDayLabel ? `Add it to ${plannerDayLabel}` : 'Cook this';
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center px-4 pb-4 sm:items-center">
@@ -300,7 +298,9 @@ export function RecipeDetailSheet({
                 <button
                   type="button"
                   data-testid={primaryActionTestId}
-                  onClick={() => (plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true))}
+                  onClick={() =>
+                    plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
+                  }
                   disabled={isSavingAction}
                   className="inline-flex items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
                 >
