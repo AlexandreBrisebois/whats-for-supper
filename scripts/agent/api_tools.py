@@ -159,6 +159,9 @@ def normalize_path(path):
     # Replace any {param} with a generic {id} for comparison
     return re.sub(r'\{[^}]+\}', '{id}', path).lower().rstrip('/')
 
+def endpoint_key(endpoint):
+    return (endpoint['method'], normalize_path(endpoint['path']))
+
 def discovery():
     print("🔍 API Discovery (Full Backend Surface)")
     print("| Controller | Method | Route | C# Method |")
@@ -169,6 +172,50 @@ def discovery():
     
     for e in endpoints:
         print(f"| {e['controller']} | {e['method']} | {e['path']} | {e['method_name']} |")
+
+def route_drift():
+    """Compare controller routes to specs/openapi.yaml without requiring a running API."""
+    print("🔍 Static Route Drift (Controllers vs specs/openapi.yaml)")
+
+    spec = load_spec()
+    spec_endpoints = get_spec_endpoints(spec)
+    real_endpoints = get_real_endpoints(include_method_name=True)
+
+    spec_by_key = {endpoint_key(e): e for e in spec_endpoints}
+    real_by_key = {endpoint_key(e): e for e in real_endpoints}
+
+    issues = 0
+
+    in_real_not_spec = sorted(
+        (e for key, e in real_by_key.items() if key not in spec_by_key),
+        key=lambda e: (e['path'], e['method']),
+    )
+    in_spec_not_real = sorted(
+        (e for key, e in spec_by_key.items() if key not in real_by_key),
+        key=lambda e: (e['path'], e['method']),
+    )
+
+    if in_real_not_spec:
+        print("\n  In controllers but missing from specs/openapi.yaml:")
+        for e in in_real_not_spec:
+            print(
+                f"    ⚠️  {e['method']} {e['path']} "
+                f"({e['controller']}.{e['method_name']})"
+            )
+            issues += 1
+
+    if in_spec_not_real:
+        print("\n  In specs/openapi.yaml but missing from controllers:")
+        for e in in_spec_not_real:
+            print(f"    ⚠️  {e['method']} {e['path']}")
+            issues += 1
+
+    print()
+    if issues == 0:
+        print("✅ Controller routes match specs/openapi.yaml")
+    else:
+        print(f"⚠️ Found {issues} route drift issue(s).")
+        sys.exit(1)
 
 def is_api_reachable():
     """Return True if the backend API is reachable."""
@@ -247,10 +294,17 @@ def reconcile():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="API Tools for discovery and reconciliation.")
     parser.add_argument("--discovery", action="store_true", help="Run in discovery mode (map all controllers).")
+    parser.add_argument(
+        "--route-drift",
+        action="store_true",
+        help="Compare C# controller routes against specs/openapi.yaml without running the API.",
+    )
     
     args = parser.parse_args()
     
     if args.discovery:
         discovery()
+    elif args.route_drift:
+        route_drift()
     else:
         reconcile()

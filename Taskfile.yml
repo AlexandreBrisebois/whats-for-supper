@@ -1104,9 +1104,10 @@ tasks:
       - echo "✅ Gate passed! You're good to keep building."
 
   gate:contracts:
-    desc: "Check contract integrity first (Kiota client + schema drift)"
+    desc: "Check contract integrity first (route drift + Kiota client + schema drift)"
     internal: true
     cmds:
+      - task: agent:drift:routes
       - task: gen:client:check
       - task: agent:drift:schemas
 
@@ -1131,9 +1132,10 @@ tasks:
       - echo "✓ Ready to commit!"
 
   review:contracts:
-    desc: "Check all contract integrity (Kiota client + schema drift + mock compliance)"
+    desc: "Check all contract integrity (route drift + Kiota client + schema drift + mock compliance)"
     internal: true
     cmds:
+      - task: agent:drift:routes
       - task: gen:client:check
       - task: agent:drift:schemas
       - task: agent:drift:mocks
@@ -1224,10 +1226,16 @@ tasks:
       - python3 scripts/agent/slice.py {{.CLI_ARGS}}
 
   agent:drift:
-    desc: "🤖 Schema Drift — Tier 0 (endpoint diff) + Tier 1 (DTO schema comparison) + Tier 2 (Mock compliance)"
+    desc: "🤖 Schema Drift — static route drift + Tier 0 endpoint diff + Tier 1 DTO schema comparison + Tier 2 Mock compliance"
     cmds:
+      - task: agent:drift:routes
       - python3 scripts/agent/drift.py
       - python3 scripts/agent/drift_mocks.py
+
+  agent:drift:routes:
+    desc: "🤖 Static Route Drift — compare C# controller routes vs specs/openapi.yaml (no API needed)"
+    cmds:
+      - python3 scripts/agent/api_tools.py --route-drift
 
   agent:drift:endpoints:
     desc: "🤖 Schema Drift — Tier 0 only: diff generated API endpoints vs specs/openapi.yaml (needs API running)"

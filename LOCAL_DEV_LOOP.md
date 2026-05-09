@@ -70,7 +70,8 @@ task
 | `task test` | Run all tests 🧪 |
 | `task test:smoke` | 💨 Docker Smoke Test (Local CI Parity) |
 | `task gen:client` | 🔄 Regenerate Kiota API client from spec |
-| `task agent:drift` | 🤖 Check for schema drift (C# vs Spec) |
+| `task agent:drift` | 🤖 Check route, schema, and mock drift |
+| `task agent:drift:routes` | 🤖 Static controller route vs OpenAPI check |
 | `task agent:api` | 🤖 View full API controller mapping |
 | `task agent:slice` | 🤖 Vertical Slice Viewer (Route Context) |
 | `task health` | Check if services are running 🏥 |
@@ -272,15 +273,19 @@ task work
 **When modifying API endpoints or DTOs:**
 
 1. **Update Spec**: Edit `specs/openapi.yaml` first.
-2. **Verify Drift**: Run `task agent:drift` to see the delta.
+2. **Verify Route Drift**: Run `task agent:drift:routes` to compare C# controller routes against `specs/openapi.yaml` without starting the API.
 3. **Align Backend**: Update C# DTOs/Controllers to match.
-4. **Verify Again**: `task agent:drift` should report "No schema drift detected!".
+4. **Verify All Drift**: `task agent:drift` should report no route, schema, or mock drift. The live endpoint tier may skip locally if the API is not reachable.
 5. **Regenerate Client**: Run `task gen:client` to regenerate the Kiota TypeScript client.
 6. **Run Gate**: `task gate` — catches stale client and type errors immediately.
 
 **Integrity Checks:**
-- `task agent:drift`: Validates that backend DTOs match the OpenAPI contract (nullability, names, types).
-- `task agent:api`: Validates that all routes in the spec are actually implemented by a controller.
+- `task agent:drift:routes`: Static no-server check that fails when a controller route is missing from `specs/openapi.yaml`, or a spec route is missing from controllers.
+- `task agent:drift:endpoints`: Live generated OpenAPI diff against `specs/openapi.yaml`; use when the API is running and reachable.
+- `task agent:drift:schemas`: Validates that backend DTOs match the OpenAPI contract (nullability, names, types).
+- `task agent:drift:mocks`: Validates E2E mock ID and builder compliance.
+- `task agent:drift`: Runs route drift, live endpoint drift when reachable, schema drift, and mock drift.
+- `task agent:api`: Prints the full controller mapping for investigation; use this for discovery, not as the pass/fail drift gate.
 - `task agent:slice`: Provides a unified view of a route across Spec, Backend, and Client.
 - `task gen:client:check`: Fails if the Kiota client is out of sync with the spec (used in `gate` and `review`).
 
@@ -350,7 +355,7 @@ We use the `pre-commit` framework to ensure code quality before every commit.
 | | `task gate` | `task review` | pre-commit hook |
 |---|---|---|---|
 | **When** | During dev | Before commit | On `git commit` |
-| **Contracts** | Kiota + schema drift | Kiota + schema + mock drift | Kiota + schema + mock drift |
+| **Contracts** | Route drift + Kiota + schema drift | Route drift + Kiota + schema + mock drift | Kiota + schema + mock drift |
 | **Tests** | Unit + impact-only E2E | Unit + API (dotnet) | Unit + API (dotnet) |
 | **Format** | No | Yes (auto-fixes) | No (verify only) |
 | **E2E** | Impact-only | No | No |
@@ -804,4 +809,3 @@ See `docker/.env.example` for the full list.
 - [ ] Open http://pwa.wfs.localhost in browser
 - [ ] During dev: `task gate` (fast loop)
 - [ ] Before pushing: `task review` (full gate)
-
