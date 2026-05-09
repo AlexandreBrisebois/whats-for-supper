@@ -1,8 +1,5 @@
 
 
-
-1) need to remove the flashing from planner meal slopts
-
 2) [works] select slot -> quick find -> skip to end -> search library -> top pick -> add to monday
 
 3) [works] select slot -> quick find -> skip to end -> search library -> search -> pick result -> add to monday

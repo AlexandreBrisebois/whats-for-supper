@@ -34,7 +34,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   const getHeaderProps = (path: string) => {
     if (path === ROUTES.HOME) return { title: t('navigation.home', 'Home') };
     if (path === '/recipes') return { title: t('navigation.search', 'Search') };
-    if (path === ROUTES.PLANNER) return { title: t('navigation.planner', 'Weekly Planner') };
+    if (path === ROUTES.PLANNER) return { title: t('navigation.planner', 'Planner') };
     if (path === ROUTES.DISCOVERY) return { title: t('navigation.discover', 'Discovery') };
     if (path === ROUTES.PROFILE) return { title: t('navigation.profile', 'Profile') };
     if (path.startsWith(ROUTES.CAPTURE)) {

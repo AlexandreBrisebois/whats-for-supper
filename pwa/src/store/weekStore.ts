@@ -191,11 +191,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       const defaultsData =
         weekOffset === 0 && status === 1 ? await getSmartDefaults(weekOffset) : null;
 
-      const mergedDays = buildScheduleDays(
-        scheduleData,
-        defaultsData ?? undefined,
-        get().schedule
-      );
+      const mergedDays = buildScheduleDays(scheduleData, defaultsData ?? undefined, get().schedule);
 
       // Restore persisted grocery state from API if present.
       // groceryState is a Kiota AdditionalDataHolder — the actual key/value pairs

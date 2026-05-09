@@ -673,7 +673,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
       data-date={day.date}
       id={`day-card-${index}`}
     >
-
       <motion.div
         whileTap={{ scale: 0.98 }}
         className="flex items-stretch px-4 py-2 relative z-10 min-h-[68px]"
