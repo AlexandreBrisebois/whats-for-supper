@@ -77,11 +77,11 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
               : 'bg-white/5 hover:bg-white/10 text-white/70'
           }`}
           data-testid="stack-toggle-discoverable"
-          aria-label={isDiscoverableOnly ? 'Show all recipes' : 'Show discoverable only'}
+          aria-label={isDiscoverableOnly ? 'Filter: showing Discovery only' : 'Filter: showing full Library'}
         >
           <Sparkles className={`h-3.5 w-3.5 ${isDiscoverableOnly ? 'fill-charcoal' : ''}`} />
           <span className="text-[10px] font-black uppercase tracking-wider">
-            {isDiscoverableOnly ? 'Discovery' : 'Library'}
+            {isDiscoverableOnly ? 'Filter: Discovery' : 'Filter: Library'}
           </span>
         </button>
 
@@ -98,7 +98,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
           } ${isUpdating ? 'opacity-50 cursor-wait' : ''}`}
           data-testid={`card-toggle-discovery-${recipeId}${isUpdating ? '-loading' : ''}`}
           aria-label={
-            isIndividualDiscoverable ? 'Hide from discovery' : 'Make visible in discovery'
+            isIndividualDiscoverable ? 'Hide from proposals' : 'Propose to family'
           }
         >
           {isIndividualDiscoverable ? (
@@ -107,7 +107,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
             <EyeOff className="h-3.5 w-3.5 text-white/70" />
           )}
           <span className="text-[10px] font-black uppercase tracking-wider">
-            {isIndividualDiscoverable ? 'Discovery' : 'Hidden'}
+            {isIndividualDiscoverable ? 'Propose' : 'Hidden'}
           </span>
         </button>
       </motion.div>

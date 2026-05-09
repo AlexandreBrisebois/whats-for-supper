@@ -354,6 +354,15 @@ components:
         dayIndex: { type: integer }
         recipeId: { type: string, format: uuid }
 
+    DisplacedRecipeDto:
+      type: object
+      required: [id, movedToWeekOffset, movedToDayIndex]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: [string, 'null'] }
+        movedToWeekOffset: { type: integer, description: 'Week the recipe was carried forward to' }
+        movedToDayIndex: { type: integer, description: 'Day index within that week (0=Monday)' }
+
     SmartDefaultsDto:
       type: object
       required: [weekOffset, familySize, consensusThreshold, preSelectedRecipes, openSlots, consensusRecipesCount]
@@ -1547,6 +1556,10 @@ paths:
   /api/schedule/assign:
     post:
       summary: Assign a recipe to a schedule slot
+      description: >
+        Assigns a recipe to the specified day. If the target slot is already occupied and falls
+        on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday
+        of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
       requestBody:
         required: true
         content:
@@ -1564,6 +1577,12 @@ paths:
                     type: object
                     properties:
                       message: { type: string }
+                      displacedRecipe:
+                        description: >
+                          Present when a previously assigned recipe was displaced by this assignment
+                          and automatically moved to another slot (e.g. carried to next week Monday).
+                        allOf:
+                          - $ref: '#/components/schemas/DisplacedRecipeDto'
 
   /api/schedule/fill-the-gap:
     get:

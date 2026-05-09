@@ -255,7 +255,7 @@ describe('RecipesPage', () => {
 
     expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
     expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Family favorite.');
-    expect(screen.getByTestId('recipe-rating-selector')).toHaveValue('2');
+    expect(screen.getByRole('button', { name: 'Like' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('action-save-for-tonight')).toBeInTheDocument();
     expect(screen.getByTestId('action-find-similar')).toBeInTheDocument();
     expect(screen.getByTestId('action-toggle-discovery')).toBeInTheDocument();
@@ -296,9 +296,7 @@ describe('RecipesPage', () => {
       );
     });
 
-    fireEvent.change(screen.getByTestId('recipe-rating-selector'), {
-      target: { value: '3' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Love' }));
 
     await waitFor(() => {
       expect(mocks.updateRecipe).toHaveBeenCalledWith(

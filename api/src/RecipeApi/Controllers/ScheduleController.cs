@@ -34,8 +34,8 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     [HttpPost("assign")]
     public async Task<IActionResult> AssignRecipe([FromBody] AssignScheduleDto dto)
     {
-        await _scheduleService.AssignRecipeAsync(dto, GetConnectionId());
-        return Ok(new { message = "Recipe assigned" });
+        var displaced = await _scheduleService.AssignRecipeAsync(dto, GetConnectionId());
+        return Ok(new { message = "Recipe assigned", displacedRecipe = displaced });
     }
 
     [HttpGet("fill-the-gap")]

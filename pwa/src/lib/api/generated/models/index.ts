@@ -188,6 +188,17 @@ export function createDescribeRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DisplacedRecipeDto}
+ */
+// @ts-ignore
+export function createDisplacedRecipeDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDisplacedRecipeDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {FopFlagsDto}
  */
 // @ts-ignore
@@ -1041,6 +1052,30 @@ export function deserializeIntoDescribeRecipeDto(
     },
     name: (n) => {
       describeRecipeDto.name = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DisplacedRecipeDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDisplacedRecipeDto(
+  displacedRecipeDto: Partial<DisplacedRecipeDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    id: (n) => {
+      displacedRecipeDto.id = n.getGuidValue();
+    },
+    movedToDayIndex: (n) => {
+      displacedRecipeDto.movedToDayIndex = n.getNumberValue();
+    },
+    movedToWeekOffset: (n) => {
+      displacedRecipeDto.movedToWeekOffset = n.getNumberValue();
+    },
+    name: (n) => {
+      displacedRecipeDto.name = n.getStringValue();
     },
   };
 }
@@ -2558,6 +2593,24 @@ export function deserializeIntoWorkflowTriggerResponseDto(
     },
   };
 }
+export interface DisplacedRecipeDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+  /**
+   * Day index within that week (0=Monday)
+   */
+  movedToDayIndex?: number | null;
+  /**
+   * Week the recipe was carried forward to
+   */
+  movedToWeekOffset?: number | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+}
 export interface FopFlagsDto extends AdditionalDataHolder, Parsable {
   /**
    * The highInSaturatedFat property
@@ -3444,6 +3497,27 @@ export function serializeDescribeRecipeDto(
   writer.writeStringValue('description', describeRecipeDto.description);
   writer.writeStringValue('name', describeRecipeDto.name);
   writer.writeAdditionalData(describeRecipeDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param DisplacedRecipeDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDisplacedRecipeDto(
+  writer: SerializationWriter,
+  displacedRecipeDto: Partial<DisplacedRecipeDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!displacedRecipeDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('id', displacedRecipeDto.id);
+  writer.writeNumberValue('movedToDayIndex', displacedRecipeDto.movedToDayIndex);
+  writer.writeNumberValue('movedToWeekOffset', displacedRecipeDto.movedToWeekOffset);
+  writer.writeStringValue('name', displacedRecipeDto.name);
+  writer.writeAdditionalData(displacedRecipeDto.additionalData);
 }
 /**
  * Serializes information the current object

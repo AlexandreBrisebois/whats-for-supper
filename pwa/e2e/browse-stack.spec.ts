@@ -53,10 +53,10 @@ test.describe('Recipe Stack Browse', () => {
     await page.getByTestId('home-browse-all-trigger').click();
 
     const toggle = page.getByTestId('stack-toggle-discoverable');
-    await expect(toggle).toContainText('All Recipes');
+    await expect(toggle).toContainText('Filter: Library');
 
     await toggle.click();
-    await expect(toggle).toContainText('Curated');
+    await expect(toggle).toContainText('Filter: Discovery');
 
     // Should trigger a reload (mocked API handles this)
     await expect(page.getByTestId('stack-card-front').first()).toBeVisible();

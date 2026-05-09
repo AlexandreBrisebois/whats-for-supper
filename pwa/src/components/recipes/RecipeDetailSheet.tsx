@@ -1,9 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { X, Clock, ChefHat, ArrowRightLeft, Trash2, Eye } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { X, Clock, ChefHat, ArrowRightLeft, Trash2, Eye, Check } from 'lucide-react';
 import { getRecipe, updateRecipe, deleteRecipe, type Recipe } from '@/lib/api/recipes';
 import { t } from '@/locales';
+
+const RATING_OPTIONS = [
+  { value: 1, emoji: '👎', label: 'Dislike' },
+  { value: 2, emoji: '👍', label: 'Like' },
+  { value: 3, emoji: '❤️', label: 'Love' },
+] as const;
 
 interface RecipeDetailSheetProps {
   recipeId: string;
@@ -22,10 +28,12 @@ export function RecipeDetailSheet({
 }: RecipeDetailSheetProps) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [notes, setNotes] = useState('');
-  const [rating, setRating] = useState('0');
+  const [rating, setRating] = useState(0);
   const [isDiscoverable, setIsDiscoverable] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingAction, setIsSavingAction] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -37,7 +45,7 @@ export function RecipeDetailSheet({
         if (!isActive) return;
         setRecipe(nextRecipe);
         setNotes(nextRecipe.notes ?? '');
-        setRating(String(nextRecipe.rating ?? 0));
+        setRating(nextRecipe.rating ?? 0);
         setIsDiscoverable(nextRecipe.isDiscoverable ?? false);
       } catch (error) {
         if (!isActive) return;
@@ -60,6 +68,9 @@ export function RecipeDetailSheet({
 
     const timeoutId = window.setTimeout(() => {
       void updateRecipe(recipe.id, { notes });
+      setNotesSaved(true);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setNotesSaved(false), 2000);
     }, 800);
 
     return () => {
@@ -67,11 +78,12 @@ export function RecipeDetailSheet({
     };
   }, [notes, recipe]);
 
-  const handleRatingChange = async (nextRating: string) => {
-    setRating(nextRating);
+  const handleRatingChange = async (nextRating: number) => {
+    // Toggle off if tapping the already-selected rating
+    const newValue = rating === nextRating ? 0 : nextRating;
+    setRating(newValue);
     if (!recipe) return;
-
-    await updateRecipe(recipe.id, { rating: Number(nextRating) });
+    await updateRecipe(recipe.id, { rating: newValue });
   };
 
   const handleToggleDiscovery = async () => {
@@ -191,12 +203,20 @@ export function RecipeDetailSheet({
 
               <div className="space-y-4">
                 <div>
-                  <label
-                    htmlFor="recipe-notes-input"
-                    className="mb-2 block text-sm font-black uppercase tracking-[0.18em] text-charcoal/45"
-                  >
-                    {t('recipes.notes', 'Notes')}
-                  </label>
+                  <div className="mb-2 flex items-center gap-2">
+                    <label
+                      htmlFor="recipe-notes-input"
+                      className="text-sm font-black uppercase tracking-[0.18em] text-charcoal/45"
+                    >
+                      {t('recipes.notes', 'Notes')}
+                    </label>
+                    {notesSaved && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-sage animate-in fade-in duration-200">
+                        <Check size={11} strokeWidth={3} />
+                        Saved
+                      </span>
+                    )}
+                  </div>
                   <textarea
                     id="recipe-notes-input"
                     data-testid="recipe-notes-input"
@@ -207,24 +227,40 @@ export function RecipeDetailSheet({
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="recipe-rating-selector"
-                    className="mb-2 block text-sm font-black uppercase tracking-[0.18em] text-charcoal/45"
-                  >
+                  <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-charcoal/45">
                     {t('recipes.rating', 'Rating')}
-                  </label>
-                  <select
-                    id="recipe-rating-selector"
+                  </p>
+                  <div
                     data-testid="recipe-rating-selector"
-                    value={rating}
-                    onChange={(event) => void handleRatingChange(event.target.value)}
-                    className="w-full rounded-[1.5rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-sm font-semibold text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                    className="flex justify-around items-center"
                   >
-                    <option value="0">No rating</option>
-                    <option value="1">Dislike</option>
-                    <option value="2">Like</option>
-                    <option value="3">Love</option>
-                  </select>
+                    {RATING_OPTIONS.map(({ value, emoji, label }) => {
+                      const isSelected = rating === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-label={label}
+                          aria-pressed={isSelected}
+                          onClick={() => void handleRatingChange(value)}
+                          className={[
+                            'flex flex-col items-center gap-1.5 rounded-[1.5rem] px-4 py-3 transition-all duration-200',
+                            isSelected
+                              ? 'bg-white shadow-md scale-110'
+                              : 'opacity-35 hover:opacity-70',
+                          ].join(' ')}
+                        >
+                          <span className="text-3xl" aria-hidden>{emoji}</span>
+                          <span className={[
+                            'text-[9px] font-black uppercase tracking-wider',
+                            isSelected ? 'text-charcoal' : 'text-charcoal/50',
+                          ].join(' ')}>
+                            {label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>

@@ -11,6 +11,7 @@ import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { useBrowseStackStore } from '@/store/browseStackStore';
 import { apiClient } from '@/lib/api/api-client';
 import { updateRecipe } from '@/lib/api/recipes';
+import { assignRecipeToDay } from '@/lib/api/planner';
 import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipes/index';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
@@ -485,8 +486,14 @@ export default function BrowseAllStackPage() {
           recipeId={detailRecipeId}
           plannerDayLabel={null}
           onClose={handleDetailSheetClose}
-          onUseForDay={async () => {
-            handleDetailSheetClose();
+          onUseForDay={async (recipe) => {
+            const todayIndex = (new Date().getDay() + 6) % 7;
+            await assignRecipeToDay(0, todayIndex, {
+              id: recipe.id,
+              name: recipe.name ?? null,
+              image: recipe.imageUrl ?? '',
+            });
+            router.push(`/planner?success=1&dayIndex=${todayIndex}`);
           }}
           onFindSimilar={() => {
             handleDetailSheetClose();
