@@ -16,6 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { apiClient } from '@/lib/api/api-client';
 import { searchRecipes, type RecipeSearchResponse, type Recipe } from '@/lib/api/recipes';
 import { submitInventoryCapture } from '@/lib/api/inventory';
 import type { RecipeSearchFiltersDto } from '@/lib/api/generated/models/index';
@@ -78,6 +79,8 @@ export default function RecipesPage() {
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
   const [limit, setLimit] = useState(INITIAL_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [showDemoAiNotice, setShowDemoAiNotice] = useState(false);
   const [pendingRecovery, setPendingRecovery] = useState<{
     slot: PlannerSlot;
     recipe: AssignmentRecipe;
@@ -94,6 +97,27 @@ export default function RecipesPage() {
 
   const parsedDayIndex = addToDay !== null ? parseInt(addToDay, 10) : undefined;
   const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
+
+  useEffect(() => {
+    let isActive = true;
+
+    void (async () => {
+      try {
+        const health = (await apiClient.api.health.get()) as { demoMode?: boolean } | undefined;
+        if (isActive) {
+          setIsDemoMode(Boolean(health?.demoMode));
+        }
+      } catch {
+        if (isActive) {
+          setIsDemoMode(false);
+        }
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   let dayName: string | null = null;
   try {
@@ -323,6 +347,11 @@ export default function RecipesPage() {
   };
 
   const handleAgentSubmit = () => {
+    if (isDemoMode) {
+      setShowDemoAiNotice(true);
+      setSearchMode('standard');
+      return;
+    }
     if (!agentQuery.trim()) return;
     setSearchMode('standard');
     setIsLoading(true);
@@ -450,9 +479,18 @@ export default function RecipesPage() {
         <button
           type="button"
           data-testid="agent-search-trigger"
-          onClick={() => setSearchMode(searchMode === 'agent' ? 'standard' : 'agent')}
+          onClick={() => {
+            if (isDemoMode) {
+              setShowDemoAiNotice(true);
+              setSearchMode('standard');
+              return;
+            }
+            setSearchMode(searchMode === 'agent' ? 'standard' : 'agent');
+          }}
+          aria-disabled={isDemoMode}
           className={cn(
             'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+            isDemoMode && 'opacity-60',
             searchMode === 'agent'
               ? 'border-terracotta bg-terracotta text-white'
               : 'border-charcoal/10 bg-white/70 text-charcoal'
@@ -490,6 +528,15 @@ export default function RecipesPage() {
           {t('recipes.browseLibrary', 'Browse Library')}
         </a>
       </div>
+
+      {showDemoAiNotice && (
+        <div
+          data-testid="demo-ai-notice"
+          className="rounded-2xl border border-terracotta/20 bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta"
+        >
+          {t('recipes.demoAiNotice', 'Semantic search translation is disabled in Demo Mode')}
+        </div>
+      )}
 
       {/* Single active canvas */}
       {searchMode === 'standard' && (

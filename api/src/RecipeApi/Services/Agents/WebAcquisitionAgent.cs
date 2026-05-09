@@ -47,7 +47,21 @@ public class WebAcquisitionAgent(
         logger.LogInformation("Fetching content from {Url} for recipe {RecipeId}", url, recipeId);
 
         // 1. Fetch HTML
-        var html = await httpClient.GetStringAsync(url, ct);
+        string html;
+        try
+        {
+            html = await httpClient.GetStringAsync(url, ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            logger.LogError(ex, "Access denied (403) when fetching {Url}. This site likely blocks automated requests.", url);
+            throw; // Re-throw to let workflow handle failure
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "HTTP error {StatusCode} when fetching {Url}", ex.StatusCode, url);
+            throw;
+        }
 
         // 2. Extract context (Name and Hero Image URL)
         var prompt = promptRepository.GetPrompt(PromptType.WebContextExtraction);

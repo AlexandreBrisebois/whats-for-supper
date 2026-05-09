@@ -9,6 +9,7 @@ import {
 // @ts-ignore
 import {
   type AdditionalDataHolder,
+  type ApiError,
   type BaseRequestBuilder,
   type Guid,
   type KeysToExcludeForNavigationMetadata,
@@ -22,6 +23,17 @@ import {
   type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Family403Error}
+ */
+// @ts-ignore
+export function createFamily403ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFamily403Error;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -76,6 +88,21 @@ export function createFamilyPostResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoFamilyPostResponse;
+}
+/**
+ * The deserialization information for the current model
+ * @param Family403Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFamily403Error(
+  family403Error: Partial<Family403Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      family403Error.messageEscaped = n.getStringValue();
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -174,6 +201,12 @@ export function deserializeIntoFamilyPostResponse_data(
     },
   };
 }
+export interface Family403Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+}
 export interface FamilyGetResponse extends AdditionalDataHolder, Parsable {
   /**
    * The data property
@@ -251,6 +284,7 @@ export interface FamilyRequestBuilder extends BaseRequestBuilder<FamilyRequestBu
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<FamilyPostResponse>}
+   * @throws {Family403Error} error when the service returns a 403 status code
    */
   post(
     body: FamilyPostRequestBody,
@@ -274,6 +308,24 @@ export interface FamilyRequestBuilder extends BaseRequestBuilder<FamilyRequestBu
     body: FamilyPostRequestBody,
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
+}
+/**
+ * Serializes information the current object
+ * @param Family403Error The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFamily403Error(
+  writer: SerializationWriter,
+  family403Error: Partial<Family403Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!family403Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', family403Error.messageEscaped);
+  writer.writeAdditionalData(family403Error.additionalData);
 }
 /**
  * Serializes information the current object
@@ -408,6 +460,9 @@ export const FamilyRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: FamilyRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      403: createFamily403ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createFamilyPostResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

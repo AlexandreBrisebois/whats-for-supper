@@ -566,11 +566,21 @@ components:
     # --- Health ---
     HealthCheckResponse:
       type: object
-      required: [status, timestamp, checks]
+      required: [status, timestamp, checks, demoMode]
       properties:
         status: { type: string }
         timestamp: { type: string, format: date-time }
         checks: { type: object, additionalProperties: true }
+        demoMode:
+          type: boolean
+          description: True when the API is running in resettable demo/amnesia mode.
+      example:
+        status: healthy
+        timestamp: '2026-05-09T12:00:00Z'
+        demoMode: true
+        checks:
+          database: { status: healthy }
+          schema: { status: healthy }
 
     # --- Management ---
     ManagementTaskStatusResponse:
@@ -1045,6 +1055,17 @@ paths:
                   name: 'Test User'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
+        '403':
+          description: New user creation is restricted in Demo Mode.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string }
+              example:
+                message: New user creation is restricted in Demo Mode.
 
   /api/family/{id}:
     parameters:
@@ -1791,6 +1812,32 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ManagementBackfillSearchAcceptedResponse' }
+
+  /api/management/demo-capture:
+    post:
+      summary: Capture the current core state as the Demo Mode master snapshot
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
+              example:
+                message: Demo capture task enqueued.
+                taskId: '660e8400-e29b-41d4-a716-446655440010'
+
+  /api/management/demo-restore:
+    post:
+      summary: Restore the Demo Mode master snapshot
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
+              example:
+                message: Demo restore task enqueued.
+                taskId: '660e8400-e29b-41d4-a716-446655440011'
 
   /api/management/status:
     get:

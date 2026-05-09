@@ -1,0 +1,15 @@
+name: demo-restore
+parameters: []
+tasks:
+  - name: restore
+    processor: RestoreDemoState
+    payload: {}
+
+  - name: reschedule
+    processor: StartWorkflow
+    depends_on:
+      - restore
+    payload:
+      workflowId: demo-restore
+      schedule:
+        cron: "${DEMO_RESTORE_CRON_UTC:-0 3 * * *}"

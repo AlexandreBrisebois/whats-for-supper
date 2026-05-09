@@ -12,4 +12,7 @@ public class HealthCheckResponseDto
 
     [JsonPropertyName("checks")]
     public required Dictionary<string, object> Checks { get; set; }
+
+    [JsonPropertyName("demoMode")]
+    public required bool DemoMode { get; set; }
 }

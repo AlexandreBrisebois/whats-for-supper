@@ -129,4 +129,12 @@ The grocery list works the same way. Two people in the same store, checking thin
 
 The discovery stack adapts in real time too — as the week fills up, the cards shift toward whatever food group the family still needs most.
 
+---
+
+## Showcase (Demo Mode)
+
+If you see a notice saying **"Demo Mode Active"**, you are in a trial environment. 
+
+The app state (recipes, planner, votes) is periodically reset to a clean master snapshot. Most expensive AI features like "Agent Search" or "Recipe Extraction" are disabled to keep the showcase cost-optimized, but you can still search the library, browse cards, and use the planner normally.
+
 

@@ -1,6 +1,6 @@
 
 @familyMemberId = 4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7
-@recipeId = a6ae65b8-1da9-413e-aea4-2fe1f1bed55c
+@recipeId = 48685c08-052f-4bfd-96aa-2c069e3f4ffc
 @image1 = /Users/alex/WhatsForSupper/recipes/54533403-3951-4bf0-b159-a940c7e5e99e/original-0.jpg
 @image2 = /Users/alex/WhatsForSupper/recipes/54533403-3951-4bf0-b159-a940c7e5e99e/original-1.jpg
 
@@ -120,7 +120,7 @@ X-Hearth-Secret: {{hearthSecret}}
 X-Family-Member-Id: {{familyMemberId}}
 
 {
-  "url": "https://example.com/recipe",
-  "notes": "Testing URL capture",
-  "rating": 2
+  "url": "https://www.troisfoisparjour.com/fr/recettes/plats-principaux/porc/boulettes-de-viande-a-la-suedoise/",
+  "notes": "",
+  "rating": 3
 }

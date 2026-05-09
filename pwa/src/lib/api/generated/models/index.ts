@@ -1177,6 +1177,9 @@ export function deserializeIntoHealthCheckResponse(
         createHealthCheckResponse_checksFromDiscriminatorValue
       );
     },
+    demoMode: (n) => {
+      healthCheckResponse.demoMode = n.getBooleanValue();
+    },
     status: (n) => {
       healthCheckResponse.status = n.getStringValue();
     },
@@ -2699,6 +2702,10 @@ export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
    */
   checks?: HealthCheckResponse_checks | null;
   /**
+   * True when the API is running in resettable demo/amnesia mode.
+   */
+  demoMode?: boolean | null;
+  /**
    * The status property
    */
   status?: string | null;
@@ -3636,6 +3643,7 @@ export function serializeHealthCheckResponse(
     healthCheckResponse.checks,
     serializeHealthCheckResponse_checks
   );
+  writer.writeBooleanValue('demoMode', healthCheckResponse.demoMode);
   writer.writeStringValue('status', healthCheckResponse.status);
   writer.writeDateValue('timestamp', healthCheckResponse.timestamp);
   writer.writeAdditionalData(healthCheckResponse.additionalData);

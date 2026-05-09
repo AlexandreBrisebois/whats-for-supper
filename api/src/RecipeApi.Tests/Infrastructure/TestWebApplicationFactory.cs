@@ -42,14 +42,29 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     private readonly string _dbName = $"TestDb_{Guid.NewGuid():N}";
     private readonly string _dataRoot = Path.Combine(Path.GetTempPath(), $"wfs-test-{Guid.NewGuid():N}");
     private readonly bool _enableAuth;
+    private readonly Dictionary<string, string?> _configurationOverrides = [];
 
     private ISearchTelemetry? _telemetry;
-    private TestWebApplicationFactory(bool enableAuth = false) => _enableAuth = enableAuth;
+    private TestWebApplicationFactory(bool enableAuth = false, Dictionary<string, string?>? configurationOverrides = null)
+    {
+        _enableAuth = enableAuth;
+        if (configurationOverrides is not null)
+        {
+            _configurationOverrides = configurationOverrides;
+        }
+    }
 
     /// <summary>Factory with auth disabled — for business-logic tests.</summary>
     public static async Task<TestWebApplicationFactory> CreateAsync(ISearchTelemetry? telemetry = null)
     {
         var factory = new TestWebApplicationFactory(enableAuth: false) { _telemetry = telemetry };
+        await factory.StartAsync();
+        return factory;
+    }
+
+    public static async Task<TestWebApplicationFactory> CreateAsync(Dictionary<string, string?> configurationOverrides)
+    {
+        var factory = new TestWebApplicationFactory(enableAuth: false, configurationOverrides);
         await factory.StartAsync();
         return factory;
     }
@@ -73,13 +88,19 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         // ── Override config ──────────────────────────────────────────────────
         Directory.CreateDirectory(_dataRoot);
 
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        var configuration = new Dictionary<string, string?>
         {
             ["Serilog:MinimumLevel:Default"]          = "Warning",
             ["Logging:LogLevel:Default"]              = "Warning",
             ["Logging:LogLevel:Microsoft.AspNetCore"] = "Warning",
             ["DataRoot"]                              = _dataRoot,
-        });
+        };
+        foreach (var (key, value) in _configurationOverrides)
+        {
+            configuration[key] = value;
+        }
+
+        builder.Configuration.AddInMemoryCollection(configuration);
 
         // ── Services (mirrors Program.cs, minus Npgsql) ──────────────────────
         // Auth is omitted by default so business-logic tests are not coupled to
@@ -146,6 +167,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<SettingsService>();
         builder.Services.AddSingleton<IClock, SystemClock>();
         builder.Services.AddSingleton<CronScheduleCalculator>();
+        builder.Services.AddSingleton<DemoModeOptions>();
         builder.Services.AddScoped<ManagementService>();
         builder.Services.AddScoped<SearchIndexWorkflow>();
         if (_telemetry is not null)
@@ -197,7 +219,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddSingleton<IRecipeStore, InMemoryRecipeStore>();
 
         builder.Services.AddDbContext<RecipeDbContext>(opts =>
-            opts.UseInMemoryDatabase(_dbName));
+            opts.UseInMemoryDatabase(_dbName)
+                .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning)));
 
         // ── Test server ──────────────────────────────────────────────────────
         builder.WebHost.UseTestServer();

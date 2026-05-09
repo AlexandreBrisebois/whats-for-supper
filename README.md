@@ -52,6 +52,9 @@ Deleting a recipe is reversible. Soft delete sends it to the Recycle Bin where i
 **8. Recipe Library Browse**
 An immersive, full-screen card browsing experience for the entire recipe library. It prioritizes recipes that haven't been cooked in a long time, helping families rediscover forgotten favourites. Built with smooth swipe navigation and integrated discoverability toggles, it mirrors the tactile ritual of flipping through a physical recipe box.
 
+**9. Demo Mode (Showcase)**
+A stable, "frozen" environment for app showcases. When enabled, the app uses a master snapshot (`DATAROOT/demo/`), periodically resets user-generated data, and "soft-disables" AI cost-generating processors with a safety circuit breaker. The PWA automatically pre-populates the family passphrase and provides clear notices when expensive AI features are disabled.
+
 ---
 
 ## Architecture
@@ -173,7 +176,7 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | Canadian Food Guide Classification | ⚠️ TODO | [spec](.kiro/specs/cnf-data-ingestion)
 | Dietician Agent | ⚠️ TODO | depends on canadian food guide classification | [spec](.kiro/specs/dietitian-agent-phase2)
 | Dreaming | ✅ Complete | [spec](.kiro/specs/dreaming)
-| Demo Mode | ⚠️ TODO | depends on Dreaming | [spec](.kiro/specs/demo-mode)
+| Demo Mode | ✅ Complete | depends on Dreaming | [spec](.kiro/specs/demo-mode) |
 | Family health Profiles | ⚠️ TODO | [spec](.kiro/specs/family-health-profiles)
 
 ---

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
   const getTrashItems = vi.fn();
   const restoreRecipe = vi.fn();
   const purgeRecipe = vi.fn();
+  const healthGet = vi.fn();
   const push = vi.fn();
   let searchParams = new URLSearchParams('');
 
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => {
     getTrashItems,
     restoreRecipe,
     purgeRecipe,
+    healthGet,
     push,
     setSearchParams: (value: string) => {
       searchParams = new URLSearchParams(value);
@@ -72,6 +74,16 @@ vi.mock('@/lib/api/recipes', () => ({
 
 vi.mock('@/lib/api/inventory', () => ({
   submitInventoryCapture: (...args: unknown[]) => mocks.submitInventoryCapture(...args),
+}));
+
+vi.mock('@/lib/api/api-client', () => ({
+  apiClient: {
+    api: {
+      health: {
+        get: (...args: unknown[]) => mocks.healthGet(...args),
+      },
+    },
+  },
 }));
 
 vi.mock('@/lib/api/planner', () => ({
@@ -161,6 +173,8 @@ describe('RecipesPage', () => {
     });
     mocks.getTrashItems.mockResolvedValue([]);
     mocks.restoreRecipe.mockResolvedValue(undefined);
+    mocks.purgeRecipe.mockResolvedValue(undefined);
+    mocks.healthGet.mockResolvedValue({ demoMode: false });
   });
 
   it('renders the search input and mode controls after load', async () => {
@@ -641,6 +655,20 @@ describe('RecipesPage', () => {
     fireEvent.click(screen.getByTestId('agent-search-trigger'));
 
     expect(screen.getByTestId('agent-search-input')).toBeInTheDocument();
+  });
+
+  it('agent-search-trigger shows demo notice instead of textarea in demo mode', async () => {
+    mocks.healthGet.mockResolvedValue({ demoMode: true });
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
+    await waitFor(() => expect(mocks.healthGet).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByTestId('agent-search-trigger'));
+
+    expect(screen.getByTestId('demo-ai-notice')).toHaveTextContent(
+      'Semantic search translation is disabled in Demo Mode'
+    );
+    expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
   });
 
   it('agent-search-submit calls searchRecipes with mode: "agent"', async () => {

@@ -156,6 +156,25 @@ Example:
 DREAMING_CRON_UTC=0 3 * * *
 ```
 
+### Demo Mode (Showcase)
+
+Demo Mode provides a "frozen" environment for showcasing the app without incurring AI costs or accumulating permanent user data.
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `DEMO_MODE` | `false` | Enables demo restrictions and reset workflows. |
+| `DEMO_RESTORE_CRON_UTC` | `0 3 * * *` | Frequency of the automated reset to the master snapshot. |
+
+**Master Snapshot:**
+To set the state that users will see on every reset, configure the app the way you want it (add recipes, set a plan), then trigger a capture:
+```bash
+POST /api/management/demo-capture
+```
+This clones the active database and `recipes/` folder into `DATA_ROOT/demo/`. Every restore run will truncate all active tables and replace them with this snapshot.
+
+**AI Restrictions:**
+In Demo Mode, expensive AI processors (recipe extraction, search re-ranking) are bypassed. Lexical search and pre-computed embeddings remain fully functional.
+
 ---
 
 ## 8. Semantic search configuration

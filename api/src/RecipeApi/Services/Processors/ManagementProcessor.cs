@@ -21,6 +21,8 @@ public class ManagementProcessor(
             "BackupDatabase" => await managementService.BackupAsync(),
             "RestoreDatabase" => await managementService.RestoreAsync(ct),
             "DisasterRecovery" => await managementService.DisasterRecoveryAsync(),
+            "CaptureDemoState" => await managementService.CaptureDemoStateAsync(ct),
+            "RestoreDemoState" => await managementService.RestoreDemoStateAsync(ct),
             "PruneWorkflows" => await managementService.PruneWorkflowsAsync(GetRetentionDays(task.Payload), ct),
             "GenerateDreamingReport" => await managementService.GenerateDreamingReportAsync(await GetPruneResultAsync(task, ct), ct),
             _ => throw new NotSupportedException($"Processor {ProcessorName} is not supported by ManagementProcessor.")

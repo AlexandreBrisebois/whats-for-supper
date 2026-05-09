@@ -46,9 +46,27 @@ public class HealthControllerTests : IAsyncLifetime
         Assert.True(doc.RootElement.TryGetProperty("status",    out _), "missing 'status'");
         Assert.True(doc.RootElement.TryGetProperty("timestamp", out _), "missing 'timestamp'");
         Assert.True(doc.RootElement.TryGetProperty("checks",    out var checks), "missing 'checks'");
+        Assert.True(doc.RootElement.TryGetProperty("demoMode",  out var demoMode), "missing 'demoMode'");
+        Assert.False(demoMode.GetBoolean());
 
         Assert.True(checks.TryGetProperty("database", out _), "missing 'checks.database'");
         Assert.True(checks.TryGetProperty("schema",   out _), "missing 'checks.schema'");
+    }
+
+    [Fact]
+    public async Task Health_Response_Reports_DemoMode_When_Enabled()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?>
+        {
+            ["DEMO_MODE"] = "true"
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/health");
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+
+        Assert.True(doc.RootElement.GetProperty("demoMode").GetBoolean());
     }
 
     [Fact]

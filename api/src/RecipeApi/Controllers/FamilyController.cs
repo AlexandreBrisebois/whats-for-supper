@@ -6,7 +6,7 @@ namespace RecipeApi.Controllers;
 
 [ApiController]
 [Route("api/family")]
-public class FamilyController(FamilyService familyService) : ControllerBase
+public class FamilyController(FamilyService familyService, DemoModeOptions demoMode) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll()
@@ -25,6 +25,11 @@ public class FamilyController(FamilyService familyService) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateFamilyMemberDto dto)
     {
+        if (demoMode.Enabled)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "New user creation is restricted in Demo Mode." });
+        }
+
         var member = await familyService.CreateFamilyMember(dto.Name);
         var result = new FamilyMemberDto
         {

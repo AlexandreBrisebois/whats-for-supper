@@ -10,6 +10,16 @@ import {
 import { BackupRequestBuilderRequestsMetadata, type BackupRequestBuilder } from './backup/index';
 // @ts-ignore
 import {
+  DemoCaptureRequestBuilderRequestsMetadata,
+  type DemoCaptureRequestBuilder,
+} from './demoCapture/index';
+// @ts-ignore
+import {
+  DemoRestoreRequestBuilderRequestsMetadata,
+  type DemoRestoreRequestBuilder,
+} from './demoRestore/index';
+// @ts-ignore
+import {
   DisasterRecoveryRequestBuilderRequestsMetadata,
   type DisasterRecoveryRequestBuilder,
 } from './disasterRecovery/index';
@@ -36,6 +46,14 @@ export interface ManagementRequestBuilder extends BaseRequestBuilder<ManagementR
    * The backup property
    */
   get backup(): BackupRequestBuilder;
+  /**
+   * The demoCapture property
+   */
+  get demoCapture(): DemoCaptureRequestBuilder;
+  /**
+   * The demoRestore property
+   */
+  get demoRestore(): DemoRestoreRequestBuilder;
   /**
    * The disasterRecovery property
    */
@@ -65,6 +83,12 @@ export const ManagementRequestBuilderNavigationMetadata: Record<
   },
   backup: {
     requestsMetadata: BackupRequestBuilderRequestsMetadata,
+  },
+  demoCapture: {
+    requestsMetadata: DemoCaptureRequestBuilderRequestsMetadata,
+  },
+  demoRestore: {
+    requestsMetadata: DemoRestoreRequestBuilderRequestsMetadata,
   },
   disasterRecovery: {
     requestsMetadata: DisasterRecoveryRequestBuilderRequestsMetadata,

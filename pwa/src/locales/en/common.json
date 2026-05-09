@@ -281,6 +281,7 @@
     "filterNotCookedLong": "It's Been a While",
     "filterHealthy": "Healthy Choice",
     "agentSearch": "Agent Search",
+    "demoAiNotice": "Semantic search translation is disabled in Demo Mode",
     "inventoryCamera": "Use Camera",
     "agentSearchPlaceholder": "Describe what you feel like tonight in your own words…",
     "agentSearchSubmit": "Search",

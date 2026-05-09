@@ -34,4 +34,25 @@ public class ManagementControllerTests : IAsyncLifetime
         var response = await _client.GetAsync("/api/management/status");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Theory]
+    [InlineData("/api/management/demo-capture", "demo-capture", "Demo capture task enqueued.")]
+    [InlineData("/api/management/demo-restore", "demo-restore", "Demo restore task enqueued.")]
+    public async Task Demo_Management_Endpoints_Enqueue_Workflows(string path, string workflowId, string message)
+    {
+        var response = await _client.PostAsync(path, content: null);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal(message, doc.RootElement.GetProperty("message").GetString());
+        var taskId = doc.RootElement.GetProperty("taskId").GetGuid();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var instance = await db.WorkflowInstances.FindAsync(taskId);
+
+        Assert.NotNull(instance);
+        Assert.Equal(workflowId, instance.WorkflowId);
+    }
 }

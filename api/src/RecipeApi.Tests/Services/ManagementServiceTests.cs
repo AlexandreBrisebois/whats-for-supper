@@ -41,6 +41,7 @@ public class ManagementServiceTests : IAsyncLifetime
 
     private string CsvPath => Path.Combine(DataRoot, "ingredient-categories.csv");
     private string ReportsRoot => Path.Combine(DataRoot, "reports");
+    private string DemoRoot => Path.Combine(DataRoot, "demo");
 
     // ── Backup step 5 ─────────────────────────────────────────────────────────
 
@@ -55,6 +56,128 @@ public class ManagementServiceTests : IAsyncLifetime
         var lines = await File.ReadAllLinesAsync(CsvPath);
         Assert.Single(lines);
         Assert.Equal("normalized_key,grocery_section,confidence,source,created_at", lines[0]);
+    }
+
+    [Fact]
+    public async Task CaptureDemoStateAsync_Writes_Core_Snapshot_And_Excludes_Dynamic_State()
+    {
+        var member = new FamilyMember { Name = "Demo Cook" };
+        var recipe = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            Name = "Snapshot Soup",
+            AddedBy = member.Id,
+            Description = "A stable demo recipe",
+            CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        _db.FamilyMembers.Add(member);
+        _db.Recipes.Add(recipe);
+        _db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+        {
+            RecipeId = recipe.Id,
+            DocumentText = "snapshot soup",
+            SearchMetadata = "{}",
+            EmbeddingJson = "[0.1,0.2]",
+            EmbeddingModel = "test",
+            IndexStatus = "ready",
+            LastIndexedAt = DateTimeOffset.UtcNow
+        });
+        _db.RecipeVotes.Add(new RecipeVote
+        {
+            RecipeId = recipe.Id,
+            FamilyMemberId = member.Id,
+            Vote = VoteType.Like
+        });
+        _db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipe.Id,
+            Date = DateOnly.FromDateTime(DateTime.UtcNow),
+            Status = CalendarEventStatus.Planned
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.CaptureDemoStateAsync(CancellationToken.None);
+
+        Assert.True(File.Exists(Path.Combine(DemoRoot, "manifest.json")));
+        Assert.True(File.Exists(Path.Combine(DemoRoot, "family-members.json")));
+        Assert.True(File.Exists(Path.Combine(DemoRoot, "recipes.json")));
+        Assert.True(File.Exists(Path.Combine(DemoRoot, "recipe-search-documents.json")));
+        Assert.False(File.Exists(Path.Combine(DemoRoot, "recipe-votes.json")));
+        Assert.False(File.Exists(Path.Combine(DemoRoot, "weekly-plans.json")));
+        Assert.False(File.Exists(Path.Combine(DemoRoot, "calendar-events.json")));
+    }
+
+    [Fact]
+    public async Task RestoreDemoStateAsync_Restores_Core_State_And_Clears_Dynamic_State()
+    {
+        var member = new FamilyMember { Name = "Demo Cook" };
+        var recipe = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            Name = "Snapshot Soup",
+            AddedBy = member.Id,
+            CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.FamilyMembers.Add(member);
+        _db.Recipes.Add(recipe);
+        _db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+        {
+            RecipeId = recipe.Id,
+            DocumentText = "snapshot soup",
+            SearchMetadata = "{}",
+            EmbeddingJson = "[0.1,0.2]",
+            EmbeddingModel = "test",
+            IndexStatus = "ready"
+        });
+        await _db.SaveChangesAsync();
+        await _service.CaptureDemoStateAsync(CancellationToken.None);
+
+        var intruder = new FamilyMember { Name = "Temporary Visitor" };
+        _db.FamilyMembers.Add(intruder);
+        _db.Recipes.Remove(recipe);
+        _db.RecipeSearchDocuments.RemoveRange(_db.RecipeSearchDocuments);
+        _db.RecipeVotes.Add(new RecipeVote
+        {
+            RecipeId = recipe.Id,
+            FamilyMemberId = member.Id,
+            Vote = VoteType.Dislike
+        });
+        _db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipe.Id,
+            Date = DateOnly.FromDateTime(DateTime.UtcNow),
+            Status = CalendarEventStatus.Planned
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.RestoreDemoStateAsync(CancellationToken.None);
+
+        Assert.Contains(_db.FamilyMembers, m => m.Id == member.Id && m.Name == "Demo Cook");
+        Assert.DoesNotContain(_db.FamilyMembers, m => m.Id == intruder.Id);
+        Assert.Contains(_db.Recipes, r => r.Id == recipe.Id && r.Name == "Snapshot Soup");
+        Assert.Contains(_db.RecipeSearchDocuments, d => d.RecipeId == recipe.Id && d.IndexStatus == "ready");
+        Assert.Empty(_db.RecipeVotes);
+        Assert.Empty(_db.WeeklyPlans);
+        Assert.Empty(_db.CalendarEvents);
+    }
+
+    [Fact]
+    public async Task RestoreDemoStateAsync_When_Snapshot_Missing_Does_Not_Clear_Active_Data()
+    {
+        var member = new FamilyMember { Name = "Keep Me" };
+        _db.FamilyMembers.Add(member);
+        await _db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RestoreDemoStateAsync(CancellationToken.None));
+
+        Assert.Contains(_db.FamilyMembers, m => m.Id == member.Id);
     }
 
     [Fact]

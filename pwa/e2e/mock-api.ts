@@ -662,6 +662,30 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // POST /api/management/demo-capture
+  await page.route('**/api/management/demo-capture', async (route) => {
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: 'Demo capture task enqueued.',
+        taskId: MOCK_IDS.RECIPE_LASAGNA,
+      }),
+    });
+  });
+
+  // POST /api/management/demo-restore
+  await page.route('**/api/management/demo-restore', async (route) => {
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: 'Demo restore task enqueued.',
+        taskId: MOCK_IDS.RECIPE_LASAGNA,
+      }),
+    });
+  });
+
   // GET /api/management/status
   await page.route('**/api/management/status', async (route) => {
     await route.fulfill({
@@ -723,6 +747,7 @@ export async function setupCommonRoutes(page: Page) {
         status: 'Healthy',
         timestamp: new Date().toISOString(),
         checks: {},
+        demoMode: false,
       }),
     });
   });

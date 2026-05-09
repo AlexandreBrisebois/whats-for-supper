@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
+using RecipeApi.Services;
 
 using RecipeApi.Infrastructure;
 
@@ -11,7 +12,7 @@ namespace RecipeApi.Controllers;
 [Route("api/health")]
 [SkipWrapping]
 [Microsoft.AspNetCore.Authorization.AllowAnonymous]
-public class HealthController(RecipeDbContext db) : ControllerBase
+public class HealthController(RecipeDbContext db, DemoModeOptions demoMode) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Get()
@@ -49,7 +50,8 @@ public class HealthController(RecipeDbContext db) : ControllerBase
         {
             Status = overallHealthy ? "healthy" : "unhealthy",
             Timestamp = DateTimeOffset.UtcNow,
-            Checks = checks
+            Checks = checks,
+            DemoMode = demoMode.Enabled
         };
 
         return overallHealthy ? Ok(response) : StatusCode(503, response);

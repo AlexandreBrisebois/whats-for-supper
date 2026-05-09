@@ -70,6 +70,22 @@ public class FamilyControllerTests : IAsyncLifetime
         Assert.Contains(uniqueName, names);
     }
 
+    [Fact]
+    public async Task Create_Returns_Forbidden_When_DemoMode_Enabled()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?>
+        {
+            ["DEMO_MODE"] = "true"
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/family", new { name = "Demo Visitor" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.Contains("New user creation is restricted in Demo Mode.", json);
+    }
+
     // ── PUT /api/family/{id} ──────────────────────────────────────────────────
     
     [Fact]

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authenticateWithPassphrase, setHearthCookie } from '@/lib/auth';
+import { apiClient } from '@/lib/api/api-client';
 import { t } from '@/locales';
 
 export default function WelcomePage() {
@@ -10,6 +11,25 @@ export default function WelcomePage() {
   const [passphrase, setPassphrase] = useState('');
   const [error, setError] = useState('');
   const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    void (async () => {
+      try {
+        const health = (await apiClient.api.health.get()) as { demoMode?: boolean } | undefined;
+        if (isActive && health?.demoMode) {
+          setPassphrase((current) => current || 'Swipe-Match-Cook');
+        }
+      } catch {
+        // Health is convenience-only here; authentication still works normally.
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

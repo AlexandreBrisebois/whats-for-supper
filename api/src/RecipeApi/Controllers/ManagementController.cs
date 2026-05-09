@@ -44,6 +44,26 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
     }
 
     /// <summary>
+    /// POST /api/management/demo-capture — capture the Demo Mode master snapshot.
+    /// </summary>
+    [HttpPost("demo-capture")]
+    public async Task<IActionResult> DemoCapture()
+    {
+        var instance = await orchestrator.TriggerAsync("demo-capture", []);
+        return Accepted(new { message = "Demo capture task enqueued.", taskId = instance.Id });
+    }
+
+    /// <summary>
+    /// POST /api/management/demo-restore — restore the Demo Mode master snapshot.
+    /// </summary>
+    [HttpPost("demo-restore")]
+    public async Task<IActionResult> DemoRestore()
+    {
+        var instance = await orchestrator.TriggerAsync("demo-restore", []);
+        return Accepted(new { message = "Demo restore task enqueued.", taskId = instance.Id });
+    }
+
+    /// <summary>
     /// POST /api/management/backfill-search — trigger a search index backfill.
     /// </summary>
     [HttpPost("backfill-search")]
@@ -77,7 +97,7 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
     [HttpGet("status")]
     public async Task<IActionResult> GetStatus()
     {
-        var managementWorkflows = new[] { "db-backup", "db-restore", "db-disaster-recovery" };
+        var managementWorkflows = new[] { "db-backup", "db-restore", "db-disaster-recovery", "demo-capture", "demo-restore" };
         var lastInstance = await db.WorkflowInstances
             .Where(i => managementWorkflows.Contains(i.WorkflowId))
             .Include(i => i.Tasks)
@@ -109,4 +129,3 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
     }
 
 }
-

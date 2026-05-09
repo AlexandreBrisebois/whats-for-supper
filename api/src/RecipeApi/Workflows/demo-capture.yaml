@@ -1,0 +1,6 @@
+name: demo-capture
+parameters: []
+tasks:
+  - name: capture
+    processor: CaptureDemoState
+    payload: {}

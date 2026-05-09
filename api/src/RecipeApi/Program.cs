@@ -84,7 +84,12 @@ try
         });
 
     builder.Services.AddOpenApi();
-    builder.Services.AddHttpClient();
+    builder.Services.AddHttpClient("", client =>
+    {
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
+        client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.9");
+    });
 
     // ── Application services ─────────────────────────────────────────────────
 
@@ -116,17 +121,36 @@ try
     builder.Services.AddScoped<SettingsService>();
     builder.Services.AddSingleton<IClock, SystemClock>();
     builder.Services.AddSingleton<CronScheduleCalculator>();
+    builder.Services.AddSingleton<DemoModeOptions>();
 
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<SearchIndexWorkflow>();
     builder.Services.AddScoped<DreamingWorkflowSeeder>();
+    builder.Services.AddScoped<DemoWorkflowSeeder>();
     builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
 
     // ── Workflow Processors Registration ─────────────────────────────────────
     // Each IWorkflowProcessor handles a specific task type in YAML workflows.
     // Some are registered multiple times with different names to handle multiple tasks.
+    if (new DemoModeOptions(builder.Configuration).Enabled)
+    {
+        foreach (var processorName in new[]
+        {
+            "ExtractRecipe",
+            "GenerateDescription",
+            "SynthesizeRecipe",
+            "WebAcquisition",
+            "CategorizeIngredients",
+            "ClassifyDietaryProfile"
+        })
+        {
+            builder.Services.AddScoped<IWorkflowProcessor>(sp => new DemoModeBypassProcessor(
+                processorName,
+                sp.GetRequiredService<DemoModeOptions>()));
+        }
+    }
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new WebAcquisitionAgent(
         sp.GetRequiredService<IChatClient>(),
@@ -189,8 +213,17 @@ try
        sp.GetRequiredService<ManagementService>(),
        sp.GetRequiredService<RecipeDbContext>(),
        "GenerateDreamingReport"));
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
+       "CaptureDemoState"));
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
+       "RestoreDemoState"));
 
     builder.Services.AddHostedService<DreamingWorkflowSeederHostedService>();
+    builder.Services.AddHostedService<DemoWorkflowSeederHostedService>();
     builder.Services.AddHostedService<WorkflowWorker>();
     builder.Services.Configure<WorkflowRetryOptions>(builder.Configuration.GetSection("WorkflowRetry"));
 
@@ -229,7 +262,8 @@ try
             RetryPolicy = new ClientRetryPolicy(maxRetries: 0)
         })
         .GetChatClient(modelId)
-        .AsIChatClient());
+        .AsIChatClient())
+        .Use(inner => new DemoModeChatClient(inner, new DemoModeOptions(builder.Configuration)));
 
     builder.Services.AddScoped<IEmbeddingProvider, GeminiEmbeddingProvider>();
 
