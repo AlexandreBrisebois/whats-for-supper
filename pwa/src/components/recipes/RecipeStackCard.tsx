@@ -28,8 +28,8 @@ interface RecipeStackCardProps {
   category: string;
   isFront: boolean;
   stackIndex: number;
-  onSwipeRight: () => void; // Navigate to next card
-  onSwipeLeft: () => void; // Navigate to previous card
+  onSwipeRight: () => void; // Navigate to previous card
+  onSwipeLeft: () => void; // Navigate to next card
   onTap: () => void; // Open Recipe Detail Sheet
 }
 
@@ -213,33 +213,33 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           {/* Swipe direction indicators — Ghost style aligned with Discovery voting */}
           {isFront && (
             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-              {/* Next indicator (swipe right) - Sage color */}
+              {/* Back indicator (swipe right) - Terracotta color */}
               <motion.div
                 style={{
                   opacity: nextOpacity,
                   scale: nextScale,
                 }}
                 data-testid="stack-swipe-next-indicator"
-                className="flex flex-col items-center gap-2 rounded-full bg-sage/30 p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center gap-2 rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
               >
-                <ChevronRight size={48} />
+                <ChevronLeft size={48} />
                 <span className="text-xl font-black tracking-widest">
-                  {t('buttons.next', 'NEXT')}
+                  {t('buttons.back', 'BACK')}
                 </span>
               </motion.div>
 
-              {/* Back indicator (swipe left) - Terracotta color */}
+              {/* Next indicator (swipe left) - Sage color */}
               <motion.div
                 style={{
                   opacity: backOpacity,
                   scale: backScale,
                 }}
                 data-testid="stack-swipe-back-indicator"
-                className="flex flex-col items-center gap-2 rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center gap-2 rounded-full bg-sage/30 p-8 text-white backdrop-blur-md shadow-2xl"
               >
-                <ChevronLeft size={48} />
+                <ChevronRight size={48} />
                 <span className="text-xl font-black tracking-widest">
-                  {t('buttons.back', 'BACK')}
+                  {t('buttons.next', 'NEXT')}
                 </span>
               </motion.div>
             </div>

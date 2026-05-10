@@ -15,6 +15,10 @@ public class FamilyMember
     [Column("name")]
     public string Name { get; set; } = string.Empty;
 
+    [Required]
+    [Column("browse_view_mode")]
+    public string BrowseViewMode { get; set; } = "stack";
+
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 

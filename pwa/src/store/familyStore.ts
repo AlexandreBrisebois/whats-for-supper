@@ -5,6 +5,7 @@ import {
   getFamilyMembers,
   createFamilyMember,
   updateFamilyMember,
+  updateFamilyMemberPreferences,
   deleteFamilyMember,
 } from '@/lib/api/family';
 import {
@@ -28,6 +29,10 @@ interface FamilyState {
   selectFamilyMember: (id: string | null) => void;
   addMember: (name: string) => Promise<FamilyMember | null>;
   updateMember: (id: string, name: string) => Promise<void>;
+  updateMemberPreferences: (
+    id: string,
+    preferences: { browseViewMode: 'stack' | 'list' }
+  ) => Promise<FamilyMember | null>;
   removeMember: (id: string) => Promise<void>;
   loadFamilyMembers: () => Promise<void>;
   loadSetting: (key: string) => Promise<unknown | null>;
@@ -87,6 +92,37 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update member';
       set({ isLoading: false, error: message });
+    }
+  },
+
+  updateMemberPreferences: async (
+    id: string,
+    preferences: { browseViewMode: 'stack' | 'list' }
+  ) => {
+    set({ error: null });
+    const existing = get().familyMembers.find((member) => member.id === id);
+    if (!existing) return null;
+
+    set((state) => ({
+      familyMembers: state.familyMembers.map((member) =>
+        member.id === id ? { ...member, ...preferences } : member
+      ),
+    }));
+
+    try {
+      const updated = await updateFamilyMemberPreferences(id, preferences);
+      set((state) => ({
+        familyMembers: state.familyMembers.map((member) => (member.id === id ? updated : member)),
+      }));
+      return updated;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to update family member preferences';
+      set((state) => ({
+        familyMembers: state.familyMembers.map((member) => (member.id === id ? existing : member)),
+        error: message,
+      }));
+      return null;
     }
   },
 

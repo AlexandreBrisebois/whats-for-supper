@@ -29,10 +29,16 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         modelBuilder.Entity<FamilyMember>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.BrowseViewMode)
+                  .HasDefaultValue("stack");
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt)
                   .HasDefaultValueSql("NOW()");
+            entity.ToTable("family_members", t =>
+                t.HasCheckConstraint(
+                    "CK_family_members_browse_view_mode",
+                    "browse_view_mode IN ('stack', 'list')"));
         });
 
         modelBuilder.Entity<Recipe>(entity =>

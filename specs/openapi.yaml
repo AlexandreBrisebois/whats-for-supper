@@ -1018,10 +1018,13 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name, createdAt, updatedAt]
+                      required: [id, name, browseViewMode, createdAt, updatedAt]
                       properties:
                         id: { type: string, format: uuid }
                         name: { type: string }
+                        browseViewMode:
+                          type: string
+                          enum: [stack, list]
                         createdAt: { type: string, format: date-time }
                         updatedAt: { type: string, format: date-time }
               examples:
@@ -1030,14 +1033,17 @@ paths:
                     data:
                       - id: '550e8400-e29b-41d4-a716-446655440001'
                         name: 'Alex'
+                        browseViewMode: 'stack'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440002'
                         name: 'Jordan'
+                        browseViewMode: 'list'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440003'
                         name: 'Test User'
+                        browseViewMode: 'stack'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
 
@@ -1062,16 +1068,20 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
+                      browseViewMode:
+                        type: string
+                        enum: [stack, list]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
               example:
                 data:
                   id: '550e8400-e29b-41d4-a716-446655440003'
                   name: 'Test User'
+                  browseViewMode: 'stack'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
         '403':
@@ -1114,15 +1124,87 @@ paths:
                 properties:
                   data:
                     type: object
+                    required: [id, name, browseViewMode, createdAt, updatedAt]
                     properties:
-                      id: { type: string }
+                      id: { type: string, format: uuid }
                       name: { type: string }
+                      browseViewMode:
+                        type: string
+                        enum: [stack, list]
+                      createdAt: { type: string, format: date-time }
+                      updatedAt: { type: string, format: date-time }
+              example:
+                data:
+                  id: '550e8400-e29b-41d4-a716-446655440001'
+                  name: 'Alex'
+                  browseViewMode: 'stack'
+                  createdAt: '2024-01-01T00:00:00Z'
+                  updatedAt: '2024-01-01T00:00:00Z'
     delete:
       summary: Delete a family member
       security: [{ FamilyMemberId: [] }]
       responses:
         '204':
           description: Deleted
+
+  /api/family/{id}/preferences:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Update family member preferences
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [browseViewMode]
+              properties:
+                browseViewMode:
+                  type: string
+                  enum: [stack, list]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    properties:
+                      id: { type: string, format: uuid }
+                      name: { type: string }
+                      browseViewMode:
+                        type: string
+                        enum: [stack, list]
+                      createdAt: { type: string, format: date-time }
+                      updatedAt: { type: string, format: date-time }
+              example:
+                data:
+                  id: '550e8400-e29b-41d4-a716-446655440001'
+                  name: 'Alex'
+                  browseViewMode: 'list'
+                  createdAt: '2024-01-01T00:00:00Z'
+                  updatedAt: '2024-01-01T00:00:00Z'
+        '400':
+          description: Invalid browse view mode
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+              example:
+                error: "browseViewMode must be stack or list."
+        '404':
+          description: Family member not found
 
   /api/recipes:
     get:

@@ -12,13 +12,7 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
     public async Task<IActionResult> GetAll()
     {
         var members = await familyService.GetAllFamilyMembers();
-        var dtos = members.Select(m => new FamilyMemberDto
-        {
-            Id = m.Id,
-            Name = m.Name,
-            CreatedAt = m.CreatedAt,
-            UpdatedAt = m.UpdatedAt
-        }).ToList();
+        var dtos = members.Select(ToDto).ToList();
         return Ok(dtos);
     }
 
@@ -31,13 +25,7 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
         }
 
         var member = await familyService.CreateFamilyMember(dto.Name);
-        var result = new FamilyMemberDto
-        {
-            Id = member.Id,
-            Name = member.Name,
-            CreatedAt = member.CreatedAt,
-            UpdatedAt = member.UpdatedAt
-        };
+        var result = ToDto(member);
         return CreatedAtAction(nameof(GetAll), null, result);
     }
 
@@ -45,14 +33,16 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateFamilyMemberDto dto)
     {
         var member = await familyService.UpdateFamilyMember(id, dto.Name);
-        var result = new FamilyMemberDto
-        {
-            Id = member.Id,
-            Name = member.Name,
-            CreatedAt = member.CreatedAt,
-            UpdatedAt = member.UpdatedAt
-        };
-        return Ok(result);
+        return Ok(ToDto(member));
+    }
+
+    [HttpPut("{id:guid}/preferences")]
+    public async Task<IActionResult> UpdatePreferences(
+        Guid id,
+        [FromBody] UpdateFamilyMemberPreferencesDto dto)
+    {
+        var member = await familyService.UpdateFamilyMemberPreferences(id, dto.BrowseViewMode);
+        return Ok(ToDto(member));
     }
 
     [HttpDelete("{id:guid}")]
@@ -61,4 +51,13 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
         await familyService.DeleteFamilyMember(id);
         return NoContent();
     }
+
+    private static FamilyMemberDto ToDto(RecipeApi.Models.FamilyMember member) => new()
+    {
+        Id = member.Id,
+        Name = member.Name,
+        BrowseViewMode = member.BrowseViewMode,
+        CreatedAt = member.CreatedAt,
+        UpdatedAt = member.UpdatedAt
+    };
 }

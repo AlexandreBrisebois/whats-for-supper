@@ -295,6 +295,13 @@ tasks:
 
   gen:client:
     desc: "🔄 Regenerate Kiota API client from specs/openapi.yaml"
+    summary: |
+      Regenerates the Kiota TypeScript API client.
+
+      Agent note: this command can hang in the Codex sandbox while `dotnet kiota`
+      runs. If it stays quiet for more than about a minute, stop and ask Alex to
+      run `task gen:client` locally, then continue after the generated files are
+      present.
     dir: pwa
     cmds:
       - npm run api:generate

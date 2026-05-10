@@ -10,6 +10,7 @@
 
 import { test, expect, type Page } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import type { RecipeDto } from '../src/lib/api/generated/models/index';
 
 // ---------------------------------------------------------------------------
 // Mock data
@@ -34,6 +35,27 @@ const RECIPE_3 = builders.recipe({
 });
 
 const THREE_RECIPES = [RECIPE_1, RECIPE_2, RECIPE_3];
+const LIST_RECIPES = [
+  MOCK_IDS.RECIPE_LIST_01,
+  MOCK_IDS.RECIPE_LIST_02,
+  MOCK_IDS.RECIPE_LIST_03,
+  MOCK_IDS.RECIPE_LIST_04,
+  MOCK_IDS.RECIPE_LIST_05,
+  MOCK_IDS.RECIPE_LIST_06,
+  MOCK_IDS.RECIPE_LIST_07,
+  MOCK_IDS.RECIPE_LIST_08,
+  MOCK_IDS.RECIPE_LIST_09,
+  MOCK_IDS.RECIPE_LIST_10,
+  MOCK_IDS.RECIPE_LIST_11,
+  MOCK_IDS.RECIPE_LIST_12,
+  MOCK_IDS.RECIPE_LIST_13,
+].map((id, index) =>
+  builders.recipe({
+    id,
+    name: `List Recipe ${index + 1}`,
+    isDiscoverable: true,
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -89,48 +111,6 @@ async function swipeLeft(page: Page): Promise<void> {
   await page.waitForTimeout(1000);
 }
 
-/**
- * Simulate a swipe-right gesture on the End Card.
- */
-async function swipeRightEndCard(page: Page): Promise<void> {
-  const card = page.getByTestId('browse-all-end-card');
-  await card.waitFor({ state: 'visible' });
-  const box = await card.boundingBox();
-  if (!box) throw new Error('browse-all-end-card has no bounding box');
-
-  const startX = box.x + box.width / 2;
-  const startY = box.y + box.height / 2;
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(startX + 200, startY, { steps: 10 });
-  await page.mouse.up();
-
-  // Wait for animation
-  await page.waitForTimeout(1000);
-}
-
-/**
- * Simulate a swipe-left gesture on the End Card.
- */
-async function swipeLeftEndCard(page: Page): Promise<void> {
-  const card = page.getByTestId('browse-all-end-card');
-  await card.waitFor({ state: 'visible' });
-  const box = await card.boundingBox();
-  if (!box) throw new Error('browse-all-end-card has no bounding box');
-
-  const startX = box.x + box.width / 2;
-  const startY = box.y + box.height / 2;
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(startX - 200, startY, { steps: 10 });
-  await page.mouse.up();
-
-  // Wait for animation
-  await page.waitForTimeout(1000);
-}
-
 // ---------------------------------------------------------------------------
 // Common beforeEach setup
 // ---------------------------------------------------------------------------
@@ -138,29 +118,75 @@ async function swipeLeftEndCard(page: Page): Promise<void> {
 async function setupBrowseAllStack(
   page: Page,
   options?: {
-    recipes?: typeof THREE_RECIPES;
+    recipes?: RecipeDto[];
     total?: number;
+    browseViewMode?: 'stack' | 'list';
   }
 ) {
   const recipes = options?.recipes ?? THREE_RECIPES;
   const total = options?.total ?? recipes.length;
+  const browseViewMode = options?.browseViewMode ?? 'stack';
   const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
   await page
     .context()
     .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
 
-  await page.addInitScript((id) => {
-    localStorage.setItem(
-      'family-storage',
-      JSON.stringify({
-        state: { selectedFamilyMemberId: id },
-        version: 0,
-      })
-    );
-  }, MOCK_IDS.MEMBER_ALEX);
+  await page.addInitScript(
+    ({ id, mode }) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({
+          state: {
+            selectedFamilyMemberId: id,
+            familyMembers: [{ id, name: 'Alex', browseViewMode: mode }],
+            hasLoaded: true,
+          },
+          version: 0,
+        })
+      );
+    },
+    { id: MOCK_IDS.MEMBER_ALEX, mode: browseViewMode }
+  );
 
   await setupCommonRoutes(page);
+
+  let savedBrowseViewMode = browseViewMode;
+  await page.route('**/api/family', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            builders.familyMember({
+              id: MOCK_IDS.MEMBER_ALEX,
+              name: 'Alex',
+              browseViewMode: savedBrowseViewMode,
+            }),
+          ],
+        }),
+      });
+    } else {
+      await route.fallback();
+    }
+  });
+
+  await page.route('**/api/family/*/preferences', async (route) => {
+    const body = route.request().postDataJSON() as { browseViewMode?: 'stack' | 'list' };
+    savedBrowseViewMode = body.browseViewMode ?? savedBrowseViewMode;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: builders.familyMember({
+          id: MOCK_IDS.MEMBER_ALEX,
+          name: 'Alex',
+          browseViewMode: savedBrowseViewMode,
+        }),
+      }),
+    });
+  });
 
   // Override library-summary with test-specific total
   await page.route('**/api/recipes/library-summary', async (route) => {
@@ -179,13 +205,18 @@ async function setupBrowseAllStack(
 
   // Override explore order with test-specific recipes
   await page.route('**/api/recipes?**order=explore**', async (route) => {
+    const url = new URL(route.request().url());
+    const pageNumber = Number(url.searchParams.get('page') ?? '1');
+    const limit = Number(url.searchParams.get('limit') ?? '20');
+    const start = (pageNumber - 1) * limit;
+    const pageRecipes = recipes.slice(start, start + limit);
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         updatedAt: new Date().toISOString(),
-        recipes,
-        pagination: { page: 1, limit: 20, total },
+        recipes: pageRecipes,
+        pagination: { page: pageNumber, limit, total },
       }),
     });
   });
@@ -249,6 +280,49 @@ test.describe('Browse All Stack — Overlay Structure', () => {
   });
 });
 
+test.describe('Browse All Stack — View Modes', () => {
+  test('saved List preference is restored on entry', async ({ page }) => {
+    await setupBrowseAllStack(page, { browseViewMode: 'list' });
+    await page.goto('/browse-all-stack');
+
+    await expect(page.getByTestId('browse-list-grid')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('stack-card-front')).not.toBeVisible();
+  });
+
+  test('user switches to List, leaves the page, returns, and List is restored', async ({
+    page,
+  }) => {
+    await setupBrowseAllStack(page);
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('stack-card-front')).toBeVisible({ timeout: 10_000 });
+
+    await page.getByTestId('browse-view-list').click();
+    await expect(page.getByTestId('browse-list-grid')).toBeVisible({ timeout: 10_000 });
+
+    await page.goto('/home');
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('browse-list-grid')).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('List infinite scroll loads the next page without a manual button', async ({ page }) => {
+    await setupBrowseAllStack(page, {
+      browseViewMode: 'list',
+      recipes: LIST_RECIPES,
+      total: LIST_RECIPES.length,
+    });
+    await page.goto('/browse-all-stack');
+
+    await expect(page.getByTestId('browse-list-grid')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(12);
+
+    await page.getByTestId('browse-list-grid').evaluate((element) => {
+      element.parentElement?.scrollTo({ top: element.scrollHeight, behavior: 'instant' });
+    });
+
+    await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(13, { timeout: 10_000 });
+  });
+});
+
 test.describe('Browse All Stack — Exit and Search Escape', () => {
   test.beforeEach(async ({ page }) => {
     await setupBrowseAllStack(page);
@@ -286,36 +360,36 @@ test.describe('Browse All Stack — Card Navigation', () => {
   });
 
   // Requirement 2.1
-  test('swipe right advances to next card', async ({ page }) => {
+  test('swipe left advances to next card', async ({ page }) => {
     // First card should be visible
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible();
 
-    await swipeRight(page);
+    await swipeLeft(page);
 
-    // After swipe right, the second card should become the front card
+    // After swipe left, the second card should become the front card
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CARBONARA}`)).toBeVisible({
       timeout: 5_000,
     });
   });
 
   // Requirement 2.2
-  test('swipe left returns to previous card', async ({ page }) => {
+  test('swipe right returns to previous card', async ({ page }) => {
     // Advance to second card first
-    await swipeRight(page);
+    await swipeLeft(page);
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CARBONARA}`)).toBeVisible({
       timeout: 5_000,
     });
 
-    // Now swipe left to go back
-    await swipeLeft(page);
+    // Now swipe right to go back
+    await swipeRight(page);
 
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible({
       timeout: 5_000,
     });
   });
 
-  // Requirement 2.3 — backward infinite scroll: swipe left on first card wraps to last recipe
-  test('first card wraps to last recipe on swipe left', async ({ page }) => {
+  // Requirement 2.3 — backward endless navigation: swipe right on first card wraps to last recipe
+  test('first card wraps to last recipe on swipe right', async ({ page }) => {
     // On first card
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible();
 
@@ -330,24 +404,25 @@ test.describe('Browse All Stack — Card Navigation', () => {
   });
 
   // Requirement 2.4
-  test('swiping right on last card shows End Card', async ({ page }) => {
+  test('swiping left on last card loops to the first card', async ({ page }) => {
     // Swipe through all 3 recipes
-    await swipeRight(page);
+    await swipeLeft(page);
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CARBONARA}`)).toBeVisible({
       timeout: 5_000,
     });
 
-    await swipeRight(page);
+    await swipeLeft(page);
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CHICKEN}`)).toBeVisible({
       timeout: 5_000,
     });
 
-    // Swipe right on last card → End Card
-    await swipeRight(page); // Salad -> End Card
+    // Swipe left on last card loops to first card
+    await swipeLeft(page);
 
-    // Wait for animation to finish
-    await page.waitForTimeout(500);
-    await expect(page.getByTestId('browse-all-end-card')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId('browse-all-end-card')).not.toBeVisible();
   });
 });
 
@@ -373,7 +448,7 @@ test.describe('Browse All Stack — Depth Indicator', () => {
     const indicator = page.getByTestId('stack-depth-indicator');
     await expect(indicator).toContainText('1');
 
-    await swipeRight(page);
+    await swipeLeft(page);
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CARBONARA}`)).toBeVisible({
       timeout: 5_000,
     });
@@ -469,7 +544,7 @@ test.describe('Browse All Stack — Discoverable Toggle', () => {
     ).toBeVisible();
 
     // Swipe to second card
-    await swipeRight(page);
+    await swipeLeft(page);
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CARBONARA}`)).toBeVisible({
       timeout: 5_000,
     });
@@ -566,67 +641,17 @@ test.describe('Browse All Stack — Empty State', () => {
   });
 });
 
-test.describe('Browse All Stack — End Card', () => {
-  test.beforeEach(async ({ page }) => {
+test.describe('Browse All Stack — Endless Navigation', () => {
+  test('non-empty libraries never show the End Card while looping forward', async ({ page }) => {
     await setupBrowseAllStack(page);
     await page.goto('/browse-all-stack');
-    await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('stack-card-front')).toBeVisible({ timeout: 10_000 });
 
-    // Swipe through all 3 recipes to reach End Card
-    await swipeRight(page);
-    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CARBONARA}`)).toBeVisible({
-      timeout: 5_000,
-    });
+    for (let i = 0; i < 6; i += 1) {
+      await swipeLeft(page);
+      await expect(page.getByTestId('browse-all-end-card')).not.toBeVisible();
+    }
 
-    await swipeRight(page);
-    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CHICKEN}`)).toBeVisible({
-      timeout: 5_000,
-    });
-
-    await swipeRight(page);
-    await expect(page.getByTestId('browse-all-end-card')).toBeVisible({ timeout: 10_000 });
-  });
-
-  // Requirement 8.1
-  test('End Card is shown after last recipe', async ({ page }) => {
-    await expect(page.getByTestId('browse-all-end-card')).toBeVisible();
-  });
-
-  // Requirement 8.6
-  test('End Card CTA navigates to /capture', async ({ page }) => {
-    await page.getByTestId('end-card-capture-cta').click();
-
-    await expect(page).toHaveURL(/\/capture/, { timeout: 5_000 });
-  });
-
-  // Requirement 8.7
-  test('swiping right on End Card wraps to first recipe', async ({ page }) => {
-    await swipeRightEndCard(page);
-
-    // Should wrap back to first card
-    await expect(page.getByTestId('stack-card-front')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible({
-      timeout: 5_000,
-    });
-
-    // Depth indicator should reset to 1
-    await expect(page.getByTestId('stack-depth-indicator')).toContainText('1');
-  });
-
-  // Requirement 8.8
-  test('swiping left on End Card returns to last recipe', async ({ page }) => {
-    await swipeLeftEndCard(page);
-
-    // Should return to last recipe card
-    await expect(page.getByTestId('stack-card-front')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CHICKEN}`)).toBeVisible({
-      timeout: 5_000,
-    });
-  });
-
-  // Requirement 1.8 — exit and search buttons visible on End Card
-  test('exit and search buttons are visible on End Card', async ({ page }) => {
     await expect(page.getByTestId('browse-all-exit')).toBeVisible();
     await expect(page.getByTestId('browse-all-search-trigger')).toBeVisible();
   });

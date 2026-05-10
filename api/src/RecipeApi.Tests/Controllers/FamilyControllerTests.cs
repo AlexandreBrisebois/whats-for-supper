@@ -50,6 +50,7 @@ public class FamilyControllerTests : IAsyncLifetime
         using var doc = JsonDocument.Parse(json);
         var data = doc.RootElement.GetProperty("data");
         Assert.Equal("Test Member", data.GetProperty("name").GetString());
+        Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
         Assert.NotEqual(Guid.Empty, data.GetProperty("id").GetGuid());
     }
 
@@ -105,6 +106,7 @@ public class FamilyControllerTests : IAsyncLifetime
         var updateJson = await updateResponse.Content.ReadAsStringAsync();
         using var updateDoc = JsonDocument.Parse(updateJson);
         Assert.Equal("Updated Name", updateDoc.RootElement.GetProperty("data").GetProperty("name").GetString());
+        Assert.Equal("stack", updateDoc.RootElement.GetProperty("data").GetProperty("browseViewMode").GetString());
     }
 
     [Fact]
@@ -123,6 +125,63 @@ public class FamilyControllerTests : IAsyncLifetime
     public async Task Update_NonExistent_Returns_NotFound()
     {
         var response = await _client.PutAsJsonAsync($"/api/family/{Guid.NewGuid()}", new { name = "Anyone" });
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    // ── PUT /api/family/{id}/preferences ─────────────────────────────────────
+
+    [Theory]
+    [InlineData("stack")]
+    [InlineData("list")]
+    public async Task UpdatePreferences_Persists_BrowseViewMode_And_Preserves_Name(string browseViewMode)
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/family", new { name = "Alex" });
+        var createJson = await createResponse.Content.ReadAsStringAsync();
+        using var createDoc = JsonDocument.Parse(createJson);
+        var id = createDoc.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+
+        var updateResponse = await _client.PutAsJsonAsync(
+            $"/api/family/{id}/preferences",
+            new { browseViewMode });
+
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        var updateJson = await updateResponse.Content.ReadAsStringAsync();
+        using var updateDoc = JsonDocument.Parse(updateJson);
+        var data = updateDoc.RootElement.GetProperty("data");
+        Assert.Equal("Alex", data.GetProperty("name").GetString());
+        Assert.Equal(browseViewMode, data.GetProperty("browseViewMode").GetString());
+
+        var listResponse = await _client.GetAsync("/api/family");
+        var listJson = await listResponse.Content.ReadAsStringAsync();
+        using var listDoc = JsonDocument.Parse(listJson);
+        var member = listDoc.RootElement.GetProperty("data").EnumerateArray()
+            .Single(e => e.GetProperty("id").GetGuid() == id);
+        Assert.Equal("Alex", member.GetProperty("name").GetString());
+        Assert.Equal(browseViewMode, member.GetProperty("browseViewMode").GetString());
+    }
+
+    [Fact]
+    public async Task UpdatePreferences_Invalid_BrowseViewMode_Returns_BadRequest()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/family", new { name = "Alex" });
+        var createJson = await createResponse.Content.ReadAsStringAsync();
+        using var createDoc = JsonDocument.Parse(createJson);
+        var id = createDoc.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+
+        var response = await _client.PutAsJsonAsync(
+            $"/api/family/{id}/preferences",
+            new { browseViewMode = "carousel" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdatePreferences_NonExistent_Returns_NotFound()
+    {
+        var response = await _client.PutAsJsonAsync(
+            $"/api/family/{Guid.NewGuid()}/preferences",
+            new { browseViewMode = "list" });
+
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 

@@ -3,6 +3,7 @@ export type RecipeRating = 0 | 1 | 2 | 3; // 0=Unknown, 1=Dislike, 2=Like, 3=Lov
 export interface FamilyMember {
   id: string;
   name: string;
+  browseViewMode?: 'stack' | 'list';
 }
 
 export interface RecipeImage {

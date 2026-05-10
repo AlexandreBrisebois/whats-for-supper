@@ -88,6 +88,28 @@ describe('browseStackStore — appendRecipes', () => {
     useBrowseStackStore.getState().appendRecipes([makeRecipe('r2')]);
     expect(useBrowseStackStore.getState().recipes[0].id).toBe('r1');
   });
+
+  it('deduplicates appended recipe ids', () => {
+    useBrowseStackStore.getState().setRecipes([makeRecipe('r1'), makeRecipe('r2')]);
+    useBrowseStackStore.getState().appendRecipes([makeRecipe('r2'), makeRecipe('r3')]);
+    expect(useBrowseStackStore.getState().recipes.map((recipe) => recipe.id)).toEqual([
+      'r1',
+      'r2',
+      'r3',
+    ]);
+  });
+
+  it('retains a bounded recipe window when requested', () => {
+    useBrowseStackStore.getState().setRecipes([makeRecipe('r1'), makeRecipe('r2')]);
+    useBrowseStackStore
+      .getState()
+      .appendRecipes([makeRecipe('r3'), makeRecipe('r4'), makeRecipe('r5')], 3);
+    expect(useBrowseStackStore.getState().recipes.map((recipe) => recipe.id)).toEqual([
+      'r3',
+      'r4',
+      'r5',
+    ]);
+  });
 });
 
 describe('browseStackStore — reset', () => {

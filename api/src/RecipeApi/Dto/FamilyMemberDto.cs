@@ -10,6 +10,9 @@ public class FamilyMemberDto
     [JsonPropertyName("name")]
     public required string Name { get; set; }
 
+    [JsonPropertyName("browseViewMode")]
+    public required string BrowseViewMode { get; set; }
+
     [JsonPropertyName("createdAt")]
     public DateTimeOffset CreatedAt { get; set; }
 

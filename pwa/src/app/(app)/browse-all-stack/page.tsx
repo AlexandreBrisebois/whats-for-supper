@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { X, Search, Loader2, Compass, Recycle } from 'lucide-react';
+import { X, Search, Loader2, Compass, Recycle, Layers3, Grid3X3 } from 'lucide-react';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
@@ -11,6 +11,7 @@ import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { useBrowseStackStore } from '@/store/browseStackStore';
+import { useFamilyStore } from '@/store/familyStore';
 import { apiClient } from '@/lib/api/api-client';
 import { updateRecipe, type Recipe } from '@/lib/api/recipes';
 import {
@@ -25,6 +26,12 @@ import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipe
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 
+type BrowseViewMode = 'stack' | 'list';
+
+const STACK_PAGE_SIZE = 20;
+const LIST_PAGE_SIZE = 12;
+const LIST_RETAINED_RECIPE_COUNT = 72;
+
 // ---------------------------------------------------------------------------
 // BrowseAllStack page
 // Full-screen immersive overlay for browsing the recipe library card by card.
@@ -33,6 +40,11 @@ import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 
 export default function BrowseAllStackPage() {
   const router = useRouter();
+  const { familyMembers, selectedFamilyMemberId, loadFamilyMembers, updateMemberPreferences } =
+    useFamilyStore();
+  const selectedMember = familyMembers.find((member) => member.id === selectedFamilyMemberId);
+  const savedBrowseViewMode: BrowseViewMode =
+    selectedMember?.browseViewMode === 'list' ? 'list' : 'stack';
 
   // Store state
   const {
@@ -53,6 +65,14 @@ export default function BrowseAllStackPage() {
 
   // Local UI state
   const [isDiscoverableOnly, setIsDiscoverableOnly] = useState(false);
+  const [browseViewModeOverride, setBrowseViewModeOverride] = useState<{
+    memberId: string | null;
+    mode: BrowseViewMode;
+  } | null>(null);
+  const browseViewMode =
+    browseViewModeOverride?.memberId === selectedFamilyMemberId
+      ? browseViewModeOverride.mode
+      : savedBrowseViewMode;
   const [isEndCard, setIsEndCard] = useState(false);
   const [isPrefetching, setIsPrefetching] = useState(false);
   const [prefetchFailed, setPrefetchFailed] = useState(false);
@@ -72,14 +92,26 @@ export default function BrowseAllStackPage() {
 
   // Ref to track whether a prefetch is already in flight (avoid duplicate requests)
   const prefetchInFlightRef = useRef(false);
+  const listSentinelRef = useRef<HTMLDivElement | null>(null);
   // Ref to track the page/filter being prefetched to avoid races
-  const currentRequestRef = useRef<{ page: number; discoverableOnly: boolean } | null>(null);
+  const currentRequestRef = useRef<{
+    page: number;
+    discoverableOnly: boolean;
+    viewMode: BrowseViewMode;
+  } | null>(null);
+
+  useEffect(() => {
+    if (selectedFamilyMemberId && familyMembers.length === 0) {
+      void loadFamilyMembers();
+    }
+  }, [familyMembers.length, loadFamilyMembers, selectedFamilyMemberId]);
 
   // ---------------------------------------------------------------------------
   // Data Fetching: fetch summary + first page
   // ---------------------------------------------------------------------------
   const fetchLibraryData = useCallback(
     async (page: number, discoverable: boolean, append = false) => {
+      const pageSize = browseViewMode === 'list' ? LIST_PAGE_SIZE : STACK_PAGE_SIZE;
       try {
         if (!append) {
           setIsInitialLoading(true);
@@ -90,7 +122,11 @@ export default function BrowseAllStackPage() {
           setPrefetchFailed(false);
         }
 
-        currentRequestRef.current = { page, discoverableOnly: discoverable };
+        currentRequestRef.current = {
+          page,
+          discoverableOnly: discoverable,
+          viewMode: browseViewMode,
+        };
 
         // Fetch library summary for total counts (only on first load)
         if (!append) {
@@ -104,7 +140,7 @@ export default function BrowseAllStackPage() {
           queryParameters: {
             order: GetOrderQueryParameterTypeObject.Explore,
             page: page,
-            limit: 20,
+            limit: pageSize,
             discoverableOnly: discoverable,
           },
         });
@@ -112,7 +148,8 @@ export default function BrowseAllStackPage() {
         // Check if this request is still relevant (not superseded by a filter toggle)
         if (
           currentRequestRef.current?.page !== page ||
-          currentRequestRef.current?.discoverableOnly !== discoverable
+          currentRequestRef.current?.discoverableOnly !== discoverable ||
+          currentRequestRef.current?.viewMode !== browseViewMode
         ) {
           return;
         }
@@ -121,7 +158,10 @@ export default function BrowseAllStackPage() {
         const paginationTotal = result?.pagination?.total ?? 0;
 
         if (append) {
-          appendRecipes(fetchedRecipes);
+          appendRecipes(
+            fetchedRecipes,
+            browseViewMode === 'list' ? LIST_RETAINED_RECIPE_COUNT : undefined
+          );
         } else {
           setRecipes(fetchedRecipes);
           setCurrentIndex(0);
@@ -150,7 +190,7 @@ export default function BrowseAllStackPage() {
         prefetchInFlightRef.current = false;
       }
     },
-    [appendRecipes, setRecipes, setCurrentIndex, setTotalCount]
+    [appendRecipes, browseViewMode, setRecipes, setCurrentIndex, setTotalCount]
   );
 
   // ---------------------------------------------------------------------------
@@ -166,7 +206,7 @@ export default function BrowseAllStackPage() {
     }
 
     // Otherwise calculate the last page number and fetch it.
-    const LIMIT = 20;
+    const LIMIT = STACK_PAGE_SIZE;
     const lastPage = Math.ceil(totalCount / LIMIT);
 
     setIsWrappingToEnd(true);
@@ -224,7 +264,7 @@ export default function BrowseAllStackPage() {
     Promise.resolve().then(() => {
       fetchLibraryData(1, isDiscoverableOnly);
     });
-  }, [isDiscoverableOnly, fetchLibraryData]);
+  }, [isDiscoverableOnly, browseViewMode, fetchLibraryData]);
 
   // Unmount: reset store state
   useEffect(() => {
@@ -237,7 +277,15 @@ export default function BrowseAllStackPage() {
   // Pre-fetch next page when remainingCards <= 5 (requirement 5.3)
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (isInitialLoading || isEndCard || !hasMorePages || prefetchInFlightRef.current) return;
+    if (
+      browseViewMode !== 'stack' ||
+      isInitialLoading ||
+      isEndCard ||
+      !hasMorePages ||
+      prefetchInFlightRef.current
+    ) {
+      return;
+    }
 
     const remainingCards = recipes.length - currentIndex - 1;
 
@@ -257,45 +305,81 @@ export default function BrowseAllStackPage() {
     currentPage,
     isDiscoverableOnly,
     fetchLibraryData,
+    browseViewMode,
   ]);
+
+  const loadNextListPage = useCallback(() => {
+    if (
+      browseViewMode !== 'list' ||
+      isInitialLoading ||
+      isPrefetching ||
+      !hasMorePages ||
+      prefetchInFlightRef.current
+    ) {
+      return;
+    }
+
+    prefetchInFlightRef.current = true;
+    Promise.resolve().then(() => {
+      fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
+    });
+  }, [
+    browseViewMode,
+    currentPage,
+    fetchLibraryData,
+    hasMorePages,
+    isDiscoverableOnly,
+    isInitialLoading,
+    isPrefetching,
+  ]);
+
+  useEffect(() => {
+    if (browseViewMode !== 'list') return;
+    const sentinel = listSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          loadNextListPage();
+        }
+      },
+      { rootMargin: '600px 0px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [browseViewMode, loadNextListPage]);
+
+  useEffect(() => {
+    const handler = () => loadNextListPage();
+    window.addEventListener('browse-list-load-more', handler);
+    return () => window.removeEventListener('browse-list-load-more', handler);
+  }, [loadNextListPage]);
 
   // ---------------------------------------------------------------------------
   // Navigation handlers
   // ---------------------------------------------------------------------------
-  const handleSwipeRight = useCallback(() => {
-    if (isEndCard) {
-      setIsEndCard(false);
+  const handleSwipeLeft = useCallback(() => {
+    const isLastCard = currentIndex >= recipes.length - 1;
+
+    if (isLastCard && hasMorePages && isPrefetching) return;
+
+    if (isLastCard && !hasMorePages) {
       setCurrentIndex(0);
       return;
     }
 
-    const isLastCard = currentIndex >= recipes.length - 1;
-
-    if (isLastCard && !hasMorePages) {
-      setIsEndCard(true);
-      return;
-    }
-
-    if (isLastCard && isPrefetching) {
-      return;
-    }
-
     setCurrentIndex(currentIndex + 1);
-  }, [isEndCard, currentIndex, recipes.length, hasMorePages, isPrefetching, setCurrentIndex]);
+  }, [currentIndex, recipes.length, hasMorePages, isPrefetching, setCurrentIndex]);
 
-  const handleSwipeLeft = useCallback(() => {
-    // From the End Card: go to the actual last recipe (wrap backwards).
-    if (isEndCard) {
-      wrapToLastPage();
-      return;
-    }
-    // From the first card: also wrap to the last recipe.
+  const handleSwipeRight = useCallback(() => {
     if (currentIndex <= 0) {
       wrapToLastPage();
       return;
     }
     previousCard();
-  }, [isEndCard, currentIndex, previousCard, wrapToLastPage]);
+  }, [currentIndex, previousCard, wrapToLastPage]);
 
   // ---------------------------------------------------------------------------
   // Recipe Detail Sheet handlers
@@ -391,6 +475,23 @@ export default function BrowseAllStackPage() {
     setIsDiscoverableOnly((prev) => !prev);
   }, []);
 
+  const handleViewModeChange = useCallback(
+    (nextMode: BrowseViewMode) => {
+      if (nextMode === browseViewMode) return;
+      setBrowseViewModeOverride({ memberId: selectedFamilyMemberId, mode: nextMode });
+      setIsEndCard(false);
+      setCurrentIndex(0);
+      if (selectedFamilyMemberId) {
+        void updateMemberPreferences(selectedFamilyMemberId, { browseViewMode: nextMode }).catch(
+          () => {
+            setBrowseViewModeOverride({ memberId: selectedFamilyMemberId, mode: browseViewMode });
+          }
+        );
+      }
+    },
+    [browseViewMode, selectedFamilyMemberId, setCurrentIndex, updateMemberPreferences]
+  );
+
   // ---------------------------------------------------------------------------
   // Exit and search escape handlers
   // ---------------------------------------------------------------------------
@@ -420,7 +521,8 @@ export default function BrowseAllStackPage() {
 
   const isAtLastLoadedCard = currentIndex >= recipes.length - 1;
   const showLoader =
-    (isAtLastLoadedCard && isPrefetching && !isEndCard && recipes.length > 0) || isWrappingToEnd;
+    browseViewMode === 'stack' &&
+    ((isAtLastLoadedCard && isPrefetching && !isEndCard && recipes.length > 0) || isWrappingToEnd);
   const isEmpty = !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly;
 
   // ---------------------------------------------------------------------------
@@ -445,23 +547,54 @@ export default function BrowseAllStackPage() {
           <X size={20} />
         </button>
 
-        <button
-          onClick={handleGlobalToggleDiscoverable}
-          data-testid="stack-toggle-discoverable"
-          className={`flex h-11 items-center gap-2 rounded-full px-4 transition-all duration-300 border ${
-            isDiscoverableOnly
-              ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
-              : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
-          } backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2`}
-          aria-label={
-            isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
-          }
-        >
-          <Compass className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`} />
-          <span className="text-xs font-black tracking-wide uppercase">
-            {isDiscoverableOnly ? 'Discovery Recipes' : 'All Recipes'}
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm backdrop-blur-sm">
+            <button
+              type="button"
+              data-testid="browse-view-stack"
+              aria-label="Show recipe cards"
+              onClick={() => handleViewModeChange('stack')}
+              className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
+                browseViewMode === 'stack' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
+              }`}
+            >
+              <Layers3 className="h-4 w-4" />
+              Cards
+            </button>
+            <button
+              type="button"
+              data-testid="browse-view-list"
+              aria-label="Show recipe list"
+              onClick={() => handleViewModeChange('list')}
+              className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
+                browseViewMode === 'list' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
+              }`}
+            >
+              <Grid3X3 className="h-4 w-4" />
+              List
+            </button>
+          </div>
+
+          <button
+            onClick={handleGlobalToggleDiscoverable}
+            data-testid="stack-toggle-discoverable"
+            className={`flex h-11 items-center gap-2 rounded-full px-4 transition-all duration-300 border ${
+              isDiscoverableOnly
+                ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
+                : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
+            } backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2`}
+            aria-label={
+              isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
+            }
+          >
+            <Compass
+              className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`}
+            />
+            <span className="text-xs font-black tracking-wide uppercase">
+              {isDiscoverableOnly ? 'Discovery Recipes' : 'All Recipes'}
+            </span>
+          </button>
+        </div>
 
         <div className="flex items-center gap-2">
           <button
@@ -515,7 +648,48 @@ export default function BrowseAllStackPage() {
 
         {isEmpty && <EndCard isEmpty={true} onSwipeRight={() => {}} onSwipeLeft={() => {}} />}
 
-        {!isInitialLoading && !loadError && (recipes.length > 0 || isEndCard) && (
+        {!isInitialLoading && !loadError && browseViewMode === 'list' && recipes.length > 0 && (
+          <div className="w-full max-w-6xl flex-1 min-h-0 overflow-y-auto px-1 pb-8">
+            <div
+              data-testid="browse-list-grid"
+              className="grid grid-cols-2 min-[1024px]:grid-cols-3 gap-3 sm:gap-4"
+            >
+              {recipes.map((recipe) => (
+                <button
+                  type="button"
+                  key={recipe.id}
+                  data-testid="browse-list-recipe-card"
+                  onClick={() => handleCardTap(recipe.id!)}
+                  className="group overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+                >
+                  <div className="aspect-[4/3] bg-sage/10 overflow-hidden">
+                    <img
+                      src={`/api/recipes/${recipe.id}/hero`}
+                      alt=""
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="p-3">
+                    <p className="line-clamp-2 text-sm font-black leading-tight text-charcoal">
+                      {recipe.name}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-charcoal/50">
+                      {recipe.totalTime || 'N/A'} · {recipe.difficulty || 'Medium'}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div ref={listSentinelRef} className="h-20 w-full" aria-hidden="true" />
+            {isPrefetching && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="animate-spin text-ochre" size={28} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isInitialLoading && !loadError && browseViewMode === 'stack' && recipes.length > 0 && (
           <div className="w-full max-w-sm flex-1 flex flex-col min-h-0">
             <div className="relative flex-1 min-h-0">
               <AnimatePresence mode="popLayout">
@@ -526,14 +700,6 @@ export default function BrowseAllStackPage() {
                   >
                     <Loader2 className="animate-spin text-ochre" size={48} />
                   </div>
-                ) : isEndCard ? (
-                  <EndCard
-                    key="end"
-                    isEmpty={false}
-                    onSwipeRight={handleSwipeRight}
-                    onSwipeLeft={handleSwipeLeft}
-                    onAddRecipe={handleAddRecipe}
-                  />
                 ) : (
                   visibleRecipes.map((recipe, i) => (
                     <RecipeStackCard
@@ -564,14 +730,6 @@ export default function BrowseAllStackPage() {
                 totalCount={totalCount}
                 onToggleIndividualCuration={handleIndividualToggleDiscoverable}
               />
-            )}
-
-            {isEndCard && (
-              <div className="flex items-center justify-end px-6 py-4">
-                <span className="text-sm font-black tabular-nums text-charcoal/50 tracking-tight">
-                  {totalCount} / {totalCount}
-                </span>
-              </div>
             )}
           </div>
         )}

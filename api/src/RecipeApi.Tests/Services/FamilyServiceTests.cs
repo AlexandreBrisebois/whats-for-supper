@@ -23,6 +23,17 @@ public class FamilyServiceTests
     }
 
     [Fact]
+    public async Task CreateFamilyMember_Defaults_BrowseViewMode_To_Stack()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(ctx);
+
+        var member = await service.CreateFamilyMember("Alice");
+
+        Assert.Equal("stack", member.BrowseViewMode);
+    }
+
+    [Fact]
     public async Task CreateFamilyMember_Empty_Name_Throws()
     {
         await using var ctx = TestDbContextFactory.Create();
@@ -96,6 +107,47 @@ public class FamilyServiceTests
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.UpdateFamilyMember(Guid.NewGuid(), "New Name"));
+    }
+
+    [Theory]
+    [InlineData("stack")]
+    [InlineData("list")]
+    public async Task UpdateFamilyMemberPreferences_Persists_BrowseViewMode_And_Preserves_Name(
+        string browseViewMode)
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(ctx);
+        var member = await service.CreateFamilyMember("Alex");
+
+        var updated = await service.UpdateFamilyMemberPreferences(member.Id, browseViewMode);
+
+        Assert.Equal("Alex", updated.Name);
+        Assert.Equal(browseViewMode, updated.BrowseViewMode);
+
+        var reFetched = await ctx.FamilyMembers.FindAsync(member.Id);
+        Assert.Equal("Alex", reFetched!.Name);
+        Assert.Equal(browseViewMode, reFetched.BrowseViewMode);
+    }
+
+    [Fact]
+    public async Task UpdateFamilyMemberPreferences_Invalid_BrowseViewMode_Throws()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(ctx);
+        var member = await service.CreateFamilyMember("Alex");
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdateFamilyMemberPreferences(member.Id, "carousel"));
+    }
+
+    [Fact]
+    public async Task UpdateFamilyMemberPreferences_NonExistent_Throws_KeyNotFoundException()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(ctx);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.UpdateFamilyMemberPreferences(Guid.NewGuid(), "list"));
     }
 
     // ── DeleteFamilyMember ────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => {
 
   const librarySummaryGet = vi.fn();
   const recipesGet = vi.fn();
+  const familyPreferencesPut = vi.fn();
   const updateRecipe = vi.fn();
   const push = vi.fn();
   const back = vi.fn();
@@ -25,6 +26,7 @@ const mocks = vi.hoisted(() => {
   return {
     librarySummaryGet,
     recipesGet,
+    familyPreferencesPut,
     updateRecipe,
     push,
     back,
@@ -115,6 +117,13 @@ vi.mock('@/lib/api/api-client', () => ({
         },
         get: (...args: unknown[]) => mocks.recipesGet(...args),
       },
+      family: {
+        byId: () => ({
+          preferences: {
+            put: (...args: unknown[]) => mocks.familyPreferencesPut(...args),
+          },
+        }),
+      },
     },
   },
 }));
@@ -163,6 +172,7 @@ vi.mock('@/components/recipes/RecycleBinSheet', () => ({
 // ---------------------------------------------------------------------------
 import BrowseAllStackPage from './page';
 import { useBrowseStackStore } from '@/store/browseStackStore';
+import { useFamilyStore } from '@/store/familyStore';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -228,10 +238,30 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.resetCaptures();
   useBrowseStackStore.getState().reset();
+  useFamilyStore.setState({
+    familyMembers: [
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'Alex',
+        browseViewMode: 'stack',
+      },
+    ],
+    selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
+    isLoading: false,
+    error: null,
+    hasLoaded: true,
+  });
 
   // Default: 3 recipes, no more pages
   mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(3));
   mocks.recipesGet.mockResolvedValue(makePageResponse(RECIPE_IDS.slice(0, 3), 3));
+  mocks.familyPreferencesPut.mockResolvedValue({
+    data: {
+      id: '11111111-1111-1111-1111-111111111111',
+      name: 'Alex',
+      browseViewMode: 'list',
+    },
+  });
   mocks.updateRecipe.mockResolvedValue(undefined);
 });
 
@@ -268,6 +298,54 @@ describe('BrowseAllStack — mount fetches', () => {
   });
 });
 
+describe('BrowseAllStack — view mode preference', () => {
+  it('uses the selected member saved browse mode as the initial view', async () => {
+    useFamilyStore.setState({
+      familyMembers: [
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'Alex',
+          browseViewMode: 'list',
+        },
+      ],
+      selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
+    });
+
+    render(<BrowseAllStackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('browse-list-grid')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('stack-card-front')).not.toBeInTheDocument();
+    expect(mocks.recipesGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({
+          page: 1,
+          limit: 12,
+        }),
+      })
+    );
+  });
+
+  it('optimistically toggles view mode and persists it to member preferences', async () => {
+    render(<BrowseAllStackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
+    });
+
+    act(() => {
+      screen.getByTestId('browse-view-list').click();
+    });
+
+    expect(screen.getByTestId('browse-list-grid')).toBeInTheDocument();
+    expect(mocks.familyPreferencesPut).toHaveBeenCalledWith(
+      expect.objectContaining({ browseViewMode: 'list' })
+    );
+  });
+});
+
 describe('BrowseAllStack — initial card display', () => {
   it('displays the first card after load', async () => {
     render(<BrowseAllStackPage />);
@@ -282,7 +360,7 @@ describe('BrowseAllStack — initial card display', () => {
 });
 
 describe('BrowseAllStack — swipe navigation', () => {
-  it('advances to the next card on swipe right', async () => {
+  it('advances to the next card on swipe left', async () => {
     render(<BrowseAllStackPage />);
 
     await waitFor(() => {
@@ -292,13 +370,10 @@ describe('BrowseAllStack — swipe navigation', () => {
     const onDragEnd = mocks.getCapturedOnDragEnd();
     expect(onDragEnd).toBeDefined();
 
-    // Swipe right beyond 80px threshold
+    // Swipe left beyond 80px threshold
     await act(async () => {
-      await onDragEnd!(null, makeDragInfo(100));
+      await onDragEnd!(null, makeDragInfo(-100));
     });
-
-    console.log('DOM AFTER SWIPE:');
-    screen.debug(screen.getByTestId('browse-all-stack-container'));
 
     await waitFor(() => {
       // Second recipe should now be the front card
@@ -309,7 +384,7 @@ describe('BrowseAllStack — swipe navigation', () => {
     });
   });
 
-  it('returns to the previous card on swipe left', async () => {
+  it('returns to the previous card on swipe right', async () => {
     render(<BrowseAllStackPage />);
 
     await waitFor(() => {
@@ -319,7 +394,7 @@ describe('BrowseAllStack — swipe navigation', () => {
     // First advance to card 2
     const onDragEnd = mocks.getCapturedOnDragEnd();
     await act(async () => {
-      await onDragEnd!(null, makeDragInfo(100));
+      await onDragEnd!(null, makeDragInfo(-100));
     });
 
     await waitFor(() => {
@@ -329,10 +404,10 @@ describe('BrowseAllStack — swipe navigation', () => {
       );
     });
 
-    // Now swipe left to go back
+    // Now swipe right to go back
     const onDragEndAfterAdvance = mocks.getCapturedOnDragEnd();
     await act(async () => {
-      await onDragEndAfterAdvance!(null, makeDragInfo(-100));
+      await onDragEndAfterAdvance!(null, makeDragInfo(100));
     });
 
     await waitFor(() => {
@@ -365,13 +440,13 @@ describe('BrowseAllStack — pre-fetch', () => {
     // Advance to index 1 (6 remaining) — no prefetch yet
     const onDragEnd = mocks.getCapturedOnDragEnd();
     await act(async () => {
-      await onDragEnd!(null, makeDragInfo(100));
+      await onDragEnd!(null, makeDragInfo(-100));
     });
 
     // Advance to index 2 (5 remaining) — prefetch should trigger
     const onDragEnd2 = mocks.getCapturedOnDragEnd();
     await act(async () => {
-      await onDragEnd2!(null, makeDragInfo(100));
+      await onDragEnd2!(null, makeDragInfo(-100));
     });
 
     await waitFor(() => {
@@ -392,7 +467,7 @@ describe('BrowseAllStack — pre-fetch', () => {
 });
 
 describe('BrowseAllStack — End Card', () => {
-  it('shows End Card after swiping past the last recipe', async () => {
+  it('loops to the first card instead of showing End Card after the last recipe', async () => {
     // 3 recipes, no more pages
     render(<BrowseAllStackPage />);
 
@@ -404,39 +479,9 @@ describe('BrowseAllStack — End Card', () => {
     for (let i = 0; i < 3; i++) {
       const onDragEnd = mocks.getCapturedOnDragEnd();
       await act(async () => {
-        await onDragEnd!(null, makeDragInfo(100));
+        await onDragEnd!(null, makeDragInfo(-100));
       });
     }
-
-    await waitFor(() => {
-      expect(screen.getByTestId('browse-all-end-card')).toBeInTheDocument();
-    });
-  });
-
-  it('wraps to first card when End Card is swiped right', async () => {
-    render(<BrowseAllStackPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
-    });
-
-    // Swipe through all 3 recipes to reach End Card
-    for (let i = 0; i < 3; i++) {
-      const onDragEnd = mocks.getCapturedOnDragEnd();
-      await act(async () => {
-        await onDragEnd!(null, makeDragInfo(100));
-      });
-    }
-
-    await waitFor(() => {
-      expect(screen.getByTestId('browse-all-end-card')).toBeInTheDocument();
-    });
-
-    // Swipe right on End Card — should wrap to first recipe
-    const onDragEndOnEndCard = mocks.getCapturedOnDragEnd();
-    await act(async () => {
-      await onDragEndOnEndCard!(null, makeDragInfo(100));
-    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toHaveAttribute(
@@ -444,9 +489,74 @@ describe('BrowseAllStack — End Card', () => {
         RECIPE_IDS[0]
       );
     });
-
-    // End Card should no longer be visible
     expect(screen.queryByTestId('browse-all-end-card')).not.toBeInTheDocument();
+  });
+
+  it('loops backward from the first card to the last recipe', async () => {
+    render(<BrowseAllStackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
+    });
+
+    const onDragEnd = mocks.getCapturedOnDragEnd();
+    await act(async () => {
+      await onDragEnd!(null, makeDragInfo(100));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute(
+        'data-recipe-id',
+        RECIPE_IDS[2]
+      );
+    });
+
+    expect(screen.queryByTestId('browse-all-end-card')).not.toBeInTheDocument();
+  });
+});
+
+describe('BrowseAllStack — list mode', () => {
+  it('requests pages of 12 and appends deduped results', async () => {
+    useFamilyStore.setState({
+      familyMembers: [
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'Alex',
+          browseViewMode: 'list',
+        },
+      ],
+      selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
+    });
+    mocks.recipesGet
+      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 6, 1))
+      .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[2], RECIPE_IDS[3], RECIPE_IDS[4]], 6, 2));
+
+    render(<BrowseAllStackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('browse-list-grid')).toBeInTheDocument();
+    });
+
+    expect(mocks.recipesGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({
+          page: 1,
+          limit: 12,
+        }),
+      })
+    );
+
+    act(() => {
+      window.dispatchEvent(new Event('browse-list-load-more'));
+    });
+
+    await waitFor(() => {
+      expect(mocks.recipesGet).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('browse-list-recipe-card')).toHaveLength(5);
+    });
   });
 });
 
@@ -480,7 +590,7 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
     // Advance to card 2 first
     const onDragEnd = mocks.getCapturedOnDragEnd();
     await act(async () => {
-      await onDragEnd!(null, makeDragInfo(100));
+      await onDragEnd!(null, makeDragInfo(-100));
     });
 
     await waitFor(() => {

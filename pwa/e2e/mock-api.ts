@@ -129,6 +129,7 @@ export const builders = {
   familyMember: (overrides: Partial<FamilyGetResponse_data> = {}): FamilyGetResponse_data => ({
     id: MOCK_IDS.MEMBER_ALEX,
     name: 'Alex',
+    browseViewMode: 'stack',
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -194,6 +195,22 @@ export async function setupCommonRoutes(page: Page) {
         status: 201,
         contentType: 'application/json',
         body: JSON.stringify({ data: builders.familyMember() }),
+      });
+    } else {
+      await route.fallback();
+    }
+  });
+
+  // PUT /api/family/{id}/preferences
+  await page.route('**/api/family/*/preferences', async (route) => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON() as { browseViewMode?: 'stack' | 'list' };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: builders.familyMember({ browseViewMode: body.browseViewMode ?? 'stack' }),
+        }),
       });
     } else {
       await route.continue();

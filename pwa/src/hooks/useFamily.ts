@@ -15,6 +15,7 @@ export function useFamily() {
     selectFamilyMember,
     addMember,
     updateMember,
+    updateMemberPreferences,
     removeMember,
     loadFamilyMembers,
     _hasHydrated,
@@ -34,6 +35,7 @@ export function useFamily() {
     selectFamilyMember,
     addMember,
     updateMember,
+    updateMemberPreferences,
     removeMember,
     loadFamily: loadFamilyMembers,
   };
