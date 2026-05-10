@@ -87,9 +87,12 @@ vi.mock('@/store/plannerStore', () => ({
 }));
 
 vi.mock('@/store/weekStore', () => ({
-  useWeekStore: Object.assign((selector: (state: any) => unknown) => selector(mocks.getWeekState()), {
-    getState: () => mocks.getWeekState(),
-  }),
+  useWeekStore: Object.assign(
+    (selector: (state: any) => unknown) => selector(mocks.getWeekState()),
+    {
+      getState: () => mocks.getWeekState(),
+    }
+  ),
 }));
 
 vi.mock('@/store/discoveryStore', () => ({

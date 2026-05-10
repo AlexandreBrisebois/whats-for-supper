@@ -502,9 +502,7 @@ export default function PlannerPage() {
                 data-testid="planner-action-row"
                 className={cn(
                   'mb-4 items-center gap-2',
-                  isVotingOpen
-                    ? 'grid grid-cols-[auto_1fr_auto]'
-                    : 'flex flex-wrap justify-start'
+                  isVotingOpen ? 'grid grid-cols-[auto_1fr_auto]' : 'flex flex-wrap justify-start'
                 )}
               >
                 {canOpenVoting && (

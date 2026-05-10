@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => {
   const searchRecipes = vi.fn();
   const getRecipe = vi.fn();
   const updateRecipe = vi.fn();
+  const loadSetting = vi.fn();
+  const saveSetting = vi.fn();
   const assignRecipeToDay = vi.fn();
   const getSchedule = vi.fn();
   const submitInventoryCapture = vi.fn();
@@ -14,11 +16,14 @@ const mocks = vi.hoisted(() => {
   const healthGet = vi.fn();
   const push = vi.fn();
   let searchParams = new URLSearchParams('');
+  let familySettings: Record<string, unknown> = {};
 
   return {
     searchRecipes,
     getRecipe,
     updateRecipe,
+    loadSetting,
+    saveSetting,
     assignRecipeToDay,
     getSchedule,
     submitInventoryCapture,
@@ -31,6 +36,10 @@ const mocks = vi.hoisted(() => {
       searchParams = new URLSearchParams(value);
     },
     getSearchParams: () => searchParams,
+    setFamilySettings: (value: Record<string, unknown>) => {
+      familySettings = value;
+    },
+    getFamilySettings: () => familySettings,
   };
 });
 
@@ -70,6 +79,15 @@ vi.mock('@/lib/api/recipes', () => ({
   getTrashItems: (...args: unknown[]) => mocks.getTrashItems(...args),
   restoreRecipe: (...args: unknown[]) => mocks.restoreRecipe(...args),
   purgeRecipe: (...args: unknown[]) => mocks.purgeRecipe(...args),
+}));
+
+vi.mock('@/store/familyStore', () => ({
+  useFamilyStore: () => ({
+    familySettings: mocks.getFamilySettings(),
+    loadSetting: (...args: unknown[]) => mocks.loadSetting(...args),
+    saveSetting: (...args: unknown[]) => mocks.saveSetting(...args),
+    selectedFamilyMemberId: 'member-1',
+  }),
 }));
 
 vi.mock('@/lib/api/inventory', () => ({
@@ -153,9 +171,14 @@ describe('RecipesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.setSearchParams('');
+    mocks.setFamilySettings({});
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse());
     mocks.getRecipe.mockResolvedValue(makeRecipeDetail());
     mocks.updateRecipe.mockResolvedValue(undefined);
+    mocks.loadSetting.mockResolvedValue(null);
+    mocks.saveSetting.mockImplementation(async (key: string, value: unknown) => {
+      mocks.setFamilySettings({ ...mocks.getFamilySettings(), [key]: value });
+    });
     mocks.assignRecipeToDay.mockResolvedValue(undefined);
     mocks.getSchedule.mockResolvedValue({
       weekOffset: 0,
@@ -295,6 +318,7 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
     expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Family favorite.');
     expect(screen.getByRole('button', { name: 'Like' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('action-set-goto')).toBeInTheDocument();
     expect(screen.getByTestId('action-cook-this')).toBeInTheDocument();
     expect(screen.getByTestId('action-find-similar')).toBeInTheDocument();
     expect(screen.getByTestId('action-toggle-discovery')).toBeInTheDocument();
@@ -313,6 +337,60 @@ describe('RecipesPage', () => {
     expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
     expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
+  });
+
+  it('marks a recipe as the family GOTO from the detail sheet star pill', async () => {
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-set-goto')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('action-set-goto'));
+
+    await waitFor(() => {
+      expect(mocks.saveSetting).toHaveBeenCalledWith('family_goto', {
+        recipeId: '11111111-1111-1111-1111-111111111111',
+        description: 'Chicken Soup',
+        imageUrl: 'https://example.com/chicken-soup.jpg',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-current-goto')).toHaveTextContent('GOTO');
+    });
+    expect(screen.queryByTestId('action-set-goto')).not.toBeInTheDocument();
+  });
+
+  it('shows the current GOTO pill without re-saving when the detail recipe is already GOTO', async () => {
+    mocks.setFamilySettings({
+      family_goto: {
+        recipeId: '11111111-1111-1111-1111-111111111111',
+        description: 'Chicken Soup',
+        imageUrl: 'https://example.com/chicken-soup.jpg',
+      },
+    });
+
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('action-current-goto')).toHaveTextContent('GOTO');
+    });
+
+    fireEvent.click(screen.getByTestId('action-current-goto'));
+    expect(mocks.saveSetting).not.toHaveBeenCalled();
   });
 
   it('edits notes and rating from the detail sheet using PATCH calls', async () => {

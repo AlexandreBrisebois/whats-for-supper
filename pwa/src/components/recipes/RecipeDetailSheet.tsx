@@ -13,6 +13,7 @@ import {
   Save,
   Camera,
   RefreshCw,
+  Star,
 } from 'lucide-react';
 import {
   getRecipe,
@@ -25,8 +26,11 @@ import {
 } from '@/lib/api/recipes';
 import { t } from '@/locales';
 import { useUiStore } from '@/store/uiStore';
+import { useFamilyStore } from '@/store/familyStore';
 import { ActionGearMenu } from './ActionGearMenu';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
+
+const GOTO_KEY = 'family_goto';
 
 const RATING_OPTIONS = [
   { value: 1, emoji: '👎', label: 'Dislike' },
@@ -66,9 +70,17 @@ export function RecipeDetailSheet({
   const [notesSaved, setNotesSaved] = useState(false);
   const [showActionPivot, setShowActionPivot] = useState(false);
   const [isUpdatingDiscovery, setIsUpdatingDiscovery] = useState(false);
+  const [isSavingGoto, setIsSavingGoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
+  const { familySettings, loadSetting, saveSetting } = useFamilyStore();
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const currentGoto = familySettings[GOTO_KEY] as
+    | { recipeId?: string; description?: string; imageUrl?: string }
+    | null
+    | undefined;
+  const isCurrentGoto = !!recipe?.id && currentGoto?.recipeId === recipe.id;
 
   useEffect(() => {
     let isActive = true;
@@ -101,6 +113,10 @@ export function RecipeDetailSheet({
       isActive = false;
     };
   }, [recipeId]);
+
+  useEffect(() => {
+    void loadSetting(GOTO_KEY);
+  }, [loadSetting]);
 
   useEffect(() => {
     if (!recipe) return;
@@ -273,6 +289,31 @@ export function RecipeDetailSheet({
     }
   };
 
+  const handleSetGoto = async () => {
+    if (!recipe || isCurrentGoto || isSavingGoto) return;
+
+    setIsSavingGoto(true);
+    try {
+      await saveSetting(GOTO_KEY, {
+        recipeId: recipe.id,
+        description: recipe.name,
+        imageUrl: recipe.imageUrl,
+      });
+      addToast({
+        type: 'success',
+        message: t('recipes.gotoUpdated', 'GOTO updated'),
+      });
+    } catch (error) {
+      console.error('Failed to update GOTO recipe', error);
+      addToast({
+        type: 'error',
+        message: t('recipes.gotoUpdateFailed', 'Could not update GOTO'),
+      });
+    } finally {
+      setIsSavingGoto(false);
+    }
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !recipe) return;
@@ -328,15 +369,48 @@ export function RecipeDetailSheet({
             {!isLoading && recipe && !isEditing && (
               <button
                 type="button"
+                data-testid={isCurrentGoto ? 'action-current-goto' : 'action-set-goto'}
+                aria-label={
+                  isCurrentGoto
+                    ? t('recipes.currentGoto', 'Current GOTO recipe')
+                    : t('recipes.setGoto', 'Set as GOTO')
+                }
+                title={
+                  isCurrentGoto
+                    ? t('recipes.currentGoto', 'Current GOTO recipe')
+                    : t('recipes.setGoto', 'Set as GOTO')
+                }
+                aria-pressed={isCurrentGoto}
+                onClick={() => void handleSetGoto()}
+                disabled={isSavingGoto || isCurrentGoto}
+                className={[
+                  'inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-black uppercase tracking-wider shadow-sm transition disabled:cursor-default',
+                  isCurrentGoto
+                    ? 'bg-ochre text-white'
+                    : 'bg-white text-ochre hover:bg-ochre/10 disabled:opacity-60',
+                ].join(' ')}
+              >
+                <Star
+                  size={15}
+                  fill={isCurrentGoto ? 'currentColor' : 'none'}
+                  strokeWidth={isCurrentGoto ? 2.8 : 2.4}
+                />
+                {isCurrentGoto && <span>GOTO</span>}
+              </button>
+            )}
+            {!isLoading && recipe && !isEditing && (
+              <button
+                type="button"
                 data-testid="action-edit-recipe"
+                aria-label={t('common.edit', 'Edit')}
+                title={t('common.edit', 'Edit')}
                 onClick={() => {
                   resetDrafts(recipe);
                   setIsEditing(true);
                 }}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-white px-4 text-xs font-black uppercase tracking-wider text-charcoal shadow-sm transition hover:bg-charcoal/5"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-charcoal shadow-sm transition hover:bg-charcoal/5"
               >
                 <Pencil size={14} />
-                {t('common.edit', 'Edit')}
               </button>
             )}
             {!isLoading && recipe && !isEditing && (

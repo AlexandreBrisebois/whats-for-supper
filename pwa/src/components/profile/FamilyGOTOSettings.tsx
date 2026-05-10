@@ -5,7 +5,7 @@ import {
   Loader2,
   Sparkles,
   ChevronRight,
-  BookOpen,
+  Search,
   PenLine,
   Camera,
   X,
@@ -15,7 +15,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useFamilyStore } from '@/store/familyStore';
 import { useGotoStore } from '@/store/gotoStore';
-import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { apiClient } from '@/lib/api/api-client';
 
 const GOTO_KEY = 'family_goto';
@@ -40,11 +39,8 @@ function isGotoValue(v: unknown): v is GotoValue {
 }
 
 export function FamilyGOTOSettings() {
-  const { loadSetting, saveSetting, familySettings } = useFamilyStore();
-  const [isSaving, setIsSaving] = useState(false);
-  const [showSaved, setShowSaved] = useState(false);
+  const { loadSetting, familySettings } = useFamilyStore();
   const [showSheet, setShowSheet] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
   const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>(null);
   // Flash state: show CheckCircle2 for 2s when recipe transitions to ready
   const [showReadyFlash, setShowReadyFlash] = useState(false);
@@ -121,25 +117,6 @@ export function FamilyGOTOSettings() {
   const isPending = recipeStatus === 'pending';
   const isReady = recipeStatus === 'ready';
 
-  const handleRecipeSelect = async (recipe: any) => {
-    setShowPicker(false);
-    setShowSheet(false);
-    setIsSaving(true);
-    setShowSaved(false);
-    try {
-      await saveSetting(GOTO_KEY, {
-        description: recipe.name,
-        recipeId: recipe.id,
-        imageUrl: recipe.image,
-      });
-      setRecipeStatus('ready'); // Library recipes are always ready
-      setShowSaved(true);
-      setTimeout(() => setShowSaved(false), 2500);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleDescribeIt = () => {
     setShowSheet(false);
     router.push('/capture?intent=goto&mode=describe');
@@ -148,6 +125,11 @@ export function FamilyGOTOSettings() {
   const handleCaptureIt = () => {
     setShowSheet(false);
     router.push('/capture?intent=goto&mode=photo');
+  };
+
+  const handleSearchLibrary = () => {
+    setShowSheet(false);
+    router.push('/recipes');
   };
 
   return (
@@ -163,12 +145,7 @@ export function FamilyGOTOSettings() {
           in one tap.
         </p>
 
-        {isSaving ? (
-          <div className="flex items-center gap-3 py-3">
-            <Loader2 className="h-5 w-5 text-ochre animate-spin" />
-            <span className="text-sm font-medium text-charcoal/60">Saving your GOTO…</span>
-          </div>
-        ) : isPending ? (
+        {isPending ? (
           /* Pending state — synthesis in progress */
           <div className="flex items-start justify-between gap-3" data-testid="goto-pending-state">
             <div className="flex flex-col gap-1 min-w-0">
@@ -228,7 +205,6 @@ export function FamilyGOTOSettings() {
                   data-testid="goto-recipe-name"
                 >
                   <p className="text-sm font-bold text-charcoal">{currentGoto.description}</p>
-                  {showSaved && <p className="text-xs text-sage font-medium mt-0.5">Saved ✓</p>}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -293,21 +269,19 @@ export function FamilyGOTOSettings() {
 
               {/* Options */}
               <div className="flex flex-col gap-3">
-                {/* Pick from library */}
+                {/* Search library */}
                 <button
-                  onClick={() => {
-                    setShowSheet(false);
-                    setShowPicker(true);
-                  }}
+                  onClick={handleSearchLibrary}
                   className="flex items-center gap-4 w-full h-16 rounded-2xl bg-ochre/10 px-5 text-left hover:bg-ochre/20 transition-colors"
+                  data-testid="goto-search-library"
                 >
                   <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-ochre/20 flex items-center justify-center">
-                    <BookOpen size={18} className="text-ochre" />
+                    <Search size={18} className="text-ochre" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-charcoal">Pick from library</p>
+                    <p className="text-sm font-black text-charcoal">Search the Library</p>
                     <p className="text-[10px] text-charcoal/40 font-medium">
-                      Choose an existing recipe
+                      Find the recipe, then tap the star to make it your GOTO.
                     </p>
                   </div>
                 </button>
@@ -349,10 +323,6 @@ export function FamilyGOTOSettings() {
         )}
       </AnimatePresence>
 
-      {/* Library picker — opened from the sheet */}
-      {showPicker && (
-        <QuickFindModal onClose={() => setShowPicker(false)} onSelect={handleRecipeSelect} />
-      )}
     </>
   );
 }
