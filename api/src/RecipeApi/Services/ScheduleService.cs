@@ -190,7 +190,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             // Push logic: find first empty slot starting at toIndex
             var targetIndex = dto.ToIndex;
             bool foundEmpty = false;
-            while (targetIndex < 7)
+            while (targetIndex < 14)
             {
                 var checkDate = monday.AddDays(targetIndex);
                 var exists = await _dbContext.CalendarEvents.AnyAsync(e => e.Date == checkDate);
@@ -215,6 +215,11 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                     {
                         prevEvent.Date = currentDay;
                     }
+                }
+                if (dto.ToIndex >= 7)
+                {
+                    var targetWeekMonday = monday.AddDays((dto.ToIndex / 7) * 7);
+                    await EnsureWeekPlanExistsAsync(targetWeekMonday);
                 }
                 if (preserveOrderedInSource)
                 {
