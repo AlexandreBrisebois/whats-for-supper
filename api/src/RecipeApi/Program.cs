@@ -7,6 +7,7 @@ using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Middleware;
 using RecipeApi.Services;
+using RecipeApi.Services.Ai;
 using RecipeApi.Services.Agents;
 using RecipeApi.Services.Processors;
 using RecipeApi.Workflow;
@@ -123,6 +124,7 @@ try
     builder.Services.AddSingleton<CronScheduleCalculator>();
     builder.Services.AddSingleton<DemoModeOptions>();
 
+    builder.Services.AddSingleton<AiExceptionHandler>();
     builder.Services.AddScoped<FamilyService>();
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
@@ -263,7 +265,7 @@ try
         {
             Endpoint = new Uri(endpoint),
             NetworkTimeout = TimeSpan.FromMinutes(5),
-            RetryPolicy = new ClientRetryPolicy(maxRetries: 0)
+            RetryPolicy = new ClientRetryPolicy(maxRetries: 3)
         })
         .GetChatClient(modelId)
         .AsIChatClient())

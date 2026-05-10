@@ -4,10 +4,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Services.Ai;
 using RecipeApi.Tests.Infrastructure;
 using RecipeApi.Workflow;
 using RecipeApi.Workflow.Exceptions;
@@ -73,7 +75,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var logger = loggerFactory.CreateLogger<WorkflowWorker>();
         var scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
-        _worker = new WorkflowWorker(scopeFactory, logger, Options.Create(new WorkflowRetryOptions
+        _worker = new WorkflowWorker(scopeFactory, logger, new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -320,7 +322,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -437,7 +439,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -832,7 +834,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -946,7 +948,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1060,7 +1062,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1168,7 +1170,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1275,7 +1277,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1389,7 +1391,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1502,7 +1504,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1635,7 +1637,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1752,7 +1754,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             QuietWindowStartHour = 1,
             QuietWindowEndHour = 5
         });
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), retryOpts);
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), retryOpts);
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);
@@ -1861,7 +1863,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             QuietWindowStartHour = 1,
             QuietWindowEndHour = 5
         });
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), retryOpts);
+        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), retryOpts);
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);

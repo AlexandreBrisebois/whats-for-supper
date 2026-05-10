@@ -1,3 +1,6 @@
+import { useFamilyStore } from '@/store/familyStore';
+import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
+
 export interface InventoryCaptureResult {
   snapshotId: string;
   inferredIngredients: string[];
@@ -18,8 +21,14 @@ export async function submitInventoryCapture(
     formData.append('photos', file);
   }
 
+  const familyMemberId =
+    useFamilyStore.getState().selectedFamilyMemberId || getFamilyMemberIdCookie();
+
   const res = await fetch('/api/inventory-captures', {
     method: 'POST',
+    headers: {
+      ...(familyMemberId ? { 'X-Family-Member-Id': familyMemberId } : {}),
+    },
     body: formData,
   });
 

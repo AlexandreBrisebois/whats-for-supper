@@ -7,6 +7,7 @@ import { FetchRequestAdapter } from '@microsoft/kiota-http-fetchlibrary';
 import { createApiClient, type ApiClient } from './generated/apiClient';
 import { useFamilyStore } from '@/store/familyStore';
 import { usePlannerStore } from '@/store/plannerStore';
+import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
 
 /**
  * Custom AuthenticationProvider to inject necessary headers for identity
@@ -15,7 +16,8 @@ import { usePlannerStore } from '@/store/plannerStore';
 class HearthAuthProvider implements AuthenticationProvider {
   public authenticateRequest(request: RequestInformation): Promise<void> {
     // 1. Inject Family Member ID for identity gating
-    const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
+    const familyMemberId =
+      useFamilyStore.getState().selectedFamilyMemberId || getFamilyMemberIdCookie();
     if (familyMemberId) {
       request.headers.add('X-Family-Member-Id', familyMemberId);
     }

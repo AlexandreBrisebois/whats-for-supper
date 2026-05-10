@@ -21,6 +21,7 @@ import { searchRecipes, type RecipeSearchResponse, type Recipe } from '@/lib/api
 import { submitInventoryCapture } from '@/lib/api/inventory';
 import type { RecipeSearchFiltersDto } from '@/lib/api/generated/models/index';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
@@ -518,14 +519,14 @@ export default function RecipesPage() {
           />
           {t('recipes.inventoryCamera', 'Use Camera')}
         </button>
-        <a
+        <Link
           href="/browse-all-stack"
           data-testid="browse-all-stack-trigger"
           className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm transition-colors"
         >
           <BookOpen size={16} className="text-terracotta" />
           {t('recipes.browseLibrary', 'Browse Library')}
-        </a>
+        </Link>
       </div>
 
       {showDemoAiNotice && (

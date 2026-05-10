@@ -46,21 +46,20 @@ public class WebAcquisitionAgent(
     {
         logger.LogInformation("Fetching content from {Url} for recipe {RecipeId}", url, recipeId);
 
-        // 1. Fetch HTML
-        string html;
+        string? html = null;
         try
         {
             html = await httpClient.GetStringAsync(url, ct);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            logger.LogError(ex, "Access denied (403) when fetching {Url}. This site likely blocks automated requests.", url);
-            throw; // Re-throw to let workflow handle failure
+            logger.LogWarning(ex, "Access Forbidden (403) to {Url}. This site might be blocking our scraper. Extraction will continue with limited metadata.", url);
+            // Non-fatal: we might have a name already or can fallback to URL
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex)
         {
-            logger.LogError(ex, "HTTP error {StatusCode} when fetching {Url}", ex.StatusCode, url);
-            throw;
+            logger.LogError(ex, "Failed to fetch HTML content from {Url}.", url);
+            throw; // Re-throw to be caught by WorkflowWorker
         }
 
         // 2. Extract context (Name and Hero Image URL)
@@ -68,7 +67,7 @@ public class WebAcquisitionAgent(
         var agent = chatClient.AsAIAgent(name: "WebExtractor", instructions: prompt);
 
         // We send a truncated version of HTML if it's too long, or just the first 50k chars
-        var contentToAnalyze = html.Length > 50000 ? html[..50000] : html;
+        var contentToAnalyze = html?.Length > 50000 ? html[..50000] : html ?? string.Empty;
         var response = await agent.RunAsync(
             messages: new[] { new ChatMessage(ChatRole.User, $"Extract from this HTML:\n\n{contentToAnalyze}") },
             cancellationToken: ct);
@@ -117,7 +116,7 @@ public class WebAcquisitionAgent(
         }
 
         // 5. Save HTML as a first-class artifact
-        await recipeRepository.SaveContentHtmlAsync(recipeId, html, ct);
+        await recipeRepository.SaveContentHtmlAsync(recipeId, html ?? string.Empty, ct);
 
         // 6. Persist SourceUrl in recipe.info
         info.SourceUrl = url;

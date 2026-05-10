@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Utensils } from 'lucide-react';
+import Link from 'next/link';
 import { getFillTheGap } from '@/lib/api/planner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -143,13 +144,13 @@ export function QuickFindModal({
                         Our library has thousands of recipes. Try searching for exactly what
                         you&apos;re craving.
                       </p>
-                      <a
+                      <Link
                         href={searchUrl}
                         data-testid="quick-find-search-library"
                         className="inline-flex items-center justify-center w-full h-16 rounded-2xl bg-ochre text-white font-black uppercase tracking-widest text-[11px] shadow-lg shadow-ochre/20"
                       >
                         Search Library
-                      </a>
+                      </Link>
                     </div>
                   ) : (
                     /* Regular Recipe Card */

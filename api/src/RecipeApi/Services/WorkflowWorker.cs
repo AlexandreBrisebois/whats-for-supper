@@ -5,6 +5,8 @@ using Microsoft.Extensions.Options;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
+using RecipeApi.Models.Ai;
+using RecipeApi.Services.Ai;
 using RecipeApi.Workflow;
 using RecipeApi.Workflow.Exceptions;
 using TaskStatus = RecipeApi.Models.TaskStatus;
@@ -18,6 +20,7 @@ namespace RecipeApi.Services;
 public class WorkflowWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<WorkflowWorker> logger,
+    AiExceptionHandler aiExceptionHandler,
     IOptions<WorkflowRetryOptions> retryOptions) : BackgroundService
 {
     private readonly Dictionary<string, SemaphoreSlim> _processorThrottles = [];
@@ -289,7 +292,7 @@ public class WorkflowWorker(
             logger.LogInformation("Completed task {TaskId} with processor {ProcessorName}",
                 task.TaskId, task.ProcessorName);
         }
-        catch (Exception ex) when ((ex is TransientWorkflowException || Is429Exception(ex)) && task.RetryCount < _maxRetries)
+        catch (Exception ex) when ((ex is TransientWorkflowException || aiExceptionHandler.IsTransient(ex) || Is429Exception(ex)) && task.RetryCount < _maxRetries)
         {
             var failureType = ex is TransientWorkflowException ? "transient" : "rate-limit";
             task.RetryCount++;
@@ -320,7 +323,9 @@ public class WorkflowWorker(
                 task.TaskId, task.ProcessorName, task.RetryCount, ex.Message);
 
             task.Status = TaskStatus.Failed;
-            task.ErrorMessage = ex.Message;
+
+            var aiError = aiExceptionHandler.MapException(ex);
+            task.ErrorMessage = aiError.ToString();
             task.StackTrace = ex.StackTrace;
             task.UpdatedAt = DateTimeOffset.UtcNow;
 

@@ -1,6 +1,7 @@
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 import { usePlannerStore } from '@/store/plannerStore';
+import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
 import type {
   RecipeDto,
   RecommendationResultDto,
@@ -245,7 +246,8 @@ export async function searchRecipes(
     | 'filters'
   >
 ): Promise<RecipeSearchResponse> {
-  const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
+  const familyMemberId =
+    useFamilyStore.getState().selectedFamilyMemberId || getFamilyMemberIdCookie();
   const { sseConnectionId, localMoveSeq, confirmedMoveSeq } = usePlannerStore.getState();
   const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/search`, {
     method: 'POST',

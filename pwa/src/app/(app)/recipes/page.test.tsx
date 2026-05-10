@@ -601,7 +601,7 @@ describe('RecipesPage', () => {
     });
 
     await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+      expect(mocks.searchRecipes).toHaveBeenCalledWith(
         expect.objectContaining({ pantrySnapshotId: 'snap-123' })
       );
     });

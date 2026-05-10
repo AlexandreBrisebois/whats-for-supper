@@ -3,6 +3,8 @@
 import { Utensils } from 'lucide-react';
 import { TonightCardBase } from './TonightMenuCard';
 import { getImageUrl } from '@/lib/imageUtils';
+import Link from 'next/link';
+import { ROUTES } from '@/lib/constants/routes';
 
 interface TonightPivotCardProps {
   gotoDescription: string | null;
@@ -100,14 +102,13 @@ export function TonightPivotCard({
             </button>
           )}
           {!hasGoto && (
-            <a href="/profile/settings">
-              <button
-                data-testid="add-goto-btn"
-                className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white w-full shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
-              >
-                Add your family&apos;s GOTO recipe
-              </button>
-            </a>
+            <Link
+              href={ROUTES.PROFILE}
+              data-testid="add-goto-btn"
+              className="flex items-center justify-center h-12 rounded-[1.5rem] bg-ochre text-white w-full shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 text-[10px] font-black uppercase tracking-widest"
+            >
+              Add your family&apos;s GOTO recipe
+            </Link>
           )}
           <div className={gotoReady ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}>
             <button

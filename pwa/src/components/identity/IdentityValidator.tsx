@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useFamily } from '@/hooks/useFamily';
 import { useFamilyStore } from '@/store/familyStore';
 import { ROUTES } from '@/lib/constants/routes';
+import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
 
 interface IdentityValidatorProps {
   children: React.ReactNode;
@@ -51,6 +52,15 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
         // 3. Protected routes: If no identity, redirect to onboarding
         if (!selectedFamilyMemberId) {
+          // Attempt a last-minute recovery from cookie (BS-SSR fix)
+          const cookieId = getFamilyMemberIdCookie();
+          if (cookieId) {
+            console.log('[IdentityValidator] Recovered identity from cookie.');
+            useFamilyStore.getState().selectFamilyMember(cookieId);
+            // The useEffect will re-run with the new selectedFamilyMemberId
+            return;
+          }
+
           console.warn(
             '[IdentityValidator] No identity found for protected route. Redirecting to onboarding.'
           );

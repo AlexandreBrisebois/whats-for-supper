@@ -8,9 +8,11 @@ import { RefreshCcw, Loader2 } from 'lucide-react';
 import { getCategories, getDiscoveryStack, submitVote, DiscoveryRecipe } from '@/lib/api/discovery';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useFamily } from '@/hooks/useFamily';
+import { useRouter } from 'next/navigation';
 import { t, tWithVars } from '@/locales';
 
 export default function DiscoveryPage() {
+  const router = useRouter();
   const { setHasPendingCards, setActiveCategory } = useDiscoveryStore();
   // Lift state to store — SSE can now update the stack without the page being mounted
   const recipes = useDiscoveryStore((s) => s.discoveryStack);
@@ -410,9 +412,7 @@ export default function DiscoveryPage() {
 
                 <div className="flex flex-col w-full gap-3">
                   <button
-                    onClick={() =>
-                      (window.location.href = matchCount > 0 ? '/planner' : '/capture')
-                    }
+                    onClick={() => router.push(matchCount > 0 ? '/planner' : '/capture')}
                     className="w-full rounded-full bg-ochre px-8 py-3.5 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-all hover:bg-ochre-dark"
                   >
                     {matchCount > 0
