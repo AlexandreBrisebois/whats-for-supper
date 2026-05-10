@@ -7,7 +7,6 @@ import {
   ChefHat,
   Search,
   Trash2,
-  Eye,
   Check,
   Pencil,
   Plus,
@@ -27,6 +26,7 @@ import {
 import { t } from '@/locales';
 import { useUiStore } from '@/store/uiStore';
 import { ActionGearMenu } from './ActionGearMenu';
+import { DiscoveryToggleCard } from './DiscoveryToggleCard';
 
 const RATING_OPTIONS = [
   { value: 1, emoji: '👎', label: 'Dislike' },
@@ -65,6 +65,7 @@ export function RecipeDetailSheet({
   const [editError, setEditError] = useState<string | null>(null);
   const [notesSaved, setNotesSaved] = useState(false);
   const [showActionPivot, setShowActionPivot] = useState(false);
+  const [isUpdatingDiscovery, setIsUpdatingDiscovery] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,7 +130,16 @@ export function RecipeDetailSheet({
     if (!recipe) return;
     const next = !isDiscoverable;
     setIsDiscoverable(next);
-    await updateRecipe(recipe.id, { isDiscoverable: next });
+    setIsUpdatingDiscovery(true);
+    try {
+      await updateRecipe(recipe.id, { isDiscoverable: next });
+    } catch (error) {
+      console.error('Failed to toggle discovery', error);
+      // Revert optimistic state on error
+      setIsDiscoverable(!next);
+    } finally {
+      setIsUpdatingDiscovery(false);
+    }
   };
 
   const resetDrafts = (source: Recipe) => {
@@ -587,7 +597,7 @@ export function RecipeDetailSheet({
               </div>
             )}
 
-            <div className="flex flex-col gap-3 border-t border-charcoal/8 pt-5 sm:flex-row sm:flex-wrap">
+            <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-5">
               {!showActionPivot ? (
                 <button
                   type="button"
@@ -596,18 +606,18 @@ export function RecipeDetailSheet({
                     plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
                   }
                   disabled={isSavingAction}
-                  className="inline-flex items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
                 >
                   {primaryActionLabel}
                 </button>
               ) : (
-                <>
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
                     data-testid="action-cook-tonight"
                     onClick={() => void handleUseRecipe()}
                     disabled={isSavingAction}
-                    className="inline-flex items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                    className="flex-1 inline-flex min-h-12 items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
                   >
                     Cook Tonight
                   </button>
@@ -616,34 +626,28 @@ export function RecipeDetailSheet({
                     data-testid="action-plan-later"
                     onClick={() => void handlePlanForLater()}
                     disabled={isSavingAction}
-                    className="inline-flex items-center justify-center rounded-full bg-ochre px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-ochre/90 disabled:opacity-60"
+                    className="flex-1 inline-flex min-h-12 items-center justify-center rounded-full bg-ochre px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-ochre/90 disabled:opacity-60"
                   >
                     Plan for Later
                   </button>
-                </>
+                </div>
               )}
 
               <button
                 type="button"
                 data-testid="action-find-similar"
                 onClick={() => onFindSimilar(recipe.id)}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm transition hover:bg-charcoal/5"
               >
                 <Search size={16} />
                 {t('recipes.findSimilar', 'Find Similar')}
               </button>
 
-              <button
-                type="button"
-                data-testid="action-toggle-discovery"
-                onClick={() => void handleToggleDiscovery()}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm"
-              >
-                <Eye size={16} />
-                {isDiscoverable
-                  ? t('recipes.hideFromDiscovery', 'Hide from Discovery')
-                  : t('recipes.showInDiscovery', 'Show in Discovery')}
-              </button>
+              <DiscoveryToggleCard
+                isDiscoverable={isDiscoverable}
+                onToggle={handleToggleDiscovery}
+                isLoading={isUpdatingDiscovery}
+              />
             </div>
           </div>
         )}

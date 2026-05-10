@@ -24,11 +24,11 @@
     - _Requirements: AC 3_
 
 ## Wave 3: UI Integration & Layout
-- [ ] 5. **RecipeDetailSheet - Integrate `DiscoveryToggleCard`**
+- [x] 5. **RecipeDetailSheet - Integrate `DiscoveryToggleCard`**
     - Replace the `Eye` button with the `<DiscoveryToggleCard />`.
     - Connect the `isDiscoverable` state and `handleToggleDiscovery` logic.
     - _Requirements: AC 2, AC 4_
-- [ ] 6. **RecipeDetailSheet - Vertical Layout Adjustment**
+- [x] 6. **RecipeDetailSheet - Vertical Layout Adjustment**
     - Reorder elements: Primary Zone -> `Find Similar` -> `DiscoveryToggleCard`.
     - Ensure proper vertical spacing (`gap-3` or `gap-4`).
     - _Requirements: AC 4_
