@@ -533,7 +533,9 @@ describe('BrowseAllStack — list mode', () => {
     });
     mocks.recipesGet
       .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 15, 1))
-      .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[2], RECIPE_IDS[3], RECIPE_IDS[4]], 15, 2));
+      .mockResolvedValueOnce(
+        makePageResponse([RECIPE_IDS[2], RECIPE_IDS[3], RECIPE_IDS[4]], 15, 2)
+      );
 
     render(<BrowseAllStackPage />);
 

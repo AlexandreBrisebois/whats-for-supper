@@ -236,7 +236,7 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('pivot-sheet')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('pivot-quick-find')).toBeVisible();
     await expect(page.getByTestId('pivot-search-library')).toBeVisible();
-    await expect(page.getByTestId('pivot-ask-family')).toBeVisible();
+    await expect(page.getByTestId('pivot-ask-family')).toHaveCount(0);
   });
 
   test('should complete the search-to-planner round-trip with success feedback', async ({

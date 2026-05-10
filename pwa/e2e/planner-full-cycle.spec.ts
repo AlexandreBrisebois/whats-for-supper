@@ -281,22 +281,41 @@ test.describe('Planner — Ordered-In State', () => {
 });
 
 test.describe('Planner — Voting Flow', () => {
-  test('Ask the Family opens voting and shows Nudge button in pivot sheet', async ({ page }) => {
+  test('Ask the Family opens voting and shows Nudge in planner action row only', async ({
+    page,
+  }) => {
     await setupPlanner(page, false);
 
-    // Verify ask-family CTA exists before triggering it
     const askFamilyCta = page.getByTestId('ask-family-cta');
-    if ((await askFamilyCta.count()) === 0) {
-      test.skip();
-      return;
-    }
+    await expect(askFamilyCta).toBeVisible();
 
-    // After clicking Ask the Family, subsequent GETs return VotingOpen
     await page.route(
-      (url) => url.pathname.endsWith('/api/schedule'),
+      (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
         if (route.request().method() !== 'GET') {
-          await route.continue();
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { message: 'ok' } }),
+          });
+          return;
+        }
+        if (route.request().url().includes('smart-defaults')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                familySize: 3,
+                consensusThreshold: 2,
+                preSelectedRecipes: [],
+                openSlots: [],
+                consensusRecipesCount: 0,
+                isVotingOpen: true,
+              },
+            }),
+          });
           return;
         }
         await route.fulfill({
@@ -320,23 +339,26 @@ test.describe('Planner — Voting Flow', () => {
       }
     );
 
-    await page.route(
-      (url) => url.pathname.includes('/api/schedule/') && url.pathname.endsWith('/smart-defaults'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { isVotingOpen: true } }),
-        });
-      }
-    );
-
     await askFamilyCta.click();
 
-    // Open pivot sheet for Monday — nudge button should be visible
-    await page.getByTestId('day-card-0').click();
-    const nudgeBtn = page.getByTestId('pivot-nudge-family');
-    await expect(nudgeBtn).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('nudge-family-cta')).toBeVisible({ timeout: 5_000 });
+    await expect
+      .poll(async () =>
+        page
+          .getByTestId('planner-action-row')
+          .evaluate((row) => row.firstElementChild?.getAttribute('data-testid'))
+      )
+      .toBe('nudge-family-cta');
+
+    await page.getByTestId('day-card-0').getByTestId('edit-recipe-button').click();
+    await expect(page.getByTestId('pivot-sheet')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('pivot-nudge-family')).toHaveCount(0);
+  });
+
+  test('locked non-past week shows Ask the Family', async ({ page }) => {
+    await setupPlanner(page, true);
+
+    await expect(page.getByTestId('ask-family-cta')).toBeVisible();
   });
 });
 

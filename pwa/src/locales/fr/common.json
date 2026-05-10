@@ -204,6 +204,7 @@
     "plannedCount": "{{current}}/7 Prévus",
     "votingLive": "Votes en cours",
     "askFamily": "Demander à la famille",
+    "nudgeFamily": "Relancer la famille",
     "curatingWeek": "Préparation de votre semaine...",
     "weekFinalized": "Semaine finalisée",
     "discoveryVotesPurged": "Votes purgés et dates mises à jour.",
