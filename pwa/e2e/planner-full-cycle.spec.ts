@@ -13,6 +13,7 @@ import {
   currentMonday,
   toDateStr,
   setupCommonRoutes,
+  mockSseWithConnectedSchedule,
   mockSseWithSlotUpdate,
 } from './mock-api';
 
@@ -226,6 +227,7 @@ test.describe('Planner — Ordered-In State', () => {
         status: dateStr === today ? 3 : 0,
       };
     });
+    const schedule = { weekOffset: 0, locked: false, status: 0, days };
 
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
@@ -237,7 +239,7 @@ test.describe('Planner — Ordered-In State', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+            body: JSON.stringify({ data: schedule }),
           });
           return;
         }
@@ -265,6 +267,7 @@ test.describe('Planner — Ordered-In State', () => {
         });
       }
     );
+    await mockSseWithConnectedSchedule(page, schedule);
 
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });

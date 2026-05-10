@@ -61,7 +61,11 @@ public partial class RecipeSearchService(
         // 1. Build Base Query with Filters
         var recipesQuery = db.Recipes
             .AsNoTracking()
-            .Where(recipe => recipe.DeletedAt == null);
+            .Where(recipe =>
+                recipe.DeletedAt == null &&
+                recipe.Name != null &&
+                recipe.Name != "" &&
+                (recipe.ImageCount > 0 || recipe.IsSynthesized));
 
         recipesQuery = ApplyFilters(recipesQuery, appliedFilters);
 

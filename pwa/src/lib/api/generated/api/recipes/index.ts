@@ -208,7 +208,7 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    */
   byId(id: Guid): ItemRequestBuilder;
   /**
-   * List recipes
+   * Returns ready, non-soft-deleted recipes only. Pending imports are hidden until the recipe has a name and either at least one image or completed synthesis.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeListResponse>}
    * @throws {RecipeListResponse400Error} error when the service returns a 400 status code
@@ -227,7 +227,7 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<RecipesPostResponse | undefined>;
   /**
-   * List recipes
+   * Returns ready, non-soft-deleted recipes only. Pending imports are hidden until the recipe has a name and either at least one image or completed synthesis.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -246,11 +246,11 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
   ): RequestInformation;
 }
 /**
- * List recipes
+ * Returns ready, non-soft-deleted recipes only. Pending imports are hidden until the recipe has a name and either at least one image or completed synthesis.
  */
 export interface RecipesRequestBuilderGetQueryParameters {
   /**
-   * When true, only returns recipes marked as discoverable (high family interest).When false (default), returns all non-soft-deleted recipes.
+   * When true, only returns recipes marked as discoverable (high family interest).When false (default), returns all ready, non-soft-deleted recipes.
    */
   discoverableOnly?: boolean;
   limit?: number;

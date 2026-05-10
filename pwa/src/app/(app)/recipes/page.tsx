@@ -487,7 +487,6 @@ export default function RecipesPage() {
             }
             setSearchMode(searchMode === 'agent' ? 'standard' : 'agent');
           }}
-          aria-disabled={isDemoMode}
           className={cn(
             'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
             isDemoMode && 'opacity-60',

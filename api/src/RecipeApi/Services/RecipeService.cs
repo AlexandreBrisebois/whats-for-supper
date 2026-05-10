@@ -107,7 +107,11 @@ public class RecipeService(
         page = Math.Max(1, page);
         limit = Math.Clamp(limit, 1, 100);
 
-        var query = db.Recipes.Where(r => r.DeletedAt == null);
+        var query = db.Recipes.Where(r =>
+            r.DeletedAt == null &&
+            r.Name != null &&
+            r.Name != "" &&
+            (r.ImageCount > 0 || r.IsSynthesized));
 
         if (discoverableOnly == true)
         {

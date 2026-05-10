@@ -227,6 +227,71 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Search_Excludes_NotReady_Recipes()
+    {
+        var ready = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Ready Chicken Dinner",
+            Description = "Chicken dinner ready for search",
+            Ingredients = JsonSerializer.Serialize(new[] { "chicken" }),
+            ImageCount = 1,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        var pendingPhotoImport = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = null,
+            Description = "Chicken dinner still extracting",
+            Ingredients = JsonSerializer.Serialize(new[] { "chicken" }),
+            ImageCount = 1,
+            CreatedAt = DateTimeOffset.UtcNow.AddSeconds(1),
+            UpdatedAt = DateTimeOffset.UtcNow.AddSeconds(1)
+        };
+
+        var pendingUrlImport = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Captured Recipe",
+            Description = "Chicken dinner still captured",
+            Ingredients = JsonSerializer.Serialize(new[] { "chicken" }),
+            ImageCount = 0,
+            IsSynthesized = false,
+            CreatedAt = DateTimeOffset.UtcNow.AddSeconds(2),
+            UpdatedAt = DateTimeOffset.UtcNow.AddSeconds(2)
+        };
+
+        await SeedRecipeAsync(ready);
+        await SeedRecipeAsync(pendingPhotoImport);
+        await SeedRecipeAsync(pendingUrlImport);
+
+        var response = await PostSearchAsync(new { query = "chicken" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var returnedIds = new List<Guid>();
+        var topPick = document.RootElement.GetProperty("topPick");
+        if (topPick.ValueKind != JsonValueKind.Null)
+        {
+            returnedIds.Add(topPick.GetProperty("id").GetGuid());
+        }
+
+        returnedIds.AddRange(document.RootElement.GetProperty("results")
+            .EnumerateArray()
+            .Select(result => result.GetProperty("id").GetGuid()));
+
+        Assert.Contains(ready.Id, returnedIds);
+        Assert.DoesNotContain(pendingPhotoImport.Id, returnedIds);
+        Assert.DoesNotContain(pendingUrlImport.Id, returnedIds);
+    }
+
+    [Fact]
     public async Task Search_Mirrors_AppliedFilters_In_Response()
     {
         var response = await PostSearchAsync(new
@@ -632,6 +697,12 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        recipe.ImageCount = recipe.ImageCount == 0 &&
+                            !recipe.IsSynthesized &&
+                            !string.IsNullOrWhiteSpace(recipe.Name) &&
+                            recipe.Name != "Captured Recipe"
+            ? 1
+            : recipe.ImageCount;
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
     }
@@ -704,6 +775,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             Ingredients = JsonSerializer.Serialize(new[] { "chicken", "garlic", "spinach" }),
             Notes = description,
             DietaryProfile = JsonSerializer.Serialize(dietaryProfile, JsonDefaults.CamelCase),
+            ImageCount = 1,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

@@ -24,7 +24,7 @@ import {
  */
 export interface SearchRequestBuilder extends BaseRequestBuilder<SearchRequestBuilder> {
   /**
-   * Search recipes
+   * Searches ready, non-soft-deleted recipes only. Pending imports are not eligible for top pick or result cards.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeSearchResponseDto>}
@@ -34,7 +34,7 @@ export interface SearchRequestBuilder extends BaseRequestBuilder<SearchRequestBu
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<RecipeSearchResponseDto | undefined>;
   /**
-   * Search recipes
+   * Searches ready, non-soft-deleted recipes only. Pending imports are not eligible for top pick or result cards.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

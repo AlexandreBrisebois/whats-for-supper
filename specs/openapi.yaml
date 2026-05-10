@@ -1108,6 +1108,7 @@ paths:
   /api/recipes:
     get:
       summary: List recipes
+      description: Returns ready, non-soft-deleted recipes only. Pending imports are hidden until the recipe has a name and either at least one image or completed synthesis.
       parameters:
         - name: page
           in: query
@@ -1133,7 +1134,7 @@ paths:
             default: false
           description: |
             When true, only returns recipes marked as discoverable (high family interest).
-            When false (default), returns all non-soft-deleted recipes.
+            When false (default), returns all ready, non-soft-deleted recipes.
       responses:
         '200':
           description: OK (Not wrapped in data envelope)
@@ -1427,6 +1428,7 @@ paths:
   /api/recipes/search:
     post:
       summary: Search recipes
+      description: Searches ready, non-soft-deleted recipes only. Pending imports are not eligible for top pick or result cards.
       operationId: searchRecipes
       requestBody:
         required: true

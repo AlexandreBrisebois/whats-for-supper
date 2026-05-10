@@ -149,7 +149,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 Id = Guid.NewGuid(),
                 Name = "Never Cooked",
                 AddedBy = _factory.DefaultFamilyMemberId,
-                ImageCount = 0,
+                ImageCount = 1,
                 LastCookedDate = null,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -159,7 +159,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 Id = Guid.NewGuid(),
                 Name = "Already Cooked",
                 AddedBy = _factory.DefaultFamilyMemberId,
-                ImageCount = 0,
+                ImageCount = 1,
                 LastCookedDate = now.AddDays(-10),
                 CreatedAt = now,
                 UpdatedAt = now
@@ -208,7 +208,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 Id = Guid.NewGuid(),
                 Name = "Active Recipe",
                 AddedBy = _factory.DefaultFamilyMemberId,
-                ImageCount = 0,
+                ImageCount = 1,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -217,7 +217,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 Id = Guid.NewGuid(),
                 Name = "Deleted Recipe",
                 AddedBy = _factory.DefaultFamilyMemberId,
-                ImageCount = 0,
+                ImageCount = 1,
                 DeletedAt = now.AddDays(-1),
                 CreatedAt = now,
                 UpdatedAt = now
@@ -261,7 +261,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 Id = Guid.NewGuid(),
                 Name = "Old Cooked",
                 AddedBy = _factory.DefaultFamilyMemberId,
-                ImageCount = 0,
+                ImageCount = 1,
                 LastCookedDate = now.AddDays(-100),
                 CreatedAt = now,
                 UpdatedAt = now
@@ -271,7 +271,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 Id = Guid.NewGuid(),
                 Name = "Recent Cooked",
                 AddedBy = _factory.DefaultFamilyMemberId,
-                ImageCount = 0,
+                ImageCount = 1,
                 LastCookedDate = now.AddDays(-1),
                 CreatedAt = now,
                 UpdatedAt = now
@@ -333,6 +333,73 @@ public class RecipeControllerTests : IAsyncLifetime
         Assert.True(pagination.TryGetProperty("page",  out _));
         Assert.True(pagination.TryGetProperty("limit", out _));
         Assert.True(pagination.TryGetProperty("total", out _));
+    }
+
+    [Fact]
+    public async Task GetRecipes_Excludes_NotReady_Recipes()
+    {
+        Guid readyId;
+        Guid pendingPhotoImportId;
+        Guid pendingUrlImportId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var ready = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Ready Stack Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            var pendingPhotoImport = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = null,
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                CreatedAt = now.AddSeconds(1),
+                UpdatedAt = now.AddSeconds(1)
+            };
+
+            var pendingUrlImport = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Captured Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 0,
+                IsSynthesized = false,
+                CreatedAt = now.AddSeconds(2),
+                UpdatedAt = now.AddSeconds(2)
+            };
+
+            db.Recipes.AddRange(ready, pendingPhotoImport, pendingUrlImport);
+            await db.SaveChangesAsync();
+
+            readyId = ready.Id;
+            pendingPhotoImportId = pendingPhotoImport.Id;
+            pendingUrlImportId = pendingUrlImport.Id;
+        }
+
+        var response = await _client.GetAsync("/api/recipes?page=1&limit=100");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var ids = doc.RootElement.GetProperty("recipes")
+            .EnumerateArray()
+            .Select(r => r.GetProperty("id").GetGuid())
+            .ToHashSet();
+
+        Assert.Contains(readyId, ids);
+        Assert.DoesNotContain(pendingPhotoImportId, ids);
+        Assert.DoesNotContain(pendingUrlImportId, ids);
     }
 
     // ── GET /api/recipes/{id} ─────────────────────────────────────────────────
