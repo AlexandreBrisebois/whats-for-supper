@@ -299,9 +299,8 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
     const addGotoBtn = page.getByTestId('add-goto-btn');
     await expect(addGotoBtn).toBeVisible();
 
-    // The button is wrapped in an <a> tag pointing to /profile/settings
-    const addGotoLink = page.locator('a[href="/profile/settings"]');
-    await expect(addGotoLink).toBeVisible();
+    // The CTA is a footer link to the profile area where Family GOTO is configured.
+    await expect(addGotoBtn).toHaveAttribute('href', '/profile');
 
     // There is NO <a> tag inside the image area (rounded-[2.5rem] div)
     const imageArea = page.getByTestId('pivot-card-image-area');

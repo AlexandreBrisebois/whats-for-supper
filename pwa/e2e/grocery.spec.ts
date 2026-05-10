@@ -232,16 +232,17 @@ test.describe('Grocery List — SSE sync', () => {
     await page.getByTestId('grocery-tab').click();
     await expect(page.getByTestId('grocery-checklist')).toBeVisible({ timeout: 5_000 });
 
-    // After the grocery_updated SSE event, the Pasta item should be checked (line-through)
-    // without any navigation — the SSE push updates the store directly
+    // After the grocery_updated SSE event, the Pasta item should be checked
+    // without any navigation — the SSE push updates the store directly.
+    // Assert semantic state instead of the styling class so this remains a behavior test.
     const pastaItem = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Pasta' });
-    await expect(pastaItem.locator('span').first()).toHaveClass(/line-through/, {
-      timeout: 5_000,
-    });
+    await expect(pastaItem).toBeVisible({ timeout: 10_000 });
+    await expect(pastaItem).toHaveAttribute('aria-checked', 'true', { timeout: 10_000 });
 
     // Other items should remain unchecked
     const beefItem = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Beef' });
-    await expect(beefItem.locator('span').first()).not.toHaveClass(/line-through/);
+    await expect(beefItem).toBeVisible({ timeout: 10_000 });
+    await expect(beefItem).toHaveAttribute('aria-checked', 'false');
   });
 
   test('week_updated SSE → grocery checkboxes do not flash (jitter regression test)', async ({

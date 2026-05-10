@@ -9,6 +9,15 @@ namespace RecipeApi.Dto;
 /// </summary>
 public class UpdateRecipeDto
 {
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("ingredients")]
+    public List<string>? Ingredients { get; set; }
+
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
 

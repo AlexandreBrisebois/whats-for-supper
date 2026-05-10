@@ -224,9 +224,19 @@ export async function captureUrl(
 
 export async function updateRecipe(
   id: string,
-  updates: { notes?: string; rating?: number; isDiscoverable?: boolean | null }
+  updates: {
+    name?: string;
+    description?: string;
+    ingredients?: string[];
+    notes?: string;
+    rating?: number;
+    isDiscoverable?: boolean | null;
+  }
 ): Promise<void> {
   await apiClient.api.recipes.byId(id as any).patch({
+    name: updates.name,
+    description: updates.description,
+    ingredients: updates.ingredients,
     notes: updates.notes,
     rating: updates.rating,
     isDiscoverable: updates.isDiscoverable,

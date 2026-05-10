@@ -930,9 +930,8 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
   });
 
   // C7: Planner Quick Find for today → navigating to home shows TonightMenuCard
-  // SSE makes this deterministic: the `slot_updated` event is baked into the mock SSE
-  // body and fires immediately on connect. By the time the user navigates to /home,
-  // todayStore already has the recipe — no poll, no sync() race.
+  // This exercises the planner's client-side propagation: assigning today's slot
+  // through Quick Find updates todayStore before the user navigates back home.
   test("Planner Quick Find for today's slot → navigating to home shows TonightMenuCard", async ({
     page,
   }) => {
@@ -945,11 +944,43 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
       image: '',
     });
 
-    // SSE mock: emit connected (empty schedule) + slot_updated for today with the recipe.
-    // Registered before setupCommonRoutes so LIFO gives this mock priority over the
-    // default SSE route. The slot_updated event fires immediately on connect — before
-    // the user even navigates to /home — so todayStore is populated on arrival.
-    await mockSseWithSlotUpdate(page, { date: today, recipe, status: 0 });
+    let assignCalled = false;
+
+    await page.route(
+      (url) => url.pathname === '/api/schedule',
+      async (route) => {
+        if (route.request().method() !== 'GET') {
+          await route.fallback();
+          return;
+        }
+
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(monday);
+          d.setUTCDate(monday.getUTCDate() + i);
+          const date = toDateStr(d);
+          return {
+            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+            date,
+            recipe: assignCalled && date === today ? recipe : null,
+            status: 0,
+          };
+        });
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              locked: false,
+              status: 0,
+              days,
+              groceryState: {},
+            },
+          }),
+        });
+      }
+    );
 
     // Override fill-the-gap to return one recipe for the Quick Find modal
     await page.route(
@@ -966,7 +997,6 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
     );
 
     // Track assign call — confirms the REST write fired
-    let assignCalled = false;
     await page.route(
       (url) => url.pathname.includes('/api/schedule/assign'),
       async (route) => {
@@ -985,6 +1015,7 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
 
     // 2. Find today's card, click plan-meal-button
     const todayCard = page.locator(`[data-date="${today}"]`);
+    await expect(todayCard.getByTestId('plan-meal-button')).toBeVisible({ timeout: 10_000 });
     await todayCard.getByTestId('plan-meal-button').click();
 
     // 3. Wait for pivot-sheet, click pivot-quick-find
@@ -998,13 +1029,13 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
     // 5. Confirm the assign REST call fired
     await expect.poll(() => assignCalled).toBe(true);
 
-    // 6. Navigate to /home — SSE already delivered slot_updated, store is populated
+    // 6. Navigate to /home — planner assignment has already updated todayStore
     await page.goto('/home');
 
     // 7. Wait for home-loader to disappear
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5000 });
 
-    // 8. TonightMenuCard must be visible — driven by SSE, not by sync() or a poll
+    // 8. TonightMenuCard must be visible — driven by planner → todayStore propagation
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 5000 });
 
     // 9. Assert recipe name visible

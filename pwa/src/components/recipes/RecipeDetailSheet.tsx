@@ -1,7 +1,18 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { X, Clock, ChefHat, ArrowRightLeft, Trash2, Eye, Check } from 'lucide-react';
+import {
+  X,
+  Clock,
+  ChefHat,
+  ArrowRightLeft,
+  Trash2,
+  Eye,
+  Check,
+  Pencil,
+  Plus,
+  Save,
+} from 'lucide-react';
 import { getRecipe, updateRecipe, deleteRecipe, type Recipe } from '@/lib/api/recipes';
 import { t } from '@/locales';
 
@@ -30,10 +41,16 @@ export function RecipeDetailSheet({
 }: RecipeDetailSheetProps) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [notes, setNotes] = useState('');
+  const [draftName, setDraftName] = useState('');
+  const [draftDescription, setDraftDescription] = useState('');
+  const [draftIngredients, setDraftIngredients] = useState<string[]>([]);
   const [rating, setRating] = useState(0);
   const [isDiscoverable, setIsDiscoverable] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingAction, setIsSavingAction] = useState(false);
+  const [isSavingRecipe, setIsSavingRecipe] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [notesSaved, setNotesSaved] = useState(false);
   const [showActionPivot, setShowActionPivot] = useState(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,8 +65,13 @@ export function RecipeDetailSheet({
         if (!isActive) return;
         setRecipe(nextRecipe);
         setNotes(nextRecipe.notes ?? '');
+        setDraftName(nextRecipe.name);
+        setDraftDescription(nextRecipe.description ?? '');
+        setDraftIngredients(nextRecipe.ingredients ?? []);
         setRating(nextRecipe.rating ?? 0);
         setIsDiscoverable(nextRecipe.isDiscoverable ?? false);
+        setIsEditing(false);
+        setEditError(null);
       } catch (error) {
         if (!isActive) return;
         console.error('Failed to load recipe detail', error);
@@ -94,6 +116,66 @@ export function RecipeDetailSheet({
     const next = !isDiscoverable;
     setIsDiscoverable(next);
     await updateRecipe(recipe.id, { isDiscoverable: next });
+  };
+
+  const resetDrafts = (source: Recipe) => {
+    setDraftName(source.name);
+    setDraftDescription(source.description ?? '');
+    setDraftIngredients(source.ingredients ?? []);
+    setEditError(null);
+  };
+
+  const handleCancelEdit = () => {
+    if (recipe) resetDrafts(recipe);
+    setIsEditing(false);
+  };
+
+  const handleIngredientChange = (index: number, value: string) => {
+    setDraftIngredients((current) =>
+      current.map((ingredient, ingredientIndex) => (ingredientIndex === index ? value : ingredient))
+    );
+  };
+
+  const handleAddIngredient = () => {
+    setDraftIngredients((current) => [...current, '']);
+  };
+
+  const handleRemoveIngredient = (index: number) => {
+    setDraftIngredients((current) =>
+      current.filter((_, ingredientIndex) => ingredientIndex !== index)
+    );
+  };
+
+  const handleSaveRecipeFields = async () => {
+    if (!recipe) return;
+
+    const cleanedIngredients = draftIngredients
+      .map((ingredient) => ingredient.trim())
+      .filter(Boolean);
+    const nextRecipe: Recipe = {
+      ...recipe,
+      name: draftName.trim(),
+      description: draftDescription.trim(),
+      ingredients: cleanedIngredients,
+    };
+
+    setIsSavingRecipe(true);
+    setEditError(null);
+    try {
+      await updateRecipe(recipe.id, {
+        name: nextRecipe.name,
+        description: nextRecipe.description,
+        ingredients: cleanedIngredients,
+      });
+      setRecipe(nextRecipe);
+      setDraftIngredients(cleanedIngredients);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update recipe fields', error);
+      setEditError(t('recipes.editFailed', 'Could not save changes. Try again.'));
+    } finally {
+      setIsSavingRecipe(false);
+    }
   };
 
   const handleUseRecipe = async () => {
@@ -152,16 +234,32 @@ export function RecipeDetailSheet({
               {t('recipes.detailTitle', 'Recipe detail')}
             </p>
           </div>
-          <button
-            type="button"
-            data-testid="action-close-sheet"
-            aria-label={t('common.close', 'Close')}
-            title={t('common.close', 'Close')}
-            onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            {!isLoading && recipe && !isEditing && (
+              <button
+                type="button"
+                data-testid="action-edit-recipe"
+                onClick={() => {
+                  resetDrafts(recipe);
+                  setIsEditing(true);
+                }}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-white px-4 text-xs font-black uppercase tracking-wider text-charcoal shadow-sm transition hover:bg-charcoal/5"
+              >
+                <Pencil size={14} />
+                {t('common.edit', 'Edit')}
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="action-close-sheet"
+              aria-label={t('common.close', 'Close')}
+              title={t('common.close', 'Close')}
+              onClick={onClose}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {isLoading || !recipe ? (
@@ -179,12 +277,26 @@ export function RecipeDetailSheet({
             </div>
 
             <div className="mb-5 flex flex-col gap-3">
-              <h2
-                data-testid="recipe-detail-name"
-                className="text-3xl font-black tracking-tighter text-charcoal"
-              >
-                {recipe.name}
-              </h2>
+              {isEditing ? (
+                <label className="grid gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                    {t('recipes.name', 'Name')}
+                  </span>
+                  <input
+                    data-testid="recipe-edit-name-input"
+                    value={draftName}
+                    onChange={(event) => setDraftName(event.target.value)}
+                    className="w-full rounded-[1.25rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-xl font-black text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                  />
+                </label>
+              ) : (
+                <h2
+                  data-testid="recipe-detail-name"
+                  className="text-3xl font-black tracking-tighter text-charcoal"
+                >
+                  {recipe.name}
+                </h2>
+              )}
               <div className="flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-widest text-charcoal/55">
                 <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 shadow-sm">
                   <Clock size={12} /> {recipe.totalTime}
@@ -193,8 +305,22 @@ export function RecipeDetailSheet({
                   <ChefHat size={12} /> {recipe.difficulty}
                 </span>
               </div>
-              {recipe.description && (
-                <p className="text-sm leading-6 text-charcoal/70">{recipe.description}</p>
+              {isEditing ? (
+                <label className="grid gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                    {t('recipes.description', 'Description')}
+                  </span>
+                  <textarea
+                    data-testid="recipe-edit-description-input"
+                    value={draftDescription}
+                    onChange={(event) => setDraftDescription(event.target.value)}
+                    className="min-h-24 w-full rounded-[1.25rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-sm leading-6 text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                  />
+                </label>
+              ) : (
+                recipe.description && (
+                  <p className="text-sm leading-6 text-charcoal/70">{recipe.description}</p>
+                )
               )}
             </div>
 
@@ -203,13 +329,46 @@ export function RecipeDetailSheet({
                 <h3 className="mb-2 text-sm font-black uppercase tracking-[0.18em] text-charcoal/45">
                   {t('recipes.ingredients', 'Ingredients')}
                 </h3>
-                <ul className="space-y-2 text-sm text-charcoal/80">
-                  {(recipe.ingredients || []).map((ingredient) => (
-                    <li key={ingredient} className="rounded-2xl bg-white/85 px-4 py-2 shadow-sm">
-                      {ingredient}
-                    </li>
-                  ))}
-                </ul>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    {draftIngredients.map((ingredient, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          data-testid={`recipe-edit-ingredient-${index}`}
+                          value={ingredient}
+                          onChange={(event) => handleIngredientChange(index, event.target.value)}
+                          className="min-h-11 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-4 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                        />
+                        <button
+                          type="button"
+                          data-testid={`recipe-remove-ingredient-${index}`}
+                          aria-label={t('recipes.removeIngredient', 'Remove ingredient')}
+                          onClick={() => handleRemoveIngredient(index)}
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      data-testid="recipe-add-ingredient"
+                      onClick={handleAddIngredient}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-4 text-sm font-black text-charcoal shadow-sm"
+                    >
+                      <Plus size={16} />
+                      {t('recipes.addIngredient', 'Add ingredient')}
+                    </button>
+                  </div>
+                ) : (
+                  <ul className="space-y-2 text-sm text-charcoal/80">
+                    {(recipe.ingredients || []).map((ingredient) => (
+                      <li key={ingredient} className="rounded-2xl bg-white/85 px-4 py-2 shadow-sm">
+                        {ingredient}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -279,6 +438,39 @@ export function RecipeDetailSheet({
                 </div>
               </div>
             </div>
+
+            {editError && (
+              <p className="mb-4 rounded-2xl bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta">
+                {editError}
+              </p>
+            )}
+
+            {isEditing && (
+              <div className="sticky bottom-0 z-10 -mx-6 mb-5 flex flex-col gap-3 border-y border-charcoal/8 bg-[rgba(253,252,240,0.96)] px-6 py-4 backdrop-blur sm:flex-row">
+                <button
+                  type="button"
+                  data-testid="recipe-save-edits"
+                  onClick={() => void handleSaveRecipeFields()}
+                  disabled={isSavingRecipe || draftName.trim().length === 0}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                >
+                  <Save size={16} />
+                  {isSavingRecipe
+                    ? t('common.saving', 'Saving')
+                    : t('common.saveChanges', 'Save changes')}
+                </button>
+                <button
+                  type="button"
+                  data-testid="recipe-cancel-edits"
+                  onClick={handleCancelEdit}
+                  disabled={isSavingRecipe}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm disabled:opacity-60"
+                >
+                  <X size={16} />
+                  {t('common.cancel', 'Cancel')}
+                </button>
+              </div>
+            )}
 
             <div className="flex flex-col gap-3 border-t border-charcoal/8 pt-5 sm:flex-row sm:flex-wrap">
               {!showActionPivot ? (

@@ -60,14 +60,21 @@ public class ImageService(IRecipeStore recipeStore, ILogger<ImageService> logger
         => recipeStore.WriteInfoAsync(info);
 
     /// <summary>
-    /// Updates notes and rating in recipe.info, creating the file if it does not exist.
+    /// Updates user-editable fields in recipe.info, creating the file if it does not exist.
     /// </summary>
-    public async Task UpdateRecipeInfo(Guid recipeId, string? notes, RecipeRating? rating)
+    public async Task UpdateRecipeInfo(
+        Guid recipeId,
+        string? notes,
+        RecipeRating? rating,
+        string? name = null,
+        string? description = null)
     {
         var info = await recipeStore.ReadInfoAsync(recipeId) ?? new RecipeInfo { Id = recipeId };
 
         if (notes is not null) info.Notes = notes;
         if (rating.HasValue) info.Rating = rating.Value;
+        if (name is not null) info.Name = name;
+        if (description is not null) info.Description = description;
 
         await recipeStore.WriteInfoAsync(info);
         logger.LogDebug("Updated recipe.info for {RecipeId}", recipeId);

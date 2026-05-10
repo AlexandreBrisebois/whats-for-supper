@@ -347,6 +347,71 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
   });
 
+  it('edits recipe card fields in edit mode and saves them with one PATCH call', async () => {
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('action-edit-recipe'));
+    fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
+      target: { value: 'Chicken Soup Deluxe' },
+    });
+    fireEvent.change(screen.getByTestId('recipe-edit-description-input'), {
+      target: { value: 'A warmer soup for the weeknight table.' },
+    });
+    fireEvent.change(screen.getByTestId('recipe-edit-ingredient-1'), {
+      target: { value: 'Rich chicken broth' },
+    });
+    fireEvent.click(screen.getByTestId('recipe-add-ingredient'));
+    fireEvent.change(screen.getByTestId('recipe-edit-ingredient-3'), {
+      target: { value: 'Parsley' },
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+
+    await waitFor(() => {
+      expect(mocks.updateRecipe).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111', {
+        name: 'Chicken Soup Deluxe',
+        description: 'A warmer soup for the weeknight table.',
+        ingredients: ['Chicken', 'Rich chicken broth', 'Carrots', 'Parsley'],
+      });
+    });
+
+    expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup Deluxe');
+    expect(screen.getByText('Rich chicken broth')).toBeInTheDocument();
+  });
+
+  it('cancels recipe card edits without patching editable fields', async () => {
+    render(<RecipesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('action-edit-recipe'));
+    fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
+      target: { value: 'Unsaved Soup' },
+    });
+    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
+
+    expect(mocks.updateRecipe).not.toHaveBeenCalled();
+    expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
+  });
+
   it('renders the planner CTA in planner mode and assigns the recipe back to the planner', async () => {
     mocks.setSearchParams('addToDay=2&weekOffset=0');
 

@@ -381,6 +381,13 @@ components:
     UpdateRecipeDto:
       type: object
       properties:
+        name: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        ingredients:
+          type:
+            - array
+            - 'null'
+          items: { type: string }
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
         isDiscoverable: { type: [boolean, 'null'] }

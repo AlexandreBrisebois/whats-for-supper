@@ -2150,8 +2150,12 @@ export interface components {
       consensusRecipesCount: number;
     };
     UpdateRecipeDto: {
+      name?: string | null;
+      description?: string | null;
+      ingredients?: string[] | null;
       notes?: string | null;
       rating?: number | null;
+      isDiscoverable?: boolean | null;
     };
     DescribeRecipeDto: {
       /** @description Short name for the recipe (e.g. "Our family spaghetti") */

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using RecipeApi.Data;
 using RecipeApi.Tests.Infrastructure;
@@ -34,9 +35,9 @@ public class RecipeServiceTests : IAsyncLifetime
     public async Task GetRecipes_WithNullIngredients_Returns_EmptyList()
     {
         // Arrange: seed a recipe with null ingredients
-        using (var scope = _factory.Services.CreateScope())
+        using (var seedScope = _factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var db = seedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             db.Recipes.Add(new RecipeApi.Models.Recipe
             {
                 Id = Guid.NewGuid(),
@@ -66,10 +67,10 @@ public class RecipeServiceTests : IAsyncLifetime
     public async Task GetRecipes_WithStringArrayIngredients_Returns_Correctly()
     {
         // Arrange: seed a recipe with ingredients as a JSON string array
-        using (var scope = _factory.Services.CreateScope())
+        using (var seedScope = _factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            db.Recipes.Add(new RecipeApi.Models.Recipe
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            seedDb.Recipes.Add(new RecipeApi.Models.Recipe
             {
                 Id = Guid.NewGuid(),
                 Name = "String Ingredients Recipe",
@@ -79,7 +80,7 @@ public class RecipeServiceTests : IAsyncLifetime
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             });
-            await db.SaveChangesAsync();
+            await seedDb.SaveChangesAsync();
         }
 
         var response = await _client.GetAsync("/api/recipes?page=1&limit=100");
@@ -129,5 +130,90 @@ public class RecipeServiceTests : IAsyncLifetime
         var ingredients = recipe.GetProperty("ingredients");
         Assert.Equal(JsonValueKind.Array, ingredients.ValueKind);
         Assert.Equal(2, ingredients.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task PatchRecipe_WithEditableCardFields_PersistsFieldsAndQueuesSearchIndexWorkflow()
+    {
+        var recipeId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = recipeId,
+                Name = "Old Soup",
+                Description = "Old description",
+                Ingredients = """["old ingredient"]""",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new
+        {
+            name = "Weeknight Chicken Soup",
+            description = "A calmer bowl for busy evenings.",
+            ingredients = new[] { "Chicken thighs", "Carrots", "Broth" }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var recipe = await db.Recipes.FindAsync(recipeId);
+
+            Assert.NotNull(recipe);
+            Assert.Equal("Weeknight Chicken Soup", recipe.Name);
+            Assert.Equal("A calmer bowl for busy evenings.", recipe.Description);
+            Assert.Equal(["Chicken thighs", "Carrots", "Broth"], RecipeApi.Services.RecipeService.DeserializeIngredients(recipe.Ingredients));
+
+            var workflow = Assert.Single(db.WorkflowInstances.Where(instance => instance.WorkflowId == "index-recipe-search"));
+            using var parameters = JsonDocument.Parse(workflow.Parameters);
+            Assert.Equal(recipeId.ToString(), parameters.RootElement.GetProperty("recipeId").GetString());
+            Assert.False(string.IsNullOrWhiteSpace(parameters.RootElement.GetProperty("fingerprint").GetString()));
+        }
+    }
+
+    [Fact]
+    public async Task PatchRecipe_WhenMultipleEditableFieldsChange_QueuesSearchIndexWorkflowOnce()
+    {
+        var recipeId = Guid.NewGuid();
+
+        using (var seedScope = _factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            seedDb.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = recipeId,
+                Name = "Original",
+                Description = "Original description",
+                Ingredients = """["one"]""",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var response = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new
+        {
+            name = "Updated",
+            description = "Updated description",
+            ingredients = new[] { "one", "two" },
+            notes = "Keep this one"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var assertDb = assertScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        Assert.Single(assertDb.WorkflowInstances.Where(instance => instance.WorkflowId == "index-recipe-search"));
     }
 }

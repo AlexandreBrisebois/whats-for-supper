@@ -237,6 +237,61 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
   });
 
+  test('edits recipe card fields from a single edit mode', async ({ page }) => {
+    let lastPatchBody: Record<string, unknown> | null = null;
+
+    await page.unroute('**/api/recipes/*');
+    await page.route('**/api/recipes/*', async (route) => {
+      const method = route.request().method();
+
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: MOCK_DETAIL_RECIPE }),
+        });
+        return;
+      }
+
+      if (method === 'PATCH') {
+        lastPatchBody = route.request().postDataJSON() as Record<string, unknown>;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: { ...MOCK_DETAIL_RECIPE, ...lastPatchBody } }),
+        });
+        return;
+      }
+
+      await route.fallback();
+    });
+
+    await page.goto('/recipes');
+
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await page.getByTestId('recipe-card-top-pick').click();
+
+    await page.getByTestId('action-edit-recipe').click();
+    await page.getByTestId('recipe-edit-name-input').fill('Rainy Night Lasagna');
+    await page
+      .getByTestId('recipe-edit-description-input')
+      .fill('Layered comfort food with extra sauce.');
+    await page.getByTestId('recipe-edit-ingredient-1').fill('San Marzano tomato');
+    await page.getByTestId('recipe-save-edits').click();
+
+    await expect
+      .poll(() => lastPatchBody)
+      .toMatchObject({
+        name: 'Rainy Night Lasagna',
+        description: 'Layered comfort food with extra sauce.',
+        ingredients: ['Pasta', 'San Marzano tomato', 'Cheese'],
+      });
+    await expect(page.getByTestId('recipe-detail-name')).toContainText('Rainy Night Lasagna');
+    await expect(page.getByText('San Marzano tomato')).toBeVisible();
+  });
+
   test('uses planner mode CTA from the detail sheet and returns to the planner success state', async ({
     page,
   }) => {

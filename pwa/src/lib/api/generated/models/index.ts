@@ -2438,8 +2438,17 @@ export function deserializeIntoUpdateRecipeDto(
   updateRecipeDto: Partial<UpdateRecipeDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    description: (n) => {
+      updateRecipeDto.description = n.getStringValue();
+    },
+    ingredients: (n) => {
+      updateRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
+    },
     isDiscoverable: (n) => {
       updateRecipeDto.isDiscoverable = n.getBooleanValue();
+    },
+    name: (n) => {
+      updateRecipeDto.name = n.getStringValue();
     },
     notes: (n) => {
       updateRecipeDto.notes = n.getStringValue();
@@ -4893,7 +4902,10 @@ export function serializeUpdateRecipeDto(
   if (!updateRecipeDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeStringValue('description', updateRecipeDto.description);
+  writer.writeCollectionOfPrimitiveValues<string>('ingredients', updateRecipeDto.ingredients);
   writer.writeBooleanValue('isDiscoverable', updateRecipeDto.isDiscoverable);
+  writer.writeStringValue('name', updateRecipeDto.name);
   writer.writeStringValue('notes', updateRecipeDto.notes);
   writer.writeNumberValue('rating', updateRecipeDto.rating);
   writer.writeAdditionalData(updateRecipeDto.additionalData);
@@ -5206,9 +5218,21 @@ export interface TopPickDto extends AdditionalDataHolder, Parsable {
 }
 export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
   /**
+   * The description property
+   */
+  description?: string | null;
+  /**
+   * The ingredients property
+   */
+  ingredients?: string[] | null;
+  /**
    * The isDiscoverable property
    */
   isDiscoverable?: boolean | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
   /**
    * The notes property
    */

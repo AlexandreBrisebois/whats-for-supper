@@ -294,13 +294,22 @@ public class RecipeService(
     }
 
     /// <summary>
-    /// Applies a partial update to a recipe's Notes and/or Rating.
+    /// Applies a partial update to a recipe's user-editable fields.
     /// Persists changes to both the database and the recipe.info file on disk.
     /// </summary>
     public async Task<RecipeDetailResponseDto> UpdateRecipe(Guid id, UpdateRecipeDto dto)
     {
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        if (dto.Name is not null)
+            recipe.Name = dto.Name;
+
+        if (dto.Description is not null)
+            recipe.Description = dto.Description;
+
+        if (dto.Ingredients is not null)
+            recipe.Ingredients = JsonSerializer.Serialize(dto.Ingredients);
 
         if (dto.Rating.HasValue)
         {
@@ -318,13 +327,19 @@ public class RecipeService(
         await db.SaveChangesAsync();
 
         // Re-enqueue search index when search-relevant fields changed
-        if (dto.Notes is not null || dto.Rating.HasValue || dto.IsDiscoverable.HasValue)
+        if (dto.Name is not null ||
+            dto.Description is not null ||
+            dto.Ingredients is not null ||
+            dto.Notes is not null ||
+            dto.Rating.HasValue ||
+            dto.IsDiscoverable.HasValue)
         {
             try
             {
                 await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
                 {
-                    ["recipeId"] = id.ToString()
+                    ["recipeId"] = id.ToString(),
+                    ["fingerprint"] = SearchFingerprintService.ComputeSourceFingerprint(recipe)
                 });
             }
             catch (Exception ex) { logger.LogError(ex, "Failed to trigger search index for updated recipe {RecipeId}", id); }
@@ -334,7 +349,9 @@ public class RecipeService(
         await images.UpdateRecipeInfo(
             id,
             dto.Notes is not null ? recipe.Notes : null,
-            dto.Rating.HasValue ? recipe.Rating : null);
+            dto.Rating.HasValue ? recipe.Rating : null,
+            dto.Name is not null ? recipe.Name : null,
+            dto.Description is not null ? recipe.Description : null);
 
         return new RecipeDetailResponseDto
         {
