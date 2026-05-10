@@ -211,6 +211,10 @@ function makePageResponse(ids: string[], total: number, page = 1) {
   };
 }
 
+function makeRecipeId(index: number) {
+  return `${String(index).padStart(8, '0')}-0000-4000-8000-${String(index).padStart(12, '0')}`;
+}
+
 function makeSummaryResponse(total: number) {
   return {
     data: {
@@ -422,14 +426,14 @@ describe('BrowseAllStack — swipe navigation', () => {
 
 describe('BrowseAllStack — pre-fetch', () => {
   it('pre-fetches next page when 5 cards remain', async () => {
-    // Set up 7 recipes on page 1, total 14 (so there is a page 2).
-    // Page 2 returns total=7 so hasMorePages becomes false after the prefetch,
+    // Set up 7 recipes on page 1, total 21 (so there is a page 2 with limit 20).
+    // Page 2 covers the remaining total so hasMorePages becomes false after the prefetch,
     // preventing a spurious third call when the user advances further.
     const page1Ids = RECIPE_IDS.slice(0, 7);
-    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(14));
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(21));
     mocks.recipesGet
-      .mockResolvedValueOnce(makePageResponse(page1Ids, 14, 1))
-      .mockResolvedValue(makePageResponse([], 7, 2));
+      .mockResolvedValueOnce(makePageResponse(page1Ids, 21, 1))
+      .mockResolvedValue(makePageResponse([], 21, 2));
 
     render(<BrowseAllStackPage />);
 
@@ -528,8 +532,8 @@ describe('BrowseAllStack — list mode', () => {
       selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
     });
     mocks.recipesGet
-      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 6, 1))
-      .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[2], RECIPE_IDS[3], RECIPE_IDS[4]], 6, 2));
+      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 15, 1))
+      .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[2], RECIPE_IDS[3], RECIPE_IDS[4]], 15, 2));
 
     render(<BrowseAllStackPage />);
 
@@ -557,6 +561,61 @@ describe('BrowseAllStack — list mode', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('browse-list-recipe-card')).toHaveLength(5);
     });
+  });
+
+  it('loads the final partial page when retained list items are capped', async () => {
+    useFamilyStore.setState({
+      familyMembers: [
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'Alex',
+          browseViewMode: 'list',
+        },
+      ],
+      selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
+    });
+
+    const ids = Array.from({ length: 100 }, (_, index) => makeRecipeId(index + 1));
+    for (let page = 1; page <= 8; page += 1) {
+      const start = (page - 1) * 12;
+      mocks.recipesGet.mockResolvedValueOnce(
+        makePageResponse(ids.slice(start, start + 12), 100, page)
+      );
+    }
+    mocks.recipesGet.mockResolvedValueOnce(makePageResponse(ids.slice(96, 100), 100, 9));
+
+    render(<BrowseAllStackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('browse-list-grid')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(useBrowseStackStore.getState().hasMorePages).toBe(true);
+    });
+
+    for (let page = 2; page <= 9; page += 1) {
+      act(() => {
+        window.dispatchEvent(new Event('browse-list-load-more'));
+      });
+
+      await waitFor(() => {
+        expect(mocks.recipesGet).toHaveBeenCalledWith(
+          expect.objectContaining({
+            queryParameters: expect.objectContaining({ page, limit: 12 }),
+          })
+        );
+      });
+    }
+
+    await waitFor(() => {
+      expect(useBrowseStackStore.getState().recipes.at(-1)?.id).toBe(ids[99]);
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event('browse-list-load-more'));
+    });
+
+    expect(mocks.recipesGet).toHaveBeenCalledTimes(9);
   });
 });
 

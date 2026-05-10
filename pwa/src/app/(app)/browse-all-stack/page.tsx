@@ -170,12 +170,9 @@ export default function BrowseAllStackPage() {
         setTotalCount(paginationTotal);
 
         // Update store pagination state
-        const currentRecipesCount = useBrowseStackStore.getState().recipes.length;
         useBrowseStackStore.setState({
           currentPage: page,
-          hasMorePages:
-            (append ? currentRecipesCount + fetchedRecipes.length : fetchedRecipes.length) <
-            paginationTotal,
+          hasMorePages: page * pageSize < paginationTotal,
         });
       } catch (err) {
         console.error('BrowseAllStack: fetch failed', err);
