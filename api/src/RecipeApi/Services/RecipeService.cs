@@ -136,27 +136,7 @@ public class RecipeService(
             .Take(limit)
             .ToListAsync();
 
-        var recipes = entities.Select(r => new RecipeDto
-        {
-            Id = r.Id,
-            Rating = (int)r.Rating,
-            Notes = r.Notes,
-            AddedBy = r.AddedBy,
-            Name = r.Name,
-            TotalTime = r.TotalTime,
-            SourceUrl = r.SourceUrl,
-            Description = r.Description,
-            Category = r.Category,
-            Difficulty = r.Difficulty,
-            ImageUrl = $"/api/recipes/{r.Id}/hero",
-            Images = Enumerable.Range(0, r.ImageCount).ToList(),
-            Ingredients = DeserializeIngredients(r.Ingredients),
-            RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
-            IsVegetarian = r.IsVegetarian,
-            IsHealthyChoice = r.IsHealthyChoice,
-            IsDiscoverable = r.IsDiscoverable,
-            CreatedAt = r.CreatedAt
-        }).ToList();
+        var recipes = entities.Select(MapToDto).ToList();
 
         return new RecipeListResponseDto
         {
@@ -191,27 +171,7 @@ public class RecipeService(
             .Take(limit)
             .ToListAsync();
 
-        var recipes = entities.Select(r => new RecipeDto
-        {
-            Id = r.Id,
-            Rating = (int)r.Rating,
-            Notes = r.Notes,
-            AddedBy = r.AddedBy,
-            Name = r.Name,
-            TotalTime = r.TotalTime,
-            SourceUrl = r.SourceUrl,
-            Description = r.Description,
-            Category = r.Category,
-            Difficulty = r.Difficulty,
-            ImageUrl = $"/api/recipes/{r.Id}/hero",
-            Images = Enumerable.Range(0, r.ImageCount).ToList(),
-            Ingredients = DeserializeIngredients(r.Ingredients),
-            RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
-            IsVegetarian = r.IsVegetarian,
-            IsHealthyChoice = r.IsHealthyChoice,
-            IsDiscoverable = r.IsDiscoverable,
-            CreatedAt = r.CreatedAt
-        }).ToList();
+        var recipes = entities.Select(MapToDto).ToList();
 
         return new RecipeListResponseDto
         {
@@ -268,28 +228,7 @@ public class RecipeService(
         return new RecipeDetailResponseDto
         {
             UpdatedAt = DateTimeOffset.UtcNow,
-            Recipe = new RecipeDto
-            {
-                Id = recipe.Id,
-                Rating = (int)recipe.Rating,
-                Notes = recipe.Notes,
-                AddedBy = recipe.AddedBy,
-                Name = recipe.Name,
-                TotalTime = recipe.TotalTime,
-                SourceUrl = recipe.SourceUrl,
-                Description = recipe.Description,
-                Category = recipe.Category,
-                DietaryProfile = DeserializeDietaryProfile(recipe.DietaryProfile),
-                Difficulty = recipe.Difficulty,
-                ImageUrl = $"/api/recipes/{recipe.Id}/hero",
-                Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
-                Ingredients = DeserializeIngredients(recipe.Ingredients),
-                RecipeInstructions = ExtractRecipeInstructions(recipe.RawMetadata),
-                IsVegetarian = recipe.IsVegetarian,
-                IsHealthyChoice = recipe.IsHealthyChoice,
-                IsDiscoverable = recipe.IsDiscoverable,
-                CreatedAt = recipe.CreatedAt
-            }
+            Recipe = MapToDto(recipe)
         };
     }
 
@@ -356,27 +295,7 @@ public class RecipeService(
         return new RecipeDetailResponseDto
         {
             UpdatedAt = recipe.UpdatedAt,
-            Recipe = new RecipeDto
-            {
-                Id = recipe.Id,
-                Rating = (int)recipe.Rating,
-                Notes = recipe.Notes,
-                AddedBy = recipe.AddedBy,
-                Name = recipe.Name,
-                TotalTime = recipe.TotalTime,
-                SourceUrl = recipe.SourceUrl,
-                Description = recipe.Description,
-                Category = recipe.Category,
-                Difficulty = recipe.Difficulty,
-                ImageUrl = $"/api/recipes/{recipe.Id}/hero",
-                Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
-                Ingredients = DeserializeIngredients(recipe.Ingredients),
-                RecipeInstructions = ExtractRecipeInstructions(recipe.RawMetadata),
-                IsVegetarian = recipe.IsVegetarian,
-                IsHealthyChoice = recipe.IsHealthyChoice,
-                IsDiscoverable = recipe.IsDiscoverable,
-                CreatedAt = recipe.CreatedAt
-            }
+            Recipe = MapToDto(recipe)
         };
     }
 
@@ -429,24 +348,7 @@ public class RecipeService(
             logger.LogError(ex, "Failed to trigger goto-synthesis workflow for recipe {RecipeId}", recipeId);
         }
 
-        return new RecipeDto
-        {
-            Id = recipe.Id,
-            Name = recipe.Name,
-            TotalTime = recipe.TotalTime,
-            SourceUrl = recipe.SourceUrl,
-            Description = recipe.Description,
-            ImageUrl = null,
-            Images = [],
-            Ingredients = [],
-            RecipeInstructions = null,
-            Rating = (int)recipe.Rating,
-            Notes = recipe.Notes,
-            IsVegetarian = recipe.IsVegetarian,
-            IsHealthyChoice = recipe.IsHealthyChoice,
-            IsDiscoverable = recipe.IsDiscoverable,
-            CreatedAt = recipe.CreatedAt
-        };
+        return MapToDto(recipe);
     }
 
     /// <summary>
@@ -617,30 +519,40 @@ public class RecipeService(
         new()
         {
             UpdatedAt = DateTimeOffset.UtcNow,
-            Recipe = new RecipeDto
-            {
-                Id = recipe.Id,
-                Rating = (int)recipe.Rating,
-                Notes = recipe.Notes,
-                AddedBy = recipe.AddedBy,
-                Name = recipe.Name,
-                TotalTime = recipe.TotalTime,
-                SourceUrl = recipe.SourceUrl,
-                Description = recipe.Description,
-                Category = recipe.Category,
-                DietaryProfile = DeserializeDietaryProfile(recipe.DietaryProfile),
-                Difficulty = recipe.Difficulty,
-                ImageUrl = $"/api/recipes/{recipe.Id}/hero",
-                Images = Enumerable.Range(0, recipe.ImageCount).ToList(),
-                Ingredients = DeserializeIngredients(recipe.Ingredients),
-                RecipeInstructions = ExtractRecipeInstructions(recipe.RawMetadata),
-                IsVegetarian = recipe.IsVegetarian,
-                IsHealthyChoice = recipe.IsHealthyChoice,
-                IsDiscoverable = recipe.IsDiscoverable,
-                CreatedAt = recipe.CreatedAt,
-                DeletedAt = recipe.DeletedAt
-            }
+            Recipe = MapToDto(recipe)
         };
+
+    public static RecipeDto MapToDto(Recipe r)
+    {
+        var sourceType = !string.IsNullOrEmpty(r.SourceUrl) ? "url" : (r.ImageCount > 0 ? "photos" : "synthesized");
+
+        return new RecipeDto
+        {
+            Id = r.Id,
+            Rating = (int)r.Rating,
+            Notes = r.Notes,
+            AddedBy = r.AddedBy,
+            Name = r.Name,
+            TotalTime = r.TotalTime,
+            SourceUrl = r.SourceUrl,
+            Description = r.Description,
+            Category = r.Category,
+            DietaryProfile = DeserializeDietaryProfile(r.DietaryProfile),
+            Difficulty = r.Difficulty,
+            ImageUrl = $"/api/recipes/{r.Id}/hero",
+            Images = Enumerable.Range(0, r.ImageCount).ToList(),
+            Ingredients = DeserializeIngredients(r.Ingredients),
+            RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
+            IsVegetarian = r.IsVegetarian,
+            IsHealthyChoice = r.IsHealthyChoice,
+            IsDiscoverable = r.IsDiscoverable,
+            CreatedAt = r.CreatedAt,
+            DeletedAt = r.DeletedAt,
+            SourceType = sourceType,
+            CanReimport = sourceType != "synthesized",
+            ImageCount = r.ImageCount
+        };
+    }
 
     /// <summary>
     /// Deserializes the ingredients JSON column, tolerating both string arrays
@@ -730,6 +642,49 @@ public class RecipeService(
         {
             // Silently return null if parsing fails
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Adds a single original image to an existing recipe.
+    /// Updates both the database and the physical storage, then triggers hero regeneration.
+    /// </summary>
+    public async Task<int> AddOriginalImageAsync(Guid recipeId, IFormFile file)
+    {
+        var recipe = await db.Recipes.FindAsync(recipeId)
+            ?? throw new KeyNotFoundException($"Recipe {recipeId} not found.");
+
+        // 1. Add to storage
+        var newIndex = await images.AddOriginalImageAsync(recipeId, file);
+
+        // 2. Update DB
+        recipe.ImageCount++;
+        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        // 3. Trigger regeneration (forced)
+        await TriggerHeroRegenerationAsync(recipeId);
+
+        return newIndex;
+    }
+
+    /// <summary>
+    /// Triggers the background hero regeneration workflow for a recipe.
+    /// </summary>
+    public async Task TriggerHeroRegenerationAsync(Guid recipeId)
+    {
+        try
+        {
+            await orchestrator.TriggerAsync("recipe-hero-regeneration", new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.ToString()
+            });
+            logger.LogInformation("Triggered recipe-hero-regeneration for recipe {RecipeId}", recipeId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to trigger hero regeneration for recipe {RecipeId}", recipeId);
+            throw;
         }
     }
 }

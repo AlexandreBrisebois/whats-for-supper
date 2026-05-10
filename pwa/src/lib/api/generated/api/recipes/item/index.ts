@@ -9,7 +9,11 @@ import {
   type UpdateRecipeDto,
 } from '../../../models/index';
 // @ts-ignore
-import { HeroRequestBuilderRequestsMetadata, type HeroRequestBuilder } from './hero/index';
+import {
+  HeroRequestBuilderNavigationMetadata,
+  HeroRequestBuilderRequestsMetadata,
+  type HeroRequestBuilder,
+} from './hero/index';
 // @ts-ignore
 import {
   ImportRequestBuilderRequestsMetadata,
@@ -20,6 +24,11 @@ import {
   OriginalRequestBuilderNavigationMetadata,
   type OriginalRequestBuilder,
 } from './original/index';
+// @ts-ignore
+import {
+  OriginalsRequestBuilderRequestsMetadata,
+  type OriginalsRequestBuilder,
+} from './originals/index';
 // @ts-ignore
 import { PurgeRequestBuilderRequestsMetadata, type PurgeRequestBuilder } from './purge/index';
 // @ts-ignore
@@ -144,6 +153,10 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * The original property
    */
   get original(): OriginalRequestBuilder;
+  /**
+   * The originals property
+   */
+  get originals(): OriginalsRequestBuilder;
   /**
    * The purge property
    */
@@ -311,12 +324,16 @@ export const ItemRequestBuilderNavigationMetadata: Record<
 > = {
   hero: {
     requestsMetadata: HeroRequestBuilderRequestsMetadata,
+    navigationMetadata: HeroRequestBuilderNavigationMetadata,
   },
   importEscaped: {
     requestsMetadata: ImportRequestBuilderRequestsMetadata,
   },
   original: {
     navigationMetadata: OriginalRequestBuilderNavigationMetadata,
+  },
+  originals: {
+    requestsMetadata: OriginalsRequestBuilderRequestsMetadata,
   },
   purge: {
     requestsMetadata: PurgeRequestBuilderRequestsMetadata,

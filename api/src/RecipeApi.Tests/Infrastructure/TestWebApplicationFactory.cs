@@ -37,6 +37,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     public const string TestSecret = "test-hearth-secret";
 
     public Guid DefaultFamilyMemberId { get; private set; }
+    public Mock<IWorkflowOrchestrator> WorkflowOrchestratorMock { get; private set; } = null!;
 
     private WebApplication? _app;
     private readonly string _dbName = $"TestDb_{Guid.NewGuid():N}";
@@ -175,25 +176,27 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         else
             builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
 
-        builder.Services.AddScoped<IWorkflowOrchestrator>(sp =>
-        {
-            var mock = new Mock<IWorkflowOrchestrator>();
-            mock.Setup(o => o.TriggerAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<Dictionary<string, string>>(),
-                    It.IsAny<DateTimeOffset?>()))
-                .ReturnsAsync((string workflowId, Dictionary<string, string> parameters, DateTimeOffset? scheduledAt) =>
+        var orchestratorMock = new Mock<IWorkflowOrchestrator>();
+        orchestratorMock.Setup(o => o.TriggerAsync(
+                It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<DateTimeOffset?>()))
+            .ReturnsAsync((string workflowId, Dictionary<string, string> parameters, DateTimeOffset? scheduledAt) =>
+            {
+                var instance = new WorkflowInstance
                 {
-                    var instance = new WorkflowInstance
-                    {
-                        Id = Guid.NewGuid(),
-                        WorkflowId = workflowId,
-                        Status = WorkflowStatus.Processing,
-                        Parameters = System.Text.Json.JsonSerializer.Serialize(parameters),
-                        CreatedAt = DateTimeOffset.UtcNow,
-                        UpdatedAt = DateTimeOffset.UtcNow
-                    };
-                    var db = sp.GetRequiredService<RecipeDbContext>();
+                    Id = Guid.NewGuid(),
+                    WorkflowId = workflowId,
+                    Status = WorkflowStatus.Processing,
+                    Parameters = JsonSerializer.Serialize(parameters),
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                };
+
+                // Use a scope to access the DB from the singleton orchestrator mock
+                using (var scope = _app!.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                     db.WorkflowInstances.Add(instance);
                     db.WorkflowTasks.Add(new WorkflowTask
                     {
@@ -206,11 +209,13 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                         CreatedAt = DateTimeOffset.UtcNow,
                         UpdatedAt = DateTimeOffset.UtcNow
                     });
-                    db.SaveChanges(); // Sync save is fine for mock
-                    return instance;
-                });
-            return mock.Object;
-        });
+                    db.SaveChanges();
+                }
+
+                return instance;
+            });
+        WorkflowOrchestratorMock = orchestratorMock;
+        builder.Services.AddSingleton<IWorkflowOrchestrator>(orchestratorMock.Object);
 
         builder.Services.AddSingleton<DataRootResolver>();
         builder.Services.AddSingleton<RecipesRootResolver>();

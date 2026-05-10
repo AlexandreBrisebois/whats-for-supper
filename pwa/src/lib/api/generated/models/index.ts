@@ -1566,6 +1566,9 @@ export function deserializeIntoRecipeDto(
     addedBy: (n) => {
       recipeDto.addedBy = n.getGuidValue();
     },
+    canReimport: (n) => {
+      recipeDto.canReimport = n.getBooleanValue();
+    },
     category: (n) => {
       recipeDto.category = n.getStringValue();
     },
@@ -1592,6 +1595,9 @@ export function deserializeIntoRecipeDto(
     },
     id: (n) => {
       recipeDto.id = n.getGuidValue();
+    },
+    imageCount: (n) => {
+      recipeDto.imageCount = n.getNumberValue();
     },
     images: (n) => {
       recipeDto.images = n.getCollectionOfPrimitiveValues<number>();
@@ -1624,6 +1630,9 @@ export function deserializeIntoRecipeDto(
       recipeDto.recipeInstructions = n.getObjectValue<UntypedNode>(
         createUntypedNodeFromDiscriminatorValue
       );
+    },
+    sourceType: (n) => {
+      recipeDto.sourceType = n.getEnumValue<RecipeDto_sourceType>(RecipeDto_sourceTypeObject);
     },
     sourceUrl: (n) => {
       recipeDto.sourceUrl = n.getStringValue();
@@ -2988,6 +2997,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   addedBy?: Guid | null;
   /**
+   * The canReimport property
+   */
+  canReimport?: boolean | null;
+  /**
    * The category property
    */
   category?: string | null;
@@ -3015,6 +3028,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    * The id property
    */
   id?: Guid | null;
+  /**
+   * The imageCount property
+   */
+  imageCount?: number | null;
   /**
    * The images property
    */
@@ -3056,6 +3073,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   recipeInstructions?: UntypedNode | null;
   /**
+   * The sourceType property
+   */
+  sourceType?: RecipeDto_sourceType | null;
+  /**
    * The sourceUrl property
    */
   sourceUrl?: string | null;
@@ -3066,6 +3087,8 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
 }
 export type RecipeDto_dietaryProfile = RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1;
 export interface RecipeDto_dietaryProfileMember1 extends AdditionalDataHolder, Parsable {}
+export type RecipeDto_sourceType =
+  (typeof RecipeDto_sourceTypeObject)[keyof typeof RecipeDto_sourceTypeObject];
 export interface RecipeImportStatusResponseDto extends AdditionalDataHolder, Parsable {
   /**
    * The errorMessage property
@@ -4058,6 +4081,7 @@ export function serializeRecipeDto(
     return;
   }
   writer.writeGuidValue('addedBy', recipeDto.addedBy);
+  writer.writeBooleanValue('canReimport', recipeDto.canReimport);
   writer.writeStringValue('category', recipeDto.category);
   writer.writeDateValue('createdAt', recipeDto.createdAt);
   writer.writeDateValue('deletedAt', recipeDto.deletedAt);
@@ -4069,6 +4093,7 @@ export function serializeRecipeDto(
   );
   writer.writeStringValue('difficulty', recipeDto.difficulty);
   writer.writeGuidValue('id', recipeDto.id);
+  writer.writeNumberValue('imageCount', recipeDto.imageCount);
   writer.writeCollectionOfPrimitiveValues<number>('images', recipeDto.images);
   writer.writeStringValue('imageUrl', recipeDto.imageUrl);
   writer.writeCollectionOfPrimitiveValues<string>('ingredients', recipeDto.ingredients);
@@ -4079,6 +4104,7 @@ export function serializeRecipeDto(
   writer.writeStringValue('notes', recipeDto.notes);
   writer.writeNumberValue('rating', recipeDto.rating);
   writer.writeObjectValue('recipeInstructions', recipeDto.recipeInstructions);
+  writer.writeEnumValue<RecipeDto_sourceType>('sourceType', recipeDto.sourceType);
   writer.writeStringValue('sourceUrl', recipeDto.sourceUrl);
   writer.writeStringValue('totalTime', recipeDto.totalTime);
   writer.writeAdditionalData(recipeDto.additionalData);
@@ -5427,6 +5453,11 @@ export const ManagementTaskStatusResponse_statusObject = {
 export const MoveScheduleDto_intentObject = {
   Swap: 'swap',
   Push: 'push',
+} as const;
+export const RecipeDto_sourceTypeObject = {
+  Url: 'url',
+  Photos: 'photos',
+  Synthesized: 'synthesized',
 } as const;
 export const RecipeSearchReasonDto_sourceObject = {
   NameMatch: 'name-match',

@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
+import { ToastContainer } from '@/components/ui';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -86,6 +87,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
       <WeekStoreInitializer />
       {/* Notification layer — mounted at layout level, same as useScheduleStream */}
       <LibraryToast />
+      <ToastContainer />
       <RecipeFailureBanner />
       <Layout
         {...headerProps}

@@ -92,6 +92,10 @@ public class RecipeController(
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -251,6 +255,36 @@ public class RecipeController(
         var (stream, contentType) = await imageService.GetHeroImage(id);
         Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
         return File(stream, contentType);
+    }
+
+    /// <summary>POST /api/recipes/{id}/originals — upload a single original photo and trigger regeneration.</summary>
+    [HttpPost("{id:guid}/originals")]
+    public async Task<IActionResult> UploadOriginal(Guid id, IFormFile file)
+    {
+        try
+        {
+            var newIndex = await recipeService.AddOriginalImageAsync(id, file);
+            return Created($"/api/recipes/{id}/original/{newIndex}", new { id = newIndex });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>POST /api/recipes/{id}/hero/regenerate — force trigger background hero regeneration.</summary>
+    [HttpPost("{id:guid}/hero/regenerate")]
+    public async Task<IActionResult> RegenerateHero(Guid id)
+    {
+        try
+        {
+            await recipeService.TriggerHeroRegenerationAsync(id);
+            return Accepted(new { message = "Hero regeneration triggered." });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     /// <summary>DELETE /api/recipes/{id} — soft-delete a recipe (sets deleted_at). Returns 409 if in an active planner slot.</summary>

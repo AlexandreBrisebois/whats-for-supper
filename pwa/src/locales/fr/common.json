@@ -27,7 +27,8 @@
     "edit": "Modifier",
     "saveChanges": "Enregistrer les changements",
     "saving": "Enregistrement",
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "settings": "Paramètres"
   },
   "errors": {
     "notFoundTitle": "Page introuvable",
@@ -311,6 +312,13 @@
     "addIngredient": "Ajouter un ingrédient",
     "loadingDetail": "Chargement de la recette...",
     "moveToBin": "Mettre à la corbeille",
+    "reimportRecipe": "Réimporter la recette",
+    "reimportStarted": "Réimportation commencée...",
+    "reimportFailed": "Échec du lancement de la réimportation",
+    "photoUploading": "Envoi de la photo...",
+    "regeneratingHero": "Régénération de l'image...",
+    "regenerateFailed": "Échec du lancement de la régénération",
+    "uploadFailed": "Échec de l'envoi de la photo",
     "name": "Nom",
     "notes": "Notes",
     "pinPlaceholder": "Entrer le NIP",

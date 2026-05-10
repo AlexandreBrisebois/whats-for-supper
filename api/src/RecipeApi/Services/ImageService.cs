@@ -83,4 +83,23 @@ public class ImageService(IRecipeStore recipeStore, ILogger<ImageService> logger
     /// <summary>Deletes all files for the specified recipe.</summary>
     public Task DeleteRecipeFiles(Guid recipeId)
         => recipeStore.DeleteAsync(recipeId);
+
+    /// <summary>
+    /// Adds a single original image to a recipe and updates the info metadata.
+    /// Returns the index of the newly added image.
+    /// </summary>
+    public async Task<int> AddOriginalImageAsync(Guid recipeId, IFormFile file)
+    {
+        var info = await recipeStore.ReadInfoAsync(recipeId) ?? new RecipeInfo { Id = recipeId };
+        int newIndex = info.ImageCount;
+
+        await using var stream = file.OpenReadStream();
+        await recipeStore.SaveOriginalImageAsync(recipeId, newIndex, file.ContentType, stream);
+
+        info.ImageCount++;
+        await recipeStore.WriteInfoAsync(info);
+
+        logger.LogInformation("Added original image {Index} to recipe {RecipeId}", newIndex, recipeId);
+        return newIndex;
+    }
 }

@@ -1,6 +1,8 @@
 import { type Page } from '@playwright/test';
 import {
   type RecipeDto,
+  RecipeDto_sourceType,
+  RecipeDto_sourceTypeObject,
   type ScheduleRecipeDto,
   type ScheduleDays,
   type SmartDefaultsDto,
@@ -96,6 +98,10 @@ export const builders = {
             rating: 0,
             isVegetarian: false,
             isHealthyChoice: false,
+            isDiscoverable: false,
+            sourceType: RecipeDto_sourceTypeObject.Url,
+            canReimport: true,
+            imageCount: 0,
             ingredients: ['Ingredient 1', 'Ingredient 2'],
             recipeInstructions: [
               {
@@ -419,13 +425,43 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
 
-  // GET /api/recipes/{id}/import and POST /api/recipes/{id}/import
+  // POST /api/recipes/{id}/import
   await page.route('**/api/recipes/*/import', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ importId: MOCK_IDS.RECIPE_LASAGNA }),
-    });
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'queued' }),
+      });
+    } else {
+      await route.fallback();
+    }
+  });
+
+  // POST /api/recipes/{id}/originals
+  await page.route('**/api/recipes/*/originals', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: MOCK_IDS.PHOTO_NEW }),
+      });
+    } else {
+      await route.fallback();
+    }
+  });
+
+  // POST /api/recipes/{id}/hero/regenerate
+  await page.route('**/api/recipes/*/hero/regenerate', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'queued' }),
+      });
+    } else {
+      await route.fallback();
+    }
   });
 
   // GET /api/recipes/{recipeId}/original/{photoIndex}

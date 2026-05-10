@@ -27,7 +27,8 @@
     "edit": "Edit",
     "saveChanges": "Save changes",
     "saving": "Saving",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "settings": "Settings"
   },
   "errors": {
     "notFoundTitle": "Page not found",
@@ -311,6 +312,13 @@
     "addIngredient": "Add ingredient",
     "loadingDetail": "Loading recipe...",
     "moveToBin": "Move to Bin",
+    "reimportRecipe": "Reimport Recipe",
+    "reimportStarted": "Reimport started...",
+    "reimportFailed": "Failed to start reimport",
+    "photoUploading": "Uploading photo...",
+    "regeneratingHero": "Regenerating hero image...",
+    "regenerateFailed": "Failed to start regeneration",
+    "uploadFailed": "Failed to upload photo",
     "name": "Name",
     "notes": "Notes",
     "pinPlaceholder": "Enter PIN",

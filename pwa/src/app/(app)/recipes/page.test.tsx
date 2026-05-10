@@ -298,6 +298,10 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('action-cook-this')).toBeInTheDocument();
     expect(screen.getByTestId('action-find-similar')).toBeInTheDocument();
     expect(screen.getByTestId('action-toggle-discovery')).toBeInTheDocument();
+
+    // Actions now in gear menu
+    expect(screen.getByTestId('action-gear-menu')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
     expect(screen.getByTestId('action-move-to-bin')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('action-close-sheet'));

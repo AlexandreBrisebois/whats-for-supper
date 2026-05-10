@@ -9,16 +9,28 @@ public class RecipeImportService(RecipeDbContext db, IWorkflowOrchestrator orche
 {
     public async Task<Guid> TriggerImport(Guid recipeId)
     {
-        var recipe = await db.Recipes.AnyAsync(r => r.Id == recipeId);
-        if (!recipe)
+        var recipe = await db.Recipes.FindAsync(recipeId)
+            ?? throw new KeyNotFoundException($"Recipe {recipeId} not found.");
+
+        string workflowId;
+        var parameters = new Dictionary<string, string> { ["recipeId"] = recipeId.ToString() };
+
+        if (!string.IsNullOrEmpty(recipe.SourceUrl))
         {
-            throw new KeyNotFoundException($"Recipe {recipeId} not found.");
+            workflowId = "url-import";
+            parameters["url"] = recipe.SourceUrl;
+        }
+        else if (recipe.ImageCount > 0)
+        {
+            workflowId = "recipe-import";
+        }
+        else
+        {
+            // Synthesized recipes cannot be reimported
+            throw new InvalidOperationException("Synthesized recipes cannot be reimported.");
         }
 
-        var instance = await orchestrator.TriggerAsync(
-            "recipe-import",
-            new Dictionary<string, string> { ["recipeId"] = recipeId.ToString() });
-
+        var instance = await orchestrator.TriggerAsync(workflowId, parameters);
         return instance.Id;
     }
 

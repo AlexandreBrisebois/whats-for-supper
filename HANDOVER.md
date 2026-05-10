@@ -4,34 +4,25 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 
 ## Next Session Entry Points
 
-1. **SSE Workflow — URL Capture & Social Coordination (Ready to Start)**
+1. **Recipe Management — Reimport Logic (Ready to Start)**
+   - The UI for reimporting a recipe is implemented in `ActionGearMenu.tsx` but the backend logic and `reimportRecipe` API function need full verification.
+   - **Action Item**: Verify the `POST /api/recipes/{id}/import` endpoint logic and ensure it correctly handles URL-based vs. Photo-based re-acquisition.
+
+2. **SSE Workflow — URL Capture & Social Coordination (Ready to Start)**
    - Three E2E tests are skipped with `// TODO: revisit when SSE ...` comments that mark the integration points:
      - `capture-flow.spec.ts` → "failed URL capture shows error message".
      - `home-goto.spec.ts` → "Page reload after Make This Tonight".
      - `planner-social.spec.ts` → "Verify Nudge Family button triggers Web Share".
    - ADR 035 defines the canonical E2E route-handler pattern to follow when writing SSE mock handlers.
 
-2. **Phase 3: Member Gate & Onboarding (Complete - Pending Final E2E Check)**
-   - The Two-Stage Gate is implemented in `pwa/src/proxy.ts`.
-   - **Action Item**: Perform a final end-to-end manual check (Clear cookies -> Welcome -> Onboarding -> Home).
-
-3. **Phase 4: Recipe Synthesis & Library Filtering (Ready to Start)**
-   - Goal: Finalize "Fire-and-Forget" UX and hide incomplete recipes in `DiscoveryService.cs`.
-   - Vertical slice: Ensure `MinimalCapture.tsx` redirects immediately.
-
 ## Recently Completed
 
-- **Dreaming Workflow (2026-05-09):** Implemented the recurring maintenance workflow from `.kiro/specs/dreaming`.
-  - Added task-level scheduled workflow triggers via `IWorkflowOrchestrator.TriggerAsync(..., scheduledAt)`.
-  - Added `StartWorkflow` processor with optional UTC cron scheduling using `DREAMING_CRON_UTC` defaulting to `0 3 * * *`.
-  - Added `dreaming.yaml`, workflow pruning, Markdown reports under `DATA_ROOT/reports/`, and a startup seeder that creates the first future `dreaming` instance when none is pending/processing.
-  - Focused backend validation passed: `dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --filter "FullyQualifiedName~WorkflowOrchestratorTests|FullyQualifiedName~CronScheduleCalculatorTests|FullyQualifiedName~WorkflowProcessorTests|FullyQualifiedName~ManagementServiceTests|FullyQualifiedName~DreamingWorkflowSeederTests"`.
-- **RecipeStackCard Test Alignment (2026-05-09):** Synchronized unit test expectations with the icon-based swipe indicator implementation (removed legacy `→`/`←` text arrows). Verified that all 333 PWA unit tests pass.
-- **Recipe Action Pivot (2026-05-09):** Implemented and stabilized. Planner-origin search now shows `Add it to {Day}` and assigns back to the selected planner slot; discovery-origin search shows `Cook this`, then pivots to `Cook it tonight` / `Plan for later`. `task gate` is green after hardening the E2E mocks and updating unit/E2E expectations.
+- **Recipe Hero Actions (2026-05-10):** Integrated Camera and Regenerate actions into `RecipeDetailSheet` hero. Implemented global `ToastContainer` (ADR 042) for UI feedback. Verified with `e2e/recipe-hero-actions.spec.ts`.
+- **Recipe Gear Menu (2026-05-10):** Refactored recipe detail to include a gear menu for secondary actions (Move to Bin, Reimport). Updated `Recipe` model to include `sourceType`, `canReimport`, and `imageCount`.
 
 ## Standing Notes
 
+- **Global Toast Pattern (ADR 042).** Use `addToast` from `useUiStore` for user action feedback.
 - **Playwright Mock Layering (ADR 040).** Use `route.fallback()` instead of `route.continue()` for test-specific overrides.
 - **E2E Route Handler Pattern (ADR 035).** Use `new URL(route.request().url())` inside handler bodies.
-- **Kiota is the Source of Truth.** Use `task gen:client` after spec changes.
 - **Zero Drift Doctrine.** `task gate` must pass before ending any session.

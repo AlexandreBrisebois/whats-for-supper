@@ -4,6 +4,30 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-10] Session — Recipe Hero Actions Integration
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+Implemented the "Cooked Photo" capture and AI hero regeneration experience for the recipe detail interface.
+
+**Key Achievements:**
+1. **Hero Action Overlays**: Integrated glassmorphism-styled "Camera" (photo upload) and "Regenerate" (AI hero refresh) buttons in the `RecipeDetailSheet` hero container.
+2. **Conditional Visibility**: Actions are restricted to `isEditing` mode to maintain a clean UI for standard viewing.
+3. **Global Toast System (ADR 042)**: Implemented a centralized `useUiStore` based toast system with a global `ToastContainer` for consistent user feedback (Success/Error/Info/Loading).
+4. **API Integration**: Wired the Camera button to `POST /api/recipes/{id}/originals` (multipart) and the Regenerate button to `POST /api/recipes/{id}/hero/regenerate`.
+5. **E2E Validation**: Created and passed `pwa/e2e/recipe-hero-actions.spec.ts` (3/3 tests) after hardening mocks and fixing auth fixtures.
+
+#### Technical Context & Decisions
+- **ADR 042**: Memorialized the global toast pattern.
+- **Testing pattern**: Fixed auth in E2E tests by using `test` from `./fixtures` to inject the `h_access` cookie, and ensured `x-family-member-id` was set correctly.
+
+#### Verification
+- `npx playwright test e2e/recipe-hero-actions.spec.ts` — ✅ 3 passed.
+- `task agent:drift` — ✅ No drift detected.
+
+---
+
 ### [2026-05-09] Session — RecipeStackCard Test Alignment
 **Status**: COMPLETED ✅
 **Branch**: `main`

@@ -73,6 +73,9 @@ public class SettingsService(RecipeDbContext dbContext, ILogger<SettingsService>
             Ingredients = [],
             RecipeInstructions = null,
             CreatedAt = DateTimeOffset.UtcNow,
+            SourceType = "synthesized",
+            CanReimport = false,
+            ImageCount = 0
         };
 
         return Task.FromResult(placeholder);

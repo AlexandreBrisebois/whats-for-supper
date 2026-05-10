@@ -12,9 +12,21 @@ import {
   Pencil,
   Plus,
   Save,
+  Camera,
+  RefreshCw,
 } from 'lucide-react';
-import { getRecipe, updateRecipe, deleteRecipe, type Recipe } from '@/lib/api/recipes';
+import {
+  getRecipe,
+  updateRecipe,
+  deleteRecipe,
+  reimportRecipe,
+  uploadRecipeOriginal,
+  regenerateHero,
+  type Recipe,
+} from '@/lib/api/recipes';
 import { t } from '@/locales';
+import { useUiStore } from '@/store/uiStore';
+import { ActionGearMenu } from './ActionGearMenu';
 
 const RATING_OPTIONS = [
   { value: 1, emoji: '👎', label: 'Dislike' },
@@ -53,6 +65,8 @@ export function RecipeDetailSheet({
   const [editError, setEditError] = useState<string | null>(null);
   const [notesSaved, setNotesSaved] = useState(false);
   const [showActionPivot, setShowActionPivot] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const addToast = useUiStore((state) => state.addToast);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -211,6 +225,72 @@ export function RecipeDetailSheet({
     }
   };
 
+  const handleReimport = async () => {
+    if (!recipe) return;
+    try {
+      await reimportRecipe(recipe.id);
+      addToast({
+        type: 'success',
+        message: t('recipes.reimportStarted', 'Reimport started...'),
+      });
+    } catch (error) {
+      console.error('Failed to reimport recipe', error);
+      addToast({
+        type: 'error',
+        message: t('recipes.reimportFailed', 'Failed to start reimport'),
+      });
+    }
+  };
+
+  const handleHeroCameraClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleHeroRegenerateClick = async () => {
+    if (!recipe) return;
+    try {
+      await regenerateHero(recipe.id);
+      addToast({
+        type: 'success',
+        message: t('recipes.regeneratingHero', 'Regenerating hero image...'),
+      });
+    } catch (error) {
+      console.error('Failed to regenerate hero', error);
+      addToast({
+        type: 'error',
+        message: t('recipes.regenerateFailed', 'Failed to start regeneration'),
+      });
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !recipe) return;
+
+    addToast({
+      type: 'info',
+      message: t('recipes.photoUploading', 'Uploading photo...'),
+    });
+
+    try {
+      await uploadRecipeOriginal(recipe.id, file);
+      addToast({
+        type: 'success',
+        message: t('recipes.regeneratingHero', 'Regenerating hero image...'),
+      });
+    } catch (error) {
+      console.error('Failed to upload photo', error);
+      addToast({
+        type: 'error',
+        message: t('recipes.uploadFailed', 'Failed to upload photo'),
+      });
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const primaryActionTestId = plannerDayLabel ? 'action-add-to-day' : 'action-cook-this';
   const primaryActionLabel = plannerDayLabel ? `Add it to ${plannerDayLabel}` : 'Cook this';
 
@@ -249,6 +329,13 @@ export function RecipeDetailSheet({
                 {t('common.edit', 'Edit')}
               </button>
             )}
+            {!isLoading && recipe && !isEditing && (
+              <ActionGearMenu
+                canReimport={recipe.canReimport}
+                onMoveToBin={() => void handleMoveToBin()}
+                onReimport={() => void handleReimport()}
+              />
+            )}
             <button
               type="button"
               data-testid="action-close-sheet"
@@ -274,6 +361,34 @@ export function RecipeDetailSheet({
                 alt={recipe.name}
                 className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
               />
+              {isEditing && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
+                    data-testid="hero-action-regenerate"
+                    onClick={() => void handleHeroRegenerateClick()}
+                    className="absolute bottom-4 left-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
+                  >
+                    <RefreshCw size={24} />
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="hero-action-camera"
+                    onClick={handleHeroCameraClick}
+                    className="absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
+                  >
+                    <Camera size={24} />
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="mb-5 flex flex-col gap-3">
@@ -528,17 +643,6 @@ export function RecipeDetailSheet({
                 {isDiscoverable
                   ? t('recipes.hideFromDiscovery', 'Hide from Discovery')
                   : t('recipes.showInDiscovery', 'Show in Discovery')}
-              </button>
-
-              <button
-                type="button"
-                data-testid="action-move-to-bin"
-                onClick={() => void handleMoveToBin()}
-                disabled={isSavingAction}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm disabled:opacity-60"
-              >
-                <Trash2 size={16} />
-                {t('recipes.moveToBin', 'Move to Bin')}
               </button>
             </div>
           </div>

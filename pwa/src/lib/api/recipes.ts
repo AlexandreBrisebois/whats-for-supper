@@ -25,6 +25,9 @@ export interface Recipe {
   isVegetarian?: boolean;
   isHealthyChoice?: boolean;
   recipeInstructions?: unknown[];
+  sourceType: 'url' | 'photos' | 'synthesized';
+  canReimport: boolean;
+  imageCount: number;
 }
 
 export type RecommendationResult = {
@@ -119,6 +122,9 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     isVegetarian: dto.isVegetarian ?? false,
     isHealthyChoice: dto.isHealthyChoice ?? false,
     recipeInstructions,
+    sourceType: (dto.sourceType as any) || 'synthesized',
+    canReimport: dto.canReimport ?? false,
+    imageCount: dto.imageCount || 0,
   };
 }
 
@@ -205,6 +211,37 @@ export async function createRecipe(formData: FormData): Promise<{ id: string }> 
 
 export async function deleteRecipe(id: string): Promise<void> {
   await apiClient.api.recipes.byId(id as any).delete();
+}
+
+export async function reimportRecipe(id: string): Promise<void> {
+  await apiClient.api.recipes.byId(id as any).importEscaped.post();
+}
+
+export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id: string }> {
+  const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/${id}/originals`, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-Family-Member-Id': familyMemberId || '',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to upload photo: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  return {
+    id: result?.id || '',
+  };
+}
+
+export async function regenerateHero(id: string): Promise<void> {
+  await apiClient.api.recipes.byId(id as any).hero.regenerate.post();
 }
 
 export async function captureUrl(

@@ -1,0 +1,9 @@
+name: recipe-hero-regeneration
+parameters:
+    - recipeId
+tasks:
+    - name: generate_hero
+      processor: GenerateHero
+      payload:
+          recipeId: "{{ recipeId }}"
+          force: "true"

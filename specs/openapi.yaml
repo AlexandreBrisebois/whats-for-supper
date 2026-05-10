@@ -47,7 +47,7 @@ components:
     # --- Recipes ---
     RecipeDto:
       type: object
-      required: [id, name, imageUrl, createdAt]
+      required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount]
       properties:
         id: { type: string, format: uuid }
         name: { type: [string, 'null'] }
@@ -71,6 +71,9 @@ components:
         isDiscoverable: { type: boolean }
         notes: { type: [string, 'null'] }
         sourceUrl: { type: [string, 'null'] }
+        sourceType: { type: string, enum: [url, photos, synthesized] }
+        canReimport: { type: boolean }
+        imageCount: { type: integer }
         addedBy: { type: [string, 'null'], format: uuid }
         ingredients:
           type: [array, 'null']
@@ -1494,6 +1497,53 @@ paths:
               schema:
                 type: string
                 format: binary
+
+  /api/recipes/{id}/originals:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Upload an original photo for the recipe
+      operationId: uploadRecipeOriginal
+      tags: [Recipes]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { type: string, format: uuid }
+
+  /api/recipes/{id}/hero/regenerate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Force regeneration of the recipe hero image
+      operationId: regenerateRecipeHero
+      tags: [Recipes]
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
 
   /api/recipes/recommendations:
     get:

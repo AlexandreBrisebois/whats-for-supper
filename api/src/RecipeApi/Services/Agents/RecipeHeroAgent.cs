@@ -31,6 +31,12 @@ public class RecipeHeroAgent(
 
         var recipeId = idProp.GetGuid();
 
+        bool force = false;
+        if (doc.RootElement.TryGetProperty("force", out var forceProp) || doc.RootElement.TryGetProperty("Force", out forceProp))
+        {
+            force = forceProp.ValueKind == JsonValueKind.True || (forceProp.ValueKind == JsonValueKind.String && string.Equals(forceProp.GetString(), "true", StringComparison.OrdinalIgnoreCase));
+        }
+
         // Strict check: recipe.info must exist
         var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
         var infoPath = Path.Combine(recipeDir, "recipe.info");
@@ -39,8 +45,8 @@ public class RecipeHeroAgent(
             throw new FileNotFoundException($"Recipe info file not found: {infoPath}");
         }
 
-        await CreateHeroImageAsync(recipeId);
-        return new { Message = $"Generated hero image for {recipeId}" };
+        await CreateHeroImageAsync(recipeId, force);
+        return new { Message = $"Generated hero image for {recipeId} (Force={force})" };
     }
     private string RecipesRoot => recipesRoot.Root;
 
@@ -52,7 +58,7 @@ public class RecipeHeroAgent(
 
     private const string ModelId = "models/gemini-3-pro-image-preview";
 
-    public async Task CreateHeroImageAsync(Guid recipeId)
+    public async Task CreateHeroImageAsync(Guid recipeId, bool force = false)
     {
         var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
         var infoPath = Path.Combine(recipeDir, "recipe.info");
@@ -64,13 +70,13 @@ public class RecipeHeroAgent(
         }
 
         var heroPath = Path.Combine(recipeDir, "hero.jpg");
-        if (System.IO.File.Exists(heroPath))
+        if (!force && System.IO.File.Exists(heroPath))
         {
             logger.LogInformation("Hero image already exists for recipe {RecipeId}. Skipping.", recipeId);
             return;
         }
 
-        logger.LogInformation("Creating hero image for recipe {RecipeId}", recipeId);
+        logger.LogInformation("Creating hero image for recipe {RecipeId} (Force={Force})", recipeId, force);
 
         // 1. Load recipe.info to see if a finished dish image is already selected
         int finishedDishIndex = -1;
@@ -157,7 +163,16 @@ public class RecipeHeroAgent(
 
             if (part?.InlineData?.Data != null)
             {
-                await System.IO.File.WriteAllBytesAsync(heroPath, part.InlineData.Data);
+                // Task 7: Generate to temp file first, then replace hero.jpg
+                var tempPath = Path.Combine(recipeDir, $"hero.tmp_{Guid.NewGuid()}.jpg");
+                await System.IO.File.WriteAllBytesAsync(tempPath, part.InlineData.Data);
+
+                if (System.IO.File.Exists(heroPath))
+                {
+                    System.IO.File.Delete(heroPath);
+                }
+                System.IO.File.Move(tempPath, heroPath);
+
                 logger.LogInformation("Successfully saved hero.jpg to {Path}", heroPath);
             }
             else

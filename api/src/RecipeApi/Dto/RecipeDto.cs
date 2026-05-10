@@ -59,6 +59,15 @@ public class RecipeDto
     [JsonPropertyName("recipeInstructions")]
     public object? RecipeInstructions { get; set; }
 
+    [JsonPropertyName("sourceType")]
+    public required string SourceType { get; set; }
+
+    [JsonPropertyName("canReimport")]
+    public required bool CanReimport { get; set; }
+
+    [JsonPropertyName("imageCount")]
+    public required int ImageCount { get; set; }
+
     [JsonPropertyName("createdAt")]
     public required DateTimeOffset CreatedAt { get; set; }
 
