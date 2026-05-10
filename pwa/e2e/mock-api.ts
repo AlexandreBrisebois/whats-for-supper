@@ -874,6 +874,24 @@ export async function setupCommonRoutes(page: Page) {
       body: JSON.stringify({ data: { queued: true } }),
     });
   });
+
+  // DELETE /api/captures/failures/{id} (Task 18)
+  await page.route('**/api/captures/failures/*', async (route) => {
+    if (route.request().method() !== 'DELETE') {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          cleared: true,
+          cleanupCommandId: MOCK_IDS.CLEANUP_COMMAND,
+        },
+      }),
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------

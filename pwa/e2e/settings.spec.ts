@@ -113,10 +113,71 @@ test.describe('Settings — Failed Captures section', () => {
     ).toBeVisible({ timeout: 5000 });
   });
 
-  // E2E 4: Default mock returns empty list → failed-captures-empty is visible
-  test('renders failed-captures-empty when list is empty', async ({ page }) => {
+  // E2E 5: Clear tap → mock DELETE returns cleared: true → row removed
+  test('clear tap calls clear endpoint and removes row from list', async ({ page }) => {
+    await page.route('**/api/captures/failures', async (route) => {
+      if (route.request().method() !== 'GET') {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: MOCK_IDS.CAPTURE_FAILURE_URL,
+                sourceType: 'url',
+                friendlyReason: "We couldn't read the recipe page.",
+                status: 'failed',
+                retryCount: 0,
+                createdAt: new Date().toISOString(),
+                lastFailedAt: new Date().toISOString(),
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    // Mock DELETE endpoint
+    await page.route('**/api/captures/failures/*', async (route) => {
+      if (route.request().method() === 'DELETE') {
+        await route.fulfill({
+          status: 202,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              cleared: true,
+              cleanupCommandId: MOCK_IDS.CLEANUP_COMMAND,
+            },
+          }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    // Mock window.confirm to always return true
+    page.on('dialog', async (dialog) => {
+      if (dialog.type() === 'confirm') {
+        await dialog.accept();
+      }
+    });
+
     await page.goto('/profile/settings');
-    await expect(page.getByTestId('failed-captures-empty')).toBeVisible({ timeout: 5000 });
+
+    await expect(page.getByTestId(`failed-capture-${MOCK_IDS.CAPTURE_FAILURE_URL}`)).toBeVisible({
+      timeout: 5000,
+    });
+
+    await page.getByTestId(`action-clear-${MOCK_IDS.CAPTURE_FAILURE_URL}`).click();
+
+    await expect(
+      page.getByTestId(`failed-capture-${MOCK_IDS.CAPTURE_FAILURE_URL}`)
+    ).not.toBeVisible();
+    await expect(page.getByTestId('failed-captures-empty')).toBeVisible();
   });
 });
 
