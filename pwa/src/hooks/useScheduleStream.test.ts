@@ -444,6 +444,7 @@ describe('recipe_failed event', () => {
 
     source.emit('recipe_failed', {
       recipeId: 'recipe-fail',
+      workflowInstanceId: 'workflow-fail',
       errorMessage: 'Timeout',
       failedStep: 'image_generation',
       partialData: null,
@@ -463,6 +464,7 @@ describe('recipe_failed event', () => {
 
     source.emit('recipe_failed', {
       recipeId: 'recipe-fail',
+      workflowInstanceId: 'workflow-fail',
       errorMessage: 'Timeout',
       failedStep: 'image_generation',
       partialData: { name: 'My Dish', imageUrl: undefined },
@@ -472,6 +474,7 @@ describe('recipe_failed event', () => {
     expect(mockPushNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         recipeId: 'recipe-fail',
+        workflowInstanceId: 'workflow-fail',
         type: 'failed',
         errorMessage: 'Timeout',
         failedStep: 'image_generation',
@@ -489,6 +492,7 @@ describe('recipe_failed event', () => {
 
     source.emit('recipe_failed', {
       recipeId: 'recipe-fail',
+      workflowInstanceId: 'workflow-fail',
       errorMessage: 'Error',
       failedStep: 'synthesis',
       partialData: { name: 'Partial Name' },
@@ -509,6 +513,7 @@ describe('recipe_failed event', () => {
 
     source.emit('recipe_failed', {
       recipeId: 'recipe-fail',
+      workflowInstanceId: 'workflow-fail',
       errorMessage: 'Error',
       failedStep: 'synthesis',
       partialData: null,

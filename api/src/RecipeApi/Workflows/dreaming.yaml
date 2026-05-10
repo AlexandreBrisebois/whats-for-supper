@@ -11,11 +11,16 @@ tasks:
     payload:
       workflowId: db-backup
 
+  - name: maintenance
+    processor: ProcessMaintenanceCommands
+    payload: {}
+
   - name: report
     processor: GenerateDreamingReport
     depends_on:
       - prune
       - backup
+      - maintenance
     payload: {}
 
   - name: reschedule

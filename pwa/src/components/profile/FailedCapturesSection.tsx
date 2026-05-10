@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
-import { getCaptureFailures, retryCaptureFailure, type CaptureFailure } from '@/lib/api/captures';
+import { AlertCircle, Trash2 } from 'lucide-react';
+import {
+  clearCaptureFailure,
+  getCaptureFailures,
+  retryCaptureFailure,
+  type CaptureFailure,
+} from '@/lib/api/captures';
 import { t } from '@/locales';
 
 export function FailedCapturesSection() {
   const [failures, setFailures] = useState<CaptureFailure[]>([]);
   const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+  const [clearingIds, setClearingIds] = useState<Set<string>>(new Set());
   const [errorIds, setErrorIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -28,6 +34,32 @@ export function FailedCapturesSection() {
       });
     } catch {
       setErrorIds((prev) => new Set(prev).add(id));
+    }
+  }
+
+  async function handleClear(id: string) {
+    if (clearingIds.has(id)) return;
+    if (!window.confirm(t('settings.clearFailedCaptureConfirm', 'Clear this failed capture?'))) {
+      return;
+    }
+
+    setClearingIds((prev) => new Set(prev).add(id));
+    try {
+      await clearCaptureFailure(id);
+      setFailures((prev) => prev.filter((failure) => failure.id !== id));
+      setErrorIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    } catch {
+      setErrorIds((prev) => new Set(prev).add(id));
+    } finally {
+      setClearingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
@@ -71,22 +103,34 @@ export function FailedCapturesSection() {
                 <p className="text-xs text-charcoal-300 truncate">{failure.previewText}</p>
               )}
 
-              {retryingIds.has(failure.id) ? (
-                <span
-                  data-testid={`action-retry-${failure.id}-retrying`}
-                  className="text-xs font-semibold text-indigo"
-                >
-                  {t('settings.retrying', 'Retrying…')}
-                </span>
-              ) : (
+              <div className="flex items-center gap-2">
+                {retryingIds.has(failure.id) ? (
+                  <span
+                    data-testid={`action-retry-${failure.id}-retrying`}
+                    className="text-xs font-semibold text-indigo"
+                  >
+                    {t('settings.retrying', 'Retrying…')}
+                  </span>
+                ) : (
+                  <button
+                    data-testid={`action-retry-${failure.id}`}
+                    onClick={() => handleRetry(failure.id)}
+                    className="rounded-xl bg-indigo px-4 py-2 text-xs font-bold text-lavender transition-all active:scale-95 hover:bg-indigo/90"
+                  >
+                    {t('settings.retry', 'Retry')}
+                  </button>
+                )}
+
                 <button
-                  data-testid={`action-retry-${failure.id}`}
-                  onClick={() => handleRetry(failure.id)}
-                  className="self-start rounded-xl bg-indigo px-4 py-2 text-xs font-bold text-lavender transition-all active:scale-95 hover:bg-indigo/90"
+                  data-testid={`action-clear-${failure.id}`}
+                  onClick={() => handleClear(failure.id)}
+                  disabled={clearingIds.has(failure.id)}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-terracotta/30 text-terracotta transition-colors hover:bg-terracotta/10 disabled:opacity-50"
+                  aria-label={t('settings.clearFailedCapture', 'Clear failed capture')}
                 >
-                  {t('settings.retry', 'Retry')}
+                  <Trash2 size={14} />
                 </button>
-              )}
+              </div>
 
               {errorIds.has(failure.id) && (
                 <p

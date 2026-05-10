@@ -193,6 +193,13 @@ test.describe('Supper Planner', () => {
   test('should display the planner navigation and segmented control', async ({ page }) => {
     await expect(page.getByTestId('planner-tab')).toBeVisible();
     await expect(page.getByTestId('grocery-tab')).toBeVisible();
+    await expect(page.getByTestId('planner-action-row')).toBeVisible();
+    await expect(
+      page.getByTestId('planner-action-row').getByTestId('ask-family-cta')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('planner-action-row').getByTestId('planned-count-badge')
+    ).toBeVisible();
   });
 
   test('should display 7 daily cards', async ({ page }) => {
@@ -211,6 +218,12 @@ test.describe('Supper Planner', () => {
 
     const nextDateRange = await page.getByTestId('week-range').textContent();
     expect(initialDateRange).not.toBe(nextDateRange);
+
+    await expect(page.getByTestId('planner-this-week-pill')).toBeVisible();
+    await expect(page.getByTestId('planner-this-week-pill')).toContainText('Back to this week');
+    await page.getByTestId('planner-this-week-pill').click();
+
+    await expect(page.getByTestId('week-range')).toContainText('This week', { timeout: 10_000 });
   });
 
   test('should open the planning pivot sheet when clicking "+" on an unplanned day', async ({

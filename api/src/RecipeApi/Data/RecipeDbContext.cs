@@ -19,7 +19,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<FamilySetting> FamilySettings => Set<FamilySetting>();
     public DbSet<IngredientCategory> IngredientCategories => Set<IngredientCategory>();
     public DbSet<RecipeSearchDocument> RecipeSearchDocuments => Set<RecipeSearchDocument>();
-    public DbSet<CaptureFailure> CaptureFailures => Set<CaptureFailure>();
+    public DbSet<MaintenanceCommand> MaintenanceCommands => Set<MaintenanceCommand>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -208,13 +208,17 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.ToTable("recipe_search_documents");
         });
 
-        modelBuilder.Entity<CaptureFailure>(entity =>
+        modelBuilder.Entity<MaintenanceCommand>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.RetryPayload).HasColumnType("jsonb");
+            entity.Property(e => e.Payload).HasColumnType("jsonb");
+            entity.Property(e => e.Result).HasColumnType("jsonb");
+            entity.Property(e => e.Attempts).HasDefaultValue(0);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-            entity.Property(e => e.LastFailedAt).HasDefaultValueSql("NOW()");
-            entity.ToTable("capture_failures");
+            entity.ToTable("maintenance_commands", t =>
+                t.HasCheckConstraint("CK_maintenance_commands_status", "status IN ('pending', 'processing', 'completed', 'failed', 'skipped')"));
+            entity.HasIndex(e => new { e.Status, e.ScheduledFor, e.CreatedAt })
+                  .HasDatabaseName("idx_maintenance_commands_status_scheduled");
         });
     }
 

@@ -10,6 +10,10 @@ namespace RecipeApi.Services;
 
 public record WorkflowPruneResult(int PrunedInstances, int PrunedTasks);
 
+public record MaintenanceCommandBatchResult(int PendingAtStart, int Completed, int Skipped, int Failed, List<MaintenanceCommandReportItem> Items);
+
+public record MaintenanceCommandReportItem(Guid CommandId, string CommandType, string Status, Guid? RecipeId, Guid? WorkflowInstanceId, string? Reason);
+
 public record DreamingReportResult(string Path, int FailedWorkflows, int StuckWorkflows);
 
 public record DemoStateResult(string Message, int FamilyMembers, int Recipes, int SearchDocuments);
@@ -321,11 +325,138 @@ public class ManagementService(
         return new WorkflowPruneResult(instances.Count, taskCount);
     }
 
+    public async Task<MaintenanceCommandBatchResult> ProcessMaintenanceCommandsAsync(CancellationToken ct = default)
+    {
+        var now = clock.UtcNow;
+        var commands = await db.MaintenanceCommands
+            .Where(c => c.Status == "pending" && (c.ScheduledFor == null || c.ScheduledFor <= now))
+            .OrderBy(c => c.CreatedAt)
+            .Take(50)
+            .ToListAsync(ct);
+
+        var items = new List<MaintenanceCommandReportItem>();
+
+        foreach (var command in commands)
+        {
+            command.Status = "processing";
+            command.Attempts++;
+            command.StartedAt = now;
+            command.LastError = null;
+            await db.SaveChangesAsync(ct);
+
+            try
+            {
+                var item = command.CommandType switch
+                {
+                    CaptureFailureService.DeleteFailedCaptureResidueCommand => await ProcessDeleteFailedCaptureResidueAsync(command, ct),
+                    _ => await SkipUnsupportedCommandAsync(command, ct),
+                };
+                items.Add(item);
+            }
+            catch (Exception ex)
+            {
+                command.Status = "failed";
+                command.LastError = ex.Message;
+                command.CompletedAt = clock.UtcNow;
+                command.Result = JsonSerializer.Serialize(new { error = ex.Message }, JsonDefaults.CamelCase);
+                await db.SaveChangesAsync(ct);
+
+                items.Add(new(command.Id, command.CommandType, "failed", null, null, ex.Message));
+                logger.LogError(ex, "Maintenance command {CommandId} ({CommandType}) failed", command.Id, command.CommandType);
+            }
+        }
+
+        return new MaintenanceCommandBatchResult(
+            PendingAtStart: commands.Count,
+            Completed: items.Count(i => i.Status == "completed"),
+            Skipped: items.Count(i => i.Status == "skipped"),
+            Failed: items.Count(i => i.Status == "failed"),
+            Items: items);
+    }
+
+    private async Task<MaintenanceCommandReportItem> ProcessDeleteFailedCaptureResidueAsync(MaintenanceCommand command, CancellationToken ct)
+    {
+        var payload = JsonSerializer.Deserialize<DeleteFailedCaptureResiduePayload>(command.Payload, JsonDefaults.CamelCase)
+            ?? new DeleteFailedCaptureResiduePayload();
+
+        if (payload.WorkflowInstanceId is Guid workflowInstanceId)
+        {
+            var workflow = await db.WorkflowInstances.FirstOrDefaultAsync(w => w.Id == workflowInstanceId, ct);
+            if (workflow is not null)
+                db.WorkflowInstances.Remove(workflow);
+        }
+
+        var status = "completed";
+        var reason = "deleted";
+        var filesDeleted = false;
+        var recipeDeleted = false;
+
+        if (payload.RecipeId is Guid recipeId)
+        {
+            var recipe = await db.Recipes
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(r => r.Id == recipeId, ct);
+
+            if (recipe is null)
+            {
+                reason = "recipe-not-found";
+            }
+            else if (RecipeIsReadyOrDiscoverable(recipe))
+            {
+                status = "skipped";
+                reason = "recipe-became-ready-or-discoverable";
+            }
+            else
+            {
+                var dir = Path.Combine(ActiveRecipesRoot, recipeId.ToString());
+                if (Directory.Exists(dir))
+                {
+                    Directory.Delete(dir, recursive: true);
+                    filesDeleted = true;
+                }
+
+                db.Recipes.Remove(recipe);
+                recipeDeleted = true;
+            }
+        }
+        else
+        {
+            reason = "no-recipe-id";
+        }
+
+        command.Status = status;
+        command.CompletedAt = clock.UtcNow;
+        command.Result = JsonSerializer.Serialize(new
+        {
+            payload.RecipeId,
+            payload.WorkflowInstanceId,
+            payload.SourceWorkflowId,
+            payload.Reason,
+            filesDeleted,
+            recipeDeleted,
+            outcome = reason,
+        }, JsonDefaults.CamelCase);
+
+        await db.SaveChangesAsync(ct);
+        return new(command.Id, command.CommandType, status, payload.RecipeId, payload.WorkflowInstanceId, reason);
+    }
+
+    private async Task<MaintenanceCommandReportItem> SkipUnsupportedCommandAsync(MaintenanceCommand command, CancellationToken ct)
+    {
+        command.Status = "skipped";
+        command.CompletedAt = clock.UtcNow;
+        command.Result = JsonSerializer.Serialize(new { outcome = "unsupported-command-type" }, JsonDefaults.CamelCase);
+        await db.SaveChangesAsync(ct);
+        return new(command.Id, command.CommandType, "skipped", null, null, "unsupported-command-type");
+    }
+
     public async Task<DreamingReportResult> GenerateDreamingReportAsync(
         WorkflowPruneResult? pruneResult = null,
+        MaintenanceCommandBatchResult? maintenanceResult = null,
         CancellationToken ct = default)
     {
         pruneResult ??= new WorkflowPruneResult(0, 0);
+        maintenanceResult ??= new MaintenanceCommandBatchResult(0, 0, 0, 0, []);
         var now = clock.UtcNow;
         var since = now.AddHours(-24);
         var stuckCutoff = now.AddHours(-1);
@@ -355,7 +486,15 @@ public class ManagementService(
         var reportsRoot = Path.Combine(DataRoot, "reports");
         Directory.CreateDirectory(reportsRoot);
         var reportPath = Path.Combine(reportsRoot, $"dreaming-{now:yyyy-MM-dd}.md");
-        var markdown = BuildDreamingReport(now, pruneResult, latestBackup, recentFailures, stuckWorkflows);
+
+        var pendingMaintenanceCommands = await db.MaintenanceCommands
+            .AsNoTracking()
+            .Where(c => c.Status == "pending" || c.Status == "failed")
+            .OrderBy(c => c.CreatedAt)
+            .Take(20)
+            .ToListAsync(ct);
+
+        var markdown = BuildDreamingReport(now, pruneResult, maintenanceResult, pendingMaintenanceCommands, latestBackup, recentFailures, stuckWorkflows);
         await File.WriteAllTextAsync(reportPath, markdown, ct);
 
         logger.LogInformation(
@@ -370,6 +509,8 @@ public class ManagementService(
     private static string BuildDreamingReport(
         DateTimeOffset now,
         WorkflowPruneResult pruneResult,
+        MaintenanceCommandBatchResult maintenanceResult,
+        List<MaintenanceCommand> pendingMaintenanceCommands,
         WorkflowInstance? latestBackup,
         List<WorkflowInstance> recentFailures,
         List<WorkflowInstance> stuckWorkflows)
@@ -383,8 +524,40 @@ public class ManagementService(
         report.AppendLine();
         report.AppendLine($"- Pruned workflow instances: {pruneResult.PrunedInstances}");
         report.AppendLine($"- Pruned workflow tasks: {pruneResult.PrunedTasks}");
+        report.AppendLine($"- Maintenance commands completed: {maintenanceResult.Completed}");
+        report.AppendLine($"- Maintenance commands skipped: {maintenanceResult.Skipped}");
+        report.AppendLine($"- Maintenance commands failed: {maintenanceResult.Failed}");
         report.AppendLine($"- Failed workflows in last 24h: {recentFailures.Count}");
         report.AppendLine($"- Stuck workflows: {stuckWorkflows.Count}");
+        report.AppendLine();
+        report.AppendLine("## Maintenance Commands");
+        report.AppendLine();
+        report.AppendLine($"- Pending at start: {maintenanceResult.PendingAtStart}");
+        report.AppendLine($"- Completed: {maintenanceResult.Completed}");
+        report.AppendLine($"- Skipped: {maintenanceResult.Skipped}");
+        report.AppendLine($"- Failed: {maintenanceResult.Failed}");
+        report.AppendLine($"- Pending/failed after run: {pendingMaintenanceCommands.Count}");
+        report.AppendLine();
+        if (maintenanceResult.Items.Count == 0)
+        {
+            report.AppendLine("- No maintenance commands processed.");
+        }
+        else
+        {
+            foreach (var item in maintenanceResult.Items)
+            {
+                report.AppendLine($"- {item.Status}: {item.CommandType} command={item.CommandId} recipe={item.RecipeId?.ToString() ?? "n/a"} workflow={item.WorkflowInstanceId?.ToString() ?? "n/a"} reason={item.Reason ?? "n/a"}");
+            }
+        }
+        if (pendingMaintenanceCommands.Count > 0)
+        {
+            report.AppendLine();
+            report.AppendLine("### Pending Or Failed Commands");
+            foreach (var command in pendingMaintenanceCommands)
+            {
+                report.AppendLine($"- {command.Status}: {command.CommandType} command={command.Id} attempts={command.Attempts} error={command.LastError ?? "n/a"}");
+            }
+        }
         report.AppendLine();
         report.AppendLine("## Backup Status");
         report.AppendLine();
@@ -435,6 +608,18 @@ public class ManagementService(
         }
 
         return report.ToString();
+    }
+
+    private static bool RecipeIsReadyOrDiscoverable(Recipe recipe) =>
+        recipe.IsDiscoverable
+        || (!string.IsNullOrWhiteSpace(recipe.Name) && (recipe.ImageCount > 0 || recipe.IsSynthesized));
+
+    private sealed class DeleteFailedCaptureResiduePayload
+    {
+        public Guid? RecipeId { get; set; }
+        public Guid? WorkflowInstanceId { get; set; }
+        public string? SourceWorkflowId { get; set; }
+        public string? Reason { get; set; }
     }
 
     private void EnsureDemoSnapshotExists()

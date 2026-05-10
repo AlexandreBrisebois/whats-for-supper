@@ -42,10 +42,11 @@ public class SseEventPublisher : IScheduleEventPublisher
     public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("recipe_ready", new { recipeId, name, imageUrl }, excludeConnectionId);
 
-    public Task PublishRecipeFailedAsync(Guid recipeId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
+    public Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("recipe_failed", new
         {
             recipeId,
+            workflowInstanceId,
             errorMessage,
             failedStep,
             partialData

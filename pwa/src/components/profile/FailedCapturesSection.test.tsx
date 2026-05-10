@@ -11,10 +11,12 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 
 const mockGetCaptureFailures = vi.fn();
 const mockRetryCaptureFailure = vi.fn();
+const mockClearCaptureFailure = vi.fn();
 
 vi.mock('@/lib/api/captures', () => ({
   getCaptureFailures: (...args: unknown[]) => mockGetCaptureFailures(...args),
   retryCaptureFailure: (...args: unknown[]) => mockRetryCaptureFailure(...args),
+  clearCaptureFailure: (...args: unknown[]) => mockClearCaptureFailure(...args),
 }));
 
 vi.mock('@/locales', () => ({
@@ -32,6 +34,9 @@ import { FailedCapturesSection } from './FailedCapturesSection';
 function buildFailure(overrides: Record<string, unknown> = {}) {
   return {
     id: '880e8400-e29b-41d4-a716-446655440040',
+    workflowInstanceId: '880e8400-e29b-41d4-a716-446655440040',
+    recipeId: '990e8400-e29b-41d4-a716-446655440041',
+    sourceWorkflowId: 'url-import',
     sourceType: 'url',
     previewText: 'https://example.com/recipe',
     friendlyReason: "We couldn't read the recipe page. The site may be blocking import right now.",
@@ -52,6 +57,11 @@ describe('FailedCapturesSection', () => {
     vi.clearAllMocks();
     mockGetCaptureFailures.mockResolvedValue([]);
     mockRetryCaptureFailure.mockResolvedValue({ queued: true });
+    mockClearCaptureFailure.mockResolvedValue({
+      cleared: true,
+      cleanupCommandId: '770e8400-e29b-41d4-a716-446655440042',
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   // Unit test 1: Settings page renders failed-captures-section
@@ -130,6 +140,28 @@ describe('FailedCapturesSection', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('failed-captures-empty')).toBeInTheDocument();
+    });
+  });
+
+  it('action-clear-<id> tap calls clearCaptureFailure and removes the row', async () => {
+    const failure = buildFailure();
+    mockGetCaptureFailures.mockResolvedValue([failure]);
+
+    await act(async () => {
+      render(<FailedCapturesSection />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`failed-capture-${failure.id}`)).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId(`action-clear-${failure.id}`));
+    });
+
+    expect(mockClearCaptureFailure).toHaveBeenCalledWith(failure.id);
+    await waitFor(() => {
+      expect(screen.queryByTestId(`failed-capture-${failure.id}`)).not.toBeInTheDocument();
     });
   });
 });

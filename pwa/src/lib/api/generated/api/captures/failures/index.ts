@@ -10,6 +10,7 @@ import {
 // @ts-ignore
 import {
   FailuresItemRequestBuilderNavigationMetadata,
+  FailuresItemRequestBuilderRequestsMetadata,
   type FailuresItemRequestBuilder,
 } from './item/index';
 // @ts-ignore
@@ -123,6 +124,7 @@ export const FailuresRequestBuilderNavigationMetadata: Record<
   NavigationMetadata
 > = {
   byId: {
+    requestsMetadata: FailuresItemRequestBuilderRequestsMetadata,
     navigationMetadata: FailuresItemRequestBuilderNavigationMetadata,
     pathParametersMappings: ['id'],
   },

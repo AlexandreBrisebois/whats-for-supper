@@ -36,11 +36,25 @@ export interface BulkImportTriggerResponseDto extends AdditionalDataHolder, Pars
    */
   queuedCount?: number | null;
 }
+export interface CaptureFailureClearResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The cleanupCommandId property
+   */
+  cleanupCommandId?: Guid | null;
+  /**
+   * The cleared property
+   */
+  cleared?: boolean | null;
+}
 export interface CaptureFailureDto extends AdditionalDataHolder, Parsable {
   /**
    * The createdAt property
    */
   createdAt?: Date | null;
+  /**
+   * The failedStep property
+   */
+  failedStep?: string | null;
   /**
    * The failureCode property
    */
@@ -66,6 +80,10 @@ export interface CaptureFailureDto extends AdditionalDataHolder, Parsable {
    */
   previewText?: string | null;
   /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+  /**
    * The retryCount property
    */
   retryCount?: number | null;
@@ -74,9 +92,17 @@ export interface CaptureFailureDto extends AdditionalDataHolder, Parsable {
    */
   sourceType?: CaptureFailureDto_sourceType | null;
   /**
+   * The sourceWorkflowId property
+   */
+  sourceWorkflowId?: string | null;
+  /**
    * The status property
    */
   status?: CaptureFailureDto_status | null;
+  /**
+   * The workflowInstanceId property
+   */
+  workflowInstanceId?: Guid | null;
 }
 export type CaptureFailureDto_sourceType =
   (typeof CaptureFailureDto_sourceTypeObject)[keyof typeof CaptureFailureDto_sourceTypeObject];
@@ -129,6 +155,17 @@ export function createBulkImportTriggerResponseDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoBulkImportTriggerResponseDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CaptureFailureClearResponse}
+ */
+// @ts-ignore
+export function createCaptureFailureClearResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoCaptureFailureClearResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -951,6 +988,24 @@ export function deserializeIntoBulkImportTriggerResponseDto(
 }
 /**
  * The deserialization information for the current model
+ * @param CaptureFailureClearResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCaptureFailureClearResponse(
+  captureFailureClearResponse: Partial<CaptureFailureClearResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    cleanupCommandId: (n) => {
+      captureFailureClearResponse.cleanupCommandId = n.getGuidValue();
+    },
+    cleared: (n) => {
+      captureFailureClearResponse.cleared = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param CaptureFailureDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -961,6 +1016,9 @@ export function deserializeIntoCaptureFailureDto(
   return {
     createdAt: (n) => {
       captureFailureDto.createdAt = n.getDateValue();
+    },
+    failedStep: (n) => {
+      captureFailureDto.failedStep = n.getStringValue();
     },
     failureCode: (n) => {
       captureFailureDto.failureCode = n.getStringValue();
@@ -980,6 +1038,9 @@ export function deserializeIntoCaptureFailureDto(
     previewText: (n) => {
       captureFailureDto.previewText = n.getStringValue();
     },
+    recipeId: (n) => {
+      captureFailureDto.recipeId = n.getGuidValue();
+    },
     retryCount: (n) => {
       captureFailureDto.retryCount = n.getNumberValue();
     },
@@ -988,10 +1049,16 @@ export function deserializeIntoCaptureFailureDto(
         CaptureFailureDto_sourceTypeObject
       );
     },
+    sourceWorkflowId: (n) => {
+      captureFailureDto.sourceWorkflowId = n.getStringValue();
+    },
     status: (n) => {
       captureFailureDto.status = n.getEnumValue<CaptureFailureDto_status>(
         CaptureFailureDto_statusObject
       );
+    },
+    workflowInstanceId: (n) => {
+      captureFailureDto.workflowInstanceId = n.getGuidValue();
     },
   };
 }
@@ -3435,6 +3502,25 @@ export function serializeBulkImportTriggerResponseDto(
 }
 /**
  * Serializes information the current object
+ * @param CaptureFailureClearResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCaptureFailureClearResponse(
+  writer: SerializationWriter,
+  captureFailureClearResponse: Partial<CaptureFailureClearResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!captureFailureClearResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('cleanupCommandId', captureFailureClearResponse.cleanupCommandId);
+  writer.writeBooleanValue('cleared', captureFailureClearResponse.cleared);
+  writer.writeAdditionalData(captureFailureClearResponse.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param CaptureFailureDto The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -3449,15 +3535,19 @@ export function serializeCaptureFailureDto(
     return;
   }
   writer.writeDateValue('createdAt', captureFailureDto.createdAt);
+  writer.writeStringValue('failedStep', captureFailureDto.failedStep);
   writer.writeStringValue('failureCode', captureFailureDto.failureCode);
   writer.writeGuidValue('familyMemberId', captureFailureDto.familyMemberId);
   writer.writeStringValue('friendlyReason', captureFailureDto.friendlyReason);
   writer.writeGuidValue('id', captureFailureDto.id);
   writer.writeDateValue('lastFailedAt', captureFailureDto.lastFailedAt);
   writer.writeStringValue('previewText', captureFailureDto.previewText);
+  writer.writeGuidValue('recipeId', captureFailureDto.recipeId);
   writer.writeNumberValue('retryCount', captureFailureDto.retryCount);
   writer.writeEnumValue<CaptureFailureDto_sourceType>('sourceType', captureFailureDto.sourceType);
+  writer.writeStringValue('sourceWorkflowId', captureFailureDto.sourceWorkflowId);
   writer.writeEnumValue<CaptureFailureDto_status>('status', captureFailureDto.status);
+  writer.writeGuidValue('workflowInstanceId', captureFailureDto.workflowInstanceId);
   writer.writeAdditionalData(captureFailureDto.additionalData);
 }
 /**
@@ -5303,8 +5393,6 @@ export const CaptureFailureDto_sourceTypeObject = {
 } as const;
 export const CaptureFailureDto_statusObject = {
   Failed: 'failed',
-  Retrying: 'retrying',
-  Resolved: 'resolved',
 } as const;
 export const ManagementTaskStatusResponse_statusObject = {
   Pending: 'Pending',

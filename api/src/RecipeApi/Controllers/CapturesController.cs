@@ -12,21 +12,7 @@ public class CapturesController(CaptureFailureService captureFailureService) : C
     [HttpGet("failures")]
     public async Task<IActionResult> GetFailures(CancellationToken ct)
     {
-        var failures = await captureFailureService.GetActiveFailuresAsync(ct);
-        var items = failures.Select(f => new CaptureFailureDto
-        {
-            Id = f.Id,
-            FamilyMemberId = f.FamilyMemberId,
-            SourceType = f.SourceType,
-            PreviewText = f.PreviewText,
-            FriendlyReason = f.FriendlyReason,
-            FailureCode = f.FailureCode,
-            Status = f.Status,
-            RetryCount = f.RetryCount,
-            CreatedAt = f.CreatedAt,
-            LastFailedAt = f.LastFailedAt,
-        }).ToList();
-
+        var items = await captureFailureService.GetActiveFailuresAsync(ct);
         return Ok(new { data = new { items } });
     }
 
@@ -38,18 +24,44 @@ public class CapturesController(CaptureFailureService captureFailureService) : C
 
         return result switch
         {
-            RetryResult.Queued => StatusCode(202, new { data = new { queued = true } }),
-            RetryResult.AlreadyRetrying => Conflict(new
+            CaptureFailureRetryResult.Queued => StatusCode(202, new { data = new { queued = true } }),
+            CaptureFailureRetryResult.AlreadyRetrying => Conflict(new
             {
                 errorCode = "ALREADY_RETRYING",
                 message = "A retry is already in progress.",
             }),
-            RetryResult.UnsupportedPayloadVersion => UnprocessableEntity(new
+            CaptureFailureRetryResult.NotFailedCapture => UnprocessableEntity(new
             {
-                errorCode = "UNSUPPORTED_PAYLOAD_VERSION",
-                message = "This capture record uses an unsupported payload version and cannot be retried.",
+                errorCode = "NOT_FAILED_CAPTURE",
+                message = "This capture workflow is not in a failed state.",
             }),
-            RetryResult.NotFound => NotFound(new { message = "Capture failure not found." }),
+            CaptureFailureRetryResult.NotFound => NotFound(new { message = "Capture failure not found." }),
+            _ => StatusCode(500, new { message = "Unexpected result." }),
+        };
+    }
+
+    /// <summary>DELETE /api/captures/failures/{id} — clear a failed capture and queue cleanup.</summary>
+    [HttpDelete("failures/{id:guid}")]
+    public async Task<IActionResult> Clear(Guid id, CancellationToken ct)
+    {
+        var result = await captureFailureService.ClearAsync(id, ct: ct);
+
+        return result.Kind switch
+        {
+            CaptureFailureClearResultKind.Cleared => StatusCode(202, new
+            {
+                data = new CaptureFailureClearResponseDto
+                {
+                    Cleared = true,
+                    CleanupCommandId = result.CleanupCommandId!.Value,
+                },
+            }),
+            CaptureFailureClearResultKind.NotFound => NotFound(new { message = "Capture failure not found." }),
+            CaptureFailureClearResultKind.NotFailedCapture => Conflict(new
+            {
+                errorCode = "NOT_FAILED_CAPTURE",
+                message = "This capture workflow is not in a clearable failed state.",
+            }),
             _ => StatusCode(500, new { message = "Unexpected result." }),
         };
     }

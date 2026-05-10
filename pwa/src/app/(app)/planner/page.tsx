@@ -383,52 +383,19 @@ export default function PlannerPage() {
                     })()
                   : t('messages.loading', 'Loading...')}
               </h2>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-                <div
-                  data-testid="planned-count-badge"
-                  className="flex items-center space-x-1 text-sage font-bold text-[9px] bg-sage/5 px-2 py-1 rounded-full border border-sage/10 uppercase tracking-widest"
+              {currentWeekOffset !== 0 && (
+                <button
+                  type="button"
+                  data-testid="planner-this-week-pill"
+                  onClick={() => setWeekOffset(0)}
+                  className="mx-auto mt-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-terracotta/15 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
+                  aria-label={t('planner.backToThisWeek', 'Back to this week')}
+                  title={t('planner.backToThisWeek', 'Back to this week')}
                 >
-                  <span className="relative flex h-1.5 w-1.5 mr-1">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sage opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sage"></span>
-                  </span>
-                  {tWithVars('planner.plannedCount', `${plannedCount}/7 Planned`, {
-                    current: plannedCount,
-                  })}
-                </div>
-                {isVotingOpen && (
-                  <div className="flex items-center gap-2">
-                    <div
-                      data-testid="voting-status-badge"
-                      className="flex items-center space-x-1 text-ochre font-bold text-[9px] bg-ochre/5 px-2 py-1 rounded-full border border-ochre/10 uppercase tracking-widest"
-                    >
-                      <span className="relative flex h-1.5 w-1.5 mr-1">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-ochre"></span>
-                      </span>
-                      {t('planner.votingLive', 'Voting live')}
-                    </div>
-                    <button
-                      onClick={handleCloseVoting}
-                      data-testid="close-voting-btn"
-                      className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta bg-white/80 px-3 py-1.5 rounded-full border border-terracotta/10 hover:bg-terracotta hover:text-white transition-all active:scale-95"
-                    >
-                      <Ban size={10} />
-                      {t('planner.closeVoting', 'Close Voting')}
-                    </button>
-                  </div>
-                )}
-                {currentWeekOffset !== 0 && (
-                  <button
-                    type="button"
-                    data-testid="planner-this-week-pill"
-                    onClick={() => setWeekOffset(0)}
-                    className="flex items-center space-x-1 text-terracotta font-bold text-[9px] bg-terracotta/5 px-2 py-1 rounded-full border border-terracotta/10 uppercase tracking-widest active:scale-95 transition-all"
-                  >
-                    {t('planner.thisWeek', 'This week')}
-                  </button>
-                )}
-              </div>
+                  <ChevronLeft size={12} strokeWidth={3} aria-hidden="true" />
+                  {t('planner.backToThisWeek', 'Back to this week')}
+                </button>
+              )}
             </div>
 
             <button
@@ -478,26 +445,59 @@ export default function PlannerPage() {
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
-              <div className="mb-4 opacity-90">
-                <BalanceIndicator summary={balanceSummary} className="mb-0" />
-              </div>
-
-              {status === 0 && !weekIsPast && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-4 flex justify-start"
-                >
+              <div
+                data-testid="planner-action-row"
+                className="mb-4 flex flex-wrap items-center justify-start gap-2"
+              >
+                {status === 0 && !weekIsPast && (
                   <Button
                     onClick={handleAskFamily}
                     data-testid="ask-family-cta"
-                    className="bg-sage text-white text-[10px] font-bold uppercase tracking-widest h-9 px-5 rounded-full shadow-lg shadow-sage/15 active:scale-95 transition-all"
+                    className="h-9 rounded-full bg-sage px-4 text-[10px] font-bold uppercase tracking-widest text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
                   >
                     <Users size={12} className="mr-2" />
                     {t('planner.askFamily', 'Ask the Family')}
                   </Button>
-                </motion.div>
-              )}
+                )}
+                <div
+                  data-testid="planned-count-badge"
+                  className="flex h-9 items-center space-x-1 rounded-full border border-sage/10 bg-white/75 px-3 text-[9px] font-bold uppercase tracking-widest text-sage shadow-sm shadow-sage/5"
+                >
+                  <span className="relative mr-1 flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sage opacity-75"></span>
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sage"></span>
+                  </span>
+                  {tWithVars('planner.plannedCount', `${plannedCount}/7 Planned`, {
+                    current: plannedCount,
+                  })}
+                </div>
+                {isVotingOpen && (
+                  <>
+                    <div
+                      data-testid="voting-status-badge"
+                      className="flex h-9 items-center space-x-1 rounded-full border border-ochre/10 bg-white/75 px-3 text-[9px] font-bold uppercase tracking-widest text-ochre shadow-sm shadow-ochre/5"
+                    >
+                      <span className="relative mr-1 flex h-1.5 w-1.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ochre opacity-75"></span>
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-ochre"></span>
+                      </span>
+                      {t('planner.votingLive', 'Voting live')}
+                    </div>
+                    <button
+                      onClick={handleCloseVoting}
+                      data-testid="close-voting-btn"
+                      className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
+                    >
+                      <Ban size={10} />
+                      {t('planner.closeVoting', 'Close Voting')}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div className="mb-4 opacity-90">
+                <BalanceIndicator summary={balanceSummary} className="mb-0" />
+              </div>
 
               <Reorder.Group
                 axis="y"

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -18,7 +19,7 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _factory = await TestWebApplicationFactory.CreateAsync();
-        _client  = _factory.CreateClient();
+        _client = _factory.CreateClient();
     }
 
     public async Task DisposeAsync()
@@ -27,114 +28,252 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
-    // ── Task 18: Controller tests — GET /api/captures/failures + POST retry ──
-
-    // Task18-1: POST .../retry sets status = 'retrying' atomically
     [Fact]
-    public async Task RetryAsync_SetsStatus_Retrying()
+    public async Task GetFailures_ExcludesScheduledRetryTasks()
     {
-        var id = await SeedFailureAsync();
-
-        var response = await _client.PostAsync($"/api/captures/failures/{id}/retry", null);
-
-        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        var body = await ReadDataAsync<RetryResponseBody>(response);
-        Assert.True(body.Queued);
-
-        var row = await GetRowByIdAsync(id);
-        Assert.NotNull(row);
-        Assert.Equal("retrying", row.Status);
-    }
-
-    // Task18-2: Second concurrent POST .../retry while status = 'retrying' returns HTTP 409
-    [Fact]
-    public async Task RetryAsync_WhenAlreadyRetrying_Returns409()
-    {
-        var id = await SeedFailureAsync(status: "retrying");
-
-        var response = await _client.PostAsync($"/api/captures/failures/{id}/retry", null);
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-    }
-
-    // Task18-3: POST .../retry returns HTTP 202 with { queued: true } for status = 'failed'
-    [Fact]
-    public async Task RetryAsync_ForFailedStatus_Returns202_WithQueued()
-    {
-        var id = await SeedFailureAsync(status: "failed");
-
-        var response = await _client.PostAsync($"/api/captures/failures/{id}/retry", null);
-
-        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        var body = await ReadDataAsync<RetryResponseBody>(response);
-        Assert.True(body.Queued);
-    }
-
-    // Task18-4: payload_version = 2 (unsupported) returns HTTP 422
-    [Fact]
-    public async Task RetryAsync_UnsupportedPayloadVersion_Returns422()
-    {
-        var id = await SeedFailureAsync(payloadVersion: 2);
-
-        var response = await _client.PostAsync($"/api/captures/failures/{id}/retry", null);
-
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-    }
-
-    // Task18-5: GET /api/captures/failures returns active failures (HTTP 200)
-    [Fact]
-    public async Task GetFailures_Returns200_WithActiveFailures()
-    {
-        var id = await SeedFailureAsync();
+        var instanceId = await SeedWorkflowAsync(
+            workflowId: "url-import",
+            instanceStatus: WorkflowStatus.Processing,
+            taskStatus: RecipeApi.Models.TaskStatus.Pending,
+            scheduledAt: DateTimeOffset.UtcNow.AddHours(2));
 
         var response = await _client.GetAsync("/api/captures/failures");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadAsStringAsync();
-        Assert.Contains(id.ToString(), json);
+        Assert.DoesNotContain(instanceId.ToString(), json);
     }
 
-    // Task18-6: GET /api/captures/failures excludes resolved rows
     [Fact]
-    public async Task GetFailures_DoesNotReturn_ResolvedRows()
+    public async Task GetFailures_ReturnsPausedCaptureWorkflow_WithFailedTask()
     {
-        var id = await SeedFailureAsync(status: "resolved");
+        var instanceId = await SeedWorkflowAsync(
+            workflowId: "url-import",
+            instanceStatus: WorkflowStatus.Paused,
+            taskStatus: RecipeApi.Models.TaskStatus.Failed);
 
         var response = await _client.GetAsync("/api/captures/failures");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadAsStringAsync();
-        Assert.DoesNotContain(id.ToString(), json);
+        Assert.Contains(instanceId.ToString(), json);
+        Assert.Contains("url-import", json);
     }
 
-    // ── helpers for controller tests ─────────────────────────────────────────
+    [Fact]
+    public async Task GetFailures_ExcludesPausedNonCaptureWorkflow()
+    {
+        var instanceId = await SeedWorkflowAsync(
+            workflowId: "db-backup",
+            instanceStatus: WorkflowStatus.Paused,
+            taskStatus: RecipeApi.Models.TaskStatus.Failed);
 
-    private async Task<Guid> SeedFailureAsync(string status = "failed", int payloadVersion = 1)
+        var response = await _client.GetAsync("/api/captures/failures");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(instanceId.ToString(), json);
+    }
+
+    [Fact]
+    public async Task Retry_ResetsFailedTask_AndResumesWorkflow()
+    {
+        var instanceId = await SeedWorkflowAsync(
+            workflowId: "recipe-import",
+            instanceStatus: WorkflowStatus.Paused,
+            taskStatus: RecipeApi.Models.TaskStatus.Failed,
+            retryCount: 3);
+
+        var response = await _client.PostAsync($"/api/captures/failures/{instanceId}/retry", null);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var body = await ReadDataAsync<RetryResponseBody>(response);
+        Assert.True(body.Queued);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var instance = await db.WorkflowInstances.Include(i => i.Tasks).SingleAsync(i => i.Id == instanceId);
+        var task = Assert.Single(instance.Tasks);
+        Assert.Equal(WorkflowStatus.Processing, instance.Status);
+        Assert.Equal(RecipeApi.Models.TaskStatus.Pending, task.Status);
+        Assert.Null(task.ErrorMessage);
+        Assert.Null(task.StackTrace);
+        Assert.True(task.ScheduledAt <= DateTimeOffset.UtcNow.AddSeconds(5));
+    }
+
+    [Fact]
+    public async Task Clear_RemovesWorkflow_AndQueuesCleanupCommand()
+    {
+        var recipeId = await SeedPlaceholderRecipeAsync();
+        var instanceId = await SeedWorkflowAsync(
+            workflowId: "url-import",
+            instanceStatus: WorkflowStatus.Paused,
+            taskStatus: RecipeApi.Models.TaskStatus.Failed,
+            recipeId: recipeId);
+
+        var response = await _client.DeleteAsync($"/api/captures/failures/{instanceId}");
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var body = await ReadDataAsync<ClearResponseBody>(response);
+        Assert.True(body.Cleared);
+        Assert.NotEqual(Guid.Empty, body.CleanupCommandId);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        Assert.False(await db.WorkflowInstances.AnyAsync(i => i.Id == instanceId));
+        Assert.False(await db.WorkflowTasks.AnyAsync(t => t.InstanceId == instanceId));
+        Assert.True(await db.MaintenanceCommands.AnyAsync(c => c.Id == body.CleanupCommandId && c.Status == "pending"));
+
+        var recipe = await db.Recipes.IgnoreQueryFilters().SingleAsync(r => r.Id == recipeId);
+        Assert.NotNull(recipe.DeletedAt);
+    }
+
+    [Fact]
+    public async Task DreamingMaintenance_DeletesSafeResidue_AndRecordsResult()
+    {
+        var recipeId = await SeedPlaceholderRecipeAsync();
+        var recipesRoot = _factory.Services.GetRequiredService<RecipesRootResolver>().Root;
+        var recipeDir = Path.Combine(recipesRoot, recipeId.ToString());
+        Directory.CreateDirectory(recipeDir);
+        await File.WriteAllTextAsync(Path.Combine(recipeDir, "recipe.info"), "{}");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.MaintenanceCommands.Add(new MaintenanceCommand
+            {
+                CommandType = CaptureFailureService.DeleteFailedCaptureResidueCommand,
+                Status = "pending",
+                Payload = JsonSerializer.Serialize(new
+                {
+                    recipeId,
+                    workflowInstanceId = Guid.NewGuid(),
+                    sourceWorkflowId = "url-import",
+                    reason = "test",
+                }),
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<ManagementService>();
+            var result = await service.ProcessMaintenanceCommandsAsync();
+            Assert.Equal(1, result.Completed);
+        }
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            Assert.False(await db.Recipes.IgnoreQueryFilters().AnyAsync(r => r.Id == recipeId));
+            var command = await db.MaintenanceCommands.SingleAsync();
+            Assert.Equal("completed", command.Status);
+            Assert.Contains("recipeDeleted", command.Result);
+        }
+        Assert.False(Directory.Exists(recipeDir));
+    }
+
+    [Fact]
+    public async Task DreamingMaintenance_SkipsReadyRecipe()
+    {
+        var recipeId = await SeedPlaceholderRecipeAsync(isReady: true);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.MaintenanceCommands.Add(new MaintenanceCommand
+            {
+                CommandType = CaptureFailureService.DeleteFailedCaptureResidueCommand,
+                Status = "pending",
+                Payload = JsonSerializer.Serialize(new
+                {
+                    recipeId,
+                    workflowInstanceId = Guid.NewGuid(),
+                    sourceWorkflowId = "recipe-import",
+                    reason = "test",
+                }),
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<ManagementService>();
+            var result = await service.ProcessMaintenanceCommandsAsync();
+            Assert.Equal(1, result.Skipped);
+        }
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        Assert.True(await verifyDb.Recipes.IgnoreQueryFilters().AnyAsync(r => r.Id == recipeId));
+        Assert.Equal("skipped", (await verifyDb.MaintenanceCommands.SingleAsync()).Status);
+    }
+
+    private async Task<Guid> SeedPlaceholderRecipeAsync(bool isReady = false)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var now = DateTimeOffset.UtcNow;
-        var failure = new CaptureFailure
+        var recipe = new Recipe
         {
             Id = Guid.NewGuid(),
-            SourceType = "url",
-            RetryPayload = BuildUrlRetryPayload("https://example.com"),
-            PayloadVersion = payloadVersion,
-            FriendlyReason = "Test failure",
-            Status = status,
-            CreatedAt = now,
-            LastFailedAt = now,
+            Name = isReady ? "Ready Recipe" : "Captured Recipe",
+            AddedBy = _factory.DefaultFamilyMemberId,
+            SourceUrl = "https://example.com/recipe",
+            Rating = RecipeRating.Unknown,
+            ImageCount = isReady ? 1 : 0,
+            IsDiscoverable = isReady,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
         };
-        db.CaptureFailures.Add(failure);
+        db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
-        return failure.Id;
+        return recipe.Id;
     }
 
-    private async Task<CaptureFailure?> GetRowByIdAsync(Guid id)
+    private async Task<Guid> SeedWorkflowAsync(
+        string workflowId,
+        WorkflowStatus instanceStatus,
+        RecipeApi.Models.TaskStatus taskStatus,
+        Guid? recipeId = null,
+        DateTimeOffset? scheduledAt = null,
+        int retryCount = 0)
     {
+        recipeId ??= await SeedPlaceholderRecipeAsync();
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        return await db.CaptureFailures.FindAsync(id);
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = workflowId,
+            Status = instanceStatus,
+            Parameters = JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.Value.ToString(),
+                ["url"] = "https://example.com/recipe",
+            }),
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+        instance.Tasks.Add(new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "extract_recipe",
+            ProcessorName = "ExtractRecipe",
+            Status = taskStatus,
+            ScheduledAt = scheduledAt,
+            RetryCount = retryCount,
+            ErrorMessage = taskStatus == RecipeApi.Models.TaskStatus.Failed ? "Fatal extraction failure" : "Temporary failure",
+            StackTrace = taskStatus == RecipeApi.Models.TaskStatus.Failed ? "stack" : null,
+            DependsOn = [],
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        });
+
+        db.WorkflowInstances.Add(instance);
+        await db.SaveChangesAsync();
+        return instance.Id;
     }
 
     private static async Task<T> ReadDataAsync<T>(HttpResponseMessage response)
@@ -149,254 +288,5 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
     }
 
     private record RetryResponseBody(bool Queued);
-
-    // Test 1: Failed URL capture creates a capture_failures row with sourceType = "url"
-    [Fact]
-    public async Task PersistFailureAsync_CreatesRow_WithSourceTypeUrl()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "url_unreadable",
-            technicalReason: "HTTP 403 from example.com",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.Equal("url", row.SourceType);
-    }
-
-    // Test 2: Row has friendlyReason set to a human-readable string
-    [Fact]
-    public async Task PersistFailureAsync_Sets_FriendlyReason()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "url_unreadable",
-            technicalReason: "HTTP 403",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.False(string.IsNullOrWhiteSpace(row.FriendlyReason));
-    }
-
-    // Test 3: Row has technicalReason set to the raw error detail
-    [Fact]
-    public async Task PersistFailureAsync_Sets_TechnicalReason()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-        const string technical = "Connection timed out after 30s";
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "model_timeout",
-            technicalReason: technical,
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.Equal(technical, row.TechnicalReason);
-    }
-
-    // Test 4: Row has status = "failed"
-    [Fact]
-    public async Task PersistFailureAsync_Sets_StatusFailed()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "extraction_incomplete",
-            technicalReason: "Missing title element",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.Equal("failed", row.Status);
-    }
-
-    // Test 5: Row is accessible via GetActiveFailuresAsync (the query backing GET /api/captures/failures)
-    [Fact]
-    public async Task GetActiveFailuresAsync_Returns_PersistedRow()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "url_unreadable",
-            technicalReason: "403",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var results = await service.GetActiveFailuresAsync();
-        Assert.Contains(results, r => r.RecipeId == recipeId);
-    }
-
-    // Test 6: Resolved rows do NOT appear in GetActiveFailuresAsync
-    [Fact]
-    public async Task GetActiveFailuresAsync_DoesNotReturn_ResolvedRows()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "url_unreadable",
-            technicalReason: "403",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        // Manually set status to resolved
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var row = await db.CaptureFailures.FirstAsync(f => f.RecipeId == recipeId);
-        row.Status = "resolved";
-        await db.SaveChangesAsync();
-
-        var results = await service.GetActiveFailuresAsync();
-        Assert.DoesNotContain(results, r => r.RecipeId == recipeId);
-    }
-
-    // Test 7: failure_code "url_unreadable" maps to the correct friendly reason
-    [Fact]
-    public async Task PersistFailureAsync_UrlUnreadable_Maps_CorrectFriendlyReason()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "url_unreadable",
-            technicalReason: "403",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.Equal(
-            "We couldn't read the recipe page. The site may be blocking import right now.",
-            row.FriendlyReason);
-    }
-
-    // Test 8: failure_code "extraction_incomplete" maps to the correct friendly reason
-    [Fact]
-    public async Task PersistFailureAsync_ExtractionIncomplete_Maps_CorrectFriendlyReason()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "extraction_incomplete",
-            technicalReason: "Missing required fields",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.Equal(
-            "We found the page, but not enough recipe details to save it cleanly.",
-            row.FriendlyReason);
-    }
-
-    // Test 9: failure_code "model_timeout" maps to the correct friendly reason
-    [Fact]
-    public async Task PersistFailureAsync_ModelTimeout_Maps_CorrectFriendlyReason()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "model_timeout",
-            technicalReason: "Timeout after 30s",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.Equal(
-            "The recipe took too long to process. Try again in a moment.",
-            row.FriendlyReason);
-    }
-
-    // Test 10: failure_code "image_parse_failure" maps to the correct friendly reason
-    [Fact]
-    public async Task PersistFailureAsync_ImageParseFailure_Maps_CorrectFriendlyReason()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "image_parse_failure",
-            technicalReason: "Could not decode image",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.Equal(
-            "The photos were too unclear to turn into a recipe.",
-            row.FriendlyReason);
-    }
-
-    // Bonus: unknown failure code maps to the generic fallback friendly reason
-    [Fact]
-    public async Task PersistFailureAsync_UnknownCode_Maps_FallbackFriendlyReason()
-    {
-        var service = GetService();
-        var recipeId = Guid.NewGuid();
-
-        await service.PersistFailureAsync(
-            recipeId: recipeId,
-            workflowId: "url-import",
-            failureCode: "some_unknown_code",
-            technicalReason: "Mystery error",
-            retryPayload: BuildUrlRetryPayload("https://example.com"));
-
-        var row = await GetFailureRowAsync(recipeId);
-        Assert.NotNull(row);
-        Assert.Equal(
-            "Something went wrong importing the recipe. Try again or come back later.",
-            row.FriendlyReason);
-    }
-
-    // ── helpers ──────────────────────────────────────────────────────────────
-
-    private CaptureFailureService GetService()
-    {
-        var scope = _factory.Services.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<CaptureFailureService>();
-    }
-
-    private async Task<CaptureFailure?> GetFailureRowAsync(Guid recipeId)
-    {
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        return await db.CaptureFailures.FirstOrDefaultAsync(f => f.RecipeId == recipeId);
-    }
-
-    private static string BuildUrlRetryPayload(string url) =>
-        JsonSerializer.Serialize(new
-        {
-            version = 1,
-            sourceType = "url",
-            url,
-            description = (string?)null,
-            photoIds = (string[]?)null,
-        });
+    private record ClearResponseBody(bool Cleared, Guid CleanupCommandId);
 }

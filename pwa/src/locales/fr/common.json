@@ -194,6 +194,7 @@
     "planner": "Planning",
     "groceryList": "Liste de courses",
     "thisWeek": "Cette semaine",
+    "backToThisWeek": "Retour à cette semaine",
     "nextWeek": "Semaine prochaine",
     "weekX": "Semaine {{count}}",
     "plannedCount": "{{current}}/7 Prévus",
@@ -327,6 +328,8 @@
     "noFailedCaptures": "Aucune capture échouée. Tous les imports sont terminés.",
     "retry": "Réessayer",
     "retryError": "La tentative a échoué. Réessayez.",
-    "retrying": "Nouvel essai..."
+    "retrying": "Nouvel essai...",
+    "clearFailedCapture": "Effacer la capture échouée",
+    "clearFailedCaptureConfirm": "Effacer cette capture échouée?"
   }
 }

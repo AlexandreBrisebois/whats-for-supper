@@ -194,6 +194,7 @@
     "planner": "Planner",
     "groceryList": "Grocery list",
     "thisWeek": "This week",
+    "backToThisWeek": "Back to this week",
     "nextWeek": "Next week",
     "weekX": "Week {{count}}",
     "plannedCount": "{{current}}/7 Planned",
@@ -327,6 +328,8 @@
     "noFailedCaptures": "No failed captures. All imports completed successfully.",
     "retry": "Retry",
     "retryError": "Retry failed. Please try again.",
-    "retrying": "Retrying..."
+    "retrying": "Retrying...",
+    "clearFailedCapture": "Clear failed capture",
+    "clearFailedCaptureConfirm": "Clear this failed capture?"
   }
 }

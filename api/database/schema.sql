@@ -124,6 +124,22 @@ CREATE TABLE family_settings (
     updated_at  timestamptz DEFAULT now() NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS maintenance_commands (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    command_type text NOT NULL,
+    status text NOT NULL,
+    payload jsonb NOT NULL,
+    result jsonb,
+    attempts integer DEFAULT 0 NOT NULL,
+    requested_by uuid REFERENCES family_members(id) ON DELETE SET NULL,
+    created_at timestamptz DEFAULT now() NOT NULL,
+    scheduled_for timestamptz,
+    started_at timestamptz,
+    completed_at timestamptz,
+    last_error text,
+    CONSTRAINT maintenance_commands_status_check CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'skipped'))
+);
+
 CREATE TABLE ingredient_categories (
     normalized_key text PRIMARY KEY,
     grocery_section text NOT NULL,
@@ -143,6 +159,7 @@ CREATE INDEX idx_recipe_votes_recipe_id ON recipe_votes (recipe_id);
 CREATE INDEX idx_recipes_added_by ON recipes (added_by) WHERE (added_by IS NOT NULL);
 CREATE INDEX idx_recipes_created_at_desc ON recipes (created_at DESC);
 CREATE INDEX idx_recipes_discovery_lookup ON recipes (category, id) WHERE (is_discoverable = true);
+CREATE INDEX IF NOT EXISTS idx_maintenance_commands_status_scheduled ON maintenance_commands (status, scheduled_for, created_at);
 
 CREATE OR REPLACE VIEW vw_recipe_matches AS 
 SELECT recipe_id, count(recipe_id) AS vote_count 

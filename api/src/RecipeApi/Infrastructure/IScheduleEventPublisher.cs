@@ -15,7 +15,7 @@ public interface IScheduleEventPublisher
     /// Published when a workflow instance reaches <see cref="RecipeApi.Models.WorkflowStatus.Failed"/>
     /// (all retries exhausted). NOT published on individual task failures or retry paths.
     /// </summary>
-    Task PublishRecipeFailedAsync(Guid recipeId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null);
+    Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null);
 
     Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null);
 

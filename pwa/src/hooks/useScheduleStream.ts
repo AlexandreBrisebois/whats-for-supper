@@ -174,13 +174,16 @@ export function useScheduleStream() {
     // can surface it to the user.
     source.addEventListener('recipe_failed', (e: MessageEvent) => {
       console.log('[SSE] Received "recipe_failed" event');
-      const { recipeId, errorMessage, failedStep, partialData } = JSON.parse(e.data);
+      const { recipeId, workflowInstanceId, errorMessage, failedStep, partialData } = JSON.parse(
+        e.data
+      );
       const captureStore = useCaptureStore.getState();
       const pending = captureStore.getPending(recipeId);
       if (pending) {
         captureStore.removePending(recipeId);
         useLibraryStore.getState().pushNotification({
           recipeId,
+          workflowInstanceId,
           name: (partialData as { name?: string } | undefined)?.name ?? pending.name ?? recipeId,
           imageUrl: (partialData as { imageUrl?: string } | undefined)?.imageUrl,
           type: 'failed',

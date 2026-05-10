@@ -212,6 +212,10 @@ try
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),
        sp.GetRequiredService<RecipeDbContext>(),
+       "ProcessMaintenanceCommands"));
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
        "GenerateDreamingReport"));
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),

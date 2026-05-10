@@ -7,8 +7,17 @@ public class CaptureFailureDto
     [JsonPropertyName("id")]
     public Guid Id { get; set; }
 
+    [JsonPropertyName("workflowInstanceId")]
+    public Guid WorkflowInstanceId { get; set; }
+
+    [JsonPropertyName("recipeId")]
+    public Guid? RecipeId { get; set; }
+
     [JsonPropertyName("familyMemberId")]
     public Guid? FamilyMemberId { get; set; }
+
+    [JsonPropertyName("sourceWorkflowId")]
+    public string SourceWorkflowId { get; set; } = string.Empty;
 
     [JsonPropertyName("sourceType")]
     public string SourceType { get; set; } = string.Empty;
@@ -21,6 +30,9 @@ public class CaptureFailureDto
 
     [JsonPropertyName("failureCode")]
     public string? FailureCode { get; set; }
+
+    [JsonPropertyName("failedStep")]
+    public string? FailedStep { get; set; }
 
     [JsonPropertyName("status")]
     public string Status { get; set; } = string.Empty;

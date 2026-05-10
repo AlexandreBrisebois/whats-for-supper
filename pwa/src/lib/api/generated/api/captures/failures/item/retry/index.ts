@@ -35,17 +35,6 @@ export function createRetry409ErrorFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Retry422Error}
- */
-// @ts-ignore
-export function createRetry422ErrorFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRetry422Error;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RetryPostResponse}
  */
 // @ts-ignore
@@ -69,24 +58,6 @@ export function deserializeIntoRetry409Error(
     },
     message: (n) => {
       retry409Error.messageEscaped = n.getStringValue();
-    },
-  };
-}
-/**
- * The deserialization information for the current model
- * @param Retry422Error The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRetry422Error(
-  retry422Error: Partial<Retry422Error> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    errorCode: (n) => {
-      retry422Error.errorCode = n.getStringValue();
-    },
-    message: (n) => {
-      retry422Error.messageEscaped = n.getStringValue();
     },
   };
 }
@@ -117,16 +88,6 @@ export interface Retry409Error extends AdditionalDataHolder, ApiError, Parsable 
    */
   messageEscaped?: string | null;
 }
-export interface Retry422Error extends AdditionalDataHolder, ApiError, Parsable {
-  /**
-   * The errorCode property
-   */
-  errorCode?: string | null;
-  /**
-   * The message property
-   */
-  messageEscaped?: string | null;
-}
 export interface RetryPostResponse extends AdditionalDataHolder, Parsable {
   /**
    * The data property
@@ -142,7 +103,6 @@ export interface RetryRequestBuilder extends BaseRequestBuilder<RetryRequestBuil
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RetryPostResponse>}
    * @throws {Retry409Error} error when the service returns a 409 status code
-   * @throws {Retry422Error} error when the service returns a 422 status code
    */
   post(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -174,25 +134,6 @@ export function serializeRetry409Error(
   writer.writeStringValue('errorCode', retry409Error.errorCode);
   writer.writeStringValue('message', retry409Error.messageEscaped);
   writer.writeAdditionalData(retry409Error.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param Retry422Error The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRetry422Error(
-  writer: SerializationWriter,
-  retry422Error: Partial<Retry422Error> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!retry422Error || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeStringValue('errorCode', retry422Error.errorCode);
-  writer.writeStringValue('message', retry422Error.messageEscaped);
-  writer.writeAdditionalData(retry422Error.additionalData);
 }
 /**
  * Serializes information the current object
@@ -229,7 +170,6 @@ export const RetryRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       409: createRetry409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
-      422: createRetry422ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRetryPostResponseFromDiscriminatorValue,

@@ -531,9 +531,10 @@ components:
       allOf:
         - $ref: '#/components/schemas/ScheduleStreamEvent'
         - type: object
-          required: [recipeId, errorMessage, failedStep]
+          required: [recipeId, workflowInstanceId, errorMessage, failedStep]
           properties:
             recipeId: { type: string, format: uuid }
+            workflowInstanceId: { type: string, format: uuid }
             errorMessage: { type: string }
             failedStep: { type: string }
             partialData:
@@ -791,15 +792,19 @@ components:
 
     CaptureFailureDto:
       type: object
-      required: [id, sourceType, friendlyReason, status, retryCount, createdAt, lastFailedAt]
+      required: [id, workflowInstanceId, sourceWorkflowId, sourceType, friendlyReason, status, retryCount, createdAt, lastFailedAt]
       properties:
         id: { type: string, format: uuid }
+        workflowInstanceId: { type: string, format: uuid }
+        recipeId: { type: [string, 'null'], format: uuid }
         familyMemberId: { type: [string, 'null'], format: uuid }
+        sourceWorkflowId: { type: string }
         sourceType: { type: string, enum: [url, photos, describe] }
         previewText: { type: [string, 'null'] }
         friendlyReason: { type: string }
         failureCode: { type: [string, 'null'] }
-        status: { type: string, enum: [failed, retrying, resolved] }
+        failedStep: { type: [string, 'null'] }
+        status: { type: string, enum: [failed] }
         retryCount: { type: integer }
         createdAt: { type: string, format: date-time }
         lastFailedAt: { type: string, format: date-time }
@@ -817,6 +822,13 @@ components:
       required: [queued]
       properties:
         queued: { type: boolean }
+
+    CaptureFailureClearResponse:
+      type: object
+      required: [cleared, cleanupCommandId]
+      properties:
+        cleared: { type: boolean }
+        cleanupCommandId: { type: string, format: uuid }
 
 paths:
   /api/stream:
@@ -2235,6 +2247,35 @@ paths:
                   data: { $ref: '#/components/schemas/CaptureFailureRetryResponse' }
         '409':
           description: Retry already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode: { type: string }
+                  message: { type: string }
+
+  /api/captures/failures/{id}:
+    delete:
+      summary: Clear a failed capture and queue Dreaming cleanup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '202':
+          description: Failed capture cleared and cleanup queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/CaptureFailureClearResponse' }
+        '404':
+          description: Failed capture not found
+        '409':
+          description: Capture workflow is not in a clearable failed state
           content:
             application/json:
               schema:

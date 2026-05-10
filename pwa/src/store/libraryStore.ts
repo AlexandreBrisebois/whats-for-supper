@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 export interface LibraryNotification {
   recipeId: string;
+  workflowInstanceId?: string;
   name: string;
   imageUrl?: string;
   type: 'ready' | 'failed';

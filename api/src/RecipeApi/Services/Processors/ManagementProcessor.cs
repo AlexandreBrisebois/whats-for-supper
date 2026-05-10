@@ -24,7 +24,11 @@ public class ManagementProcessor(
             "CaptureDemoState" => await managementService.CaptureDemoStateAsync(ct),
             "RestoreDemoState" => await managementService.RestoreDemoStateAsync(ct),
             "PruneWorkflows" => await managementService.PruneWorkflowsAsync(GetRetentionDays(task.Payload), ct),
-            "GenerateDreamingReport" => await managementService.GenerateDreamingReportAsync(await GetPruneResultAsync(task, ct), ct),
+            "ProcessMaintenanceCommands" => await managementService.ProcessMaintenanceCommandsAsync(ct),
+            "GenerateDreamingReport" => await managementService.GenerateDreamingReportAsync(
+                await GetPruneResultAsync(task, ct),
+                await GetMaintenanceResultAsync(task, ct),
+                ct),
             _ => throw new NotSupportedException($"Processor {ProcessorName} is not supported by ManagementProcessor.")
         };
     }
@@ -57,5 +61,18 @@ public class ManagementProcessor(
         return string.IsNullOrWhiteSpace(pruneTask?.Result)
             ? null
             : JsonSerializer.Deserialize<WorkflowPruneResult>(pruneTask.Result, JsonDefaults.CamelCase);
+    }
+
+    private async Task<MaintenanceCommandBatchResult?> GetMaintenanceResultAsync(WorkflowTask task, CancellationToken ct)
+    {
+        var maintenanceTask = await db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.InstanceId == task.InstanceId && t.ProcessorName == "ProcessMaintenanceCommands" && t.Result != null)
+            .OrderByDescending(t => t.UpdatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        return string.IsNullOrWhiteSpace(maintenanceTask?.Result)
+            ? null
+            : JsonSerializer.Deserialize<MaintenanceCommandBatchResult>(maintenanceTask.Result, JsonDefaults.CamelCase);
     }
 }

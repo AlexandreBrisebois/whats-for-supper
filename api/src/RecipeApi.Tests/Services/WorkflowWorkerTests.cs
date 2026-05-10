@@ -1968,7 +1968,7 @@ public class CapturingEventPublisher(
     public Task PublishFillTheGapInvalidatedAsync(int weekOffset, string? excludeConnectionId = null) => Task.CompletedTask;
     public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null) => Task.CompletedTask;
 
-    public Task PublishRecipeFailedAsync(Guid recipeId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
+    public Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
     {
         captured.Add((recipeId, errorMessage, failedStep, partialData));
         return Task.CompletedTask;

@@ -346,7 +346,6 @@ public class WorkflowWorker(
             if (instance != null)
             {
                 await PublishRecipeFailedEventAsync(instance, task, db, ct);
-                await PersistCaptureFailureAsync(instance, task, ct);
             }
         }
     }
@@ -481,6 +480,7 @@ public class WorkflowWorker(
 
             await publisher.PublishRecipeFailedAsync(
                 recipeId.Value,
+                instance.Id,
                 failedTask.ErrorMessage ?? "Unknown error",
                 failedTask.TaskName,
                 partialData);
@@ -493,76 +493,6 @@ public class WorkflowWorker(
         {
             // Publishing failure must never crash the worker — log and continue
             logger.LogError(ex, "Failed to publish recipe_failed SSE event for workflow instance {InstanceId}", instance.Id);
-        }
-    }
-
-    private async Task PersistCaptureFailureAsync(
-        WorkflowInstance instance,
-        WorkflowTask failedTask,
-        CancellationToken ct)
-    {
-        // Only persist failures for capture-related workflows.
-        const string urlImport = "url-import";
-        const string recipeImport = "recipe-import";
-
-        if (!string.Equals(instance.WorkflowId, urlImport, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(instance.WorkflowId, recipeImport, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        try
-        {
-            Guid? recipeId = null;
-            string? url = null;
-            Guid? familyMemberId = null;
-
-            if (!string.IsNullOrEmpty(instance.Parameters))
-            {
-                try
-                {
-                    using var doc = JsonDocument.Parse(instance.Parameters);
-                    if (doc.RootElement.TryGetProperty("recipeId", out var idProp) ||
-                        doc.RootElement.TryGetProperty("RecipeId", out idProp))
-                        recipeId = idProp.GetGuid();
-
-                    if (doc.RootElement.TryGetProperty("url", out var urlProp))
-                        url = urlProp.GetString();
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Could not parse workflow parameters for capture failure persistence — instance {InstanceId}", instance.Id);
-                }
-            }
-
-            var retryPayload = JsonSerializer.Serialize(new
-            {
-                version = 1,
-                sourceType = string.Equals(instance.WorkflowId, urlImport, StringComparison.OrdinalIgnoreCase) ? "url" : "photos",
-                url,
-                description = (string?)null,
-                photoIds = (string[]?)null,
-            });
-
-            using var persistScope = scopeFactory.CreateScope();
-            var captureFailureService = persistScope.ServiceProvider.GetRequiredService<CaptureFailureService>();
-
-            await captureFailureService.PersistFailureAsync(
-                recipeId: recipeId,
-                workflowId: instance.WorkflowId,
-                failureCode: null,
-                technicalReason: failedTask.ErrorMessage,
-                retryPayload: retryPayload,
-                familyMemberId: familyMemberId,
-                ct: ct);
-
-            logger.LogInformation(
-                "Persisted capture failure for workflow {WorkflowId} instance {InstanceId}",
-                instance.WorkflowId, instance.Id);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to persist capture failure for workflow instance {InstanceId}", instance.Id);
         }
     }
 
