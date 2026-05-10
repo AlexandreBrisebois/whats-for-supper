@@ -542,6 +542,11 @@ public class RecipeService(
 
         recipe.DeletedAt = DateTimeOffset.UtcNow;
         recipe.DeletedBy = deletedBy;
+
+        var searchDoc = await db.RecipeSearchDocuments.FindAsync(id);
+        if (searchDoc is not null)
+            db.RecipeSearchDocuments.Remove(searchDoc);
+
         await db.SaveChangesAsync();
 
         return (MapToDetailResponse(recipe), []);
@@ -551,6 +556,7 @@ public class RecipeService(
     public async Task<List<RecipeTrashItemDto>> GetTrash()
     {
         return await db.Recipes
+            .IgnoreQueryFilters()
             .Where(r => r.DeletedAt != null)
             .OrderByDescending(r => r.DeletedAt)
             .Select(r => new RecipeTrashItemDto
@@ -567,7 +573,9 @@ public class RecipeService(
     /// <summary>Restores a soft-deleted recipe and re-includes it in all active surfaces.</summary>
     public async Task<RecipeDetailResponseDto> RestoreRecipe(Guid id)
     {
-        var recipe = await db.Recipes.FindAsync(id)
+        var recipe = await db.Recipes
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Id == id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
         recipe.DeletedAt = null;

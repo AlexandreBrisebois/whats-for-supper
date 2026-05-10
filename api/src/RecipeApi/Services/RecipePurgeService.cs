@@ -13,7 +13,8 @@ public class RecipePurgeService(RecipeDbContext db, RecipesRootResolver recipesR
     /// </summary>
     public async Task<PurgeResult> PurgeAsync(Guid recipeId, string? elevatedPin)
     {
-        var configuredPin = Environment.GetEnvironmentVariable("ELEVATED_ACTIONS_PIN");
+        var configuredPin = Environment.GetEnvironmentVariable("ELEVATED_ACTIONS_PIN")?.Trim();
+        elevatedPin = elevatedPin?.Trim();
 
         if (string.IsNullOrWhiteSpace(configuredPin))
             return PurgeResult.PinNotConfigured;

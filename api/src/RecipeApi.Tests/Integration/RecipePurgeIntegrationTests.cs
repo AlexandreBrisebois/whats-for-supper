@@ -95,6 +95,20 @@ public class RecipePurgeIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Purge_TrimsConfiguredPinAndHeaderValue()
+    {
+        Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", $" {ValidPin}\n");
+        var recipe = await SeedSoftDeletedRecipeAsync();
+
+        var response = await SendPurgeAsync(recipe.Id, $" {ValidPin} ");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // Restore for cleanup
+        Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", ValidPin);
+    }
+
     // Test 6: Purge returns HTTP 503 if ELEVATED_ACTIONS_PIN is not configured
     [Fact]
     public async Task Purge_Returns503_WhenPinEnvVarNotConfigured()

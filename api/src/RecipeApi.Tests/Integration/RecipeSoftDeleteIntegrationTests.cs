@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
 using RecipeApi.Models;
@@ -38,7 +39,7 @@ public class RecipeSoftDeleteIntegrationTests : IAsyncLifetime
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var updated = await db.Recipes.FindAsync(recipe.Id);
+        var updated = await db.Recipes.IgnoreQueryFilters().FirstAsync(r => r.Id == recipe.Id);
         Assert.NotNull(updated?.DeletedAt);
     }
 
@@ -73,6 +74,19 @@ public class RecipeSoftDeleteIntegrationTests : IAsyncLifetime
         Assert.DoesNotContain(recipe.Id.ToString(), json);
     }
 
+    [Fact]
+    public async Task Delete_Makes_RecipeDetail_Return404()
+    {
+        var recipe = await SeedRecipeAsync("Deleted Detail Recipe");
+
+        var deleteResponse = await _client.DeleteAsync($"/api/recipes/{recipe.Id}");
+        Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+
+        var detailResponse = await _client.GetAsync($"/api/recipes/{recipe.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, detailResponse.StatusCode);
+    }
+
     // Test 4: After soft delete, POST /api/recipes/search does NOT return deleted recipe
     [Fact]
     public async Task Delete_Removes_Recipe_From_Search_Results()
@@ -86,6 +100,22 @@ public class RecipeSoftDeleteIntegrationTests : IAsyncLifetime
 
         var json = await searchResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain(recipe.Id.ToString(), json);
+    }
+
+    [Fact]
+    public async Task Delete_Removes_SearchDocument()
+    {
+        var recipe = await SeedRecipeAsync("Indexed Deleted Recipe");
+        await SeedSearchDocumentAsync(recipe.Id);
+
+        var response = await _client.DeleteAsync($"/api/recipes/{recipe.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var doc = await db.RecipeSearchDocuments.FindAsync(recipe.Id);
+        Assert.Null(doc);
     }
 
     // Test 5: After soft delete, GET /api/recipes/trash DOES include the deleted recipe
@@ -162,7 +192,7 @@ public class RecipeSoftDeleteIntegrationTests : IAsyncLifetime
         // Confirm DB row is cleared
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var restored = await db.Recipes.FindAsync(recipe.Id);
+        var restored = await db.Recipes.IgnoreQueryFilters().FirstAsync(r => r.Id == recipe.Id);
         Assert.Null(restored?.DeletedAt);
     }
 
@@ -234,6 +264,22 @@ public class RecipeSoftDeleteIntegrationTests : IAsyncLifetime
             Date = date,
             MealSlot = 0,
             Status = CalendarEventStatus.Planned
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SeedSearchDocumentAsync(Guid recipeId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+        {
+            RecipeId = recipeId,
+            DocumentText = "indexed deleted recipe",
+            SearchMetadata = "{}",
+            EmbeddingModel = "test-model",
+            IndexStatus = "ready",
+            SchemaVersion = 1,
         });
         await db.SaveChangesAsync();
     }

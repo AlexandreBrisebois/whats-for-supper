@@ -57,6 +57,8 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                   .HasForeignKey(e => e.AddedBy)
                   .OnDelete(DeleteBehavior.SetNull);
 
+            entity.HasQueryFilter(e => e.DeletedAt == null);
+
             // Indexes
             entity.HasIndex(e => e.CreatedAt)
                   .IsDescending(true)
