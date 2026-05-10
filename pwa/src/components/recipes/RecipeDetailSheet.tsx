@@ -5,7 +5,7 @@ import {
   X,
   Clock,
   ChefHat,
-  ArrowRightLeft,
+  Search,
   Trash2,
   Eye,
   Check,
@@ -292,7 +292,7 @@ export function RecipeDetailSheet({
   };
 
   const primaryActionTestId = plannerDayLabel ? 'action-add-to-day' : 'action-cook-this';
-  const primaryActionLabel = plannerDayLabel ? `Add it to ${plannerDayLabel}` : 'Cook this';
+  const primaryActionLabel = plannerDayLabel ? `Plan for ${plannerDayLabel}` : 'Cook This';
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center px-4 pb-4 sm:items-center">
@@ -609,7 +609,7 @@ export function RecipeDetailSheet({
                     disabled={isSavingAction}
                     className="inline-flex items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
                   >
-                    Cook it tonight
+                    Cook Tonight
                   </button>
                   <button
                     type="button"
@@ -618,7 +618,7 @@ export function RecipeDetailSheet({
                     disabled={isSavingAction}
                     className="inline-flex items-center justify-center rounded-full bg-ochre px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-ochre/90 disabled:opacity-60"
                   >
-                    Plan for later
+                    Plan for Later
                   </button>
                 </>
               )}
@@ -629,7 +629,7 @@ export function RecipeDetailSheet({
                 onClick={() => onFindSimilar(recipe.id)}
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm"
               >
-                <ArrowRightLeft size={16} />
+                <Search size={16} />
                 {t('recipes.findSimilar', 'Find Similar')}
               </button>
 

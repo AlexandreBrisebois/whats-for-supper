@@ -4,21 +4,21 @@
 - [ ] **Verify Move to Bin Location**: Confirm that `Move to Bin` has been relocated to the gear icon at the top of the `RecipeDetailSheet`. If not, do not remove the existing button until the gear icon is implemented.
 
 ## Wave 1: Reusable Component Extraction
-- [ ] 1. **Component - Create `DiscoveryToggleCard.tsx`**
+- [x] 1. **Component - Create `DiscoveryToggleCard.tsx`**
     - Extract the toggle logic and JSX from `StackActionBar.tsx`.
     - Props: `isDiscoverable: boolean`, `onToggle: (val: boolean) => Promise<void>`, `isLoading?: boolean`.
     - _Requirements: AC 2_
-- [ ] 2. **Refactor - Update `StackActionBar.tsx`**
+- [x] 2. **Refactor - Update `StackActionBar.tsx`**
     - Replace the inline toggle code with the new `<DiscoveryToggleCard />`.
     - Verify no regression in Stack Browser behavior.
     - _Requirements: AC 2_
 
 ## Wave 2: Label & Icon Refresh
-- [ ] 3. **RecipeDetailSheet - Update Labels**
+- [x] 3. **RecipeDetailSheet - Update Labels**
     - Update `primaryActionLabel` logic to use `Cook This` and `Plan for {plannerDayLabel}`.
     - Update pivot labels to `Cook Tonight` and `Plan for Later`.
     - _Requirements: AC 1_
-- [ ] 4. **RecipeDetailSheet - Update Find Similar**
+- [x] 4. **RecipeDetailSheet - Update Find Similar**
     - Change icon from `ArrowRightLeft` to `Search` (lucide).
     - Ensure button maintains existing `action-find-similar` test ID.
     - _Requirements: AC 3_

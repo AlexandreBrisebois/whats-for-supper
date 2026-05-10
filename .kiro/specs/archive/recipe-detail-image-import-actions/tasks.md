@@ -70,13 +70,13 @@ This spec adds secondary recipe actions (Delete, Reimport) into a gear menu and 
 
 ### Wave 4: PWA UI - Hero Actions (The Polish)
 
-- [ ] 10. **PWA - Hero Action Overlays**
+- [x] 10. **PWA - Hero Action Overlays**
     - Add `hero-action-camera` and `hero-action-regenerate` buttons to the hero image container in `RecipeDetailSheet.tsx`.
     - Only show when `isEditing` is true.
     - Use glassmorphism styles from `design.md`.
     - _Requirements: AC 3_
 
-- [ ] 11. **PWA - Integrate MinimalCapture & Trigger**
+- [x] 11. **PWA - Integrate MinimalCapture & Trigger**
     - Wiring for Camera: Open `MinimalCapture` sheet -> on upload success, show toast.
     - Wiring for Regenerate: Call API -> show toast.
     - _Requirements: AC 4, AC 5_
@@ -84,16 +84,16 @@ This spec adds secondary recipe actions (Delete, Reimport) into a gear menu and 
 ## Verification Plan
 
 ### Automated Tests
-- [ ] Run `task test:api` to verify new endpoints and DTO mapping.
-- [ ] Run `task test:pwa` (Vitest) to verify conditional rendering of menu and hero controls.
-- [ ] Run `npx playwright test e2e/recipe-actions.spec.ts` (Create this file) to verify end-to-end flows.
+- [x] Run `task test:api` to verify new endpoints and DTO mapping.
+- [x] Run `task test:pwa` (Vitest) to verify conditional rendering of menu and hero controls.
+- [x] Run `npx playwright test e2e/recipe-actions.spec.ts` (Create this file) to verify end-to-end flows.
 
 ### Manual Verification
-- [ ] Open a URL-imported recipe -> verify Reimport works.
-- [ ] Open a synthesized recipe -> verify Reimport is missing.
-- [ ] Enter Edit Mode -> Upload a photo via Camera -> verify regeneration toast.
-- [ ] Enter Edit Mode -> Click Regenerate -> verify regeneration toast.
-- [ ] Verify "Move to Bin" successfully deletes the recipe from the gear menu.
+- [x] Open a URL-imported recipe -> verify Reimport works.
+- [x] Open a synthesized recipe -> verify Reimport is missing.
+- [x] Enter Edit Mode -> Upload a photo via Camera -> verify regeneration toast.
+- [x] Enter Edit Mode -> Click Regenerate -> verify regeneration toast.
+- [x] Verify "Move to Bin" successfully deletes the recipe from the gear menu.
 
 ## Task Dependency Graph
 ```json

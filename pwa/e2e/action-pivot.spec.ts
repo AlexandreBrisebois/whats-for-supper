@@ -74,7 +74,7 @@ test.describe('Recipe Action Pivot', () => {
     });
   });
 
-  test('Discovery flow: shows "Cook this" and then the pivot', async ({ page }) => {
+  test('Discovery flow: shows "Cook This" and then the pivot', async ({ page }) => {
     await page.goto('/recipes');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
@@ -106,7 +106,7 @@ test.describe('Recipe Action Pivot', () => {
     await expect(page).toHaveURL(/\/home/);
   });
 
-  test('Planner flow: shows "Add it to {day}" directly', async ({ page }) => {
+  test('Planner flow: shows "Plan for {day}" directly', async ({ page }) => {
     // Go to recipes with planner context (Tuesday index 1)
     await page.goto('/recipes?addToDay=1&weekOffset=0');
 
@@ -117,7 +117,7 @@ test.describe('Recipe Action Pivot', () => {
 
     const addBtn = page.getByTestId('action-add-to-day');
     await expect(addBtn).toBeVisible();
-    await expect(addBtn).toHaveText(/Add it to Tuesday/);
+    await expect(addBtn).toHaveText(/Plan for Tuesday/);
 
     await addBtn.click();
     // Should navigate back to planner with success
