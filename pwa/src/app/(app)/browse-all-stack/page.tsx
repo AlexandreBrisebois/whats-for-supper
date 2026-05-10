@@ -559,7 +559,7 @@ export default function BrowseAllStackPage() {
               }`}
             >
               <Layers3 className="h-4 w-4" />
-              Cards
+              {/* Cards */}
             </button>
             <button
               type="button"
@@ -571,7 +571,7 @@ export default function BrowseAllStackPage() {
               }`}
             >
               <Grid3X3 className="h-4 w-4" />
-              List
+              {/* List */}
             </button>
           </div>
 
