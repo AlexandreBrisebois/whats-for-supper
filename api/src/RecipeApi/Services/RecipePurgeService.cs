@@ -1,11 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class RecipePurgeService(RecipeDbContext db, RecipesRootResolver recipesRoot)
+public class RecipePurgeService(
+    RecipeDbContext db,
+    RecipesRootResolver recipesRoot,
+    IConfiguration configuration,
+    ILogger<RecipePurgeService> logger)
 {
     /// <summary>
     /// Hard-delete a soft-deleted recipe. Filesystem cleanup runs first; DB deletion follows.
@@ -13,14 +19,40 @@ public class RecipePurgeService(RecipeDbContext db, RecipesRootResolver recipesR
     /// </summary>
     public async Task<PurgeResult> PurgeAsync(Guid recipeId, string? elevatedPin)
     {
-        var configuredPin = Environment.GetEnvironmentVariable("ELEVATED_ACTIONS_PIN")?.Trim();
+        // Use Environment.GetEnvironmentVariable directly to support live changes 
+        // and match existing integration test expectations.
+        var rawConfiguredPin = Environment.GetEnvironmentVariable("ELEVATED_ACTIONS_PIN");
+
+        var configuredPin = rawConfiguredPin?.Trim();
+
+        // Strip literal quotes if present (common issue with .env files)
+        if (!string.IsNullOrEmpty(configuredPin) && configuredPin.Length >= 2 && configuredPin.StartsWith("\"") && configuredPin.EndsWith("\""))
+        {
+            configuredPin = configuredPin[1..^1].Trim();
+        }
+
         elevatedPin = elevatedPin?.Trim();
 
         if (string.IsNullOrWhiteSpace(configuredPin))
+        {
+            logger.LogWarning("Purge attempt for recipe {RecipeId} failed: ELEVATED_ACTIONS_PIN is not configured.", recipeId);
             return PurgeResult.PinNotConfigured;
+        }
 
-        if (string.IsNullOrWhiteSpace(elevatedPin) || elevatedPin != configuredPin)
+        if (string.IsNullOrWhiteSpace(elevatedPin))
+        {
+            logger.LogWarning("Purge attempt for recipe {RecipeId} failed: Provided PIN is empty.", recipeId);
             return PurgeResult.Forbidden;
+        }
+
+        if (elevatedPin != configuredPin)
+        {
+            logger.LogWarning("Purge attempt for recipe {RecipeId} failed: PIN mismatch. Provided length: {ProvidedLength}, Configured length: {ConfiguredLength}",
+                recipeId, elevatedPin.Length, configuredPin.Length);
+            return PurgeResult.Forbidden;
+        }
+
+        logger.LogInformation("Purge authorized for recipe {RecipeId}.", recipeId);
 
         var recipe = await db.Recipes
             .IgnoreQueryFilters()

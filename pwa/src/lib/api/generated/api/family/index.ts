@@ -146,6 +146,12 @@ export function deserializeIntoFamilyGetResponse_data(
     name: (n) => {
       familyGetResponse_data.name = n.getStringValue();
     },
+    preferredLanguage: (n) => {
+      familyGetResponse_data.preferredLanguage =
+        n.getEnumValue<FamilyGetResponse_data_preferredLanguage>(
+          FamilyGetResponse_data_preferredLanguageObject
+        );
+    },
     updatedAt: (n) => {
       familyGetResponse_data.updatedAt = n.getDateValue();
     },
@@ -208,6 +214,12 @@ export function deserializeIntoFamilyPostResponse_data(
     name: (n) => {
       familyPostResponse_data.name = n.getStringValue();
     },
+    preferredLanguage: (n) => {
+      familyPostResponse_data.preferredLanguage =
+        n.getEnumValue<FamilyPostResponse_data_preferredLanguage>(
+          FamilyPostResponse_data_preferredLanguageObject
+        );
+    },
     updatedAt: (n) => {
       familyPostResponse_data.updatedAt = n.getDateValue();
     },
@@ -243,12 +255,18 @@ export interface FamilyGetResponse_data extends AdditionalDataHolder, Parsable {
    */
   name?: string | null;
   /**
+   * The preferredLanguage property
+   */
+  preferredLanguage?: FamilyGetResponse_data_preferredLanguage | null;
+  /**
    * The updatedAt property
    */
   updatedAt?: Date | null;
 }
 export type FamilyGetResponse_data_browseViewMode =
   (typeof FamilyGetResponse_data_browseViewModeObject)[keyof typeof FamilyGetResponse_data_browseViewModeObject];
+export type FamilyGetResponse_data_preferredLanguage =
+  (typeof FamilyGetResponse_data_preferredLanguageObject)[keyof typeof FamilyGetResponse_data_preferredLanguageObject];
 export interface FamilyPostRequestBody extends AdditionalDataHolder, Parsable {
   /**
    * The name property
@@ -279,12 +297,18 @@ export interface FamilyPostResponse_data extends AdditionalDataHolder, Parsable 
    */
   name?: string | null;
   /**
+   * The preferredLanguage property
+   */
+  preferredLanguage?: FamilyPostResponse_data_preferredLanguage | null;
+  /**
    * The updatedAt property
    */
   updatedAt?: Date | null;
 }
 export type FamilyPostResponse_data_browseViewMode =
   (typeof FamilyPostResponse_data_browseViewModeObject)[keyof typeof FamilyPostResponse_data_browseViewModeObject];
+export type FamilyPostResponse_data_preferredLanguage =
+  (typeof FamilyPostResponse_data_preferredLanguageObject)[keyof typeof FamilyPostResponse_data_preferredLanguageObject];
 /**
  * Builds and executes requests for operations under /api/family
  */
@@ -395,6 +419,10 @@ export function serializeFamilyGetResponse_data(
   writer.writeDateValue('createdAt', familyGetResponse_data.createdAt);
   writer.writeGuidValue('id', familyGetResponse_data.id);
   writer.writeStringValue('name', familyGetResponse_data.name);
+  writer.writeEnumValue<FamilyGetResponse_data_preferredLanguage>(
+    'preferredLanguage',
+    familyGetResponse_data.preferredLanguage
+  );
   writer.writeDateValue('updatedAt', familyGetResponse_data.updatedAt);
   writer.writeAdditionalData(familyGetResponse_data.additionalData);
 }
@@ -460,6 +488,10 @@ export function serializeFamilyPostResponse_data(
   writer.writeDateValue('createdAt', familyPostResponse_data.createdAt);
   writer.writeGuidValue('id', familyPostResponse_data.id);
   writer.writeStringValue('name', familyPostResponse_data.name);
+  writer.writeEnumValue<FamilyPostResponse_data_preferredLanguage>(
+    'preferredLanguage',
+    familyPostResponse_data.preferredLanguage
+  );
   writer.writeDateValue('updatedAt', familyPostResponse_data.updatedAt);
   writer.writeAdditionalData(familyPostResponse_data.additionalData);
 }
@@ -471,9 +503,17 @@ export const FamilyGetResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
 } as const;
+export const FamilyGetResponse_data_preferredLanguageObject = {
+  En: 'en',
+  Fr: 'fr',
+} as const;
 export const FamilyPostResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const FamilyPostResponse_data_preferredLanguageObject = {
+  En: 'en',
+  Fr: 'fr',
 } as const;
 /**
  * Metadata for all the navigation properties in the request builder.

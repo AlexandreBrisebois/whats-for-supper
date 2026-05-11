@@ -119,7 +119,7 @@ public class FamilyServiceTests
         var service = new FamilyService(ctx);
         var member = await service.CreateFamilyMember("Alex");
 
-        var updated = await service.UpdateFamilyMemberPreferences(member.Id, browseViewMode);
+        var updated = await service.UpdateFamilyMemberPreferences(member.Id, browseViewMode, null);
 
         Assert.Equal("Alex", updated.Name);
         Assert.Equal(browseViewMode, updated.BrowseViewMode);
@@ -137,7 +137,7 @@ public class FamilyServiceTests
         var member = await service.CreateFamilyMember("Alex");
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => service.UpdateFamilyMemberPreferences(member.Id, "carousel"));
+            () => service.UpdateFamilyMemberPreferences(member.Id, "carousel", null));
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class FamilyServiceTests
         var service = new FamilyService(ctx);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => service.UpdateFamilyMemberPreferences(Guid.NewGuid(), "list"));
+            () => service.UpdateFamilyMemberPreferences(Guid.NewGuid(), "list", null));
     }
 
     // ── DeleteFamilyMember ────────────────────────────────────────────────────

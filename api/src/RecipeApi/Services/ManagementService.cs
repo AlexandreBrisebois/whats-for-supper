@@ -706,6 +706,8 @@ public class ManagementService(
                 else
                 {
                     existing.Name = member.Name;
+                    existing.BrowseViewMode = member.BrowseViewMode;
+                    existing.PreferredLanguage = member.PreferredLanguage;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.MembersUpdated++;
                 }

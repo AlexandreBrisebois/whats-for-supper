@@ -684,7 +684,7 @@ export default function BrowseAllStackPage() {
                   key={recipe.id}
                   data-testid="browse-list-recipe-card"
                   onClick={() => handleCardTap(recipe.id!)}
-                  className="group overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+                  className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
                 >
                   <div className="aspect-[4/3] bg-sage/10 overflow-hidden">
                     <img

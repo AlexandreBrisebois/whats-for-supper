@@ -4,9 +4,11 @@ CREATE TABLE family_members (
     id uuid PRIMARY KEY,
     name varchar(100) NOT NULL,
     browse_view_mode text DEFAULT 'stack' NOT NULL,
+    preferred_language text DEFAULT 'en' NOT NULL,
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
-    CONSTRAINT family_members_browse_view_mode_check CHECK (browse_view_mode IN ('stack', 'list'))
+    CONSTRAINT family_members_browse_view_mode_check CHECK (browse_view_mode IN ('stack', 'list')),
+    CONSTRAINT family_members_preferred_language_check CHECK (preferred_language IN ('en', 'fr'))
 );
 
 CREATE TABLE workflow_instances (

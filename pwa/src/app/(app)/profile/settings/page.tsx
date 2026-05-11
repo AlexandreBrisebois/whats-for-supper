@@ -8,10 +8,19 @@ import { FailedCapturesSection } from '@/components/profile/FailedCapturesSectio
 import { useLocale } from '@/components/common/LocaleProvider';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
+import { useFamilyStore } from '@/store/familyStore';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { locale, setCurrentLocale } = useLocale();
+  const { selectedFamilyMemberId, updateMemberPreferences } = useFamilyStore();
+
+  const handleLanguageChange = (next: 'en' | 'fr') => {
+    setCurrentLocale(next);
+    if (selectedFamilyMemberId) {
+      void updateMemberPreferences(selectedFamilyMemberId, { preferredLanguage: next });
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 py-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -56,7 +65,7 @@ export default function SettingsPage() {
           <div className="flex gap-2">
             <button
               data-testid="locale-btn-en"
-              onClick={() => setCurrentLocale('en')}
+              onClick={() => handleLanguageChange('en')}
               className={[
                 'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
                 locale === 'en'
@@ -68,7 +77,7 @@ export default function SettingsPage() {
             </button>
             <button
               data-testid="locale-btn-fr"
-              onClick={() => setCurrentLocale('fr')}
+              onClick={() => handleLanguageChange('fr')}
               className={[
                 'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
                 locale === 'fr'

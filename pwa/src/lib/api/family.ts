@@ -6,6 +6,7 @@ export type FamilyMember = {
   id: string;
   name: string;
   browseViewMode: 'stack' | 'list';
+  preferredLanguage: string;
 };
 
 function toBrowseViewMode(value: unknown): 'stack' | 'list' {
@@ -16,10 +17,11 @@ export async function getFamilyMembers(): Promise<FamilyMember[]> {
   const result = await apiClient.api.family.get();
   // Map generated model to local FamilyMember type
   return (
-    result?.data?.map((m: FamilyGetResponse_data) => ({
+    (result?.data as any[])?.map((m) => ({
       id: m.id || '',
       name: m.name || '',
       browseViewMode: toBrowseViewMode(m.browseViewMode),
+      preferredLanguage: m.preferredLanguage || 'en',
     })) || []
   );
 }
@@ -33,6 +35,7 @@ export async function createFamilyMember(payload: FamilyPostRequestBody): Promis
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
+    preferredLanguage: result.data.preferredLanguage || 'en',
   };
 }
 
@@ -48,6 +51,7 @@ export async function updateFamilyMember(
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
+    preferredLanguage: result.data.preferredLanguage || 'en',
   };
 }
 
@@ -63,6 +67,7 @@ export async function updateFamilyMemberPreferences(
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
+    preferredLanguage: result.data.preferredLanguage || 'en',
   };
 }
 

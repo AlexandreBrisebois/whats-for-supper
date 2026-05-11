@@ -41,7 +41,7 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
         Guid id,
         [FromBody] UpdateFamilyMemberPreferencesDto dto)
     {
-        var member = await familyService.UpdateFamilyMemberPreferences(id, dto.BrowseViewMode);
+        var member = await familyService.UpdateFamilyMemberPreferences(id, dto.BrowseViewMode, dto.PreferredLanguage);
         return Ok(ToDto(member));
     }
 
@@ -57,6 +57,7 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
         Id = member.Id,
         Name = member.Name,
         BrowseViewMode = member.BrowseViewMode,
+        PreferredLanguage = member.PreferredLanguage,
         CreatedAt = member.CreatedAt,
         UpdatedAt = member.UpdatedAt
     };

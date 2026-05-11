@@ -1,9 +1,10 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 
 import type { Locale } from '@/lib/i18n';
 import { getLocale, setLocale as persistLocale } from '@/locales';
+import { useFamilyStore } from '@/store/familyStore';
 
 interface LocaleContextValue {
   locale: Locale;
@@ -16,12 +17,22 @@ const LocaleContext = createContext<LocaleContextValue>({
 });
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => getLocale());
+  const { familyMembers, selectedFamilyMemberId } = useFamilyStore();
+  const [localLocale, setLocalLocale] = useState<Locale>(() => getLocale());
 
   const setCurrentLocale = useCallback((next: Locale) => {
     persistLocale(next);
-    setLocaleState(next);
+    setLocalLocale(next);
   }, []);
+
+  // Derive locale: use selected member's preference if available, fallback to local state
+  const member = familyMembers.find((m) => m.id === selectedFamilyMemberId);
+  const backendLocale =
+    member?.preferredLanguage === 'en' || member?.preferredLanguage === 'fr'
+      ? (member.preferredLanguage as Locale)
+      : undefined;
+
+  const locale = backendLocale ?? localLocale;
 
   return (
     <LocaleContext.Provider value={{ locale, setCurrentLocale }}>{children}</LocaleContext.Provider>

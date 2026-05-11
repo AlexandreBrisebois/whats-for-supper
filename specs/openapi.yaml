@@ -1050,13 +1050,16 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name, browseViewMode, createdAt, updatedAt]
+                      required: [id, name, browseViewMode, preferredLanguage, createdAt, updatedAt]
                       properties:
                         id: { type: string, format: uuid }
                         name: { type: string }
                         browseViewMode:
                           type: string
                           enum: [stack, list]
+                        preferredLanguage:
+                          type: string
+                          enum: [en, fr]
                         createdAt: { type: string, format: date-time }
                         updatedAt: { type: string, format: date-time }
               examples:
@@ -1066,16 +1069,19 @@ paths:
                       - id: '550e8400-e29b-41d4-a716-446655440001'
                         name: 'Alex'
                         browseViewMode: 'stack'
+                        preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440002'
                         name: 'Jordan'
                         browseViewMode: 'list'
+                        preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440003'
                         name: 'Test User'
                         browseViewMode: 'stack'
+                        preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
 
@@ -1100,13 +1106,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, preferredLanguage, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      preferredLanguage:
+                        type: string
+                        enum: [en, fr]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
               example:
@@ -1114,6 +1123,7 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440003'
                   name: 'Test User'
                   browseViewMode: 'stack'
+                  preferredLanguage: 'en'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
         '403':
@@ -1156,13 +1166,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, preferredLanguage, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      preferredLanguage:
+                        type: string
+                        enum: [en, fr]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
               example:
@@ -1170,6 +1183,7 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440001'
                   name: 'Alex'
                   browseViewMode: 'stack'
+                  preferredLanguage: 'en'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
     delete:
@@ -1199,6 +1213,9 @@ paths:
                 browseViewMode:
                   type: string
                   enum: [stack, list]
+                preferredLanguage:
+                  type: string
+                  enum: [en, fr]
       responses:
         '200':
           description: OK
@@ -1209,13 +1226,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, preferredLanguage, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      preferredLanguage:
+                        type: string
+                        enum: [en, fr]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
               example:
@@ -1223,6 +1243,7 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440001'
                   name: 'Alex'
                   browseViewMode: 'list'
+                  preferredLanguage: 'fr'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
         '400':

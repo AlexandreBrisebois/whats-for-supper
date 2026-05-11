@@ -5,5 +5,8 @@ namespace RecipeApi.Dto;
 public class UpdateFamilyMemberPreferencesDto
 {
     [JsonPropertyName("browseViewMode")]
-    public required string BrowseViewMode { get; set; }
+    public string? BrowseViewMode { get; set; }
+
+    [JsonPropertyName("preferredLanguage")]
+    public string? PreferredLanguage { get; set; }
 }

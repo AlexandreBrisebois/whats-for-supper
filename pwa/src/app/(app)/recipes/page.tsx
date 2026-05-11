@@ -997,7 +997,7 @@ export default function RecipesPage() {
                   onClick={() => handleOpenRecipe(recipe.id)}
                   data-testid={`recipe-card-${recipe.id}`}
                   className={cn(
-                    'group flex flex-col gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-charcoal/5 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95',
+                    'group flex flex-col justify-start items-stretch gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-charcoal/5 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95',
                     isAssigning && 'opacity-50 pointer-events-none'
                   )}
                 >

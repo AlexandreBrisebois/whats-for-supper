@@ -4,6 +4,7 @@ export interface FamilyMember {
   id: string;
   name: string;
   browseViewMode?: 'stack' | 'list';
+  preferredLanguage?: string;
 }
 
 export interface RecipeImage {

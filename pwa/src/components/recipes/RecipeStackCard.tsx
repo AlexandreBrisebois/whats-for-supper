@@ -202,7 +202,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
         data-testid={`stack-card-${id}`}
         className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col"
       >
-        <div className="relative h-[62%] w-full overflow-hidden">
+        <div className="relative aspect-[16/10] w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}

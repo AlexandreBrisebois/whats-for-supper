@@ -78,7 +78,8 @@ public class RecipeService(
         {
             await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
             {
-                ["recipeId"] = recipeId.ToString()
+                ["recipeId"] = recipeId.ToString(),
+                ["fingerprint"] = SearchFingerprintService.ComputeSourceFingerprint(recipe)
             });
         }
         catch (Exception ex) { logger.LogError(ex, "Failed to trigger search index for new recipe {RecipeId}", recipeId); }
@@ -506,10 +507,21 @@ public class RecipeService(
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
 
-        await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
+        // Re-enqueue search index when restored. 
+        // We wrap in try-catch because indexing is a non-critical side effect; 
+        // failure here should not revert the restoration.
+        try
         {
-            ["recipeId"] = id.ToString()
-        });
+            await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
+            {
+                ["recipeId"] = id.ToString(),
+                ["fingerprint"] = SearchFingerprintService.ComputeSourceFingerprint(recipe)
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to trigger search index for restored recipe {RecipeId}", id);
+        }
 
         return MapToDetailResponse(recipe);
     }

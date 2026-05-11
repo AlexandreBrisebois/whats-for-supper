@@ -15,7 +15,8 @@ public class RecipeController(
     ImageService imageService,
     RecipeImportService importService,
     RecipeImportBulkService bulkImportService,
-    RecipePurgeService recipePurgeService) : ControllerBase
+    RecipePurgeService recipePurgeService,
+    ILogger<RecipeController> logger) : ControllerBase
 {
     /// <summary>POST /api/recipes — upload images and create a new recipe.</summary>
     [HttpPost]
@@ -344,6 +345,15 @@ public class RecipeController(
         [FromHeader(Name = "X-Elevated-Pin")] string? elevatedPin)
     {
         var result = await recipePurgeService.PurgeAsync(id, elevatedPin);
+
+        if (result != PurgeResult.Success)
+        {
+            logger.LogWarning("Recipe purge failed for {RecipeId} with result {PurgeResult}", id, result);
+        }
+        else
+        {
+            logger.LogInformation("Recipe {RecipeId} purged successfully.", id);
+        }
 
         return result switch
         {

@@ -91,6 +91,12 @@ export function deserializeIntoPreferencesPutRequestBody(
           PreferencesPutRequestBody_browseViewModeObject
         );
     },
+    preferredLanguage: (n) => {
+      preferencesPutRequestBody.preferredLanguage =
+        n.getEnumValue<PreferencesPutRequestBody_preferredLanguage>(
+          PreferencesPutRequestBody_preferredLanguageObject
+        );
+    },
   };
 }
 /**
@@ -135,6 +141,12 @@ export function deserializeIntoPreferencesPutResponse_data(
     name: (n) => {
       preferencesPutResponse_data.name = n.getStringValue();
     },
+    preferredLanguage: (n) => {
+      preferencesPutResponse_data.preferredLanguage =
+        n.getEnumValue<PreferencesPutResponse_data_preferredLanguage>(
+          PreferencesPutResponse_data_preferredLanguageObject
+        );
+    },
     updatedAt: (n) => {
       preferencesPutResponse_data.updatedAt = n.getDateValue();
     },
@@ -151,9 +163,15 @@ export interface PreferencesPutRequestBody extends AdditionalDataHolder, Parsabl
    * The browseViewMode property
    */
   browseViewMode?: PreferencesPutRequestBody_browseViewMode | null;
+  /**
+   * The preferredLanguage property
+   */
+  preferredLanguage?: PreferencesPutRequestBody_preferredLanguage | null;
 }
 export type PreferencesPutRequestBody_browseViewMode =
   (typeof PreferencesPutRequestBody_browseViewModeObject)[keyof typeof PreferencesPutRequestBody_browseViewModeObject];
+export type PreferencesPutRequestBody_preferredLanguage =
+  (typeof PreferencesPutRequestBody_preferredLanguageObject)[keyof typeof PreferencesPutRequestBody_preferredLanguageObject];
 export interface PreferencesPutResponse extends AdditionalDataHolder, Parsable {
   /**
    * The data property
@@ -178,12 +196,18 @@ export interface PreferencesPutResponse_data extends AdditionalDataHolder, Parsa
    */
   name?: string | null;
   /**
+   * The preferredLanguage property
+   */
+  preferredLanguage?: PreferencesPutResponse_data_preferredLanguage | null;
+  /**
    * The updatedAt property
    */
   updatedAt?: Date | null;
 }
 export type PreferencesPutResponse_data_browseViewMode =
   (typeof PreferencesPutResponse_data_browseViewModeObject)[keyof typeof PreferencesPutResponse_data_browseViewModeObject];
+export type PreferencesPutResponse_data_preferredLanguage =
+  (typeof PreferencesPutResponse_data_preferredLanguageObject)[keyof typeof PreferencesPutResponse_data_preferredLanguageObject];
 /**
  * Builds and executes requests for operations under /api/family/{id}/preferences
  */
@@ -247,6 +271,10 @@ export function serializePreferencesPutRequestBody(
     'browseViewMode',
     preferencesPutRequestBody.browseViewMode
   );
+  writer.writeEnumValue<PreferencesPutRequestBody_preferredLanguage>(
+    'preferredLanguage',
+    preferencesPutRequestBody.preferredLanguage
+  );
   writer.writeAdditionalData(preferencesPutRequestBody.additionalData);
 }
 /**
@@ -293,6 +321,10 @@ export function serializePreferencesPutResponse_data(
   writer.writeDateValue('createdAt', preferencesPutResponse_data.createdAt);
   writer.writeGuidValue('id', preferencesPutResponse_data.id);
   writer.writeStringValue('name', preferencesPutResponse_data.name);
+  writer.writeEnumValue<PreferencesPutResponse_data_preferredLanguage>(
+    'preferredLanguage',
+    preferencesPutResponse_data.preferredLanguage
+  );
   writer.writeDateValue('updatedAt', preferencesPutResponse_data.updatedAt);
   writer.writeAdditionalData(preferencesPutResponse_data.additionalData);
 }
@@ -304,9 +336,17 @@ export const PreferencesPutRequestBody_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
 } as const;
+export const PreferencesPutRequestBody_preferredLanguageObject = {
+  En: 'en',
+  Fr: 'fr',
+} as const;
 export const PreferencesPutResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const PreferencesPutResponse_data_preferredLanguageObject = {
+  En: 'en',
+  Fr: 'fr',
 } as const;
 /**
  * Metadata for all the requests in the request builder.

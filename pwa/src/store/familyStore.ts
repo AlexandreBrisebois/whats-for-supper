@@ -31,7 +31,7 @@ interface FamilyState {
   updateMember: (id: string, name: string) => Promise<void>;
   updateMemberPreferences: (
     id: string,
-    preferences: { browseViewMode: 'stack' | 'list' }
+    preferences: { browseViewMode?: 'stack' | 'list'; preferredLanguage?: 'en' | 'fr' }
   ) => Promise<FamilyMember | null>;
   removeMember: (id: string) => Promise<void>;
   loadFamilyMembers: () => Promise<void>;
@@ -97,7 +97,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
 
   updateMemberPreferences: async (
     id: string,
-    preferences: { browseViewMode: 'stack' | 'list' }
+    preferences: { browseViewMode?: 'stack' | 'list'; preferredLanguage?: 'en' | 'fr' }
   ) => {
     set({ error: null });
     const existing = get().familyMembers.find((member) => member.id === id);
@@ -110,7 +110,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     }));
 
     try {
-      const updated = await updateFamilyMemberPreferences(id, preferences);
+      const updated = await updateFamilyMemberPreferences(id, preferences as any);
       set((state) => ({
         familyMembers: state.familyMembers.map((member) => (member.id === id ? updated : member)),
       }));

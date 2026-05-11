@@ -111,6 +111,12 @@ export function deserializeIntoFamilyPutResponse_data(
     name: (n) => {
       familyPutResponse_data.name = n.getStringValue();
     },
+    preferredLanguage: (n) => {
+      familyPutResponse_data.preferredLanguage =
+        n.getEnumValue<FamilyPutResponse_data_preferredLanguage>(
+          FamilyPutResponse_data_preferredLanguageObject
+        );
+    },
     updatedAt: (n) => {
       familyPutResponse_data.updatedAt = n.getDateValue();
     },
@@ -188,12 +194,18 @@ export interface FamilyPutResponse_data extends AdditionalDataHolder, Parsable {
    */
   name?: string | null;
   /**
+   * The preferredLanguage property
+   */
+  preferredLanguage?: FamilyPutResponse_data_preferredLanguage | null;
+  /**
    * The updatedAt property
    */
   updatedAt?: Date | null;
 }
 export type FamilyPutResponse_data_browseViewMode =
   (typeof FamilyPutResponse_data_browseViewModeObject)[keyof typeof FamilyPutResponse_data_browseViewModeObject];
+export type FamilyPutResponse_data_preferredLanguage =
+  (typeof FamilyPutResponse_data_preferredLanguageObject)[keyof typeof FamilyPutResponse_data_preferredLanguageObject];
 /**
  * Serializes information the current object
  * @param FamilyPutRequestBody The instance to serialize from.
@@ -256,6 +268,10 @@ export function serializeFamilyPutResponse_data(
   writer.writeDateValue('createdAt', familyPutResponse_data.createdAt);
   writer.writeGuidValue('id', familyPutResponse_data.id);
   writer.writeStringValue('name', familyPutResponse_data.name);
+  writer.writeEnumValue<FamilyPutResponse_data_preferredLanguage>(
+    'preferredLanguage',
+    familyPutResponse_data.preferredLanguage
+  );
   writer.writeDateValue('updatedAt', familyPutResponse_data.updatedAt);
   writer.writeAdditionalData(familyPutResponse_data.additionalData);
 }
@@ -295,6 +311,10 @@ export const FamilyItemRequestBuilderRequestsMetadata: RequestsMetadata = {
 export const FamilyPutResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const FamilyPutResponse_data_preferredLanguageObject = {
+  En: 'en',
+  Fr: 'fr',
 } as const;
 /* tslint:enable */
 /* eslint-enable */

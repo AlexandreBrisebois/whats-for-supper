@@ -43,16 +43,27 @@ public class FamilyService(RecipeDbContext db)
         return member;
     }
 
-    public async Task<FamilyMember> UpdateFamilyMemberPreferences(Guid id, string browseViewMode)
+    public async Task<FamilyMember> UpdateFamilyMemberPreferences(Guid id, string? browseViewMode, string? preferredLanguage)
     {
-        var normalizedMode = browseViewMode.Trim().ToLowerInvariant();
-        if (normalizedMode is not (BrowseViewModeStack or BrowseViewModeList))
-            throw new ArgumentException("browseViewMode must be stack or list.");
-
         var member = await db.FamilyMembers.FindAsync(id)
             ?? throw new KeyNotFoundException($"Family member {id} not found.");
 
-        member.BrowseViewMode = normalizedMode;
+        if (!string.IsNullOrEmpty(browseViewMode))
+        {
+            var normalizedMode = browseViewMode.Trim().ToLowerInvariant();
+            if (normalizedMode is not (BrowseViewModeStack or BrowseViewModeList))
+                throw new ArgumentException("browseViewMode must be stack or list.");
+            member.BrowseViewMode = normalizedMode;
+        }
+
+        if (!string.IsNullOrEmpty(preferredLanguage))
+        {
+            var normalizedLang = preferredLanguage.Trim().ToLowerInvariant();
+            if (normalizedLang is not ("en" or "fr"))
+                throw new ArgumentException("preferredLanguage must be en or fr.");
+            member.PreferredLanguage = normalizedLang;
+        }
+
         member.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
         return member;

@@ -13,6 +13,9 @@ public class FamilyMemberDto
     [JsonPropertyName("browseViewMode")]
     public required string BrowseViewMode { get; set; }
 
+    [JsonPropertyName("preferredLanguage")]
+    public required string PreferredLanguage { get; set; }
+
     [JsonPropertyName("createdAt")]
     public DateTimeOffset CreatedAt { get; set; }
 
