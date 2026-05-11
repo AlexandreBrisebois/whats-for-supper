@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search as SearchIcon,
   Star,
-  ArrowRight,
   Sparkles,
   Clock,
   ChefHat,
@@ -90,6 +89,7 @@ export default function RecipesPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const resultsSentinelRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -408,7 +408,14 @@ export default function RecipesPage() {
     void runSearch(query, similarToRecipeId, next);
   };
 
-  const handleShowMore = async () => {
+  const { topPick, results } = data ?? { topPick: null, results: [] };
+  const showEmptyState = !isLoading && topPick == null && results.length === 0;
+  const hasActiveFilters = Object.keys(activeFilters).length > 0;
+  const hasMoreResults = data !== null && results.length >= limit;
+
+  const handleShowMore = useCallback(async () => {
+    if (isLoadingMore || isLoading || !hasMoreResults) return;
+
     const nextLimit = limit + PAGE_SIZE;
     setLimit(nextLimit);
     setIsLoadingMore(true);
@@ -429,16 +436,59 @@ export default function RecipesPage() {
     } finally {
       setIsLoadingMore(false);
     }
-  };
+  }, [
+    activeFilters,
+    hasMoreResults,
+    isLoading,
+    isLoadingMore,
+    limit,
+    pantrySnapshotId,
+    parsedDayIndex,
+    parsedWeekOffset,
+    query,
+    similarToRecipeId,
+  ]);
 
   const handleFeelLucky = () => {
-    void runSearch(query, null, activeFilters, pantrySnapshotId, limit);
+    setData((currentData) => {
+      if (!currentData || currentData.results.length === 0) {
+        void runSearch(query, null, activeFilters, pantrySnapshotId, limit);
+        return currentData;
+      }
+
+      const nextTopPickIndex = Math.floor(Math.random() * currentData.results.length);
+      const nextTopPick = currentData.results[nextTopPickIndex];
+      const previousTopPick = currentData.topPick;
+      const nextResults = currentData.results.filter((_, index) => index !== nextTopPickIndex);
+
+      if (previousTopPick) {
+        nextResults.unshift(previousTopPick);
+      }
+
+      return {
+        ...currentData,
+        topPick: nextTopPick,
+        results: nextResults,
+      };
+    });
   };
 
-  const { topPick, results } = data ?? { topPick: null, results: [] };
-  const showEmptyState = !isLoading && topPick == null && results.length === 0;
-  const hasActiveFilters = Object.keys(activeFilters).length > 0;
-  const hasMoreResults = data !== null && results.length >= limit;
+  useEffect(() => {
+    const sentinel = resultsSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void handleShowMore();
+        }
+      },
+      { rootMargin: '600px 0px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [handleShowMore]);
 
   return (
     <div className="flex flex-col gap-6 pt-6 pb-12">
@@ -914,12 +964,6 @@ export default function RecipesPage() {
                       </p>
                     )}
                   </div>
-
-                  <div className="absolute bottom-6 right-6 z-10">
-                    <div className="h-12 w-12 rounded-full bg-white text-charcoal flex items-center justify-center shadow-xl transition-all group-hover:bg-terracotta group-hover:text-white group-hover:scale-110">
-                      <ArrowRight size={24} />
-                    </div>
-                  </div>
                 </div>
               </motion.div>
             )}
@@ -958,19 +1002,15 @@ export default function RecipesPage() {
               ))}
             </div>
 
-            {/* Show more */}
+            {/* Infinite scroll sentinel */}
             {hasMoreResults && (
-              <div className="flex justify-center px-1">
-                <button
-                  type="button"
-                  data-testid="show-more-results"
-                  onClick={() => void handleShowMore()}
-                  disabled={isLoadingMore}
-                  className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-6 py-2.5 text-sm font-bold text-charcoal shadow-sm disabled:opacity-50"
-                >
-                  {isLoadingMore ? <Loader2 size={14} className="animate-spin" /> : null}
-                  {t('recipes.showMore', 'Show more')}
-                </button>
+              <div
+                ref={resultsSentinelRef}
+                data-testid="search-results-scroll-sentinel"
+                className="flex min-h-12 items-center justify-center px-1"
+                aria-hidden="true"
+              >
+                {isLoadingMore ? <Loader2 size={18} className="animate-spin text-ochre" /> : null}
               </div>
             )}
           </>

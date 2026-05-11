@@ -322,7 +322,6 @@ export function FamilyGOTOSettings() {
           </div>
         )}
       </AnimatePresence>
-
     </>
   );
 }

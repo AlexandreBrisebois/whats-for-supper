@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -167,6 +167,22 @@ function makeRecipeDetail(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeSearchResult(index: number) {
+  const id = `${String(index).padStart(8, '0')}-0000-0000-0000-${String(index).padStart(12, '0')}`;
+  return {
+    id,
+    name: `Recipe ${index}`,
+    imageUrl: `https://example.com/recipe-${index}.jpg`,
+    totalTime: '25 min',
+    difficulty: 'Easy',
+    rating: 1,
+    isDiscoverable: true,
+    notes: null,
+    reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+    plannerFitNote: null,
+  };
+}
+
 describe('RecipesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -258,7 +274,7 @@ describe('RecipesPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('top-pick-feeling-lucky button re-runs search without changing query', async () => {
+  it('top-pick-feeling-lucky button promotes a different result without changing query', async () => {
     render(<RecipesPage />);
 
     await waitFor(() => {
@@ -268,11 +284,77 @@ describe('RecipesPage', () => {
     const callsBefore = mocks.searchRecipes.mock.calls.length;
     fireEvent.click(screen.getByTestId('top-pick-feeling-lucky'));
 
-    await waitFor(() => {
-      expect(mocks.searchRecipes.mock.calls.length).toBeGreaterThan(callsBefore);
-    });
-
+    expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Chicken Pasta');
+    expect(mocks.searchRecipes.mock.calls.length).toBe(callsBefore);
     expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
+  });
+
+  it('loads more search results from an infinite-scroll sentinel instead of a manual button', async () => {
+    const observerCallbacks: IntersectionObserverCallback[] = [];
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    const originalIntersectionObserver = globalThis.IntersectionObserver;
+
+    class MockIntersectionObserver implements IntersectionObserver {
+      readonly root = null;
+      readonly rootMargin = '600px 0px';
+      readonly scrollMargin = '0px 0px 0px 0px';
+      readonly thresholds = [0];
+
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallbacks.push(callback);
+      }
+
+      observe = observe;
+      unobserve = vi.fn();
+      disconnect = disconnect;
+      takeRecords = vi.fn(() => []);
+    }
+
+    globalThis.IntersectionObserver = MockIntersectionObserver;
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        results: Array.from({ length: 6 }, (_, index) => makeSearchResult(index + 2)),
+      })
+    );
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        results: Array.from({ length: 7 }, (_, index) => makeSearchResult(index + 2)),
+      })
+    );
+
+    try {
+      render(<RecipesPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('search-results-scroll-sentinel')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('show-more-results')).not.toBeInTheDocument();
+      expect(observe).toHaveBeenCalledWith(screen.getByTestId('search-results-scroll-sentinel'));
+
+      await act(async () => {
+        observerCallbacks[0]?.(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver
+        );
+      });
+
+      await waitFor(() => {
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
+          query: '',
+          mode: 'standard',
+          limit: 12,
+          weekOffset: undefined,
+          dayIndex: undefined,
+          similarToRecipeId: undefined,
+          pantrySnapshotId: undefined,
+          filters: undefined,
+        });
+      });
+    } finally {
+      globalThis.IntersectionObserver = originalIntersectionObserver;
+    }
   });
 
   it('renders the empty state when search returns no top pick and no results', async () => {
