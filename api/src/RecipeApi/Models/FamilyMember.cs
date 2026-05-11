@@ -19,9 +19,8 @@ public class FamilyMember
     [Column("browse_view_mode")]
     public string BrowseViewMode { get; set; } = "stack";
 
-    [Required]
     [Column("preferred_language")]
-    public string PreferredLanguage { get; set; } = "en";
+    public string? PreferredLanguage { get; set; }
 
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

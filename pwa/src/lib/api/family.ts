@@ -1,6 +1,7 @@
 import { apiClient } from './api-client';
-import type { FamilyGetResponse_data, FamilyPostRequestBody } from './generated/api/family/index';
+import type { FamilyPostRequestBody } from './generated/api/family/index';
 import type { PreferencesPutRequestBody } from './generated/api/family/item/preferences/index';
+import { Locale, DEFAULT_LOCALE } from '@/lib/i18n';
 
 export type FamilyMember = {
   id: string;
@@ -21,7 +22,7 @@ export async function getFamilyMembers(): Promise<FamilyMember[]> {
       id: m.id || '',
       name: m.name || '',
       browseViewMode: toBrowseViewMode(m.browseViewMode),
-      preferredLanguage: m.preferredLanguage || 'en',
+      preferredLanguage: m.preferredLanguage || '',
     })) || []
   );
 }
@@ -35,7 +36,7 @@ export async function createFamilyMember(payload: FamilyPostRequestBody): Promis
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
-    preferredLanguage: result.data.preferredLanguage || 'en',
+    preferredLanguage: result.data.preferredLanguage || '',
   };
 }
 
@@ -51,7 +52,7 @@ export async function updateFamilyMember(
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
-    preferredLanguage: result.data.preferredLanguage || 'en',
+    preferredLanguage: result.data.preferredLanguage || '',
   };
 }
 
@@ -67,7 +68,7 @@ export async function updateFamilyMemberPreferences(
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
-    preferredLanguage: result.data.preferredLanguage || 'en',
+    preferredLanguage: result.data.preferredLanguage || '',
   };
 }
 

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback } from 'react';
 
-import type { Locale } from '@/lib/i18n';
+import { Locale, DEFAULT_LOCALE } from '@/lib/i18n';
 import { getLocale, setLocale as persistLocale } from '@/locales';
 import { useFamilyStore } from '@/store/familyStore';
 
@@ -12,7 +12,7 @@ interface LocaleContextValue {
 }
 
 const LocaleContext = createContext<LocaleContextValue>({
-  locale: 'en',
+  locale: DEFAULT_LOCALE,
   setCurrentLocale: () => {},
 });
 

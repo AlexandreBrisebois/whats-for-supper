@@ -191,7 +191,17 @@ WFS can automatically translate recipes into a target language (e.g., French or 
 
 ---
 
-## 10. Semantic search configuration
+## 10. Default application language
+
+WFS supports English and French. You can set the initial language for new users via an environment variable. Individual users can still override this in their profile settings.
+
+| Variable | Valid Values | What it does |
+|----------|--------------|--------------|
+| `NEXT_PUBLIC_DEFAULT_LOCALE` | `en`, `fr` | Sets the default language for the PWA if no user preference or system default is detected. |
+
+---
+
+## 11. Semantic search configuration
 
 Semantic search runs out of the box using trigram-based lexical retrieval (no external service required). Vector-based hybrid search requires a configured embedding provider.
 
@@ -227,7 +237,7 @@ ELEVATED_ACTIONS_PIN=1234
 
 ---
 
-## 11. Updating
+## 12. Updating
 
 ```bash
 git pull
@@ -248,7 +258,7 @@ See [`docker/.env.example`](docker/.env.example) for the full annotated referenc
 | Infrastructure | `TRAEFIK_HTTP_PORT`, `TRAEFIK_ADMIN_PORT`, `CLOUDFLARE_TUNNEL_TOKEN`, `DOMAIN_NAME` |
 | Database | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_CONNECTION_STRING` |
 | API | `API_HOST`, `API_PORT`, `ASPNETCORE_ENVIRONMENT`, `DREAMING_CRON_UTC` |
-| PWA | `PWA_HOST`, `NEXT_PUBLIC_API_BASE_URL`, `HEARTH_SECRET`, `NEXT_PUBLIC_COOKIE_DOMAIN` |
+| PWA | `PWA_HOST`, `NEXT_PUBLIC_API_BASE_URL`, `HEARTH_SECRET`, `NEXT_PUBLIC_COOKIE_DOMAIN`, `NEXT_PUBLIC_DEFAULT_LOCALE` |
 | AI | `GEMINI_API_KEY`, `GEMINI_MODEL_ID`, `GEMINI_ENDPOINT`, `IMPORT_TARGET_LANGUAGE` |
 | Search | `EMBEDDING_MODEL_ID` |
 | Storage | `DATA_ROOT` |

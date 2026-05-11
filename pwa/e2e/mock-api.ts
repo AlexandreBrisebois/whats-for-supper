@@ -136,6 +136,7 @@ export const builders = {
     id: MOCK_IDS.MEMBER_ALEX,
     name: 'Alex',
     browseViewMode: 'stack',
+    preferredLanguage: 'en' as any,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -210,12 +211,18 @@ export async function setupCommonRoutes(page: Page) {
   // PUT /api/family/{id}/preferences
   await page.route('**/api/family/*/preferences', async (route) => {
     if (route.request().method() === 'PUT') {
-      const body = route.request().postDataJSON() as { browseViewMode?: 'stack' | 'list' };
+      const body = route.request().postDataJSON() as {
+        browseViewMode?: 'stack' | 'list';
+        preferredLanguage?: string;
+      };
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: builders.familyMember({ browseViewMode: body.browseViewMode ?? 'stack' }),
+          data: builders.familyMember({
+            browseViewMode: body.browseViewMode ?? 'stack',
+            preferredLanguage: (body.preferredLanguage ?? 'en') as any,
+          }),
         }),
       });
     } else {

@@ -15,6 +15,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 import { ToastContainer } from '@/components/ui';
+import { LanguageSwitchProposal } from '@/components/common/LanguageSwitchProposal';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -88,6 +89,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
       {/* Notification layer — mounted at layout level, same as useScheduleStream */}
       <LibraryToast />
       <ToastContainer />
+      <LanguageSwitchProposal />
       <RecipeFailureBanner />
       <Layout
         {...headerProps}

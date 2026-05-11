@@ -65,6 +65,7 @@ services:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:9001}
       HEARTH_SECRET: ${HEARTH_SECRET}
+      NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-en}
     depends_on:
       - api
     networks:

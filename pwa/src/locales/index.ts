@@ -1,4 +1,4 @@
-import type { Locale } from '@/lib/i18n';
+import { Locale, DEFAULT_LOCALE } from '@/lib/i18n';
 
 import enCommon from './en/common.json';
 import enHints from './en/hints.json';
@@ -42,18 +42,14 @@ const translations: Record<Locale, Record<string, unknown>> = {
 };
 
 export function getLocale(): Locale {
-  if (typeof window === 'undefined') return 'en';
+  if (typeof window === 'undefined') return DEFAULT_LOCALE;
 
-  // 1. Check for manual override
+  // 1. Check for manual override (user's explicit choice in this browser)
   const stored = localStorage.getItem(LOCALE_KEY) as Locale | null;
   if (stored === 'en' || stored === 'fr') return stored;
 
-  // 2. Check system default
-  const lang = navigator.language.split('-')[0];
-  if (lang === 'fr') return 'fr';
-
-  // 3. Fallback to English for everything else
-  return 'en';
+  // 2. Fallback to environment default
+  return DEFAULT_LOCALE;
 }
 
 export function setLocale(locale: Locale): void {

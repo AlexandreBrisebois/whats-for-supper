@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Image from 'next/image';
 import {
   X,
   Clock,
@@ -440,10 +441,12 @@ export function RecipeDetailSheet({
         ) : (
           <div className="overflow-y-auto px-6 pb-6 pt-4">
             <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-[2rem] bg-charcoal/5">
-              <img
+              <Image
                 src={recipe.imageUrl || '/placeholder-recipe.jpg'}
                 alt={recipe.name}
-                className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
+                fill
+                unoptimized
+                className="select-none pointer-events-none object-cover"
               />
               {isEditing && (
                 <>

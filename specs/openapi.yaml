@@ -1050,7 +1050,7 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name, browseViewMode, preferredLanguage, createdAt, updatedAt]
+                      required: [id, name, browseViewMode, createdAt, updatedAt]
                       properties:
                         id: { type: string, format: uuid }
                         name: { type: string }
@@ -1058,7 +1058,7 @@ paths:
                           type: string
                           enum: [stack, list]
                         preferredLanguage:
-                          type: string
+                          type: [string, 'null']
                           enum: [en, fr]
                         createdAt: { type: string, format: date-time }
                         updatedAt: { type: string, format: date-time }
@@ -1106,7 +1106,7 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, preferredLanguage, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
@@ -1114,7 +1114,7 @@ paths:
                         type: string
                         enum: [stack, list]
                       preferredLanguage:
-                        type: string
+                        type: [string, 'null']
                         enum: [en, fr]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
@@ -1166,7 +1166,7 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, preferredLanguage, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
@@ -1174,7 +1174,7 @@ paths:
                         type: string
                         enum: [stack, list]
                       preferredLanguage:
-                        type: string
+                        type: [string, 'null']
                         enum: [en, fr]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
@@ -1214,7 +1214,7 @@ paths:
                   type: string
                   enum: [stack, list]
                 preferredLanguage:
-                  type: string
+                  type: [string, 'null']
                   enum: [en, fr]
       responses:
         '200':
@@ -1226,7 +1226,7 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, preferredLanguage, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
@@ -1234,7 +1234,7 @@ paths:
                         type: string
                         enum: [stack, list]
                       preferredLanguage:
-                        type: string
+                        type: [string, 'null']
                         enum: [en, fr]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }

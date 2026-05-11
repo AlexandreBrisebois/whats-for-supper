@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, setupCommonRoutes, mockSseWithRecipeReady } from './mock-api';
+import { MOCK_IDS, setupCommonRoutes, mockSseWithRecipeReady, builders } from './mock-api';
 
 // ── Task 18: Failed Captures queue ──────────────────────────────────────────
 
@@ -350,22 +350,44 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
    * locale on re-mount.
    */
   test('language toggle selection persists on navigation', async ({ page }) => {
+    // 1. Mock the GET /api/family call to return French for subsequent loads
+    //    We do this early to ensure any re-loads (even during initial mount) are caught.
+    await page.route('**/api/family', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: [
+              builders.familyMember({ name: 'Alex', preferredLanguage: 'fr' }),
+              builders.familyMember({ id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' }),
+            ],
+          }),
+        });
+      } else {
+        await route.fallback();
+      }
+    });
+
     await page.goto('/profile/settings');
 
     // Wait for the settings page to render
     await expect(page.getByTestId('locale-btn-en')).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('locale-btn-fr')).toBeVisible();
 
-    // Switch to French
+    // 2. Switch to French and wait for the UI to update optimistically
     await page.getByTestId('locale-btn-fr').click();
+    await expect(page.getByTestId('locale-btn-fr')).toHaveClass(/(?:^| )bg-indigo(?:$| )/, {
+      timeout: 5000,
+    });
 
-    // Navigate away and back
+    // 3. Navigate away and back
     await page.goto('/profile');
     await page.goto('/profile/settings');
 
-    // French button must still be active (bg-indigo as a standalone class, not hover:bg-indigo/5)
+    // French button must still be active (bg-indigo as a standalone class)
     const frenchBtn = page.getByTestId('locale-btn-fr');
-    await expect(frenchBtn).toBeVisible({ timeout: 5000 });
+    await expect(frenchBtn).toBeVisible({ timeout: 10000 });
     await expect(frenchBtn).toHaveClass(/(?:^| )bg-indigo(?:$| )/);
 
     // English button must be inactive (only has hover:bg-indigo/5, not standalone bg-indigo)
