@@ -321,6 +321,42 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Search_WithNotCookedInLongTime_Orders_By_Oldest_LastCookedDate()
+    {
+        var oldest = CreateRecipe("Oldest Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        oldest.LastCookedDate = DateTimeOffset.UtcNow.AddDays(-45);
+        oldest.CreatedAt = DateTimeOffset.UtcNow.AddDays(-1);
+
+        var middle = CreateRecipe("Middle Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        middle.LastCookedDate = DateTimeOffset.UtcNow.AddDays(-20);
+        middle.CreatedAt = DateTimeOffset.UtcNow.AddDays(-2);
+
+        var newest = CreateRecipe("Newest Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        newest.LastCookedDate = DateTimeOffset.UtcNow.AddDays(-3);
+        newest.CreatedAt = DateTimeOffset.UtcNow.AddDays(-3);
+
+        await SeedRecipeAsync(newest);
+        await SeedRecipeAsync(oldest);
+        await SeedRecipeAsync(middle);
+
+        var response = await PostSearchAsync(new
+        {
+            query = "",
+            filters = new { notCookedInLongTime = true }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+        var results = document.RootElement.GetProperty("results").EnumerateArray().ToList();
+
+        Assert.Equal(oldest.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Equal(middle.Id, results[0].GetProperty("id").GetGuid());
+        Assert.Equal(newest.Id, results[1].GetProperty("id").GetGuid());
+    }
+
+    [Fact]
     public async Task Search_WithPlannerContext_Excludes_Recipes_Already_Assigned_In_TargetWeek()
     {
         var assignedRecipe = CreateRecipe(

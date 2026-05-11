@@ -140,10 +140,10 @@ public partial class RecipeSearchService(
 
         if (dto.Filters?.NotCookedInLongTime == true)
         {
-            // If explicitly looking for old recipes, prioritize by LastCookedDate ASC
+            // If explicitly looking for recipes that have been away longest, prioritize by LastCookedDate ASC.
             finalCandidates = candidates
                 .OrderByDescending(c => c.Score)
-                .ThenBy(c => c.Recipe.LastCookedDate ?? DateTimeOffset.MinValue);
+                .ThenBy(c => c.Recipe.LastCookedDate);
         }
 
         var topPick = finalCandidates.FirstOrDefault();
@@ -847,8 +847,7 @@ public partial class RecipeSearchService(
 
         if (filters.NotCookedInLongTime == true)
         {
-            var sixtyDaysAgo = DateTimeOffset.UtcNow.AddDays(-60);
-            query = query.Where(r => r.LastCookedDate < sixtyDaysAgo);
+            query = query.Where(r => r.LastCookedDate != null);
         }
 
         if (filters.DiscoverableOnly == true)
