@@ -518,7 +518,7 @@ test.describe('Recipes Search Page', () => {
 
   // ── Task 13: Inventory capture E2E ─────────────────────────────────────────
 
-  test('camera trigger opens popup; submit fires inventory-captures and passes snapshotId to next search', async ({
+  test('camera trigger opens popup; submit fires photo-search and passes snapshotId to next search', async ({
     page,
   }) => {
     let lastSearchBody: Record<string, unknown> | null = null;
@@ -555,10 +555,10 @@ test.describe('Recipes Search Page', () => {
       .toBe(MOCK_IDS.INVENTORY_CAPTURE);
   });
 
-  test('camera cancel closes popup without making any inventory API call', async ({ page }) => {
-    let inventoryCalled = false;
-    await page.route('**/api/inventory-captures', async (route) => {
-      inventoryCalled = true;
+  test('camera cancel closes popup without making any photo-search API call', async ({ page }) => {
+    let photoSearchCalled = false;
+    await page.route('**/api/photo-search', async (route) => {
+      photoSearchCalled = true;
       await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
     });
 
@@ -571,7 +571,7 @@ test.describe('Recipes Search Page', () => {
     await page.getByTestId('inventory-capture-cancel').click();
     await expect(page.getByTestId('inventory-capture-popup')).not.toBeVisible();
 
-    expect(inventoryCalled).toBe(false);
+    expect(photoSearchCalled).toBe(false);
   });
 
   // ── Discovery toggle ───────────────────────────────────────────────────────

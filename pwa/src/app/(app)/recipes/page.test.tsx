@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => {
   const saveSetting = vi.fn();
   const assignRecipeToDay = vi.fn();
   const getSchedule = vi.fn();
-  const submitInventoryCapture = vi.fn();
+  const submitPhotoSearch = vi.fn();
   const getTrashItems = vi.fn();
   const restoreRecipe = vi.fn();
   const purgeRecipe = vi.fn();
@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => {
     saveSetting,
     assignRecipeToDay,
     getSchedule,
-    submitInventoryCapture,
+    submitPhotoSearch,
     getTrashItems,
     restoreRecipe,
     purgeRecipe,
@@ -91,7 +91,7 @@ vi.mock('@/store/familyStore', () => ({
 }));
 
 vi.mock('@/lib/api/inventory', () => ({
-  submitInventoryCapture: (...args: unknown[]) => mocks.submitInventoryCapture(...args),
+  submitPhotoSearch: (...args: unknown[]) => mocks.submitPhotoSearch(...args),
 }));
 
 vi.mock('@/lib/api/api-client', () => ({
@@ -205,10 +205,12 @@ describe('RecipesPage', () => {
         status: 0,
       })),
     });
-    mocks.submitInventoryCapture.mockResolvedValue({
-      snapshotId: 'snap-123',
+    mocks.submitPhotoSearch.mockResolvedValue({
+      intent: 'inventory',
+      query: '',
       inferredIngredients: ['chicken'],
       confidence: 0.9,
+      pantrySnapshotId: 'snap-123',
     });
     mocks.getTrashItems.mockResolvedValue([]);
     mocks.restoreRecipe.mockResolvedValue(undefined);
@@ -814,7 +816,7 @@ describe('RecipesPage', () => {
     expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
   });
 
-  it('submitting the popup calls POST /api/inventory-captures and includes snapshotId in next search', async () => {
+  it('submitting inventory photos uses the pantry snapshot in the next search', async () => {
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
@@ -826,12 +828,41 @@ describe('RecipesPage', () => {
     fireEvent.click(screen.getByTestId('inventory-capture-submit'));
 
     await waitFor(() => {
-      expect(mocks.submitInventoryCapture).toHaveBeenCalled();
+      expect(mocks.submitPhotoSearch).toHaveBeenCalled();
     });
 
     await waitFor(() => {
       expect(mocks.searchRecipes).toHaveBeenCalledWith(
         expect.objectContaining({ pantrySnapshotId: 'snap-123' })
+      );
+    });
+  });
+
+  it('submitting a recipe photo searches the library with extracted recipe text', async () => {
+    mocks.submitPhotoSearch.mockResolvedValueOnce({
+      intent: 'recipe',
+      query: 'Lemon Chicken rice',
+      inferredIngredients: ['chicken', 'lemon', 'rice'],
+      confidence: 0.91,
+      pantrySnapshotId: null,
+    });
+
+    render(<RecipesPage />);
+    await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
+
+    const file = new File(['foo'], 'recipe.png', { type: 'image/png' });
+    const input = screen.getByTestId('inventory-camera-input');
+    fireEvent.change(input, { target: { files: [file] } });
+
+    fireEvent.click(screen.getByTestId('inventory-capture-submit'));
+
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: 'Lemon Chicken rice',
+          pantrySnapshotId: undefined,
+        })
       );
     });
   });
@@ -856,7 +887,7 @@ describe('RecipesPage', () => {
   });
 
   it('popup shows busy message when capture returns busy status', async () => {
-    mocks.submitInventoryCapture.mockResolvedValueOnce({ busy: true, retryAfterSeconds: 30 });
+    mocks.submitPhotoSearch.mockResolvedValueOnce({ busy: true, retryAfterSeconds: 30 });
 
     render(<RecipesPage />);
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());

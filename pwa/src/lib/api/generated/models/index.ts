@@ -368,6 +368,17 @@ export function createPaginationDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PhotoSearchResponse}
+ */
+// @ts-ignore
+export function createPhotoSearchResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPhotoSearchResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {PreSelectedRecipeDto}
  */
 // @ts-ignore
@@ -1417,6 +1428,35 @@ export function deserializeIntoPaginationDto(
     },
     total: (n) => {
       paginationDto.total = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PhotoSearchResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPhotoSearchResponse(
+  photoSearchResponse: Partial<PhotoSearchResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    confidence: (n) => {
+      photoSearchResponse.confidence = n.getNumberValue();
+    },
+    inferredIngredients: (n) => {
+      photoSearchResponse.inferredIngredients = n.getCollectionOfPrimitiveValues<string>();
+    },
+    intent: (n) => {
+      photoSearchResponse.intent = n.getEnumValue<PhotoSearchResponse_intent>(
+        PhotoSearchResponse_intentObject
+      );
+    },
+    pantrySnapshotId: (n) => {
+      photoSearchResponse.pantrySnapshotId = n.getGuidValue();
+    },
+    query: (n) => {
+      photoSearchResponse.query = n.getStringValue();
     },
   };
 }
@@ -2901,6 +2941,30 @@ export interface PaginationDto extends AdditionalDataHolder, Parsable {
    */
   total?: number | null;
 }
+export interface PhotoSearchResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The confidence property
+   */
+  confidence?: number | null;
+  /**
+   * The inferredIngredients property
+   */
+  inferredIngredients?: string[] | null;
+  /**
+   * The intent property
+   */
+  intent?: PhotoSearchResponse_intent | null;
+  /**
+   * The pantrySnapshotId property
+   */
+  pantrySnapshotId?: Guid | null;
+  /**
+   * Extracted recipe lookup text. Empty for inventory photos.
+   */
+  query?: string | null;
+}
+export type PhotoSearchResponse_intent =
+  (typeof PhotoSearchResponse_intentObject)[keyof typeof PhotoSearchResponse_intentObject];
 export interface PreSelectedRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The dayIndex property
@@ -3945,6 +4009,31 @@ export function serializePaginationDto(
   writer.writeNumberValue('page', paginationDto.page);
   writer.writeNumberValue('total', paginationDto.total);
   writer.writeAdditionalData(paginationDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PhotoSearchResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePhotoSearchResponse(
+  writer: SerializationWriter,
+  photoSearchResponse: Partial<PhotoSearchResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!photoSearchResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('confidence', photoSearchResponse.confidence);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'inferredIngredients',
+    photoSearchResponse.inferredIngredients
+  );
+  writer.writeEnumValue<PhotoSearchResponse_intent>('intent', photoSearchResponse.intent);
+  writer.writeGuidValue('pantrySnapshotId', photoSearchResponse.pantrySnapshotId);
+  writer.writeStringValue('query', photoSearchResponse.query);
+  writer.writeAdditionalData(photoSearchResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5453,6 +5542,10 @@ export const ManagementTaskStatusResponse_statusObject = {
 export const MoveScheduleDto_intentObject = {
   Swap: 'swap',
   Push: 'push',
+} as const;
+export const PhotoSearchResponse_intentObject = {
+  Recipe: 'recipe',
+  Inventory: 'inventory',
 } as const;
 export const RecipeDto_sourceTypeObject = {
   Url: 'url',

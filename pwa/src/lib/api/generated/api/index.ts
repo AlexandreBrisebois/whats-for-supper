@@ -38,6 +38,11 @@ import {
 } from './management/index';
 // @ts-ignore
 import {
+  PhotoSearchRequestBuilderRequestsMetadata,
+  type PhotoSearchRequestBuilder,
+} from './photoSearch/index';
+// @ts-ignore
+import {
   RecipesRequestBuilderNavigationMetadata,
   RecipesRequestBuilderRequestsMetadata,
   type RecipesRequestBuilder,
@@ -100,6 +105,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
    */
   get management(): ManagementRequestBuilder;
   /**
+   * The photoSearch property
+   */
+  get photoSearch(): PhotoSearchRequestBuilder;
+  /**
    * The recipes property
    */
   get recipes(): RecipesRequestBuilder;
@@ -154,6 +163,9 @@ export const ApiRequestBuilderNavigationMetadata: Record<
   },
   management: {
     navigationMetadata: ManagementRequestBuilderNavigationMetadata,
+  },
+  photoSearch: {
+    requestsMetadata: PhotoSearchRequestBuilderRequestsMetadata,
   },
   recipes: {
     requestsMetadata: RecipesRequestBuilderRequestsMetadata,

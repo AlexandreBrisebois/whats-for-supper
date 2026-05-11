@@ -37,4 +37,21 @@ describe('generated inventory-captures contract', () => {
     const itemPath = resolve(currentDir, 'generated', 'api/inventoryCaptures/item/index.ts');
     expect(existsSync(itemPath)).toBe(true);
   });
+
+  it('includes PhotoSearchResponse with intent, query, ingredients, confidence, and pantrySnapshotId', () => {
+    const modelsSource = readGenerated('models/index.ts');
+    const match = modelsSource.match(/export interface PhotoSearchResponse[^\n]*\{([\s\S]*?)\n\}/m);
+    expect(match, 'PhotoSearchResponse should exist in generated models').not.toBeNull();
+    const block = match![1];
+    expect(block).toContain('intent');
+    expect(block).toContain('query');
+    expect(block).toContain('inferredIngredients');
+    expect(block).toContain('confidence');
+    expect(block).toContain('pantrySnapshotId');
+  });
+
+  it('includes the /api/photo-search request builder in the generated client', () => {
+    const routePath = resolve(currentDir, 'generated', 'api/photoSearch/index.ts');
+    expect(existsSync(routePath)).toBe(true);
+  });
 });

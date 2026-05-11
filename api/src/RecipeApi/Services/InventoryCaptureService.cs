@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using RecipeApi.Dto;
 using RecipeApi.Utils;
 
 namespace RecipeApi.Services;
@@ -51,6 +52,49 @@ public sealed class InventoryCaptureService : IDisposable
         IReadOnlyList<byte[]> photos,
         CancellationToken ct = default)
     {
+        var (analysis, busy) = await AnalyzePhotosAsync(photos, BuildInventoryVisionPrompt(photos.Count), ct);
+        if (busy || analysis.Ingredients.Count == 0) return (null, busy);
+
+        var snapshot = StoreSnapshot(analysis.Ingredients, analysis.Confidence);
+        return (snapshot, false);
+    }
+
+    /// <summary>
+    /// Single-shot photo search classification. Images are sent to the vision model once;
+    /// downstream recipe lookup/search is text/database-only.
+    /// </summary>
+    public async Task<(PhotoSearchResponseDto? Result, bool Busy)> ProcessPhotoSearchAsync(
+        IReadOnlyList<byte[]> photos,
+        CancellationToken ct = default)
+    {
+        var (analysis, busy) = await AnalyzePhotosAsync(photos, BuildPhotoSearchVisionPrompt(photos.Count), ct);
+        if (busy) return (null, true);
+
+        var intent = string.Equals(analysis.Intent, "recipe", StringComparison.OrdinalIgnoreCase)
+            ? "recipe"
+            : "inventory";
+
+        Guid? pantrySnapshotId = null;
+        if (intent == "inventory" && analysis.Ingredients.Count > 0)
+        {
+            pantrySnapshotId = StoreSnapshot(analysis.Ingredients, analysis.Confidence).SnapshotId;
+        }
+
+        return (new PhotoSearchResponseDto
+        {
+            Intent = intent,
+            Query = intent == "recipe" ? analysis.Query : string.Empty,
+            InferredIngredients = analysis.Ingredients,
+            Confidence = analysis.Confidence,
+            PantrySnapshotId = pantrySnapshotId
+        }, false);
+    }
+
+    private async Task<(VisionAnalysis Analysis, bool Busy)> AnalyzePhotosAsync(
+        IReadOnlyList<byte[]> photos,
+        string prompt,
+        CancellationToken ct)
+    {
         var requestId = Guid.NewGuid();
         var tempDir = Path.Combine(_tempBase, requestId.ToString("N"));
         Directory.CreateDirectory(tempDir);
@@ -65,8 +109,8 @@ public sealed class InventoryCaptureService : IDisposable
                 await File.WriteAllBytesAsync(path, photos[i], ct);
             }
 
-            // Call vision model through the same agent path used by recipe extraction.
-            var message = new ChatMessage(ChatRole.User, BuildVisionPrompt(photos.Count));
+            // Call vision model once through the same agent path used by recipe extraction.
+            var message = new ChatMessage(ChatRole.User, prompt);
             for (var i = 0; i < photos.Count; i++)
             {
                 message.Contents.Add(new DataContent(photos[i], "image/jpeg"));
@@ -84,18 +128,12 @@ public sealed class InventoryCaptureService : IDisposable
             _logger.LogInformation("Vision model response: {Response}", responseText);
 
             var sanitizedResponse = JsonUtils.SanitizeJson(responseText);
-            var ingredients = ParseIngredients(sanitizedResponse);
-            var confidence = ParseConfidence(sanitizedResponse);
-
-            var snapshot = new PantrySnapshot(Guid.NewGuid(), ingredients, confidence);
-            _snapshots[snapshot.SnapshotId] = (snapshot, DateTimeOffset.UtcNow.AddSeconds(SnapshotTtlSeconds));
-
-            return (snapshot, false);
+            return (ParseAnalysis(sanitizedResponse), false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing inventory capture");
-            return (null, true);
+            return (new VisionAnalysis("inventory", string.Empty, [], 0.5), true);
         }
         finally
         {
@@ -112,11 +150,28 @@ public sealed class InventoryCaptureService : IDisposable
         return null;
     }
 
-    private static string BuildVisionPrompt(int photoCount) =>
+    private PantrySnapshot StoreSnapshot(IReadOnlyList<string> ingredients, double confidence)
+    {
+        var snapshot = new PantrySnapshot(Guid.NewGuid(), ingredients, confidence);
+        _snapshots[snapshot.SnapshotId] = (snapshot, DateTimeOffset.UtcNow.AddSeconds(SnapshotTtlSeconds));
+        return snapshot;
+    }
+
+    private static string BuildInventoryVisionPrompt(int photoCount) =>
         $"You are analyzing {photoCount} pantry/fridge/freezer photo(s). " +
         "List the visible ingredients as a JSON object: " +
         "{\"ingredients\": [\"item1\", \"item2\"], \"confidence\": 0.85}. " +
         "Only include clearly visible food items. Respond with valid JSON only.";
+
+    private static string BuildPhotoSearchVisionPrompt(int photoCount) =>
+        $"You are analyzing {photoCount} food-related photo(s) for a recipe library search. " +
+        "Classify the photos as exactly one intent: " +
+        "\"recipe\" when the images show a recipe card, handwritten recipe, typed recipe, cookbook page, meal kit card, or recipe screenshot; " +
+        "\"inventory\" when the images show fridge, pantry, freezer, counter, table, or loose food items. " +
+        "For recipe intent, extract the visible recipe title/name and the most useful visible ingredients or dish words for matching an existing library recipe. " +
+        "For inventory intent, list only clearly visible food items. Do not invent hidden items. " +
+        "Respond with valid JSON only in this exact shape: " +
+        "{\"intent\":\"recipe\",\"query\":\"recipe title and key ingredients\",\"ingredients\":[\"item1\"],\"confidence\":0.85}.";
 
     private ChatClientAgentRunOptions GetChatOptions()
     {
@@ -130,12 +185,38 @@ public sealed class InventoryCaptureService : IDisposable
         };
     }
 
+    private static VisionAnalysis ParseAnalysis(string json)
+    {
+        var intent = ParseString(json, "intent");
+        var query = ParseString(json, "query");
+        var ingredients = ParseIngredients(json);
+        var confidence = ParseConfidence(json);
+
+        if (string.IsNullOrWhiteSpace(query) && ingredients.Count > 0)
+            query = string.Join(" ", ingredients.Take(5));
+
+        return new VisionAnalysis(intent, query, ingredients, confidence);
+    }
+
+    private static string ParseString(string json, string propertyName)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty(propertyName, out var value))
+                return value.GetString() ?? string.Empty;
+        }
+        catch (JsonException) { }
+        return string.Empty;
+    }
+
     private static IReadOnlyList<string> ParseIngredients(string json)
     {
         try
         {
             using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("ingredients", out var arr))
+            if (doc.RootElement.TryGetProperty("ingredients", out var arr) ||
+                doc.RootElement.TryGetProperty("inferredIngredients", out arr))
             {
                 return arr.EnumerateArray()
                     .Select(e => e.GetString() ?? string.Empty)
@@ -170,4 +251,10 @@ public sealed class InventoryCaptureService : IDisposable
     }
 
     public void Dispose() => _sweepTimer.Dispose();
+
+    private sealed record VisionAnalysis(
+        string Intent,
+        string Query,
+        IReadOnlyList<string> Ingredients,
+        double Confidence);
 }

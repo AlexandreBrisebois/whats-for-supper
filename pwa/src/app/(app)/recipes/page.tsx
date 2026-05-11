@@ -17,7 +17,7 @@ import {
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api/api-client';
 import { searchRecipes, type RecipeSearchResponse, type Recipe } from '@/lib/api/recipes';
-import { submitInventoryCapture } from '@/lib/api/inventory';
+import { submitPhotoSearch } from '@/lib/api/inventory';
 import type { RecipeSearchFiltersDto } from '@/lib/api/generated/models/index';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -380,15 +380,23 @@ export default function RecipesPage() {
     setIsCameraBusy(false);
     setIsSubmittingPhotos(true);
     try {
-      const result = await submitInventoryCapture(pendingPhotos);
+      const result = await submitPhotoSearch(pendingPhotos);
       if ('busy' in result) {
         setIsCameraBusy(true);
         return;
       }
       setPendingPhotos([]);
       setSearchMode('standard');
-      setPantrySnapshotId(result.snapshotId);
-      void runSearch(query, similarToRecipeId, activeFilters, result.snapshotId);
+      if (result.intent === 'recipe') {
+        const photoQuery = result.query || result.inferredIngredients.join(' ');
+        setQuery(photoQuery);
+        setPantrySnapshotId(null);
+        void runSearch(photoQuery, null, activeFilters, null);
+        return;
+      }
+
+      setPantrySnapshotId(result.pantrySnapshotId);
+      void runSearch(query, similarToRecipeId, activeFilters, result.pantrySnapshotId);
     } finally {
       setIsSubmittingPhotos(false);
     }
@@ -567,7 +575,7 @@ export default function RecipesPage() {
             size={16}
             className={searchMode === 'camera' ? 'text-white' : 'text-terracotta'}
           />
-          {t('recipes.inventoryCamera', 'Use Camera')}
+          {t('recipes.inventoryCamera', 'Photo Search')}
         </button>
         <Link
           href="/browse-all-stack"

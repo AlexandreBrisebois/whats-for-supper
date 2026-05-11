@@ -119,6 +119,57 @@ public class InventoryCaptureServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProcessPhotoSearchAsync_WithRecipePhoto_ReturnsRecipeIntentWithoutSnapshot()
+    {
+        var response = """
+            {"intent":"recipe","query":"Lemon Chicken rice","ingredients":["chicken","lemon","rice"],"confidence":0.91}
+            """;
+        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+
+        var (result, busy) = await service.ProcessPhotoSearchAsync([new byte[] { 0xFF, 0xD8 }]);
+
+        Assert.False(busy);
+        Assert.NotNull(result);
+        Assert.Equal("recipe", result!.Intent);
+        Assert.Equal("Lemon Chicken rice", result.Query);
+        Assert.Equal(["chicken", "lemon", "rice"], result.InferredIngredients);
+        Assert.Null(result.PantrySnapshotId);
+    }
+
+    [Fact]
+    public async Task ProcessPhotoSearchAsync_WithInventoryPhoto_ReturnsSnapshotId()
+    {
+        var response = """
+            {"intent":"inventory","query":"","ingredients":["eggs","cheddar","spinach"],"confidence":0.82}
+            """;
+        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+
+        var (result, busy) = await service.ProcessPhotoSearchAsync([new byte[] { 0xFF, 0xD8 }]);
+
+        Assert.False(busy);
+        Assert.NotNull(result);
+        Assert.Equal("inventory", result!.Intent);
+        Assert.Equal("", result.Query);
+        Assert.Equal(["eggs", "cheddar", "spinach"], result.InferredIngredients);
+        Assert.NotNull(result.PantrySnapshotId);
+        Assert.NotNull(service.GetSnapshot(result.PantrySnapshotId!.Value));
+    }
+
+    [Fact]
+    public async Task ProcessPhotoSearchAsync_SendsImagesToChatClientOnce()
+    {
+        var chatClient = new MockChatClient("""{"intent":"recipe","query":"pasta","ingredients":["pasta"],"confidence":0.8}""");
+        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+
+        await service.ProcessPhotoSearchAsync([new byte[] { 0xFF, 0xD8 }, new byte[] { 0xFF, 0xD9 }]);
+
+        Assert.Equal(1, chatClient.CallCount);
+        Assert.NotNull(chatClient.LastMessages);
+        var message = chatClient.LastMessages!.First();
+        Assert.Equal(2, message.Contents.OfType<DataContent>().Count());
+    }
+
+    [Fact]
     public async Task ProcessAsync_SanitizesJsonWrappedInMarkdown()
     {
         var response = """
@@ -155,12 +206,14 @@ public class InventoryCaptureServiceTests : IDisposable
     {
         public IEnumerable<ChatMessage>? LastMessages { get; private set; }
         public ChatOptions? LastOptions { get; private set; }
+        public int CallCount { get; private set; }
 
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
             CancellationToken cancellationToken = default)
         {
+            CallCount++;
             LastMessages = messages;
             LastOptions = options;
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, response)));
