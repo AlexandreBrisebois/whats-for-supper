@@ -177,7 +177,21 @@ In Demo Mode, expensive AI processors (recipe extraction, search re-ranking) are
 
 ---
 
-## 8. Semantic search configuration
+---
+
+## 9. Automated recipe translation
+
+WFS can automatically translate recipes into a target language (e.g., French or English) during the import and reimport process. This is controlled by a mandatory environment variable.
+
+| Variable | Valid Values | What it does |
+|----------|--------------|--------------|
+| `IMPORT_TARGET_LANGUAGE` | `English`, `French`, `NONE` | If set to a language, all new imports and reimports will be automatically translated. Set to `NONE` to disable. |
+
+> **Note:** If `IMPORT_TARGET_LANGUAGE` is set to a language, triggering a **Reimport** on an existing recipe will overwrite its current text with the translated version.
+
+---
+
+## 10. Semantic search configuration
 
 Semantic search runs out of the box using trigram-based lexical retrieval (no external service required). Vector-based hybrid search requires a configured embedding provider.
 
@@ -213,7 +227,7 @@ ELEVATED_ACTIONS_PIN=1234
 
 ---
 
-## 9. Updating
+## 11. Updating
 
 ```bash
 git pull
@@ -235,7 +249,7 @@ See [`docker/.env.example`](docker/.env.example) for the full annotated referenc
 | Database | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_CONNECTION_STRING` |
 | API | `API_HOST`, `API_PORT`, `ASPNETCORE_ENVIRONMENT`, `DREAMING_CRON_UTC` |
 | PWA | `PWA_HOST`, `NEXT_PUBLIC_API_BASE_URL`, `HEARTH_SECRET`, `NEXT_PUBLIC_COOKIE_DOMAIN` |
-| AI | `GEMINI_API_KEY`, `GEMINI_MODEL_ID`, `GEMINI_ENDPOINT` |
+| AI | `GEMINI_API_KEY`, `GEMINI_MODEL_ID`, `GEMINI_ENDPOINT`, `IMPORT_TARGET_LANGUAGE` |
 | Search | `EMBEDDING_MODEL_ID` |
 | Storage | `DATA_ROOT` |
 | Security | `CORS_ALLOWED_ORIGINS`, `ELEVATED_ACTIONS_PIN` |

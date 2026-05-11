@@ -111,7 +111,14 @@ RULES:
         logger.LogInformation("Extracting recipe {RecipeId} (Images: {ImgCount}, HTML: {HasHtml}).", recipeId, imageFiles.Count, contentHtml != null);
 
         var promptType = contentHtml != null ? PromptType.WebRecipeExtraction : PromptType.RecipeExtraction;
-        var agent = chatClient.AsAIAgent(name: "RecipeExtractor", instructions: promptRepository.GetPrompt(promptType));
+        var instructions = promptRepository.GetPrompt(promptType);
+        var translationInstruction = GetTranslationInstruction();
+        if (translationInstruction != null)
+        {
+            instructions += translationInstruction;
+        }
+
+        var agent = chatClient.AsAIAgent(name: "RecipeExtractor", instructions: instructions);
 
         var userPrompt = "Please extract the recipe as instructed.";
         if (imageFiles.Count > 0) userPrompt += " Context from images is provided.";
@@ -199,7 +206,14 @@ Please re-examine the images and refine the JSON according to these rules:
 
         messages.Add(refinementUserMessage);
 
-        var agent = chatClient.AsAIAgent(name: "RecipeRefiner", instructions: "Continue your extraction work.");
+        var instructions = "Continue your extraction work.";
+        var translationInstruction = GetTranslationInstruction();
+        if (translationInstruction != null)
+        {
+            instructions += translationInstruction;
+        }
+
+        var agent = chatClient.AsAIAgent(name: "RecipeRefiner", instructions: instructions);
         var response = await agent.RunAsync(messages: messages, options: GetChatOptions(), cancellationToken: ct);
         var responseText = response.Text?.Trim() ?? string.Empty;
 
@@ -231,6 +245,11 @@ Please re-examine the images and refine the JSON according to these rules:
             var info = await recipeRepository.GetInfoAsync(recipeId, ct);
 
             var prompt = promptRepository.GetPrompt(PromptType.DescriptionGeneration);
+            var translationInstruction = GetTranslationInstruction();
+            if (translationInstruction != null)
+            {
+                prompt += $"\n\nConstraint: Write the description in {configuration["IMPORT_TARGET_LANGUAGE"]}.";
+            }
 
             var message = new ChatMessage(ChatRole.User, prompt);
             message.Contents.Add(new TextContent($"Recipe Data (JSON):\n{recipeJson}"));
@@ -310,7 +329,14 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
     {
         logger.LogInformation("Synthesizing recipe {RecipeId} from description: {Description}", recipeId, description);
 
-        var agent = chatClient.AsAIAgent(name: "RecipeSynthesizer", instructions: promptRepository.GetPrompt(PromptType.RecipeSynthesis));
+        var instructions = promptRepository.GetPrompt(PromptType.RecipeSynthesis);
+        var translationInstruction = GetTranslationInstruction();
+        if (translationInstruction != null)
+        {
+            instructions += translationInstruction;
+        }
+
+        var agent = chatClient.AsAIAgent(name: "RecipeSynthesizer", instructions: instructions);
 
         var userMessage = new ChatMessage(ChatRole.User, $"Description: {description}");
 
@@ -414,6 +440,18 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
                 MaxOutputTokens = configuration.GetValue<int?>("GEMINI_MAX_OUTPUT_TOKENS") ?? 8192
             }
         };
+    }
+
+    private string? GetTranslationInstruction()
+    {
+        var targetLanguage = configuration["IMPORT_TARGET_LANGUAGE"];
+        if (string.IsNullOrWhiteSpace(targetLanguage) ||
+            targetLanguage.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return $"\n\nTRANSLATION INSTRUCTION: Translate the entire recipe (name, ingredients, instructions, sections) to {targetLanguage}. Maintain the Schema.org structure. IGNORE any previous 'Language Lock' rules.";
     }
 
     #endregion

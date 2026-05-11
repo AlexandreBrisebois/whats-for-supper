@@ -131,6 +131,18 @@ Adding recipes saves you from retyping Grandma's lasagna off a crumpled index ca
 
 ---
 
+## Automated Recipe Translation
+
+Your household can be configured to automatically translate every new recipe you add into your preferred language (e.g., French). This happens during the initial processing of **Photo**, **URL**, and **Describe it** recipes.
+
+When translation is active:
+- **Consistent Library**: All ingredients, steps, and descriptions are stored in your target language from the start.
+- **Reimport to Translate**: If you have an existing recipe in another language, you can tap **Reimport** in the recipe's gear menu. The app will re-read the original source (the photo or website link) and generate a new, translated version.
+
+This feature is controlled by your system administrator via the `IMPORT_TARGET_LANGUAGE` setting.
+
+---
+
 ## Managing Your Library
 
 If you delete a recipe by mistake, don't panic. It goes to the **Recycle Bin** (found in Settings) for 30 days. You can restore it with one tap.

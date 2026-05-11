@@ -24,13 +24,14 @@ public class RecipeAgentPromptSelectionTests
 {
     // ── Factory helpers ───────────────────────────────────────────────────────
 
-    private static (RecipeAgent agent, InMemoryStorageProvider storage, RecipeRepository repo, Mock<IPromptRepository> promptRepoMock, Mock<IChatClient> chatClientMock)
-        CreateSut(string aiExtractionResponse, string aiDescriptionResponse = "A delicious recipe.")
+    private static (RecipeAgent agent, InMemoryStorageProvider storage, RecipeRepository repo, Mock<IPromptRepository> promptRepoMock, Mock<IChatClient> chatClientMock, List<IEnumerable<ChatMessage>> capturedMessages)
+        CreateSut(string aiExtractionResponse, string aiDescriptionResponse = "A delicious recipe.", string? targetLanguage = null)
     {
         var storage = new InMemoryStorageProvider();
         var repo = new RecipeRepository(storage);
 
         var chatClientMock = new Mock<IChatClient>();
+        var capturedMessages = new List<IEnumerable<ChatMessage>>();
         // First call → extraction JSON; subsequent calls → description string
         var callCount = 0;
         chatClientMock
@@ -38,6 +39,7 @@ public class RecipeAgentPromptSelectionTests
                 It.IsAny<IEnumerable<ChatMessage>>(),
                 It.IsAny<ChatOptions?>(),
                 It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<ChatMessage>, ChatOptions?, CancellationToken>((msgs, opts, ct) => capturedMessages.Add(msgs.ToList()))
             .ReturnsAsync(() =>
             {
                 callCount++;
@@ -51,6 +53,7 @@ public class RecipeAgentPromptSelectionTests
             .Returns("Extract prompt");
 
         var mockConfig = new Mock<IConfiguration>();
+        mockConfig.Setup(c => c["IMPORT_TARGET_LANGUAGE"]).Returns(targetLanguage);
         var mockSection = new Mock<IConfigurationSection>();
         mockConfig.Setup(c => c.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
         mockSection.Setup(s => s.GetSection(It.IsAny<string>())).Returns(mockSection.Object);
@@ -69,7 +72,7 @@ public class RecipeAgentPromptSelectionTests
             db,
             "ExtractRecipe");
 
-        return (agent, storage, repo, promptRepoMock, chatClientMock);
+        return (agent, storage, repo, promptRepoMock, chatClientMock, capturedMessages);
     }
 
     /// <summary>
@@ -104,7 +107,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         await repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe</body></html>", CancellationToken.None);
@@ -122,7 +125,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -140,7 +143,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, promptRepoMock, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         // No content.html, no images
@@ -159,7 +162,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, _, _, _) = CreateSut(ValidRecipeJson());
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         await repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe page</body></html>", CancellationToken.None);
@@ -177,11 +180,53 @@ public class RecipeAgentPromptSelectionTests
     }
 
     [Fact]
+    public async Task TranslationLanguageSet_InjectsInstructionIntoPrompts()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var targetLanguage = "French";
+        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage);
+
+        await WriteRecipeInfo(storage, recipeId, imageCount: 1);
+        await WriteImage(storage, recipeId, 0);
+
+        // Act
+        await agent.DoExtractRecipeAsync(recipeId, CancellationToken.None);
+
+        // Assert
+        var hasFrench = capturedMessages.Any(batch => 
+            batch.Any(m => m.Text != null && m.Text.Contains("French", StringComparison.OrdinalIgnoreCase)));
+
+        Assert.True(hasFrench, $"The word 'French' was not found in any AI messages. Total message batches: {capturedMessages.Count}");
+    }
+
+    [Fact]
+    public async Task TranslationLanguageNone_DoesNotInjectInstruction()
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var targetLanguage = "NONE";
+        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage);
+
+        await WriteRecipeInfo(storage, recipeId, imageCount: 1);
+        await WriteImage(storage, recipeId, 0);
+
+        // Act
+        await agent.DoExtractRecipeAsync(recipeId, CancellationToken.None);
+
+        // Assert
+        var hasTranslationInstruction = capturedMessages.Any(batch => 
+            batch.Any(m => m.Text != null && m.Text.Contains("Translate", StringComparison.OrdinalIgnoreCase)));
+
+        Assert.False(hasTranslationInstruction, "A translation instruction was found even though IMPORT_TARGET_LANGUAGE was set to NONE.");
+    }
+
+    [Fact]
     public async Task ExtractionWithImagesOnly_RecipeJsonDoesNotContainRawHtml()
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, _) = CreateSut(ValidRecipeJson());
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -238,7 +283,7 @@ public class RecipeAgentPromptSelectionTests
             rawHtml = "<html>should be stripped</html>"
         });
 
-        var (agent, storage, repo, _, _) = CreateSut(aiResponse);
+        var (agent, storage, repo, _, _, _) = CreateSut(aiResponse);
 
         // Set up: content.html path (web extraction)
         var info = new RecipeInfo { Id = recipeId, ImageCount = 0 };
@@ -281,7 +326,7 @@ public class RecipeAgentPromptSelectionTests
         var imageCount = rawImageCount.Get % 6; // 0..5
 
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
 
         // Capture which PromptTypes were requested
         var capturedPromptTypes = new List<PromptType>();
@@ -375,7 +420,7 @@ public class RecipeAgentPromptSelectionTests
 
         // ── Web path (content.html present) ──────────────────────────────────
         var webRecipeId = Guid.NewGuid();
-        var (webAgent, webStorage, webRepo, _, _) = CreateSut(aiResponse);
+        var (webAgent, webStorage, webRepo, _, _, _) = CreateSut(aiResponse);
 
         var webInfo = new RecipeInfo { Id = webRecipeId, ImageCount = 0 };
         webStorage.SaveAsync("recipes", $"{webRecipeId}/recipe.info",
@@ -395,7 +440,7 @@ public class RecipeAgentPromptSelectionTests
 
         // ── Photo path (images only) ──────────────────────────────────────────
         var photoRecipeId = Guid.NewGuid();
-        var (photoAgent, photoStorage, _, _, _) = CreateSut(aiResponse);
+        var (photoAgent, photoStorage, _, _, _, _) = CreateSut(aiResponse);
 
         var photoInfo = new RecipeInfo { Id = photoRecipeId, ImageCount = 1 };
         photoStorage.SaveAsync("recipes", $"{photoRecipeId}/recipe.info",

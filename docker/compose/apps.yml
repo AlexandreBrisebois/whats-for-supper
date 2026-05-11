@@ -21,6 +21,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
       GEMINI_ENDPOINT: ${GEMINI_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      IMPORT_TARGET_LANGUAGE: ${IMPORT_TARGET_LANGUAGE:-NONE}
       HEARTH_SECRET: ${HEARTH_SECRET}
       DEMO_MODE: ${DEMO_MODE:-false}
       DEMO_RESTORE_CRON_UTC: "${DEMO_RESTORE_CRON_UTC:-0 3 * * *}"
