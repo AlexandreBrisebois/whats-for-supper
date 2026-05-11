@@ -98,11 +98,24 @@ public class RecipePurgeService(
     private async Task CancelPendingIndexJobsAsync(Guid recipeId)
     {
         var recipeIdStr = recipeId.ToString();
-        var pendingJobs = await db.WorkflowInstances
-            .Where(w => w.Parameters != null
-                        && w.Parameters.Contains(recipeIdStr)
-                        && w.Status == WorkflowStatus.Pending)
-            .ToListAsync();
+        List<WorkflowInstance> pendingJobs;
+
+        // PostgreSQL cannot use LIKE (~~) on jsonb columns without a cast.
+        // We use FromSqlInterpolated for Postgres and fall back to LINQ for InMemory/SQLite.
+        if (db.Database.IsRelational())
+        {
+            pendingJobs = await db.WorkflowInstances
+                .FromSqlInterpolated($"SELECT * FROM workflow_instances WHERE parameters::text LIKE {"%" + recipeIdStr + "%"} AND status = {(int)WorkflowStatus.Pending}")
+                .ToListAsync();
+        }
+        else
+        {
+            pendingJobs = await db.WorkflowInstances
+                .Where(w => w.Parameters != null
+                            && w.Parameters.Contains(recipeIdStr)
+                            && w.Status == WorkflowStatus.Pending)
+                .ToListAsync();
+        }
 
         foreach (var job in pendingJobs)
             job.Status = WorkflowStatus.Failed;

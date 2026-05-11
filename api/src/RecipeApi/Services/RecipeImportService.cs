@@ -37,9 +37,21 @@ public class RecipeImportService(RecipeDbContext db, IWorkflowOrchestrator orche
     public async Task<RecipeImportStatusResponseDto?> GetImportStatus(Guid recipeId)
     {
         var idString = recipeId.ToString();
-        // Simple string matching for now, as Parameters is stored as serialized JSON string in the model
-        var instance = await db.WorkflowInstances
-            .Where(i => i.WorkflowId == "recipe-import" && i.Parameters != null && i.Parameters.Contains(idString))
+        // Simple string matching for now, as Parameters is stored as serialized JSON string in the model.
+        // PostgreSQL cannot use LIKE (~~) on jsonb columns without a cast.
+        IQueryable<WorkflowInstance> query;
+        if (db.Database.IsRelational())
+        {
+            query = db.WorkflowInstances
+                .FromSqlInterpolated($"SELECT * FROM workflow_instances WHERE workflow_id = 'recipe-import' AND parameters::text LIKE {"%" + idString + "%"}");
+        }
+        else
+        {
+            query = db.WorkflowInstances
+                .Where(i => i.WorkflowId == "recipe-import" && i.Parameters != null && i.Parameters.Contains(idString));
+        }
+
+        var instance = await query
             .OrderByDescending(i => i.CreatedAt)
             .Include(i => i.Tasks)
             .FirstOrDefaultAsync();
