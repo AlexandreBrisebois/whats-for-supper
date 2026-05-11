@@ -164,4 +164,42 @@ test.describe('Recipe Action Pivot', () => {
     await expect(page.getByTestId('planning-mode-banner')).toBeVisible();
     await expect(page.getByTestId('planning-mode-banner')).toContainText(/Planning for Tuesday/i);
   });
+
+  test('Discovery flow: "Plan for Later" skips past and current day', async ({ page }) => {
+    // Set fixed time to Wednesday May 13, 2026
+    const wednesday = new Date('2026-05-13T12:00:00Z');
+    await page.clock.setFixedTime(wednesday);
+
+    // Mock schedule: all days empty
+    await page.route('**/api/schedule?weekOffset=0', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            weekOffset: 0,
+            days: Array.from({ length: 7 }, (_, i) => ({
+              date: `2026-05-${11 + i}`, // Mon 11 to Sun 17
+              recipe: null,
+            })),
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await page.getByTestId('recipe-search-input').fill('lasagna');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible();
+    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('action-cook-this').click();
+
+    await page.getByTestId('action-plan-later').click();
+
+    // Today is Wed (index 2), Tomorrow is Thu (index 3).
+    // It should skip index 0 (Mon), 1 (Tue), 2 (Wed).
+    await expect(page).toHaveURL(/\/planner\?success=1/);
+    await expect(page).toHaveURL(/dayIndex=3/);
+    await expect(page).toHaveURL(/weekOffset=0/);
+  });
 });

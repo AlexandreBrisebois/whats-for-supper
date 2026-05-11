@@ -39,14 +39,24 @@ export async function assignRecipeToEmptySlot(
   await assignRecipeToDay(weekOffset, dayIndex, recipe);
 }
 
-export async function findFirstOpenPlannerSlot(startWeekOffset = 0, maxWeeksToScan = 12) {
+export async function findFirstOpenPlannerSlot(
+  startWeekOffset = 0,
+  startDayIndex = 0,
+  maxWeeksToScan = 12
+) {
   for (
     let weekOffset = startWeekOffset;
     weekOffset < startWeekOffset + maxWeeksToScan;
     weekOffset++
   ) {
     const schedule = await getSchedule(weekOffset);
-    const dayIndex = schedule?.days?.findIndex((day) => !normalizeScheduleRecipe(day.recipe));
+    if (!schedule?.days) continue;
+
+    const startIndex = weekOffset === startWeekOffset ? startDayIndex : 0;
+    const dayIndex = schedule.days.findIndex(
+      (day, index) => index >= startIndex && !normalizeScheduleRecipe(day.recipe)
+    );
+
     if (dayIndex !== undefined && dayIndex >= 0) {
       return { weekOffset, dayIndex };
     }

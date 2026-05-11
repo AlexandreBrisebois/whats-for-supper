@@ -40,6 +40,10 @@ type RecoveryFlowState =
   | { kind: 'step2'; intent: 'order_in'; pendingRecipe: any }
   | { kind: 'step2'; intent: 'pick_else'; pendingRecipe: any };
 
+function getMondayBasedDayIndex(dateString: string) {
+  return (new Date(`${dateString}T00:00:00`).getDay() + 6) % 7;
+}
+
 export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCenterProps) {
   // ── UI-only state (not domain state) ──────────────────────────────────────
   const [showCooksMode, setShowCooksMode] = useState(false);
@@ -248,10 +252,13 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             await finalizeOrderedIn();
           }
           // Reschedule tonight's meal to tomorrow
+          const fromIndex = getMondayBasedDayIndex(todayStr);
+          const targetDayIndex = fromIndex + 1;
           await apiClient.api.schedule.move.post({
             weekOffset: 0,
-            fromIndex: (new Date().getDay() + 6) % 7,
-            toIndex: ((new Date().getDay() + 6) % 7) + 1,
+            fromIndex,
+            toIndex: targetDayIndex <= 6 ? targetDayIndex : 0,
+            targetWeekOffset: targetDayIndex <= 6 ? 0 : 1,
             intent: 'push',
             recipeId,
           });
@@ -282,9 +289,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
             await finalizeOrderedIn();
           }
+          const fromIndex = getMondayBasedDayIndex(todayStr);
           await apiClient.api.schedule.move.post({
             weekOffset: 0,
-            fromIndex: (new Date().getDay() + 6) % 7,
+            fromIndex,
             toIndex: 0,
             targetWeekOffset: 1,
             intent: 'push',

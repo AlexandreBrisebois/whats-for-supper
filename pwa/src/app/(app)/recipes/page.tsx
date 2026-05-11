@@ -295,7 +295,17 @@ export default function RecipesPage() {
   const handlePlanForLater = async (recipe: Recipe) => {
     setIsAssigning(true);
     try {
-      const openSlot = await findFirstOpenPlannerSlot(0);
+      // "Plan for Later" starts from tomorrow onwards
+      const todayIndex = (new Date().getDay() + 6) % 7;
+      let startDayIndex = todayIndex + 1;
+      let startWeekOffset = 0;
+
+      if (startDayIndex > 6) {
+        startDayIndex = 0;
+        startWeekOffset = 1;
+      }
+
+      const openSlot = await findFirstOpenPlannerSlot(startWeekOffset, startDayIndex);
       if (!openSlot) {
         setIsAssigning(false);
         return;

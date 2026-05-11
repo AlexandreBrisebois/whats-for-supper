@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   validatePost: vi.fn().mockResolvedValue(undefined),
   currentRecipe: null as any,
   todayStatus: 0 as 0 | 2 | 3,
+  todayString: '2026-05-07',
 }));
 
 vi.mock('next/navigation', () => ({
@@ -26,7 +27,7 @@ vi.mock('@/locales', () => ({
 }));
 
 vi.mock('@/lib/imageUtils', () => ({
-  getTodayString: () => '2026-05-07',
+  getTodayString: () => mocks.todayString,
 }));
 
 vi.mock('@/components/home/HomeSections', () => ({
@@ -201,6 +202,7 @@ describe('HomeCommandCenter', () => {
     vi.clearAllMocks();
     mocks.currentRecipe = null;
     mocks.todayStatus = 0;
+    mocks.todayString = '2026-05-07';
   });
 
   it('marks today as ordered in in weekStore when ordering in from an empty home slot', () => {
@@ -247,6 +249,33 @@ describe('HomeCommandCenter', () => {
       expect(mocks.weekInit).toHaveBeenCalledWith(0);
       expect(mocks.sync).toHaveBeenCalled();
       expect(mocks.push).toHaveBeenCalledWith('/planner');
+    });
+  });
+
+  it('moves a skipped Sunday recipe to next week Monday when planning it later', async () => {
+    mocks.todayString = '2026-05-10';
+    mocks.currentRecipe = {
+      id: 'recipe-1',
+      name: 'Pasta',
+      image: '/img/pasta',
+    };
+
+    render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    fireEvent.click(screen.getByTestId('recovery-action-order-in'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+    });
+
+    expect(mocks.movePost).toHaveBeenCalledWith({
+      weekOffset: 0,
+      fromIndex: 6,
+      toIndex: 0,
+      targetWeekOffset: 1,
+      intent: 'push',
+      recipeId: 'recipe-1',
     });
   });
 
