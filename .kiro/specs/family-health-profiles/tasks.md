@@ -2,7 +2,7 @@
 
 Each task is a vertical slice. Before starting any task, read design.md § Seam inventory.
 
-**Dependency:** The `recipe-categorization` spec must be complete before Task 4 onward. Tasks 1–3 are independent.
+**Dependency:** The `recipe-categorization` and `cnf-data-ingestion` specs must be complete before warning display work. Tasks 1–2 are independent; Task 3 may be built with fake provider ingredient matches before the provider implementation is complete.
 
 **Before marking any task done:**
 - `task agent:drift` — zero drift confirmed
@@ -95,7 +95,7 @@ task agent:drift
 
 **What:** The core logic of this feature. A pure, static function — no DB, no LLM.
 
-**Read before starting:** design.md § `ConditionRuleEngine` for every rule, the `NutritionInfo` record shape, and the allergy-to-proteinSource mapping table.
+**Read before starting:** design.md § `ConditionRuleEngine` for every rule, the `NutritionInfo` record shape, the provider ingredient match shape, and the allergy synonym/fallback mapping tables.
 
 **Dependency:** Task 1 must be complete (types exist).
 
@@ -113,22 +113,23 @@ Create `api/src/RecipeApi.Tests/Services/ConditionRuleEngineTests.cs`:
 8. **Hypertension + null sodium:** `nutrition = null` → no warning (cannot evaluate)
 9. **Diabetes + high sugar:** `conditions: ["Diabetes"]`, `nutrition.SugarG: 20` (above `FopThresholds.SugarsG = 15`) → one `soft` warning
 10. **Diabetes + high carbs:** `nutrition.CarbohydrateG: 70` → one `soft` warning
-11. **Allergy "Shellfish" + Seafood:** `allergies: ["Shellfish"]`, `proteinSource: "Seafood"` → one `hard` warning
-12. **Allergy "Peanuts":** unrecognised allergen → no warning, no exception (silently skipped)
+11. **Allergy "Shellfish" + provider match "shrimp":** `allergies: ["Shellfish"]`, provider ingredient match `"shrimp"` → one `hard` reminder whose reason contains `"Check ingredients for Shellfish"` and `"possible match"`
+12. **Allergy "Peanuts":** unrecognised/unmatched allergen → no warning, no exception, and no allergy-safe claim
 13. **Intolerance "Lactose" + Dairy:** `intolerances: ["Lactose"]`, `proteinSource: "Dairy"` → one `soft` warning
 14. **Intolerance "Gluten" + WholeGrains primary:** `primaryFoodGroup: "WholeGrains"` → one `soft` warning
 15. **Preference "Vegetarian" + Poultry:** `preferences: ["Vegetarian"]`, `proteinSource: "Poultry"` → one `info` warning
 16. **Preference "Halal":** unrecognised preference → no warning, no exception
 17. **Multiple conditions:** `["HighCholesterol","Hypertension"]` with matching recipe → two warnings returned
 18. **Empty health profile arrays:** all arrays empty → empty list returned
-19. **`FopThresholds` constants match regulation:** assert `SaturatedFatG == 4.0`, `SugarsG == 15.0`, `SodiumMg == 345.0` — protects against accidental edits
+19. **Warnings are non-blocking:** warning output contains member-specific review metadata only and does not expose any planning-block flag
+20. **`FopThresholds` constants match regulation:** assert `SaturatedFatG == 4.0`, `SugarsG == 15.0`, `SodiumMg == 345.0` — protects against accidental edits
 
 **Step 2 — Implementation:**
 
 Create `api/src/RecipeApi/Services/FopThresholds.cs` (static class with the three constants and source URL comment).
 Create `api/src/RecipeApi/Services/ConditionRuleEngine.cs` — shape in design.md. Use `FopThresholds` constants throughout.
 
-**Definition of done:** All 19 tests pass. `task review` passes.
+**Definition of done:** All 20 tests pass. `task review` passes.
 
 - [ ] Task 3 complete
 
@@ -183,9 +184,10 @@ Integration tests:
 
 1. Family member with `HighCholesterol` + discovery returns a recipe with `proteinSource: "RedMeat"` → `warnings` array contains one `soft` warning with correct `familyMemberId`
 2. Family member with no health profile + red meat recipe → `warnings` is empty array
-3. Family member with `Allergy: ["Shellfish"]` + seafood recipe → `warnings` contains one `hard` warning
+3. Family member with `Allergy: ["Shellfish"]` + provider ingredient match `"shrimp"` → `warnings` contains one `hard` reminder with "check ingredients" / "possible match" copy
 4. Recipe with null `dietary_profile` → `warnings` is empty array
 5. `warnings` field is always present on each recipe (never null)
+6. Allergy warning does not change discovery ordering, voting eligibility, or add any blocking flag
 
 **Step 2 — Implementation:**
 
@@ -193,7 +195,7 @@ Extend `GetRecipesForDiscoveryAsync` per design.md. Use `ConditionRuleEngine.Eva
 
 Parse `NutritionInfo` from `recipe.RawMetadata` null-safely. If `RawMetadata` is null or `nutrition` is absent, pass `null` to the engine.
 
-**Definition of done:** All 5 tests pass. `task agent:drift` passes.
+**Definition of done:** All 6 tests pass. `task agent:drift` passes.
 
 - [ ] Task 5 complete
 
@@ -219,6 +221,7 @@ Integration tests:
 2. Week with assigned recipes + no family members have health profiles → `warnings` is empty array on all slots (no extra DB query made — assert via log or query count)
 3. Empty slot (no recipe assigned) → `warnings` is null (slot has no recipe to evaluate)
 4. Two family members, both with conflicting conditions for the same recipe → both warnings present in the slot's `warnings` array
+5. Allergy warning names the affected family member and does not block the meal from staying planned
 
 **Step 2 — Implementation:**
 

@@ -6,7 +6,7 @@ This feature adds a JSONB `health_profile` column to `family_members` and a dete
 
 No LLM is involved anywhere in this feature.
 
-**Hard dependency:** `recipe-categorization` spec complete. `recipes.dietary_profile` populated.
+**Hard dependency:** `recipe-categorization` and `cnf-data-ingestion` complete. `recipes.dietary_profile` and provider-backed ingredient identity populated.
 
 ---
 
@@ -21,7 +21,7 @@ flowchart TD
     end
 
     subgraph RuleEngine["ConditionRuleEngine — pure code, no LLM"]
-        G[HealthProfile + RecipeDietaryProfile + NutritionData] --> H[Condition rules]
+        G[HealthProfile + RecipeDietaryProfile + NutritionData + ProviderIngredientMatches] --> H[Condition rules]
         H --> I[Allergy rules]
         I --> J[Intolerance rules]
         J --> K[Preference rules]
@@ -214,7 +214,8 @@ public static class ConditionRuleEngine
     public static List<RecipeWarning> Evaluate(
         FamilyMember member,
         RecipeDietaryProfile? profile,
-        NutritionInfo? nutrition)
+        NutritionInfo? nutrition,
+        IEnumerable<ProviderFoodMatch>? ingredientMatches = null)
     // Pure function. No DB. No LLM.
     // Returns [] when profile is null (cannot warn on unclassified recipe).
 }
@@ -266,7 +267,27 @@ public static class FopThresholds
 | `Diabetes` | `sugar > FopThresholds.SugarsG` | `soft` | `"This recipe is high in sugar ({value}g) — caution for {name}'s blood sugar."` |
 | `Diabetes` | `carbohydrate > 60g` | `soft` | `"This recipe is high in carbohydrates ({value}g) — caution for {name}'s blood sugar."` |
 
-**Allergy rules:** For each allergy string, check if it matches (case-insensitive) any of the known allergen-to-proteinSource mappings:
+**Allergy reminder rules:** For each allergy string, first check provider-backed ingredient matches from recipe `supply[]` using provider food identity, `food_name_en`, `food_name_fr`, and deterministic synonym tables. When a possible match is found, emit a prominent `hard` warning whose reason prompts human review rather than asserting danger:
+
+```text
+Check ingredients for {allergy}: possible match in {ingredient}.
+```
+
+The reminder SHALL NOT say the recipe is unsafe, safe, allergen-free, or allergy-safe. Absence of a warning is not proof that no allergen exists. Presence of a warning also does not block planning; it tells the household which family member may need the ingredients checked.
+
+Initial deterministic synonym coverage:
+```
+"Shellfish" -> clam, mussel, oyster, scallop, shrimp, prawn, crab, lobster, squid, octopus
+"TreeNuts" -> almond, cashew, walnut, pecan, hazelnut, pistachio, macadamia, brazil nut
+"Peanuts" -> peanut, groundnut, arachis
+"Gluten" -> wheat, barley, rye, spelt, kamut, triticale
+"Dairy" -> milk, cream, butter, cheese, yogurt, whey, casein, lactose
+"Eggs" -> egg, albumin, mayonnaise
+"Soy" -> soy, soya, tofu, tempeh, edamame, miso
+"Fish" -> salmon, tuna, cod, halibut, tilapia, anchovy, sardine, herring
+```
+
+When provider-backed ingredient matching is unavailable, use conservative broad protein-source fallback only for known mappings:
 ```
 "Shellfish" / "Shrimp" / "Prawns" / "Crab" / "Lobster" → proteinSource == "Seafood"
 "Fish" / "Salmon" / "Cod" / "Tuna" → proteinSource == "Seafood"
@@ -276,7 +297,7 @@ public static class FopThresholds
 "Egg" / "Eggs" → proteinSource == "Dairy"  // Dairy includes eggs in ProteinSource taxonomy
 ```
 
-When an allergy string does NOT match any known mapping, it is stored but cannot be matched against `dietary_profile` in Phase 1. The engine silently skips it. (Phase 2 ingredient-level matching will handle this.)
+When an allergy string does NOT match any known mapping, it is stored but cannot be evaluated yet. The engine silently skips it and does not emit a false reassurance.
 
 **Intolerance rules:**
 ```
@@ -331,7 +352,9 @@ Map `HealthProfileDto` → `HealthProfile` record before calling service. Return
 2. For each recipe in results:
    a. Deserialize recipe.DietaryProfile to RecipeDietaryProfile? (null-safe).
    b. Parse NutritionInfo from recipe.RawMetadata (null-safe).
-   c. Call ConditionRuleEngine.Evaluate(member, profile, nutrition).
+   c. Resolve provider ingredient matches for recipe `supply[]` in batch when allergies/intolerances are present.
+   d. Call ConditionRuleEngine.Evaluate(member, profile, nutrition, ingredientMatches).
+3. Attach member-specific warnings without changing discovery ordering, voting eligibility, or planning actions.
 3. Map warnings to List<RecipeWarningDto> and attach to the RecipeDto.
 ```
 
@@ -348,10 +371,12 @@ The recipe list is already loaded — this adds deserialization and rule evaluat
 2. For each day slot that has a recipe:
    a. Load the recipe's DietaryProfile and RawMetadata (already loaded for other purposes — reuse).
    b. For each family member with a health_profile:
-      - Call ConditionRuleEngine.Evaluate(member, profile, nutrition).
+      - Resolve provider ingredient matches for recipe `supply[]` once per recipe when allergies/intolerances are present.
+      - Call ConditionRuleEngine.Evaluate(member, profile, nutrition, ingredientMatches).
    c. Aggregate all warnings across all members.
    d. Attach to ScheduleRecipeDto.Warnings.
 3. If no family members have health_profiles, skip steps 1–2d entirely.
+4. Warnings are informational only. They name the affected member so the user can decide whether the warning matters for that meal.
 ```
 
 Load family members with health profiles once (not per slot). Do not add a DB query per slot.

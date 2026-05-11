@@ -2,7 +2,7 @@
 
 Each task is a vertical slice. No task builds a horizontal layer.
 
-**This spec has no LLM dependency and no workflow dependency.** It can be executed in parallel with `recipe-categorization`. Tasks 1–4 are independent of all other specs. Task 5 requires `recipe-categorization` Task 3 to be complete.
+**This spec has no LLM dependency and no new workflow dependency.** It can be executed in parallel with `recipe-categorization`. Tasks 1–5 are independent of all other specs. Task 7 requires `recipe-categorization` Task 3 to be complete.
 
 **Before marking any task done:**
 - `task agent:drift` — zero drift confirmed
@@ -17,7 +17,7 @@ Each task is a vertical slice. No task builds a horizontal layer.
 
 **Read before starting:**
 - design.md § Database Schema Changes — exact SQL to add
-- `api/database/schema.sql` — add `pg_trgm` extension immediately after the existing `vector` extension line; add `cnf_foods` table and GIN index after it; add FK column to `ingredient_categories` at the end of that table's section
+- `api/database/schema.sql` — add `pg_trgm` extension immediately after the existing `vector` extension line; add `cnf_foods` table and GIN indexes after it; add FK column to `ingredient_categories` at the end of that table's section
 - `api/src/RecipeApi/Models/IngredientCategory.cs` — add `CnfFoodId int?` property
 
 **Step 1 — Write tests first:**
@@ -25,7 +25,10 @@ Each task is a vertical slice. No task builds a horizontal layer.
 Create `api/src/RecipeApi.Tests/Schema/PgTrgmSmokeTests.cs`:
 1. `SELECT similarity('chicken breast', 'chicken')` returns a double > 0 — confirms `pg_trgm` is enabled
 2. `cnf_foods` table exists and is empty after schema apply (no data yet)
-3. `ingredient_categories.cnf_food_id` column exists and is nullable
+3. `cnf_foods.food_name_en` column exists and is not nullable
+4. `cnf_foods.food_name_fr` column exists and is nullable
+5. `idx_cnf_foods_name_en_trgm` and `idx_cnf_foods_name_fr_trgm` exist
+6. `ingredient_categories.cnf_food_id` column exists and is nullable
 
 **Step 2 — Schema changes:**
 
@@ -41,7 +44,7 @@ public int? CnfFoodId { get; set; } = null;
 
 **Do NOT touch** any service, processor, or controller file.
 
-**Definition of done:** Schema applies via `task dev:clean:sync`. All 3 tests pass. No existing tests break.
+**Definition of done:** Schema applies via `task dev:clean:sync`. All 6 tests pass. No existing tests break.
 
 - [ ] Task 1 complete
 
@@ -56,6 +59,8 @@ public int? CnfFoodId { get; set; } = null;
 Create `api/src/RecipeApi.Tests/Models/CNFFoodTests.cs`:
 1. JSON round-trip: `CNFFood` with all fields → serialize → deserialize → all fields match
 2. JSON round-trip: nullable nutrient fields serialize as `null`, not `0`
+3. JSON round-trip: `FoodNameEn` is required and maps to `food_name_en`
+4. JSON round-trip: `FoodNameFr` serializes/deserializes when present and remains `null` when absent
 
 **Step 2 — C# record:**
 
@@ -71,7 +76,11 @@ FoodID,FoodCode,FoodGroupID,FoodSourceID,FoodDescription,FoodDescriptionF,...
 3,03001,20,4,"Rice, brown, raw","Riz, brun, cru",...
 4,04001,11,4,"Broccoli, raw","Brocoli, cru",...
 5,05001,1,4,"Milk, 2% fat","Lait, 2% m.g.",...
+6,06001,11,4,"Carrot, raw","Carotte, crue",...
+7,07001,11,4,"","Courgette, crue",...
 ```
+
+The fixture must include at least one bilingual food row (`FoodID = 6`) and at least one French-only food row (`FoodID = 7`). Tests must prove the bilingual row seeds exactly one English lookup row and the French-only row is skipped.
 
 Create `api/src/RecipeApi.Tests/Fixtures/cnf_sample/NUTRIENT_NAME.csv`:
 ```csv
@@ -90,11 +99,46 @@ Create `api/src/RecipeApi.Tests/Fixtures/cnf_sample/NUTRIENT_AMOUNT.csv` with re
 
 ---
 
-## Task 3 — `CnfIngestionService`
+## Task 3 — Food data provider strategy seam
+
+**What:** Add the provider strategy interfaces and wire Canada CNF as the default provider. No CSV parsing logic yet.
+
+**Dependency:** Task 2 must be complete.
+
+**Read before starting:**
+- design.md § Provider strategy
+- existing settings/configuration patterns for provider-key selection
+
+**Step 1 — Write tests first:**
+
+Create `api/src/RecipeApi.Tests/Services/FoodDataProviderStrategyTests.cs`:
+1. Default configuration resolves the Canada CNF provider.
+2. Explicit provider key `"CanadaCNF"` resolves the Canada CNF provider.
+3. Unknown provider key fails startup/DI validation with a clear error message.
+4. `NutrientLookup` and localized alias expansion can be resolved through provider-facing interfaces, not concrete CNF ingestion classes.
+
+**Step 2 — Interfaces and registration:**
+
+Create provider-facing interfaces per design.md:
+- `IFoodDataProvider`
+- `IFoodDataIngestion`
+- `IFoodNutrientLookup`
+- `ILocalizedFoodAliasExpander`
+- `IFoodGuideMapper`
+
+Create `CanadaCnfFoodDataProvider` as the first strategy. It may delegate to placeholder CNF services until later tasks implement ingestion/search/lookup, but the provider seam must be in place before consumers are wired.
+
+**Definition of done:** Provider selection tests pass. Unknown provider configuration fails fast. No application consumer needs to instantiate CNF-specific parser classes.
+
+- [ ] Task 3 complete
+
+---
+
+## Task 4 — `CnfIngestionService`
 
 **What:** The CSV parsing and upsert logic. Uses the test fixture in tests — no real download required.
 
-**Dependency:** Tasks 1 and 2 must be complete.
+**Dependency:** Tasks 1–3 must be complete.
 
 **Read before starting:**
 - design.md § `CnfIngestionService` — CSV parsing strategy, nutrient IDs, CFG group mapping dictionary
@@ -104,18 +148,19 @@ Create `api/src/RecipeApi.Tests/Fixtures/cnf_sample/NUTRIENT_AMOUNT.csv` with re
 
 Create `api/src/RecipeApi.Tests/Services/CnfIngestionTests.cs`:
 
-1. Seed from fixture ZIP → `cnf_foods` row count = 5 (matches fixture)
-2. Each row has correct `food_name`, `cfg_food_group`, and nutrient values matching fixture
-3. Seed twice (idempotency) → row count still 5, no duplicates, no exception
-4. `FOOD_NM.csv` with French-only rows → skipped (language code filter)
-5. `NUTRIENT_AMOUNT.csv` with unknown nutrient ID → row still upserted, unknown nutrient ignored
-6. Missing nutrient value for a food → that column is null, no exception
-7. CFG group mapping: `"Beef Products"` → `"ProteinFoods"`; `"Vegetables and Vegetable Products"` → `"VegetablesAndFruits"`; unknown group → `"Mixed"`
-8. Ingestion logs count of upserted rows
+1. Seed from fixture ZIP → `cnf_foods` row count = 6 (seven fixture food IDs minus one French-only row)
+2. Each row has correct `food_name_en`, `cfg_food_group`, and nutrient values matching fixture
+3. Seed twice (idempotency) → row count still 6, no duplicates, no exception
+4. Bilingual `FOOD_NM.csv` row → one seeded row using the English description in `food_name_en` and French description in `food_name_fr`; French description does not create a duplicate lookup row
+5. French-only `FOOD_NM.csv` row → skipped; nutrient rows for that `FoodID` do not create orphan `cnf_foods` data
+6. `NUTRIENT_AMOUNT.csv` with unknown nutrient ID → row still upserted, unknown nutrient ignored
+7. Missing nutrient value for a food → that column is null, no exception
+8. CFG group mapping: `"Beef Products"` → `"ProteinFoods"`; `"Vegetables and Vegetable Products"` → `"VegetablesAndFruits"`; unknown group → `"Mixed"`
+9. Ingestion logs count of upserted rows
 
 **Step 2 — Implementation:**
 
-Create `api/src/RecipeApi/Services/CnfIngestionService.cs` — shape in design.md.
+Create `api/src/RecipeApi/Services/CnfIngestionService.cs` — shape in design.md. Wire it through the Canada CNF provider's ingestion strategy, not directly into categorization/search consumers.
 
 **Step 3 — CLI entry point:**
 
@@ -126,31 +171,41 @@ Add a minimal console command handler (or `IHostedService` with `--cnf-seed` arg
 
 Add `task data:cnf:seed` to the Taskfile per design.md.
 
-**Definition of done:** All 8 tests pass. `task data:cnf:seed --file ./path/to/fixture.zip` runs against fixture without network access. `task review` passes.
+**Definition of done:** All 9 tests pass. `task data:cnf:seed --file ./path/to/fixture.zip` runs against fixture without network access. `task review` passes.
 
-- [ ] Task 3 complete
+- [ ] Task 4 complete
 
 ---
 
-## Task 4 — `NutrientLookup` service + `UnitWeightTable`
+## Task 5 — `NutrientLookup` service + `UnitWeightTable`
 
 **What:** The runtime lookup service and unit conversion table. These are called at classification time, not at seed time.
 
-**Dependency:** Tasks 1–3 must be complete (`cnf_foods` table exists and is seeded).
+**Dependency:** Tasks 1–4 must be complete (`cnf_foods` table exists and is seeded).
 
 **Read before starting:**
 - design.md § `NutrientLookup` — raw SQL pattern, cache write, null handling
+- design.md § `NutrientLookup` — `ICnfSimilaritySearch` seam; EF InMemory tests inject a fake, production uses real Postgres raw SQL
 - design.md § `UnitWeightTable` — unit conversion table, `UnitWeightEstimates` dictionary, 100g default
 
 **Step 1 — Write tests first:**
 
 Create `api/src/RecipeApi.Tests/Services/NutrientLookupTests.cs`:
 
-1. Known ingredient `"chicken breast"` → returns `CNFFood` with `food_id = 1` (fixture), `cnf_food_id` written to `ingredient_categories`
-2. Second call for `"chicken breast"` → `cnf_food_id` already set → no trigram query (verify via query count or mock)
+These tests use EF InMemory and a fake `ICnfSimilaritySearch`. They must not call Postgres-specific `pg_trgm` SQL.
+
+1. Known ingredient `"chicken breast"` → fake similarity search returns `CNFFood` with `food_id = 1` (fixture), `cnf_food_id` written to `ingredient_categories`
+2. Second call for `"chicken breast"` → `cnf_food_id` already set → fake similarity search call count remains unchanged
 3. `"xyzzy_nonexistent_ingredient"` → returns null, no exception
 4. `cnf_foods` empty (before seed) → returns null, logs warning, no exception
-5. Similarity exactly 0.4 → match accepted; 0.39 → no match
+
+Create `api/src/RecipeApi.Tests/Integration/CnfSimilaritySearchPostgresTests.cs`:
+
+1. Uses an isolated disposable Postgres database from the same `pgvector` image family as the deployed stack; it must not connect to the deployed application database
+2. `SELECT similarity('chicken breast', 'chicken')` returns a double > 0 — confirms `pg_trgm` is enabled
+3. Seeded food with similarity exactly 0.4 → match accepted
+4. Seeded food with similarity 0.39 → no match
+5. Raw SQL is parameterized; malicious query text is treated as data and does not alter SQL
 
 Create `api/src/RecipeApi.Tests/Utils/UnitWeightTableTests.cs`:
 
@@ -165,21 +220,56 @@ Create `api/src/RecipeApi.Tests/Utils/UnitWeightTableTests.cs`:
 
 **Step 2 — Implementation:**
 
-Create `api/src/RecipeApi/Services/NutrientLookup.cs` — shape in design.md. Register as scoped in `Program.cs`.
+Create `api/src/RecipeApi/Services/NutrientLookup.cs` and `api/src/RecipeApi/Services/PostgresCnfSimilaritySearch.cs` — shape in design.md. Register `ICnfSimilaritySearch` to `PostgresCnfSimilaritySearch` through the Canada CNF provider strategy as scoped in `Program.cs`.
 
 Create `api/src/RecipeApi/Utils/UnitWeightTable.cs` — shape in design.md.
 
-**Definition of done:** All 13 tests pass. `task review` passes.
+**Definition of done:** EF InMemory tests pass without Postgres; Postgres compatibility tests pass only against an isolated disposable pgvector database; all `UnitWeightTable` tests pass. `task review` passes.
 
-- [ ] Task 4 complete
+- [ ] Task 5 complete
 
 ---
 
-## Task 5 — Extend `ClassifyDietaryProfileProcessor` to use CNF
+## Task 6 — Health guidance settings gate
 
-**What:** Replace the `raw_metadata.nutrition` → `FopFlags` path in the processor with the CNF lookup path, keeping `raw_metadata` as fallback.
+**What:** Add the app setting that enables/disables health recommendations and dietary steering.
 
-**Dependency:** Task 4 must be complete. `recipe-categorization` Task 3 (`ClassifyDietaryProfileProcessor`) must be complete — this task extends it.
+**Dependency:** Task 3 must be complete.
+
+**Read before starting:**
+- design.md § Health guidance settings
+- `api/src/RecipeApi/Controllers/SettingsController.cs`
+- `api/src/RecipeApi/Services/SettingsService.cs`
+- future specs: `.kiro/specs/family-health-profiles` and `.kiro/specs/dietitian-agent-phase2`
+
+**Step 1 — Write tests first:**
+
+Create or extend settings/service tests:
+1. Missing `health_guidance_enabled` setting defaults to `true`.
+2. Setting value `false` is read as disabled.
+3. A health-guidance-aware consumer receives disabled state and suppresses steering behavior while preserving core recipe/search/planning behavior.
+
+**Step 2 — Implementation:**
+
+Add a small settings reader/service, for example `HealthGuidanceSettings`, that wraps `SettingsService` and exposes:
+
+```csharp
+Task<bool> IsHealthGuidanceEnabledAsync(CancellationToken ct);
+```
+
+Use existing `family_settings` storage unless implementation discovers a more appropriate app-level setting surface.
+
+**Definition of done:** Tests cover enabled and disabled modes. No user-facing health steering path added by this spec bypasses the setting.
+
+- [ ] Task 6 complete
+
+---
+
+## Task 7 — Extend `ClassifyDietaryProfileProcessor` to use provider-backed nutrients and food-guide groups
+
+**What:** Replace the `raw_metadata.nutrition` → `FopFlags` path in the processor with the provider-backed lookup path, keeping `raw_metadata` as fallback. Also feed provider food-guide groups into recipe category and `IsHealthyChoice` prediction.
+
+**Dependency:** Tasks 5–6 must be complete. `recipe-categorization` Task 3 (`ClassifyDietaryProfileProcessor`) must be complete — this task extends it.
 
 **Read before starting:**
 - `api/src/RecipeApi/Services/Processors/ClassifyDietaryProfileProcessor.cs` — find the current steps 11–13 (parse `raw_metadata.nutrition` → `FopFlags`)
@@ -197,11 +287,14 @@ Add to `api/src/RecipeApi.Tests/Services/Processors/ClassifyDietaryProfileProces
 4. **All-null:** all CNF lookups return null, `raw_metadata.nutrition` null → `fopFlags = null`
 5. **`recipeYield` parsing:** `"4 portions"` → divides by 4; `"servings: 2"` → divides by 2; unparseable → divides by 2 (default)
 6. **Mixed CNF coverage:** 3 of 5 ingredients match CNF, 2 return null → partial sum used, no exception
-7. **`NutrientLookup` not available (unregistered):** constructor injection — if `NutrientLookup` is not registered, the processor should fail fast at startup, not at runtime (verify DI registration in integration test)
+7. **Provider food-guide group improves category:** recipe ingredients dominated by CNF/Canada Food Guide `VegetablesAndFruits` strengthen vegetable/fruit category prediction even when raw metadata is sparse.
+8. **Provider nutrients improve `IsHealthyChoice`:** recipe with high sodium/sugar/saturated fat flags is not marked healthy; recipe with balanced provider groups and no FOP flags may be marked healthy according to existing categorization rules.
+9. **Health guidance disabled:** processor may compute/store neutral metadata, but user-facing health recommendation/steering output is suppressed by the health guidance setting.
+10. **`NutrientLookup` not available (unregistered):** constructor injection — if `NutrientLookup` is not registered, the processor should fail fast at startup, not at runtime (verify DI registration in integration test)
 
 **Step 2 — Implementation:**
 
-Replace steps 11–13 in `ClassifyDietaryProfileProcessor.cs` with the extended CNF flow per design.md.
+Replace steps 11–13 in `ClassifyDietaryProfileProcessor.cs` with the extended provider-backed flow per design.md.
 
 Inject `NutrientLookup` and `UnitWeightTable` (or use static `UnitWeightTable`).
 
@@ -209,17 +302,75 @@ Inject `NutrientLookup` and `UnitWeightTable` (or use static `UnitWeightTable`).
 
 Add `task data:cnf:reclassify` to the Taskfile — queries `recipes WHERE dietary_profile->>'fopFlags' IS NULL` and enqueues `ClassifyDietaryProfile` with `forceReclassify: true` for each.
 
-**Definition of done:** All 7 new tests pass. All existing `ClassifyDietaryProfileProcessorTests` still pass. `task review` passes.
+**Definition of done:** All 10 new tests pass. All existing `ClassifyDietaryProfileProcessorTests` still pass. Recipe categorization now consumes provider nutrient/group data through the strategy seam. `task review` passes.
 
-- [ ] Task 5 complete
+- [ ] Task 7 complete
 
 ---
 
-## Task 6 — Backup export + documentation
+## Task 8 — Bilingual search augmentation from provider aliases
+
+**What:** Extend recipe search so French ingredient queries can find English recipe text, and English ingredient queries can find French recipe text, using the active provider's localized food-name mapping. Canada CNF supplies English/French.
+
+**Dependency:** Tasks 1–4 must be complete. Task 5's Postgres raw-SQL seam pattern should be followed, but `NutrientLookup` itself is not required by this task.
+
+**Read before starting:**
+- `api/src/RecipeApi/Services/RecipeSearchService.cs` — find `SearchAsync`, `GetLexicalCandidatesAsync`, and `BuildRankedCandidates`
+- design.md § Modified: `RecipeSearchService` bilingual query expansion
+- `api/src/RecipeApi.Tests/Integration/RecipeSearchIntegrationTests.cs` — existing search integration coverage
+
+**Step 1 — Write tests first:**
+
+Add to `api/src/RecipeApi.Tests/Integration/RecipeSearchIntegrationTests.cs`:
+
+1. **French → English:** fake `ICnfBilingualQueryExpander` expands `"poulet"` to `"chicken"`; query `"poulet"` returns a recipe whose searchable text contains `"chicken"` but not `"poulet"`
+2. **English → French:** fake expander expands `"chicken"` to `"poulet"`; query `"chicken"` returns a recipe whose searchable text contains `"poulet"` but not `"chicken"`
+3. **Original query preserved:** response `query`/request echo behavior and applied filters remain unchanged; no OpenAPI DTO fields are added
+4. **No expansion:** fake expander returns empty list; existing lexical-only result ordering remains unchanged
+5. **Bounded expansion:** fake expander returns more than 5 terms; search uses at most 5 expansion terms and deduplicates case-insensitively
+6. **Expander failure:** fake expander throws; search logs/falls back to original query and still returns normal lexical results
+
+Create `api/src/RecipeApi.Tests/Integration/CnfBilingualQueryExpanderPostgresTests.cs`:
+
+1. Uses an isolated disposable Postgres database from the same `pgvector` image family as the deployed stack; it must not connect to the deployed application database
+2. Seed `cnf_foods(food_id, food_name_en, food_name_fr)` with `("chicken", "poulet")`
+3. Query `"poulet"` returns `"chicken"` as an expansion
+4. Query `"chicken"` returns `"poulet"` as an expansion
+5. Query `"xyzzy_nonexistent"` returns no expansions
+6. Raw SQL is parameterized; malicious query text is treated as data and does not alter SQL
+
+**Step 2 — Implementation:**
+
+Create `api/src/RecipeApi/Services/CnfBilingualQueryExpander.cs` as the Canada provider implementation of localized alias expansion:
+```csharp
+public interface ICnfBilingualQueryExpander
+{
+    Task<IReadOnlyList<string>> ExpandAsync(string query, CancellationToken ct);
+}
+```
+
+Create `api/src/RecipeApi/Services/PostgresCnfBilingualQueryExpander.cs` — shape in design.md. Register it through the active food data provider strategy as scoped in `Program.cs`.
+
+Modify `RecipeSearchService`:
+1. Inject optional `ICnfBilingualQueryExpander?`
+2. For non-empty text queries, call the expander before `GetLexicalCandidatesAsync`
+3. Build an expanded lexical query from original query + at most 5 equivalent terms
+4. Use the expanded lexical query only for candidate retrieval/ranking
+5. Keep `dto.Query`, telemetry query text, applied filters, and response DTOs unchanged
+
+**Do NOT add** new OpenAPI fields or PWA UI changes in this task.
+
+**Definition of done:** EF InMemory search tests pass with a fake expander; Postgres compatibility tests pass only against an isolated disposable pgvector database; all existing `RecipeSearchIntegrationTests` still pass; `task review` passes.
+
+- [ ] Task 8 complete
+
+---
+
+## Task 9 — Backup export + documentation
 
 **What:** Extend `ManagementService` backup to export CNF group mappings, and write the operator documentation.
 
-**Dependency:** Task 3 must be complete.
+**Dependency:** Task 4 must be complete.
 
 **Step 1 — Write tests first:**
 
@@ -229,22 +380,25 @@ Add to `ManagementServiceTests.cs`:
 
 **Step 2 — Implementation:**
 
-Extend `ManagementService.BackupAsync()` to export `cnf-cfg-groups.csv` per requirements.md Requirement 5.
+Extend `ManagementService.BackupAsync()` to export `cnf-cfg-groups.csv` per requirements.md Requirement 7.
 
 **Step 3 — Documentation:**
 
-Create `api/docs/CNF_INGESTION.md` with all content from requirements.md Requirement 6:
+Create `api/docs/CNF_INGESTION.md` with all content from requirements.md Requirement 9:
 - Download URL (fill in the actual URL when executing this task — document it here permanently)
 - CNF file format and the three files used
 - Nutrient IDs extracted (307, 269, 606, 205) and what they are
 - CFG group mapping table (copy from `CnfIngestionService` source, with rationale column)
 - How to run `task data:cnf:seed` and `task data:cnf:reclassify`
+- How the provider strategy works and why `CanadaCNF` is the default
+- How `health_guidance_enabled` controls recommendations/steering without disabling core recipe features
+- How bilingual search expansion uses CNF English/French food names
 - What happens if the download URL changes
 - The similarity threshold (0.4) and what to do if matches seem wrong
 
 **Definition of done:** Tests pass. Documentation complete. `task review` passes.
 
-- [ ] Task 6 complete
+- [ ] Task 9 complete
 
 ---
 
@@ -255,5 +409,9 @@ Create `api/docs/CNF_INGESTION.md` with all content from requirements.md Require
 - **2026-05-06**: Similarity threshold set at 0.4 conservatively. Lower values risk false positives (e.g. "parsley" → "parsnip"). Operator can inspect `ingredient_categories.cnf_food_id` to audit matches.
 - **2026-05-06**: `UnitWeightTable` default is 100g for unknown unitless ingredients. This is a known approximation — logged at warning level so the table can be extended over time.
 - **2026-05-06**: `recipeYield` default is 2 portions when absent or unparseable. This affects per-portion FOP flag computation. Documented as an assumption.
+- **2026-05-11**: Broader CNF-powered search behavior is split into `.kiro/specs/cnf-search-augmentation`. This ingestion spec keeps only the foundational bilingual query bridge; synonym expansion, CNF pantry matching, search reason contract changes, and nutrition-aware filters belong to the follow-up spec.
+- **2026-05-11**: Food data access is now a strategy pattern. `CanadaCNF` remains the first/default provider, but consumers must depend on provider interfaces so future US/Swedish providers can be swapped in.
+- **2026-05-11**: Health recommendations and dietary steering must be gated by app settings. Users can keep recipe capture/search/planning without health-oriented nudges.
+- **2026-05-11**: Provider-backed nutrient and food-guide data must feed recipe categorization, including better `IsHealthyChoice` and category predictions.
 - **CFG group mapping decisions**: *(document the specific mapping choices and any debated cases when executing Task 3)*
 - **CNF download URL**: *(fill in when executing Task 3)*

@@ -2,13 +2,13 @@
 
 ## Introduction
 
-The app plans meals for a whole family. Family members may have pre-existing health conditions — high cholesterol, hypertension, diabetes, food allergies, intolerances, or dietary preferences — that make certain recipes unsuitable or less desirable for them. Today the app has no awareness of this.
+The app plans meals for a whole family. Family members may have pre-existing health conditions — high cholesterol, hypertension, diabetes, food allergies, intolerances, or dietary preferences — that make certain recipes worth a second look. Today the app has no awareness of this.
 
-This feature adds a health profile to each family member and uses it to decorate recipe cards and planner slots with warnings or exclusions. It does not block the user from planning any meal — it informs and warns without being paternalistic. The actual dietary classification of recipes (`dietary_profile`, `proteinSource`) was built in the `recipe-categorization` spec and is the data source this feature reads.
+This feature adds a health profile to each family member and uses it to decorate recipe cards and planner slots with calm warnings and review reminders. It does not block the user from planning any meal — it informs without being paternalistic. A meal may still be planned when a warning exists, especially when the affected family member is not eating that meal. The actual dietary classification of recipes (`dietary_profile`, `proteinSource`) was built in the `recipe-categorization` spec and is one data source this feature reads.
 
 This is a **display and warning** feature. It does not call any LLM. It does not modify recipe data. It does not change plan assignment logic. All health-profile logic is deterministic rule matching.
 
-**Dependency:** `recipe-categorization` spec must be complete. `recipes.dietary_profile` and `recipes.category` must be populated for warnings to appear.
+**Dependency:** `recipe-categorization` and `cnf-data-ingestion` must be complete. `recipes.dietary_profile`, provider-backed ingredient identity, and `recipes.category` must be populated for the strongest warnings to appear.
 
 ---
 
@@ -16,11 +16,11 @@ This is a **display and warning** feature. It does not call any LLM. It does not
 
 - **HealthProfile**: A JSONB record stored on `family_members.health_profile`. Contains conditions, allergies, intolerances, and preferences for one family member.
 - **Condition**: A named health state that the system knows how to map to dietary caution rules. Examples: `HighCholesterol`, `Hypertension`, `Diabetes`, `HeartDisease`.
-- **Allergy**: A food that causes an immune response. The system treats allergens as hard exclusions — always surfaced as a warning.
+- **Allergy**: A food that causes an immune response. The system treats allergen matches as prominent review reminders, not proof that a recipe is unsafe or safe.
 - **Intolerance**: A food that causes discomfort but not an immune response (e.g. lactose, gluten). Surfaced as a soft warning.
 - **Preference**: A voluntary dietary choice (e.g. vegetarian, vegan, halal, kosher). Surfaced as an informational note, not a warning.
-- **RecipeWarning**: A structured object attached to a recipe card or planner slot explaining why a recipe may not be suitable for a specific family member.
-- **WarningLevel**: `hard` (allergy — always shown prominently), `soft` (intolerance or condition caution — shown but dismissable), `info` (preference mismatch — subtle note).
+- **RecipeWarning**: A structured object attached to a recipe card or planner slot explaining why a recipe deserves review for a specific family member. It is not a planning block.
+- **WarningLevel**: `hard` (possible allergy match — always shown prominently as a "check ingredients" reminder), `soft` (intolerance or condition caution — shown but dismissable), `info` (preference mismatch — subtle note).
 - **ConditionRuleEngine**: The deterministic, code-only service that maps a `HealthProfile` + `RecipeDietaryProfile` to a list of `RecipeWarning` objects.
 
 ---
@@ -51,7 +51,7 @@ This is a **display and warning** feature. It does not call any LLM. It does not
    | `Hypertension` | Warns when recipe `sodiumContent` (from `raw_metadata.nutrition`) exceeds 600 mg per portion |
    | `Diabetes` | Warns when recipe `sugarContent` exceeds 15 g per portion OR `carbohydrateContent` exceeds 60 g per portion |
    | `HeartDisease` | Warns when `proteinSource` is `RedMeat`; same as `HighCholesterol` |
-5. THE supported `allergies`, `intolerances`, and `preferences` SHALL be free-text strings. The system does NOT validate them against a closed set — the user enters what is relevant. The Phase 2 dietitian agent may normalise these.
+5. THE supported `allergies`, `intolerances`, and `preferences` SHALL be free-text strings. The system does NOT validate them against a closed set — the user enters what is relevant. Ingredient-level allergy/intolerance matching SHALL use provider identity, localized names, and deterministic synonym tables before allergy reminders are shown in recipe cards or planner slots.
 6. THE `HealthProfile` SHALL NOT be sent to any LLM. All rule matching is deterministic code.
 
 ---
@@ -87,11 +87,12 @@ This is a **display and warning** feature. It does not call any LLM. It does not
      condition: string  // the condition/allergy/intolerance/preference that triggered this
    }
    ```
-3. ALLERGY warnings SHALL have `level: "hard"`. The reason SHALL name the allergen explicitly.
+3. ALLERGY warnings SHALL have `level: "hard"` only when deterministic ingredient-level or provider-backed fallback matching finds a possible match. The reason SHALL name the allergen and use reminder copy such as `"Check ingredients for {allergy}: possible match in {ingredient}."`
 4. INTOLERANCE and CONDITION warnings SHALL have `level: "soft"`.
 5. PREFERENCE mismatches SHALL have `level: "info"`.
 6. WHEN `dietary_profile` is null for a recipe, the engine SHALL return no warnings (cannot warn on unclassified data).
-7. THE engine SHALL be a pure function — no DB access, no LLM calls.
+7. Warnings SHALL be member-specific and non-blocking. The app SHALL NOT prevent planning, voting, grocery generation, or cooking flow because a warning exists.
+8. THE engine SHALL be a pure function — no DB access, no LLM calls.
 
 ---
 
@@ -103,7 +104,7 @@ This is a **display and warning** feature. It does not call any LLM. It does not
 
 1. `GET /api/discovery` SHALL return `warnings: RecipeWarning[]` on each recipe in the response, computed for the requesting family member's health profile.
 2. WHEN a recipe has no warnings for the requesting member, `warnings` SHALL be an empty array (not null).
-3. THE PWA discovery card SHALL display a caution badge when `warnings` contains at least one `hard` or `soft` warning.
+3. THE PWA discovery card SHALL display a caution badge when `warnings` contains at least one `hard` or `soft` warning. For allergy warnings, the badge/detail copy SHALL use "possible match" / "check ingredients" language, not an allergy-safe or unsafe assertion.
 4. TAPPING the badge SHALL show a tooltip or sheet listing all warnings for that recipe.
 5. `info`-level warnings SHALL NOT show a badge — they MAY be surfaced in the detail view only.
 
@@ -117,8 +118,8 @@ This is a **display and warning** feature. It does not call any LLM. It does not
 
 1. `GET /api/schedule` SHALL return `warnings: RecipeWarning[]` on each `ScheduleRecipeDto` that has a recipe assigned, computed for all family members who have a health profile.
 2. WHEN multiple family members have conflicting profiles, all their warnings SHALL be included.
-3. THE PWA planner day card SHALL display a caution indicator when the slot's recipe has any `hard` or `soft` warnings.
-4. THE caution indicator SHALL NOT block any action — it is informational only.
+3. THE PWA planner day card SHALL display a caution indicator when the slot's recipe has any `hard` or `soft` warnings. For allergy warnings, the indicator/detail copy SHALL use "possible match" / "check ingredients" language, not an allergy-safe or unsafe assertion.
+4. THE caution indicator SHALL NOT block any action — it is informational only. Users may keep the meal planned if the affected member is not present or if they decide the recipe is acceptable.
 5. WHEN the recipe in a slot has no warnings for any family member, no indicator is shown.
 
 ---
@@ -137,7 +138,7 @@ This is a **display and warning** feature. It does not call any LLM. It does not
 
 ## Risks and Questions
 
-- **Allergy matching from ingredients**: The `ConditionRuleEngine` in Phase 1 matches `proteinSource` and nutrition values — not free-text ingredient names against allergy strings. Matching "Shellfish" against an ingredient list like `["shrimp", "prawns"]` requires NLP or a synonym dictionary. This is Phase 2 (dietitian agent). In Phase 1, the allergy warning surface is limited to what can be derived from `proteinSource` (e.g. Seafood = shellfish risk) and the user must still exercise their own judgment.
+- **Allergy reminder confidence**: Ingredient-level matching improves recall, but the app must never claim a recipe is allergy-safe. Allergy copy should prompt review, e.g. `"Check ingredients for Shellfish: possible match in shrimp."`
 - **Nutrition data availability**: Hypertension and Diabetes rules read `sodiumContent` and `sugarContent` from `raw_metadata.nutrition`. Many recipes have null nutrition fields (see Parmentier example in recipe-categorization spec). When nutrition is null, those rules cannot fire — the engine silently skips them.
 - **`ScheduleRecipeDto` shape change**: Adding `warnings` to `ScheduleRecipeDto` touches the existing schedule contract. See seam inventory in design.md.
 - **Performance**: Computing warnings for all members on every `GET /api/schedule` requires loading all `health_profile` values and all `dietary_profile` values. With a typical family of 2–6 and 7 slots, this is ~42 rule evaluations — negligible. No caching needed.

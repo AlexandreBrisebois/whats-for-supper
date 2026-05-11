@@ -2,7 +2,9 @@
 
 ## Overview
 
-A one-time seeding pipeline that downloads the Canadian Nutrient File (CNF) from Health Canada's Open Government Portal, upserts ~5,700 food records into a local `cnf_foods` table, and exposes a `NutrientLookup` service that resolves normalized ingredient names to CNF entries via trigram similarity. Results are cached in the existing `ingredient_categories` table. `ClassifyDietaryProfileProcessor` is extended to use CNF values for `FopFlags`, making health warnings and FOP week summaries accurate for the full recipe library.
+A one-time seeding pipeline that downloads the Canadian Nutrient File (CNF) from Health Canada's Open Government Portal, upserts ~5,700 food records into a local `cnf_foods` table, and exposes provider-backed services that resolve normalized ingredient names to canonical food entries via trigram similarity. Results are cached in the existing `ingredient_categories` table. `ClassifyDietaryProfileProcessor` is extended to use provider nutrient values for `FopFlags`, category prediction, and `IsHealthyChoice` prediction, making health warnings and FOP week summaries accurate for the full recipe library when health guidance is enabled. The same CNF English/French food-name pairs also augment recipe search so French ingredient queries can find English recipe text and English queries can find French recipe text.
+
+CNF is the first implementation of a pluggable food data provider strategy. The application-level consumers depend on interfaces so a later `UsdaFoodDataProvider`, Swedish provider, or other national food-guide provider can swap in without rewriting search and categorization flows.
 
 No LLM. No runtime external calls. No new workflow.
 
@@ -12,10 +14,18 @@ No LLM. No runtime external calls. No new workflow.
 
 ```mermaid
 flowchart TD
+    subgraph Strategy["Food data provider strategy"]
+        ST1[App settings/configuration] --> ST2{Active provider key}
+        ST2 -->|CanadaCNF default| ST3[CanadaCnfFoodDataProvider]
+        ST2 -->|Future| ST4[USDA / Swedish / other provider]
+        ST3 --> ST5[IFoodDataProvider seams]
+        ST4 --> ST5
+    end
+
     subgraph Seed["task data:cnf:seed (one-time operator command)"]
         A[Download CNF ZIP from Health Canada Open Government Portal] --> B[Parse NUTRIENT_NAME.csv → nutrientId map]
         B --> C[Parse NUTRIENT_AMOUNT.csv → foodId→nutrient map]
-        C --> D[Parse FOOD_NM.csv → food names, English only]
+        C --> D[Parse FOOD_NM.csv → English names + French aliases]
         D --> E[Upsert cnf_foods table]
         E --> F[Log row count]
     end
@@ -23,7 +33,7 @@ flowchart TD
     subgraph Lookup["NutrientLookup service — called at import time"]
         G[Normalized ingredient name] --> H{ingredient_categories.cnf_food_id set?}
         H -->|Cache hit| I[SELECT cnf_foods WHERE food_id = cached_id]
-        H -->|Cache miss| J[pg_trgm similarity search on cnf_foods.food_name]
+        H -->|Cache miss| J[pg_trgm similarity search on cnf_foods.food_name_en]
         J --> K{similarity >= 0.4?}
         K -->|Yes| L[Write cnf_food_id to ingredient_categories]
         K -->|No| M[Return null]
@@ -36,8 +46,8 @@ flowchart TD
         P --> Q[Convert quantities to grams via UnitWeightTable]
         Q --> R[Sum nutrients × weight/100g per ingredient]
         R --> S[Divide by recipeYield → per-portion values]
-        S --> T[ComputeFopFlags from CNF per-portion values]
-        T --> U[Write to dietary_profile.fopFlags]
+        S --> T[ComputeFopFlags + provider food-guide group signals]
+        T --> U[Write dietary_profile + IsHealthyChoice/category signals]
         V[raw_metadata.nutrition fallback] -->|CNF returns all null| T
     end
 
@@ -45,8 +55,21 @@ flowchart TD
         W[Query all recipes WHERE dietary_profile->fopFlags IS NULL] --> X[Enqueue ClassifyDietaryProfile with forceReclassify: true]
     end
 
+    subgraph Search["RecipeSearchService bilingual expansion"]
+        SA[User query] --> SB[ICnfBilingualQueryExpander]
+        SB --> SC[Original query + bounded CNF equivalents]
+        SC --> SD[Existing lexical ranking]
+        SD --> SE[Same RecipeSearchResponseDto]
+    end
+
     subgraph Backup["ManagementService"]
         E --> BA[BackupAsync: export cnf-cfg-groups.csv to DataRoot]
+    end
+
+    subgraph Settings["Health guidance settings"]
+        HS1[family/app settings] --> HS2{Health guidance enabled?}
+        HS2 -->|Yes| HS3[Warnings, nutrition filters, planner nudges, steering]
+        HS2 -->|No| HS4[Recipe/search/planning continue without health steering]
     end
 ```
 
@@ -59,7 +82,10 @@ flowchart TD
 | `schema.sql` | Has `vector` extension | Add `pg_trgm` extension + `cnf_foods` table + GIN index | Order matters: extension before index |
 | `ingredient_categories` table | `normalized_key, grocery_section, ...` | Add `cnf_food_id integer REFERENCES cnf_foods` nullable | Existing rows unaffected (nullable) |
 | `IngredientCategory.cs` model | Maps `ingredient_categories` | Add `CnfFoodId int?` column property | Additive |
-| `ClassifyDietaryProfileProcessor` | Steps 11–13: parse `raw_metadata.nutrition` → `FopFlags` | Replace with CNF lookup; fall back to `raw_metadata.nutrition` when CNF yields nothing | Replaces existing steps 11–13 in design |
+| `RecipeSearchService` | Lexical ranking uses the raw user query | Add optional CNF bilingual query expansion before lexical ranking | Must preserve existing request/response contract |
+| `ClassifyDietaryProfileProcessor` | Steps 11–13: parse `raw_metadata.nutrition` → `FopFlags` | Replace with provider-backed lookup; fall back to `raw_metadata.nutrition` when provider yields nothing; use provider food-guide group as deterministic category/`IsHealthyChoice` signal | Replaces existing steps 11–13 in design |
+| Food data provider strategy | No shared provider seam | Add interfaces above CNF-specific ingestion/search/lookup paths | Prevents Canada-specific logic from leaking into consumers |
+| SettingsService / app settings | Generic key-value settings exist | Add health guidance setting consumed by search/planning/family-health surfaces | Must not disable core capture/search/planning |
 | `ManagementService.BackupAsync` | Steps 1–6 | Add CNF group export | Extend in-place |
 | `Program.cs` | Processor registrations | Register `NutrientLookup` as scoped | No conflict |
 
@@ -74,7 +100,8 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE IF NOT EXISTS cnf_foods (
     food_id integer PRIMARY KEY,
-    food_name text NOT NULL,
+    food_name_en text NOT NULL,
+    food_name_fr text,
     cfg_food_group text,
     sodium_mg_per_100g float,
     sugar_g_per_100g float,
@@ -83,12 +110,62 @@ CREATE TABLE IF NOT EXISTS cnf_foods (
     created_at timestamptz DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_cnf_foods_name_trgm
-    ON cnf_foods USING gin (food_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_cnf_foods_name_en_trgm
+    ON cnf_foods USING gin (food_name_en gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_cnf_foods_name_fr_trgm
+    ON cnf_foods USING gin (food_name_fr gin_trgm_ops);
 
 ALTER TABLE ingredient_categories ADD COLUMN IF NOT EXISTS
     cnf_food_id integer REFERENCES cnf_foods(food_id) ON DELETE SET NULL;
 ```
+
+---
+
+## Provider strategy
+
+The data source is implemented as a strategy, with Canada CNF as the first concrete provider. Keep CNF-specific parsing and nutrient IDs inside the CNF provider; keep application consumers on provider-facing interfaces.
+
+**Provider key:** `CanadaCNF` (default).
+
+**Settings/configuration:**
+
+```json
+{
+  "FoodData": {
+    "Provider": "CanadaCNF"
+  }
+}
+```
+
+If the configured provider is unknown, startup fails with a clear error.
+
+**Core interfaces:**
+
+```csharp
+public interface IFoodDataProvider
+{
+    string ProviderKey { get; }
+    IFoodDataIngestion Ingestion { get; }
+    IFoodNutrientLookup NutrientLookup { get; }
+    ILocalizedFoodAliasExpander AliasExpander { get; }
+    IFoodGuideMapper FoodGuideMapper { get; }
+}
+
+public interface IFoodGuideMapper
+{
+    string MapToFoodGuideGroup(string providerGroupCodeOrName);
+}
+```
+
+`CanadaCnfFoodDataProvider` wires:
+- CNF ZIP/CSV ingestion.
+- CNF nutrient IDs: sodium 307, sugars 269, saturated fat 606, carbohydrate 205.
+- Canada Food Guide group mapping.
+- English/French localized alias expansion.
+- Postgres `pg_trgm` similarity over `cnf_foods`.
+
+Future providers can use their own source files/API refresh mechanism and language pairs while preserving the same lookup/search/categorization contracts.
 
 ---
 
@@ -101,7 +178,8 @@ namespace RecipeApi.Models;
 
 public record CNFFood(
     int FoodId,
-    string FoodName,
+    string FoodNameEn,
+    string? FoodNameFr,
     string? CfgFoodGroup,
     double? SodiumMgPer100g,
     double? SugarGPer100g,
@@ -125,29 +203,45 @@ public int? CnfFoodId { get; set; } = null;
 
 **Registration:** Scoped in `Program.cs`.
 
+**Postgres-only seam:** `pg_trgm` is like the existing vector search path: EF Core does not support the operator/function through portable LINQ. Keep the unsupported feature behind a narrow production seam so EF InMemory tests can mock it while production still uses the real Postgres SQL.
+
 ```
-public class NutrientLookup(RecipeDbContext db, ILogger<NutrientLookup> logger)
+public interface ICnfSimilaritySearch
+{
+    Task<CNFFood?> FindBestMatchAsync(string normalizedKey, CancellationToken ct);
+}
+
+public class PostgresCnfSimilaritySearch(RecipeDbContext db, ILogger<PostgresCnfSimilaritySearch> logger)
+
+public class NutrientLookup(
+    RecipeDbContext db,
+    ICnfSimilaritySearch similaritySearch,
+    ILogger<NutrientLookup> logger)
 
 public async Task<CNFFood?> FindAsync(string normalizedKey, CancellationToken ct)
 ```
+
+`ICnfSimilaritySearch` is the CNF provider's concrete implementation of the provider-level nutrient lookup seam. Application consumers should depend on `NutrientLookup` / provider interfaces, not on CNF parsing classes.
 
 **Step-by-step:**
 
 1. Load `ingredient_categories` row for `normalizedKey`.
 2. If `row.CnfFoodId != null` → `SELECT * FROM cnf_foods WHERE food_id = @id` → return.
 3. If `cnf_foods` is empty (not yet seeded) → return null, log warning once.
-4. Trigram search (raw SQL, parameterized):
+4. Cache miss calls `ICnfSimilaritySearch.FindBestMatchAsync(normalizedKey, ct)`.
+5. Production implementation runs trigram search (raw SQL, parameterized):
    ```sql
-   SELECT food_id, food_name, cfg_food_group,
+   SELECT food_id, food_name_en, cfg_food_group,
           sodium_mg_per_100g, sugar_g_per_100g,
           saturated_fat_g_per_100g, carbohydrate_g_per_100g
    FROM cnf_foods
-   WHERE similarity(food_name, @query) >= 0.4
-   ORDER BY similarity(food_name, @query) DESC
+   WHERE similarity(food_name_en, @query) >= 0.4
+   ORDER BY similarity(food_name_en, @query) DESC
    LIMIT 1
    ```
-5. If found → `UPDATE ingredient_categories SET cnf_food_id = @foodId WHERE normalized_key = @key` → return result.
-6. If not found → return null.
+6. EF InMemory/unit tests inject a fake `ICnfSimilaritySearch` with deterministic matches, including exact threshold boundary behavior when needed.
+7. If found → `UPDATE ingredient_categories SET cnf_food_id = @foodId WHERE normalized_key = @key` → return result.
+8. If not found → return null.
 
 **Error handling:** Any DB exception → log error → return null. Never throws. The processor continues with null.
 
@@ -168,7 +262,11 @@ public async Task<int> SeedAsync(Stream cnfZipStream, CancellationToken ct)
   // 2. Parse NUTRIENT_NAME.csv → Dictionary<int, string> nutrientIdToName
   // 3. Parse NUTRIENT_AMOUNT.csv → Dictionary<int, NutrientValues> foodIdToNutrients
   //    (NutrientValues = { Sodium, Sugar, SatFat, Carbs } — extracted by nutrientId)
-  // 4. Parse FOOD_NM.csv → filter language code "E" (English) only
+  // 4. Parse FOOD_NM.csv → handle language rows explicitly:
+  //    English rows seed cnf_foods.food_name_en.
+  //    French rows/descriptions seed cnf_foods.food_name_fr when an English row exists.
+  //    French-only food IDs are skipped until an English name exists.
+  //    Bilingual duplicate FoodID rows seed one row using English name + French alias.
   // 5. For each English food name: upsert cnf_foods ON CONFLICT (food_id) DO UPDATE
   // 6. Log count of upserted rows.
 ```
@@ -227,6 +325,58 @@ private static readonly Dictionary<string, string> CnfGroupToCfg =
 ```
 
 This mapping must be published in `api/docs/CNF_INGESTION.md` for human review.
+
+---
+
+## Modified: `RecipeSearchService` bilingual query expansion
+
+**Files:**
+- `api/src/RecipeApi/Services/RecipeSearchService.cs`
+- `api/src/RecipeApi/Services/CnfBilingualQueryExpander.cs`
+
+**Registration:** Register the active provider's localized alias expander as scoped in `Program.cs`. EF InMemory tests inject a fake. The Canada provider uses `ICnfBilingualQueryExpander`.
+
+```
+public interface ICnfBilingualQueryExpander
+{
+    Task<IReadOnlyList<string>> ExpandAsync(string query, CancellationToken ct);
+}
+
+public class PostgresCnfBilingualQueryExpander(
+    RecipeDbContext db,
+    ILogger<PostgresCnfBilingualQueryExpander> logger)
+```
+
+**Behavior:**
+
+1. If the query is null/empty/whitespace, return an empty list and do not change search behavior.
+2. Normalize the query using the same search normalization style already used by `RecipeSearchService`.
+3. Run a parameterized Postgres raw SQL query against `cnf_foods.food_name_en` and `cnf_foods.food_name_fr`:
+   - If the user term is closer to `food_name_fr`, return the English `food_name_en`.
+   - If the user term is closer to `food_name_en`, return the French `food_name_fr`.
+   - Only accept matches with `similarity >= 0.4`.
+   - Return at most 5 equivalent terms.
+4. Deduplicate expansions case-insensitively and exclude terms already present in the original query.
+5. `RecipeSearchService.SearchAsync` keeps `dto.Query` unchanged for telemetry and response echoing, but passes an expanded lexical query into `GetLexicalCandidatesAsync` / `BuildRankedCandidates`.
+6. Expansion is additive only. Existing matches for the original query must keep working exactly as before.
+7. If CNF is empty, missing French aliases, or the expander throws, log and continue with the original query.
+
+**Raw SQL sketch:**
+
+```sql
+SELECT food_name_en, food_name_fr,
+       GREATEST(similarity(food_name_en, @query), similarity(food_name_fr, @query)) AS score
+FROM cnf_foods
+WHERE food_name_fr IS NOT NULL
+  AND (
+      similarity(food_name_en, @query) >= 0.4
+      OR similarity(food_name_fr, @query) >= 0.4
+  )
+ORDER BY score DESC
+LIMIT 5;
+```
+
+The implementation chooses the opposite-language term from each row based on which side matched best. Do not add new OpenAPI fields for this slice.
 
 ---
 
@@ -310,6 +460,45 @@ Replace the current steps 11–13 (parse `raw_metadata.nutrition` → `FopFlags`
 
 This replaces the simpler steps 11–13 from `recipe-categorization` design.md. The `recipe-categorization` spec tasks must be updated to reflect this extended flow (see Tasks note below).
 
+### Recipe category and `IsHealthyChoice` signal
+
+The provider data must feed the existing recipe categorization workflow, not sit beside it unused.
+
+1. Resolve each supply ingredient through `NutrientLookup`.
+2. Count matched provider food-guide groups across ingredients.
+3. Use those groups as deterministic hints when building/updating the dietary profile:
+   - vegetable/fruit-heavy recipes strengthen `VegetablesAndFruits` category confidence,
+   - legume/fish/poultry/egg/nut-heavy recipes strengthen `ProteinFoods`,
+   - grain-heavy recipes strengthen `WholeGrains` when mapped as such,
+   - high sodium/sugar/saturated fat FOP flags weaken `IsHealthyChoice`.
+4. Keep LLM-derived category output as the fallback where provider coverage is low.
+5. Store the final result in the existing recipe/category/dietary profile fields. Do not add a parallel provider-only classification field in this slice.
+
+When health guidance is disabled, the workflow may still compute these values for consistency, but user-facing steering and explanations must ignore them.
+
+---
+
+## Health guidance settings
+
+Use the existing settings pattern (`SettingsController` / `SettingsService` / `family_settings`) unless implementation discovers a stronger established app-level setting surface.
+
+Recommended setting key:
+
+```text
+health_guidance_enabled
+```
+
+Default: `true`.
+
+Consumers must check this setting before applying user-facing dietary steering:
+- family-health warnings,
+- planner nudges and week-balance health copy,
+- nutrition-aware search filters/boosts,
+- dietitian-agent recommendations,
+- search result health explanation text.
+
+Core recipe capture, recipe search, planning, and grocery list generation must continue when the setting is `false`.
+
 ---
 
 ## New Taskfile target
@@ -336,13 +525,19 @@ Both commands exit after completion. They are not web server operations.
 
 | Seam | Test | File |
 |---|---|---|
-| `pg_trgm` enabled | Integration: `SELECT similarity('chicken', 'chicken breast')` returns a value > 0 | Schema smoke test |
-| `NutrientLookup` — cache miss → match | Integration: known CNF food name → returns correct `food_id`, `cnf_food_id` written to `ingredient_categories` | `NutrientLookupTests.cs` |
-| `NutrientLookup` — cache hit | Integration: second call for same key → no trigram query executed | `NutrientLookupTests.cs` |
-| `NutrientLookup` — below threshold | Integration: `"xyzzy_nonexistent"` → null, no exception | `NutrientLookupTests.cs` |
-| `NutrientLookup` — empty `cnf_foods` | Integration: call before seeding → null, warning logged | `NutrientLookupTests.cs` |
+| `pg_trgm` enabled | Postgres compatibility: isolated disposable pgvector database; `SELECT similarity('chicken', 'chicken breast')` returns a value > 0 | Schema smoke test |
+| `ICnfSimilaritySearch` production path | Postgres compatibility: seeded `cnf_foods`; raw SQL accepts similarity `>= 0.4`, rejects `< 0.4`, and returns top match | `CnfSimilaritySearchPostgresTests.cs` |
+| `NutrientLookup` — cache miss → match | EF InMemory/unit: fake `ICnfSimilaritySearch` returns known food → `cnf_food_id` written to `ingredient_categories` | `NutrientLookupTests.cs` |
+| `NutrientLookup` — cache hit | EF InMemory/unit: second call for same key → fake similarity search not called | `NutrientLookupTests.cs` |
+| `NutrientLookup` — below threshold | EF InMemory/unit: fake similarity search returns null for `"xyzzy_nonexistent"` → null, no exception | `NutrientLookupTests.cs` |
+| `NutrientLookup` — empty `cnf_foods` | EF InMemory/unit: call before seeding → null, warning logged | `NutrientLookupTests.cs` |
 | `CnfIngestionService` | Integration: seed from test CSV fixture → row count matches | `CnfIngestionTests.cs` |
 | `CnfIngestionService` idempotence | Integration: seed twice → row count unchanged | `CnfIngestionTests.cs` |
+| `CnfIngestionService` French rows | Unit/integration: bilingual rows seed one English row; French-only rows skipped; nutrient joins remain correct | `CnfIngestionTests.cs` |
+| `RecipeSearchService` French → English | Integration/unit with fake expander: query `"poulet"` returns recipe containing `"chicken"` | `RecipeSearchIntegrationTests.cs` |
+| `RecipeSearchService` English → French | Integration/unit with fake expander: query `"chicken"` returns recipe containing `"poulet"` | `RecipeSearchIntegrationTests.cs` |
+| `ICnfBilingualQueryExpander` production path | Postgres compatibility: `food_name_en = chicken`, `food_name_fr = poulet`; raw SQL returns opposite-language expansion for each query | `CnfBilingualQueryExpanderPostgresTests.cs` |
+| `RecipeSearchService` no CNF data | Integration/unit: empty expander result preserves existing lexical-only behavior and response contract | `RecipeSearchIntegrationTests.cs` |
 | `UnitWeightTable` | Unit: `"g"` → 1×quantity; `"tbsp"` → 15×quantity; unknown unit + known ingredient → estimate; unknown unit + unknown ingredient → 100g | `UnitWeightTableTests.cs` |
 | `ClassifyDietaryProfileProcessor` CNF path | Unit: ingredient with known CNF match → `fopFlags` computed from CNF values, not `raw_metadata.nutrition` | `ClassifyDietaryProfileProcessorTests.cs` |
 | `ClassifyDietaryProfileProcessor` fallback | Unit: all CNF lookups return null, `raw_metadata.nutrition` present → `fopFlags` from `raw_metadata` | `ClassifyDietaryProfileProcessorTests.cs` |
@@ -350,12 +545,15 @@ Both commands exit after completion. They are not web server operations.
 
 ### Test fixture
 
-Create `api/src/RecipeApi.Tests/Fixtures/cnf_sample.csv` with 10–15 rows covering:
+Create `api/src/RecipeApi.Tests/Fixtures/cnf_sample/` with CNF-shaped CSV files covering:
 - Chicken breast (poultry, known nutrients)
 - Beef ground (beef products, high saturated fat)
 - Brown rice (cereal grains, low sodium)
 - Broccoli (vegetables, low all)
 - Milk 2% (dairy)
+- At least one bilingual `FoodID` with both English and French descriptions or language rows; expected result is one seeded row using the English description
+- At least one French-only `FoodID` where the English description is absent; expected result is skipped with no seeded `cnf_foods` row
+- Search-specific bilingual fixture examples: `chicken`/`poulet`, `beef`/`boeuf`, `carrot`/`carotte`
 
 This fixture is used by `CnfIngestionTests` and `NutrientLookupTests` — no real CNF download needed in tests.
 
