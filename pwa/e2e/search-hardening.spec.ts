@@ -231,6 +231,7 @@ test.describe('Scenario 4 — soft-delete → restore → hard-delete lifecycle'
     await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
     await page.getByTestId('recipe-card-top-pick').click();
     await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-move-to-bin').click();
 
     // 3. Sheet closed and recipe gone from results
