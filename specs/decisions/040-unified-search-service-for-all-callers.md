@@ -8,7 +8,7 @@
 
 ## Context
 
-Semantic search introduced three distinct input paths: a standard search field, a stars-triggered long-form agent super-search, and a pantry/fridge/freezer photo search. A future Dietician Agent will also need to query the recipe library.
+Semantic search introduced several distinct input paths: a standard search field, a stars-triggered long-form agent super-search, a recipe-photo lookup path, and a pantry/fridge/freezer photo search. A future Dietician Agent will also need to query the recipe library.
 
 The tempting implementation pattern is to build separate retrieval branches: one for the UI, one for agent callers, one for inventory-led search. This would allow each path to be tuned independently without risk of breaking the others.
 
@@ -16,9 +16,15 @@ This pattern was explicitly rejected.
 
 ## Decision
 
-All callers — standard search, agent super-search, inventory photo search, similar-recipe search, and any future agent — route through a single `RecipeSearchService` and receive a `RecipeSearchResponseDto`.
+All callers — standard search, agent super-search, recipe-photo lookup, inventory photo search, similar-recipe search, and any future agent — route through a single `RecipeSearchService` and receive a `RecipeSearchResponseDto`.
 
 Differentiation between callers is expressed through the request fields (`mode`, `similarToRecipeId`, `pantrySnapshotId`, `weekOffset`, `dayIndex`, `filters`), not through separate code paths or separate endpoints. The service applies the same retrieval and reranking pipeline to all requests.
+
+**Photo search specifically:** `POST /api/photo-search` is a classification/extraction pre-step, not a separate recipe retrieval path. It sends the uploaded images to the vision model once and returns either:
+- `intent: "recipe"` with an extracted library-search `query` and `inferredIngredients`, then the PWA calls `POST /api/recipes/search` without `pantrySnapshotId`; or
+- `intent: "inventory"` with inferred pantry/fridge/freezer ingredients and a request-scoped `pantrySnapshotId`, then the PWA calls `POST /api/recipes/search` with that snapshot for inventory-fit boosting.
+
+Recipe-photo lookup therefore benefits from the same lexical and vector retrieval path as typed search. Inventory-photo search also uses that same retrieval path, then adds the pantry overlap modifier when `pantrySnapshotId` is present.
 
 **Agent mode specifically:** When `mode: "agent"` is set, `AgentSearchTranslationService` translates the free-form query string into a structured `RecipeSearchRequestDto` server-side. The translated request then flows through the identical search pipeline. The translation layer is a thin service boundary — it may rewrite `query`, infer `filters`, or set planner context from natural language, but it must not:
 - fork the retrieval logic,

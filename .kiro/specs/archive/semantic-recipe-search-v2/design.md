@@ -244,9 +244,12 @@ flowchart TD
    - tapping opens/expands the long-form `data-testid="agent-search-input"` textarea,
    - submitting long-form runs `mode: "agent"` search.
 
-4. **Camera/inventory trigger**
+4. **Camera/photo-search trigger**
    - `data-testid="inventory-camera-trigger"` (camera icon),
-   - opens `data-testid="inventory-capture-popup"` sheet.
+   - opens `data-testid="inventory-capture-popup"` sheet,
+   - submits photos to `POST /api/photo-search`,
+   - recipe photos search the existing library using the extracted query,
+   - pantry/fridge/freezer photos return a `pantrySnapshotId` for inventory-fit search.
 
 5. **Quick filter pills row**
    - `data-testid="filter-new-recipes"` — "New"
@@ -309,7 +312,8 @@ The detail surface feels like a decision card, not a dense admin form.
 | Endpoint | Method | Phase | Purpose |
 |---|---|---|---|
 | `/api/recipes/search` | POST | 1 | Hybrid search |
-| `/api/inventory-captures` | POST | 6 | Submit pantry photos |
+| `/api/photo-search` | POST | 6 | Classify recipe vs inventory photos and extract search input |
+| `/api/inventory-captures` | POST | 6 | Legacy/direct pantry snapshot capture |
 | `/api/inventory-captures/{id}` | GET | 6 | Retrieve pantry snapshot status |
 | `/api/recipes/trash` | GET | 5 | List soft-deleted recipes |
 | `/api/recipes/{id}/restore` | POST | 5 | Restore soft-deleted recipe |
@@ -408,6 +412,11 @@ Mismatch on either → mark `index_status = 'pending'`, do not upsert stale vect
 
 ```mermaid
 flowchart TD
+    P[POST /api/photo-search] --> P2{intent}
+    P2 -->|recipe| P3[Extract recipe title + ingredients into query]
+    P2 -->|inventory| P4[Store request-scoped pantry snapshot]
+    P3 --> A
+    P4 --> A
     A[POST /api/recipes/search] --> B[Validate + clamp limit]
     B --> B2{mode?}
     B2 -->|agent| BA[Agent translation: LLM prompt → RecipeSearchRequestDto]
@@ -851,7 +860,7 @@ Builders MUST use these exact strings. No variations, no abbreviations.
 | Agent text area (expanded) | `agent-search-input` |
 | Agent submit button | `agent-search-submit` |
 | Agent close/hide button | `agent-search-close` |
-| Camera/inventory trigger | `inventory-camera-trigger` |
+| Camera/photo-search trigger | `inventory-camera-trigger` |
 | Planner-mode banner | `planning-mode-banner` |
 | Planner-mode cancel button | `planning-mode-cancel` |
 | Top Pick card | `recipe-card-top-pick` |

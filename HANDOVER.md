@@ -17,6 +17,7 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 
 ## Recently Completed
 
+- **Recipe Purge 500 Hardening (2026-05-11):** Added realistic API integration coverage for purge with recipe directory, search document, vote, and historical calendar event. Updated `RecipePurgeService` to explicitly remove dependent search docs, votes, and calendar events inside the purge transaction while preserving filesystem-first safety. Verified with `task test:api -- --filter RecipePurgeIntegrationTests`, `task agent:test:impact`, and `task gate`.
 - **Recipe Hero Actions (2026-05-10):** Integrated Camera and Regenerate actions into `RecipeDetailSheet` hero. Implemented global `ToastContainer` (ADR 042) for UI feedback. Verified with `e2e/recipe-hero-actions.spec.ts`.
 - **Recipe Gear Menu (2026-05-10):** Refactored recipe detail to include a gear menu for secondary actions (Move to Bin, Reimport). Updated `Recipe` model to include `sourceType`, `canReimport`, and `imageCount`.
 

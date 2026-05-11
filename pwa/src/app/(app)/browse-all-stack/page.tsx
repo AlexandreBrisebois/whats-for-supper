@@ -92,6 +92,7 @@ export default function BrowseAllStackPage() {
 
   // Ref to track whether a prefetch is already in flight (avoid duplicate requests)
   const prefetchInFlightRef = useRef(false);
+  const listScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const listSentinelRef = useRef<HTMLDivElement | null>(null);
   // Ref to track the page/filter being prefetched to avoid races
   const currentRequestRef = useRef<{
@@ -332,6 +333,7 @@ export default function BrowseAllStackPage() {
 
   useEffect(() => {
     if (browseViewMode !== 'list') return;
+    const root = listScrollContainerRef.current;
     const sentinel = listSentinelRef.current;
     if (!sentinel || typeof IntersectionObserver === 'undefined') return;
 
@@ -341,12 +343,22 @@ export default function BrowseAllStackPage() {
           loadNextListPage();
         }
       },
-      { rootMargin: '600px 0px' }
+      { root, rootMargin: '600px 0px' }
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [browseViewMode, loadNextListPage]);
+
+  const handleListScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+      if (scrollHeight - scrollTop - clientHeight <= 600) {
+        loadNextListPage();
+      }
+    },
+    [loadNextListPage]
+  );
 
   useEffect(() => {
     const handler = () => loadNextListPage();
@@ -646,7 +658,12 @@ export default function BrowseAllStackPage() {
         {isEmpty && <EndCard isEmpty={true} onSwipeRight={() => {}} onSwipeLeft={() => {}} />}
 
         {!isInitialLoading && !loadError && browseViewMode === 'list' && recipes.length > 0 && (
-          <div className="w-full max-w-6xl flex-1 min-h-0 overflow-y-auto px-1 pb-8">
+          <div
+            ref={listScrollContainerRef}
+            data-testid="browse-list-scroll-container"
+            onScroll={handleListScroll}
+            className="w-full max-w-6xl flex-1 min-h-0 overflow-y-auto px-1 pb-8"
+          >
             <div
               data-testid="browse-list-grid"
               className="grid grid-cols-2 min-[1024px]:grid-cols-3 gap-3 sm:gap-4"

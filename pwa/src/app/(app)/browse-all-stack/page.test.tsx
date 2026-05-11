@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, act } from '@testing-library/react';
 import React from 'react';
 
 // ---------------------------------------------------------------------------
@@ -618,6 +618,60 @@ describe('BrowseAllStack — list mode', () => {
     });
 
     expect(mocks.recipesGet).toHaveBeenCalledTimes(9);
+  });
+
+  it('loads additional pages from the real list scroll container', async () => {
+    useFamilyStore.setState({
+      familyMembers: [
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'Alex',
+          browseViewMode: 'list',
+        },
+      ],
+      selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
+    });
+
+    const ids = Array.from({ length: 25 }, (_, index) => makeRecipeId(index + 1));
+    mocks.recipesGet
+      .mockResolvedValueOnce(makePageResponse(ids.slice(0, 12), 25, 1))
+      .mockResolvedValueOnce(makePageResponse(ids.slice(12, 24), 25, 2))
+      .mockResolvedValueOnce(makePageResponse(ids.slice(24, 25), 25, 3));
+
+    render(<BrowseAllStackPage />);
+
+    const scrollContainer = await screen.findByTestId('browse-list-scroll-container');
+    Object.defineProperties(scrollContainer, {
+      clientHeight: { configurable: true, value: 800 },
+      scrollHeight: { configurable: true, value: 1400 },
+      scrollTop: { configurable: true, value: 20 },
+    });
+
+    fireEvent.scroll(scrollContainer);
+
+    await waitFor(() => {
+      expect(mocks.recipesGet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryParameters: expect.objectContaining({ page: 2, limit: 12 }),
+        })
+      );
+    });
+
+    Object.defineProperty(scrollContainer, 'scrollTop', { configurable: true, value: 40 });
+    fireEvent.scroll(scrollContainer);
+
+    await waitFor(() => {
+      expect(mocks.recipesGet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryParameters: expect.objectContaining({ page: 3, limit: 12 }),
+        })
+      );
+    });
+
+    await waitFor(() => {
+      expect(useBrowseStackStore.getState().recipes.at(-1)?.id).toBe(ids[24]);
+      expect(useBrowseStackStore.getState().hasMorePages).toBe(false);
+    });
   });
 });
 

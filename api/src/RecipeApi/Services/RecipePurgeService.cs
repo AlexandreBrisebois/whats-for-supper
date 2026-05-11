@@ -32,22 +32,33 @@ public class RecipePurgeService(RecipeDbContext db, RecipesRootResolver recipesR
         if (recipe.DeletedAt is null)
             return PurgeResult.NotInTrash;
 
-        // Cancel pending index jobs before touching the DB
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
+        // Cancel pending index jobs before destructive work.
         await CancelPendingIndexJobsAsync(recipeId);
 
-        // Filesystem first — if this fails, we do not delete the DB row
-        DeleteRecipeDirectory(recipeId);
-
-        // Remove search document (cascades via FK if the recipe row were deleted, but we
-        // remove it explicitly here so the order is guaranteed and observable in tests)
-        var searchDoc = await db.RecipeSearchDocuments
+        var searchDocs = await db.RecipeSearchDocuments
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(d => d.RecipeId == recipeId);
-        if (searchDoc is not null)
-            db.RecipeSearchDocuments.Remove(searchDoc);
+            .Where(d => d.RecipeId == recipeId)
+            .ToListAsync();
+        db.RecipeSearchDocuments.RemoveRange(searchDocs);
+
+        var votes = await db.RecipeVotes
+            .Where(v => v.RecipeId == recipeId)
+            .ToListAsync();
+        db.RecipeVotes.RemoveRange(votes);
+
+        var calendarEvents = await db.CalendarEvents
+            .Where(e => e.RecipeId == recipeId)
+            .ToListAsync();
+        db.CalendarEvents.RemoveRange(calendarEvents);
+
+        // Filesystem first: if this fails, pending DB changes are not saved.
+        DeleteRecipeDirectory(recipeId);
 
         db.Recipes.Remove(recipe);
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return PurgeResult.Success;
     }
@@ -64,8 +75,7 @@ public class RecipePurgeService(RecipeDbContext db, RecipesRootResolver recipesR
         foreach (var job in pendingJobs)
             job.Status = WorkflowStatus.Failed;
 
-        if (pendingJobs.Count > 0)
-            await db.SaveChangesAsync();
+        // The caller persists these status changes with the rest of the purge.
     }
 
     private void DeleteRecipeDirectory(Guid recipeId)

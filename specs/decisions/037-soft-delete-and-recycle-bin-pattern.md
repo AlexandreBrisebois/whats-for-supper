@@ -30,7 +30,9 @@ Replace hard delete with a two-stage lifecycle:
 **Stage 2 — Hard purge** (requires elevated PIN):
 - `DELETE /api/recipes/{id}/purge` requires `deleted_at IS NOT NULL` (HTTP 409 if not in trash).
 - Requires a valid `X-Elevated-Pin` header matching the `ELEVATED_ACTIONS_PIN` environment variable.
-- `RecipePurgeService` performs filesystem cleanup first, then DB row deletion. If filesystem cleanup fails, the operation aborts and the DB row is preserved — no silent half-deletes.
+- `RecipePurgeService` validates the PIN, recipe existence, and trash state before destructive work.
+- The service explicitly cancels pending index jobs and removes known dependent rows (`recipe_search_documents`, `recipe_votes`, `calendar_events`) before removing the recipe row, rather than relying only on database cascades.
+- Filesystem cleanup happens before the database save. If filesystem cleanup fails, the operation aborts and the DB row is preserved — no silent half-deletes.
 - Returns HTTP 503 (`PIN_NOT_CONFIGURED`) if `ELEVATED_ACTIONS_PIN` is not set, making the feature explicitly unavailable rather than silently broken.
 
 The Recycle Bin (`GET /api/recipes/trash`, `POST /api/recipes/{id}/restore`) lives on the recipe library/search surface, not in Settings. Recovery belongs next to the thing being recovered.
@@ -44,5 +46,5 @@ Implemented. DB migration adds `deleted_at timestamptz null`, `deleted_by uuid n
 - `DELETE /api/recipes/{id}` response changed from HTTP 204 (empty) to HTTP 200 with a recipe body. All callers (PWA, E2E mocks in `setupCommonRoutes`) were updated. This was the highest-risk mock migration in the feature — the existing `204` mock would have caused E2E tests to pass with stale assumptions.
 - All active recipe queries must include `WHERE deleted_at IS NULL`. The global query filter on `RecipeDbContext` enforces this automatically; `IgnoreQueryFilters()` is used only in purge and trash list paths.
 - Operators must set `ELEVATED_ACTIONS_PIN` in their environment to enable permanent deletion. The default (unset) is safe — purge is unavailable, not misconfigured.
-- `RecipePurgeService` is a dedicated service, not a controller-level delete. This boundary must be preserved — the filesystem-first safety requirement cannot be expressed correctly in a controller.
+- `RecipePurgeService` is a dedicated service, not a controller-level delete. This boundary must be preserved — the validation, dependent-row cleanup, pending-index-job cancellation, and filesystem-first safety requirement cannot be expressed correctly in a controller.
 - The planner conflict check is load-bearing. Without it, a user can delete a recipe and silently corrupt their week view.

@@ -78,6 +78,10 @@ This feature also introduces two adjacent safety nets:
 13. **Agent mode search is a server-side translation layer, not a second LLM call for retrieval.**
     The agent prompt is translated to a structured `RecipeSearchRequestDto` server-side
     and then runs through the same `RecipeSearchService`. No separate agent retrieval branch.
+14. **Photo search is an extraction pre-step.**
+    `POST /api/photo-search` classifies uploaded images as either a recipe lookup or an inventory lookup
+    with a single vision call. It does not retrieve recipes directly; the client passes the extracted query
+    and optional `pantrySnapshotId` into `POST /api/recipes/search`.
 
 ---
 
@@ -95,6 +99,8 @@ This feature also introduces two adjacent safety nets:
 - **Friendly Failure Reason**: A human-readable message explaining capture failure without requiring technical knowledge.
 - **Technical Failure Reason**: A developer-readable diagnostic stored alongside the friendly reason. Not shown by default in the UI.
 - **Elevated PIN**: A deployment-configured PIN (env var `ELEVATED_ACTIONS_PIN`) that gates dangerous irreversible actions. Sent in the `X-Elevated-Pin` request header.
+- **Photo Search**: A camera/gallery search pre-step that sends uploaded images to the vision model once, classifies them as `recipe` or `inventory`, and returns extracted search terms for the normal hybrid recipe search pipeline.
+- **Recipe Photo Lookup**: A photo search where the image appears to be a recipe card, cookbook page, screenshot, or handwritten/typed recipe. It returns an extracted library-search query and no `pantrySnapshotId`.
 - **Pantry Snapshot**: A request-scoped in-memory struct containing inferred ingredients from inventory photos. Never persisted; exists only for the lifetime of one search request.
 
 ---
@@ -149,7 +155,7 @@ so I can find supper fast without losing my place.
     `data-testid="recycle-bin-entry"`.
 19. The agent/super-search trigger (stars affordance) SHALL render with
     `data-testid="agent-search-trigger"`.
-20. The camera/inventory trigger SHALL render with `data-testid="inventory-camera-trigger"`.
+20. The camera/photo-search trigger SHALL render with `data-testid="inventory-camera-trigger"`.
 
 ---
 
@@ -540,36 +546,56 @@ index as the UI, so recommendations stay consistent and explainable.
 
 ---
 
-### Requirement 10: Pantry, Fridge, And Freezer Photo Search
+### Requirement 10: Photo Search For Recipes And Inventory
 
-**User Story:** As a user, I want to take photos of my pantry, fridge, or freezer and have the
-app figure out what I have, so I can find recipes that use many of those ingredients.
+**User Story:** As a user, I want to take photos of either a recipe or my pantry/fridge/freezer,
+so the app can find an existing recipe in my library or suggest recipes that use what I have.
 
 #### Acceptance Criteria
 
 1. The search page SHALL expose a camera icon (`data-testid="inventory-camera-trigger"`)
-   that opens an inventory capture popup.
+   that opens a photo-search capture popup.
 2. The popup SHALL render with `data-testid="inventory-capture-popup"`.
 3. The popup is optimized for live camera use; it SHALL NOT require a multi-step wizard
    before taking a photo.
-4. The user SHALL be able to capture multiple photos in one inventory pass.
+4. The user SHALL be able to capture multiple photos in one photo-search pass.
 5. Each submitted photo SHALL be written to a temporary directory path in the format:
    `tmp/pantry-captures/<request-id>/<index>.jpg`.
-6. Submitted photos SHALL be processed into a request-scoped pantry snapshot struct:
+6. Submitted photos SHALL be processed by `POST /api/photo-search` using a single vision-model call
+   for the uploaded image batch.
+7. The response SHALL classify the photos as exactly one of:
+   - `intent: "recipe"` for recipe cards, cookbook pages, screenshots, handwritten recipes,
+     typed recipes, or recognizable finished dishes tied to a recipe lookup.
+   - `intent: "inventory"` for pantry, fridge, freezer, counter, or table photos showing available food.
+8. For `intent: "recipe"`, the response SHALL include:
    ```json
    {
-     "snapshotId": "uuid (request-scoped, never persisted to DB)",
+     "intent": "recipe",
+     "query": "recipe title and distinguishing terms",
      "inferredIngredients": ["string", "..."],
-     "confidence": 0.0
+     "confidence": 0.0,
+     "pantrySnapshotId": null
    }
    ```
-7. The `snapshotId` is an ephemeral handle passed as `pantrySnapshotId` in the subsequent
+   The client SHALL pass `query` to `POST /api/recipes/search` without `pantrySnapshotId`.
+   This search SHALL use the normal hybrid lexical/vector recipe search path.
+9. For `intent: "inventory"`, the response SHALL include a request-scoped pantry snapshot:
+   ```json
+   {
+     "intent": "inventory",
+     "query": "space-separated inferred ingredients",
+     "inferredIngredients": ["string", "..."],
+     "confidence": 0.0,
+     "pantrySnapshotId": "uuid (request-scoped, never persisted to DB)"
+   }
+   ```
+10. The `pantrySnapshotId` is an ephemeral handle passed in the subsequent
    search request. It references an in-memory snapshot map keyed by request context.
-8. Search SHALL use the pantry snapshot to boost recipes with high ingredient overlap.
-9. Results SHOULD surface an `"inventory-fit"` reason when the pantry snapshot contributed.
-10. Temporary pantry photos SHALL be deleted immediately after the pantry snapshot is built
+11. Search SHALL use the pantry snapshot to boost recipes with high ingredient overlap.
+12. Results SHOULD surface an `"inventory-fit"` reason when the pantry snapshot contributed.
+13. Temporary photo-search files SHALL be deleted immediately after the extraction response is built
     (success, model-busy, or failure), not after the search response is returned.
-11. If model processing fails, times out, or is unavailable, the system SHALL delete the
+14. If model processing fails, times out, or is unavailable, the system SHALL delete the
     temporary photos and return HTTP 202 with:
     ```json
     {
@@ -578,11 +604,11 @@ app figure out what I have, so I can find recipes that use many of those ingredi
       "message": "We're processing a lot right now. Try again in a moment."
     }
     ```
-12. The system SHALL NOT persist pantry-photo history, search history, or pantry snapshots.
-13. Temporary pantry artifacts SHALL NOT be included in backup or restore flows.
-14. The inventory capture popup SHALL render a submit button with
+15. The system SHALL NOT persist photo-search image history, search history, or pantry snapshots.
+16. Temporary photo-search artifacts SHALL NOT be included in backup or restore flows.
+17. The photo-search capture popup SHALL render a submit button with
     `data-testid="inventory-capture-submit"`.
-15. The popup close/cancel action SHALL render with `data-testid="inventory-capture-cancel"`.
+18. The popup close/cancel action SHALL render with `data-testid="inventory-capture-cancel"`.
 
 ---
 

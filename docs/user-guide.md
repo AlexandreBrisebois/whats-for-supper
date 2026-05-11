@@ -18,9 +18,21 @@ The home screen is your command centre. It tells you what's planned for tonight,
 
 If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to walk through the recipe step by step — hands-free, big text, no scrolling.
 
-If nothing is planned yet, you'll see a prompt to find something — your cue to head to Discovery.
+If nothing is planned yet, you'll see a few fast choices. If your family has a **GOTO recipe** saved, tap **Make This Tonight** to put it on tonight's menu in one step. You can also use **Quick Find** for a short stack of suggestions, or search your library when you already know what you want.
 
 This screen saves you from opening the fridge, staring blankly, and ordering pizza for the third time this week.
+
+---
+
+## Your Family GOTO Recipe
+
+Your **GOTO recipe** is the fallback meal everyone accepts — the one you can make when the plan falls apart.
+
+Set it from **Settings → Family GOTO**. If the recipe is already in your library, choose **Search the Library**, open the recipe, and tap the **star** at the top of the recipe detail view. When the star is selected, it shows **GOTO** beside it. Tapping the star on a different recipe switches your family GOTO immediately.
+
+If the recipe is not in your library yet, use **Describe it** or **Capture it** from the same Settings card. The app will prepare the recipe in the background and show it on Home once it is ready.
+
+The GOTO recipe saves you from making a decision when nobody has decision energy left.
 
 ---
 
@@ -75,6 +87,13 @@ Search is **planner-aware**. If you open search from a day in your planner, it a
 
 Use the **"Healthy"** filter to quickly find light and nutritious meals. If you have a complex request, tap the **Stars icon** to use "Agent Search." You can type long-form sentences like "something with chicken but not too heavy" and the AI will find the best matches for you.
 
+You can also tap the **Camera icon** from Search:
+
+- Take a picture of a recipe card, cookbook page, handwritten note, or screenshot, and the app will look for the matching recipe that is already in your library.
+- Take pictures of your fridge, freezer, or pantry, and the app will identify visible ingredients and prioritize recipes that use what you have.
+
+Tap any search result to open its recipe detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, or tap the **star** to make it your family's GOTO.
+
 When in Agent mode, the app becomes your **Personal Chef**:
 - **Menu Awareness**: The agent looks at what you've already planned for the week to ensure variety (e.g., suggesting a light stir-fry if you already have several pasta nights scheduled).
 - **Dietary Balance**: It prioritizes recipes that help you meet your weekly nutritional goals (like adding more whole grains or plant-based proteins).
@@ -92,6 +111,8 @@ Flip through your recipes one by one, just like a physical recipe box. The app s
 
 Tap any card to see the full details, or toggle the **Sparkles** icon to see only the recipes you've marked as "Discoverable" for family voting.
 
+The recipe detail view also has the same **GOTO star** at the top, so you can mark a rediscovered favourite as your fallback meal without going back through Settings.
+
 Browsing saves you from the "we always eat the same three things" rut.
 
 ---
@@ -103,7 +124,6 @@ You can add a recipe three ways:
 - **Photo** — snap a page from a cookbook or a screenshot
 - **URL** — share a link from any recipe site
 - **Describe it** — type a few words and let the app fill in the details
-- **Pantry Search** — tap the **Camera icon** on the search page to snap photos of your fridge, freezer, or pantry. The app will identify the ingredients you have on hand and prioritize recipes that use them.
 
 After you submit, the recipe queues while it's being processed. You'll get a notification the moment it's ready in your library.
 
@@ -136,5 +156,3 @@ The discovery stack adapts in real time too — as the week fills up, the cards 
 If you see a notice saying **"Demo Mode Active"**, you are in a trial environment. 
 
 The app state (recipes, planner, votes) is periodically reset to a clean master snapshot. Most expensive AI features like "Agent Search" or "Recipe Extraction" are disabled to keep the showcase cost-optimized, but you can still search the library, browse cards, and use the planner normally.
-
-

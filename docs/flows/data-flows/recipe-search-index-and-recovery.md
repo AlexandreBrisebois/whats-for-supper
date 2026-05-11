@@ -334,15 +334,16 @@ flowchart TD
     F -->|No or missing| G[HTTP 403]
     F -->|Yes| H[RecipePurgeService.PurgeAsync]
     H --> I[Cancel pending index jobs for recipeId]
-    H --> J[Delete recipe directory from filesystem — images + search.index.json]
-    J --> K{Filesystem deletion succeeded?}
-    K -->|No| L[Abort — return error — DB row NOT deleted]
-    K -->|Yes| M[Remove recipe_search_documents row]
-    M --> N[Delete recipes row — cascades to dependent rows]
-    N --> O[HTTP 200 — purged: true]
+    I --> J[Stage dependent-row cleanup — search docs, votes, calendar events]
+    J --> K[Delete recipe directory from filesystem — images + search.index.json]
+    K --> L{Filesystem deletion succeeded?}
+    L -->|No| M[Abort — DB changes not saved]
+    L -->|Yes| N[Delete recipes row]
+    N --> O[Commit DB transaction]
+    O --> P[HTTP 200 — purged: true]
 ```
 
-Filesystem cleanup runs **before** DB deletion. If the filesystem step fails, the DB row is not touched — the recipe stays in the trash and the error is surfaced. This prevents half-deletes.
+`RecipePurgeService` removes known dependent rows explicitly before removing the recipe row, including `recipe_search_documents`, `recipe_votes`, and `calendar_events`. This keeps hard delete resilient even if cascade behavior differs between the EF model and the backing database. Filesystem cleanup runs **before** the DB save. If the filesystem step fails, the DB row is not touched — the recipe stays in the trash and the error is surfaced. This prevents half-deletes.
 
 ---
 

@@ -736,10 +736,11 @@ Watch it fail. Implement. Watch it pass.
 
 ---
 
-### Task 13 — Pantry/fridge/freezer camera popup and inventory-led search
+### Task 13 — Photo-search popup and inventory-led search
 
-**Seam:** PWA UI (camera popup) + new API endpoints (`POST /api/inventory-captures`,
-`GET /api/inventory-captures/{id}`).
+**Seam:** PWA UI (camera popup) + new API endpoint (`POST /api/photo-search`) + existing hybrid
+search endpoint (`POST /api/recipes/search`). The older `/api/inventory-captures` endpoint may
+remain as a direct pantry-snapshot seam, but the search-page camera flow uses `/api/photo-search`.
 
 **This task touches the OpenAPI spec. Follow Atomic Sync:**
 1. Add endpoints to `openapi.yaml`.
@@ -753,51 +754,46 @@ INVENTORY_CAPTURE: '770e8400-e29b-41d4-a716-446655440030',
 ```
 
 **Write tests first (contract):**
-1. Snapshot: `POST /api/inventory-captures` request and response schemas exist in generated client.
-2. Snapshot: `GET /api/inventory-captures/{id}` response schema exists.
+1. Snapshot: `POST /api/photo-search` request and response schemas exist in generated client.
+2. `PhotoSearchResponse` includes `intent`, `query`, `inferredIngredients`, `confidence`, and
+   nullable `pantrySnapshotId`.
 
 **Write tests first (API unit):**
-1. `POST /api/inventory-captures` writes photos to `tmp/pantry-captures/<requestId>/<index>.jpg`.
+1. `POST /api/photo-search` writes photos to `tmp/pantry-captures/<requestId>/<index>.jpg`.
 2. Temp photos are deleted after snapshot is built (success path).
 3. Temp photos are deleted after model-busy/failure response.
-4. `POST /api/inventory-captures` returns HTTP 202 with `{ status: "busy", retryAfterSeconds: 30 }`
+4. `POST /api/photo-search` returns HTTP 202 with `{ status: "busy", retryAfterSeconds: 30 }`
    when vision model is unavailable.
-5. Pantry snapshot is in-memory only; no row written to DB.
-6. `pantrySnapshotId` from the response can be passed to `POST /api/recipes/search`.
-7. Search with a `pantrySnapshotId` adds `inventory-fit` reasons to matching recipes.
+5. The vision model is called once for the submitted image batch.
+6. Recipe-photo responses return `intent: "recipe"`, an extracted `query`, and
+   `pantrySnapshotId: null`.
+7. Inventory-photo responses return `intent: "inventory"` and a request-scoped
+   `pantrySnapshotId`; no row is written to DB.
+8. Search with a `pantrySnapshotId` adds `inventory-fit` reasons to matching recipes.
 
 **Write tests first (PWA unit):**
 1. `inventory-camera-trigger` tap opens `inventory-capture-popup`.
 2. Popup renders `inventory-capture-submit` and `inventory-capture-cancel` buttons.
-3. Submitting popup calls `POST /api/inventory-captures`.
-4. On success, `pantrySnapshotId` is included in the next search call.
-5. On busy (202 + `status: "busy"`), popup shows friendly retry message.
-6. `inventory-capture-cancel` closes popup without making any API call.
+3. Submitting popup calls `POST /api/photo-search`.
+4. On recipe-photo success, the extracted query is sent to `POST /api/recipes/search` without
+   `pantrySnapshotId`.
+5. On inventory-photo success, `pantrySnapshotId` is included in the next search call.
+6. On busy (202 + `status: "busy"`), popup shows friendly retry message.
+7. `inventory-capture-cancel` closes popup without making any API call.
 
 **Add to `setupCommonRoutes`:**
 ```ts
-await page.route('**/api/inventory-captures', async (route) => {
+await page.route('**/api/photo-search', async (route) => {
   await route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({
       data: {
-        snapshotId: MOCK_IDS.INVENTORY_CAPTURE,
+        intent: 'inventory',
+        query: 'chicken pasta tomatoes',
         inferredIngredients: ['chicken', 'pasta', 'tomatoes'],
         confidence: 0.85,
-      },
-    }),
-  });
-});
-await page.route('**/api/inventory-captures/*', async (route) => {
-  await route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({
-      data: {
-        snapshotId: MOCK_IDS.INVENTORY_CAPTURE,
-        inferredIngredients: ['chicken', 'pasta', 'tomatoes'],
-        confidence: 0.85,
+        pantrySnapshotId: MOCK_IDS.INVENTORY_CAPTURE,
       },
     }),
   });
@@ -809,7 +805,7 @@ await page.route('**/api/inventory-captures/*', async (route) => {
    `page.getByTestId('inventory-camera-trigger').click()` →
    `page.getByTestId('inventory-capture-popup')` is visible →
    `page.getByTestId('inventory-capture-submit').click()` →
-   mock `POST /api/inventory-captures` returns `{ snapshotId: MOCK_IDS.INVENTORY_CAPTURE, ... }` →
+   mock `POST /api/photo-search` returns `{ intent: "inventory", pantrySnapshotId: MOCK_IDS.INVENTORY_CAPTURE, ... }` →
    subsequent mock `POST /api/recipes/search` intercept asserts request body has
    `pantrySnapshotId: MOCK_IDS.INVENTORY_CAPTURE` →
    `page.getByTestId('recipe-card-top-pick')` is visible.
@@ -818,7 +814,7 @@ await page.route('**/api/inventory-captures/*', async (route) => {
    `page.getByTestId('inventory-capture-popup')` is visible →
    `page.getByTestId('inventory-capture-cancel').click()` →
    `page.getByTestId('inventory-capture-popup')` is not visible →
-   no API call to `/api/inventory-captures` was made.
+   no API call to `/api/photo-search` was made.
 
 **Definition of done:**
 - Contract tests pass.

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
@@ -165,6 +166,28 @@ public class RecipePurgeIntegrationTests : IAsyncLifetime
         Assert.Empty(pendingJobs);
     }
 
+    [Fact]
+    public async Task Purge_RemovesRealisticTrashDependencies_AndRecipeDirectory()
+    {
+        var recipe = await SeedSoftDeletedRecipeAsync();
+        var recipeDirectory = CreateRecipeDirectory(recipe.Id);
+        await SeedSearchDocumentAsync(recipe.Id);
+        await SeedRecipeVoteAsync(recipe.Id);
+        await SeedCalendarEventAsync(recipe.Id, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)));
+
+        var response = await SendPurgeAsync(recipe.Id, ValidPin);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        Assert.Null(await db.Recipes.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == recipe.Id));
+        Assert.False(Directory.Exists(recipeDirectory));
+        Assert.False(await db.RecipeSearchDocuments.IgnoreQueryFilters().AnyAsync(d => d.RecipeId == recipe.Id));
+        Assert.False(await db.RecipeVotes.AnyAsync(v => v.RecipeId == recipe.Id));
+        Assert.False(await db.CalendarEvents.AnyAsync(e => e.RecipeId == recipe.Id));
+    }
+
     private Task<HttpResponseMessage> SendPurgeAsync(Guid recipeId, string pin)
     {
         var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/recipes/{recipeId}/purge");
@@ -233,6 +256,44 @@ public class RecipePurgeIntegrationTests : IAsyncLifetime
             Parameters = JsonSerializer.Serialize(new { RecipeId = recipeId }),
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private string CreateRecipeDirectory(Guid recipeId)
+    {
+        var recipesRoot = _factory.Services.GetRequiredService<RecipesRootResolver>().Root;
+        var recipeDirectory = Path.Combine(recipesRoot, recipeId.ToString());
+        Directory.CreateDirectory(recipeDirectory);
+        File.WriteAllText(Path.Combine(recipeDirectory, "recipe.info.json"), "{}");
+        return recipeDirectory;
+    }
+
+    private async Task SeedRecipeVoteAsync(Guid recipeId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        db.RecipeVotes.Add(new RecipeVote
+        {
+            RecipeId = recipeId,
+            FamilyMemberId = _factory.DefaultFamilyMemberId,
+            Vote = VoteType.Like,
+            VotedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SeedCalendarEventAsync(Guid recipeId, DateOnly date)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = date,
+            MealSlot = 0,
+            Status = CalendarEventStatus.Cooked,
         });
         await db.SaveChangesAsync();
     }

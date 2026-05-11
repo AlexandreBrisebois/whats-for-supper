@@ -4,6 +4,33 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-11] Session — Recipe Purge 500 Hardening
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was fixed
+Hardened `DELETE /api/recipes/{id}/purge` so a valid elevated-PIN purge of a realistic Recycle Bin item does not fail with an unhandled 500 when dependent recipe state exists.
+
+**Key Achievements:**
+1. **Realistic Regression Coverage**: Added an API integration case for a soft-deleted recipe with an on-disk recipe directory, search document, recipe vote, and historical calendar event.
+2. **Explicit Dependent Cleanup**: Updated `RecipePurgeService` to remove `recipe_search_documents`, `recipe_votes`, and `calendar_events` before deleting the recipe row.
+3. **Atomic Purge Shape**: Kept validation first, then staged DB cleanup inside a transaction, performed filesystem cleanup before `SaveChangesAsync`, and committed only after the hard delete succeeds.
+4. **Contract Preservation**: No public API shape changed. Existing `200`, `403`, `404`, `409`, and `503` behavior remains intact.
+
+#### Documentation Updated
+| File | What changed |
+|------|-------------|
+| `specs/plans/2026-05-10-recipe-purge-500.md` | Marked implementation complete and recorded verification commands. |
+| `specs/decisions/037-soft-delete-and-recycle-bin-pattern.md` | Clarified hard purge now explicitly removes known dependents and preserves filesystem-first safety. |
+| `docs/flows/data-flows/recipe-search-index-and-recovery.md` | Updated the hard-delete purge flowchart and notes to match the current service behavior. |
+
+#### Verification
+- `task test:api -- --filter RecipePurgeIntegrationTests` — ✅ 567 passed.
+- `task agent:test:impact` — ✅ no impacted tests identified.
+- `task gate` — ✅ passed, with existing PWA lint warnings only.
+
+---
+
 ### [2026-05-10] Session — Recipe Hero Actions Integration
 **Status**: COMPLETED ✅
 **Branch**: `main`
