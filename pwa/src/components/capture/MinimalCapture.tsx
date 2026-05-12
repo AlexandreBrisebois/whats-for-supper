@@ -102,6 +102,7 @@ export default function MinimalCapture({
   const [onSuccess, setOnSuccess] = useState(false);
   const [showDescribe, setShowDescribe] = useState(mode === 'describe');
   const [showUrlReview, setShowUrlReview] = useState(!!extractedUrl);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Track the pending recipe ID so we can detect when SSE recipe_ready fires
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
@@ -210,6 +211,33 @@ export default function MinimalCapture({
     const files = Array.from(e.target.files ?? []);
     files.forEach((file) => addImage(file));
     e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      files.forEach((file) => {
+        if (file.type.startsWith('image/')) {
+          addImage(file);
+        }
+      });
+    }
   };
 
   // Photo path save — E4
@@ -471,7 +499,17 @@ export default function MinimalCapture({
       {!showDescribe && !showUrlReview && (
         <div className="flex flex-col gap-10">
           {/* Capture Area */}
-          <div className="flex flex-col items-center gap-6 rounded-[3rem] bg-terracotta/[0.03] border-2 border-dashed border-terracotta/10 p-12 text-center transition-colors hover:bg-terracotta/[0.05]">
+          <div
+            data-testid="capture-area"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`flex flex-col items-center gap-6 rounded-[3rem] p-12 text-center transition-all duration-300 border-2 border-dashed ${
+              isDragging
+                ? 'bg-terracotta/10 border-terracotta scale-[1.02] shadow-xl shadow-terracotta/5'
+                : 'bg-terracotta/[0.03] border-terracotta/10 hover:bg-terracotta/[0.05]'
+            }`}
+          >
             <button
               type="button"
               onClick={handleCapture}

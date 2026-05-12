@@ -24,7 +24,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import * as fc from 'fast-check';
 
 // ---------------------------------------------------------------------------
@@ -45,22 +45,30 @@ vi.mock('@/locales', () => ({
 }));
 
 // Mock useCapture — controls the async submit path
+const mockAddImage = vi.fn();
+const mockRemoveImage = vi.fn();
+const mockSubmitRecipe = vi.fn().mockResolvedValue(null);
+const mockSubmitUrl = vi.fn().mockResolvedValue(null);
+const mockSetRating = vi.fn();
+const mockSetNotes = vi.fn();
+const mockSetSelectedDishPhotoIndex = vi.fn();
+
 vi.mock('@/hooks/useCapture', () => ({
   useCapture: () => ({
     images: [],
-    addImage: vi.fn(),
-    removeImage: vi.fn(),
+    addImage: mockAddImage,
+    removeImage: mockRemoveImage,
     isSubmitting: false,
-    submitRecipe: vi.fn().mockResolvedValue(null),
-    submitUrl: vi.fn().mockResolvedValue(null),
+    submitRecipe: mockSubmitRecipe,
+    submitUrl: mockSubmitUrl,
     clearError: vi.fn(),
     error: null,
     rating: 0,
-    setRating: vi.fn(),
+    setRating: mockSetRating,
     notes: '',
-    setNotes: vi.fn(),
+    setNotes: mockSetNotes,
     selectedDishPhotoIndex: null,
-    setSelectedDishPhotoIndex: vi.fn(),
+    setSelectedDishPhotoIndex: mockSetSelectedDishPhotoIndex,
   }),
 }));
 
@@ -93,6 +101,7 @@ vi.mock('@/lib/api/api-client', () => ({
 // Import component under test AFTER mocks are registered
 // ---------------------------------------------------------------------------
 import MinimalCapture from './MinimalCapture';
+import { useCapture } from '@/hooks/useCapture';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -287,6 +296,32 @@ describe('MinimalCapture — preservation unit tests', () => {
       doneBtn.click();
     });
     expect(mockPush).toHaveBeenCalledWith('/home');
+  });
+
+  it('calls addImage and provides visual feedback when files are dropped on the capture area', async () => {
+    render(<MinimalCapture />);
+
+    const captureArea = screen.getByTestId('capture-area');
+
+    // Verify DragOver provides visual feedback
+    await act(async () => {
+      fireEvent.dragOver(captureArea);
+    });
+    expect(captureArea.className).toContain('bg-terracotta/10');
+
+    const file = new File(['hello'], 'hello.png', { type: 'image/png' });
+    
+    await act(async () => {
+      fireEvent.drop(captureArea, {
+        dataTransfer: {
+          files: [file],
+        },
+      });
+    });
+
+    expect(mockAddImage).toHaveBeenCalledWith(file);
+    // Verify visual feedback is cleared
+    expect(captureArea.className).not.toContain('bg-terracotta/10');
   });
 });
 
