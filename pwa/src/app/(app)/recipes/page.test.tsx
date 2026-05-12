@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const searchRecipes = vi.fn();
@@ -186,6 +186,8 @@ function makeSearchResult(index: number) {
 describe('RecipesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_AGENT_SEARCH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_PHOTO_SEARCH', 'true');
     mocks.setSearchParams('');
     mocks.setFamilySettings({});
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse());
@@ -218,8 +220,14 @@ describe('RecipesPage', () => {
     mocks.healthGet.mockResolvedValue({ demoMode: false });
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('renders the search input and mode controls after load', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     expect(screen.getByTestId('recipe-search-input')).toBeInTheDocument();
 
@@ -231,7 +239,9 @@ describe('RecipesPage', () => {
   });
 
   it('fires recipe search on mount and again when Enter is pressed with the current query', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(mocks.searchRecipes).toHaveBeenCalledWith({
@@ -264,7 +274,9 @@ describe('RecipesPage', () => {
   });
 
   it('renders the top pick card and alternate cards from the search response', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -277,7 +289,9 @@ describe('RecipesPage', () => {
   });
 
   it('top-pick-feeling-lucky button promotes a different result without changing query', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -326,7 +340,9 @@ describe('RecipesPage', () => {
     );
 
     try {
-      render(<RecipesPage />);
+      await act(async () => {
+        render(<RecipesPage />);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId('search-results-scroll-sentinel')).toBeInTheDocument();
@@ -367,7 +383,9 @@ describe('RecipesPage', () => {
       })
     );
 
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('search-empty-state')).toBeInTheDocument();
@@ -377,7 +395,9 @@ describe('RecipesPage', () => {
   it('shows planner mode banner when planner context is present', async () => {
     mocks.setSearchParams('addToDay=2&weekOffset=0');
 
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('planning-mode-banner')).toBeInTheDocument();
@@ -385,7 +405,9 @@ describe('RecipesPage', () => {
   });
 
   it('opens the detail sheet from a result card and closes it without re-running search or clearing results', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -424,7 +446,9 @@ describe('RecipesPage', () => {
   });
 
   it('marks a recipe as the family GOTO from the detail sheet star pill', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -461,7 +485,9 @@ describe('RecipesPage', () => {
       },
     });
 
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -478,7 +504,9 @@ describe('RecipesPage', () => {
   });
 
   it('edits notes and rating from the detail sheet using PATCH calls', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -514,7 +542,9 @@ describe('RecipesPage', () => {
   });
 
   it('edits recipe card fields in edit mode and saves them with one PATCH call', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -556,7 +586,9 @@ describe('RecipesPage', () => {
   });
 
   it('cancels recipe card edits without patching editable fields', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -581,7 +613,9 @@ describe('RecipesPage', () => {
   it('renders the planner CTA in planner mode and assigns the recipe back to the planner', async () => {
     mocks.setSearchParams('addToDay=2&weekOffset=0');
 
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -608,7 +642,9 @@ describe('RecipesPage', () => {
 
   describe('Quick filter pills', () => {
     it('renders all 5 filter pills', async () => {
-      render(<RecipesPage />);
+      await act(async () => {
+        render(<RecipesPage />);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId('filter-new-recipes')).toBeInTheDocument();
@@ -621,7 +657,9 @@ describe('RecipesPage', () => {
     });
 
     it('tapping a filter pill marks it active and fires a new search with the filter', async () => {
-      render(<RecipesPage />);
+      await act(async () => {
+        render(<RecipesPage />);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
@@ -641,7 +679,9 @@ describe('RecipesPage', () => {
     });
 
     it('tapping an active filter pill deactivates it and re-runs search without that filter', async () => {
-      render(<RecipesPage />);
+      await act(async () => {
+        render(<RecipesPage />);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId('filter-quick')).toBeInTheDocument();
@@ -650,13 +690,17 @@ describe('RecipesPage', () => {
       fireEvent.click(screen.getByTestId('filter-quick'));
       await waitFor(() => expect(screen.getByTestId('filter-quick-active')).toBeInTheDocument());
 
-      fireEvent.click(screen.getByTestId('filter-quick-active'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-quick-active'));
+      });
       await waitFor(() => expect(screen.getByTestId('filter-quick')).toBeInTheDocument());
       expect(screen.queryByTestId('filter-quick-active')).not.toBeInTheDocument();
     });
 
     it('combining two filters sends both in the request', async () => {
-      render(<RecipesPage />);
+      await act(async () => {
+        render(<RecipesPage />);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
@@ -682,7 +726,9 @@ describe('RecipesPage', () => {
     it('shows filter-no-results when filters are active and search returns empty', async () => {
       mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ topPick: null, results: [] }));
 
-      render(<RecipesPage />);
+      await act(async () => {
+        render(<RecipesPage />);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
@@ -697,7 +743,9 @@ describe('RecipesPage', () => {
   });
 
   it('toggling discovery from the detail sheet calls PATCH with isDiscoverable and keeps the sheet open', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -722,7 +770,9 @@ describe('RecipesPage', () => {
   });
 
   it('runs a similar search from the detail sheet with an empty query and the current recipe id', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
@@ -760,7 +810,9 @@ describe('RecipesPage', () => {
   // ── Task 13: Inventory camera popup ─────────────────────────────────────────
 
   it('inventory-camera-trigger tap opens the inventory-capture-popup', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
 
     expect(screen.queryByTestId('inventory-capture-popup')).not.toBeInTheDocument();
@@ -770,7 +822,9 @@ describe('RecipesPage', () => {
   });
 
   it('inventory-capture-popup renders take photo, choose photos, submit and cancel buttons', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
@@ -781,7 +835,9 @@ describe('RecipesPage', () => {
   });
 
   it('submit button stays available and updates the photo count as photos are added', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
@@ -799,7 +855,9 @@ describe('RecipesPage', () => {
   });
 
   it('removing a photo updates the count and keeps submit available when the queue becomes empty', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
@@ -817,7 +875,9 @@ describe('RecipesPage', () => {
   });
 
   it('submitting inventory photos uses the pantry snapshot in the next search', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
@@ -847,7 +907,9 @@ describe('RecipesPage', () => {
       pantrySnapshotId: null,
     });
 
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
@@ -868,7 +930,9 @@ describe('RecipesPage', () => {
   });
 
   it('inventory-capture-cancel closes popup and clears queue', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
@@ -889,7 +953,9 @@ describe('RecipesPage', () => {
   it('popup shows busy message when capture returns busy status', async () => {
     mocks.submitPhotoSearch.mockResolvedValueOnce({ busy: true, retryAfterSeconds: 30 });
 
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('inventory-camera-trigger')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('inventory-camera-trigger'));
 
@@ -908,7 +974,9 @@ describe('RecipesPage', () => {
   // ── Task 12: Agent search UI ────────────────────────────────────────────────
 
   it('agent-search-trigger tap shows agent-search-input textarea', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
 
     expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
@@ -919,7 +987,9 @@ describe('RecipesPage', () => {
 
   it('agent-search-trigger shows demo notice instead of textarea in demo mode', async () => {
     mocks.healthGet.mockResolvedValue({ demoMode: true });
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
     await waitFor(() => expect(mocks.healthGet).toHaveBeenCalled());
 
@@ -932,7 +1002,9 @@ describe('RecipesPage', () => {
   });
 
   it('agent-search-submit calls searchRecipes with mode: "agent"', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('agent-search-trigger'));
@@ -950,7 +1022,9 @@ describe('RecipesPage', () => {
 
   it('agent search results render in the same recipe-card-top-pick template', async () => {
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ searchMode: 'agent' }));
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('agent-search-trigger'));
@@ -963,7 +1037,9 @@ describe('RecipesPage', () => {
   });
 
   it('agent search does NOT render a chat UI element', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('agent-search-trigger')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('agent-search-trigger'));
@@ -978,7 +1054,9 @@ describe('RecipesPage', () => {
   });
 
   it('agent-search-close hides agent-search-input and keeps existing results visible', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     await waitFor(() => expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('agent-search-trigger'));
@@ -990,7 +1068,9 @@ describe('RecipesPage', () => {
   });
 
   it('blurs the search input when Enter is pressed', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     const input = screen.getByTestId('recipe-search-input') as HTMLInputElement;
     input.focus();
     expect(input).toHaveFocus();
@@ -1001,7 +1081,9 @@ describe('RecipesPage', () => {
   });
 
   it('submits and blurs the agent search textarea when Enter (without Shift) is pressed', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     fireEvent.click(screen.getByTestId('agent-search-trigger'));
 
     const textarea = screen.getByTestId('agent-search-input') as HTMLTextAreaElement;
@@ -1020,7 +1102,9 @@ describe('RecipesPage', () => {
   });
 
   it('does NOT submit agent search when Shift+Enter is pressed in textarea', async () => {
-    render(<RecipesPage />);
+    await act(async () => {
+      render(<RecipesPage />);
+    });
     fireEvent.click(screen.getByTestId('agent-search-trigger'));
 
     const textarea = screen.getByTestId('agent-search-input') as HTMLTextAreaElement;

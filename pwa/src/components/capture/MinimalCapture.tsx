@@ -109,24 +109,29 @@ export default function MinimalCapture({
   // When SSE recipe_ready fires while user is still on this screen, transition to ready state
   const [readyRecipeName, setReadyRecipeName] = useState<string | null>(null);
 
+  const [countdown, setCountdown] = useState<number | null>(null);
+
   const isGoto = intent === 'goto';
 
   // Subscribe to libraryStore notifications — detect when our pending recipe becomes ready
-  const notifications = useLibraryStore((s) => s.notifications);
   useEffect(() => {
     if (!pendingRecipeId) return;
-    const notification = notifications.find(
-      (n) => n.recipeId === pendingRecipeId && n.type === 'ready'
-    );
-    if (notification) {
-      // Intentional synchronous state update — syncing from external store subscription,
-      // not a cascading render. eslint-disable-next-line react-hooks/set-state-in-effect
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setReadyRecipeName(notification.name);
-      // Dismiss from the global queue — we're handling it inline on this screen
-      useLibraryStore.getState().dismissNotification(pendingRecipeId);
-    }
-  }, [notifications, pendingRecipeId]);
+
+    // We use a manual subscription here to avoid the "set-state-in-effect" lint error.
+    // This allows us to react to store changes and update local state outside the render cycle.
+    const unsubscribe = useLibraryStore.subscribe((state) => {
+      const notification = state.notifications.find(
+        (n) => n.recipeId === pendingRecipeId && n.type === 'ready'
+      );
+      if (notification) {
+        setReadyRecipeName(notification.name);
+        // Dismiss from the global queue — we're handling it inline on this screen
+        useLibraryStore.getState().dismissNotification(pendingRecipeId);
+      }
+    });
+
+    return unsubscribe;
+  }, [pendingRecipeId]);
 
   useEffect(() => {
     if (images.length > 0) {
@@ -159,6 +164,24 @@ export default function MinimalCapture({
     };
   }, [isPhotoSubmitPending]);
 
+  // Auto-redirect home after 10 seconds on success screen (Queued state)
+  useEffect(() => {
+    if (onSuccess && !readyRecipeName && countdown !== null) {
+      const interval = setInterval(() => {
+        setCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
+      }, 1000);
+
+      const timeout = setTimeout(() => {
+        router.push(ROUTES.HOME as any);
+      }, countdown * 1000);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [onSuccess, readyRecipeName, countdown, router]);
+
   const handleUrlCapture = useCallback(
     async (url: string) => {
       setIsUrlCapturing(true);
@@ -176,6 +199,7 @@ export default function MinimalCapture({
           setPendingRecipeId(id);
         }
         setWasUrlCaptured(true);
+        setCountdown(10);
         setOnSuccess(true);
       } catch (err) {
         setUrlCaptureError(err instanceof Error ? err.message : 'Failed to capture link.');
@@ -263,6 +287,7 @@ export default function MinimalCapture({
         }
         useCaptureStore.getState().addPending({ recipeId: id });
         setPendingRecipeId(id);
+        setCountdown(10);
         setOnSuccess(true);
       }
     } finally {
@@ -300,6 +325,7 @@ export default function MinimalCapture({
           .getState()
           .addPending({ recipeId: id, name: describeName.trim() || undefined });
         setPendingRecipeId(id);
+        setCountdown(10);
         setOnSuccess(true);
       }
     } catch (err) {
@@ -339,26 +365,6 @@ export default function MinimalCapture({
               className="rounded-2xl px-8"
             >
               Add to this week
-            </Button>
-            <Button
-              variant="ghost"
-              data-testid="capture-add-another-btn"
-              onClick={() => {
-                setOnSuccess(false);
-                setWasPhotoCaptured(false);
-                setWasUrlCaptured(false);
-                setWasDescribeCaptured(false);
-                setDescribeName('');
-                setDescribeText('');
-                setUrlInput('');
-                setShowDescribe(false);
-                setShowUrlReview(false);
-                setPendingRecipeId(null);
-                setReadyRecipeName(null);
-              }}
-              className="rounded-2xl px-8"
-            >
-              Add Another
             </Button>
             <Button
               variant="ghost"
@@ -421,32 +427,19 @@ export default function MinimalCapture({
           <div className="flex flex-col gap-3 w-full max-w-xs">
             <Button
               variant="primary"
-              data-testid="capture-add-another-btn"
-              onClick={() => {
-                setOnSuccess(false);
-                setWasPhotoCaptured(false);
-                setWasUrlCaptured(false);
-                setWasDescribeCaptured(false);
-                setDescribeName('');
-                setDescribeText('');
-                setUrlInput('');
-                setShowDescribe(false);
-                setShowUrlReview(false);
-                setPendingRecipeId(null);
-                setReadyRecipeName(null);
-              }}
-              className="rounded-2xl px-8"
-            >
-              Add Another
-            </Button>
-            <Button
-              variant="ghost"
               data-testid="capture-done-btn"
               onClick={() => router.push(ROUTES.HOME as any)}
-              className="rounded-2xl px-8 text-charcoal/50"
+              className="rounded-2xl px-8"
             >
               Done
             </Button>
+            {countdown !== null && (
+              <p className="text-xs text-charcoal/30 mt-4 animate-in fade-in duration-500">
+                {tWithVars('capture.redirecting', 'Redirecting home in {{seconds}}s...', {
+                  seconds: countdown,
+                })}
+              </p>
+            )}
           </div>
         )}
       </div>

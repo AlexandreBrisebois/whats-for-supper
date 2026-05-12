@@ -72,6 +72,7 @@
     "linkCaptured": "Lien capturé !",
     "processing": "Traitement de votre recette...",
     "processingSubtext": "Nous extrayons les ingrédients et les instructions. Nous vous préviendrons quand ce sera prêt.",
+    "redirecting": "Redirection vers l'accueil dans {{seconds}}s...",
     "addRecipe": "Ajouter une recette",
     "appreciation": "Appréciation",
     "clearAll": "Tout effacer",

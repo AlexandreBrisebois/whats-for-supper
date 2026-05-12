@@ -275,7 +275,9 @@ beforeEach(() => {
 
 describe('BrowseAllStack — mount fetches', () => {
   it('fetches library summary on mount', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(mocks.librarySummaryGet).toHaveBeenCalledTimes(1);
@@ -283,7 +285,9 @@ describe('BrowseAllStack — mount fetches', () => {
   });
 
   it('fetches first page of recipes on mount', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(mocks.recipesGet).toHaveBeenCalledTimes(1);
@@ -315,7 +319,9 @@ describe('BrowseAllStack — view mode preference', () => {
       selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
     });
 
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('browse-list-grid')).toBeInTheDocument();
@@ -333,7 +339,9 @@ describe('BrowseAllStack — view mode preference', () => {
   });
 
   it('optimistically toggles view mode and persists it to member preferences', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -352,7 +360,9 @@ describe('BrowseAllStack — view mode preference', () => {
 
 describe('BrowseAllStack — initial card display', () => {
   it('displays the first card after load', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -365,7 +375,9 @@ describe('BrowseAllStack — initial card display', () => {
 
 describe('BrowseAllStack — swipe navigation', () => {
   it('advances to the next card on swipe left', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -389,7 +401,9 @@ describe('BrowseAllStack — swipe navigation', () => {
   });
 
   it('returns to the previous card on swipe right', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -435,7 +449,9 @@ describe('BrowseAllStack — pre-fetch', () => {
       .mockResolvedValueOnce(makePageResponse(page1Ids, 21, 1))
       .mockResolvedValue(makePageResponse([], 21, 2));
 
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -473,7 +489,9 @@ describe('BrowseAllStack — pre-fetch', () => {
 describe('BrowseAllStack — End Card', () => {
   it('loops to the first card instead of showing End Card after the last recipe', async () => {
     // 3 recipes, no more pages
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -497,7 +515,9 @@ describe('BrowseAllStack — End Card', () => {
   });
 
   it('loops backward from the first card to the last recipe', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -537,7 +557,9 @@ describe('BrowseAllStack — list mode', () => {
         makePageResponse([RECIPE_IDS[2], RECIPE_IDS[3], RECIPE_IDS[4]], 15, 2)
       );
 
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('browse-list-grid')).toBeInTheDocument();
@@ -586,7 +608,9 @@ describe('BrowseAllStack — list mode', () => {
     }
     mocks.recipesGet.mockResolvedValueOnce(makePageResponse(ids.slice(96, 100), 100, 9));
 
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('browse-list-grid')).toBeInTheDocument();
@@ -638,7 +662,9 @@ describe('BrowseAllStack — list mode', () => {
       .mockResolvedValueOnce(makePageResponse(ids.slice(12, 24), 25, 2))
       .mockResolvedValueOnce(makePageResponse(ids.slice(24, 25), 25, 3));
 
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     const scrollContainer = await screen.findByTestId('browse-list-scroll-container');
     Object.defineProperties(scrollContainer, {
@@ -677,7 +703,9 @@ describe('BrowseAllStack — list mode', () => {
 
 describe('BrowseAllStack — Recipe Detail Sheet', () => {
   it('opens Recipe Detail Sheet when card is tapped', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -696,7 +724,9 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
   });
 
   it('returns to the same card after Recipe Detail Sheet closes', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
@@ -748,7 +778,9 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
   });
 
   it('recycle-bin-entry opens the recycle bin sheet and close button dismisses it', async () => {
-    render(<BrowseAllStackPage />);
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
     await waitFor(() =>
       expect(screen.getByTestId('browse-all-stack-container')).toBeInTheDocument()
     );

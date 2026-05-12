@@ -99,6 +99,9 @@ export default function RecipesPage() {
   const parsedDayIndex = addToDay !== null ? parseInt(addToDay, 10) : undefined;
   const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
 
+  const isAgentSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_AGENT_SEARCH === 'true';
+  const isPhotoSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_PHOTO_SEARCH === 'true';
+
   useEffect(() => {
     let isActive = true;
 
@@ -543,59 +546,69 @@ export default function RecipesPage() {
         </motion.div>
       )}
 
-      {/* Mode selector */}
-      <div className="flex flex-wrap gap-2 px-1">
-        <button
-          type="button"
-          data-testid="agent-search-trigger"
-          onClick={() => {
-            if (isDemoMode) {
-              setShowDemoAiNotice(true);
-              setSearchMode('standard');
-              return;
-            }
-            setSearchMode(searchMode === 'agent' ? 'standard' : 'agent');
-          }}
-          className={cn(
-            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
-            isDemoMode && 'opacity-60',
-            searchMode === 'agent'
-              ? 'border-terracotta bg-terracotta text-white'
-              : 'border-charcoal/10 bg-white/70 text-charcoal'
-          )}
-        >
-          <Sparkles
-            size={16}
-            className={searchMode === 'agent' ? 'text-white' : 'text-terracotta'}
-          />
-          {t('recipes.agentSearch', 'Agent Search')}
-        </button>
-        <button
-          type="button"
-          data-testid="inventory-camera-trigger"
-          onClick={() => setSearchMode(searchMode === 'camera' ? 'standard' : 'camera')}
-          className={cn(
-            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
-            searchMode === 'camera'
-              ? 'border-terracotta bg-terracotta text-white'
-              : 'border-charcoal/10 bg-white/70 text-charcoal'
-          )}
-        >
-          <Camera
-            size={16}
-            className={searchMode === 'camera' ? 'text-white' : 'text-terracotta'}
-          />
-          {t('recipes.inventoryCamera', 'Photo Search')}
-        </button>
+      {/* Top Bar: Browse Library (left) */}
+      <div className="flex items-center px-1">
         <Link
           href="/browse-all-stack"
           data-testid="browse-all-stack-trigger"
-          className="inline-flex items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm transition-colors"
+          aria-label={t('recipes.browseLibrary', 'Browse Library')}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-terracotta focus:ring-offset-2"
         >
-          <BookOpen size={16} className="text-terracotta" />
-          {t('recipes.browseLibrary', 'Browse Library')}
+          <BookOpen size={20} className="text-terracotta" />
         </Link>
       </div>
+
+      {/* Mode selector */}
+      {(isAgentSearchEnabled || isPhotoSearchEnabled) && (
+        <div className="flex flex-wrap gap-2 px-1">
+          {isAgentSearchEnabled && (
+            <button
+              type="button"
+              data-testid="agent-search-trigger"
+              onClick={() => {
+                if (isDemoMode) {
+                  setShowDemoAiNotice(true);
+                  setSearchMode('standard');
+                  return;
+                }
+                setSearchMode(searchMode === 'agent' ? 'standard' : 'agent');
+              }}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+                isDemoMode && 'opacity-60',
+                searchMode === 'agent'
+                  ? 'border-terracotta bg-terracotta text-white'
+                  : 'border-charcoal/10 bg-white/70 text-charcoal'
+              )}
+            >
+              <Sparkles
+                size={16}
+                className={searchMode === 'agent' ? 'text-white' : 'text-terracotta'}
+              />
+              {t('recipes.agentSearch', 'Agent Search')}
+            </button>
+          )}
+          {isPhotoSearchEnabled && (
+            <button
+              type="button"
+              data-testid="inventory-camera-trigger"
+              onClick={() => setSearchMode(searchMode === 'camera' ? 'standard' : 'camera')}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+                searchMode === 'camera'
+                  ? 'border-terracotta bg-terracotta text-white'
+                  : 'border-charcoal/10 bg-white/70 text-charcoal'
+              )}
+            >
+              <Camera
+                size={16}
+                className={searchMode === 'camera' ? 'text-white' : 'text-terracotta'}
+              />
+              {t('recipes.inventoryCamera', 'Photo Search')}
+            </button>
+          )}
+        </div>
+      )}
 
       {showDemoAiNotice && (
         <div

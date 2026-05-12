@@ -23,7 +23,7 @@
  * Validates: Requirements 2.5, 3.5
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import * as fc from 'fast-check';
 
@@ -41,7 +41,15 @@ vi.mock('next/navigation', () => ({
 // Mock @/locales — avoids localStorage.getItem call in getLocale() during jsdom render
 vi.mock('@/locales', () => ({
   t: (_key: string, defaultValue: string) => defaultValue,
-  tWithVars: (_key: string, defaultValue: string) => defaultValue,
+  tWithVars: (_key: string, defaultValue: string, vars: any) => {
+    let result = defaultValue;
+    if (vars) {
+      Object.keys(vars).forEach((k) => {
+        result = result.replace(`{{${k}}}`, vars[k]);
+      });
+    }
+    return result;
+  },
 }));
 
 // Mock useCapture — controls the async submit path
@@ -97,6 +105,26 @@ vi.mock('@/lib/api/api-client', () => ({
   },
 }));
 
+// Mock libraryStore — used for notification detection
+vi.mock('@/store/libraryStore', () => {
+  const subscribers: Set<(state: any) => void> = new Set();
+  return {
+    useLibraryStore: Object.assign(
+      (selector: (state: any) => any) => selector({ notifications: [] }),
+      {
+        getState: () => ({
+          notifications: [],
+          dismissNotification: vi.fn(),
+        }),
+        subscribe: vi.fn((callback: (state: any) => void) => {
+          subscribers.add(callback);
+          return () => subscribers.delete(callback);
+        }),
+      }
+    ),
+  };
+});
+
 // ---------------------------------------------------------------------------
 // Import component under test AFTER mocks are registered
 // ---------------------------------------------------------------------------
@@ -137,7 +165,7 @@ async function renderAndTriggerSuccess(intent?: string): Promise<void> {
 
   // Flush all async state updates (apiClient.post, saveSetting, setOnSuccess)
   await act(async () => {
-    await new Promise((r) => setTimeout(r, 0));
+    await Promise.resolve();
   });
 }
 
@@ -149,6 +177,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+// No global afterEach needed if timers are managed per test
+
 // ---------------------------------------------------------------------------
 // Unit Tests — Example-Based
 // ---------------------------------------------------------------------------
@@ -158,26 +188,31 @@ describe('MinimalCapture — preservation unit tests', () => {
    * Validates: Requirement 3.5
    * ¬isBugConditionC: isGoto = false
    *
-   * When onSuccess = true and isGoto = false, MinimalCapture shows explicit
-   * CTAs ("Add Another" primary, "Done" secondary). The "Done" button navigates
-   * to /home when clicked. No auto-navigation occurs.
-   *
-   * Task 31 removed the 4-second auto-redirect; explicit CTAs replace it.
+   * When onSuccess = true and isGoto = false, MinimalCapture shows the
+   * "Done" CTA and auto-navigates to /home after 10 seconds.
    */
-  it('shows Done button that navigates to /home when onSuccess=true and isGoto=false (non-GOTO path)', async () => {
+  it('shows Done button and auto-navigates to /home after 10 seconds (non-GOTO path)', async () => {
+    vi.useFakeTimers();
     await renderAndTriggerSuccess(undefined); // no intent → isGoto = false
 
-    // No auto-navigation — explicit CTA required
+    // Should NOT have navigated immediately
     expect(mockPush).not.toHaveBeenCalled();
 
-    // "Done" button is present and navigates to /home when clicked
+    // "Done" button is present
     const doneBtn = screen.getByTestId('capture-done-btn');
     expect(doneBtn).toBeTruthy();
+
+    // Verify countdown text appears (tWithVars is mocked to return default value)
+    expect(screen.getByText(/redirecting home in 10s/i)).toBeTruthy();
+
+    // Fast-forward 10 seconds
     await act(async () => {
-      doneBtn.click();
+      vi.advanceTimersByTime(10000);
     });
+
     expect(mockPush).toHaveBeenCalledWith('/home');
     expect(mockPush).not.toHaveBeenCalledWith('/profile/settings');
+    vi.useRealTimers();
   });
 
   /**
@@ -241,19 +276,16 @@ describe('MinimalCapture — preservation unit tests', () => {
   /**
    * Validates: Requirement 3.5
    *
-   * The success screen for isGoto=false shows "Add Another" (primary) and
-   * "Done" (secondary) CTAs. No auto-navigation occurs.
-   * Task 31 removed the auto-redirect; explicit CTAs replace it.
+   * The success screen for isGoto=false shows "Done" CTA and a countdown.
+   * "Add Another" button has been removed.
    */
-  it('shows Add Another and Done CTAs for isGoto=false success screen (no auto-navigation)', async () => {
+  it('shows Done CTA and no Add Another button for isGoto=false success screen', async () => {
     await renderAndTriggerSuccess(undefined); // isGoto = false
 
-    // No auto-navigation
-    expect(mockPush).not.toHaveBeenCalled();
-
-    // Both CTAs are present
-    expect(screen.getByTestId('capture-add-another-btn')).toBeTruthy();
+    // Add Another button should NOT be present
+    expect(screen.queryByTestId('capture-add-another-btn')).toBeNull();
     expect(screen.getByTestId('capture-done-btn')).toBeTruthy();
+    expect(screen.getByText(/redirecting home in 10s/i)).toBeTruthy();
   });
 
   /**
@@ -280,15 +312,9 @@ describe('MinimalCapture — preservation unit tests', () => {
 
   /**
    * Validates: Requirement 3.5
-   *
-   * For isGoto=false, the success screen shows explicit CTAs — no auto-navigation.
-   * Task 31 removed the 4-second auto-redirect; the "Done" button navigates to /home.
    */
-  it('Done button navigates to /home for non-GOTO success (no auto-navigation)', async () => {
+  it('Done button navigates to /home immediately for non-GOTO success', async () => {
     await renderAndTriggerSuccess(undefined); // isGoto = false
-
-    // No auto-navigation — explicit CTA required
-    expect(mockPush).not.toHaveBeenCalled();
 
     // "Done" button navigates to /home when clicked
     const doneBtn = screen.getByTestId('capture-done-btn');
@@ -310,7 +336,7 @@ describe('MinimalCapture — preservation unit tests', () => {
     expect(captureArea.className).toContain('bg-terracotta/10');
 
     const file = new File(['hello'], 'hello.png', { type: 'image/png' });
-    
+
     await act(async () => {
       fireEvent.drop(captureArea, {
         dataTransfer: {
@@ -337,9 +363,7 @@ describe('MinimalCapture — property-based preservation tests', () => {
    * ¬isBugConditionC: isGoto = false
    *
    * For ALL captureState where isGoto = false and onSuccess = true,
-   * MinimalCapture ALWAYS auto-navigates to /home via useEffect.
-   *
-   * This property MUST PASS on unfixed code — it is the baseline to preserve.
+   * MinimalCapture ALWAYS auto-navigates to /home via useEffect after 10s.
    *
    * We verify the structural invariant: when isGoto=false, the navigation
    * destination is always ROUTES.HOME ('/home'), regardless of other inputs.

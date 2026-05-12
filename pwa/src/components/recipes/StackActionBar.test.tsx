@@ -174,7 +174,9 @@ describe('StackActionBar — toggle interaction', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    });
 
     await waitFor(() => {
       expect(onToggle).toHaveBeenCalledWith('recipe-abc', true);
@@ -192,7 +194,9 @@ describe('StackActionBar — toggle interaction', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    });
 
     await waitFor(() => {
       expect(onToggle).toHaveBeenCalledWith('recipe-abc', false);
@@ -220,7 +224,9 @@ describe('StackActionBar — toggle interaction', () => {
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
     expect(btn.getAttribute('aria-label')).toBe('Turn on Discovery for this recipe');
 
-    fireEvent.click(btn);
+    await act(async () => {
+      fireEvent.click(btn);
+    });
 
     // Optimistic update should flip the label immediately
     await waitFor(() => {
@@ -255,7 +261,9 @@ describe('StackActionBar — loading state', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('card-toggle-discovery-recipe-abc-loading')).toBeTruthy();
@@ -287,7 +295,9 @@ describe('StackActionBar — loading state', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    });
 
     await waitFor(() => {
       const btn = screen.getByTestId(
@@ -320,7 +330,9 @@ describe('StackActionBar — error handling', () => {
     const btn = screen.getByTestId('card-toggle-discovery-recipe-abc');
     expect(btn.getAttribute('aria-label')).toBe('Turn on Discovery for this recipe');
 
-    fireEvent.click(btn);
+    await act(async () => {
+      fireEvent.click(btn);
+    });
 
     // After rejection, should revert back to original state
     await waitFor(() => {
@@ -340,7 +352,9 @@ describe('StackActionBar — error handling', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('card-toggle-discovery-recipe-abc'));
+    });
 
     await waitFor(() => {
       expect(screen.queryByTestId('card-toggle-discovery-recipe-abc-loading')).toBeNull();

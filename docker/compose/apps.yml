@@ -58,6 +58,9 @@ services:
     build:
       context: ../../pwa
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_ENABLE_AGENT_SEARCH: ${NEXT_PUBLIC_ENABLE_AGENT_SEARCH:-false}
+        NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: ${NEXT_PUBLIC_ENABLE_PHOTO_SEARCH:-false}
     restart: unless-stopped
     environment:
 
@@ -66,6 +69,8 @@ services:
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:9001}
       HEARTH_SECRET: ${HEARTH_SECRET}
       NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-en}
+      NEXT_PUBLIC_ENABLE_AGENT_SEARCH: ${NEXT_PUBLIC_ENABLE_AGENT_SEARCH:-false}
+      NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: ${NEXT_PUBLIC_ENABLE_PHOTO_SEARCH:-false}
     depends_on:
       - api
     networks:

@@ -72,6 +72,7 @@
     "linkCaptured": "Link Captured!",
     "processing": "Recipe captured! Processing...",
     "processingSubtext": "We're extracting the ingredients and instructions. We'll notify you when it's ready.",
+    "redirecting": "Redirecting home in {{seconds}}s...",
     "addRecipe": "Add a Recipe",
     "appreciation": "Appreciation",
     "clearAll": "Clear All",
