@@ -138,6 +138,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                 opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                 opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
             });
+        
+        builder.Services.AddSingleton<IPromptRepository, EmbeddedPromptRepository>();
 
         builder.Services.AddSingleton<AisleMapper>();
         builder.Services.AddSingleton<SseConnectionManager>();
@@ -161,8 +163,9 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             .ReturnsAsync(new float[1536]);
         builder.Services.AddSingleton<IEmbeddingProvider>(mockEmbedding.Object);
 
-        // Stub IChatClient so AgentSearchTranslationService and InventoryCaptureService can be resolved in tests
-        builder.Services.AddSingleton<IChatClient>(new StubChatClient("""{"query":"","filters":{}}"""));
+        // Stub IChatClient so AgentSearchTranslationService and InventoryCaptureService can be resolved in tests.
+        // The default stub inspects the prompt and returns shape-correct payloads for each test path.
+        builder.Services.AddSingleton<IChatClient>(new StubChatClient(null));
         builder.Services.AddScoped<RecipeImportService>();
         builder.Services.AddScoped<RecipeImportBulkService>();
         builder.Services.AddScoped<SettingsService>();

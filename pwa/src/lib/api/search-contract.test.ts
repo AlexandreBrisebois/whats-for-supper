@@ -59,6 +59,13 @@ describe('generated search contract', () => {
     expect(block).toContain('discoverableOnly?: boolean | null;');
   });
 
+  it('includes inventory-fit in the RecipeSearchReasonDto source enum', () => {
+    const modelsSource = readGenerated('models/index.ts');
+
+    expect(modelsSource).toContain("InventoryFit: 'inventory-fit'");
+    expect(modelsSource).not.toContain("PantryMatch: 'pantry-match'");
+  });
+
   it('includes the /api/recipes/search request builder in the generated client', () => {
     const routePath = resolve(currentDir, 'generated', 'api/recipes/search/index.ts');
 

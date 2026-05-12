@@ -20,7 +20,7 @@ public class InventoryCaptureServiceTests : IDisposable
     {
         _tempRoot = Path.Combine(Path.GetTempPath(), $"inv-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempRoot);
-        _service = new InventoryCaptureService(new StubChatClient(BuildVisionResponse()), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        _service = new InventoryCaptureService(new StubChatClient(BuildVisionResponse()), NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
     }
 
     public void Dispose()
@@ -74,7 +74,7 @@ public class InventoryCaptureServiceTests : IDisposable
     [Fact]
     public async Task ProcessAsync_BusyResponse_WhenModelUnavailable()
     {
-        var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
         var photos = new List<byte[]> { new byte[] { 0xFF, 0xD8 } };
 
         var (snapshot, busy) = await busyService.ProcessAsync(photos);
@@ -87,7 +87,7 @@ public class InventoryCaptureServiceTests : IDisposable
     public async Task ProcessAsync_SendsImagesToChatClient()
     {
         var chatClient = new MockChatClient(BuildVisionResponse());
-        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
         var photo1 = new byte[] { 0xFF, 0xD8, 0x01 };
         var photo2 = new byte[] { 0xFF, 0xD8, 0x02 };
         var photos = new List<byte[]> { photo1, photo2 };
@@ -108,7 +108,7 @@ public class InventoryCaptureServiceTests : IDisposable
     public async Task ProcessAsync_UsesAgentCompatibleChatOptions()
     {
         var chatClient = new MockChatClient(BuildVisionResponse());
-        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
 
         await service.ProcessAsync([new byte[] { 0xFF, 0xD8 }]);
 
@@ -124,7 +124,7 @@ public class InventoryCaptureServiceTests : IDisposable
         var response = """
             {"intent":"recipe","query":"Lemon Chicken rice","ingredients":["chicken","lemon","rice"],"confidence":0.91}
             """;
-        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
 
         var (result, busy) = await service.ProcessPhotoSearchAsync([new byte[] { 0xFF, 0xD8 }]);
 
@@ -142,7 +142,7 @@ public class InventoryCaptureServiceTests : IDisposable
         var response = """
             {"intent":"inventory","query":"","ingredients":["eggs","cheddar","spinach"],"confidence":0.82}
             """;
-        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
 
         var (result, busy) = await service.ProcessPhotoSearchAsync([new byte[] { 0xFF, 0xD8 }]);
 
@@ -159,7 +159,7 @@ public class InventoryCaptureServiceTests : IDisposable
     public async Task ProcessPhotoSearchAsync_SendsImagesToChatClientOnce()
     {
         var chatClient = new MockChatClient("""{"intent":"recipe","query":"pasta","ingredients":["pasta"],"confidence":0.8}""");
-        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var service = new InventoryCaptureService(chatClient, NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
 
         await service.ProcessPhotoSearchAsync([new byte[] { 0xFF, 0xD8 }, new byte[] { 0xFF, 0xD9 }]);
 
@@ -178,7 +178,7 @@ public class InventoryCaptureServiceTests : IDisposable
             {"ingredients":["eggs","cheddar"],"confidence":0.72}
             ```
             """;
-        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var service = new InventoryCaptureService(new StubChatClient(response), NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
 
         var (snapshot, busy) = await service.ProcessAsync([new byte[] { 0xFF, 0xD8 }]);
 
@@ -191,7 +191,7 @@ public class InventoryCaptureServiceTests : IDisposable
     [Fact]
     public async Task ProcessAsync_DeletesTempPhotosOnBusy()
     {
-        var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), NullLogger<InventoryCaptureService>.Instance, _tempRoot);
+        var busyService = new InventoryCaptureService(new StubChatClient(null, throwOnCall: true), NullLogger<InventoryCaptureService>.Instance, _tempRoot, promptRepository: new StubPromptRepository());
         string? capturedDir = null;
         busyService.OnTempDirCreated = dir => capturedDir = dir;
 
@@ -249,4 +249,9 @@ public class InventoryCaptureServiceTests : IDisposable
 
     private static string BuildVisionResponse() =>
         JsonSerializer.Serialize(new { ingredients = new[] { "chicken", "pasta", "tomatoes" }, confidence = 0.85 });
+
+    private class StubPromptRepository : IPromptRepository
+    {
+        public string GetPrompt(PromptType promptType) => "stub prompt";
+    }
 }

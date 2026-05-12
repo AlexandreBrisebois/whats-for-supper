@@ -29,7 +29,11 @@ public sealed class StubChatClient(string? response, bool throwOnCall = false) :
             }
             else if (text.Contains("query translator"))
             {
-                 finalResponse = """{"query":"","filters":{}}""";
+                finalResponse = """{"query":"","filters":{}}""";
+            }
+            else if (text.Contains("CLASSIFICATION PROTOCOL") || text.Contains("pantry/fridge/freezer"))
+            {
+                finalResponse = """{"intent":"inventory","query":"","ingredients":["pasta"],"confidence":0.85}""";
             }
         }
 

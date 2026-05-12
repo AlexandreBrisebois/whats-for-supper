@@ -893,7 +893,7 @@ public partial class RecipeSearchService(
                 var reasons = candidate.Reasons.ToList();
                 reasons.Add(new RecipeSearchReasonDto
                 {
-                    Source = "pantry-match",
+                    Source = "inventory-fit",
                     Label = $"Uses {matches.Count} ingredients from your camera photos"
                 });
 

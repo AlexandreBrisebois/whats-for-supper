@@ -29,17 +29,19 @@ public sealed class InventoryCaptureService : IDisposable
     private readonly IChatClient _chatClient;
     private readonly ILogger<InventoryCaptureService> _logger;
     private readonly IConfiguration? _configuration;
+    private readonly IPromptRepository? _promptRepository;
     private readonly string _tempBase;
     private readonly ConcurrentDictionary<Guid, (PantrySnapshot Snapshot, DateTimeOffset Expires)> _snapshots = new();
     private readonly Timer _sweepTimer;
 
     public Action<string>? OnTempDirCreated;
 
-    public InventoryCaptureService(IChatClient chatClient, ILogger<InventoryCaptureService> logger, string? tempBase = null, IConfiguration? configuration = null)
+    public InventoryCaptureService(IChatClient chatClient, ILogger<InventoryCaptureService> logger, string? tempBase = null, IConfiguration? configuration = null, IPromptRepository? promptRepository = null)
     {
         _chatClient = chatClient;
         _logger = logger;
         _configuration = configuration;
+        _promptRepository = promptRepository;
         _tempBase = tempBase ?? TempPhotosBaseDir;
         _sweepTimer = new Timer(_ => SweepExpired(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
@@ -163,15 +165,27 @@ public sealed class InventoryCaptureService : IDisposable
         "{\"ingredients\": [\"item1\", \"item2\"], \"confidence\": 0.85}. " +
         "Only include clearly visible food items. Respond with valid JSON only.";
 
-    private static string BuildPhotoSearchVisionPrompt(int photoCount) =>
-        $"You are analyzing {photoCount} food-related photo(s) for a recipe library search. " +
-        "Classify the photos as exactly one intent: " +
-        "\"recipe\" when the images show a recipe card, handwritten recipe, typed recipe, cookbook page, meal kit card, or recipe screenshot; " +
-        "\"inventory\" when the images show fridge, pantry, freezer, counter, table, or loose food items. " +
-        "For recipe intent, extract the visible recipe title/name and the most useful visible ingredients or dish words for matching an existing library recipe. " +
-        "For inventory intent, list only clearly visible food items. Do not invent hidden items. " +
-        "Respond with valid JSON only in this exact shape: " +
-        "{\"intent\":\"recipe\",\"query\":\"recipe title and key ingredients\",\"ingredients\":[\"item1\"],\"confidence\":0.85}.";
+    private string BuildPhotoSearchVisionPrompt(int photoCount)
+    {
+        var recipeStrategy = _promptRepository?.GetPrompt(PromptType.RecipeExtraction) ?? "Extract recipe name and ingredients.";
+        var inventoryStrategy = _promptRepository?.GetPrompt(PromptType.InventoryExtraction) ?? "Identify all food items.";
+
+        return $"You are analyzing {photoCount} food-related photo(s) for a recipe library search.\n\n" +
+               "CLASSIFICATION PROTOCOL:\n" +
+               "1. Classify the photos as exactly one intent: \"recipe\" or \"inventory\".\n" +
+               "   - \"recipe\": images showing a recipe card, handwritten recipe, cookbook page, meal kit card, or recipe screenshot.\n" +
+               "   - \"inventory\": images showing fridge, pantry, freezer, counter, table, or loose food items.\n\n" +
+               "STRATEGY A: RECIPE INTENT\n" +
+               "If intent is 'recipe', apply high-precision extraction. You MUST extract the recipe title/name for library verification.\n" +
+               $"Rules:\n{recipeStrategy}\n\n" +
+               "STRATEGY B: INVENTORY INTENT\n" +
+               "If intent is 'inventory', identify all visible food items and ingredients.\n" +
+               $"Rules:\n{inventoryStrategy}\n\n" +
+               "OUTPUT RULES:\n" +
+               "Respond with valid JSON only in this exact shape:\n" +
+               "{\"intent\":\"recipe\",\"query\":\"Extracted Recipe Title\",\"ingredients\":[\"item1\"],\"confidence\":0.85}\n\n" +
+               "IMPORTANT: For 'recipe' intent, the 'query' field MUST contain the primary recipe name.";
+    }
 
     private ChatClientAgentRunOptions GetChatOptions()
     {

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
@@ -318,6 +319,49 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.True(appliedFilters.GetProperty("quickOnly").GetBoolean());
         Assert.False(appliedFilters.GetProperty("notCookedInLongTime").GetBoolean());
         Assert.True(appliedFilters.GetProperty("discoverableOnly").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Search_WithPantrySnapshot_Emits_InventoryFit_Reason()
+    {
+        await SeedRecipeAsync(new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Tomato Pasta",
+            Description = "Pantry dinner",
+            Ingredients = JsonSerializer.Serialize(new[] { "tomatoes", "pasta", "olive oil" }),
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+            ImageCount = 1
+        });
+
+        using var photoContent = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xD9]);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        photoContent.Add(fileContent, "files", "pantry.jpg");
+
+        var photoResponse = await _client.PostAsync("/api/photo-search", photoContent);
+
+        Assert.Equal(HttpStatusCode.OK, photoResponse.StatusCode);
+
+        using var photoDocument = await ReadDataAsync(photoResponse);
+        var pantrySnapshotId = photoDocument.RootElement.GetProperty("pantrySnapshotId").GetGuid();
+
+        var response = await PostSearchAsync(new
+        {
+            query = "pasta",
+            pantrySnapshotId
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        var topPick = document.RootElement.GetProperty("topPick");
+
+        Assert.Contains(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "inventory-fit" &&
+            reason.GetProperty("label").GetString() == "Uses 1 ingredients from your camera photos");
     }
 
     [Fact]
