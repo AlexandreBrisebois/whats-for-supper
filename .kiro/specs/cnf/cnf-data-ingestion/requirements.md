@@ -73,12 +73,12 @@ This spec seeds a local `cnf_foods` table from the Canadian Nutrient File (CNF) 
 
 #### Acceptance Criteria
 
-1. The implementation SHALL define provider-facing interfaces for canonical food ingestion, nutrient lookup, localized alias expansion, and food-guide group mapping.
-2. The first concrete provider SHALL be `CanadaCnfFoodDataProvider` (or equivalent local naming) and SHALL own CNF CSV parsing, CNF nutrient IDs, and Canada Food Guide group mapping.
-3. `NutrientLookup`, bilingual search expansion, and recipe categorization SHALL depend on provider interfaces, not directly on CNF ingestion implementation details.
+1. The implementation SHALL define provider-facing interfaces for application-consumer capabilities: nutrient lookup, localized alias expansion, food-guide group mapping, and a provider-owned ingestion entrypoint for operator seeding. This spec SHALL NOT genericize the first provider's database schema, table names, or operator documentation into provider-neutral infrastructure.
+2. The first concrete provider SHALL be `CanadaCnfFoodDataProvider` (or equivalent local naming) and SHALL own CNF CSV parsing, CNF nutrient IDs, Canada Food Guide group mapping, and the CNF-specific persistence assumptions used by this first slice.
+3. `NutrientLookup`, bilingual search expansion, and recipe categorization SHALL depend on provider interfaces, not directly on CNF ingestion implementation details or CNF-specific parser classes.
 4. The active provider SHALL be selected through application configuration/settings. The default SHALL be the Canadian CNF provider.
 5. If an unsupported provider key is configured, the app SHALL fail fast at startup with a clear error rather than silently falling back to a different national food guide.
-6. Future provider implementations SHALL be able to supply different language pairs, food-guide groups, nutrient source identifiers, and source refresh mechanisms while preserving the same application-level lookup/search/categorization contracts.
+6. Future provider implementations SHALL be able to supply different language pairs, food-guide groups, nutrient source identifiers, and source refresh mechanisms while preserving the same application-level lookup/search/categorization contracts. They MAY introduce different provider-owned persistence internals when a second provider actually exists.
 7. Provider strategy selection SHALL not require OpenAPI or PWA contract changes for this spec.
 
 ---
@@ -98,6 +98,11 @@ This spec seeds a local `cnf_foods` table from the Canadian Nutrient File (CNF) 
 7. THE service SHALL never be called from a user-facing request path. It is called only from background workflow processors.
 8. THE Postgres-only similarity operation SHALL be isolated behind a small provider seam, matching the existing vector-search pattern: EF InMemory tests use a fake/mock similarity search, while production uses the real parameterized Postgres raw SQL path for the active provider.
 9. THE real `pg_trgm` path SHALL be verified only by a narrow Postgres compatibility test against an isolated disposable database using the same `pgvector` image family as the deployed stack. It SHALL NOT connect to the deployed application database.
+10. Operators SHALL have a supported non-DB-surgery path to inspect cached CNF matches for a normalized ingredient key, including the current `cnf_food_id` and matched CNF food names.
+11. Operators SHALL have a supported path to clear the cached `cnf_food_id` for one `normalized_key`, so the next background lookup can re-run similarity search.
+12. Operators SHALL have a supported path to force-set or replace the `cnf_food_id` for one `normalized_key` when a human confirms the correct CNF food.
+13. Clear and override actions SHALL update audit metadata (`updated_at` at minimum) and emit structured logs naming the normalized key, previous `cnf_food_id`, new `cnf_food_id`, and action type (`clear` or `override`).
+14. The correction path SHALL remain operator-facing only for this slice. It SHALL NOT add OpenAPI or PWA user-facing surfaces.
 
 ---
 
@@ -125,12 +130,13 @@ This spec seeds a local `cnf_foods` table from the Canadian Nutrient File (CNF) 
 
 #### Acceptance Criteria
 
-1. The app SHALL expose settings for health guidance enablement. At minimum the setting SHALL control whether health recommendations/steering are shown or used in user-facing ranking.
-2. When health guidance is disabled, the app SHALL suppress user-facing health recommendation copy, family-health warnings, nutrition-aware search filters/boosts, dietitian-style steering, and planner nudges derived from dietary profile data.
+1. The app SHALL expose a family-wide setting for health guidance enablement. At minimum the setting SHALL control whether derived health recommendations/steering are shown or used in user-facing ranking.
+2. When health guidance is disabled, the app SHALL suppress user-facing health recommendation copy, nutrition-aware search filters/boosts, dietitian-style steering, and planner nudges derived from dietary profile data.
 3. When health guidance is disabled, core recipe capture, recipe search, meal planning, grocery list generation, and recipe categorization workflow execution SHALL continue to work.
 4. When health guidance is enabled, provider-backed nutrition and food-guide group data SHALL be available to categorization, search, planning, and future family-health features according to their specs.
-5. The setting SHALL default to enabled for existing behavior unless a migration/product decision explicitly changes the default.
-6. Tests SHALL cover both enabled and disabled modes for the first user-facing consumer added by this spec.
+5. Explicit family-health allergy/intolerance review reminders entered by the household SHALL remain outside this setting's gate unless a future spec introduces a separate reminder-specific opt-out. Disabling health guidance does not imply suppressing "check ingredients" reminders.
+6. The setting SHALL default to enabled for existing behavior unless a migration/product decision explicitly changes the default.
+7. Tests SHALL cover both enabled and disabled modes for the first user-facing consumer added by this spec.
 
 ---
 
@@ -180,4 +186,5 @@ This spec seeds a local `cnf_foods` table from the Canadian Nutrient File (CNF) 
 - **`recipeYield` parsing**: `recipeYield` is a string like `"2 portions"` or `"4 servings"` or simply `"4"`. The parser must extract the leading integer. When it fails, default to 2 portions — document this assumption.
 - **Portion vs 100g**: CNF values are per 100g. Recipe `supply[]` quantities are in mixed units (grams, ml, units). Converting "2 Chicken Breasts" to grams requires a unit weight table. For Phase 1, use a static weight table for the most common unitless ingredients (chicken breast ≈ 150g, egg ≈ 50g, apple ≈ 180g). Unknown units default to 100g with a logged warning.
 - **Trigram false positives**: `similarity >= 0.4` may match "parsley" to "parsnip". The cache write is permanent — a wrong match stays until manually corrected or the cache is cleared. Operators should be able to inspect `ingredient_categories.cnf_food_id` values. The threshold of 0.4 was chosen conservatively; lower values increase false positives.
+- **Sticky cache correction**: A wrong `cnf_food_id` affects nutrition lookup, pantry/search identity, and grocery reconciliation until corrected. This spec now requires a supported operator workflow to inspect, clear, and override cached mappings without manual SQL edits.
 - **`pg_trgm` on pgvector image**: `pgvector/pgvector:pg18` ships `pg_trgm` as a contrib module. It is available but not enabled by default. The `CREATE EXTENSION IF NOT EXISTS pg_trgm` line in `schema.sql` is sufficient.

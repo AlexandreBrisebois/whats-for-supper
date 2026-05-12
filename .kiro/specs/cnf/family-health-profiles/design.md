@@ -55,8 +55,8 @@ flowchart TD
 | `family_members` table | `id, name, created_at, updated_at` | `health_profile jsonb DEFAULT NULL` | Schema change — psqldef handles it |
 | `FamilyMemberDto` | `id, name, createdAt, updatedAt` | `healthProfile: HealthProfileDto?` | Nullable addition — existing clients receive null, no break |
 | `FamilyController` | GET / POST / PUT / DELETE | Add `PUT /{id}/health-profile` and `DELETE /{id}/health-profile` | New routes — no existing route conflict |
-| `ScheduleRecipeDto` | Positional record with 7 fields | Add `warnings: List<RecipeWarningDto>?` | Positional record — new param must go at the end |
-| `RecipeDto` | Class with many nullable fields | Add `warnings: List<RecipeWarningDto>?` | Class (not record) — safe to add nullable property |
+| `ScheduleRecipeDto` | Positional record with 7 fields | Add `warnings: List<RecipeWarningDto>` | Positional record — new param must go at the end |
+| `RecipeDto` | Class with many nullable fields | Add `warnings: List<RecipeWarningDto>` | Class (not record) — safe to add property; empty array means evaluated with no warnings |
 | `DiscoveryService.GetRecipesForDiscoveryAsync` | Returns `List<Recipe>` mapped to DTOs | Must load member health_profile and compute warnings | Adds DB load; must not change discovery ordering |
 | `ScheduleService.GetScheduleAsync` | Builds `ScheduleDays` | Must load all health_profiles and compute warnings per slot | Adds DB load per schedule request |
 | `ManagementService.BackupAsync` | Writes family members to backup | Extend to include `health_profile` | Must not break existing backup shape |
@@ -185,20 +185,22 @@ Add `Warnings` as the last parameter:
 
 **Do not reorder any existing parameters.**
 
+Runtime contract: for any non-null `ScheduleRecipeDto`, `Warnings` should be populated with an array. Use `[]` when the assigned recipe was evaluated and no warnings fired. Reserve `null` for the outer `ScheduleDayDto.Recipe` when the slot is empty.
+
 Before adding, run:
 ```bash
 grep -rn "new ScheduleRecipeDto(" api/src --include="*.cs"
 ```
 and confirm all call sites use named arguments or the new param position is safe.
 
-#### `RecipeDto.cs` — add one nullable property
+#### `RecipeDto.cs` — add one property
 
 ```csharp
 [JsonPropertyName("warnings")]
-public List<RecipeWarningDto>? Warnings { get; set; } = null;
+public List<RecipeWarningDto> Warnings { get; set; } = [];
 ```
 
-`RecipeDto` is a class (not a record), so this is a safe additive change.
+`RecipeDto` is a class (not a record), so this is a safe additive change. The response contract should always serialize `warnings` as an array; use `[]` when the recipe was evaluated and no warnings fired.
 
 ---
 
@@ -376,7 +378,8 @@ The recipe list is already loaded — this adds deserialization and rule evaluat
    c. Aggregate all warnings across all members.
    d. Attach to ScheduleRecipeDto.Warnings.
 3. If no family members have health_profiles, skip steps 1–2d entirely.
-4. Warnings are informational only. They name the affected member so the user can decide whether the warning matters for that meal.
+4. Warnings are informational only. They name the affected member so the household can plan with awareness and decide whether the warning matters for that meal.
+5. Do not add attendance fields, participant lists, or per-slot member scoping in this feature. `GET /api/schedule` computes warnings for all family members with health profiles because the planner contract has no attendance model.
 ```
 
 Load family members with health profiles once (not per slot). Do not add a DB query per slot.
@@ -442,14 +445,13 @@ Add nullable `healthProfile`:
 Add `warnings` array:
 ```yaml
         warnings:
-          type: [array, 'null']
           items: { $ref: '#/components/schemas/RecipeWarningDto' }
-          nullable: true
+          type: array
 ```
 
 ### Updated `RecipeDto` schema
 
-Add `warnings` array (same shape as above).
+Add `warnings` array (same non-null shape as above). For both DTOs, `warnings` is present as `[]` when the recipe has been evaluated and no warnings fired. Empty planner slots continue to use `recipe: null`.
 
 ### New routes
 

@@ -89,7 +89,7 @@ Success criteria:
 4. The app evaluates recipe dietary profile and nutrition data.
 5. Recipe card or planner slot shows a non-blocking warning indicator.
 6. User taps the indicator to see the reason and affected family member.
-7. User may keep the meal planned if the affected family member is not eating that meal or if the household decides the recipe is acceptable.
+7. User may keep the meal planned if the household decides the recipe is acceptable; warnings are there to support planning awareness, not to block or auto-decide.
 
 Success criteria:
 - Warning is visible but not blocking.
@@ -154,4 +154,4 @@ Success criteria:
 - Matching is deterministic.
 - Warning level follows `family-health-profiles`.
 - The app does not claim safety from absence of warning.
-- The app does not prevent planning because a family member with the allergy may not be present for that meal.
+- The app does not prevent planning; reminders support household awareness and do not depend on a recorded meal-attendance model.

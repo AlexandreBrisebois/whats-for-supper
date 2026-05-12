@@ -4,7 +4,7 @@
 
 The app plans meals for a whole family. Family members may have pre-existing health conditions — high cholesterol, hypertension, diabetes, food allergies, intolerances, or dietary preferences — that make certain recipes worth a second look. Today the app has no awareness of this.
 
-This feature adds a health profile to each family member and uses it to decorate recipe cards and planner slots with calm warnings and review reminders. It does not block the user from planning any meal — it informs without being paternalistic. A meal may still be planned when a warning exists, especially when the affected family member is not eating that meal. The actual dietary classification of recipes (`dietary_profile`, `proteinSource`) was built in the `recipe-categorization` spec and is one data source this feature reads.
+This feature adds a health profile to each family member and uses it to decorate recipe cards and planner slots with calm warnings and review reminders. It does not block the user from planning any meal — it informs without being paternalistic. A meal may still be planned when a warning exists; warnings help the household plan with awareness, and the household decides whether a warning matters for that meal. The actual dietary classification of recipes (`dietary_profile`, `proteinSource`) was built in the `recipe-categorization` spec and is one data source this feature reads.
 
 This is a **display and warning** feature. It does not call any LLM. It does not modify recipe data. It does not change plan assignment logic. All health-profile logic is deterministic rule matching.
 
@@ -48,7 +48,7 @@ This is a **display and warning** feature. It does not call any LLM. It does not
    | Condition | Caution signals on recipe |
    |---|---|
    | `HighCholesterol` | Warns when `proteinSource` is `RedMeat`; warns when `DairyAndEggs` is a primary grocery section |
-   | `Hypertension` | Warns when recipe `sodiumContent` (from `raw_metadata.nutrition`) exceeds 600 mg per portion |
+   | `Hypertension` | Warns when recipe sodium exceeds `FopThresholds.SodiumMg` (345 mg per portion), using CNF-derived estimated nutrition when available and `raw_metadata.nutrition` as fallback |
    | `Diabetes` | Warns when recipe `sugarContent` exceeds 15 g per portion OR `carbohydrateContent` exceeds 60 g per portion |
    | `HeartDisease` | Warns when `proteinSource` is `RedMeat`; same as `HighCholesterol` |
 5. THE supported `allergies`, `intolerances`, and `preferences` SHALL be free-text strings. The system does NOT validate them against a closed set — the user enters what is relevant. Ingredient-level allergy/intolerance matching SHALL use provider identity, localized names, and deterministic synonym tables before allergy reminders are shown in recipe cards or planner slots.
@@ -76,7 +76,7 @@ This is a **display and warning** feature. It does not call any LLM. It does not
 
 #### Acceptance Criteria
 
-1. A `ConditionRuleEngine` service SHALL accept a `HealthProfile` and a `RecipeDietaryProfile` (plus optional `nutrition` data from `raw_metadata`) and return a list of `RecipeWarning` objects.
+1. A `ConditionRuleEngine` service SHALL accept a `HealthProfile` and a `RecipeDietaryProfile` (plus optional per-portion nutrition data sourced from CNF-derived estimates when available, falling back to `raw_metadata.nutrition`) and return a list of `RecipeWarning` objects.
 2. THE `RecipeWarning` shape SHALL be:
    ```
    {
@@ -92,7 +92,8 @@ This is a **display and warning** feature. It does not call any LLM. It does not
 5. PREFERENCE mismatches SHALL have `level: "info"`.
 6. WHEN `dietary_profile` is null for a recipe, the engine SHALL return no warnings (cannot warn on unclassified data).
 7. Warnings SHALL be member-specific and non-blocking. The app SHALL NOT prevent planning, voting, grocery generation, or cooking flow because a warning exists.
-8. THE engine SHALL be a pure function — no DB access, no LLM calls.
+8. Explicit allergy/intolerance review reminders SHALL remain visible even when the family-wide `health_guidance_enabled` setting is disabled. That setting gates derived wellness steering, not household-entered "check ingredients" reminders.
+9. THE engine SHALL be a pure function — no DB access, no LLM calls.
 
 ---
 
@@ -118,9 +119,11 @@ This is a **display and warning** feature. It does not call any LLM. It does not
 
 1. `GET /api/schedule` SHALL return `warnings: RecipeWarning[]` on each `ScheduleRecipeDto` that has a recipe assigned, computed for all family members who have a health profile.
 2. WHEN multiple family members have conflicting profiles, all their warnings SHALL be included.
-3. THE PWA planner day card SHALL display a caution indicator when the slot's recipe has any `hard` or `soft` warnings. For allergy warnings, the indicator/detail copy SHALL use "possible match" / "check ingredients" language, not an allergy-safe or unsafe assertion.
-4. THE caution indicator SHALL NOT block any action — it is informational only. Users may keep the meal planned if the affected member is not present or if they decide the recipe is acceptable.
-5. WHEN the recipe in a slot has no warnings for any family member, no indicator is shown.
+3. WHEN an assigned recipe has no warnings for any family member, `warnings` SHALL be an empty array (not null).
+4. THE PWA planner day card SHALL display a caution indicator when the slot's recipe has any `hard` or `soft` warnings. For allergy warnings, the indicator/detail copy SHALL use "possible match" / "check ingredients" language, not an allergy-safe or unsafe assertion.
+5. THE caution indicator SHALL NOT block any action — it is informational only. Users may keep the meal planned if they decide the recipe is acceptable for their household.
+6. WHEN the recipe in a slot has no warnings for any family member, no indicator is shown.
+7. WHEN a planner slot has no assigned recipe, the slot SHALL continue to use `recipe = null`; the contract SHALL NOT use `warnings = null` on a non-null `ScheduleRecipeDto` to represent "no recipe".
 
 ---
 
@@ -139,6 +142,12 @@ This is a **display and warning** feature. It does not call any LLM. It does not
 ## Risks and Questions
 
 - **Allergy reminder confidence**: Ingredient-level matching improves recall, but the app must never claim a recipe is allergy-safe. Allergy copy should prompt review, e.g. `"Check ingredients for Shellfish: possible match in shrimp."`
-- **Nutrition data availability**: Hypertension and Diabetes rules read `sodiumContent` and `sugarContent` from `raw_metadata.nutrition`. Many recipes have null nutrition fields (see Parmentier example in recipe-categorization spec). When nutrition is null, those rules cannot fire — the engine silently skips them.
+- **Nutrition data availability and confidence**: Hypertension and Diabetes rules read per-portion nutrition values produced by the categorization pipeline. CNF-derived nutrition is an estimate from ingredient matches, units, and yield; when CNF has no usable matches, the pipeline falls back to `raw_metadata.nutrition` if present. When no nutrition values are available, those rules cannot fire — the engine silently skips them. User-facing copy should treat nutrition warnings as cautions, not clinical precision.
 - **`ScheduleRecipeDto` shape change**: Adding `warnings` to `ScheduleRecipeDto` touches the existing schedule contract. See seam inventory in design.md.
 - **Performance**: Computing warnings for all members on every `GET /api/schedule` requires loading all `health_profile` values and all `dietary_profile` values. With a typical family of 2–6 and 7 slots, this is ~42 rule evaluations — negligible. No caching needed.
+- **Attendance scope**: The planner does not model per-meal attendance. Schedule warnings are therefore computed for all family members with health profiles and shown as household planning awareness, not suppressed by a hidden attendance rule.
+
+## Notes / Decisions
+
+- **2026-05-11**: `health_guidance_enabled` does not suppress explicit family-entered allergy/intolerance review reminders. It only gates derived wellness steering and recommendation behavior owned by other specs.
+- **2026-05-11**: Do not add meal-attendance tracking in this slice. Planner warnings remain member-specific and non-blocking, but schedule evaluation is not scoped by a recorded attendance model.

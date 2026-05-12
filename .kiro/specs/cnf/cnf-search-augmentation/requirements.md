@@ -2,7 +2,7 @@
 
 ## Introduction
 
-CNF ingestion gives the app the first implementation of a pluggable canonical food taxonomy: English and French food names, a stable `food_id`, Canada Food Guide group mapping, and per-100g nutrient values. The first CNF slice seeds this data, links `ingredient_categories` to `cnf_food_id`, improves FOP flags, adds bounded bilingual query expansion, and establishes provider strategy seams so future US, Swedish, or other food guide providers can be swapped in.
+CNF ingestion gives the app the first implementation of a pluggable canonical food taxonomy: English and French food names, a stable `food_id`, Canada Food Guide group mapping, and per-100g nutrient values. The first CNF slice seeds this data, links `ingredient_categories` to `cnf_food_id`, improves FOP flags, creates the shared alias expansion seam with bounded bilingual query expansion, and establishes provider strategy seams so future US, Swedish, or other food guide providers can be swapped in.
 
 This spec is the next search-focused slice. It uses CNF identity to improve recipe search and grocery-list cleanup without translating recipe content:
 
@@ -10,7 +10,7 @@ This spec is the next search-focused slice. It uses CNF identity to improve reci
 - pantry-photo matching by canonical `cnf_food_id` instead of exact strings,
 - explicit search reasons for ingredient alias matches,
 - nutrition-aware search filters once CNF-backed FOP flags exist,
-- grocery-list reconciliation under the user's locale when English and French ingredient rows map to the same canonical food.
+- grocery-list reconciliation under the configured system default locale when English and French ingredient rows map to the same canonical food.
 
 This spec must not weaken the archived grocery invariant that raw recipe ingredient strings remain recoverable and recipe content stays in its original language. Provider identity is an additional semantic bridge used for cleaned-up grocery display, not an LLM translation step and not a rewrite of recipe ingredients.
 
@@ -35,8 +35,8 @@ This spec must not weaken the archived grocery invariant that raw recipe ingredi
 - **Health nudge**: Any user-facing health-oriented reason, warning, filter explanation, planner nudge, or search result annotation that encourages or cautions around a food choice.
 - **Health nudge source**: A deterministic explanation category for why a health nudge exists. Initial values: `source-nutrition`, `estimated-from-ingredients`, `profile-rule`, `food-guide-group`, `unknown`.
 - **Health nudge confidence**: A deterministic confidence category for a health nudge. Initial values: `high`, `medium`, `low`. Confidence is about data quality, not moral judgement.
-- **Locale grocery reconciliation**: Grocery recompute behavior that groups equivalent ingredient rows by shared provider food identity and chooses the display label in the user's active locale, e.g. English recipes with `"chicken"` and French recipes with `"poulet"` produce one grocery line labelled `"chicken"` for English locale or `"poulet"` for French locale.
-- **Active grocery locale**: The language used to display cleaned-up grocery ingredient names. It SHALL resolve from the existing default UI language configuration. `NONE` means no grocery-specific override and therefore follows the default UI language. It is independent from the recipe import language setting.
+- **Locale grocery reconciliation**: Grocery recompute behavior that groups equivalent ingredient rows by shared provider food identity and chooses the display label from the configured system default locale, e.g. English recipes with `"chicken"` and French recipes with `"poulet"` produce one grocery line labelled `"chicken"` when the system default is English or `"poulet"` when the system default is French.
+- **Active grocery locale**: The language used to display cleaned-up grocery ingredient names. It SHALL resolve from the existing default UI language configuration on the server. It does not follow per-browser localStorage overrides or selected-member `preferredLanguage`. `NONE` means no grocery-specific override and therefore follows the default UI language. It is independent from the recipe import language setting.
 - **Search reason source**: `RecipeSearchReasonDto.source`, governed by `specs/openapi.yaml`.
 
 ---
@@ -50,8 +50,8 @@ This spec must not weaken the archived grocery invariant that raw recipe ingredi
 #### Acceptance Criteria
 
 1. `RecipeSearchReasonDto.source` in `specs/openapi.yaml` SHALL include every source the API can emit and SHALL reject undocumented sources in tests.
-2. The current pantry-photo boost reason SHALL be reconciled: either the implementation emits the existing contract value `inventory-fit`, or the OpenAPI contract is intentionally changed to include `pantry-match`. The chosen value SHALL be used consistently in code, OpenAPI, mock data, and tests.
-3. `RecipeSearchFiltersDto` SHALL be reconciled with OpenAPI. If `healthyOnly` remains supported by the API DTO, it SHALL be added to `specs/openapi.yaml`; otherwise it SHALL be removed from the DTO and service filter path.
+2. Pantry-photo search reasons SHALL use the existing contract value `inventory-fit` consistently in code, OpenAPI, mock data, and tests. Do not introduce a second pantry-specific reason source.
+3. `RecipeSearchFiltersDto` SHALL be reconciled with OpenAPI through an implementation-validated cleanup. If `healthyOnly` remains supported by the live API DTO, the formal contract must be updated in the same bounded slice that satisfies build validation; otherwise `healthyOnly` SHALL be removed from the DTO and service filter path.
 4. Contract drift checks SHALL pass before any new reason source or nutrition-aware filter is added.
 
 ---
@@ -149,7 +149,7 @@ This spec must not weaken the archived grocery invariant that raw recipe ingredi
    - English locale uses the provider English/canonical label when available.
    - French locale uses the provider French/localized label when available.
    - Missing localized label falls back to the best original ingredient display name.
-3. The active grocery locale SHALL follow the current UI locale configuration convention. This spec SHALL NOT introduce a new grocery-specific environment variable.
+3. The active grocery locale SHALL follow the configured system default UI language on the server. It SHALL NOT follow per-browser localStorage overrides or selected-member `preferredLanguage`. This spec SHALL NOT introduce a new grocery-specific environment variable.
 4. If a grocery display locale override is implemented later, it SHALL use the existing convention where `NONE` means "not set / follow the default UI language".
 5. The resolved grocery locale SHALL support:
    - `EN` / `en`
@@ -174,13 +174,13 @@ This spec must not weaken the archived grocery invariant that raw recipe ingredi
 #### Acceptance Criteria
 
 1. Any user-facing health nudge introduced or modified by this spec SHALL include a short deterministic reason. Examples: `"Lower sodium option"`, `"Estimated high sodium from ingredients"`, `"Vegetable-forward recipe"`.
-2. Any health nudge introduced or modified by this spec SHALL carry a source category:
+2. Any health nudge introduced or modified by this spec SHALL carry a source category in the shared explainability model:
    - `source-nutrition`: source recipe nutrition data supplied the signal.
    - `estimated-from-ingredients`: CNF/provider ingredient estimates supplied the signal.
    - `profile-rule`: a `family-health-profiles` rule supplied the signal.
    - `food-guide-group`: provider food-guide grouping supplied the signal.
    - `unknown`: only when the system cannot identify the source; this SHOULD be avoided for new behavior.
-3. Any health nudge introduced or modified by this spec SHALL carry a confidence category:
+3. Any health nudge introduced or modified by this spec SHALL carry a confidence category in the shared explainability model:
    - `high`: direct source nutrition or high-confidence provider match.
    - `medium`: provider estimate with partial ingredient coverage or approximate unit conversion.
    - `low`: sparse provider coverage, unknown units, or fallback assumptions.
@@ -191,8 +191,10 @@ This spec must not weaken the archived grocery invariant that raw recipe ingredi
 8. Health copy SHALL use conservative language such as `"Check ingredients for Shellfish: possible match in shrimp"` or omit allergy claims entirely. Search augmentation SHALL NOT block ranking, planning, or grocery behavior because an allergy reminder exists.
 9. When health guidance is disabled, health nudges, health reasons, and health confidence labels SHALL not be shown or used for ranking, while non-health search and grocery behavior continue.
 10. Detailed health justification SHALL not be shown inline by default. It SHALL live behind a compact information affordance such as an `i` icon, tooltip, sheet, or popover.
-11. The default visible nudge SHALL remain short enough to scan in a busy planning/search flow.
-12. Tests SHALL cover reason/source/confidence presence for nutrition-aware nudges, calm copy constraints for new labels, conservative allergy language, and information-affordance disclosure.
+11. This spec SHALL NOT add broad generic `source` / `confidence` fields to existing search result or search reason DTOs just to future-proof every health surface. Search keeps lightweight summary copy by default.
+12. If a search surface later needs structured over-the-wire explainability behind an information affordance, it SHALL add a dedicated surface-specific DTO or nested detail object contract-first rather than widening generic DTOs.
+13. The default visible nudge SHALL remain short enough to scan in a busy planning/search flow.
+14. Tests SHALL cover short deterministic reason presence for nutrition-aware nudges, calm copy constraints for new labels, conservative allergy language, and information-affordance disclosure where a detail surface is introduced.
 
 ---
 
@@ -223,7 +225,7 @@ This spec must not weaken the archived grocery invariant that raw recipe ingredi
 - **Pantry resolution latency**: Resolving many pantry ingredients via `pg_trgm` could add latency. Prefer cached `ingredient_categories.cnf_food_id`, batch where possible, and fall back cleanly.
 - **Grocery state keys**: Current grocery state is keyed by display name. Locale reconciliation can change display names, so recompute must explicitly preserve checked state from merged source display names.
 - **Section conflicts**: English and French aliases may have separate human grocery-section corrections. Manual corrections should win, but conflicting manual corrections need deterministic handling and logging.
-- **UI locale source**: The PWA currently lets users switch UI language client-side. Server-side grocery recompute cannot rely on per-browser localStorage. Grocery display locale must therefore follow the configured default UI language, not each viewer's transient client-side selection.
+- **UI locale source**: The PWA currently lets users switch UI language client-side and can also derive locale from the selected member's `preferredLanguage`. Server-side grocery recompute cannot rely on per-browser localStorage or per-viewer member selection. Grocery display locale must therefore follow the configured default UI language, not each viewer's transient client-side or member-specific selection.
 
 ---
 
@@ -232,4 +234,6 @@ This spec must not weaken the archived grocery invariant that raw recipe ingredi
 - **2026-05-11**: Created as a follow-up to `cnf-data-ingestion`. Initial CNF ingestion owns the canonical data and bilingual search bridge; this spec owns broader search behavior and contract changes.
 - **2026-05-11**: Added locale-aware grocery reconciliation. Recipe language remains locked; the grocery list can use provider bilingual names to show one cleaned-up locale-facing line without LLM translation.
 - **2026-05-11**: Grocery display locale follows the existing default UI language configuration. No new grocery-specific environment variable is introduced. `NONE` follows current convention and means no explicit override.
+- **2026-05-11**: Clarified that grocery locale follows the configured system default only. It does not follow browser `localStorage` locale switches or selected-member `preferredLanguage`.
 - **2026-05-11**: Health nudges must include deterministic reason/source/confidence and avoid allergy-safety claims. Family-health owns possible allergy/intolerance reminders.
+- **2026-05-12**: Resolved R10. Shared explainability metadata stays internal by default; structured over-the-wire explainability is added only through surface-specific DTOs when a concrete information-affordance surface needs it.

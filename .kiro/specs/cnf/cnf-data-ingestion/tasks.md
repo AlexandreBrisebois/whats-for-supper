@@ -224,7 +224,15 @@ Create `api/src/RecipeApi/Services/NutrientLookup.cs` and `api/src/RecipeApi/Ser
 
 Create `api/src/RecipeApi/Utils/UnitWeightTable.cs` — shape in design.md.
 
-**Definition of done:** EF InMemory tests pass without Postgres; Postgres compatibility tests pass only against an isolated disposable pgvector database; all `UnitWeightTable` tests pass. `task review` passes.
+**Step 3 — Operator correction seam:**
+
+Create a narrow operator-facing correction path for sticky CNF matches. It may live in `ManagementService`, a dedicated CNF management service, or Taskfile-backed operator command, but it must support:
+1. Inspect one `normalized_key` and show current `cnf_food_id` plus joined CNF food names
+2. Clear one `normalized_key` so `cnf_food_id = null`
+3. Override one `normalized_key` with a confirmed `cnf_food_id` after validating the food exists
+4. Structured logging for clear/override actions with previous/new values
+
+**Definition of done:** EF InMemory tests pass without Postgres; Postgres compatibility tests pass only against an isolated disposable pgvector database; all `UnitWeightTable` tests pass; operator correction tests cover inspect/clear/override behavior and logging. `task review` passes.
 
 - [ ] Task 5 complete
 
@@ -289,8 +297,12 @@ Add to `api/src/RecipeApi.Tests/Services/Processors/ClassifyDietaryProfileProces
 6. **Mixed CNF coverage:** 3 of 5 ingredients match CNF, 2 return null → partial sum used, no exception
 7. **Provider food-guide group improves category:** recipe ingredients dominated by CNF/Canada Food Guide `VegetablesAndFruits` strengthen vegetable/fruit category prediction even when raw metadata is sparse.
 8. **Provider nutrients improve `IsHealthyChoice`:** recipe with high sodium/sugar/saturated fat flags is not marked healthy; recipe with balanced provider groups and no FOP flags may be marked healthy according to existing categorization rules.
-9. **Health guidance disabled:** processor may compute/store neutral metadata, but user-facing health recommendation/steering output is suppressed by the health guidance setting.
-10. **`NutrientLookup` not available (unregistered):** constructor injection — if `NutrientLookup` is not registered, the processor should fail fast at startup, not at runtime (verify DI registration in integration test)
+9. **Shared estimation metadata — high confidence:** complete provider coverage with no 100g fallback and no default yield produces internal `NutritionEstimateMetadata` with `source = estimated-from-ingredients`, `confidence = high`
+10. **Shared estimation metadata — medium confidence:** approximate unit conversion without 100g fallback or default yield produces `confidence = medium`
+11. **Shared estimation metadata — low confidence:** any 100g fallback, default yield, or sparse provider coverage produces `confidence = low`
+12. **Source nutrition metadata:** all CNF lookups null and `raw_metadata.nutrition` present produces `source = source-nutrition`, `confidence = high`
+13. **Health guidance disabled:** processor may compute/store neutral metadata, but user-facing health recommendation/steering output is suppressed by the health guidance setting.
+14. **`NutrientLookup` not available (unregistered):** constructor injection — if `NutrientLookup` is not registered, the processor should fail fast at startup, not at runtime (verify DI registration in integration test)
 
 **Step 2 — Implementation:**
 
@@ -302,35 +314,35 @@ Inject `NutrientLookup` and `UnitWeightTable` (or use static `UnitWeightTable`).
 
 Add `task data:cnf:reclassify` to the Taskfile — queries `recipes WHERE dietary_profile->>'fopFlags' IS NULL` and enqueues `ClassifyDietaryProfile` with `forceReclassify: true` for each.
 
-**Definition of done:** All 10 new tests pass. All existing `ClassifyDietaryProfileProcessorTests` still pass. Recipe categorization now consumes provider nutrient/group data through the strategy seam. `task review` passes.
+**Definition of done:** All 14 new tests pass. All existing `ClassifyDietaryProfileProcessorTests` still pass. Recipe categorization now consumes provider nutrient/group data through the strategy seam and emits shared internal estimation metadata for downstream health consumers. `task review` passes.
 
 - [ ] Task 7 complete
 
 ---
 
-## Task 8 — Bilingual search augmentation from provider aliases
+## Task 8 — Initial alias search augmentation from provider bilingual aliases
 
-**What:** Extend recipe search so French ingredient queries can find English recipe text, and English ingredient queries can find French recipe text, using the active provider's localized food-name mapping. Canada CNF supplies English/French.
+**What:** Extend recipe search so French ingredient queries can find English recipe text, and English ingredient queries can find French recipe text, using the shared `ICnfIngredientAliasExpander` seam. This task creates the first implementation of that seam with only active-provider bilingual food-name aliases enabled. Canada CNF supplies English/French.
 
 **Dependency:** Tasks 1–4 must be complete. Task 5's Postgres raw-SQL seam pattern should be followed, but `NutrientLookup` itself is not required by this task.
 
 **Read before starting:**
 - `api/src/RecipeApi/Services/RecipeSearchService.cs` — find `SearchAsync`, `GetLexicalCandidatesAsync`, and `BuildRankedCandidates`
-- design.md § Modified: `RecipeSearchService` bilingual query expansion
+- design.md § Modified: `RecipeSearchService` alias expansion
 - `api/src/RecipeApi.Tests/Integration/RecipeSearchIntegrationTests.cs` — existing search integration coverage
 
 **Step 1 — Write tests first:**
 
 Add to `api/src/RecipeApi.Tests/Integration/RecipeSearchIntegrationTests.cs`:
 
-1. **French → English:** fake `ICnfBilingualQueryExpander` expands `"poulet"` to `"chicken"`; query `"poulet"` returns a recipe whose searchable text contains `"chicken"` but not `"poulet"`
-2. **English → French:** fake expander expands `"chicken"` to `"poulet"`; query `"chicken"` returns a recipe whose searchable text contains `"poulet"` but not `"chicken"`
+1. **French → English:** fake `ICnfIngredientAliasExpander` expands `"poulet"` to `"chicken"` with source `cnf-bilingual`; query `"poulet"` returns a recipe whose searchable text contains `"chicken"` but not `"poulet"`
+2. **English → French:** fake expander expands `"chicken"` to `"poulet"` with source `cnf-bilingual`; query `"chicken"` returns a recipe whose searchable text contains `"poulet"` but not `"chicken"`
 3. **Original query preserved:** response `query`/request echo behavior and applied filters remain unchanged; no OpenAPI DTO fields are added
 4. **No expansion:** fake expander returns empty list; existing lexical-only result ordering remains unchanged
 5. **Bounded expansion:** fake expander returns more than 5 terms; search uses at most 5 expansion terms and deduplicates case-insensitively
 6. **Expander failure:** fake expander throws; search logs/falls back to original query and still returns normal lexical results
 
-Create `api/src/RecipeApi.Tests/Integration/CnfBilingualQueryExpanderPostgresTests.cs`:
+Create `api/src/RecipeApi.Tests/Integration/CnfIngredientAliasExpanderPostgresTests.cs`:
 
 1. Uses an isolated disposable Postgres database from the same `pgvector` image family as the deployed stack; it must not connect to the deployed application database
 2. Seed `cnf_foods(food_id, food_name_en, food_name_fr)` with `("chicken", "poulet")`
@@ -341,18 +353,18 @@ Create `api/src/RecipeApi.Tests/Integration/CnfBilingualQueryExpanderPostgresTes
 
 **Step 2 — Implementation:**
 
-Create `api/src/RecipeApi/Services/CnfBilingualQueryExpander.cs` as the Canada provider implementation of localized alias expansion:
+Create `api/src/RecipeApi/Services/CnfIngredientAliasExpander.cs` as the shared search alias expansion seam:
 ```csharp
-public interface ICnfBilingualQueryExpander
+public interface ICnfIngredientAliasExpander
 {
-    Task<IReadOnlyList<string>> ExpandAsync(string query, CancellationToken ct);
+    Task<CnfAliasExpansion> ExpandAsync(string query, CancellationToken ct);
 }
 ```
 
-Create `api/src/RecipeApi/Services/PostgresCnfBilingualQueryExpander.cs` — shape in design.md. Register it through the active food data provider strategy as scoped in `Program.cs`.
+Create `api/src/RecipeApi/Services/PostgresCnfIngredientAliasExpander.cs` — shape in design.md. Register it through the active food data provider strategy as scoped in `Program.cs`. This initial implementation returns only bilingual provider aliases with source `cnf-bilingual`; static synonyms and `ingredient-alias-match` response reasons belong to `cnf-search-augmentation`.
 
 Modify `RecipeSearchService`:
-1. Inject optional `ICnfBilingualQueryExpander?`
+1. Inject optional `ICnfIngredientAliasExpander?`
 2. For non-empty text queries, call the expander before `GetLexicalCandidatesAsync`
 3. Build an expanded lexical query from original query + at most 5 equivalent terms
 4. Use the expanded lexical query only for candidate retrieval/ranking
@@ -390,6 +402,7 @@ Create `api/docs/CNF_INGESTION.md` with all content from requirements.md Require
 - Nutrient IDs extracted (307, 269, 606, 205) and what they are
 - CFG group mapping table (copy from `CnfIngestionService` source, with rationale column)
 - How to run `task data:cnf:seed` and `task data:cnf:reclassify`
+- How to inspect, clear, and override sticky `ingredient_categories.cnf_food_id` matches safely without manual SQL
 - How the provider strategy works and why `CanadaCNF` is the default
 - How `health_guidance_enabled` controls recommendations/steering without disabling core recipe features
 - How bilingual search expansion uses CNF English/French food names
@@ -407,8 +420,10 @@ Create `api/docs/CNF_INGESTION.md` with all content from requirements.md Require
 - **2026-05-06**: Spec created. CNF pulled into Phase 1 because `raw_metadata.nutrition` is only present when the source URL publishes structured schema.org markup — a minority of recipes. Without CNF, `FopFlags` is null for most recipes and the `ConditionRuleEngine` nutrition-based health warnings (Hypertension, HighCholesterol, Diabetes) are silent for most of the library. CNF resolves this without LLM or external runtime dependency.
 - **2026-05-06**: `pg_trgm` confirmed available on `pgvector/pgvector:pg18` image. Enabled via `CREATE EXTENSION IF NOT EXISTS pg_trgm`.
 - **2026-05-06**: Similarity threshold set at 0.4 conservatively. Lower values risk false positives (e.g. "parsley" → "parsnip"). Operator can inspect `ingredient_categories.cnf_food_id` to audit matches.
+- **2026-05-11**: Sticky CNF false positives now require a supported operator correction seam: inspect one normalized key, clear its cached `cnf_food_id`, or override it with a confirmed CNF `food_id`. Manual DB surgery is no longer the intended operational path.
 - **2026-05-06**: `UnitWeightTable` default is 100g for unknown unitless ingredients. This is a known approximation — logged at warning level so the table can be extended over time.
 - **2026-05-06**: `recipeYield` default is 2 portions when absent or unparseable. This affects per-portion FOP flag computation. Documented as an assumption.
+- **2026-05-11**: R9 cross-spec decision: unit/yield approximations must flow into one shared internal `NutritionEstimateMetadata` seam so search nudges and HEFI/week-balance do not invent separate confidence heuristics.
 - **2026-05-11**: Broader CNF-powered search behavior is split into `.kiro/specs/cnf-search-augmentation`. This ingestion spec keeps only the foundational bilingual query bridge; synonym expansion, CNF pantry matching, search reason contract changes, and nutrition-aware filters belong to the follow-up spec.
 - **2026-05-11**: Food data access is now a strategy pattern. `CanadaCNF` remains the first/default provider, but consumers must depend on provider interfaces so future US/Swedish providers can be swapped in.
 - **2026-05-11**: Health recommendations and dietary steering must be gated by app settings. Users can keep recipe capture/search/planning without health-oriented nudges.

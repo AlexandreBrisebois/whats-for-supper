@@ -40,14 +40,14 @@ Each task is a vertical slice. Do not start this spec until `cnf-data-ingestion`
 Create or update contract/drift tests:
 
 1. Every `RecipeSearchReasonDto.source` emitted by `RecipeSearchService` exists in the OpenAPI enum.
-2. Pantry-photo boost emits `inventory-fit`, not undocumented `pantry-match`.
+2. Pantry-photo boost emits `inventory-fit`, and no undocumented pantry-specific reason source is reintroduced.
 3. `RecipeSearchFiltersDto` C# JSON properties match OpenAPI filter properties exactly.
-4. `healthyOnly` is either present in OpenAPI and tested, or removed from code. Prefer adding it to OpenAPI because the current service already supports it.
+4. `healthyOnly` is either formalized through an implementation-validated contract update, or removed from code.
 
 **Step 2 — Contract and implementation:**
 
 1. Update `specs/openapi.yaml`.
-2. Change `RecipeSearchService.ApplyPantryBoostAsync` reason source from `pantry-match` to `inventory-fit`.
+2. Confirm `RecipeSearchService.ApplyPantryBoostAsync` continues to use `inventory-fit`.
 3. Ensure generated/mock PWA types remain aligned if contract generation is required.
 
 **Definition of done:** Contract drift tests pass. `task agent:drift`, `task agent:test:impact`, and `task review` pass.
@@ -56,15 +56,15 @@ Create or update contract/drift tests:
 
 ---
 
-## Task 2 — CNF ingredient alias expansion
+## Task 2 — Extend CNF ingredient alias expansion
 
-**What:** Add deterministic alias expansion beyond bilingual CNF names through the active food data provider strategy.
+**What:** Extend the existing `ICnfIngredientAliasExpander` seam beyond bilingual CNF names through the active food data provider strategy. Do not add a second expander to `RecipeSearchService`.
 
 **Dependency:** Task 1 complete.
 
 **Read before starting:**
-- `cnf-data-ingestion` design § `RecipeSearchService` bilingual query expansion
-- design.md § New service: `ICnfIngredientAliasExpander`
+- `cnf-data-ingestion` design § `RecipeSearchService` alias expansion
+- design.md § Existing service extended: `ICnfIngredientAliasExpander`
 - `api/src/RecipeApi/Services/RecipeSearchService.cs`
 
 **Step 1 — Write tests first:**
@@ -88,12 +88,12 @@ Add to `api/src/RecipeApi.Tests/Integration/RecipeSearchIntegrationTests.cs`:
 
 **Step 2 — Implementation:**
 
-Create:
+Modify:
 - `api/src/RecipeApi/Services/CnfIngredientAliasExpander.cs`
 - `api/src/RecipeApi/Services/PostgresCnfIngredientAliasExpander.cs`
 
 Modify `RecipeSearchService`:
-1. Inject optional `ICnfIngredientAliasExpander?`.
+1. Keep the existing optional `ICnfIngredientAliasExpander?` injection from `cnf-data-ingestion` Task 8.
 2. For non-empty queries, build expanded lexical query from original + aliases.
 3. Preserve original query for telemetry, urgent-query planner logic, and response semantics.
 
@@ -209,13 +209,14 @@ Add to `RecipeSearchIntegrationTests.cs`:
 9. New health reason copy avoids moralizing standalone labels such as `"bad"` or `"unhealthy"`.
 10. No allergy-safe claim is emitted by search filters.
 11. Detailed source/confidence/limitation metadata is available behind an information affordance, not rendered inline by default.
+12. Provider-backed health explanations reuse the shared `NutritionEstimateMetadata` mapping from `cnf-data-ingestion`; search does not invent a second confidence heuristic.
 
 **Step 2 — Contract and implementation:**
 
 1. Update `specs/openapi.yaml`.
 2. Update `RecipeSearchFiltersDto`.
 3. Apply filters in `RecipeSearchService`, using deterministic `dietary_profile.fopFlags` only, and only when health guidance is enabled.
-4. Add internal health nudge metadata per design.md when surfacing health explanations. If the API needs to expose new fields, update OpenAPI first and regenerate clients.
+4. Add internal health nudge metadata per design.md when surfacing health explanations, reusing shared `NutritionEstimateMetadata` from `cnf-data-ingestion` for provider-backed confidence/source mapping. If the API needs to expose new fields, update OpenAPI first and regenerate clients.
 5. Reconcile generated clients/mocks.
 
 **Definition of done:** Contract, API, and search integration tests pass. `task agent:drift`, `task agent:test:impact`, and `task review` pass.
@@ -226,7 +227,7 @@ Add to `RecipeSearchIntegrationTests.cs`:
 
 ## Task 6 — Locale-aware grocery list reconciliation
 
-**What:** Use provider bilingual/canonical food identity to merge equivalent grocery lines across English and French recipe ingredients, displaying the cleaned-up list in the user's active locale without translating recipe content.
+**What:** Use provider bilingual/canonical food identity to merge equivalent grocery lines across English and French recipe ingredients, displaying the cleaned-up list in the configured system default locale without translating recipe content.
 
 **Dependency:** Task 2 complete and `cnf-data-ingestion` Task 8 complete. Task 5 is not required.
 
@@ -237,7 +238,7 @@ Add to `RecipeSearchIntegrationTests.cs`:
 - `api/src/RecipeApi/Dto/GroceryLineItemDto.cs`
 - `api/src/RecipeApi/Models/IngredientCategory.cs`
 - `api/src/RecipeApi/Services/ScheduleService.cs` grocery state persistence
-- current configuration/env handling, including `IMPORT_TARGET_LANGUAGE` and the default UI locale
+- current configuration/env handling, including `IMPORT_TARGET_LANGUAGE` and the configured default UI locale
 - archived grocery specs for invariants around `grocery_items`, `grocery_state`, and human reclassification
 
 **Step 1 — Write tests first:**
@@ -289,6 +290,8 @@ Modify `GroceryRecomputeService`:
 5. If reconciler is unavailable or provider identity is missing, keep existing `(normalizedKey, canonicalUnit)` grouping.
 6. Persist the same `GroceryLineItemDto` shape.
 7. Preserve or remap `grocery_state` checked values for merged display names in the same transaction.
+
+**Decision note:** Grocery locale follows the configured system default only. It does not follow per-browser locale overrides or selected-member `preferredLanguage`. Checked-state preservation remains display-name remapping within the existing persisted state shape.
 
 **Do NOT:**
 - translate recipe cards, recipe ingredients, recipe names, or instructions,

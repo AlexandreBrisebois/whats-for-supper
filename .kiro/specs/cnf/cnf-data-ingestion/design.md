@@ -55,8 +55,8 @@ flowchart TD
         W[Query all recipes WHERE dietary_profile->fopFlags IS NULL] --> X[Enqueue ClassifyDietaryProfile with forceReclassify: true]
     end
 
-    subgraph Search["RecipeSearchService bilingual expansion"]
-        SA[User query] --> SB[ICnfBilingualQueryExpander]
+    subgraph Search["RecipeSearchService alias expansion"]
+        SA[User query] --> SB[ICnfIngredientAliasExpander]
         SB --> SC[Original query + bounded CNF equivalents]
         SC --> SD[Existing lexical ranking]
         SD --> SE[Same RecipeSearchResponseDto]
@@ -82,9 +82,9 @@ flowchart TD
 | `schema.sql` | Has `vector` extension | Add `pg_trgm` extension + `cnf_foods` table + GIN index | Order matters: extension before index |
 | `ingredient_categories` table | `normalized_key, grocery_section, ...` | Add `cnf_food_id integer REFERENCES cnf_foods` nullable | Existing rows unaffected (nullable) |
 | `IngredientCategory.cs` model | Maps `ingredient_categories` | Add `CnfFoodId int?` column property | Additive |
-| `RecipeSearchService` | Lexical ranking uses the raw user query | Add optional CNF bilingual query expansion before lexical ranking | Must preserve existing request/response contract |
+| `RecipeSearchService` | Lexical ranking uses the raw user query | Add optional `ICnfIngredientAliasExpander` before lexical ranking, initially backed only by CNF bilingual aliases | Must preserve existing request/response contract |
 | `ClassifyDietaryProfileProcessor` | Steps 11–13: parse `raw_metadata.nutrition` → `FopFlags` | Replace with provider-backed lookup; fall back to `raw_metadata.nutrition` when provider yields nothing; use provider food-guide group as deterministic category/`IsHealthyChoice` signal | Replaces existing steps 11–13 in design |
-| Food data provider strategy | No shared provider seam | Add interfaces above CNF-specific ingestion/search/lookup paths | Prevents Canada-specific logic from leaking into consumers |
+| Food data provider strategy | No shared provider seam | Add consumer-facing interfaces above CNF-specific ingestion/search/lookup paths, while keeping first-slice storage/operator details concrete | Prevents Canada-specific logic from leaking into consumers without overbuilding generic persistence too early |
 | SettingsService / app settings | Generic key-value settings exist | Add health guidance setting consumed by search/planning/family-health surfaces | Must not disable core capture/search/planning |
 | `ManagementService.BackupAsync` | Steps 1–6 | Add CNF group export | Extend in-place |
 | `Program.cs` | Processor registrations | Register `NutrientLookup` as scoped | No conflict |
@@ -126,6 +126,8 @@ ALTER TABLE ingredient_categories ADD COLUMN IF NOT EXISTS
 
 The data source is implemented as a strategy, with Canada CNF as the first concrete provider. Keep CNF-specific parsing and nutrient IDs inside the CNF provider; keep application consumers on provider-facing interfaces.
 
+The abstraction boundary stops at application-consumer capabilities. For this first slice, `cnf_foods`, `ingredient_categories.cnf_food_id`, `task data:cnf:seed`, and the CNF backup/audit docs remain explicitly CNF-shaped instead of being renamed into provider-neutral infrastructure. That keeps the implementation legible and avoids extra indirection with no immediate household payoff. If a second provider is added later, that is the point to extract shared persistence patterns from proven duplication rather than guessing them up front.
+
 **Provider key:** `CanadaCNF` (default).
 
 **Settings/configuration:**
@@ -164,8 +166,9 @@ public interface IFoodGuideMapper
 - Canada Food Guide group mapping.
 - English/French localized alias expansion.
 - Postgres `pg_trgm` similarity over `cnf_foods`.
+- CNF-specific storage and operator assumptions for this first provider.
 
-Future providers can use their own source files/API refresh mechanism and language pairs while preserving the same lookup/search/categorization contracts.
+Future providers can use their own source files/API refresh mechanism, language pairs, and provider-owned persistence internals while preserving the same lookup/search/categorization contracts.
 
 ---
 
@@ -244,6 +247,40 @@ public async Task<CNFFood?> FindAsync(string normalizedKey, CancellationToken ct
 8. If not found → return null.
 
 **Error handling:** Any DB exception → log error → return null. Never throws. The processor continues with null.
+
+---
+
+## Operator correction workflow
+
+The first slice keeps CNF correction explicitly operator-shaped rather than introducing a user-facing admin surface. The goal is to remove the manual-SQL dead end when a sticky trigram match is wrong.
+
+**Supported actions:**
+
+1. **Inspect** a cached mapping for one `normalized_key`:
+   - Load `ingredient_categories.normalized_key`, `cnf_food_id`, `updated_at`, `source`, and the joined CNF English/French food names when present.
+2. **Clear** a cached mapping for one `normalized_key`:
+   - Set `cnf_food_id = null`.
+   - Leave the lexical `normalized_key` row intact so grocery categorization and human section overrides are preserved.
+   - The next background CNF lookup may re-run similarity search naturally.
+3. **Override** a cached mapping for one `normalized_key`:
+   - Set `cnf_food_id = <confirmed food_id>`.
+   - Validate that the target `food_id` exists in `cnf_foods` before writing.
+
+**Operational boundary:**
+
+- Keep this path outside OpenAPI and PWA for now.
+- A Taskfile/operator command or management-service-owned operator seam is sufficient.
+- Do not replace `normalized_key` with CNF identity. `normalized_key` remains the lexical cache key; `cnf_food_id` is the attached canonical food identity.
+
+**Audit/logging requirements:**
+
+- Every clear/override action logs:
+  - `normalized_key`
+  - previous `cnf_food_id`
+  - new `cnf_food_id`
+  - action type
+- `updated_at` is refreshed on every correction.
+- Documentation must show operators how to inspect a suspect match, clear it, and apply an override when the correct `food_id` is known.
 
 ---
 
@@ -328,23 +365,33 @@ This mapping must be published in `api/docs/CNF_INGESTION.md` for human review.
 
 ---
 
-## Modified: `RecipeSearchService` bilingual query expansion
+## Modified: `RecipeSearchService` alias expansion
 
 **Files:**
 - `api/src/RecipeApi/Services/RecipeSearchService.cs`
-- `api/src/RecipeApi/Services/CnfBilingualQueryExpander.cs`
+- `api/src/RecipeApi/Services/CnfIngredientAliasExpander.cs`
+- `api/src/RecipeApi/Services/PostgresCnfIngredientAliasExpander.cs`
 
-**Registration:** Register the active provider's localized alias expander as scoped in `Program.cs`. EF InMemory tests inject a fake. The Canada provider uses `ICnfBilingualQueryExpander`.
+**Registration:** Register the active provider's ingredient alias expander as scoped in `Program.cs`. EF InMemory tests inject a fake. The Canada provider implements the shared `ICnfIngredientAliasExpander` seam. In this ingestion slice, only bilingual English/French provider aliases are enabled; static synonym expansion and alias reason metadata are added by `cnf-search-augmentation`.
 
 ```
-public interface ICnfBilingualQueryExpander
+public interface ICnfIngredientAliasExpander
 {
-    Task<IReadOnlyList<string>> ExpandAsync(string query, CancellationToken ct);
+    Task<CnfAliasExpansion> ExpandAsync(string query, CancellationToken ct);
 }
 
-public class PostgresCnfBilingualQueryExpander(
+public sealed record CnfAliasExpansion(
+    IReadOnlyList<string> Terms,
+    IReadOnlyList<CnfAliasMatch> Matches);
+
+public sealed record CnfAliasMatch(
+    string OriginalTerm,
+    string ExpandedTerm,
+    string Source); // "cnf-bilingual" initially
+
+public class PostgresCnfIngredientAliasExpander(
     RecipeDbContext db,
-    ILogger<PostgresCnfBilingualQueryExpander> logger)
+    ILogger<PostgresCnfIngredientAliasExpander> logger)
 ```
 
 **Behavior:**
@@ -360,6 +407,7 @@ public class PostgresCnfBilingualQueryExpander(
 5. `RecipeSearchService.SearchAsync` keeps `dto.Query` unchanged for telemetry and response echoing, but passes an expanded lexical query into `GetLexicalCandidatesAsync` / `BuildRankedCandidates`.
 6. Expansion is additive only. Existing matches for the original query must keep working exactly as before.
 7. If CNF is empty, missing French aliases, or the expander throws, log and continue with the original query.
+8. Do not add search reason DTO fields in this task; any `Matches` returned here remain internal until `cnf-search-augmentation` Task 3 adds the OpenAPI reason source.
 
 **Raw SQL sketch:**
 
@@ -438,6 +486,37 @@ When unit is unknown and ingredient is not in `UnitWeightEstimates`, default to 
 
 ---
 
+## Shared internal nutrition estimation metadata
+
+Approximate unit and yield handling must produce one shared internal quality signal instead of letting each downstream surface infer confidence independently.
+
+```csharp
+public record NutritionEstimateMetadata(
+    string Source,
+    string Confidence,
+    int TotalIngredients,
+    int MatchedIngredients,
+    bool UsedApproximateUnitConversion,
+    bool UsedDefaultUnitWeight,
+    bool UsedDefaultRecipeYield
+);
+```
+
+This metadata is internal. It exists so search nudges, planner/weekly HEFI summaries, and dietitian recommendation logic can all reuse the same estimation-quality judgment. Do not add OpenAPI DTO fields in this branch; DTO exposure is a separate contract decision.
+
+**Conservative mapping:**
+
+| Data condition | Source | Confidence |
+|---|---|---|
+| `raw_metadata.nutrition` used because all CNF/provider lookups returned null | `source-nutrition` | `high` |
+| Provider path with complete ingredient coverage and no default unit/yield guesses | `estimated-from-ingredients` | `high` |
+| Provider path with approximate unit conversion but no 100g fallback and no default yield | `estimated-from-ingredients` | `medium` |
+| Provider path with any 100g default, default yield, or sparse provider coverage | `estimated-from-ingredients` | `low` |
+
+Downstream consumers should map from this shared metadata rather than re-deriving confidence from `fopFlags` or ad-hoc heuristics.
+
+---
+
 ## Modified: `ClassifyDietaryProfileProcessor`
 
 Replace the current steps 11–13 (parse `raw_metadata.nutrition` → `FopFlags`) with:
@@ -448,14 +527,21 @@ Replace the current steps 11–13 (parse `raw_metadata.nutrition` → `FopFlags`
     b. Call NutrientLookup.FindAsync(normalizedKey, ct).
     c. If found: convert supply quantity to grams via UnitWeightTable.ToGrams.
     d. Compute nutrient contribution: CNFFood.SodiumMgPer100g × (grams / 100), etc.
-12. Sum all per-ingredient nutrient contributions.
-13. Parse recipeYield from recipe.RawMetadata (extract leading integer from string like "2 portions").
+12. Track estimation-quality signals while iterating:
+    a. total ingredient count,
+    b. matched provider ingredient count,
+    c. whether any approximate unit conversion was used,
+    d. whether any ingredient fell back to the 100g default.
+13. Sum all per-ingredient nutrient contributions.
+14. Parse recipeYield from recipe.RawMetadata (extract leading integer from string like "2 portions").
     Default to 2 when absent or unparseable.
-14. Divide summed nutrients by recipeYield → per-portion values.
-15. Call NutritionParser.ComputeFopFlags with CNF-derived per-portion values.
+    Record whether the default yield was used.
+15. Divide summed nutrients by recipeYield → per-portion values.
+16. Call NutritionParser.ComputeFopFlags with CNF-derived per-portion values.
     If ALL ingredients returned null from NutrientLookup (CNF not seeded or no matches):
       fall back to NutritionParser.ComputeFopFlags(raw_metadata.nutrition).
-16. Attach FopFlags to RecipeDietaryProfile before serialization.
+17. Build `NutritionEstimateMetadata` from the shared rules above.
+18. Attach `FopFlags` and internal estimation metadata to the classification output before serialization/storage so downstream health-facing consumers can reuse it without inventing new confidence logic.
 ```
 
 This replaces the simpler steps 11–13 from `recipe-categorization` design.md. The `recipe-categorization` spec tasks must be updated to reflect this extended flow (see Tasks note below).
@@ -536,7 +622,7 @@ Both commands exit after completion. They are not web server operations.
 | `CnfIngestionService` French rows | Unit/integration: bilingual rows seed one English row; French-only rows skipped; nutrient joins remain correct | `CnfIngestionTests.cs` |
 | `RecipeSearchService` French → English | Integration/unit with fake expander: query `"poulet"` returns recipe containing `"chicken"` | `RecipeSearchIntegrationTests.cs` |
 | `RecipeSearchService` English → French | Integration/unit with fake expander: query `"chicken"` returns recipe containing `"poulet"` | `RecipeSearchIntegrationTests.cs` |
-| `ICnfBilingualQueryExpander` production path | Postgres compatibility: `food_name_en = chicken`, `food_name_fr = poulet`; raw SQL returns opposite-language expansion for each query | `CnfBilingualQueryExpanderPostgresTests.cs` |
+| `ICnfIngredientAliasExpander` production path | Postgres compatibility: `food_name_en = chicken`, `food_name_fr = poulet`; raw SQL returns opposite-language expansion for each query with source `cnf-bilingual` | `CnfIngredientAliasExpanderPostgresTests.cs` |
 | `RecipeSearchService` no CNF data | Integration/unit: empty expander result preserves existing lexical-only behavior and response contract | `RecipeSearchIntegrationTests.cs` |
 | `UnitWeightTable` | Unit: `"g"` → 1×quantity; `"tbsp"` → 15×quantity; unknown unit + known ingredient → estimate; unknown unit + unknown ingredient → 100g | `UnitWeightTableTests.cs` |
 | `ClassifyDietaryProfileProcessor` CNF path | Unit: ingredient with known CNF match → `fopFlags` computed from CNF values, not `raw_metadata.nutrition` | `ClassifyDietaryProfileProcessorTests.cs` |

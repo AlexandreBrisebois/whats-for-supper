@@ -44,7 +44,33 @@ This is a coordination checklist. Do not implement product behavior directly fro
 
 ---
 
-## Wave 3 — Search Contract, Aliases, Pantry
+## Wave 3 — Family Health Profile Contract And CRUD
+
+**Owning spec:** `.kiro/specs/family-health-profiles`
+
+1. [ ] Build Tasks 1-2: schema/model/OpenAPI/client.
+2. [ ] Build Task 3: `ConditionRuleEngine`.
+3. [ ] Build Task 4: health profile CRUD.
+
+**Gate:** Health profile DTOs and routes are contract-aligned; CRUD and rule-engine tests pass.
+
+---
+
+## Wave 4 — Family Health Warning Surfaces
+
+**Owning spec:** `.kiro/specs/family-health-profiles`
+
+1. [ ] Build pulled-forward provider ingredient matching for allergy/intolerance reminders as soon as `cnf-data-ingestion` Task 8 is complete.
+2. [ ] Build Tasks 5-6: discovery and schedule warnings.
+3. [ ] Verify allergy reminders use "check ingredients" / "possible match" copy and never block planning.
+4. [ ] Verify warnings are member-specific and informational, supporting household planning awareness without adding meal-attendance tracking.
+5. [ ] Build Task 7: backup/restore.
+
+**Gate:** Warning DTOs are contract-aligned; deterministic warnings show in discovery and schedule; allergy reminders are provider-backed, non-blocking, and do not claim safety.
+
+---
+
+## Wave 5 — Search Contract, Aliases, Pantry
 
 **Owning spec:** `.kiro/specs/cnf-search-augmentation`
 
@@ -57,7 +83,7 @@ This is a coordination checklist. Do not implement product behavior directly fro
 
 ---
 
-## Wave 4 — Bilingual Grocery Cleanup
+## Wave 6 — Bilingual Grocery Cleanup
 
 **Owning spec:** `.kiro/specs/cnf-search-augmentation`
 
@@ -70,24 +96,7 @@ This is a coordination checklist. Do not implement product behavior directly fro
 
 ---
 
-## Wave 5 — Family Health Profiles
-
-**Owning spec:** `.kiro/specs/family-health-profiles`
-
-1. [ ] Build Tasks 1-2: schema/model/OpenAPI/client.
-2. [ ] Build Task 3: `ConditionRuleEngine`.
-3. [ ] Build Task 4: health profile CRUD.
-4. [ ] Build pulled-forward provider ingredient matching for allergy/intolerance reminders before visible warning surfaces.
-5. [ ] Build Tasks 5-6: discovery and schedule warnings.
-6. [ ] Verify allergy reminders use "check ingredients" / "possible match" copy and never block planning.
-7. [ ] Verify warnings are member-specific so the user can ignore a warning when that family member is not eating the meal.
-8. [ ] Build Task 7: backup/restore.
-
-**Gate:** Warning DTOs are contract-aligned; deterministic warnings show in discovery and schedule; allergy reminders are provider-backed, non-blocking, and do not claim safety.
-
----
-
-## Wave 6 — Nutrition Filters And Explainable Nudges
+## Wave 7 — Nutrition Filters And Explainable Nudges
 
 **Owning spec:** `.kiro/specs/cnf-search-augmentation`
 
@@ -101,23 +110,23 @@ This is a coordination checklist. Do not implement product behavior directly fro
 
 ---
 
-## Wave 7 — Dietitian Phase 2 Alignment And Build
+## Wave 8 — Dietitian Phase 2 Alignment And Build
 
 **Owning spec:** `.kiro/specs/dietitian-agent-phase2`
 
 1. [ ] Align the spec to provider strategy and current CNF schema.
-2. [ ] Build HEFI scoring.
+2. [ ] Build HEFI-style scoring with softer user-facing "week balance" naming until exact parity is validated.
 3. [ ] Build ingredient-level allergy/intolerance matching.
 4. [ ] Reuse the family-health ingredient matching seam; extend only if HEFI/recommendation candidate filtering requires more coverage.
 5. [ ] Build LLM weekly recommendations.
 6. [ ] Add user-facing transparency docs.
 7. [ ] Verify the health agent is not enqueued and no LLM call is made when health guidance is disabled.
 
-**Gate:** HEFI and weekly recommendations are deterministic or clearly labelled by source, and any ingredient-level allergy/intolerance context reuses family-health reminders without blocking planning.
+**Gate:** HEFI-style scoring and weekly recommendations are deterministic or clearly labelled by source, user-facing score copy stays softer than bare HEFI until validated, and any ingredient-level allergy/intolerance context reuses family-health reminders without blocking planning.
 
 ---
 
-## Wave 8 — Cross-Spec Hardening
+## Wave 9 — Cross-Spec Hardening
 
 1. [ ] Run `task agent:drift`.
 2. [ ] Run `task agent:test:impact`.
@@ -134,3 +143,5 @@ This is a coordination checklist. Do not implement product behavior directly fro
 - **2026-05-11**: Updated `dietitian-agent-phase2` to remove duplicated CNF ingestion/lookup ownership and depend on the provider foundation.
 - **2026-05-11**: Health-agent recommendation work must not run when health guidance is disabled. Justification detail belongs behind an information affordance.
 - **2026-05-11**: Ingredient-level allergy/intolerance matching is pulled forward into `family-health-profiles` before visible allergy badges. Copy is a friendly member-specific reminder, e.g. "Check ingredients for Shellfish: possible match in shrimp." It is never a planning block and never an allergy-safe claim.
+- **2026-05-12**: Until exact HEFI parity is validated against a reference dataset, planner surfaces should present the score as `Week balance` or similar softer CFG-alignment copy rather than a bare `HEFI` label.
+- **2026-05-12**: Split family-health into an earlier contract/CRUD wave and a dedicated warning-surface wave so provider-backed allergy/intolerance reminders can land immediately after `cnf-data-ingestion` Task 8 instead of waiting behind later search and grocery slices.

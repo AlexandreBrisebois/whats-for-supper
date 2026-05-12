@@ -9,10 +9,10 @@ Six pillars. Every architectural recommendation maps to at least one. Tag recomm
 **Goal:** Run and monitor systems to deliver business value and continually improve processes.
 
 **Key principles:**
-- Perform operations as code (IaC everything — CDK, CloudFormation, no click-ops)
-- Make frequent, small, reversible changes
-- Anticipate failure — use chaos engineering and pre-mortems
-- Learn from operational events — structured runbooks, post-mortems
+- **Perform operations as code:** Use Infrastructure as Code (IaC) for everything (e.g., Cloud Development Kit (CDK), CloudFormation) and avoid manual changes ("click-ops").
+- Make frequent, small, reversible changes.
+- Anticipate failure — use "Chaos Engineering" (simulating failures) and "Pre-mortems".
+- Learn from operational events — use structured runbooks and post-mortems (reviews after an incident).
 
 **Questions to ask:**
 - How will you deploy changes? (CI/CD pipeline required, not manual console pushes)
@@ -32,11 +32,11 @@ Six pillars. Every architectural recommendation maps to at least one. Tag recomm
 **Goal:** Protect data, systems, and assets while delivering business value.
 
 **Key principles:**
-- Apply least-privilege IAM everywhere — no `*` actions, no `*` resources in production policies
-- Enable traceability — CloudTrail in all accounts, GuardDuty enabled, Security Hub aggregated
-- Protect data at rest and in transit — KMS for sensitive data, TLS everywhere
-- Automate security response — EventBridge rules that respond to GuardDuty findings
-- Keep people away from data — no direct DB access in prod; use Systems Manager Session Manager, not SSH
+- **Apply Least-Privilege access:** Use Identity and Access Management (IAM) carefully everywhere — no broad permissions (wildcards like `*`) in production policies.
+- **Enable traceability:** Use CloudTrail in all accounts, enable GuardDuty (threat detection), and aggregate findings in Security Hub.
+- **Protect data at rest and in transit:** Use Key Management Service (KMS) for sensitive data and Transport Layer Security (TLS/HTTPS) everywhere.
+- **Automate security response:** Use EventBridge rules that respond automatically to GuardDuty findings.
+- **Keep people away from data:** No direct database access in production; use Systems Manager Session Manager instead of Secure Shell (SSH).
 
 **Questions to ask:**
 - Are you storing PII or sensitive data? (shapes encryption and access control decisions)
@@ -44,19 +44,19 @@ Six pillars. Every architectural recommendation maps to at least one. Tag recomm
 - What's your secrets strategy? (AWS Secrets Manager for credentials, SSM Parameter Store for config)
 
 **Anti-patterns:**
-- Long-lived IAM access keys for automation (use OIDC / instance roles instead)
-- Wildcards in IAM policies
-- Secrets in environment variables or code
-- Root account used for daily operations
-- No MFA on the management account
+- Long-lived IAM access keys for automation (use OpenID Connect (OIDC) or instance roles instead).
+- Wildcards in IAM policies.
+- Secrets in environment variables or code.
+- Root account used for daily operations.
+- No Multi-Factor Authentication (MFA) on the management account.
 
 **Day-one security baseline:**
-- Enable CloudTrail (all regions, all accounts)
-- Enable GuardDuty
-- Enable AWS Config
-- Create IAM password policy
-- Enable MFA on root and all admin users
-- Create a break-glass IAM role (not daily-use admin)
+- Enable CloudTrail (all regions, all accounts).
+- Enable GuardDuty (threat detection).
+- Enable AWS Config (resource tracking).
+- Create an IAM password policy.
+- Enable Multi-Factor Authentication (MFA) on root and all administrator users.
+- Create a "Break-glass" IAM role for emergencies, not for daily use.
 
 ---
 
@@ -71,8 +71,8 @@ Six pillars. Every architectural recommendation maps to at least one. Tag recomm
 - Stop guessing capacity — use auto scaling and on-demand services
 
 **Questions to ask:**
-- What's your RTO? (Recovery Time Objective — how long can you be down?)
-- What's your RPO? (Recovery Point Objective — how much data can you lose?)
+- What's your **Recovery Time Objective (RTO)**? (How long can you afford to be down?)
+- What's your **Recovery Point Objective (RPO)**? (How much data can you afford to lose?)
 - Which components are single points of failure?
 
 **Reliability tiers (match to RTO/RPO):**
@@ -85,10 +85,10 @@ Six pillars. Every architectural recommendation maps to at least one. Tag recomm
 | Critical | Near-zero | Multi-region active-active | Very high |
 
 **Anti-patterns:**
-- Multi-AZ for dev/staging (waste — save it for prod)
-- Multi-region active-active without a concrete RTO < 1 minute requirement
-- No retry logic on Lambda or Step Functions
-- SQS without DLQ
+- **Multi-Availability Zone (Multi-AZ)** for development or staging (wasteful — save it for production).
+- Multi-region Active-Active setups without a concrete RTO requirement of less than 1 minute.
+- No retry logic on Lambda functions or Step Functions.
+- **Simple Queue Service (SQS)** without a Dead-Letter Queue (DLQ).
 
 ---
 
@@ -108,10 +108,10 @@ Six pillars. Every architectural recommendation maps to at least one. Tag recomm
 - Is this CPU-bound or I/O-bound? (shapes Lambda memory, container sizing)
 
 **Anti-patterns:**
-- Lambda with 128MB for CPU-intensive work (memory = CPU allocation)
-- Synchronous API calls for async workflows (use SQS/EventBridge)
-- RDS for a purely key-value access pattern
-- No caching layer when the same data is read repeatedly (ElastiCache, DynamoDB DAX, CloudFront)
+- Lambda with only 128MB of memory for CPU-intensive work (memory allocation directly affects CPU power).
+- Synchronous API calls for asynchronous workflows (use SQS or EventBridge instead).
+- Relational Database Service (RDS) for a purely key-value access pattern (use DynamoDB instead).
+- No caching layer when the same data is read repeatedly (use ElastiCache, DynamoDB DAX, or CloudFront).
 
 ---
 
@@ -139,11 +139,11 @@ Six pillars. Every architectural recommendation maps to at least one. Tag recomm
 See [cost-conscious.md](cost-conscious.md) for detailed cost governance patterns.
 
 **Anti-patterns:**
-- NAT Gateway for non-sensitive outbound traffic (use VPC endpoints or public subnet)
-- Provisioned DynamoDB capacity when traffic is unpredictable
-- Always-on RDS in dev/staging (use Aurora Serverless v2 or schedule stop/start)
-- Lambda reserved concurrency set too high "just in case"
-- Data transfer between AZs for non-critical traffic
+- **NAT Gateway** for non-sensitive outbound traffic (use Virtual Private Cloud (VPC) Endpoints or a public subnet instead).
+- Provisioned DynamoDB capacity when traffic is unpredictable (use "On-Demand" mode).
+- Always-on RDS in development or staging (use Aurora Serverless v2 or schedule it to stop/start).
+- Lambda reserved concurrency set too high "just in case".
+- Data transfer between Availability Zones (AZs) for non-critical traffic.
 
 ---
 

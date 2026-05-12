@@ -76,7 +76,10 @@ Create `api/src/RecipeApi.Tests/Services/HEFIScorerTests.cs`:
 6. High saturated fat days increment `FopWeekSummary.HighInSaturatedFatDays`.
 7. High sugar days increment `FopWeekSummary.HighInSugarsDays`.
 8. Source/confidence fields are present.
-9. Approximation vs exact HEFI mode is documented in output or docs.
+9. Week-level source/confidence reuses shared `NutritionEstimateMetadata` from `cnf-data-ingestion`; HEFI does not invent a second approximation heuristic.
+10. Any materially contributing meal with low-confidence provider estimates degrades week-level HEFI confidence conservatively.
+11. Approximation vs exact HEFI mode is documented in output or docs.
+12. Until exact HEFI parity is validated, user-facing copy requirements use a softer label such as `Week balance` or `Estimated week balance` instead of a bare HEFI label.
 
 **Step 2 — Implementation:**
 
@@ -86,7 +89,7 @@ Use provider/nutrition summaries from `cnf-data-ingestion`; do not call raw SQL 
 
 **Step 3 — Validation note:**
 
-If exact HEFI-2019 parity is claimed, validate against a published reference dataset and record the result in Notes/Decisions. Otherwise label the score as an approximation.
+If exact HEFI-2019 parity is claimed, validate against a published reference dataset and record the result in Notes/Decisions. Otherwise label the score as an approximation and keep the user-facing label softer than bare HEFI.
 
 **Definition of done:** Scorer tests pass and validation/approximation decision is documented.
 
@@ -181,9 +184,9 @@ Trigger after weekly recompute only when eligible and health guidance is enabled
 
 ---
 
-## Task 6 — PWA HEFI and recommendation display
+## Task 6 — PWA week-balance and recommendation display
 
-**What:** Display HEFI and recommendation cards without blocking planner actions.
+**What:** Display the dietitian score and recommendation cards without blocking planner actions.
 
 **Dependency:** Tasks 1, 3, and 5 complete.
 
@@ -198,6 +201,7 @@ Trigger after weekly recompute only when eligible and health guidance is enabled
 7. Recommendation card shows a compact information icon when source/confidence details exist.
 8. Tapping the information icon opens a tooltip/sheet/popover with reason, source, confidence, and limitations.
 9. Planner card body does not render full justification metadata inline.
+10. Until exact HEFI parity is validated, the planner uses softer user-facing copy such as `Week balance`, `Canada's Food Guide alignment`, or `Estimated week balance` rather than a bare HEFI label.
 
 **Step 2 — Implementation:**
 
@@ -216,7 +220,7 @@ Use calm, non-moralizing copy.
 **File to create:** `api/docs/DIETITIAN_AGENT_PHASE2.md`
 
 Required content:
-1. What HEFI measures and whether the implementation is exact or approximate.
+1. What the score measures, whether the implementation is exact or approximate, and why the user-facing label may say `Week balance` or `Estimated week balance` instead of `HEFI`.
 2. What provider/CNF data contributes and what happens when it is unavailable.
 3. How ingredient-level allergy/intolerance matching works and its limitations.
 4. How weekly recommendations work, what the LLM sees, and what it does not see.

@@ -49,7 +49,7 @@ Health guidance can be disabled. When disabled, core recipe capture, search, pla
 
 Family health profiles own allergies, intolerances, preferences, and health conditions.
 
-Warnings are informational and do not block planning. A meal can stay planned even when a warning exists, especially when the affected family member is not eating that meal:
+Warnings are informational and do not block planning. A meal can stay planned even when a warning exists; the warnings help the household plan with awareness:
 - hard reminders for possible allergy matches,
 - soft warnings for conditions or intolerances,
 - info notes for preferences.
@@ -59,11 +59,13 @@ Allergy reminders use calm copy such as `Check ingredients for Shellfish: possib
 ### Dietitian Phase 2
 
 Later, the dietitian phase adds:
-- HEFI weekly score,
+- a week-balance score based on HEFI-style logic,
 - deeper week-level scoring and recommendation logic that reuses family-health ingredient checks,
 - weekly recommendation cards for open planner slots.
 
 The app does not replace a dietitian. It nudges meal choices and explains why.
+
+Until the implementation is validated against an official HEFI reference dataset, the primary user-facing label should stay softer than bare `HEFI`, for example `Week balance` or `Estimated week's alignment with Canada's Food Guide`.
 
 ---
 

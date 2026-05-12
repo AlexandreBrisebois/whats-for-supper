@@ -51,6 +51,28 @@ Before writing any UI code:
 3.  Run `task agent:audit` to ensure no brittle CSS selectors were used.
 4.  Run `task review` (lint, typecheck, format, local tests) to ensure 100% integrity.
 
+## React Performance & Best Practices
+
+**Avoid Synchronous `setState` in `useEffect`**
+Calling `setState` directly inside an effect causes a cascading render (Initial Render → Effect → State Update → Second Render).
+*   **Wrong:** `useEffect(() => { if (onSuccess) setCountdown(10); }, [onSuccess])`
+*   **Right:** Initialize the state in the event handler that triggers the change, or derive it during render if it's computable.
+
+**Minimize Effect Dependencies**
+Only include values in the dependency array that actually need to trigger the effect. If a value is only needed for the calculation inside the effect, consider using a functional update (`setCount(c => c + 1)`) or a ref.
+
+## Testing Asynchronous State
+
+When testing components with asynchronous state updates (e.g., Promises in `useEffect` or `handleToggle`), follow these rules to avoid `act()` warnings:
+
+1.  **Wrap Async Triggers in `act`**: If an action (like a click) triggers an async operation that updates state, wrap the trigger.
+    *   **Right:** `await act(async () => { fireEvent.click(button); });`
+2.  **Await Mounts with Async Effects**: If a component has an async `useEffect` on mount, wrap the render.
+    *   **Right:** `await act(async () => { render(<Component />); });`
+3.  **Use `waitFor` for Assertions**: Always use `waitFor` to assert on state changes that happen after an async operation.
+    *   **Right:** `await waitFor(() => expect(screen.getByTestId('success')).toBeInTheDocument());`
+4.  **Mock Stores for Isolation**: If a component subscribes to a store (e.g., Zustand), mock the store to control when state changes happen and prevent "act" warnings from external updates.
+
 ## Feature Implementation Checklist
 
 ```

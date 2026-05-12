@@ -6,7 +6,7 @@ This feature upgrades week-level diet quality and family-health warnings after t
 
 The design has three runtime seams:
 
-1. Deterministic HEFI scoring.
+1. Deterministic HEFI-style scoring.
 2. Reuse of deterministic family-health ingredient-level allergy/intolerance matching.
 3. Bounded LLM weekly recommendations.
 
@@ -129,6 +129,10 @@ public record WeeklyRecommendation(
     string Confidence);
 ```
 
+These records describe the dietitian-owned domain payload. R10 resolves public contract exposure separately: the system keeps shared explainability metadata internally by default and only exposes structured `source` / `confidence` detail through dietitian-owned surface-specific DTOs when the planner information affordance actually needs it.
+
+`HEFIScore` remains the internal technical/domain name for the scoring payload and storage shape. Until validation proves exact HEFI-2019 parity, user-facing planner copy should instead use softer labels such as `Week balance`, `Canada's Food Guide alignment`, or `Estimated week balance`.
+
 ---
 
 ## HEFI Scoring
@@ -145,7 +149,9 @@ Outputs:
 - `FopWeekSummary`,
 - source/confidence labels.
 
-Implementation note: if exact HEFI-2019 SAS parity is not implemented, label the result as an approximation in documentation and UI copy. Exact parity requires validation against a published reference dataset.
+Implementation note: if exact HEFI-2019 SAS parity is not implemented, label the result as an approximation in documentation and UI copy. Exact parity requires validation against a published reference dataset. Until that validation exists, keep `HEFI` as the technical implementation term and use softer user-facing copy on planner surfaces.
+
+For provider-backed week scoring, derive source/confidence from the shared internal `NutritionEstimateMetadata` produced upstream by `cnf-data-ingestion`. HEFI must not invent a separate approximation heuristic. If any materially contributing meal falls to `low` confidence because of sparse provider coverage, 100g fallback, or default yield assumptions, the week-level HEFI confidence should also degrade conservatively.
 
 ---
 
@@ -185,16 +191,17 @@ Reminder copy must stay conservative: "check ingredients" / "possible match". Pr
 
 Steps:
 
-1. Load week plan and schedule.
-2. If health guidance disabled, clear/skip recommendations and return before building an LLM payload.
-3. If no open dinner slots, clear recommendations.
-4. If week is balanced and no HEFI improvement target exists, clear recommendations.
-5. If recommendation hash matches current inputs, skip LLM.
-6. Load candidate recipes from the user's library, excluding current week recipes.
-7. Build a compact payload with balance/HEFI state, conditions/preferences, and candidate recipe IDs.
-8. Call LLM once.
-9. Validate returned recipe IDs against candidates.
-10. Store recommendations.
+1. Recommendation orchestration checks `health_guidance_enabled` before enqueue. If disabled, it does not enqueue `GenerateWeeklyRecommendationsProcessor`.
+2. Load week plan and schedule.
+3. If health guidance disabled, clear/skip recommendations and return before building an LLM payload.
+4. If no open dinner slots, clear recommendations.
+5. If week is balanced and no HEFI improvement target exists, clear recommendations.
+6. If recommendation hash matches current inputs, skip LLM.
+7. Load candidate recipes from the user's library, excluding current week recipes.
+8. Build a compact payload with balance/HEFI state, conditions/preferences, and candidate recipe IDs.
+9. Call LLM once.
+10. Validate returned recipe IDs against candidates.
+11. Store recommendations.
 
 All allergy/intolerance reminder context should be handled deterministically before candidates are sent to the LLM. The LLM must not invent allergy conclusions or turn reminders into planning blocks.
 
@@ -228,7 +235,11 @@ Add:
 - nullable `hefiScore` on `ScheduleDays`
 - nullable `recommendations` on `ScheduleDays`
 
-If source/confidence fields are exposed in DTOs, add them contract-first and regenerate clients.
+Keep the over-the-wire DTO/property name `hefiScore` for this feature slice to avoid unnecessary contract churn, but do not require the planner UI to render that exact label to the user.
+
+R10 decision:
+- Do not add broad generic explainability fields to unrelated search or schedule DTOs in this branch.
+- If planner recommendation or HEFI detail surfaces need structured over-the-wire explainability, add dietitian-owned DTOs or nested detail objects contract-first and regenerate clients in that feature slice.
 
 ---
 
@@ -237,7 +248,7 @@ If source/confidence fields are exposed in DTOs, add them contract-first and reg
 | Seam | Test |
 |---|---|
 | HEFI scorer | deterministic component scores; null nutrition graceful; source/confidence present |
-| HEFI validation | documented comparison to reference dataset or explicit approximation label |
+| HEFI validation | documented comparison to reference dataset or explicit approximation label and softer user-facing label until validated |
 | Ingredient-level allergy | shellfish/shrimp hard warning; gluten/wheat soft warning; no duplicate warnings |
 | Provider fallback | missing provider match falls back to existing family-health behavior |
 | Recommendations | idempotence; no open slots skip; invalid recipe IDs discarded; LLM errors preserve prior state |

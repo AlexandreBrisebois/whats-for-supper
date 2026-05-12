@@ -66,8 +66,8 @@ public HealthProfileDto? HealthProfile { get; set; } = null;
 Add `HealthProfileDto` and `RecipeWarningDto` schemas — shapes in design.md § OpenAPI Contract Delta.
 
 Add nullable `healthProfile` to `FamilyMemberDto` schema.
-Add nullable `warnings` array to `ScheduleRecipeDto` schema.
-Add nullable `warnings` array to `RecipeDto` schema.
+Add `warnings` array to `ScheduleRecipeDto` schema. For assigned recipes, it is always present; use `[]` when no warnings fire.
+Add `warnings` array to `RecipeDto` schema. It is always present; use `[]` when no warnings fire.
 Add `PUT /api/family/{id}/health-profile` and `DELETE /api/family/{id}/health-profile` routes.
 
 **Step 2 — Check `ScheduleRecipeDto` call sites before touching the C# record:**
@@ -85,7 +85,7 @@ task gen:client
 task agent:drift
 ```
 
-**Definition of done:** Drift passes. TypeScript client includes `healthProfile` on `FamilyMemberDto` and `warnings` on `ScheduleRecipeDto` and `RecipeDto`.
+**Definition of done:** Drift passes. TypeScript client includes `healthProfile` on `FamilyMemberDto` and non-null `warnings` arrays on `ScheduleRecipeDto` and `RecipeDto`.
 
 - [ ] Task 2 complete
 
@@ -219,7 +219,7 @@ Integration tests:
 
 1. Week with one slot containing a red-meat recipe + one family member with `HighCholesterol` → `GET /api/schedule` slot has `warnings` with one soft warning
 2. Week with assigned recipes + no family members have health profiles → `warnings` is empty array on all slots (no extra DB query made — assert via log or query count)
-3. Empty slot (no recipe assigned) → `warnings` is null (slot has no recipe to evaluate)
+3. Empty slot (no recipe assigned) → `recipe` is null; `warnings` is not used because there is no `ScheduleRecipeDto` to evaluate
 4. Two family members, both with conflicting conditions for the same recipe → both warnings present in the slot's `warnings` array
 5. Allergy warning names the affected family member and does not block the meal from staying planned
 

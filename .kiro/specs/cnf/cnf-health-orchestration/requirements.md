@@ -48,7 +48,7 @@ The north star is simple: use deterministic food data to make search, grocery li
 1. Every wave SHALL pass `task agent:drift`, `task agent:test:impact`, and `task review` before the next dependent wave begins.
 2. Any OpenAPI change SHALL be contract-first and followed by generated client/mock reconciliation.
 3. Health guidance opt-out SHALL be verified before any health-facing search, planner, or recommendation behavior is considered complete.
-4. Health-agent workflow tasks and LLM recommendation calls SHALL NOT run when health guidance is disabled.
+4. Health-agent workflow tasks and LLM recommendation calls SHALL NOT run when health guidance is disabled. The opt-out gate SHALL be enforced before enqueue and again inside the processor as defense in depth.
 5. Detailed justification metadata SHALL have a quiet UI home behind an information affordance, not inline on dense planner/search surfaces.
 6. Allergy-safe claims SHALL NOT be introduced. Ingredient-level allergy matching SHALL produce member-specific "check ingredients" reminders, not safety assertions or planning blocks.
 7. Recipe language lock SHALL be preserved throughout: recipe text remains in its source/import language, while grocery display may use provider aliases.

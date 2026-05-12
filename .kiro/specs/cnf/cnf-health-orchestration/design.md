@@ -10,7 +10,7 @@ flowchart TD
     B --> C[cnf-search-augmentation Tasks 2-4: alias + reasons + pantry]
     C --> D[cnf-search-augmentation Task 6: grocery reconciliation]
     A --> E[family-health-profiles Tasks 1-4]
-    C --> FM[family-health-profiles ingredient-level allergy/intolerance matching]
+    A --> FM[family-health-profiles ingredient-level allergy/intolerance matching]
     E --> FM
     FM --> F[family-health-profiles Tasks 5-7 warning surfaces]
     A --> G[cnf-search-augmentation Task 5: nutrition filters]
@@ -28,13 +28,14 @@ flowchart TD
 | 0 | Align docs before implementation | Prevents old CNF naming/provider drift from leaking into code | Specs mention provider strategy and `food_name_en` / `food_name_fr` consistently |
 | 1 | `cnf-data-ingestion` Tasks 1-6 | Creates schema, seed, provider seam, lookup, health setting | CNF fixture ingest, provider seam, `pg_trgm` compatibility pass |
 | 2 | `cnf-data-ingestion` Tasks 7-9 | Connects categorization, bilingual search foundation, docs | CNF-backed `FopFlags`, category, `IsHealthyChoice`, docs complete |
-| 3 | `cnf-search-augmentation` Tasks 1-4 | Fixes search contract, adds alias reasons and pantry identity | No search DTO drift; alias/pantry tests pass |
-| 4 | `cnf-search-augmentation` Task 6 | Delivers cleaned-up bilingual grocery list | Grocery state preservation and locale tests pass |
-| 5 | `family-health-profiles` Tasks 1-7 plus pulled-forward ingredient matching | Adds household health profile and deterministic, member-specific review reminders | Schedule/discovery warnings pass; allergy reminder copy is non-blocking and provider-backed; backup/restore pass |
-| 6 | `cnf-search-augmentation` Tasks 5 and 7 | Adds nutrition filters and explainable health nudges | Opt-out, source/confidence, conservative allergy-copy tests pass |
-| 7 | `dietitian-agent-phase2` alignment | Updates older CNF assumptions before implementation | Dietitian spec references provider strategy/current schema |
-| 8 | `dietitian-agent-phase2` implementation | HEFI, family-health reminder reuse, LLM suggestions | Contract, workflow, and planner recommendation tests pass |
-| 9 | Cross-spec hardening | Ensures the system behaves as one product | Full `task review`; targeted E2E for search/grocery/planner |
+| 3 | `family-health-profiles` Tasks 1-4 | Creates the household profile contract and CRUD before warning surfaces | Health profile DTOs, routes, and persistence are contract-aligned |
+| 4 | `family-health-profiles` pulled-forward provider ingredient matching plus Tasks 5-7 | Delivers the first deterministic, member-specific allergy/intolerance reminders before broader search polish | Schedule/discovery warnings pass; allergy reminder copy is non-blocking and provider-backed; backup/restore pass |
+| 5 | `cnf-search-augmentation` Tasks 1-4 | Fixes search contract, extends the shared alias seam, and adds pantry identity without blocking family-health reminders | No search DTO drift; alias/pantry tests pass |
+| 6 | `cnf-search-augmentation` Task 6 | Delivers cleaned-up bilingual grocery list | Grocery state preservation and locale tests pass |
+| 7 | `cnf-search-augmentation` Tasks 5 and 7 | Adds nutrition filters and explainable health nudges | Opt-out, source/confidence, conservative allergy-copy tests pass |
+| 8 | `dietitian-agent-phase2` alignment | Updates older CNF assumptions before implementation | Dietitian spec references provider strategy/current schema |
+| 9 | `dietitian-agent-phase2` implementation | HEFI, family-health reminder reuse, LLM suggestions | Contract, workflow, and planner recommendation tests pass |
+| 10 | Cross-spec hardening | Ensures the system behaves as one product | Full `task review`; targeted E2E for search/grocery/planner |
 
 ---
 
@@ -42,7 +43,7 @@ flowchart TD
 
 - `cnf-data-ingestion`: provider data, CNF schema, seed, nutrient lookup, bilingual foundation.
 - `cnf-search-augmentation`: search behavior, pantry identity, grocery reconciliation, nutrition filters, health nudge explainability.
-- `family-health-profiles`: health profiles, allergies, intolerances, preferences, warning levels, and the first provider-backed ingredient-level allergy/intolerance review reminders.
+- `family-health-profiles`: health profiles, allergies, intolerances, preferences, warning levels, and the first provider-backed ingredient-level allergy/intolerance review reminders. It may start once the provider foundation exists; it does not wait for later search alias/pantry/grocery slices.
 - `dietitian-agent-phase2`: HEFI, deeper dietitian scoring, and weekly recommendations. It may reuse or extend ingredient-level matching, but it no longer blocks the first allergy reminder surface.
 
 When a task touches another spec's ownership, update the owning spec first.

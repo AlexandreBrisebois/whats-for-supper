@@ -6,7 +6,7 @@ Phase 2 builds on the newer CNF/provider foundation, search/grocery augmentation
 
 This feature owns the next layer:
 
-1. **HEFI-2019 weekly scoring** — deterministic scoring for a week plan using provider-backed recipe nutrition and food-guide groups.
+1. **HEFI-style weekly scoring** — deterministic scoring for a week plan using provider-backed recipe nutrition and food-guide groups, with a softer user-facing "week balance" or "Canada's Food Guide alignment" presentation until exact HEFI parity is validated.
 2. **Ingredient-level allergy and intolerance matching reuse** — reuses the family-health provider-backed matching seam for recommendation candidate filtering and explanation context.
 3. **Agent-driven weekly recommendations** — a single bounded LLM call that suggests recipes from the user's library for open planner slots.
 4. **User-facing transparency** — documentation and copy that explain what the score and suggestions mean.
@@ -45,7 +45,7 @@ This feature owns the next layer:
 2. Dietitian services SHALL consume provider-backed food identity and nutrient lookup from `cnf-data-ingestion`.
 3. Canada CNF-specific code in this spec SHALL reference `food_name_en` and `food_name_fr`, not the old `food_name` column.
 4. When provider data is unavailable for a recipe ingredient, dietitian features SHALL degrade gracefully to existing family-health/profile behavior.
-5. Any user-facing dietitian nudge SHALL include deterministic reason/source/confidence metadata per `cnf-search-augmentation`.
+5. Any user-facing dietitian nudge SHALL use deterministic reason/source/confidence metadata per `cnf-search-augmentation`, but broad generic schedule/search DTOs SHALL NOT be widened just to carry that metadata everywhere.
 
 ---
 
@@ -60,9 +60,10 @@ This feature owns the next layer:
 3. The scorer SHALL be deterministic and SHALL NOT call an LLM.
 4. `weekly_plans` SHALL gain nullable JSONB column `hefi_score`.
 5. `GET /api/schedule` SHALL include nullable `hefiScore` in `ScheduleDays`.
-6. The planner UI SHALL display `totalScore` only when present.
+6. The planner UI SHALL display `totalScore` only when present, but until exact HEFI-2019 parity is validated it SHALL present the result with softer user-facing copy such as `Week balance`, `Canada's Food Guide alignment`, or `Estimated week balance` rather than as a bare official HEFI label.
 7. HEFI scoring SHALL respect health guidance opt-out for user-facing display. The server MAY compute/store the score, but it SHALL NOT surface dietitian-style nudges when health guidance is disabled.
 8. The scoring implementation SHALL document whether it is exact HEFI-2019 parity or a CFG-proportion approximation. Exact parity requires validation against a published reference dataset before being labelled exact.
+9. Until exact HEFI-2019 parity is validated, user-facing copy SHALL describe the score as an estimate or week-balance indicator and SHALL NOT imply official HEFI equivalence.
 
 ---
 
@@ -96,8 +97,10 @@ This feature owns the next layer:
 7. Planner recommendation cards SHALL be non-blocking. The user can ignore, dismiss, or open a suggestion. Suggestions SHALL NOT auto-assign recipes.
 8. The processor SHALL be idempotent: if the underlying week state has not changed, it SHALL not call the LLM again.
 9. When health guidance is disabled, the health agent SHALL NOT run: no workflow task SHALL be enqueued, no LLM call SHALL be made, and no new recommendations SHALL be generated or shown.
-10. Recommendation reasons SHALL follow health nudge explainability rules when health-related.
-11. Recommendation justification details SHALL be available behind a compact information affordance, not rendered inline by default.
+10. The health guidance gate SHALL be enforced both before recommendation workflow enqueue and again inside `GenerateWeeklyRecommendationsProcessor` before any LLM payload is built.
+11. Recommendation reasons SHALL follow health nudge explainability rules when health-related.
+12. Recommendation justification details SHALL be available behind a compact information affordance, not rendered inline by default.
+13. If planner recommendations expose structured explainability over the wire, they SHALL do so through a dedicated recommendation-specific DTO or nested detail object rather than by widening unrelated generic DTOs.
 
 ---
 
@@ -108,7 +111,7 @@ This feature owns the next layer:
 #### Acceptance Criteria
 
 1. `api/docs/DIETITIAN_AGENT_PHASE2.md` SHALL exist.
-2. The documentation SHALL explain what HEFI measures, what the score means for a home cook, and whether the implementation is exact or approximate.
+2. The documentation SHALL explain what the HEFI-style logic measures, what the score means for a home cook, what user-facing label is used, and whether the implementation is exact or approximate.
 3. The documentation SHALL explain that CNF/provider data is local, deterministic reference data.
 4. The documentation SHALL explain ingredient-level allergy/intolerance matching and its limits.
 5. The documentation SHALL explain that weekly recommendations are suggestions, not automatic assignments or medical advice.
@@ -121,7 +124,7 @@ This feature owns the next layer:
 
 ## Risks and Questions
 
-- **HEFI exactness**: The official HEFI-2019 algorithm requires careful validation. Do not label the score exact until tested against a reference dataset.
+- **HEFI exactness**: The official HEFI-2019 algorithm requires careful validation. Do not label the score exact until tested against a reference dataset, and do not use HEFI as the primary user-facing label before that validation exists.
 - **Allergy safety**: Ingredient matching improves warnings but does not certify safety. Copy must remain conservative.
 - **Provider coverage**: Missing or ambiguous provider matches should degrade gracefully.
 - **LLM recommendations**: The LLM must only select from validated candidate recipes and must not invent recipe IDs.

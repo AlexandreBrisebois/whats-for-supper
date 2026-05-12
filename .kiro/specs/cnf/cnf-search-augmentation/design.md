@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature upgrades recipe search by using provider-backed canonical food identity as a semantic bridge between ingredient strings. It is intentionally downstream of CNF ingestion: `cnf_foods` is already seeded for the default `CanadaCNF` provider, `ingredient_categories.cnf_food_id` exists, health guidance settings exist, and bilingual query expansion is already in place.
+This feature upgrades recipe search by using provider-backed canonical food identity as a semantic bridge between ingredient strings. It is intentionally downstream of CNF ingestion: `cnf_foods` is already seeded for the default `CanadaCNF` provider, `ingredient_categories.cnf_food_id` exists, health guidance settings exist, and the shared `ICnfIngredientAliasExpander` seam already provides bilingual query expansion.
 
 The design has five vertical seams:
 
@@ -10,7 +10,7 @@ The design has five vertical seams:
 2. Expand user queries through active-provider aliases and static synonym groups.
 3. Improve pantry-assisted search by matching canonical provider food identity.
 4. Add nutrition-aware filters based on provider-backed `fopFlags`, gated by health guidance settings.
-5. Reconcile grocery list lines by provider identity and display them in the user's locale.
+5. Reconcile grocery list lines by provider identity and display them in the configured system default locale.
 
 No LLM. No runtime network calls. Recipe content stays in its original language. No grocery list DTO change unless a later contract task explicitly chooses one.
 
@@ -53,7 +53,7 @@ flowchart TD
         T --> U[ingredient_categories.cnf_food_id]
         U --> V{Shared provider food identity?}
         V -->|Yes| W[Group compatible units]
-        W --> X[Choose displayName in active grocery locale]
+        W --> X[Choose displayName in system default grocery locale]
         V -->|No| Y[Existing normalizedKey grouping]
         X --> Z[Persist same GroceryLineItemDto shape]
         Y --> Z
@@ -66,7 +66,7 @@ flowchart TD
 
 | Seam | Existing shape | What we add | Risk |
 |---|---|---|---|
-| `specs/openapi.yaml` | Reason enum lacks emitted `pantry-match`; filters omit `healthyOnly` | Reconcile current drift; add `ingredient-alias-match` and nutrition filters | Contract-first task must go first |
+| `specs/openapi.yaml` | Filters omit `healthyOnly`; pantry reason docs must stay aligned to `inventory-fit` | Reconcile current drift; add `ingredient-alias-match` and nutrition filters | Contract-first task must go first |
 | `RecipeSearchFiltersDto` | Has `healthyOnly`; lacks nutrition filters | Align with OpenAPI; add nutrition filters | PWA generated clients/mocks must stay in sync |
 | `RecipeSearchService` | Lexical query, vector search, planner/family/pantry boosts | Alias expansion before lexical ranking; CNF pantry matching; nutrition filters | Must preserve ranking stability when CNF unavailable |
 | Food data provider strategy | `CanadaCNF` default provider from ingestion spec | Search consumes provider-facing alias/nutrient identity seams | Avoid hard-coding Canada-only behavior in search consumers |
@@ -75,9 +75,9 @@ flowchart TD
 | `family-health-profiles` | Owns health profiles, allergy, intolerance, preference warning semantics | This spec references those warnings but does not redefine them | Allergy safety claims must stay conservative |
 | `InventoryCaptureService` | In-memory pantry snapshots of inferred ingredient strings | No shape change; resolver reads snapshot terms | Do not persist snapshots |
 | `ingredient_categories` | `normalized_key`, grocery section, `cnf_food_id` from CNF ingestion | Use `cnf_food_id` for pantry and alias cache reads | Nulls common until seed/reclassify |
-| `GroceryRecomputeService` | Groups grocery lines by `(normalizedKey, canonicalUnit)` | Prefer provider identity for grouping equivalent bilingual aliases; display in active locale | Must preserve grocery state and avoid merging incompatible units |
+| `GroceryRecomputeService` | Groups grocery lines by `(normalizedKey, canonicalUnit)` | Prefer provider identity for grouping equivalent bilingual aliases; display in the configured system default locale | Must preserve grocery state and avoid merging incompatible units |
 | `GroceryLineItemDto` | `displayName, normalizedKey, section, quantity, unitText, recipeIds` | No shape change; `displayName` becomes locale-facing when reconciled | State is keyed by display name today |
-| Environment/config locale | Recipe import has `IMPORT_TARGET_LANGUAGE`; PWA has UI locale/default language | Reuse existing default UI language configuration for grocery display locale | Must not add a second grocery-specific locale env var or couple grocery locale to recipe import language |
+| Environment/config locale | Recipe import has `IMPORT_TARGET_LANGUAGE`; PWA has UI locale/default language | Reuse existing default UI language configuration for grocery display locale | Must not add a second grocery-specific locale env var, couple grocery locale to recipe import language, or follow per-browser/member locale state |
 | `RecipeSearchReasonDto.source` | Closed enum in OpenAPI | Add `ingredient-alias-match`; reconcile pantry value | Existing client expectations |
 
 ---
@@ -100,7 +100,7 @@ enum:
   - ingredient-alias-match
 ```
 
-**Decision:** Prefer changing current implementation from `pantry-match` to existing `inventory-fit` rather than adding both. The OpenAPI already has `inventory-fit`, and photo inventory search is the product-facing concept.
+**Decision:** Keep `inventory-fit` as the single pantry/photo inventory reason source. The OpenAPI already has `inventory-fit`, and photo inventory search is the product-facing concept.
 
 ### `RecipeSearchFiltersDto`
 
@@ -118,11 +118,13 @@ No request/response route change. `POST /api/recipes/search` remains the seam.
 
 ---
 
-## New service: `ICnfIngredientAliasExpander`
+## Existing service extended: `ICnfIngredientAliasExpander`
 
 **Files:**
 - `api/src/RecipeApi/Services/CnfIngredientAliasExpander.cs`
 - `api/src/RecipeApi/Services/PostgresCnfIngredientAliasExpander.cs`
+
+This seam is created by `cnf-data-ingestion` Task 8 so `RecipeSearchService` has exactly one public alias-expansion dependency. This spec extends that same seam with static synonyms and explanation matches; it must not add a second bilingual/query expander to search.
 
 ```
 public interface ICnfIngredientAliasExpander
@@ -145,7 +147,7 @@ public sealed record CnfAliasMatch(
 1. Return empty expansion for null/empty/whitespace query.
 2. Normalize query text using `RecipeSearchService` lexical normalization plus `IngredientNormalizer.Normalize` for ingredient terms.
 3. Find candidate rows through the active provider. Canada CNF uses parameterized `pg_trgm` over `food_name_en` and `food_name_fr`.
-4. Add opposite-language/localized terms from provider rows.
+4. Preserve opposite-language/localized terms from provider rows.
 5. Add terms from the static synonym dictionary.
 6. Deduplicate case-insensitively.
 7. Return at most 8 expansion terms and at most 3 explanation matches.
@@ -279,7 +281,9 @@ Do not place reason/source/confidence blocks inline on dense search results, pla
 | Family health profile condition/preference rule | `profile-rule` | confidence set by the owning family-health rule |
 | Canada Food Guide/provider group balance signal | `food-guide-group` | `medium` unless provider coverage is complete |
 
-This spec should use these categories internally even when no new OpenAPI field is added in the current slice. If a user-facing surface needs to expose them over the wire, add the contract field first and regenerate clients.
+This spec should use these categories internally even when no new OpenAPI field is added in the current slice. For provider-backed nutrition nudges, search must consume the shared internal `NutritionEstimateMetadata` produced by `cnf-data-ingestion` rather than inferring confidence ad hoc from `fopFlags` alone.
+
+R10 decision: keep search's default response contract lightweight. Do not widen generic DTOs such as `RecipeSearchResultDto` or `RecipeSearchReasonDto` with broad `source` / `confidence` fields in this branch. If a future search surface needs structured explainability behind an information affordance, add a dedicated surface-specific DTO or nested detail object contract-first and regenerate clients in that feature slice.
 
 ---
 
@@ -354,7 +358,7 @@ public sealed record ReconciledGroceryGroup(
 3. For candidates with provider food identity:
    - group by `(providerFoodId, canonicalUnitBucket)`,
    - only merge quantities when `UnitNormalizer` says the unit family is compatible,
-   - choose the display name from the active locale using provider localized labels.
+   - choose the display name from the configured system default locale using provider localized labels.
 4. For candidates without provider food identity, keep the existing `(normalizedKey, canonicalUnitBucket)` grouping.
 5. Resolve grocery section:
    - if any merged source has `source = 'human'`, use the human section,
@@ -372,6 +376,8 @@ Resolve the active grocery locale with this precedence:
 
 1. Existing app default UI language configuration.
 2. If the default UI language is `NONE` or unset, use English.
+
+Do not read per-browser `localStorage` locale overrides and do not derive grocery locale from the selected family member's `preferredLanguage`. Grocery recompute is a shared server-side artifact, so it follows the configured system default only.
 
 This spec intentionally does not introduce a new grocery-specific environment variable. If a future override is added, it must follow the current convention where `NONE` means "not explicitly set / follow the default UI language".
 
@@ -401,7 +407,7 @@ Supported locale behavior for Canada CNF:
 
 ### Grocery state preservation
 
-`grocery_state` is currently keyed by display name. When reconciliation changes `"chicken"` and `"poulet"` into one display label, recompute must preserve check state:
+`grocery_state` is currently keyed by display name. For this slice, keep that storage shape and preserve check state by remapping prior display-name keys during recompute. When reconciliation changes `"chicken"` and `"poulet"` into one display label, recompute must preserve check state:
 
 1. Before overwriting `weekly_plans.grocery_items`, load the prior grocery state.
 2. For each reconciled group, inspect prior state for:
@@ -411,7 +417,7 @@ Supported locale behavior for Canada CNF:
 3. If any source line was checked, mark the reconciled display name checked.
 4. Remove stale merged source keys only when replacing the persisted grocery state in the same transaction.
 
-If state preservation cannot be done safely in the recompute path, implementation must add a focused migration/helper before enabling locale reconciliation.
+Do not add a new stable grocery-state key contract in this slice. If display-name remapping cannot be done safely in the recompute path, implementation must add a focused helper while keeping the persisted state shape unchanged.
 
 ---
 
@@ -420,7 +426,7 @@ If state preservation cannot be done safely in the recompute path, implementatio
 | Seam | Test | File |
 |---|---|---|
 | Search contract drift | OpenAPI reason enum includes emitted values; DTO filters match OpenAPI | `SearchContractTests.cs` or existing drift suite |
-| Current pantry reason | Pantry boost emits `inventory-fit`, not undocumented `pantry-match` | `RecipeSearchIntegrationTests.cs` |
+| Current pantry reason | Pantry boost emits `inventory-fit` consistently across contract and implementation | `RecipeSearchIntegrationTests.cs` |
 | Alias expansion | `boeuf hache` expands to `ground beef` / `minced beef`; bounded and deduped | `CnfIngredientAliasExpanderTests.cs` |
 | Alias search | Query `minced beef` returns recipe containing `ground beef` | `RecipeSearchIntegrationTests.cs` |
 | Alias reason | Result includes at most one `ingredient-alias-match` reason | `RecipeSearchIntegrationTests.cs` |
