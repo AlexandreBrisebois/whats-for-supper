@@ -1,0 +1,57 @@
+name: Deploy to AWS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: demo # Requires manual approval in GitHub repo settings
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install CDK
+        run: npm install -g aws-cdk
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract Git Tag
+        id: get_version
+        run: |
+          git fetch --tags
+          TAG=$(git tag -l 'v*' --sort=-v:refname | head -1 || echo "v0.0.0")
+          echo "WFS_TAG=$TAG" >> $GITHUB_ENV
+          echo "Detected version: $TAG"
+
+      - name: Deploy Infrastructure
+        run: |
+          cd infrastructure/aws
+          dotnet build src/Aws/Aws.csproj
+          cdk deploy --all --require-approval never --context imageTag=${{ env.WFS_TAG }}
+        env:
+          # CDK will use the authenticated Docker session to push to ECR
+          DOCKER_BUILDKIT: 1 

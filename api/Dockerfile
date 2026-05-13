@@ -55,10 +55,18 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
     /p:UseAppHost=false
 
 # =============================================================================
-# Stage 5 — Production (Chiseled + Minimal Dependencies)
+# Stage 5 — Production (Chiseled - NAS Environment)
 # =============================================================================
 FROM base AS production
 WORKDIR /app
 COPY --from=extractor /rootfs /
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "RecipeApi.dll"]
+
+# =============================================================================
+# Stage 6 — Demo (AWS Lambda Environment)
+# =============================================================================
+FROM production AS demo
+# Install AWS Lambda Web Adapter
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.4 /lambda-adapter /opt/extensions/lambda-adapter
+# Inherits ENTRYPOINT and WORKDIR from the production stage
