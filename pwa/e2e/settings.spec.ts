@@ -369,9 +369,9 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
       }
     });
 
-    await page.goto('/profile/settings');
+    await page.goto('/profile');
 
-    // Wait for the settings page to render
+    // Wait for the profile page to render
     await expect(page.getByTestId('locale-btn-en')).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('locale-btn-fr')).toBeVisible();
 
@@ -382,8 +382,8 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     });
 
     // 3. Navigate away and back
+    await page.goto('/home');
     await page.goto('/profile');
-    await page.goto('/profile/settings');
 
     // French button must still be active (bg-indigo as a standalone class)
     const frenchBtn = page.getByTestId('locale-btn-fr');

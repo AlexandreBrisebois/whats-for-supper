@@ -681,10 +681,9 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
   });
 
   // ── Recipe queued state ──────────────────────────────────────────────────
-  // After a successful photo submit, the success screen shows "Recipe queued"
-  // (not "Captured!") because synthesis is async. The user sees a pending state
-  // with "Add Another" and "Done" CTAs — no auto-redirect.
-  test('photo submit shows recipe queued state with Add Another and Done CTAs', async ({
+  // (not "Captured!") because synthesis is async. The app automatically
+  // redirects home after 10 seconds.
+  test('photo submit shows recipe queued state and redirects home', async ({
     page,
   }) => {
     await page.route('**/api/recipes', async (route) => {
@@ -721,12 +720,12 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('capture-success-heading')).toContainText(/recipe queued/i);
 
-    // Explicit CTAs replace the old auto-redirect
-    await expect(page.getByTestId('capture-add-another-btn')).toBeVisible();
+    // The old "Add Another" and "Done" buttons were removed.
+    // The app now automatically redirects home after 10 seconds.
     await expect(page.getByTestId('capture-done-btn')).toBeVisible();
 
-    // No auto-redirect — still on /capture
-    await expect(page).toHaveURL(/\/capture/);
+    // Verify the redirect happens (allow up to 12s for the 10s timer)
+    await expect(page).toHaveURL(/\/home/, { timeout: 12_000 });
   });
 
   // ── LibraryToast on recipe_ready ─────────────────────────────────────────
