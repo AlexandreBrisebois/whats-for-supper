@@ -56,10 +56,14 @@ public class RecipeHeroAgent(
         ?? configuration["GEMINI_API_KEY"]
         ?? string.Empty;
 
-    private const string ModelId = "models/gemini-3-pro-image-preview";
+    private string GetModelId() =>
+        System.Environment.GetEnvironmentVariable("GEMINI_MODEL_ID_HERO")
+        ?? configuration["GEMINI_MODEL_ID_HERO"]
+        ?? "models/gemini-3-pro-image-preview";
 
     public async Task CreateHeroImageAsync(Guid recipeId, bool force = false)
     {
+        var modelId = GetModelId();
         var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
         var infoPath = Path.Combine(recipeDir, "recipe.info");
         var originalDir = Path.Combine(recipeDir, "original");
@@ -157,7 +161,7 @@ public class RecipeHeroAgent(
 
         try
         {
-            var response = await client.Models.GenerateContentAsync(ModelId, content);
+            var response = await client.Models.GenerateContentAsync(modelId, content);
             var candidate = response.Candidates?.FirstOrDefault();
             var part = candidate?.Content?.Parts?.FirstOrDefault(p => p.InlineData != null);
 
