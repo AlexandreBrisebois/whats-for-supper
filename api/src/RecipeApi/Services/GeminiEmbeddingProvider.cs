@@ -11,7 +11,7 @@ public class GeminiEmbeddingProvider(IConfiguration configuration, IHttpClientFa
 {
     private readonly string _apiKey = configuration["GEMINI_API_KEY"] ?? "none";
     private readonly string _endpoint = configuration["GEMINI_ENDPOINT"] ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
-    private readonly string _modelId = configuration["EMBEDDING_MODEL_ID"] ?? "text-embedding-004";
+    private readonly string _modelId = configuration["EMBEDDING_MODEL_ID"] ?? "gemini-embedding-2";
 
     public async Task<float[]> GenerateAsync(string text, CancellationToken ct = default)
     {
@@ -29,7 +29,8 @@ public class GeminiEmbeddingProvider(IConfiguration configuration, IHttpClientFa
             var response = await client.PostAsJsonAsync(url, new
             {
                 input = text,
-                model = _modelId
+                model = _modelId,
+                dimensions = 1536
             }, ct);
 
             if (!response.IsSuccessStatusCode)

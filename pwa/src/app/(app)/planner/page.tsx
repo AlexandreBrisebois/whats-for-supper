@@ -920,6 +920,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
             <div className="flex items-stretch">
               {day.recipe.image && (
                 <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={getImageUrl(day.recipe.image)}
                     alt={day.recipe.name || 'Recipe'}

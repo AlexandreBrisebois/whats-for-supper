@@ -25,6 +25,7 @@ import {
 import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipes/index';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
+import { getImageUrl } from '@/lib/imageUtils';
 
 type BrowseViewMode = 'stack' | 'list';
 
@@ -687,8 +688,9 @@ export default function BrowseAllStackPage() {
                   className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
                 >
                   <div className="aspect-[4/3] bg-sage/10 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`/api/recipes/${recipe.id}/hero`}
+                      src={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
                       alt=""
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                     />
@@ -731,7 +733,7 @@ export default function BrowseAllStackPage() {
                       id={recipe.id!}
                       name={recipe.name!}
                       description={recipe.description || ''}
-                      imageUrl={`/api/recipes/${recipe.id}/hero`}
+                      imageUrl={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
                       totalTime={recipe.totalTime || ''}
                       difficulty={recipe.difficulty || 'Medium'}
                       category={recipe.category || ''}

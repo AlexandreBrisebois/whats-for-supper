@@ -33,6 +33,7 @@ import {
   type AssignmentRecipe,
   type PlannerSlot,
 } from '@/lib/planner/slotAssignment';
+import { getImageUrl } from '@/lib/imageUtils';
 
 type SearchMode = 'standard' | 'agent' | 'camera';
 
@@ -64,6 +65,9 @@ const INITIAL_LIMIT = 6;
 const PAGE_SIZE = 6;
 
 export default function RecipesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [query, setQuery] = useState('');
   const [agentQuery, setAgentQuery] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('standard');
@@ -74,7 +78,12 @@ export default function RecipesPage() {
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
+  const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(
+    () => searchParams.get('open')
+  );
+  const [prevOpenIdFromUrl, setPrevOpenIdFromUrl] = useState<string | null>(() =>
+    searchParams.get('open')
+  );
   const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
   const [limit, setLimit] = useState(INITIAL_LIMIT);
@@ -90,8 +99,6 @@ export default function RecipesPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const resultsSentinelRef = useRef<HTMLDivElement | null>(null);
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
   const addToDay = searchParams.get('addToDay');
   const weekOffset = searchParams.get('weekOffset');
@@ -211,6 +218,13 @@ export default function RecipesPage() {
       isActive = false;
     };
   }, [parsedDayIndex, parsedWeekOffset]);
+
+  // Adjust state when URL 'open' parameter changes
+  const openIdFromUrl = searchParams.get('open');
+  if (openIdFromUrl !== prevOpenIdFromUrl) {
+    setPrevOpenIdFromUrl(openIdFromUrl);
+    setOpenDetailRecipeId(openIdFromUrl);
+  }
 
   // Debounced search-as-you-type
   const handleQueryChange = (value: string) => {
@@ -753,6 +767,7 @@ export default function RecipesPage() {
             <div className="flex flex-wrap gap-2">
               {pendingPhotos.map((file, i) => (
                 <div key={i} className="relative h-20 w-20 overflow-hidden rounded-xl shadow-sm">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={URL.createObjectURL(file)}
                     alt={`Photo ${i + 1}`}
@@ -953,8 +968,9 @@ export default function RecipesPage() {
                 </button>
 
                 <div className="relative w-full aspect-[16/10] min-h-[240px] rounded-[2.5rem] overflow-hidden shadow-2xl glass-solar border border-white/20">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={topPick.imageUrl || '/placeholder-recipe.jpg'}
+                    src={getImageUrl(topPick.imageUrl) || '/placeholder-recipe.jpg'}
                     alt={topPick.name}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                   />
@@ -1014,13 +1030,14 @@ export default function RecipesPage() {
                     isAssigning && 'opacity-50 pointer-events-none'
                   )}
                 >
-                  <div className="relative aspect-[4/3] rounded-[1.5rem] overflow-hidden">
-                    <img
-                      src={recipe.imageUrl || '/placeholder-recipe.jpg'}
-                      alt={recipe.name}
-                      className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110"
-                    />
-                  </div>
+                <div className="relative aspect-video overflow-hidden rounded-3xl mb-6 shadow-sm ring-1 ring-charcoal/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={getImageUrl(recipe.imageUrl) || '/placeholder-recipe.jpg'}
+                    alt={recipe.name}
+                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
                   <div className="flex flex-col gap-1 px-1.5 pb-1">
                     <span className="text-[9px] font-black uppercase tracking-widest text-charcoal/30 flex items-center gap-1">
                       <Clock size={9} /> {recipe.totalTime}

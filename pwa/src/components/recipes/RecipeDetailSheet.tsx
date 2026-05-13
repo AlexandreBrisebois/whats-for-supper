@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import Image from 'next/image';
 import {
   X,
   Clock,
@@ -28,6 +27,7 @@ import {
 import { t } from '@/locales';
 import { useUiStore } from '@/store/uiStore';
 import { useFamilyStore } from '@/store/familyStore';
+import { getImageUrl } from '@/lib/imageUtils';
 import { ActionGearMenu } from './ActionGearMenu';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
 
@@ -440,14 +440,13 @@ export function RecipeDetailSheet({
           </div>
         ) : (
           <div className="overflow-y-auto px-6 pb-6 pt-4">
-            <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-[2rem] bg-charcoal/5">
-              <Image
-                src={recipe.imageUrl || '/placeholder-recipe.jpg'}
-                alt={recipe.name}
-                fill
-                unoptimized
-                className="select-none pointer-events-none object-cover"
-              />
+              <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-[2rem] bg-charcoal/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getImageUrl(recipe.imageUrl) || '/placeholder-recipe.jpg'}
+                  alt={recipe.name}
+                  className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                />
               {isEditing && (
                 <>
                   <input

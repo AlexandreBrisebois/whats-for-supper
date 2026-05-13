@@ -10,6 +10,7 @@ import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useFamily } from '@/hooks/useFamily';
 import { useRouter } from 'next/navigation';
 import { t, tWithVars } from '@/locales';
+import { getImageUrl } from '@/lib/imageUtils';
 
 export default function DiscoveryPage() {
   const router = useRouter();
@@ -48,7 +49,9 @@ export default function DiscoveryPage() {
           categoryIndexRef.current = i;
           useDiscoveryStore
             .getState()
-            .setStack(stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` })));
+            .setStack(
+              stack.map((r) => ({ ...r, imageUrl: getImageUrl(`/api/recipes/${r.id}/hero`) }))
+            );
           stackIsLoadedRef.current = true;
           foundNonEmpty = true;
           break;
@@ -105,7 +108,9 @@ export default function DiscoveryPage() {
               setActiveCategory(categoryToLoad);
               useDiscoveryStore
                 .getState()
-                .setStack(stack.map((r) => ({ ...r, imageUrl: `/api/recipes/${r.id}/hero` })));
+                .setStack(
+                  stack.map((r) => ({ ...r, imageUrl: getImageUrl(`/api/recipes/${r.id}/hero`) }))
+                );
               stackIsLoadedRef.current = true;
               foundNonEmpty = true;
               break;
@@ -155,7 +160,7 @@ export default function DiscoveryPage() {
         if (stack.length > 0) {
           const mappedStack = stack.map((r) => ({
             ...r,
-            imageUrl: `/api/recipes/${r.id}/hero`,
+            imageUrl: getImageUrl(`/api/recipes/${r.id}/hero`),
           }));
           useDiscoveryStore.getState().setStack(mappedStack);
           categoryIndexRef.current = nextIndex;
@@ -193,7 +198,7 @@ export default function DiscoveryPage() {
       const rawStack = await getDiscoveryStack(currentCategory);
       const freshStack = rawStack.map((r) => ({
         ...r,
-        imageUrl: `/api/recipes/${r.id}/hero`,
+        imageUrl: getImageUrl(`/api/recipes/${r.id}/hero`),
       }));
 
       const freshIds = new Set(freshStack.map((r) => r.id));

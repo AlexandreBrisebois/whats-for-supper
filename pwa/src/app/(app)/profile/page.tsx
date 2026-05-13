@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Settings } from 'lucide-react';
 
 import { ProfileDropdown } from '@/components/profile/ProfileDropdown';
+import { LanguageSelection } from '@/components/profile/LanguageSelection';
 import { useFamily } from '@/hooks/useFamily';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { ROUTES } from '@/lib/constants/routes';
@@ -42,8 +43,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm flex flex-col gap-8">
         <ProfileDropdown onSelect={handleFamilyMemberSelected} />
+        <LanguageSelection />
       </div>
     </div>
   );

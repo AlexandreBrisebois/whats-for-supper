@@ -1,26 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Languages } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { FamilyManagement } from '@/components/profile/FamilyManagement';
 import { FamilyGOTOSettings } from '@/components/profile/FamilyGOTOSettings';
 import { FailedCapturesSection } from '@/components/profile/FailedCapturesSection';
-import { useLocale } from '@/components/common/LocaleProvider';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 import { useFamilyStore } from '@/store/familyStore';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { locale, setCurrentLocale } = useLocale();
   const { selectedFamilyMemberId, updateMemberPreferences } = useFamilyStore();
-
-  const handleLanguageChange = (next: 'en' | 'fr') => {
-    setCurrentLocale(next);
-    if (selectedFamilyMemberId) {
-      void updateMemberPreferences(selectedFamilyMemberId, { preferredLanguage: next });
-    }
-  };
 
   return (
     <div className="flex flex-col gap-8 py-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -52,43 +43,6 @@ export default function SettingsPage() {
 
         {/* Failed Captures */}
         <FailedCapturesSection />
-
-        {/* Language Selection */}
-        <div className="w-full rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
-          <div className="flex items-center gap-2 mb-6">
-            <Languages className="h-4 w-4 text-indigo" />
-            <h3 className="text-xs font-bold uppercase tracking-widest text-indigo">
-              {t('profile.language', 'Language')}
-            </h3>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              data-testid="locale-btn-en"
-              onClick={() => handleLanguageChange('en')}
-              className={[
-                'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
-                locale === 'en'
-                  ? 'bg-indigo text-lavender shadow-card'
-                  : 'bg-white/60 text-charcoal hover:bg-indigo/5 border border-transparent',
-              ].join(' ')}
-            >
-              {t('profile.english', 'English')}
-            </button>
-            <button
-              data-testid="locale-btn-fr"
-              onClick={() => handleLanguageChange('fr')}
-              className={[
-                'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
-                locale === 'fr'
-                  ? 'bg-indigo text-lavender shadow-card'
-                  : 'bg-white/60 text-charcoal hover:bg-indigo/5 border border-transparent',
-              ].join(' ')}
-            >
-              {t('profile.french', 'French')}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

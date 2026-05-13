@@ -11,6 +11,7 @@ import {
 } from 'framer-motion';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { t } from '@/locales';
+import { getImageUrl } from '@/lib/imageUtils';
 
 // ---------------------------------------------------------------------------
 // RecipeStackCard
@@ -205,7 +206,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
         <div className="relative aspect-[16/10] w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={imageUrl}
+            src={getImageUrl(imageUrl)}
             alt={name}
             className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />

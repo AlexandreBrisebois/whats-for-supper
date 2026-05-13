@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useLibraryStore } from '@/store/libraryStore';
 import { getImageUrl } from '@/lib/imageUtils';
 import { ROUTES } from '@/lib/constants/routes';
+import { findFirstOpenPlannerSlot, assignRecipeToEmptySlot } from '@/lib/planner/slotAssignment';
+import { useWeekStore } from '@/store/weekStore';
 
 const TOAST_DURATION_MS = 5000;
 
@@ -84,17 +86,49 @@ export function LibraryToast() {
     if (current) dismissNotification(current.recipeId);
   };
 
-  const handleAddToWeek = () => {
+  const handleAddToWeek = async () => {
+    if (!current) return;
+
     setDrawerOpen(false);
-    if (current) dismissNotification(current.recipeId);
-    router.push(ROUTES.PLANNER as any);
+    const recipeId = current.recipeId;
+    const name = current.name;
+    const image = current.imageUrl || '';
+
+    dismissNotification(recipeId);
+
+    try {
+      const slot = await findFirstOpenPlannerSlot();
+      if (slot) {
+        await assignRecipeToEmptySlot(slot.weekOffset, slot.dayIndex, {
+          id: recipeId,
+          name,
+          image,
+        });
+        // Optimistically update the store if it's the current week
+        if (slot.weekOffset === useWeekStore.getState().weekOffset) {
+          useWeekStore.getState().assignRecipe(slot.dayIndex, {
+            id: recipeId,
+            name,
+            image,
+          });
+        }
+        router.push(
+          `${ROUTES.PLANNER}?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}` as any
+        );
+      } else {
+        router.push(ROUTES.PLANNER as any);
+      }
+    } catch (err) {
+      console.error('Failed to auto-assign recipe from toast:', err);
+      router.push(ROUTES.PLANNER as any);
+    }
   };
 
   const handleViewRecipe = () => {
     setDrawerOpen(false);
     if (current) {
       dismissNotification(current.recipeId);
-      router.push(`/recipes/${current.recipeId}` as any);
+      router.push(`/recipes?open=${current.recipeId}` as any);
     }
   };
 
@@ -130,6 +164,7 @@ export function LibraryToast() {
                 <div className="flex-shrink-0 ml-3 my-3">
                   {current.imageUrl ? (
                     <div className="relative h-10 w-10 rounded-xl overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={getImageUrl(current.imageUrl)}
                         alt={current.name}
@@ -219,6 +254,7 @@ export function LibraryToast() {
                 <div className="flex items-center gap-4 mb-6">
                   {current.imageUrl ? (
                     <div className="relative h-16 w-16 rounded-2xl overflow-hidden flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={getImageUrl(current.imageUrl)}
                         alt={current.name}

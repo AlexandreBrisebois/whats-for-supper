@@ -15,7 +15,7 @@ public class SearchIndexWorkflow(
     public string ProcessorName => "IndexRecipeSearch";
 
     private static readonly string EmbeddingModelId =
-        Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "text-embedding-3-small";
+        Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2";
 
     /// <summary>
     /// Implementation of IWorkflowProcessor. Picked up by the WorkflowWorker.
@@ -109,6 +109,15 @@ public class SearchIndexWorkflow(
             // We set failed here, but the WorkflowWorker will handle retries 
             // if we throw the exception up. We'll mark as failed for immediate 
             // visibility in the search UI, but allow the worker to retry.
+            // Re-fetch or revert the doc entity to ensure we can save the failure status
+            // even if the original error was caused by invalid entity state (e.g. vector size cast)
+            var entry = db.Entry(doc);
+            if (entry.State == EntityState.Modified || entry.State == EntityState.Added)
+            {
+                entry.CurrentValues.SetValues(entry.OriginalValues);
+                entry.State = EntityState.Unchanged;
+            }
+
             doc.IndexStatus = "failed";
             await db.SaveChangesAsync(ct);
             sw.Stop();

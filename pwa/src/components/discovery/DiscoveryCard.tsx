@@ -11,6 +11,7 @@ import {
 } from 'framer-motion';
 import { Heart, X } from 'lucide-react';
 import { t } from '@/locales';
+import { getImageUrl } from '@/lib/imageUtils';
 
 interface DiscoveryCardProps {
   id: string;
@@ -172,7 +173,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         <div className="relative h-[62%] w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={imageUrl}
+            src={getImageUrl(imageUrl)}
             alt={name}
             className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />
