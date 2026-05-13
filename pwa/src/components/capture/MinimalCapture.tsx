@@ -197,11 +197,11 @@ export default function MinimalCapture({
         if (id) {
           useCaptureStore.getState().addPending({ recipeId: id });
           setPendingRecipeId(id);
-          
+
           // Check immediately in case it's already ready (SSE fired early)
-          const existing = useLibraryStore.getState().notifications.find(
-            (n) => n.recipeId === id && n.type === 'ready'
-          );
+          const existing = useLibraryStore
+            .getState()
+            .notifications.find((n) => n.recipeId === id && n.type === 'ready');
           if (existing) {
             setReadyRecipeName(existing.name);
             useLibraryStore.getState().dismissNotification(id);
@@ -284,31 +284,31 @@ export default function MinimalCapture({
     setIsPhotoSubmitPending(true);
     try {
       const id = await submitRecipe();
-        if (id) {
-          setWasPhotoCaptured(true);
-          if (isGoto) {
-            // Use the first image's implied recipe name (we don't have a name from the photo path,
-            // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
-            await saveSetting('family_goto', {
-              description: 'Your captured recipe',
-              recipeId: id,
-            });
-          }
-          useCaptureStore.getState().addPending({ recipeId: id });
-          setPendingRecipeId(id);
-
-          // Check immediately in case it's already ready (SSE fired early)
-          const existing = useLibraryStore.getState().notifications.find(
-            (n) => n.recipeId === id && n.type === 'ready'
-          );
-          if (existing) {
-            setReadyRecipeName(existing.name);
-            useLibraryStore.getState().dismissNotification(id);
-          }
-          
-          setCountdown(10);
-          setOnSuccess(true);
+      if (id) {
+        setWasPhotoCaptured(true);
+        if (isGoto) {
+          // Use the first image's implied recipe name (we don't have a name from the photo path,
+          // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
+          await saveSetting('family_goto', {
+            description: 'Your captured recipe',
+            recipeId: id,
+          });
         }
+        useCaptureStore.getState().addPending({ recipeId: id });
+        setPendingRecipeId(id);
+
+        // Check immediately in case it's already ready (SSE fired early)
+        const existing = useLibraryStore
+          .getState()
+          .notifications.find((n) => n.recipeId === id && n.type === 'ready');
+        if (existing) {
+          setReadyRecipeName(existing.name);
+          useLibraryStore.getState().dismissNotification(id);
+        }
+
+        setCountdown(10);
+        setOnSuccess(true);
+      }
     } finally {
       photoSubmitLockRef.current = false;
       setShowPhotoUploadOverlay(false);
@@ -346,9 +346,9 @@ export default function MinimalCapture({
         setPendingRecipeId(id);
 
         // Check immediately in case it's already ready (SSE fired early)
-        const existing = useLibraryStore.getState().notifications.find(
-          (n) => n.recipeId === id && n.type === 'ready'
-        );
+        const existing = useLibraryStore
+          .getState()
+          .notifications.find((n) => n.recipeId === id && n.type === 'ready');
         if (existing) {
           setReadyRecipeName(existing.name);
           useLibraryStore.getState().dismissNotification(id);

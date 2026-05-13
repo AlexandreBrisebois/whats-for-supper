@@ -78,8 +78,8 @@ export default function RecipesPage() {
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(
-    () => searchParams.get('open')
+  const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(() =>
+    searchParams.get('open')
   );
   const [prevOpenIdFromUrl, setPrevOpenIdFromUrl] = useState<string | null>(() =>
     searchParams.get('open')
@@ -1030,14 +1030,14 @@ export default function RecipesPage() {
                     isAssigning && 'opacity-50 pointer-events-none'
                   )}
                 >
-                <div className="relative aspect-video overflow-hidden rounded-3xl mb-6 shadow-sm ring-1 ring-charcoal/5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={getImageUrl(recipe.imageUrl) || '/placeholder-recipe.jpg'}
-                    alt={recipe.name}
-                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
+                  <div className="relative aspect-video overflow-hidden rounded-3xl mb-6 shadow-sm ring-1 ring-charcoal/5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={getImageUrl(recipe.imageUrl) || '/placeholder-recipe.jpg'}
+                      alt={recipe.name}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
                   <div className="flex flex-col gap-1 px-1.5 pb-1">
                     <span className="text-[9px] font-black uppercase tracking-widest text-charcoal/30 flex items-center gap-1">
                       <Clock size={9} /> {recipe.totalTime}

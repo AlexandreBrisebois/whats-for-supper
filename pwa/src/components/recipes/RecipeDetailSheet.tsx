@@ -440,13 +440,13 @@ export function RecipeDetailSheet({
           </div>
         ) : (
           <div className="overflow-y-auto px-6 pb-6 pt-4">
-              <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-[2rem] bg-charcoal/5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={getImageUrl(recipe.imageUrl) || '/placeholder-recipe.jpg'}
-                  alt={recipe.name}
-                  className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-                />
+            <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-[2rem] bg-charcoal/5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={getImageUrl(recipe.imageUrl) || '/placeholder-recipe.jpg'}
+                alt={recipe.name}
+                className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+              />
               {isEditing && (
                 <>
                   <input
