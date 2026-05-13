@@ -133,6 +133,8 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5001
           API_INTERNAL_URL: http://127.0.0.1:5001
+          NEXT_PUBLIC_ENABLE_AGENT_SEARCH: true
+          NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: true
 
       - name: E2E — Playwright
         run: npm run test:e2e -- --workers=2

@@ -483,8 +483,14 @@ test.describe('Recipes Search Page', () => {
 
     await page.goto('/recipes');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    
+    const trigger = page.getByTestId('agent-search-trigger');
+    if ((await trigger.count()) === 0) {
+      test.skip(true, 'Agent search is disabled');
+      return;
+    }
 
-    await page.getByTestId('agent-search-trigger').click();
+    await trigger.click();
     await expect(page.getByTestId('agent-search-input')).toBeVisible();
 
     await page
@@ -508,7 +514,13 @@ test.describe('Recipes Search Page', () => {
     await page.getByTestId('recipe-search-input').press('Enter');
     await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
 
-    await page.getByTestId('agent-search-trigger').click();
+    const trigger = page.getByTestId('agent-search-trigger');
+    if ((await trigger.count()) === 0) {
+      test.skip(true, 'Agent search is disabled');
+      return;
+    }
+
+    await trigger.click();
     await expect(page.getByTestId('agent-search-input')).toBeVisible();
 
     await page.getByTestId('agent-search-close').click();
@@ -544,7 +556,13 @@ test.describe('Recipes Search Page', () => {
     await page.goto('/recipes');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
 
-    await page.getByTestId('inventory-camera-trigger').click();
+    const trigger = page.getByTestId('inventory-camera-trigger');
+    if ((await trigger.count()) === 0) {
+      test.skip(true, 'Photo search is disabled');
+      return;
+    }
+
+    await trigger.click();
     await expect(page.getByTestId('inventory-capture-popup')).toBeVisible();
 
     await page.getByTestId('inventory-capture-submit').click();
@@ -565,7 +583,13 @@ test.describe('Recipes Search Page', () => {
     await page.goto('/recipes');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
 
-    await page.getByTestId('inventory-camera-trigger').click();
+    const trigger = page.getByTestId('inventory-camera-trigger');
+    if ((await trigger.count()) === 0) {
+      test.skip(true, 'Photo search is disabled');
+      return;
+    }
+
+    await trigger.click();
     await expect(page.getByTestId('inventory-capture-popup')).toBeVisible();
 
     await page.getByTestId('inventory-capture-cancel').click();
