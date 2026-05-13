@@ -9,7 +9,6 @@ const makeRecipe = (id: string): RecipeDto =>
     description: '',
     imageUrl: '',
     totalTime: '',
-    difficulty: '',
     category: '',
   }) as RecipeDto;
 

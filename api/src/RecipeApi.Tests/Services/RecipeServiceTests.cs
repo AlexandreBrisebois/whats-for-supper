@@ -216,4 +216,33 @@ public class RecipeServiceTests : IAsyncLifetime
         var assertDb = assertScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         Assert.Single(assertDb.WorkflowInstances.Where(instance => instance.WorkflowId == "index-recipe-search"));
     }
+
+    [Fact]
+    public async Task GetRecipe_Returns_FinishedDishIndex()
+    {
+        var recipeId = Guid.NewGuid();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = recipeId,
+                Name = "Cooked Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 3,
+                FinishedDishIndex = 2,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.GetAsync($"/api/recipes/{recipeId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipe = doc.RootElement.GetProperty("recipe");
+        Assert.Equal(2, recipe.GetProperty("finishedDishIndex").GetInt32());
+    }
 }

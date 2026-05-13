@@ -36,7 +36,6 @@ test.describe('Recipe Action Pivot', () => {
                 name: 'Homemade Lasagna',
                 imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
                 totalTime: '45 min',
-                difficulty: 'Medium',
                 rating: 3,
                 isDiscoverable: true,
                 notes: null,

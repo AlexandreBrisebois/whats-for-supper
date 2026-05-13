@@ -48,7 +48,6 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
         Rating = RecipeRating.Like,
         IsDiscoverable = true,
         Category = "ProteinFoods",
-        Difficulty = "Easy",
         TotalTime = "30 min",
         CreatedAt = DateTimeOffset.UtcNow,
         UpdatedAt = DateTimeOffset.UtcNow
@@ -297,7 +296,6 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
             Rating = recipe.Rating,
             IsDiscoverable = recipe.IsDiscoverable,
             Category = recipe.Category,
-            Difficulty = recipe.Difficulty,
             TotalTime = recipe.TotalTime,
             ImageCount = 0,
             IsSynthesized = true,

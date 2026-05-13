@@ -28,7 +28,7 @@ namespace Aws
                 {
                     Version = PostgresEngineVersion.VER_16
                 }),
-                InstanceType = Amazon.CDK.AWS.EC2.InstanceType.Of(InstanceClass.BURSTABLE3_GRAVITON, InstanceSize.MICRO),
+                InstanceType = Amazon.CDK.AWS.EC2.InstanceType.Of(InstanceClass.BURSTABLE4_GRAVITON, InstanceSize.MICRO),
                 AllocatedStorage = 20,
                 MaxAllocatedStorage = 30,
                 DatabaseName = "recipe_app_db",

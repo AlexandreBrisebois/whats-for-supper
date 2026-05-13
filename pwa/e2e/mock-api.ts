@@ -93,7 +93,6 @@ export const builders = {
             description: 'A delicious mock recipe for testing.',
             imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
             totalTime: 'PT30M',
-            difficulty: 'Medium',
             category: 'Italian',
             rating: 0,
             isVegetarian: false,
@@ -102,6 +101,7 @@ export const builders = {
             sourceType: RecipeDto_sourceTypeObject.Url,
             canReimport: true,
             imageCount: 0,
+            finishedDishIndex: -1,
             ingredients: ['Ingredient 1', 'Ingredient 2'],
             recipeInstructions: [
               {

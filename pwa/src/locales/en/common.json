@@ -263,10 +263,8 @@
     "goToPlanner": "Go to Planner",
     "captureNewRecipe": "Capture a New Recipe",
     "captureNew": "Capture a New Recipe",
-    "diff": "Diff",
     "love": "LOVE",
     "match": "MATCH!",
-    "medium": "Medium",
     "pass": "PASS",
     "prep": "Prep",
     "refreshFeed": "Refresh Feed",
@@ -343,7 +341,8 @@
     "showingDiscovery": "Showing recipes marked Discovery",
     "showingAll": "Showing all recipes",
     "turnOffDiscovery": "Turn off Discovery for this recipe",
-    "turnOnDiscovery": "Turn on Discovery for this recipe"
+    "turnOnDiscovery": "Turn on Discovery for this recipe",
+    "viewOriginals": "View Originals"
   },
   "settings": {
     "failedCaptures": "Failed Captures",

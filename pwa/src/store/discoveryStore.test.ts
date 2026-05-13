@@ -8,7 +8,6 @@ const makeRecipe = (id: string, hasFamilyInterest = false): DiscoveryRecipe => (
   description: '',
   imageUrl: '',
   totalTime: '',
-  difficulty: '',
   category: '',
   hasFamilyInterest,
 });

@@ -41,9 +41,6 @@ public class RecipeDto
     [JsonPropertyName("dietaryProfile")]
     public RecipeDietaryProfileDto? DietaryProfile { get; set; }
 
-    [JsonPropertyName("difficulty")]
-    public string? Difficulty { get; set; }
-
     [JsonPropertyName("isVegetarian")]
     public bool? IsVegetarian { get; set; }
 
@@ -67,6 +64,9 @@ public class RecipeDto
 
     [JsonPropertyName("imageCount")]
     public required int ImageCount { get; set; }
+
+    [JsonPropertyName("finishedDishIndex")]
+    public int FinishedDishIndex { get; set; } = -1;
 
     [JsonPropertyName("createdAt")]
     public required DateTimeOffset CreatedAt { get; set; }

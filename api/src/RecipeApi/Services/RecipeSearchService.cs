@@ -557,7 +557,6 @@ public partial class RecipeSearchService(
             Score = candidate.Score,
             ImageUrl = $"/api/recipes/{recipe.Id}/hero",
             TotalTime = recipe.TotalTime,
-            Difficulty = recipe.Difficulty,
             Rating = (int)recipe.Rating,
             IsDiscoverable = recipe.IsDiscoverable,
             Notes = recipe.Notes,

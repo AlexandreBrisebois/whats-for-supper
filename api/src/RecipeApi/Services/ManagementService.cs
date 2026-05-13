@@ -72,7 +72,6 @@ public class ManagementService(
                 existing.IsDiscoverable = recipe.IsDiscoverable;
                 existing.IsHealthyChoice = recipe.IsHealthyChoice;
                 existing.IsVegetarian = recipe.IsVegetarian;
-                existing.Difficulty = recipe.Difficulty;
                 existing.TotalTime = recipe.TotalTime;
                 existing.LastCookedDate = recipe.LastCookedDate;
                 existing.IsSynthesized = recipe.IsSynthesized;
@@ -102,7 +101,6 @@ public class ManagementService(
                     IsDiscoverable = recipe.IsDiscoverable,
                     IsHealthyChoice = recipe.IsHealthyChoice,
                     IsVegetarian = recipe.IsVegetarian,
-                    Difficulty = recipe.Difficulty,
                     TotalTime = recipe.TotalTime,
                     LastCookedDate = recipe.LastCookedDate,
                     SourceUrl = recipe.SourceUrl
@@ -770,7 +768,6 @@ public class ManagementService(
                             IsDiscoverable = info.IsDiscoverable,
                             IsHealthyChoice = info.IsHealthyChoice,
                             IsVegetarian = info.IsVegetarian,
-                            Difficulty = info.Difficulty,
                             TotalTime = info.TotalTime,
                             LastCookedDate = info.LastCookedDate,
                             SourceUrl = info.SourceUrl,
@@ -806,8 +803,6 @@ public class ManagementService(
 
                         if (string.IsNullOrEmpty(recipe.Category) && rootElement.TryGetProperty("category", out var catProp))
                             recipe.Category = catProp.GetString();
-                        if (string.IsNullOrEmpty(recipe.Difficulty) && rootElement.TryGetProperty("difficulty", out var diffProp))
-                            recipe.Difficulty = diffProp.GetString();
                         if (string.IsNullOrEmpty(recipe.Name) && rootElement.TryGetProperty("name", out var nameProp))
                             recipe.Name = nameProp.GetString();
                         if (string.IsNullOrEmpty(recipe.TotalTime) && rootElement.TryGetProperty("totalTime", out var timeProp))
@@ -898,7 +893,6 @@ public class ManagementService(
                     existing.IsDiscoverable = recipe.IsDiscoverable;
                     existing.IsHealthyChoice = recipe.IsHealthyChoice;
                     existing.IsVegetarian = recipe.IsVegetarian;
-                    existing.Difficulty = recipe.Difficulty;
                     existing.LastCookedDate = recipe.LastCookedDate;
                     existing.SourceUrl = recipe.SourceUrl;
                     existing.DietaryProfile = recipe.DietaryProfile;
@@ -1159,9 +1153,42 @@ public class ManagementService(
             logger.LogWarning("Ingredient categories file not found at {Path}, skipping", categoriesPath);
         }
 
-        logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Errors: {Errors}",
-            result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.Errors);
+        // 9. Backfill Finished Dish Indices from disk metadata
+        result.FinishedDishIndicesBackfilled = await BackfillFinishedDishIndicesAsync(ct);
+
+        logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Backfilled: {Backfilled}, Errors: {Errors}",
+            result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.FinishedDishIndicesBackfilled, result.Errors);
         return result;
+    }
+
+    private async Task<int> BackfillFinishedDishIndicesAsync(CancellationToken ct)
+    {
+        try
+        {
+            var recipes = await db.Recipes.IgnoreQueryFilters().ToListAsync(ct);
+            int updated = 0;
+            foreach (var recipe in recipes)
+            {
+                if (ct.IsCancellationRequested) break;
+                var info = await recipeStore.ReadInfoAsync(recipe.Id, ct);
+                if (info != null && info.FinishedDishImageIndex >= 0)
+                {
+                    recipe.FinishedDishIndex = info.FinishedDishImageIndex;
+                    updated++;
+                }
+            }
+            if (updated > 0)
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            logger.LogInformation("Successfully backfilled finished_dish_index for {Count} recipes.", updated);
+            return updated;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Finished dish backfill failed.");
+            return 0;
+        }
     }
 
     /// <summary>

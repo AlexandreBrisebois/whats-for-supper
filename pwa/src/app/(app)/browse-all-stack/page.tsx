@@ -700,7 +700,7 @@ export default function BrowseAllStackPage() {
                       {recipe.name}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-charcoal/50">
-                      {recipe.totalTime || 'N/A'} · {recipe.difficulty || 'Medium'}
+                      {recipe.totalTime || 'N/A'}
                     </p>
                   </div>
                 </button>
@@ -735,7 +735,6 @@ export default function BrowseAllStackPage() {
                       description={recipe.description || ''}
                       imageUrl={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
                       totalTime={recipe.totalTime || ''}
-                      difficulty={recipe.difficulty || 'Medium'}
                       category={recipe.category || ''}
                       isFront={i === 0}
                       stackIndex={i}

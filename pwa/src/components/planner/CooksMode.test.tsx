@@ -58,7 +58,6 @@ describe('CooksMode', () => {
       description: '',
       imageUrl: '/img/pasta.jpg',
       totalTime: '30 mins',
-      difficulty: 'Easy',
       category: 'Dinner',
       rating: 0,
       ingredients: ['Pasta', 'Tomatoes'],

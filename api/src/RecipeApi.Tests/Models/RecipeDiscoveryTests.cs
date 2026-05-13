@@ -12,14 +12,12 @@ public class RecipeDiscoveryTests
         var recipe = new Recipe
         {
             IsDiscoverable = true,
-            Category = "Pasta",
-            Difficulty = "Easy"
+            Category = "Pasta"
         };
 
         // Assert
         Assert.True(recipe.IsDiscoverable);
         Assert.Equal("Pasta", recipe.Category);
-        Assert.Equal("Easy", recipe.Difficulty);
     }
 
     [Fact]

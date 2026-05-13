@@ -7,7 +7,6 @@ export interface DiscoveryRecipe {
   description: string;
   imageUrl: string;
   totalTime: string;
-  difficulty: string;
   category: string;
   hasFamilyInterest?: boolean;
 }
@@ -19,7 +18,6 @@ function mapToDiscoveryRecipe(dto: RecipeDto): DiscoveryRecipe {
     description: dto.description || '',
     imageUrl: dto.imageUrl || '',
     totalTime: dto.totalTime || '',
-    difficulty: dto.difficulty || '',
     category: dto.category || '',
     hasFamilyInterest: false, // Map this if available in DTO
   };

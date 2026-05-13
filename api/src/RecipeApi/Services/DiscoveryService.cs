@@ -180,22 +180,6 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
             ConsensusRecipesCount: filteredVotes.Count);
     }
 
-    public string InferDifficulty(SchemaOrgRecipe recipe)
-    {
-        int ingredientCount = recipe.RecipeIngredient?.Count ?? 0;
-        int prepTimeMinutes = ParseIso8601Duration(recipe.TotalTime);
-
-        return InferDifficulty(ingredientCount, prepTimeMinutes);
-    }
-
-    public string InferDifficulty(int ingredientCount, int prepTimeMinutes)
-    {
-        if (ingredientCount < 5 && prepTimeMinutes < 20)
-            return "Easy";
-        if (ingredientCount > 12 || prepTimeMinutes > 45)
-            return "Hard";
-        return "Medium";
-    }
 
     private int ParseIso8601Duration(string? duration)
     {

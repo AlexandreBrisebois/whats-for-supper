@@ -12,5 +12,6 @@ public class SeedResult
     public int RecipesSkipped { get; set; }
     public int WeeklyPlansRestored { get; set; }
     public int CalendarEventsRestored { get; set; }
+    public int FinishedDishIndicesBackfilled { get; set; }
     public int Errors { get; set; }
 }

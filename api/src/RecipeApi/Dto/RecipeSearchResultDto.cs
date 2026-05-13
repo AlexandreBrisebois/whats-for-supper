@@ -22,9 +22,6 @@ public class RecipeSearchResultDto
     [JsonPropertyName("totalTime")]
     public string? TotalTime { get; set; }
 
-    [JsonPropertyName("difficulty")]
-    public string? Difficulty { get; set; }
-
     [JsonPropertyName("rating")]
     public int Rating { get; set; }
 

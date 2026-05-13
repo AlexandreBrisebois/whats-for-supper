@@ -196,7 +196,6 @@ public class RecipeController(
                 Description = "The ultimate comfort food, layered with rich meat sauce and creamy béchamel.",
                 ImageUrl = "https://images.unsplash.com/photo-1574894709920-11b28e7367e3",
                 PrepTime = "45 mins",
-                Difficulty = "Medium",
             },
             Results = new List<RecommendationResultDto>
             {

@@ -38,7 +38,6 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         Rating = RecipeRating.Like,
         IsDiscoverable = true,
         Category = "ProteinFoods",
-        Difficulty = "Easy",
         TotalTime = "30 min",
         CreatedAt = DateTimeOffset.UtcNow,
         UpdatedAt = DateTimeOffset.UtcNow
@@ -150,7 +149,6 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
             Notes = "Great for summer",
             Ingredients = """["pasta","lemon","parmesan"]""",
             Category = "WholeGrains",
-            Difficulty = "Easy",
             TotalTime = "20 min",
             Rating = RecipeRating.Love,
             IsDiscoverable = true,

@@ -263,10 +263,8 @@
     "goToPlanner": "Aller au Planning",
     "captureNewRecipe": "Capturer une Recette",
     "captureNew": "Capturer une recette",
-    "diff": "Diff.",
     "love": "J'adore",
     "match": "Match !",
-    "medium": "Moyen",
     "pass": "Passer",
     "prep": "Prépa",
     "refreshFeed": "Actualiser",
@@ -343,7 +341,8 @@
     "showingDiscovery": "Affichage des recettes marquées Découverte",
     "showingAll": "Affichage de toutes les recettes",
     "turnOffDiscovery": "Masquer de la Découverte pour cette recette",
-    "turnOnDiscovery": "Afficher dans la Découverte pour cette recette"
+    "turnOnDiscovery": "Afficher dans la Découverte pour cette recette",
+    "viewOriginals": "Voir les originaux"
   },
   "settings": {
     "failedCaptures": "Captures échouées",

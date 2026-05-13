@@ -91,6 +91,7 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
         return Accepted(new { message = "Search index backfill triggered in the background." });
     }
 
+
     /// <summary>
     /// GET /api/management/status — get the status of the most recent management workflow.
     /// </summary>

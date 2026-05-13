@@ -180,8 +180,6 @@ public class SearchIndexWorkflow(
             parts.Add($"Dietary: {recipe.DietaryProfile}.");
         if (!string.IsNullOrWhiteSpace(recipe.TotalTime))
             parts.Add($"Time: {recipe.TotalTime}.");
-        if (!string.IsNullOrWhiteSpace(recipe.Difficulty))
-            parts.Add($"Difficulty: {recipe.Difficulty}.");
 
         return string.Join(" ", parts);
     }

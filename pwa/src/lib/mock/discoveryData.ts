@@ -4,7 +4,6 @@ export interface DiscoveryRecipe {
   description: string;
   imageUrl: string;
   prepTime: string;
-  difficulty: string;
   category: string;
 }
 
@@ -17,7 +16,6 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
     imageUrl:
       'https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&w=800&q=80',
     prepTime: '20 Min',
-    difficulty: 'Easy',
     category: 'Gourmet Discovery',
   },
   {
@@ -28,7 +26,6 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
     imageUrl:
       'https://images.unsplash.com/photo-1485921325833-c519f76c4927?auto=format&fit=crop&w=800&q=80',
     prepTime: '25 Min',
-    difficulty: 'Medium',
     category: 'Coastal Kitchen',
   },
   {
@@ -39,7 +36,6 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
     imageUrl:
       'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
     prepTime: '15 Min',
-    difficulty: 'Easy',
     category: 'Organic Vitality',
   },
   {
@@ -50,7 +46,6 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
     imageUrl:
       'https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&w=800&q=80',
     prepTime: '35 Min',
-    difficulty: 'Medium',
     category: 'Artisanal Bakery',
   },
   {
@@ -61,7 +56,6 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
     imageUrl:
       'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=800&q=80',
     prepTime: '60 Min',
-    difficulty: 'Medium',
     category: 'Family Traditions',
   },
   {
@@ -72,7 +66,6 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
     imageUrl:
       'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=800&q=80',
     prepTime: '40 Min',
-    difficulty: 'Hard',
     category: "Chef's Signature",
   },
 ];

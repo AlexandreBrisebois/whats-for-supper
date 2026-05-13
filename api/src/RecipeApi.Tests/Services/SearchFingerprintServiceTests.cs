@@ -8,7 +8,7 @@ public class SearchFingerprintServiceTests
 {
     // Canonical expected SHA-256 for the fixed test input below.
     // Computed independently: SHA-256 of the canonical JSON with sorted keys and known values.
-    // Fields (alphabetical): category, description, difficulty, dietaryProfile, ingredients, isDiscoverable, name, notes, rating, recipeId, totalTime
+    // Fields (alphabetical): category, description, dietaryProfile, ingredients, isDiscoverable, name, notes, rating, recipeId, totalTime
     private static readonly Guid TestRecipeId = new("11111111-1111-1111-1111-111111111111");
 
     private static Recipe BuildCanonicalRecipe() => new()
@@ -18,7 +18,6 @@ public class SearchFingerprintServiceTests
         Description = "Fast dinner",
         Notes = "Kids love it",
         Category = "ProteinFoods",
-        Difficulty = "Easy",
         TotalTime = "30 min",
         Ingredients = """["chicken","broccoli"]""",
         Rating = RecipeRating.Like,
@@ -150,17 +149,6 @@ public class SearchFingerprintServiceTests
         Assert.NotEqual(original, changed);
     }
 
-    [Fact]
-    public void ComputeSourceFingerprint_Changes_When_Difficulty_Changes()
-    {
-        var recipe = BuildCanonicalRecipe();
-        var original = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-
-        recipe.Difficulty = "Hard";
-        var changed = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-
-        Assert.NotEqual(original, changed);
-    }
 
     [Fact]
     public void ComputeSourceFingerprint_DoesNot_Change_When_SourceUrl_Changes()

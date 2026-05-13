@@ -73,7 +73,6 @@ const defaultProps = {
   description: 'A classic Italian pasta dish',
   imageUrl: '/images/spaghetti.jpg',
   totalTime: 'PT30M',
-  difficulty: 'Easy',
   category: 'Italian',
   isFront: true,
   stackIndex: 0,
@@ -133,11 +132,6 @@ describe('RecipeStackCard — rendering', () => {
   it('renders formatted total time', () => {
     render(<RecipeStackCard {...defaultProps} totalTime="PT30M" />);
     expect(screen.getByText(/30m/i)).toBeTruthy();
-  });
-
-  it('renders difficulty', () => {
-    render(<RecipeStackCard {...defaultProps} difficulty="Easy" />);
-    expect(screen.getByText(/Easy/i)).toBeTruthy();
   });
 });
 

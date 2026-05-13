@@ -25,7 +25,6 @@ interface RecipeStackCardProps {
   description: string;
   imageUrl: string;
   totalTime: string;
-  difficulty: string;
   category: string;
   isFront: boolean;
   stackIndex: number;
@@ -60,7 +59,6 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   description,
   imageUrl,
   totalTime,
-  difficulty,
   category,
   isFront,
   stackIndex,
@@ -256,9 +254,6 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
               Prep: {formatDuration(totalTime)}
-            </span>
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sage-50/80 text-sage-700">
-              Diff: {difficulty || 'Medium'}
             </span>
           </div>
         </div>

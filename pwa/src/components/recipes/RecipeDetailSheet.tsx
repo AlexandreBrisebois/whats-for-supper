@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react';
 import {
   X,
   Clock,
-  ChefHat,
   Search,
   Trash2,
   Check,
@@ -14,6 +13,7 @@ import {
   Camera,
   RefreshCw,
   Star,
+  Images,
 } from 'lucide-react';
 import {
   getRecipe,
@@ -30,6 +30,7 @@ import { useFamilyStore } from '@/store/familyStore';
 import { getImageUrl } from '@/lib/imageUtils';
 import { ActionGearMenu } from './ActionGearMenu';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
+import { OriginalPhotosViewer } from './OriginalPhotosViewer';
 
 const GOTO_KEY = 'family_goto';
 
@@ -72,6 +73,7 @@ export function RecipeDetailSheet({
   const [showActionPivot, setShowActionPivot] = useState(false);
   const [isUpdatingDiscovery, setIsUpdatingDiscovery] = useState(false);
   const [isSavingGoto, setIsSavingGoto] = useState(false);
+  const [showOriginals, setShowOriginals] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
   const { familySettings, loadSetting, saveSetting } = useFamilyStore();
@@ -447,6 +449,17 @@ export function RecipeDetailSheet({
                 alt={recipe.name}
                 className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
               />
+              {recipe.imageCount > 0 && !isEditing && (
+                <button
+                  type="button"
+                  data-testid="action-view-originals"
+                  onClick={() => setShowOriginals(true)}
+                  className="absolute bottom-4 right-4 flex h-12 items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 text-xs font-black uppercase tracking-wider text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
+                >
+                  <Images size={18} />
+                  <span>{t('recipes.viewOriginals', 'View Originals')}</span>
+                </button>
+              )}
               {isEditing && (
                 <>
                   <input
@@ -501,9 +514,6 @@ export function RecipeDetailSheet({
               <div className="flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-widest text-charcoal/55">
                 <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 shadow-sm">
                   <Clock size={12} /> {recipe.totalTime}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 shadow-sm">
-                  <ChefHat size={12} /> {recipe.difficulty}
                 </span>
               </div>
               {isEditing ? (
@@ -728,6 +738,15 @@ export function RecipeDetailSheet({
           </div>
         )}
       </div>
+
+      {showOriginals && recipe && (
+        <OriginalPhotosViewer
+          recipeId={recipe.id}
+          imageCount={recipe.imageCount}
+          finishedDishIndex={recipe.finishedDishIndex}
+          onClose={() => setShowOriginals(false)}
+        />
+      )}
     </div>
   );
 }

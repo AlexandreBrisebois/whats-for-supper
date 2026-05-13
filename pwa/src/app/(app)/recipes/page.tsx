@@ -566,9 +566,9 @@ export default function RecipesPage() {
           href="/browse-all-stack"
           data-testid="browse-all-stack-trigger"
           aria-label={t('recipes.browseLibrary', 'Browse Library')}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-terracotta focus:ring-offset-2"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
         >
-          <BookOpen size={20} className="text-terracotta" />
+          <BookOpen size={20} className="text-ochre" />
         </Link>
       </div>
 
@@ -980,9 +980,6 @@ export default function RecipesPage() {
                     <div className="flex gap-2">
                       <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
                         <Clock size={10} /> {topPick.totalTime}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                        <ChefHat size={10} /> {topPick.difficulty}
                       </span>
                     </div>
                     <h3 className="text-3xl font-black tracking-tighter leading-none mb-1">

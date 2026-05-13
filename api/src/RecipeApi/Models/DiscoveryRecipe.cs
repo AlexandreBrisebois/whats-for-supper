@@ -25,9 +25,6 @@ public class DiscoveryRecipe
     [Column("image_count")]
     public int ImageCount { get; set; }
 
-    [Column("difficulty")]
-    public string? Difficulty { get; set; }
-
     [Column("total_time")]
     public string? TotalTime { get; set; }
 
@@ -57,7 +54,6 @@ public class DiscoveryRecipe
         Category = Category,
         Description = Description,
         ImageCount = ImageCount,
-        Difficulty = Difficulty,
         TotalTime = TotalTime,
         IsVegetarian = IsVegetarian,
         IsHealthyChoice = IsHealthyChoice,

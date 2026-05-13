@@ -23,7 +23,6 @@ interface DiscoveryCardProps {
   isFront: boolean;
   stackIndex: number;
   totalTime: string;
-  difficulty: string;
   category: string;
   hasFamilyInterest?: boolean;
 }
@@ -57,7 +56,6 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   isFront,
   stackIndex,
   totalTime,
-  difficulty,
   hasFamilyInterest,
 }) => {
   const x = useMotionValue(0);
@@ -221,9 +219,6 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
           <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
               {t('discovery.prep', 'Prep')}: {formatDuration(totalTime)}
-            </span>
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sage-50/80 text-sage-700">
-              {t('discovery.diff', 'Diff')}: {difficulty || t('discovery.medium', 'Medium')}
             </span>
           </div>
         </div>

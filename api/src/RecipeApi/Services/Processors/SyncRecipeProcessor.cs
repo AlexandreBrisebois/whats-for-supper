@@ -73,7 +73,6 @@ public class SyncRecipeProcessor(
             recipe.Ingredients = "[]";
         }
 
-        // We still deserialize to SchemaOrgRecipe to use for Difficulty inference, but we fall back gracefully
         var recipeData = JsonSerializer.Deserialize<SchemaOrgRecipe>(recipeJsonContent, JsonDefaults.CaseInsensitive) ?? new();
 
         // Synchronize from recipe.json (AI metadata)
@@ -104,7 +103,6 @@ public class SyncRecipeProcessor(
             recipe.SourceUrl = recipeInfo.SourceUrl;
         }
 
-        recipe.Difficulty = discoveryService.InferDifficulty(recipeData);
         recipe.ImageCount = recipeInfo.ImageCount;
         recipe.IsSynthesized = recipeInfo.IsSynthesized;
         recipe.IsDiscoverable = recipeInfo.IsDiscoverable;

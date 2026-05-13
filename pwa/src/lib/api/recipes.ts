@@ -16,7 +16,6 @@ export interface Recipe {
   description: string;
   imageUrl: string;
   totalTime: string;
-  difficulty: string;
   category: string;
   rating: number;
   notes?: string | null;
@@ -28,6 +27,7 @@ export interface Recipe {
   sourceType: 'url' | 'photos' | 'synthesized';
   canReimport: boolean;
   imageCount: number;
+  finishedDishIndex: number;
 }
 
 export type RecommendationResult = {
@@ -44,7 +44,6 @@ export type RecommendationsResponse = {
     description: string;
     imageUrl: string;
     prepTime: string;
-    difficulty: string;
   } | null;
   results: RecommendationResult[];
 };
@@ -54,7 +53,6 @@ export type RecipeSearchResult = {
   name: string;
   imageUrl: string;
   totalTime: string;
-  difficulty: string;
   rating: number;
   isDiscoverable: boolean;
   notes: string | null;
@@ -113,7 +111,6 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     description: dto.description || '',
     imageUrl: dto.imageUrl || '',
     totalTime: dto.totalTime || '',
-    difficulty: dto.difficulty || '',
     category: dto.category || '',
     rating: dto.rating || 0,
     notes: dto.notes ?? null,
@@ -125,6 +122,7 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     sourceType: (dto.sourceType as any) || 'synthesized',
     canReimport: dto.canReimport ?? false,
     imageCount: dto.imageCount || 0,
+    finishedDishIndex: dto.finishedDishIndex ?? -1,
   };
 }
 
@@ -135,7 +133,6 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
   const name = readField<string>(dto, 'name') || '';
   const imageUrl = readField<string>(dto, 'imageUrl') || '';
   const totalTime = readField<string>(dto, 'totalTime') || '';
-  const difficulty = readField<string>(dto, 'difficulty') || '';
   const rating = readField<number>(dto, 'rating') || 0;
   const isDiscoverable = readField<boolean>(dto, 'isDiscoverable') ?? false;
   const notes = (readField<string | null>(dto, 'notes') ?? null) as string | null;
@@ -147,7 +144,7 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
 
   // Kiota currently deserializes nullable union topPick into an empty marker object.
   // Treat that shape as null so the page can show the real empty state.
-  if (!id && !name && !imageUrl && !totalTime && !difficulty && !notes && !plannerFitNote) {
+  if (!id && !name && !imageUrl && !totalTime && !notes && !plannerFitNote) {
     return null;
   }
 
@@ -156,7 +153,6 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
     name,
     imageUrl,
     totalTime,
-    difficulty,
     rating,
     isDiscoverable,
     notes,
@@ -386,7 +382,6 @@ export async function getRecommendations(): Promise<RecommendationsResponse> {
           description: data.topPick.description || '',
           imageUrl: data.topPick.imageUrl || '',
           prepTime: data.topPick.prepTime || '',
-          difficulty: data.topPick.difficulty || '',
         }
       : null,
     results: (data?.results || []).map((r: RecommendationResultDto) => ({

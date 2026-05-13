@@ -47,7 +47,7 @@ components:
     # --- Recipes ---
     RecipeDto:
       type: object
-      required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount]
+      required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount, finishedDishIndex]
       properties:
         id: { type: string, format: uuid }
         name: { type: [string, 'null'] }
@@ -61,7 +61,6 @@ components:
           oneOf:
             - { $ref: '#/components/schemas/RecipeDietaryProfileDto' }
             - { type: 'null' }
-        difficulty: { type: [string, 'null'] }
         images:
           type: array
           items: { type: integer }
@@ -74,6 +73,7 @@ components:
         sourceType: { type: string, enum: [url, photos, synthesized] }
         canReimport: { type: boolean }
         imageCount: { type: integer }
+        finishedDishIndex: { type: integer, default: -1 }
         addedBy: { type: [string, 'null'], format: uuid }
         ingredients:
           type: [array, 'null']
@@ -169,7 +169,6 @@ components:
         name: { type: [string, 'null'] }
         imageUrl: { type: [string, 'null'] }
         totalTime: { type: [string, 'null'] }
-        difficulty: { type: [string, 'null'] }
         rating: { type: integer }
         isDiscoverable: { type: boolean }
         notes: { type: [string, 'null'] }
@@ -212,7 +211,7 @@ components:
 
     TopPickDto:
       type: object
-      required: [id, name, description, imageUrl, prepTime, difficulty]
+      required: [id, name, description, imageUrl, prepTime]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -220,7 +219,6 @@ components:
         imageUrl: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440000/hero' }
 
         prepTime: { type: string }
-        difficulty: { type: string }
 
     RecommendationResultDto:
       type: object
@@ -1615,7 +1613,6 @@ paths:
                       description: 'Classic comfort food with layered pasta, rich meat sauce, and melted cheese.'
                       imageUrl: '/api/recipes/550e8400-e29b-41d4-a716-446655440000/hero'
                       prepTime: '45 mins'
-                      difficulty: 'Medium'
                     results:
                       - id: '550e8400-e29b-41d4-a716-446655440001'
                         name: 'Zesty Lemon Chicken'
@@ -2015,6 +2012,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ManagementBackfillSearchAcceptedResponse' }
+
 
   /api/management/demo-capture:
     post:

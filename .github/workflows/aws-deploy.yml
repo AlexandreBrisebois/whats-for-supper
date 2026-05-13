@@ -51,7 +51,22 @@ jobs:
         run: |
           cd infrastructure/aws
           dotnet build src/Aws/Aws.csproj
-          cdk deploy --all --require-approval never --context imageTag=${{ env.WFS_TAG }}
+          cdk deploy --all --require-approval never \
+            --context imageTag=${{ env.WFS_TAG }} \
+            --context geminiApiKey=${{ secrets.GEMINI_API_KEY }} \
+            --context hearthSecret=${{ secrets.HEARTH_SECRET }} \
+            --context elevatedActionsPin=${{ secrets.ELEVATED_ACTIONS_PIN }} \
+            --context geminiModelId=gemini-3-flash-preview \
+            --context geminiModelIdHero=models/gemini-3-pro-image-preview \
+            --context embeddingModelId=gemini-embedding-2 \
+            --context importTargetLanguage=NONE \
+            --context demoMode=true \
+            --context demoRestoreCron="0 3 * * *" \
+            --context dreamingCron="0 3 * * *" \
+            --context allowedOrigins="https://wfs.srvrlss.dev" \
+            --context domainName="wfs.srvrlss.dev" \
+            --context cookieDomain=".srvrlss.dev" \
+            --context aisleOrder="Produce,Meat,Dairy & Eggs,Bakery,Frozen,Pantry,Other"
         env:
           # CDK will use the authenticated Docker session to push to ECR
           DOCKER_BUILDKIT: 1 

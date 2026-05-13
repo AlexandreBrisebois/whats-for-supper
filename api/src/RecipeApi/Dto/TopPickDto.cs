@@ -19,6 +19,4 @@ public class TopPickDto
     [JsonPropertyName("prepTime")]
     public string PrepTime { get; set; } = string.Empty;
 
-    [JsonPropertyName("difficulty")]
-    public string Difficulty { get; set; } = string.Empty;
 }

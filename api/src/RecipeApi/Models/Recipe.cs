@@ -58,9 +58,6 @@ public class Recipe
     [Column("category")]
     public string? Category { get; set; }
 
-    [Column("difficulty")]
-    public string? Difficulty { get; set; }
-
     [Column("is_vegetarian")]
     public bool IsVegetarian { get; set; } = false;
 
@@ -97,6 +94,9 @@ public class Recipe
 
     [Column("last_cooked_date")]
     public DateTimeOffset? LastCookedDate { get; set; }
+
+    [Column("finished_dish_index")]
+    public int FinishedDishIndex { get; set; } = -1;
 
     [ForeignKey(nameof(AddedBy))]
     public FamilyMember? AddedByMember { get; set; }

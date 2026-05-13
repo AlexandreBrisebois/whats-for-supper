@@ -1630,8 +1630,8 @@ export function deserializeIntoRecipeDto(
           createRecipeDto_dietaryProfileMember1FromDiscriminatorValue
         );
     },
-    difficulty: (n) => {
-      recipeDto.difficulty = n.getStringValue();
+    finishedDishIndex: (n) => {
+      recipeDto.finishedDishIndex = n.getNumberValue();
     },
     id: (n) => {
       recipeDto.id = n.getGuidValue();
@@ -2024,9 +2024,6 @@ export function deserializeIntoRecipeSearchResultDto(
   recipeSearchResultDto: Partial<RecipeSearchResultDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
-    difficulty: (n) => {
-      recipeSearchResultDto.difficulty = n.getStringValue();
-    },
     id: (n) => {
       recipeSearchResultDto.id = n.getGuidValue();
     },
@@ -2459,9 +2456,6 @@ export function deserializeIntoTopPickDto(
   return {
     description: (n) => {
       topPickDto.description = n.getStringValue();
-    },
-    difficulty: (n) => {
-      topPickDto.difficulty = n.getStringValue();
     },
     id: (n) => {
       topPickDto.id = n.getGuidValue();
@@ -3085,9 +3079,9 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   dietaryProfile?: RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1 | null;
   /**
-   * The difficulty property
+   * The finishedDishIndex property
    */
-  difficulty?: string | null;
+  finishedDishIndex?: number | null;
   /**
    * The id property
    */
@@ -3340,10 +3334,6 @@ export type RecipeSearchResponseDto_topPick =
   | RecipeSearchResultDto;
 export interface RecipeSearchResponseDto_topPickMember1 extends AdditionalDataHolder, Parsable {}
 export interface RecipeSearchResultDto extends AdditionalDataHolder, Parsable {
-  /**
-   * The difficulty property
-   */
-  difficulty?: string | null;
   /**
    * The id property
    */
@@ -4180,7 +4170,7 @@ export function serializeRecipeDto(
     recipeDto.dietaryProfile,
     serializeRecipeDto_dietaryProfile
   );
-  writer.writeStringValue('difficulty', recipeDto.difficulty);
+  writer.writeNumberValue('finishedDishIndex', recipeDto.finishedDishIndex);
   writer.writeGuidValue('id', recipeDto.id);
   writer.writeNumberValue('imageCount', recipeDto.imageCount);
   writer.writeCollectionOfPrimitiveValues<number>('images', recipeDto.images);
@@ -4554,7 +4544,6 @@ export function serializeRecipeSearchResultDto(
   if (!recipeSearchResultDto || isSerializingDerivedType) {
     return;
   }
-  writer.writeStringValue('difficulty', recipeSearchResultDto.difficulty);
   writer.writeGuidValue('id', recipeSearchResultDto.id);
   writer.writeStringValue('imageUrl', recipeSearchResultDto.imageUrl);
   writer.writeBooleanValue('isDiscoverable', recipeSearchResultDto.isDiscoverable);
@@ -4995,7 +4984,6 @@ export function serializeTopPickDto(
     return;
   }
   writer.writeStringValue('description', topPickDto.description);
-  writer.writeStringValue('difficulty', topPickDto.difficulty);
   writer.writeGuidValue('id', topPickDto.id);
   writer.writeStringValue('imageUrl', topPickDto.imageUrl);
   writer.writeStringValue('name', topPickDto.name);
@@ -5310,10 +5298,6 @@ export interface TopPickDto extends AdditionalDataHolder, Parsable {
    * The description property
    */
   description?: string | null;
-  /**
-   * The difficulty property
-   */
-  difficulty?: string | null;
   /**
    * The id property
    */

@@ -66,6 +66,7 @@ public class RecipeService(
             Notes = request.Notes,
             AddedBy = familyMemberId,
             ImageCount = files.Count,
+            FinishedDishIndex = request.FinishedDishImageIndex,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -550,7 +551,6 @@ public class RecipeService(
             Description = r.Description,
             Category = r.Category,
             DietaryProfile = DeserializeDietaryProfile(r.DietaryProfile),
-            Difficulty = r.Difficulty,
             ImageUrl = $"/api/recipes/{r.Id}/hero",
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
             Ingredients = DeserializeIngredients(r.Ingredients),
@@ -562,7 +562,8 @@ public class RecipeService(
             DeletedAt = r.DeletedAt,
             SourceType = sourceType,
             CanReimport = sourceType != "synthesized",
-            ImageCount = r.ImageCount
+            ImageCount = r.ImageCount,
+            FinishedDishIndex = r.FinishedDishIndex
         };
     }
 

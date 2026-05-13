@@ -120,24 +120,6 @@ public class DiscoveryServiceTests
         Assert.False(isMatch); // 1 out of 3 is 33%
     }
 
-    [Theory]
-    [InlineData(4, 19, "Easy")]
-    [InlineData(5, 19, "Medium")]
-    [InlineData(4, 20, "Medium")]
-    [InlineData(13, 10, "Hard")]
-    [InlineData(10, 46, "Hard")]
-    [InlineData(10, 30, "Medium")]
-    public void InferDifficulty_Returns_Correct_Level(int ingredients, int time, string expected)
-    {
-        // Arrange
-        var service = new DiscoveryService(null!, new Mock<IScheduleEventPublisher>().Object); // Context not needed for this logic
-
-        // Act
-        var result = service.InferDifficulty(ingredients, time);
-
-        // Assert
-        Assert.Equal(expected, result);
-    }
 
     [Fact]
     public async Task GetAvailableCategoriesAsync_Returns_Categories_With_Unvoted_Recipes()

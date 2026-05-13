@@ -27,7 +27,6 @@ public static class SearchFingerprintService
         {
             ["category"] = recipe.Category,
             ["description"] = recipe.Description,
-            ["difficulty"] = recipe.Difficulty,
             ["dietaryProfile"] = recipe.DietaryProfile != null
                 ? JsonSerializer.Deserialize<object>(recipe.DietaryProfile)
                 : null,

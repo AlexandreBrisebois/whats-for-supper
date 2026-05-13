@@ -33,7 +33,6 @@ function makeRecipe(overrides: Partial<RecipeDto> = {}): RecipeDto {
     description: 'A light pasta dish',
     imageUrl: 'https://example.com/pasta.jpg',
     totalTime: 'PT30M',
-    difficulty: 'Easy',
     category: 'Dinner',
     isDiscoverable: false,
     rating: 2,

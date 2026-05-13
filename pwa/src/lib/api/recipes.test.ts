@@ -112,7 +112,6 @@ describe('searchRecipes', () => {
             name: 'Chicken Soup',
             imageUrl: 'https://example.com/chicken-soup.jpg',
             totalTime: '30 min',
-            difficulty: 'Easy',
             rating: 2,
             isDiscoverable: true,
             notes: 'weeknight staple',
@@ -125,7 +124,6 @@ describe('searchRecipes', () => {
               name: 'Chicken Pasta',
               imageUrl: 'https://example.com/chicken-pasta.jpg',
               totalTime: '25 min',
-              difficulty: 'Easy',
               rating: 1,
               isDiscoverable: true,
               notes: null,
@@ -159,7 +157,6 @@ describe('searchRecipes', () => {
       id: '22222222-2222-2222-2222-222222222222',
       name: 'Chicken Pasta',
       totalTime: '25 min',
-      difficulty: 'Easy',
     });
     expect(result.resultPath).toBe('lexical-only');
   });
@@ -173,7 +170,6 @@ describe('searchRecipes', () => {
           name: 'Chicken Soup',
           imageUrl: 'https://example.com/chicken-soup.jpg',
           totalTime: '30 min',
-          difficulty: 'Easy',
           rating: 2,
           isDiscoverable: true,
           notes: 'weeknight staple',
@@ -205,7 +201,6 @@ describe('searchRecipes', () => {
               name: 'Homemade Lasagna',
               imageUrl: 'https://example.com/lasagna.jpg',
               totalTime: '45 min',
-              difficulty: 'Medium',
               rating: 3,
               isDiscoverable: true,
               notes: null,

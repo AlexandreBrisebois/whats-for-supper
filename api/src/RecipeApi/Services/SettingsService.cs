@@ -65,7 +65,6 @@ public class SettingsService(RecipeDbContext dbContext, ILogger<SettingsService>
             ImageUrl = null,
             TotalTime = null,
             Category = null,
-            Difficulty = null,
             Rating = 0,
             IsVegetarian = false,
             IsHealthyChoice = false,
