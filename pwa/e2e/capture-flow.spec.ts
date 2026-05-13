@@ -683,9 +683,7 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
   // ── Recipe queued state ──────────────────────────────────────────────────
   // (not "Captured!") because synthesis is async. The app automatically
   // redirects home after 10 seconds.
-  test('photo submit shows recipe queued state and redirects home', async ({
-    page,
-  }) => {
+  test('photo submit shows recipe queued state and redirects home', async ({ page }) => {
     await page.route('**/api/recipes', async (route) => {
       if (route.request().method() === 'POST') {
         await route.fulfill({

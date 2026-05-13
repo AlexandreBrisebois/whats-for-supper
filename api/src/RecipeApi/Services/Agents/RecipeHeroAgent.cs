@@ -169,7 +169,7 @@ public class RecipeHeroAgent(
             {
                 ThinkingConfig = new ThinkingConfig
                 {
-                    IncludeThoughts = false,
+                    IncludeThoughts = true,
                     ThinkingBudget = 16000
                 },
                 MaxOutputTokens = 2048
