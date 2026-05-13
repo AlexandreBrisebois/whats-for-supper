@@ -42,9 +42,9 @@ CREATE TABLE recipes (
     updated_at timestamptz DEFAULT now() NOT NULL,
     last_cooked_date timestamptz,
     finished_dish_index integer DEFAULT -1 NOT NULL,
-    deleted_at timestamptz null,
-    deleted_by uuid null,
-    delete_note text null,
+    deleted_at timestamptz DEFAULT NULL,
+    deleted_by uuid DEFAULT NULL,
+    delete_note text DEFAULT NULL,
     CONSTRAINT recipes_rating_check CHECK (rating >= 0 AND rating <= 3)
 );
 
@@ -171,9 +171,9 @@ FROM recipe_votes
 WHERE vote = 1 
 GROUP BY recipe_id;
 
-CREATE VIEW vw_discovery_recipes AS
+CREATE OR REPLACE VIEW vw_discovery_recipes AS
 SELECT r.id, r.name, r.category, r.description, r.ingredients, r.image_count, r.total_time, r.is_vegetarian, r.is_healthy_choice, r.last_cooked_date, r.created_at, r.dietary_profile, r.finished_dish_index,
 COALESCE(v.vote_count, 0) AS vote_count
 FROM recipes r
 LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id
-WHERE r.is_discoverable = true;
+WHERE r.is_discoverable = true AND r.deleted_at IS NULL;
