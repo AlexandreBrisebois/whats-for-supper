@@ -342,7 +342,8 @@
     "showingAll": "Affichage de toutes les recettes",
     "turnOffDiscovery": "Masquer de la Découverte pour cette recette",
     "turnOnDiscovery": "Afficher dans la Découverte pour cette recette",
-    "viewOriginals": "Voir les originaux"
+    "viewOriginal": "Voir l'original",
+    "viewSource": "Voir la source"
   },
   "settings": {
     "failedCaptures": "Captures échouées",

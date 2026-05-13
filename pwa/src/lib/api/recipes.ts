@@ -28,6 +28,7 @@ export interface Recipe {
   canReimport: boolean;
   imageCount: number;
   finishedDishIndex: number;
+  sourceUrl?: string | null;
 }
 
 export type RecommendationResult = {
@@ -123,6 +124,7 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     canReimport: dto.canReimport ?? false,
     imageCount: dto.imageCount || 0,
     finishedDishIndex: dto.finishedDishIndex ?? -1,
+    sourceUrl: dto.sourceUrl ?? null,
   };
 }
 

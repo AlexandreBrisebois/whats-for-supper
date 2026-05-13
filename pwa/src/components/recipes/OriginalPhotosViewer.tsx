@@ -71,7 +71,7 @@ export function OriginalPhotosViewer({
       <div className="flex h-20 items-center justify-between px-6">
         <div className="flex flex-col">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
-            {t('recipes.viewOriginals', 'Original Photos')}
+            {t('recipes.viewOriginal', 'Original Photo')}
           </span>
           <span className="text-sm font-bold text-white/90">
             {currentIndex + 1} / {imageCount}

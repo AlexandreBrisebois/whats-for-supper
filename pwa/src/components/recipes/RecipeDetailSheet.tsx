@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Star,
   Images,
+  ExternalLink,
 } from 'lucide-react';
 import {
   getRecipe,
@@ -449,15 +450,25 @@ export function RecipeDetailSheet({
                 alt={recipe.name}
                 className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
               />
-              {recipe.imageCount > 0 && !isEditing && (
+              {!isEditing && (recipe.imageCount > 0 || recipe.sourceType === 'url') && (
                 <button
                   type="button"
-                  data-testid="action-view-originals"
-                  onClick={() => setShowOriginals(true)}
+                  data-testid="action-view-original"
+                  onClick={() => {
+                    if (recipe.sourceType === 'url' && recipe.sourceUrl) {
+                      window.open(recipe.sourceUrl, '_blank', 'noopener,noreferrer');
+                    } else {
+                      setShowOriginals(true);
+                    }
+                  }}
                   className="absolute bottom-4 right-4 flex h-12 items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 text-xs font-black uppercase tracking-wider text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
                 >
-                  <Images size={18} />
-                  <span>{t('recipes.viewOriginals', 'View Originals')}</span>
+                  {recipe.sourceType === 'url' ? (
+                    <ExternalLink size={18} />
+                  ) : (
+                    <Images size={18} />
+                  )}
+                  <span>{t('recipes.viewOriginal', 'View Original')}</span>
                 </button>
               )}
               {isEditing && (

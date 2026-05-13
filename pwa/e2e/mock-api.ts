@@ -102,6 +102,7 @@ export const builders = {
             canReimport: true,
             imageCount: 0,
             finishedDishIndex: -1,
+            sourceUrl: 'https://example.com/recipe',
             ingredients: ['Ingredient 1', 'Ingredient 2'],
             recipeInstructions: [
               {
