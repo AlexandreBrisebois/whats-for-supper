@@ -483,7 +483,7 @@ test.describe('Recipes Search Page', () => {
 
     await page.goto('/recipes');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
-    
+
     const trigger = page.getByTestId('agent-search-trigger');
     if ((await trigger.count()) === 0) {
       test.skip(true, 'Agent search is disabled');

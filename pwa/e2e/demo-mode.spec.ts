@@ -47,7 +47,7 @@ test.describe('Demo Mode', () => {
 
     // Attempt to trigger agent search
     const agentTrigger = page.getByTestId('agent-search-trigger');
-    if (await agentTrigger.count() === 0) {
+    if ((await agentTrigger.count()) === 0) {
       test.skip(true, 'Agent search is disabled');
       return;
     }
