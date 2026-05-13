@@ -246,9 +246,23 @@ public class WorkflowWorker(
     {
         try
         {
-            // Reload task in case it's from a different context
-            task = await db.WorkflowTasks.FindAsync([task.TaskId], cancellationToken: ct)
+            // Reload task with AsNoTracking to ensure we get the latest state from the DB,
+            // then attach it so we can continue processing it.
+            var refreshedTask = await db.WorkflowTasks.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.TaskId == task.TaskId, cancellationToken: ct)
                 ?? throw new InvalidOperationException($"Task {task.TaskId} not found");
+
+            task = refreshedTask;
+            db.WorkflowTasks.Attach(task);
+
+            // If the task was rescheduled (e.g. by a 429 from another parallel task) while we were waiting
+            // for the throttle, skip it now so we don't hit the rate limit again immediately.
+            if (task.ScheduledAt > DateTimeOffset.UtcNow)
+            {
+                logger.LogInformation("Task {TaskId} ({ProcessorName}) was rescheduled while waiting for throttle slot. Skipping execution.",
+                    task.TaskId, task.ProcessorName);
+                return;
+            }
 
             // Mark as processing
             task.Status = TaskStatus.Processing;
@@ -294,7 +308,8 @@ public class WorkflowWorker(
         }
         catch (Exception ex) when ((ex is TransientWorkflowException || aiExceptionHandler.IsTransient(ex) || Is429Exception(ex)) && task.RetryCount < _maxRetries)
         {
-            var failureType = ex is TransientWorkflowException ? "transient" : "rate-limit";
+            var is429 = Is429Exception(ex);
+            var failureType = is429 ? "rate-limit" : "transient";
             task.RetryCount++;
             task.Status = TaskStatus.Pending;
             task.ScheduledAt = _retryScheduler.ComputeNextScheduledAt(task.RetryCount, DateTimeOffset.UtcNow);
@@ -307,6 +322,27 @@ public class WorkflowWorker(
             logger.LogWarning(ex,
                 "Task {TaskId} ({ProcessorName}) {FailureType} failure, retry {Retry}/{Max}, next at {ScheduledAt}{QuietWindow}",
                 task.TaskId, task.ProcessorName, failureType, task.RetryCount, _maxRetries, task.ScheduledAt, quietWindowLabel);
+
+            if (is429)
+            {
+                // Proactively reschedule other pending tasks of the same type to avoid useless requests
+                // that would likely also hit the 429 rate limit.
+                var otherTasks = await db.WorkflowTasks
+                    .Where(t => t.ProcessorName == task.ProcessorName && t.Status == TaskStatus.Pending)
+                    .ToListAsync(ct);
+
+                foreach (var t in otherTasks)
+                {
+                    t.ScheduledAt = task.ScheduledAt;
+                    t.UpdatedAt = DateTimeOffset.UtcNow;
+                }
+
+                if (otherTasks.Any())
+                {
+                    logger.LogInformation("Proactively rescheduled {Count} other pending tasks of type {ProcessorName} to {ScheduledAt}",
+                        otherTasks.Count, task.ProcessorName, task.ScheduledAt);
+                }
+            }
 
             try
             {

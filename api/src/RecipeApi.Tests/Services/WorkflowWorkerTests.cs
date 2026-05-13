@@ -1015,6 +1015,120 @@ public class WorkflowWorkerTests : IAsyncLifetime
         await db.DisposeAsync();
     }
 
+    [Fact]
+    public async Task Worker_429_Reschedules_Other_Pending_Tasks_Of_Same_Type()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WorkflowThrottle:ExtractRecipe"] = "1", // Only one at a time
+                ["WorkflowRetry:RetryScheduleMinutes:0"] = "1",
+                ["WorkflowRetry:MaxRetries"] = "10"
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        var dbName = $"Proactive429Test_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts =>
+            opts.UseInMemoryDatabase(dbName));
+
+        // First task will hit 429
+        var rateLimitEx = new HttpRequestException("Rate limited", null, HttpStatusCode.TooManyRequests);
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new ThrowingWorkflowProcessor("ExtractRecipe", rateLimitEx, 200));
+        services.AddScoped<IWorkflowProcessor>(sp =>
+            new MockWorkflowProcessor("GenerateHero", []));
+
+        services.AddLogging(opts => opts.SetMinimumLevel(LogLevel.Debug));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var db = serviceProvider.GetRequiredService<RecipeDbContext>();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+
+        var testWorker = new WorkflowWorker(scopeFactory, new Mock<ILogger<WorkflowWorker>>().Object, new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        {
+            RetryScheduleMinutes = [1],
+            MaxRetries = 10
+        }));
+
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "test", Status = WorkflowStatus.Processing };
+        db.WorkflowInstances.Add(instance);
+
+        // Task A: will hit 429
+        var taskAId = Guid.NewGuid();
+        var taskA = new WorkflowTask
+        {
+            TaskId = taskAId,
+            InstanceId = instance.Id,
+            TaskName = "A",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1)
+        };
+
+        // Task B: should be proactively rescheduled
+        var taskBId = Guid.NewGuid();
+        var taskB = new WorkflowTask
+        {
+            TaskId = taskBId,
+            InstanceId = instance.Id,
+            TaskName = "B",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddMinutes(-5) // Much older task to ensure it's picked up first
+        };
+
+        // Task C: different type, should NOT be rescheduled to the same future time
+        var taskCId = Guid.NewGuid();
+        var taskC = new WorkflowTask
+        {
+            TaskId = taskCId,
+            InstanceId = instance.Id,
+            TaskName = "C",
+            ProcessorName = "GenerateHero",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddSeconds(-1)
+        };
+
+        db.WorkflowTasks.AddRange(taskA, taskB, taskC);
+        await db.SaveChangesAsync();
+
+        // Act: Process tasks
+        await testWorker.ProcessPendingTasksAsync(default);
+
+        // Assert
+        using var queryScope = serviceProvider.CreateScope();
+        var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+        var updatedA = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId);
+        var updatedB = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskBId);
+        var updatedC = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskCId);
+
+        // Task A hit 429 and rescheduled normally
+        Assert.Equal(1, updatedA.RetryCount);
+        Assert.Equal(TaskStatus.Pending, updatedA.Status);
+        Assert.NotNull(updatedA.ScheduledAt);
+        Assert.True(updatedA.ScheduledAt > now);
+
+        // Task B should be rescheduled to the future (proactively or via its own backoff)
+        Assert.Equal(TaskStatus.Pending, updatedB.Status);
+        Assert.True(updatedB.ScheduledAt > now, "Task B should be scheduled in the future");
+        
+        // Use a small tolerance for ScheduledAt to ensure they are at least roughly aligned
+        Assert.True(Math.Abs((updatedA.ScheduledAt!.Value - updatedB.ScheduledAt!.Value).TotalSeconds) < 5, 
+            $"Task B schedule {updatedB.ScheduledAt} should be aligned with Task A schedule {updatedA.ScheduledAt}");
+
+        // Task C should NOT be affected by A's 429 rescheduling logic
+        Assert.NotEqual(updatedA.ScheduledAt, updatedC.ScheduledAt);
+
+        // Cleanup
+        testWorker.Dispose();
+        await db.DisposeAsync();
+    }
+
     // -------------------------------------------------------------------------
     // Fix-Checking Tests (Task 3 — Property 1: Expected Behavior)
     // These tests verify the fix is correct on FIXED code.
@@ -1944,13 +2058,13 @@ public class MockWorkflowProcessor(string processorName, List<string> executedNa
 /// <summary>
 /// Throwing processor for testing error handling.
 /// </summary>
-public class ThrowingWorkflowProcessor(string processorName, Exception toThrow) : IWorkflowProcessor
+public class ThrowingWorkflowProcessor(string processorName, Exception toThrow, int delayMs = 0) : IWorkflowProcessor
 {
     public string ProcessorName => processorName;
 
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
-        await Task.Yield();
+        if (delayMs > 0) await Task.Delay(delayMs, ct);
         throw toThrow;
     }
 }
