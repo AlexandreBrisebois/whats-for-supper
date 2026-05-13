@@ -45,7 +45,7 @@ public class RecipeHeroAgent(
             throw new FileNotFoundException($"Recipe info file not found: {infoPath}");
         }
 
-        await CreateHeroImageAsync(recipeId, force);
+        await CreateHeroImageAsync(recipeId, force, ct);
         return new { Message = $"Generated hero image for {recipeId} (Force={force})" };
     }
     private string RecipesRoot => recipesRoot.Root;
@@ -61,7 +61,7 @@ public class RecipeHeroAgent(
         ?? configuration["GEMINI_MODEL_ID_HERO"]
         ?? "models/gemini-3-pro-image-preview";
 
-    public async Task CreateHeroImageAsync(Guid recipeId, bool force = false)
+    public async Task CreateHeroImageAsync(Guid recipeId, bool force = false, CancellationToken ct = default)
     {
         var modelId = GetModelId();
         var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
@@ -116,7 +116,11 @@ public class RecipeHeroAgent(
             return;
         }
 
-        var client = new Client(apiKey: apiKey);
+        var httpOptions = new HttpOptions
+        {
+            Timeout = 300000 // 5 minutes
+        };
+        var client = new Client(apiKey: apiKey, httpOptions: httpOptions);
         var content = new Content { Role = "user", Parts = new List<Part>() };
 
         string taskPrompt;
@@ -161,7 +165,15 @@ public class RecipeHeroAgent(
 
         try
         {
-            var response = await client.Models.GenerateContentAsync(modelId, content);
+            var response = await client.Models.GenerateContentAsync(modelId, content, new GenerateContentConfig
+            {
+                ThinkingConfig = new ThinkingConfig
+                {
+                    IncludeThoughts = false,
+                    ThinkingBudget = 16000
+                },
+                MaxOutputTokens = 2048
+            }, cancellationToken: ct);
             var candidate = response.Candidates?.FirstOrDefault();
             var part = candidate?.Content?.Parts?.FirstOrDefault(p => p.InlineData != null);
 
