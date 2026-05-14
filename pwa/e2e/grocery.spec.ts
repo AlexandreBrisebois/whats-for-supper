@@ -217,7 +217,7 @@ test.describe('Grocery List — SSE sync', () => {
                   GROCERY_SECTION_MAP_SSE
                 ),
               },
-            }),
+          }),
           });
         } else {
           await route.continue();
@@ -327,7 +327,7 @@ test.describe('Grocery List — SSE sync', () => {
                   GROCERY_SECTION_MAP_WEEK
                 ),
               },
-            }),
+          }),
           });
         } else {
           await route.continue();

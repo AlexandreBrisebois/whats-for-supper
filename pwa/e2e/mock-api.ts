@@ -325,7 +325,7 @@ export async function setupCommonRoutes(page: Page) {
           neverCooked: 1,
           ratings: { love: 1, like: 1, dislike: 0, unrated: 1 },
         },
-      }),
+          }),
     });
   });
 
@@ -364,7 +364,7 @@ export async function setupCommonRoutes(page: Page) {
           searchMode: 'standard',
           resultPath: 'lexical-only',
         },
-      }),
+          }),
     });
   });
 
@@ -423,7 +423,7 @@ export async function setupCommonRoutes(page: Page) {
             status: 'ready',
             imageCount: 1,
           },
-        }),
+          }),
       });
     }
   });
@@ -526,7 +526,7 @@ export async function setupCommonRoutes(page: Page) {
             neverCooked: 1,
             ratings: { love: 0, like: 0, dislike: 0, unrated: 1 },
           },
-        }),
+          }),
       });
     }
   );
@@ -893,7 +893,7 @@ export async function setupCommonRoutes(page: Page) {
           confidence: 0.85,
           pantrySnapshotId: MOCK_IDS.INVENTORY_CAPTURE,
         },
-      }),
+          }),
     });
   });
 
@@ -912,7 +912,7 @@ export async function setupCommonRoutes(page: Page) {
           inferredIngredients: ['chicken', 'pasta', 'tomatoes'],
           confidence: 0.85,
         },
-      }),
+          }),
     });
   });
 
@@ -931,7 +931,7 @@ export async function setupCommonRoutes(page: Page) {
           inferredIngredients: ['chicken', 'pasta', 'tomatoes'],
           confidence: 0.85,
         },
-      }),
+          }),
     });
   });
 
@@ -971,7 +971,7 @@ export async function setupCommonRoutes(page: Page) {
           cleared: true,
           cleanupCommandId: MOCK_IDS.CLEANUP_COMMAND,
         },
-      }),
+          }),
     });
   });
 }

@@ -68,8 +68,10 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
             data: {
               key: 'family_goto',
               value: {
-                description: 'Family GOTO',
-                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
               },
             },
           }),
@@ -141,8 +143,10 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
             data: {
               key: 'family_goto',
               value: {
-                description: 'Family GOTO',
-                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
               },
             },
           }),
@@ -236,8 +240,10 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
             data: {
               key: 'family_goto',
               value: {
-                description: 'Family GOTO',
-                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
               },
             },
           }),
@@ -318,7 +324,12 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           body: JSON.stringify({
             data: {
               key: 'family_goto',
-              value: { description: 'Family GOTO', recipeId: MOCK_IDS.RECIPE_LASAGNA },
+              value: {
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
+              },
             },
           }),
         });
@@ -350,7 +361,12 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           body: JSON.stringify({
             data: {
               key: 'family_goto',
-              value: { description: 'Family GOTO', recipeId: MOCK_IDS.RECIPE_LASAGNA },
+              value: {
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
+              },
             },
           }),
         });
@@ -394,8 +410,10 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
             data: {
               key: 'family_goto',
               value: {
-                description: 'Family GOTO',
-                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
               },
             },
           }),
@@ -438,7 +456,12 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           body: JSON.stringify({
             data: {
               key: 'family_goto',
-              value: { description: 'Slow GOTO', recipeId: MOCK_IDS.RECIPE_LASAGNA },
+              value: {
+                items: [{
+                  description: 'Slow GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
+              },
             },
           }),
         });
@@ -516,8 +539,10 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             data: {
               key: 'family_goto',
               value: {
-                description: 'Family GOTO',
-                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
               },
             },
           }),
@@ -576,8 +601,10 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             data: {
               key: 'family_goto',
               value: {
-                description: 'Family GOTO',
-                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
               },
             },
           }),
@@ -690,7 +717,12 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
           body: JSON.stringify({
             data: {
               key: 'family_goto',
-              value: { description: 'Family GOTO', recipeId: MOCK_IDS.RECIPE_LASAGNA },
+              value: {
+                items: [{
+                  description: 'Family GOTO',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                }],
+              },
             },
           }),
         });
@@ -745,7 +777,7 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
                 openSlots: [],
                 consensusRecipesCount: 0,
               },
-            }),
+          }),
           });
         } else {
           await route.continue();

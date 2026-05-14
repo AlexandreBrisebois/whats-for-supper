@@ -93,7 +93,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                   UTILITY_GROCERY_SECTION_MAP
                 ),
               },
-            }),
+          }),
           });
         } else {
           await route.continue();
@@ -233,7 +233,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
                 groceryState: { additionalData: { [itemName]: true } },
                 groceryItems: builders.groceryItems([itemName], { [itemName]: 'Pantry' }),
               },
-            }),
+          }),
           });
         } else {
           await route.continue();

@@ -30,7 +30,7 @@ test.describe('Supper Planner', () => {
             searchMode: 'standard',
             resultPath: 'lexical-only',
           },
-        }),
+          }),
       });
     });
 
@@ -143,7 +143,7 @@ test.describe('Supper Planner', () => {
                 consensusRecipesCount: 1,
                 isVotingOpen: false,
               },
-            }),
+          }),
           });
           return;
         }

@@ -199,7 +199,7 @@ async function setupBrowseAllStack(
           neverCooked: 1,
           ratings: { love: 1, like: 1, dislike: 0, unrated: 1 },
         },
-      }),
+          }),
     });
   });
 

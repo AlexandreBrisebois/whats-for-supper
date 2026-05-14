@@ -182,7 +182,7 @@ test.describe('Recipe Action Pivot', () => {
               recipe: null,
             })),
           },
-        }),
+          }),
       });
     });
 

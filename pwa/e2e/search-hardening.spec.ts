@@ -87,7 +87,7 @@ async function setupPage(page: import('@playwright/test').Page) {
           searchMode: 'standard',
           resultPath: 'lexical-only',
         },
-      }),
+          }),
     });
   });
 
@@ -122,7 +122,7 @@ async function setupPage(page: import('@playwright/test').Page) {
             neverCooked: 0,
             ratings: { love: 0, like: 0, dislike: 0, unrated: 1 },
           },
-        }),
+          }),
       });
     });
 
@@ -399,7 +399,7 @@ test.describe('Scenario 7 — over-constrained filters: deactivate restores resu
             searchMode: 'standard',
             resultPath: 'lexical-only',
           },
-        }),
+          }),
       });
     });
 
@@ -578,7 +578,7 @@ test.describe('Scenario 10 — retry idempotency (409 ALREADY_RETRYING)', () => 
               },
             ],
           },
-        }),
+          }),
       });
     });
 
