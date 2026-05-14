@@ -1157,6 +1157,43 @@ paths:
               example:
                 message: New user creation is restricted in Demo Mode.
 
+  /api/family/me:
+    get:
+      summary: Get the profile of the currently selected family member
+      description: Resolves the identity from the X-Family-Member-Id header or cookie.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    properties:
+                      id: { type: string, format: uuid }
+                      name: { type: string }
+                      browseViewMode:
+                        type: string
+                        enum: [stack, list]
+                      preferredLanguage:
+                        type: [string, 'null']
+                        enum: [en, fr]
+                      createdAt: { type: string, format: date-time }
+                      updatedAt: { type: string, format: date-time }
+        '401':
+          description: No family member identity found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example:
+                message: "No family member identity found in headers or cookies."
+
   /api/family/{id}:
     parameters:
       - name: id

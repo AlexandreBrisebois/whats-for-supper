@@ -7,7 +7,8 @@ const COOKIE_NAME = 'x-family-member-id';
 
 /**
  * Gets the family member ID from the cookie.
- * Works in both client and server context.
+ * NOTE: If the cookie is HttpOnly (recommended for PWA), this will return undefined in JS.
+ * Use familyStore.loadCurrentIdentity() for reliable recovery.
  */
 export function getFamilyMemberIdCookie(): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -20,8 +21,8 @@ export function getFamilyMemberIdCookie(): string | undefined {
 
 /**
  * Sets the family member ID cookie.
- * @param id The family member ID to store.
- * @param days Optional expiration in days (default: 365).
+ * NOTE: This is a fallback for client-side state.
+ * Prefer the setFamilyMemberCookie server action for HttpOnly/Secure enforcement.
  */
 export function setFamilyMemberIdCookie(id: string, days = 365) {
   if (typeof document === 'undefined') return;
@@ -34,13 +35,14 @@ export function setFamilyMemberIdCookie(id: string, days = 365) {
   }
 
   // Robust cookie flags to match h_access (BS-PWA-PERSISTENCE)
-  // Secure is required for PWA persistence on HTTPS.
-  // We use window.location.protocol check to avoid breaking local dev on http.
   const isSecure = window.location.protocol === 'https:';
   const secureFlag = isSecure ? '; Secure' : '';
 
+  const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+  const domainFlag = domain ? `; domain=${domain}` : '';
+
   // Set cookie with Path=/ so it's sent to all routes
-  document.cookie = `${COOKIE_NAME}=${id}${expires}; path=/; SameSite=Lax${secureFlag}`;
+  document.cookie = `${COOKIE_NAME}=${id}${expires}; path=/; SameSite=Lax${secureFlag}${domainFlag}`;
 }
 
 /**

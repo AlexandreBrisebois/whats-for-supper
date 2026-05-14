@@ -8,6 +8,8 @@ import {
   type FamilyItemRequestBuilder,
 } from './item/index';
 // @ts-ignore
+import { MeRequestBuilderRequestsMetadata, type MeRequestBuilder } from './me/index';
+// @ts-ignore
 import {
   type AdditionalDataHolder,
   type ApiError,
@@ -314,6 +316,10 @@ export type FamilyPostResponse_data_preferredLanguage =
  */
 export interface FamilyRequestBuilder extends BaseRequestBuilder<FamilyRequestBuilder> {
   /**
+   * The me property
+   */
+  get me(): MeRequestBuilder;
+  /**
    * Gets an item from the ApiSdk.api.family.item collection
    * @param id Unique identifier of the item
    * @returns {FamilyItemRequestBuilder}
@@ -526,6 +532,9 @@ export const FamilyRequestBuilderNavigationMetadata: Record<
     requestsMetadata: FamilyItemRequestBuilderRequestsMetadata,
     navigationMetadata: FamilyItemRequestBuilderNavigationMetadata,
     pathParametersMappings: ['id'],
+  },
+  me: {
+    requestsMetadata: MeRequestBuilderRequestsMetadata,
   },
 };
 /**

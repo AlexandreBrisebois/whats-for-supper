@@ -92,10 +92,17 @@ export async function setFamilyMemberCookie(id: string): Promise<void> {
 
   (await cookies()).set('x-family-member-id', id, {
     maxAge,
-    httpOnly: false, // Must be accessible to client-side store/scripts
+    httpOnly: true, // HttpOnly for PWA stability (BS-PWA-PERSISTENCE)
     sameSite: 'lax',
     secure: isSecure,
     path: '/',
     ...(domain ? { domain } : {}),
   });
+}
+
+/**
+ * Clears the x-family-member-id cookie
+ */
+export async function clearFamilyMemberCookie(): Promise<void> {
+  (await cookies()).delete('x-family-member-id');
 }

@@ -52,13 +52,22 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
         // 3. Protected routes: If no identity, redirect to onboarding
         if (!selectedFamilyMemberId) {
-          // Attempt a last-minute recovery from cookie (BS-SSR fix)
+          // Attempt recovery from cookie (legacy/non-HttpOnly) or server (HttpOnly)
           const cookieId = getFamilyMemberIdCookie();
           if (cookieId) {
             console.log('[IdentityValidator] Recovered identity from cookie.');
             useFamilyStore.getState().selectFamilyMember(cookieId);
-            // The useEffect will re-run with the new selectedFamilyMemberId
             return;
+          }
+
+          console.log(
+            '[IdentityValidator] No local identity. Attempting server recovery (HttpOnly)...'
+          );
+          await useFamilyStore.getState().loadCurrentIdentity();
+
+          if (useFamilyStore.getState().selectedFamilyMemberId) {
+            console.log('[IdentityValidator] Identity recovered from server.');
+            return; // useEffect will re-run
           }
 
           console.warn(

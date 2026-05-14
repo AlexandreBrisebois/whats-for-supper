@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import {
   getFamilyMembers,
+  getCurrentFamilyMember,
   createFamilyMember,
   updateFamilyMember,
   updateFamilyMemberPreferences,
@@ -13,6 +14,7 @@ import {
   setFamilyMemberIdCookie,
   removeFamilyMemberIdCookie,
 } from '@/lib/identity/cookie';
+import { setFamilyMemberCookie, clearFamilyMemberCookie } from '@/lib/auth';
 import { apiClient } from '@/lib/api/api-client';
 import type { GoToListDto, GoToItem } from '@/lib/api/generated/models/index';
 import type { FamilyMember } from '@/types/domain';
@@ -27,7 +29,7 @@ interface FamilyState {
   familySettings: Record<string, unknown>;
 
   setFamilyMembers: (members: FamilyMember[]) => void;
-  selectFamilyMember: (id: string | null) => void;
+  selectFamilyMember: (id: string | null) => Promise<void>;
   addMember: (name: string) => Promise<FamilyMember | null>;
   updateMember: (id: string, name: string) => Promise<void>;
   updateMemberPreferences: (
@@ -41,6 +43,7 @@ interface FamilyState {
   loadGoTo: () => Promise<GoToListDto | null>;
   saveGoTo: (dto: GoToListDto) => Promise<void>;
   loadActiveGoTo: () => Promise<GoToItem | null>;
+  loadCurrentIdentity: () => Promise<void>;
 }
 
 export const useFamilyStore = create<FamilyState>((set, get) => ({
@@ -56,10 +59,13 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
 
   setFamilyMembers: (members) => set({ familyMembers: members }),
 
-  selectFamilyMember: (id) => {
+  selectFamilyMember: async (id) => {
     if (id) {
+      await setFamilyMemberCookie(id);
+      // Fallback for non-HttpOnly environments (local dev/test)
       setFamilyMemberIdCookie(id);
     } else {
+      await clearFamilyMemberCookie();
       removeFamilyMemberIdCookie();
     }
     set({ selectedFamilyMemberId: id });
@@ -136,6 +142,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
       await deleteFamilyMember(id);
       const isSelected = get().selectedFamilyMemberId === id;
       if (isSelected) {
+        await clearFamilyMemberCookie();
         removeFamilyMemberIdCookie();
       }
       set((state) => ({
@@ -224,6 +231,24 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     } catch (err) {
       // 404 is normal if no ready recipes
       return null;
+    }
+  },
+
+  loadCurrentIdentity: async () => {
+    // If we already have a selected member, no need to reload unless explicitly requested.
+    // However, for hydration recovery, we check the server.
+    try {
+      const member = await getCurrentFamilyMember();
+      if (member) {
+        set({ selectedFamilyMemberId: member.id });
+        // Also ensure it's in the list
+        const members = get().familyMembers;
+        if (!members.find((m) => m.id === member.id)) {
+          set({ familyMembers: [...members, member] });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to recover family identity from server:', err);
     }
   },
 }));

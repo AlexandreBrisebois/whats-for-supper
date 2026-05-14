@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
 using RecipeApi.Services;
 
 namespace RecipeApi.Controllers;
@@ -14,6 +15,21 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
         var members = await familyService.GetAllFamilyMembers();
         var dtos = members.Select(ToDto).ToList();
         return Ok(dtos);
+    }
+
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMe([ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId)
+    {
+        if (familyMemberId == null)
+            return Unauthorized(new { message = "No family member identity found in headers or cookies." });
+
+        var members = await familyService.GetAllFamilyMembers();
+        var member = members.FirstOrDefault(m => m.Id == familyMemberId);
+
+        if (member == null)
+            return NotFound(new { message = "Family member not found." });
+
+        return Ok(ToDto(member));
     }
 
     [HttpPost]

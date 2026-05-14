@@ -22,7 +22,7 @@ public class RecipeController(
     [HttpPost]
     [RequestSizeLimit(500 * 1024 * 1024)] // 500 MB outer limit (20 images × 20 MB)
     public async Task<IActionResult> Create(
-        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId,
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId,
         [FromForm] CreateRecipeDto dto,
         [FromForm] IFormFileCollection files)
     {
@@ -140,7 +140,7 @@ public class RecipeController(
     [HttpPost("describe")]
     public async Task<IActionResult> Describe(
         [FromBody] DescribeRecipeDto dto,
-        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId = null)
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
     {
         if (familyMemberId is null)
             return BadRequest(new { message = "X-Family-Member-Id header is required." });
@@ -174,7 +174,7 @@ public class RecipeController(
     [HttpPost("capture-url")]
     public async Task<IActionResult> CaptureUrl(
         [FromBody] CaptureUrlDto dto,
-        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId = null)
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
     {
         if (familyMemberId is null)
             return BadRequest(new { message = "X-Family-Member-Id header is required." });
@@ -291,7 +291,7 @@ public class RecipeController(
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(
         Guid id,
-        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId)
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId)
     {
         try
         {

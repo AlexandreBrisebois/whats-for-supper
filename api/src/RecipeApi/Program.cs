@@ -69,6 +69,7 @@ try
     builder.Services.AddControllers(options =>
         {
             options.Filters.Add<SuccessWrappingFilter>();
+            options.ModelBinderProviders.Insert(0, new FamilyMemberIdModelBinderProvider());
 
             // Enforce HearthSecret authentication globally
             var policy = new AuthorizationPolicyBuilder()

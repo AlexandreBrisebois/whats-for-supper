@@ -27,6 +27,21 @@ export async function getFamilyMembers(): Promise<FamilyMember[]> {
   );
 }
 
+export async function getCurrentFamilyMember(): Promise<FamilyMember | null> {
+  try {
+    const result = await apiClient.api.family.me.get();
+    if (!result?.data?.id) return null;
+    return {
+      id: result.data.id,
+      name: result.data.name || '',
+      browseViewMode: toBrowseViewMode(result.data.browseViewMode),
+      preferredLanguage: result.data.preferredLanguage || '',
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
 export async function createFamilyMember(payload: FamilyPostRequestBody): Promise<FamilyMember> {
   const result = await apiClient.api.family.post(payload);
   if (!result?.data?.id) {

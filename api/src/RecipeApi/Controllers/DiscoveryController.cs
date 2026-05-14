@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
 using RecipeApi.Services;
 
 namespace RecipeApi.Controllers;
@@ -12,7 +13,7 @@ public class DiscoveryController(DiscoveryService discoveryService) : Controller
 
     [HttpGet("categories")]
     public async Task<IActionResult> GetCategories(
-        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId)
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId)
     {
         if (familyMemberId is null)
             return BadRequest(new { message = "X-Family-Member-Id header is required." });
@@ -23,7 +24,7 @@ public class DiscoveryController(DiscoveryService discoveryService) : Controller
 
     [HttpGet]
     public async Task<IActionResult> GetDiscoveryStack(
-        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId,
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId,
         [FromQuery] string? category,
         [FromQuery] string? cuisine)
     {
@@ -37,7 +38,7 @@ public class DiscoveryController(DiscoveryService discoveryService) : Controller
     [HttpPost("{id:guid}/vote")]
     public async Task<IActionResult> Vote(
         Guid id,
-        [FromHeader(Name = "X-Family-Member-Id")] Guid? familyMemberId,
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId,
         [FromBody] VoteDto dto)
     {
         if (familyMemberId is null)
