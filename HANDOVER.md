@@ -16,6 +16,13 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
    - ADR 035 defines the canonical E2E route-handler pattern to follow when writing SSE mock handlers.
 
 ## Recently Completed
+ 
+- **Multi-Recipe GOTO Rotation (2026-05-14):** Expanded the "GOTO" system from a singular fallback to a dynamic list-based rotation.
+  - **Home Screen**: Implemented randomized cycling of GOTO recipes when no meal is scheduled.
+  - **Settings**: Transformed GOTO management into a list with quick-removal and "Add a GOTO" sheet.
+  - **Recipe Details**: Integrated a toggle star button for managing GOTO list membership.
+  - **E2E Stability**: Verified and updated `settings.spec.ts`, `capture-flow.spec.ts`, and `home-goto.spec.ts` to support the new array-based schema.
+  - **Documentation**: Updated `user-guide.md` to reflect the multi-recipe rotation and management flow.
 
 - **CNF/Health Spec Alignment: Explainability Contract Decision (2026-05-12):** Resolved R10 in `.kiro/specs/cnf-cross-spec-review`. `reason` / `source` / `confidence` remain the shared internal explainability model by default. We are not widening generic search or schedule DTOs just to carry those fields everywhere. Default search/planner surfaces keep short deterministic summary copy, and any structured over-the-wire explainability must arrive through a surface-specific DTO or nested detail object in the feature slice that introduces the actual `i` affordance.
 - **CNF/Health Spec Alignment: Approximation Confidence Decision (2026-05-11):** Resolved R9 in `.kiro/specs/cnf-cross-spec-review`. Unit/yield approximations now flow through one shared internal `NutritionEstimateMetadata` seam owned by `cnf-data-ingestion`, derived from provider coverage plus approximation/default usage (`100g` fallback, approximate unit conversion, default yield). Search health nudges and dietitian HEFI/week-balance must consume that shared metadata for conservative source/confidence mapping instead of inventing separate heuristics. No new OpenAPI DTO fields were added in this branch; public explainability shape remains deferred to the separate R10 decision.

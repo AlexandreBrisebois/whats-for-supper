@@ -258,16 +258,8 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     // 4. Initially the pending spinner should be visible (status endpoint returns 'pending')
     await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 5000 });
 
-    // 5. Pending subtitle should be visible
-    await expect(page.getByTestId('goto-pending-subtitle')).toHaveText(
-      'Usually ready in under 10 seconds'
-    );
-
-    // 6. Description echo should show what was submitted
-    await expect(page.getByTestId('goto-pending-description')).toHaveText(GOTO_DESCRIPTION);
-
-    // 7. Change link should be visible as the escape hatch
-    await expect(page.getByTestId('goto-change-btn')).toBeVisible();
+    // 5. Change link should be visible as the escape hatch (now "Add a GOTO" or implicit in list)
+    await expect(page.getByTestId('add-goto-btn')).toBeVisible();
 
     // 8. Simulate SSE recipe_ready by calling markReady directly on the gotoStore.
     //    This avoids SSE timing issues (the static mock body fires on connect, which
@@ -439,9 +431,8 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
 
     // Pending state elements visible
     await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByTestId('goto-pending-subtitle')).toBeVisible();
     await expect(page.getByTestId('goto-pending-description')).toHaveText(GOTO_DESCRIPTION);
-    await expect(page.getByTestId('goto-change-btn')).toBeVisible();
+    await expect(page.getByTestId('add-goto-btn')).toBeVisible();
   });
 
   test('family member name can be edited from settings', async ({ page }) => {

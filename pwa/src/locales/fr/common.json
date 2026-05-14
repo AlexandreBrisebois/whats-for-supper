@@ -309,6 +309,7 @@
     "description": "Description",
     "editFailed": "Impossible d'enregistrer les changements. Réessayez.",
     "findSimilar": "Trouver similaire",
+    "gotoRemoved": "GOTO retiré",
     "gotoUpdated": "GOTO mis à jour",
     "gotoUpdateFailed": "Impossible de mettre à jour le GOTO",
     "hideFromDiscovery": "Masquer de la découverte",

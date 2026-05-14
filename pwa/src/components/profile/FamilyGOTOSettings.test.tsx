@@ -56,7 +56,7 @@ describe('FamilyGOTOSettings', () => {
   it('points library selection to search instead of Quick Find', () => {
     render(<FamilyGOTOSettings />);
 
-    fireEvent.click(screen.getByText('Set your GOTO'));
+    fireEvent.click(screen.getByText(/Add a GOTO/i));
 
     expect(screen.getByTestId('goto-search-library')).toBeInTheDocument();
     expect(screen.getByText('Search the Library')).toBeInTheDocument();

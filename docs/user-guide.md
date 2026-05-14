@@ -18,21 +18,21 @@ The home screen is your command centre. It tells you what's planned for tonight,
 
 If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to walk through the recipe step by step — hands-free, big text, no scrolling.
 
-If nothing is planned yet, you'll see a few fast choices. If your family has a **GOTO recipe** saved, tap **Make This Tonight** to put it on tonight's menu in one step. You can also use **Quick Find** for a short stack of suggestions, or search your library when you already know what you want.
+If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app will randomly pick one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing the page will cycle to another recipe from your GOTO list, so you're never stuck with the same suggestion every time. You can also use **Quick Find** for a short stack of suggestions, or search your library when you already know what you want.
 
 This screen saves you from opening the fridge, staring blankly, and ordering pizza for the third time this week.
 
 ---
 
-## Your Family GOTO Recipe
+## Your Family GOTO Recipes
 
-Your **GOTO recipe** is the fallback meal everyone accepts — the one you can make when the plan falls apart.
+Your **GOTO recipes** are the fallback meals everyone accepts — the ones you can make when the plan falls apart. By keeping a list of multiple GOTOs, the app can rotate through them randomly on your home screen, saving you from "fallback fatigue."
 
-Set it from **Settings → Family GOTO**. If the recipe is already in your library, choose **Search the Library**, open the recipe, and tap the **star** at the top of the recipe detail view. When the star is selected, it shows **GOTO** beside it. Tapping the star on a different recipe switches your family GOTO immediately.
+Manage your list from **Settings → Family GOTO**. You can see all your active fallback meals, remove ones you're tired of, or add new ones. 
 
-If the recipe is not in your library yet, use **Describe it** or **Capture it** from the same Settings card. The app will prepare the recipe in the background and show it on Home once it is ready.
+To add an existing recipe from your library, choose **Search the Library**, open the recipe, and tap the **star** at the top. When the star is selected, it shows **GOTO** beside it. Tapping the star on other recipes will add them to your rotation rather than replacing the old ones.
 
-The GOTO recipe saves you from making a decision when nobody has decision energy left.
+If you have a new idea that isn't in your library yet, use **Describe it** or **Capture it** directly from the GOTO Settings card. The app will prepare the recipe in the background and automatically add it to your rotation once it is ready.
 
 ---
 
@@ -92,7 +92,7 @@ You can also tap the **Camera icon** from Search:
 - Take a picture of a recipe card, cookbook page, handwritten note, or screenshot, and the app will look for the matching recipe that is already in your library.
 - Take pictures of your fridge, freezer, or pantry, and the app will identify visible ingredients and prioritize recipes that use what you have.
 
-Tap any search result to open its recipe detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, or tap the **star** to make it your family's GOTO.
+Tap any search result to open its recipe detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, or tap the **star** to add it to your family's GOTO list.
 
 When in Agent mode, the app becomes your **Personal Chef**:
 - **Menu Awareness**: The agent looks at what you've already planned for the week to ensure variety (e.g., suggesting a light stir-fry if you already have several pasta nights scheduled).
@@ -111,7 +111,7 @@ Flip through your recipes one by one, just like a physical recipe box. The app s
 
 Tap any card to see the full details, or toggle the **Sparkles** icon to see only the recipes you've marked as "Discoverable" for family voting.
 
-The recipe detail view also has the same **GOTO star** at the top, so you can mark a rediscovered favourite as your fallback meal without going back through Settings.
+The recipe detail view also has the same **GOTO star** at the top, so you can add a rediscovered favourite to your rotation without going back through Settings.
 
 Browsing saves you from the "we always eat the same three things" rut.
 

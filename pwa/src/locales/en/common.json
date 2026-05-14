@@ -309,6 +309,7 @@
     "description": "Description",
     "editFailed": "Could not save changes. Try again.",
     "findSimilar": "Find Similar",
+    "gotoRemoved": "GOTO removed",
     "gotoUpdated": "GOTO updated",
     "gotoUpdateFailed": "Could not update GOTO",
     "hideFromDiscovery": "Hide from Discovery",

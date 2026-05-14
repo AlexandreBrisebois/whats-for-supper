@@ -84,6 +84,9 @@ vi.mock('@/hooks/useCapture', () => ({
 vi.mock('@/store/familyStore', () => ({
   useFamilyStore: () => ({
     saveSetting: vi.fn().mockResolvedValue(undefined),
+    familySettings: {
+      family_goto: { items: [] },
+    },
   }),
 }));
 

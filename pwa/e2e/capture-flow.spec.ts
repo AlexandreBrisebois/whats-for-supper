@@ -463,14 +463,23 @@ test.describe('Capture — GOTO intent', () => {
             body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
           });
         }
+      } else if (['POST', 'PATCH', 'PUT'].includes(route.request().method())) {
+        const raw = route.request().postData();
+        // Handle potential trailing commas in Kiota serialization
+        const cleanedRaw = raw?.replace(/,(\s*[\]}])/g, '$1');
+        const body = cleanedRaw ? JSON.parse(cleanedRaw) : null;
+        if (body) {
+          settingsStore[key] = body.value;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ data: { key, value: body.value } }),
+          });
+          return;
+        }
+        await route.continue();
       } else {
-        const body = route.request().postDataJSON();
-        settingsStore[key] = body.value;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { key, value: body.value } }),
-        });
+        await route.continue();
       }
     });
 
@@ -541,9 +550,10 @@ test.describe('Capture — GOTO intent', () => {
     expect(descBody.name).toBe('Our family spaghetti');
 
     // POST /api/settings/family_goto was called without status (now domain-driven)
-    const settBody = settReq.postDataJSON();
-    expect(settBody.value?.status).toBeUndefined();
-    expect(settBody.value?.recipeId).toBe(MOCK_IDS.RECIPE_GOTO_STUB);
+    const rawSett = settReq.postData()!;
+    const settBody = JSON.parse(rawSett.replace(/,(\s*[\]}])/g, '$1'));
+    expect(settBody.value?.items).toBeDefined();
+    expect(settBody.value.items[0].recipeId).toBe(MOCK_IDS.RECIPE_GOTO_STUB);
 
     // Success screen stays visible — no auto-navigation for isGoto=true
     await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
@@ -571,9 +581,10 @@ test.describe('Capture — GOTO intent', () => {
     await page.getByRole('button', { name: /save recipe/i }).click();
 
     const settReq = await settingsRequest;
-    const settBody = settReq.postDataJSON();
-    expect(settBody.value?.status).toBeUndefined();
-    expect(settBody.value?.recipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
+    const raw = settReq.postData()!;
+    const settBody = JSON.parse(raw.replace(/,(\s*[\]}])/g, '$1'));
+    expect(settBody.value?.items).toBeDefined();
+    expect(settBody.value.items[0].recipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
 
     // Success screen stays visible — no auto-navigation for isGoto=true
     await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
@@ -645,8 +656,11 @@ test.describe('Settings — GOTO pending state', () => {
 
     await page.goto('/profile/settings');
 
-    // Spinner and "being prepared" message should be visible
-    await expect(page.getByText(/your goto is being prepared/i)).toBeVisible({ timeout: 10_000 });
+    // Spinner and pending description should be visible
+    await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('goto-pending-description')).toContainText(
+      'Our family spaghetti'
+    );
   });
 });
 

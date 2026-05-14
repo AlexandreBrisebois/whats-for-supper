@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Check } from 'lucide-react';
 import {
   QuickCaptureTrigger,
@@ -25,6 +25,7 @@ import { useFamilyStore } from '@/store/familyStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useGotoStore } from '@/store/gotoStore';
 import { useWeekStore } from '@/store/weekStore';
+import { normalizeGotos, pickRandomGoto } from '@/lib/gotoUtils';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 
@@ -63,15 +64,17 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
 
   // ── Family / GOTO settings ────────────────────────────────────────────────
   const { loadSetting, familySettings } = useFamilyStore();
+  const gotoValue = familySettings['family_goto'];
 
-  const gotoValue = familySettings['family_goto'] as
-    | { description?: string; recipeId?: string; imageUrl?: string }
-    | null
-    | undefined;
+  // Randomly pick one GOTO from the list on load (or whenever settings change)
+  const activeGoto = useMemo(() => {
+    const list = normalizeGotos(gotoValue);
+    return pickRandomGoto(list);
+  }, [gotoValue]);
 
-  const gotoDescription = gotoValue?.description ?? null;
-  const gotoRecipeId = gotoValue?.recipeId ?? null;
-  const gotoImageUrl = gotoValue?.imageUrl ?? null;
+  const gotoDescription = activeGoto?.description ?? null;
+  const gotoRecipeId = activeGoto?.recipeId ?? null;
+  const gotoImageUrl = activeGoto?.imageUrl ?? null;
 
   // ── GOTO recipe status — driven by SSE recipe_ready event ─────────────────
   // useScheduleStream calls useGotoStore.getState().markReady(recipeId) when
@@ -298,6 +301,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             intent: 'push',
             recipeId,
           });
+
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
             assignRecipe(recoveryFlow.pendingRecipe);
           }

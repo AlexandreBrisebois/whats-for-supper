@@ -33,6 +33,7 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { ActionGearMenu } from './ActionGearMenu';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
 import { OriginalPhotosViewer } from './OriginalPhotosViewer';
+import { normalizeGotos, type GotoValue } from '@/lib/gotoUtils';
 
 const GOTO_KEY = 'family_goto';
 
@@ -81,11 +82,8 @@ export function RecipeDetailSheet({
   const { familySettings, loadSetting, saveSetting } = useFamilyStore();
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const currentGoto = familySettings[GOTO_KEY] as
-    | { recipeId?: string; description?: string; imageUrl?: string }
-    | null
-    | undefined;
-  const isCurrentGoto = !!recipe?.id && currentGoto?.recipeId === recipe.id;
+  const currentGotos = normalizeGotos(familySettings[GOTO_KEY]);
+  const isCurrentGoto = !!recipe?.id && currentGotos.some((g) => g.recipeId === recipe.id);
 
   useEffect(() => {
     let isActive = true;
@@ -295,18 +293,31 @@ export function RecipeDetailSheet({
   };
 
   const handleSetGoto = async () => {
-    if (!recipe || isCurrentGoto || isSavingGoto) return;
+    if (!recipe || isSavingGoto) return;
 
     setIsSavingGoto(true);
     try {
-      await saveSetting(GOTO_KEY, {
-        recipeId: recipe.id,
-        description: recipe.name,
-        imageUrl: recipe.imageUrl,
-      });
+      const newList = [...currentGotos];
+      const index = newList.findIndex((g) => g.recipeId === recipe.id);
+      let isRemoving = false;
+
+      if (index >= 0) {
+        newList.splice(index, 1);
+        isRemoving = true;
+      } else {
+        newList.push({
+          recipeId: recipe.id,
+          description: recipe.name,
+          imageUrl: recipe.imageUrl,
+        });
+      }
+
+      await saveSetting(GOTO_KEY, { items: newList });
       addToast({
         type: 'success',
-        message: t('recipes.gotoUpdated', 'GOTO updated'),
+        message: isRemoving
+          ? t('recipes.gotoRemoved', 'Removed from GOTO list')
+          : t('recipes.gotoUpdated', 'Added to GOTO list'),
       });
     } catch (error) {
       console.error('Failed to update GOTO recipe', error);
@@ -387,7 +398,7 @@ export function RecipeDetailSheet({
                 }
                 aria-pressed={isCurrentGoto}
                 onClick={() => void handleSetGoto()}
-                disabled={isSavingGoto || isCurrentGoto}
+                disabled={isSavingGoto}
                 className={[
                   'inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-black uppercase tracking-wider shadow-sm transition disabled:cursor-default',
                   isCurrentGoto

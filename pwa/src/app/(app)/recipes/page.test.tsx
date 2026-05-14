@@ -460,9 +460,13 @@ describe('RecipesPage', () => {
 
     await waitFor(() => {
       expect(mocks.saveSetting).toHaveBeenCalledWith('family_goto', {
-        recipeId: '11111111-1111-1111-1111-111111111111',
-        description: 'Chicken Soup',
-        imageUrl: 'https://example.com/chicken-soup.jpg',
+        items: [
+          {
+            recipeId: '11111111-1111-1111-1111-111111111111',
+            description: 'Chicken Soup',
+            imageUrl: 'https://example.com/chicken-soup.jpg',
+          },
+        ],
       });
     });
 
@@ -475,9 +479,13 @@ describe('RecipesPage', () => {
   it('shows the current GOTO pill without re-saving when the detail recipe is already GOTO', async () => {
     mocks.setFamilySettings({
       family_goto: {
-        recipeId: '11111111-1111-1111-1111-111111111111',
-        description: 'Chicken Soup',
-        imageUrl: 'https://example.com/chicken-soup.jpg',
+        items: [
+          {
+            recipeId: '11111111-1111-1111-1111-111111111111',
+            description: 'Chicken Soup',
+            imageUrl: 'https://example.com/chicken-soup.jpg',
+          },
+        ],
       },
     });
 
@@ -496,7 +504,11 @@ describe('RecipesPage', () => {
     });
 
     fireEvent.click(screen.getByTestId('action-current-goto'));
-    expect(mocks.saveSetting).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mocks.saveSetting).toHaveBeenCalledWith('family_goto', {
+        items: [],
+      });
+    });
   });
 
   it('edits notes and rating from the detail sheet using PATCH calls', async () => {
