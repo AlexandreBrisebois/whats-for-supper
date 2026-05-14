@@ -439,12 +439,28 @@ components:
         status: { type: integer, description: '1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
 
     # --- Settings ---
+    GoToItem:
+      type: object
+      required: [recipeId, description]
+      properties:
+        recipeId:    { type: string, format: uuid }
+        description: { type: string }
+        imageUrl:    { type: [string, 'null'] }
+
+    GoToSettingValue:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/GoToItem' }
+
     SettingsDto:
       type: object
       required: [key, value]
       properties:
         key:   { type: string }
-        value: { type: object, additionalProperties: true }
+        value: { $ref: '#/components/schemas/GoToSettingValue' }
 
     # --- SSE Stream Events ---
     # Base discriminated union for all SSE event payloads.
@@ -2331,7 +2347,10 @@ paths:
               example:
                 data:
                   key: family_goto
-                  value: { description: 'Our Family Spaghetti', recipeId: '660e8400-e29b-41d4-a716-446655440010' }
+                  value:
+                    items:
+                      - recipeId: '660e8400-e29b-41d4-a716-446655440010'
+                        description: 'Our Family Spaghetti'
         '404':
           description: Setting not found
     post:
@@ -2354,7 +2373,10 @@ paths:
               example:
                 data:
                   key: family_goto
-                  value: { description: 'Our Family Spaghetti', recipeId: '660e8400-e29b-41d4-a716-446655440010' }
+                  value:
+                    items:
+                      - recipeId: '660e8400-e29b-41d4-a716-446655440010'
+                        description: 'Our Family Spaghetti'
 
   /api/inventory-captures:
     post:

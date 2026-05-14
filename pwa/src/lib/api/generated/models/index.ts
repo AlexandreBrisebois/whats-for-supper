@@ -258,6 +258,28 @@ export function createFopWeekSummaryDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GoToItem}
+ */
+// @ts-ignore
+export function createGoToItemFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoGoToItem;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GoToSettingValue}
+ */
+// @ts-ignore
+export function createGoToSettingValueFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoGoToSettingValue;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GroceryLineItemDto}
  */
 // @ts-ignore
@@ -775,17 +797,6 @@ export function createScheduleRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {SettingsDto_value}
- */
-// @ts-ignore
-export function createSettingsDto_valueFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoSettingsDto_value;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {SettingsDto}
  */
 // @ts-ignore
@@ -1207,6 +1218,44 @@ export function deserializeIntoFopWeekSummaryDto(
     },
     highInSugarsDays: (n) => {
       fopWeekSummaryDto.highInSugarsDays = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param GoToItem The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGoToItem(
+  goToItem: Partial<GoToItem> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    description: (n) => {
+      goToItem.description = n.getStringValue();
+    },
+    imageUrl: (n) => {
+      goToItem.imageUrl = n.getStringValue();
+    },
+    recipeId: (n) => {
+      goToItem.recipeId = n.getGuidValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param GoToSettingValue The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGoToSettingValue(
+  goToSettingValue: Partial<GoToSettingValue> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    items: (n) => {
+      goToSettingValue.items = n.getCollectionOfObjectValues<GoToItem>(
+        createGoToItemFromDiscriminatorValue
+      );
     },
   };
 }
@@ -2384,22 +2433,11 @@ export function deserializeIntoSettingsDto(
       settingsDto.key = n.getStringValue();
     },
     value: (n) => {
-      settingsDto.value = n.getObjectValue<SettingsDto_value>(
-        createSettingsDto_valueFromDiscriminatorValue
+      settingsDto.value = n.getObjectValue<GoToSettingValue>(
+        createGoToSettingValueFromDiscriminatorValue
       );
     },
   };
-}
-/**
- * The deserialization information for the current model
- * @param SettingsDto_value The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoSettingsDto_value(
-  settingsDto_value: Partial<SettingsDto_value> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -2794,6 +2832,26 @@ export interface FopWeekSummaryDto extends AdditionalDataHolder, Parsable {
    * The highInSugarsDays property
    */
   highInSugarsDays?: number | null;
+}
+export interface GoToItem extends AdditionalDataHolder, Parsable {
+  /**
+   * The description property
+   */
+  description?: string | null;
+  /**
+   * The imageUrl property
+   */
+  imageUrl?: string | null;
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+}
+export interface GoToSettingValue extends AdditionalDataHolder, Parsable {
+  /**
+   * The items property
+   */
+  items?: GoToItem[] | null;
 }
 export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
   /**
@@ -3789,6 +3847,48 @@ export function serializeFopWeekSummaryDto(
   writer.writeNumberValue('highInSodiumDays', fopWeekSummaryDto.highInSodiumDays);
   writer.writeNumberValue('highInSugarsDays', fopWeekSummaryDto.highInSugarsDays);
   writer.writeAdditionalData(fopWeekSummaryDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GoToItem The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGoToItem(
+  writer: SerializationWriter,
+  goToItem: Partial<GoToItem> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!goToItem || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('description', goToItem.description);
+  writer.writeStringValue('imageUrl', goToItem.imageUrl);
+  writer.writeGuidValue('recipeId', goToItem.recipeId);
+  writer.writeAdditionalData(goToItem.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GoToSettingValue The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGoToSettingValue(
+  writer: SerializationWriter,
+  goToSettingValue: Partial<GoToSettingValue> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!goToSettingValue || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<GoToItem>(
+    'items',
+    goToSettingValue.items,
+    serializeGoToItem
+  );
+  writer.writeAdditionalData(goToSettingValue.additionalData);
 }
 /**
  * Serializes information the current object
@@ -4911,29 +5011,8 @@ export function serializeSettingsDto(
     return;
   }
   writer.writeStringValue('key', settingsDto.key);
-  writer.writeObjectValue<SettingsDto_value>(
-    'value',
-    settingsDto.value,
-    serializeSettingsDto_value
-  );
+  writer.writeObjectValue<GoToSettingValue>('value', settingsDto.value, serializeGoToSettingValue);
   writer.writeAdditionalData(settingsDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param SettingsDto_value The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeSettingsDto_value(
-  writer: SerializationWriter,
-  settingsDto_value: Partial<SettingsDto_value> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!settingsDto_value || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(settingsDto_value.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5274,9 +5353,8 @@ export interface SettingsDto extends AdditionalDataHolder, Parsable {
   /**
    * The value property
    */
-  value?: SettingsDto_value | null;
+  value?: GoToSettingValue | null;
 }
-export interface SettingsDto_value extends AdditionalDataHolder, Parsable {}
 export interface SmartDefaultsDto extends AdditionalDataHolder, Parsable {
   /**
    * The consensusRecipesCount property

@@ -62,8 +62,9 @@ describe('generated search contract', () => {
   it('includes inventory-fit in the RecipeSearchReasonDto source enum', () => {
     const modelsSource = readGenerated('models/index.ts');
 
-    expect(modelsSource).toContain("InventoryFit: 'inventory-fit'");
-    expect(modelsSource).not.toContain("PantryMatch: 'pantry-match'");
+    // Match regardless of quote style (Kiota may generate single or double quotes)
+    expect(modelsSource).toMatch(/InventoryFit:\s*['"]inventory-fit['"]/);
+    expect(modelsSource).not.toMatch(/PantryMatch:\s*['"]pantry-match['"]/);
   });
 
   it('includes the /api/recipes/search request builder in the generated client', () => {

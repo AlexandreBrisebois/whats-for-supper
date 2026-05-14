@@ -14,6 +14,7 @@ import {
   removeFamilyMemberIdCookie,
 } from '@/lib/identity/cookie';
 import { apiClient } from '@/lib/api/api-client';
+import type { GoToSettingValue } from '@/lib/api/generated/models/index';
 import type { FamilyMember } from '@/types/domain';
 
 interface FamilyState {
@@ -36,7 +37,7 @@ interface FamilyState {
   removeMember: (id: string) => Promise<void>;
   loadFamilyMembers: () => Promise<void>;
   loadSetting: (key: string) => Promise<unknown | null>;
-  saveSetting: (key: string, value: unknown) => Promise<void>;
+  saveSetting: (key: string, value: GoToSettingValue) => Promise<void>;
 }
 
 export const useFamilyStore = create<FamilyState>((set, get) => ({
@@ -160,13 +161,8 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   loadSetting: async (key: string) => {
     try {
       const response = await apiClient.api.settings.byKey(key).get();
-      // SettingsDto_value is an AdditionalDataHolder — raw fields live in additionalData
-      // Kiota puts arbitrary JSON fields into additionalData if the schema is empty.
-      // We merge them with the value itself as a fallback.
-      const valueObj = response?.data?.value as any;
-      const value =
-        valueObj?.additionalData ??
-        (valueObj && Object.keys(valueObj).length > 0 ? valueObj : null);
+      // value is now a typed GoToSettingValue — read it directly.
+      const value = response?.data?.value ?? null;
       set((state) => ({
         familySettings: { ...state.familySettings, [key]: value },
       }));
@@ -188,17 +184,10 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     }
   },
 
-  saveSetting: async (key: string, value: unknown) => {
-    // Kiota's SettingsDto_value serializer only writes additionalData.
-    // We must put the value fields into additionalData so they survive serialization.
-    const valueAsRecord = value as Record<string, unknown>;
-    const response = await apiClient.api.settings.byKey(key).post({
-      key,
-      value: { additionalData: valueAsRecord } as any,
-    });
-    // On GET, Kiota puts unknown fields into additionalData — use that if available,
-    // otherwise fall back to the value we sent (optimistic update).
-    const saved = response?.data?.value?.additionalData ?? valueAsRecord;
+  saveSetting: async (key: string, value: GoToSettingValue) => {
+    const response = await apiClient.api.settings.byKey(key).post({ key, value });
+    // Use the echoed value from the server, fall back to what we sent.
+    const saved = response?.data?.value ?? value;
     set((state) => ({
       familySettings: { ...state.familySettings, [key]: saved },
     }));
