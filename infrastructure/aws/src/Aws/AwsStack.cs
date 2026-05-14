@@ -16,17 +16,19 @@ namespace Aws
             // 3. Database
             var database = new DatabaseConstruct(this, "Database", networking.Vpc);
 
-            // 4. Backend (API & Lambda)
-            var backend = new BackendConstruct(this, "Backend", 
-                networking.Vpc, 
-                storage.FileSystem, 
-                storage.AccessPoint, 
-                database.Database);
+            // 4. Database Migrations
+            var migrator = new MigrationConstruct(this, "WfsMigrator", networking.Vpc, database.Database);
 
-            // 5. Frontend (Amplify)
-            var frontend = new FrontendConstruct(this, "Frontend");
+            // 5. Backend (API & Lambda)
+            var backend = new BackendConstruct(this, "WfsBackend", networking.Vpc, storage.FileSystem, storage.AccessPoint, database.Database);
+            
+            // Ensure the backend only starts after the migration task has been triggered
+            backend.Node.AddDependency(migrator);
 
-            // 6. Routing (CloudFront)
+            // 6. Frontend (Amplify)
+            var frontend = new FrontendConstruct(this, "WfsFrontend");
+
+            // 7. Routing (CloudFront)
             var routing = new RoutingConstruct(this, "Routing", 
                 backend.HttpApi, 
                 backend.FunctionUrl, 

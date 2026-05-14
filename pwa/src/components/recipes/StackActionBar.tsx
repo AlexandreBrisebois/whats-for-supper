@@ -63,7 +63,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="flex w-full flex-col gap-2 rounded-[1.75rem] border border-charcoal/8 bg-white/85 p-2 shadow-glass backdrop-blur-2xl"
+        className="flex w-full max-w-md flex-col gap-2 rounded-[1.75rem] border border-charcoal/8 bg-white/85 p-2 shadow-glass backdrop-blur-2xl"
         data-testid="stack-action-bar"
       >
         <DiscoveryToggleCard
