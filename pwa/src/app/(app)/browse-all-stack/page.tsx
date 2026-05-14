@@ -716,7 +716,7 @@ export default function BrowseAllStackPage() {
         )}
 
         {!isInitialLoading && !loadError && browseViewMode === 'stack' && recipes.length > 0 && (
-          <div className="w-full max-w-sm md:max-w-xl lg:max-w-2xl flex-1 flex flex-col min-h-0 max-h-[85vh] md:max-h-[720px] lg:max-h-[800px] transition-all duration-500 ease-in-out">
+          <div className="w-full max-w-sm md:max-w-xl lg:max-w-2xl flex-1 flex flex-col min-h-0 max-h-[85vh] md:max-h-[880px] lg:max-h-[720px] transition-all duration-500 ease-in-out">
             <div className="relative flex-1 min-h-0">
               <AnimatePresence mode="popLayout">
                 {showLoader ? (
