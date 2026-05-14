@@ -28,8 +28,11 @@ public class WorkflowWorker(
     private readonly int _maxRetries = retryOptions.Value.MaxRetries;
     private volatile bool _initialized = false;
     private int _idleCount = 0;
+    private DateTimeOffset _lastReapTime = DateTimeOffset.MinValue;
     private const int MinDelayMs = 500;
     private const int MaxDelayMs = 60_000;
+    private const int ReapIntervalMinutes = 5;
+    private const int StaleTimeoutMinutes = 15;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -46,6 +49,14 @@ public class WorkflowWorker(
         {
             try
             {
+                // 1. Periodic cleanup of stale (zombie) tasks
+                if (DateTimeOffset.UtcNow - _lastReapTime > TimeSpan.FromMinutes(ReapIntervalMinutes))
+                {
+                    await ReapStaleTasksAsync(stoppingToken);
+                    _lastReapTime = DateTimeOffset.UtcNow;
+                }
+
+                // 2. Process regular pending tasks
                 var taskCount = await ProcessPendingTasks(stoppingToken);
 
                 if (taskCount > 0)
@@ -323,34 +334,51 @@ public class WorkflowWorker(
                 "Task {TaskId} ({ProcessorName}) {FailureType} failure, retry {Retry}/{Max}, next at {ScheduledAt}{QuietWindow}",
                 task.TaskId, task.ProcessorName, failureType, task.RetryCount, _maxRetries, task.ScheduledAt, quietWindowLabel);
 
-            if (is429)
-            {
-                // Proactively reschedule other pending tasks of the same type to avoid useless requests
-                // that would likely also hit the 429 rate limit.
-                var otherTasks = await db.WorkflowTasks
-                    .Where(t => t.ProcessorName == task.ProcessorName && t.Status == TaskStatus.Pending)
-                    .ToListAsync(ct);
-
-                foreach (var t in otherTasks)
-                {
-                    t.ScheduledAt = task.ScheduledAt;
-                    t.UpdatedAt = DateTimeOffset.UtcNow;
-                }
-
-                if (otherTasks.Any())
-                {
-                    logger.LogInformation("Proactively rescheduled {Count} other pending tasks of type {ProcessorName} to {ScheduledAt}",
-                        otherTasks.Count, task.ProcessorName, task.ScheduledAt);
-                }
-            }
-
+            // 1. SAVE THE PRIMARY TASK FIRST to ensure it doesn't get stuck in Processing state
+            // even if proactive rescheduling of other tasks fails due to concurrency.
             try
             {
                 await db.SaveChangesAsync(ct);
             }
             catch (Exception saveEx)
             {
-                logger.LogError(saveEx, "Failed to save retry state for task {TaskId}", task.TaskId);
+                logger.LogError(saveEx, "Failed to save retry state for primary task {TaskId}. Task may be stuck.", task.TaskId);
+                // If this fails, we can't reliably continue with proactive rescheduling
+                return;
+            }
+
+            // 2. PROACTIVE STAGGERED RESCHEDULING (only for 429s)
+            if (is429)
+            {
+                try
+                {
+                    // Fetch other pending tasks of the same type
+                    var otherTasks = await db.WorkflowTasks
+                        .Where(t => t.ProcessorName == task.ProcessorName && t.Status == TaskStatus.Pending && t.TaskId != task.TaskId)
+                        .OrderBy(t => t.ScheduledAt)
+                        .ToListAsync(ct);
+
+                    if (otherTasks.Any())
+                    {
+                        // Stagger the other tasks starting from 1 minute after the current task's next retry
+                        var staggerTime = task.ScheduledAt ?? DateTimeOffset.UtcNow;
+                        foreach (var t in otherTasks)
+                        {
+                            staggerTime = staggerTime.AddMinutes(1);
+                            t.ScheduledAt = staggerTime;
+                            t.UpdatedAt = DateTimeOffset.UtcNow;
+                        }
+
+                        await db.SaveChangesAsync(ct);
+                        logger.LogInformation("Proactively rescheduled {Count} other pending tasks of type {ProcessorName} with 1-minute staggering",
+                            otherTasks.Count, task.ProcessorName);
+                    }
+                }
+                catch (Exception rescheduleEx)
+                {
+                    // Log but do not fail the current task if proactive rescheduling fails (e.g. concurrency)
+                    logger.LogWarning(rescheduleEx, "Failed to proactively reschedule other tasks of type {ProcessorName}. This is non-fatal.", task.ProcessorName);
+                }
             }
         }
         catch (Exception ex)
@@ -365,29 +393,74 @@ public class WorkflowWorker(
             task.StackTrace = ex.StackTrace;
             task.UpdatedAt = DateTimeOffset.UtcNow;
 
-            var instance = task.Instance
-                ?? await db.WorkflowInstances.FindAsync([task.InstanceId], ct);
-            if (instance != null)
-            {
-                instance.Status = WorkflowStatus.Paused;
-                instance.UpdatedAt = DateTimeOffset.UtcNow;
-            }
-
+            // 1. SAVE THE TASK FAILURE FIRST
             try
             {
                 await db.SaveChangesAsync(ct);
             }
             catch (Exception saveEx)
             {
-                logger.LogError(saveEx, "Failed to save fatal error state for task {TaskId}", task.TaskId);
+                logger.LogError(saveEx, "Failed to save fatal error state for task {TaskId}. Task may be stuck in Processing.", task.TaskId);
+                // Cannot reliably continue
+                return;
             }
 
-            // Publish recipe_failed SSE event — all retries exhausted, workflow is fatally failed.
-            // This fires on the fatal path only (not on transient retries or 429 retry paths above).
-            if (instance != null)
+            // 2. PAUSE THE INSTANCE (Isolated)
+            try
             {
-                await PublishRecipeFailedEventAsync(instance, task, db, ct);
+                var instance = task.Instance
+                    ?? await db.WorkflowInstances.FindAsync([task.InstanceId], ct);
+                if (instance != null)
+                {
+                    instance.Status = WorkflowStatus.Paused;
+                    instance.UpdatedAt = DateTimeOffset.UtcNow;
+                    await db.SaveChangesAsync(ct);
+
+                    // Publish recipe_failed SSE event — all retries exhausted, workflow is fatally failed.
+                    // This fires on the fatal path only.
+                    await PublishRecipeFailedEventAsync(instance, task, db, ct);
+                }
             }
+            catch (Exception instanceEx)
+            {
+                logger.LogWarning(instanceEx, "Failed to pause instance {InstanceId} for failed task {TaskId}. This is non-fatal.", task.InstanceId, task.TaskId);
+            }
+        }
+    }
+
+    private async Task ReapStaleTasksAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+
+            var staleThreshold = DateTimeOffset.UtcNow.AddMinutes(-StaleTimeoutMinutes);
+
+            // Find tasks stuck in Processing for too long.
+            // We increment retry_count to ensure poison pills eventually stop.
+            var staleTasks = await db.WorkflowTasks
+                .Where(t => t.Status == TaskStatus.Processing && t.UpdatedAt < staleThreshold)
+                .ToListAsync(ct);
+
+            if (staleTasks.Any())
+            {
+                foreach (var task in staleTasks)
+                {
+                    var originalTime = task.UpdatedAt;
+                    task.Status = TaskStatus.Pending;
+                    task.RetryCount++;
+                    task.UpdatedAt = DateTimeOffset.UtcNow;
+                    task.ErrorMessage = $"Reclaimed by Zombie Reaper (stuck in Processing since {originalTime:u})";
+                }
+
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation("Zombie Reaper reclaimed {Count} stale tasks that were stuck in Processing state.", staleTasks.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred during Zombie Reaper execution.");
         }
     }
 

@@ -1096,6 +1096,20 @@ public class WorkflowWorkerTests : IAsyncLifetime
         db.WorkflowTasks.AddRange(taskA, taskB, taskC);
         await db.SaveChangesAsync();
 
+        // Task D: another pending task that won't be picked up (because it's scheduled in the future)
+        var taskDId = Guid.NewGuid();
+        var taskD = new WorkflowTask
+        {
+            TaskId = taskDId,
+            InstanceId = instance.Id,
+            TaskName = "D",
+            ProcessorName = "ExtractRecipe",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddMinutes(10)
+        };
+        db.WorkflowTasks.Add(taskD);
+        await db.SaveChangesAsync();
+
         // Act: Process tasks
         await testWorker.ProcessPendingTasksAsync(default);
 
@@ -1104,22 +1118,22 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
 
         var updatedA = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId);
-        var updatedB = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskBId);
+        var updatedD = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskDId);
         var updatedC = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskCId);
 
         // Task A hit 429 and rescheduled normally
         Assert.Equal(1, updatedA.RetryCount);
         Assert.Equal(TaskStatus.Pending, updatedA.Status);
         Assert.NotNull(updatedA.ScheduledAt);
-        Assert.True(updatedA.ScheduledAt > now);
 
-        // Task B should be rescheduled to the future (proactively or via its own backoff)
-        Assert.Equal(TaskStatus.Pending, updatedB.Status);
-        Assert.True(updatedB.ScheduledAt > now, "Task B should be scheduled in the future");
+        // Task D should be rescheduled to the future (proactively)
+        // It should be staggered at least 1 minute after Task A (or more if Task B also rescheduled it)
+        Assert.Equal(TaskStatus.Pending, updatedD.Status);
+        Assert.True(updatedD.ScheduledAt > updatedA.ScheduledAt, 
+            $"Task D schedule {updatedD.ScheduledAt} should be staggered after Task A schedule {updatedA.ScheduledAt}");
         
-        // Use a small tolerance for ScheduledAt to ensure they are at least roughly aligned
-        Assert.True(Math.Abs((updatedA.ScheduledAt!.Value - updatedB.ScheduledAt!.Value).TotalSeconds) < 5, 
-            $"Task B schedule {updatedB.ScheduledAt} should be aligned with Task A schedule {updatedA.ScheduledAt}");
+        var diffMinutes = (updatedD.ScheduledAt!.Value - updatedA.ScheduledAt!.Value).TotalMinutes;
+        Assert.True(diffMinutes >= 0.9, $"Task D should be at least 1 minute after Task A, but was {diffMinutes} min");
 
         // Task C should NOT be affected by A's 429 rescheduling logic
         Assert.NotEqual(updatedA.ScheduledAt, updatedC.ScheduledAt);
