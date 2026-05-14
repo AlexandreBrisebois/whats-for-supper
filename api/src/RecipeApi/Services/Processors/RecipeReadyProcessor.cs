@@ -47,12 +47,13 @@ public class RecipeReadyProcessor(
         var isReady = (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0)
                    || (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.IsSynthesized);
 
-        if (isReady && !recipe.IsDiscoverable)
+        if (isReady && (!recipe.IsDiscoverable || !recipe.IsReady))
         {
             recipe.IsDiscoverable = true;
+            recipe.IsReady = true;
             recipe.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
-            logger.LogInformation("RecipeReady: recipe {RecipeId} is now discoverable.", recipeId);
+            logger.LogInformation("Recipe {RecipeId} marked as Ready and Discoverable.", recipeId);
         }
         else
         {

@@ -55,6 +55,9 @@ public class Recipe
     [Column("is_discoverable")]
     public bool IsDiscoverable { get; set; } = false;
 
+    [Column("is_ready")]
+    public bool IsReady { get; set; } = false;
+
     [Column("category")]
     public string? Category { get; set; }
 

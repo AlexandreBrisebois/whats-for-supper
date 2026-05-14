@@ -50,6 +50,7 @@ public class RecipeLibrarySummaryTests : IAsyncLifetime
             Id             = Guid.NewGuid(),
             AddedBy        = _factory.DefaultFamilyMemberId,
             ImageCount     = 0,
+            IsReady        = true,
             Rating         = rating,
             LastCookedDate = lastCookedDate,
             DeletedAt      = deletedAt,

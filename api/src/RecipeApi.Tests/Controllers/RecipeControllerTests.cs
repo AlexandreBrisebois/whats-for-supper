@@ -151,6 +151,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
                 LastCookedDate = null,
+                IsReady = true,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -161,6 +162,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
                 LastCookedDate = now.AddDays(-10),
+                IsReady = true,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -209,6 +211,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 Name = "Active Recipe",
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
+                IsReady = true,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -219,6 +222,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
                 DeletedAt = now.AddDays(-1),
+                IsReady = true,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -263,6 +267,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
                 LastCookedDate = now.AddDays(-100),
+                IsReady = true,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -273,6 +278,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
                 LastCookedDate = now.AddDays(-1),
+                IsReady = true,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -353,6 +359,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 Name = "Ready Stack Recipe",
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
+                IsReady = true,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -374,6 +381,7 @@ public class RecipeControllerTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 0,
                 IsSynthesized = false,
+                IsReady = false,
                 CreatedAt = now.AddSeconds(2),
                 UpdatedAt = now.AddSeconds(2)
             };

@@ -242,6 +242,7 @@ public class RecipeSoftDeleteIntegrationTests : IAsyncLifetime
             Name = name,
             Description = "A test recipe",
             IsSynthesized = true,
+            IsReady = true,
             Ingredients = JsonSerializer.Serialize(new[] { "flour", "water" }),
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
             UpdatedAt = DateTimeOffset.UtcNow.AddDays(-1)

@@ -391,8 +391,7 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
         var dbRecipe = await db.Recipes.FindAsync([recipeId], ct);
         if (dbRecipe != null)
         {
-            dbRecipe.IsSynthesized = true;
-            dbRecipe.UpdatedAt = DateTimeOffset.UtcNow;
+            dbRecipe.Description = info.Description;
             await db.SaveChangesAsync(ct);
         }
 

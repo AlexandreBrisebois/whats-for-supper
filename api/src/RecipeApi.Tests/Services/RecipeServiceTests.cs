@@ -45,6 +45,7 @@ public class RecipeServiceTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 Ingredients = null,
                 ImageCount = 1,
+                IsReady = true,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             });
@@ -77,6 +78,7 @@ public class RecipeServiceTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 Ingredients = """["flour","eggs","butter"]""",
                 ImageCount = 1,
+                IsReady = true,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             });
@@ -111,6 +113,7 @@ public class RecipeServiceTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 Ingredients = """[{"name":"chicken","amount":"500g"},{"name":"garlic","amount":"3 cloves"}]""",
                 ImageCount = 1,
+                IsReady = true,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             });
@@ -148,6 +151,7 @@ public class RecipeServiceTests : IAsyncLifetime
                 Ingredients = """["old ingredient"]""",
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
+                IsReady = true,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             });
@@ -196,6 +200,7 @@ public class RecipeServiceTests : IAsyncLifetime
                 Ingredients = """["one"]""",
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 1,
+                IsReady = true,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             });
@@ -231,6 +236,7 @@ public class RecipeServiceTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 ImageCount = 3,
                 FinishedDishIndex = 2,
+                IsReady = true,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             });

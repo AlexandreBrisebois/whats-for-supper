@@ -111,9 +111,7 @@ public class RecipeService(
 
         var query = db.Recipes.Where(r =>
             r.DeletedAt == null &&
-            r.Name != null &&
-            r.Name != "" &&
-            (r.ImageCount > 0 || r.IsSynthesized));
+            r.IsReady);
 
         if (discoverableOnly == true)
         {
@@ -158,35 +156,6 @@ public class RecipeService(
     /// lastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).
     /// Soft-deleted recipes are excluded.
     /// </summary>
-    public async Task<RecipeListResponseDto> GetRecipesListExplore(int page, int limit)
-    {
-        page = Math.Max(1, page);
-        limit = Math.Clamp(limit, 1, 100);
-
-        var total = await db.Recipes.CountAsync(r => r.DeletedAt == null);
-
-        var entities = await db.Recipes
-            .Where(r => r.DeletedAt == null)
-            .OrderBy(r => r.LastCookedDate == null ? 0 : 1)
-            .ThenBy(r => r.LastCookedDate)
-            .Skip((page - 1) * limit)
-            .Take(limit)
-            .ToListAsync();
-
-        var recipes = entities.Select(MapToDto).ToList();
-
-        return new RecipeListResponseDto
-        {
-            UpdatedAt = DateTimeOffset.UtcNow,
-            Recipes = recipes,
-            Pagination = new PaginationDto
-            {
-                Page = page,
-                Limit = limit,
-                Total = total
-            }
-        };
-    }
 
     /// <summary>
     /// Returns a lightweight summary of the recipe library:
@@ -196,7 +165,7 @@ public class RecipeService(
     public async Task<RecipeLibrarySummaryDto> GetLibrarySummary()
     {
         var recipes = await db.Recipes
-            .Where(r => r.DeletedAt == null)
+            .Where(r => r.DeletedAt == null && r.IsReady)
             .GroupBy(_ => 1)
             .Select(g => new RecipeLibrarySummaryDto
             {
@@ -419,9 +388,7 @@ public class RecipeService(
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
-        var isReady = (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0)
-                   || (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.IsSynthesized);
-        var status = isReady ? "ready" : "pending";
+        var status = recipe.IsReady ? "ready" : "pending";
 
         return new RecipeStatusDto
         {

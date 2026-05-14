@@ -45,6 +45,7 @@ CREATE TABLE recipes (
     deleted_at timestamptz DEFAULT NULL,
     deleted_by uuid DEFAULT NULL,
     delete_note text DEFAULT NULL,
+    is_ready boolean DEFAULT false NOT NULL,
     CONSTRAINT recipes_rating_check CHECK (rating >= 0 AND rating <= 3)
 );
 
@@ -176,4 +177,4 @@ SELECT r.id, r.name, r.category, r.description, r.ingredients, r.image_count, r.
 COALESCE(v.vote_count, 0) AS vote_count
 FROM recipes r
 LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id
-WHERE r.is_discoverable = true AND r.deleted_at IS NULL;
+WHERE r.is_discoverable = true AND r.is_ready = true AND r.deleted_at IS NULL;

@@ -463,11 +463,7 @@ export function RecipeDetailSheet({
                   }}
                   className="absolute bottom-4 right-4 flex h-12 items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 text-xs font-black uppercase tracking-wider text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
                 >
-                  {recipe.sourceType === 'url' ? (
-                    <ExternalLink size={18} />
-                  ) : (
-                    <Images size={18} />
-                  )}
+                  {recipe.sourceType === 'url' ? <ExternalLink size={18} /> : <Images size={18} />}
                   <span>{t('recipes.viewOriginal', 'View Original')}</span>
                 </button>
               )}

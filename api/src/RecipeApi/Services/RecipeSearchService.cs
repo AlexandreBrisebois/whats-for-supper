@@ -63,9 +63,7 @@ public partial class RecipeSearchService(
             .AsNoTracking()
             .Where(recipe =>
                 recipe.DeletedAt == null &&
-                recipe.Name != null &&
-                recipe.Name != "" &&
-                (recipe.ImageCount > 0 || recipe.IsSynthesized));
+                recipe.IsReady);
 
         recipesQuery = ApplyFilters(recipesQuery, appliedFilters);
 

@@ -263,6 +263,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             Ingredients = JsonSerializer.Serialize(new[] { "chicken" }),
             ImageCount = 0,
             IsSynthesized = false,
+            IsReady = false,
             CreatedAt = DateTimeOffset.UtcNow.AddSeconds(2),
             UpdatedAt = DateTimeOffset.UtcNow.AddSeconds(2)
         };
@@ -783,6 +784,13 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
                             recipe.Name != "Captured Recipe"
             ? 1
             : recipe.ImageCount;
+
+        // If not explicitly set, default to true so existing tests pass
+        if (!recipe.IsReady && recipe.Name != null && recipe.Name != "Captured Recipe")
+        {
+            recipe.IsReady = true;
+        }
+
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
     }
