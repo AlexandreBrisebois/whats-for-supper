@@ -3,7 +3,19 @@ using System.Text.Json.Serialization;
 
 namespace RecipeApi.Dto;
 
-public record SettingsDto(
-    [property: JsonPropertyName("key")] string Key,
-    [property: JsonPropertyName("value")] JsonElement Value
-);
+public class SettingsDto
+{
+    [JsonPropertyName("key")]
+    public string Key { get; set; } = string.Empty;
+
+    [JsonPropertyName("value")]
+    public JsonElement Value { get; set; }
+
+    public SettingsDto() { }
+
+    public SettingsDto(string key, JsonElement value)
+    {
+        Key = key;
+        Value = value;
+    }
+}

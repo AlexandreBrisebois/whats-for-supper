@@ -10,20 +10,20 @@ public class SettingsController(SettingsService settingsService) : ControllerBas
 {
     private readonly SettingsService _settingsService = settingsService;
 
-    [HttpGet("{key}")]
-    public async Task<IActionResult> GetSetting(string key)
+    [HttpGet("{settingsKey}")]
+    public async Task<IActionResult> GetSetting([FromRoute] string settingsKey)
     {
-        var setting = await _settingsService.GetSettingAsync(key);
+        var setting = await _settingsService.GetSettingAsync(settingsKey);
         if (setting is null)
             return NotFound();
 
         return Ok(new { data = new SettingsDto(setting.Key, setting.Value) });
     }
 
-    [HttpPost("{key}")]
-    public async Task<IActionResult> UpsertSetting(string key, [FromBody] SettingsDto dto)
+    [HttpPost("{settingsKey}")]
+    public async Task<IActionResult> UpsertSetting([FromRoute] string settingsKey, [FromBody] SettingsDto dto)
     {
-        var saved = await _settingsService.UpsertSettingAsync(key, dto.Value);
+        var saved = await _settingsService.UpsertSettingAsync(settingsKey, dto.Value);
         return Ok(new { data = new SettingsDto(saved.Key, saved.Value) });
     }
 }
