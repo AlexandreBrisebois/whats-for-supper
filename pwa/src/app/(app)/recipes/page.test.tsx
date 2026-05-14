@@ -585,6 +585,7 @@ describe('RecipesPage', () => {
       expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
     fireEvent.click(screen.getByTestId('action-edit-recipe'));
     fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
       target: { value: 'Chicken Soup Deluxe' },
@@ -629,6 +630,7 @@ describe('RecipesPage', () => {
       expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
     fireEvent.click(screen.getByTestId('action-edit-recipe'));
     fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
       target: { value: 'Unsaved Soup' },

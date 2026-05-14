@@ -18,11 +18,17 @@ import { useFamilyStore } from '@/store/familyStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { apiClient } from '@/lib/api/api-client';
+import { importRecipeShareBundle, parseRecipeBundleFile } from '@/lib/api/recipes';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants/routes';
 import { normalizeGotos } from '@/lib/gotoUtils';
 import { t, tWithVars } from '@/locales';
-import type { GoToListDto, GoToItem } from '@/lib/api/generated/models/index';
+import type {
+  GoToListDto,
+  GoToItem,
+  RecipeShareBundleDto,
+  SharedImageDto,
+} from '@/lib/api/generated/models/index';
 
 const PHOTO_UPLOAD_OVERLAY_DELAY_MS = 800;
 
@@ -75,6 +81,7 @@ export default function MinimalCapture({
   } = useCapture();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const recipeFileInputRef = useRef<HTMLInputElement>(null);
   const saveAreaRef = useRef<HTMLDivElement>(null);
   const photoSubmitLockRef = useRef(false);
   const photoUploadOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -107,6 +114,12 @@ export default function MinimalCapture({
   const [showDescribe, setShowDescribe] = useState(mode === 'describe');
   const [showUrlReview, setShowUrlReview] = useState(!!extractedUrl);
   const [isDragging, setIsDragging] = useState(false);
+  const [parsedBundle, setParsedBundle] = useState<RecipeShareBundleDto | null>(null);
+  const [selectedBundleFileName, setSelectedBundleFileName] = useState<string | null>(null);
+  const [bundleImportError, setBundleImportError] = useState<string | null>(null);
+  const [isBundleSubmitting, setIsBundleSubmitting] = useState(false);
+  const [bundleImportSucceeded, setBundleImportSucceeded] = useState(false);
+  const [bundleImportRecipeName, setBundleImportRecipeName] = useState<string | null>(null);
 
   // Track the pending recipe ID so we can detect when SSE recipe_ready fires
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
@@ -247,6 +260,10 @@ export default function MinimalCapture({
     galleryInputRef.current?.click();
   };
 
+  const handleRecipeFileImport = () => {
+    recipeFileInputRef.current?.click();
+  };
+
   // Auto-trigger camera if mode is 'photo' (e.g. from Family GOTO)
   useEffect(() => {
     if (mode === 'photo') {
@@ -259,6 +276,25 @@ export default function MinimalCapture({
     const files = Array.from(e.target.files ?? []);
     files.forEach((file) => addImage(file));
     e.target.value = '';
+  };
+
+  const handleRecipeBundleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) return;
+
+    try {
+      setBundleImportError(null);
+      setParsedBundle(await parseRecipeBundleFile(file));
+      setSelectedBundleFileName(file.name);
+      setShowDescribe(false);
+      setShowUrlReview(false);
+    } catch (error) {
+      setParsedBundle(null);
+      setSelectedBundleFileName(null);
+      setBundleImportError(error instanceof Error ? error.message : 'This .recipe file is not valid.');
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -336,6 +372,34 @@ export default function MinimalCapture({
     }
   };
 
+  const handleRejectBundle = () => {
+    setParsedBundle(null);
+    setSelectedBundleFileName(null);
+    setBundleImportError(null);
+    setIsBundleSubmitting(false);
+  };
+
+  const handleAcceptBundle = async () => {
+    if (!parsedBundle || isBundleSubmitting) return;
+
+    setIsBundleSubmitting(true);
+    setBundleImportError(null);
+
+    try {
+      const importedRecipe = await importRecipeShareBundle(parsedBundle);
+      setBundleImportRecipeName(importedRecipe.name);
+      setBundleImportSucceeded(true);
+      setParsedBundle(null);
+      setSelectedBundleFileName(null);
+    } catch (error) {
+      setBundleImportError(
+        error instanceof Error ? error.message : 'Could not import this recipe right now.'
+      );
+    } finally {
+      setIsBundleSubmitting(false);
+    }
+  };
+
   // Describe path submit — E3
   const handleDescribeSubmit = async () => {
     if (!describeName.trim()) {
@@ -391,6 +455,35 @@ export default function MinimalCapture({
   };
 
   // ── Success screen ──────────────────────────────────────────────────────────
+  if (bundleImportSucceeded) {
+    return (
+      <div
+        data-testid="bundle-import-success"
+        className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500"
+      >
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-sage/10 text-sage ring-8 ring-sage/5 animate-in zoom-in duration-300">
+          <CheckCircle2 size={48} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
+            {bundleImportRecipeName || 'Recipe imported'}
+          </h2>
+          <p className="px-4 text-sm text-charcoal/60">
+            Your shared recipe is ready to use in the library.
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          data-testid="bundle-import-done-btn"
+          onClick={() => router.push(ROUTES.HOME as any)}
+          className="rounded-2xl px-8"
+        >
+          Done
+        </Button>
+      </div>
+    );
+  }
+
   if (onSuccess) {
     // ── Ready state: SSE recipe_ready fired while user is still on this screen ──
     if (readyRecipeName) {
@@ -500,6 +593,97 @@ export default function MinimalCapture({
     );
   }
 
+  if (parsedBundle) {
+    const hero = (parsedBundle.hero as SharedImageDto | null | undefined) ?? null;
+    const originalCount = parsedBundle.originals?.length ?? 0;
+
+    return (
+      <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+        <div className="flex flex-col gap-2">
+          <h2 className="font-heading text-2xl font-black text-charcoal tracking-tight">
+            Review recipe file
+          </h2>
+          <p className="text-sm text-charcoal/50">
+            {selectedBundleFileName || 'Shared recipe file'} is ready to import.
+          </p>
+        </div>
+
+        <div
+          data-testid="bundle-preview-card"
+          className="overflow-hidden rounded-[2rem] border border-charcoal/10 bg-white shadow-sm"
+        >
+          {hero?.base64 && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`data:${hero.mimeType};base64,${hero.base64}`}
+              alt={parsedBundle.recipe?.name || 'Shared recipe'}
+              className="h-52 w-full object-cover"
+            />
+          )}
+          <div className="flex flex-col gap-3 p-5">
+            <h3
+              data-testid="bundle-preview-name"
+              className="font-heading text-xl font-black text-charcoal"
+            >
+              {parsedBundle.recipe?.name}
+            </h3>
+            {parsedBundle.recipe?.sourceUrl && (
+              <p data-testid="bundle-preview-source-url" className="text-sm text-charcoal/60">
+                {parsedBundle.recipe.sourceUrl}
+              </p>
+            )}
+            {parsedBundle.recipe?.sourceName && (
+              <p data-testid="bundle-preview-source-name" className="text-sm text-charcoal/60">
+                {parsedBundle.recipe.sourceName}
+              </p>
+            )}
+            <span
+              data-testid="bundle-preview-synthesis-badge"
+              className="inline-flex w-fit rounded-full bg-ochre/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-ochre"
+            >
+              {parsedBundle.recipe?.isSynthesized ? 'Synthesized' : 'Original'}
+            </span>
+            {originalCount > 0 && (
+              <p data-testid="bundle-preview-original-count" className="text-sm text-charcoal/60">
+                {originalCount} original photo{originalCount === 1 ? '' : 's'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {bundleImportError && (
+          <p
+            data-testid="bundle-import-error"
+            className="rounded-2xl border border-pink/20 bg-pink/5 px-4 py-3 text-sm font-medium text-pink"
+          >
+            {bundleImportError}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="primary"
+            data-testid="accept-bundle-btn"
+            onClick={handleAcceptBundle}
+            disabled={isBundleSubmitting}
+            isLoading={isBundleSubmitting}
+            className="rounded-[2rem] py-6 text-lg font-bold"
+          >
+            Import recipe
+          </Button>
+          <Button
+            variant="ghost"
+            data-testid="reject-bundle-btn"
+            onClick={handleRejectBundle}
+            className="rounded-[2rem] py-6 text-lg font-bold text-charcoal/60"
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* ── URL Capturing Overlay ─────────────────────────────────────────────── */}
@@ -543,7 +727,7 @@ export default function MinimalCapture({
       )}
 
       {/* ── Camera / Gallery — hidden when describe or url review is active ───────────── */}
-      {!showDescribe && !showUrlReview && (
+      {!showDescribe && !showUrlReview && !parsedBundle && (
         <div className="flex flex-col gap-10">
           {/* Capture Area */}
           <div
@@ -575,27 +759,6 @@ export default function MinimalCapture({
               {t('capture.pickFromGallery', 'Pick from Gallery')}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowDescribe(true)}
-              className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/40 transition-colors hover:text-terracotta"
-            >
-              <PenLine size={16} />
-              Or Describe It Instead
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowUrlReview(true);
-                setUrlInput('');
-              }}
-              className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/40 transition-colors hover:text-terracotta"
-            >
-              <Globe size={16} />
-              Or add from a link
-            </button>
-
             <input
               ref={fileInputRef}
               type="file"
@@ -616,6 +779,63 @@ export default function MinimalCapture({
               title={t('capture.choosePhotos', 'Choose photos from your library')}
               onChange={handleFileChange}
             />
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-[2rem] border border-charcoal/8 bg-white/70 p-5 shadow-sm">
+            <button
+              type="button"
+              data-testid="capture-secondary-action-link"
+              onClick={() => {
+                setShowUrlReview(true);
+                setUrlInput('');
+                setBundleImportError(null);
+              }}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+            >
+              <Globe size={16} />
+              Paste recipe link
+            </button>
+
+            <button
+              type="button"
+              data-testid="capture-secondary-action-describe"
+              onClick={() => {
+                setShowDescribe(true);
+                setBundleImportError(null);
+              }}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+            >
+              <PenLine size={16} />
+              Describe a recipe
+            </button>
+
+            <button
+              type="button"
+              data-testid="capture-secondary-action-import"
+              onClick={handleRecipeFileImport}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+            >
+              <ArrowLeft size={16} className="rotate-180" />
+              <span data-testid="import-recipe-file-btn">Import recipe file</span>
+            </button>
+
+            <input
+              ref={recipeFileInputRef}
+              data-testid="import-recipe-file-input"
+              type="file"
+              accept=".recipe,application/json"
+              className="hidden"
+              onChange={handleRecipeBundleFileChange}
+            />
+
+            {bundleImportError && (
+              <p
+                data-testid="bundle-import-error"
+                className="rounded-2xl border border-pink/20 bg-pink/5 px-4 py-3 text-sm font-medium text-pink"
+              >
+                {bundleImportError}
+              </p>
+            )}
           </div>
 
           {/* Preview Area */}

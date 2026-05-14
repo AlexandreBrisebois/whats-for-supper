@@ -295,6 +295,8 @@
     "choosePhotos": "Choose from Library",
     "searching": "Searching…",
     "searchWithPhotos": "Search with {{count}} photos",
+    "shareFailed": "Could not share this recipe right now.",
+    "shareRecipe": "Share recipe",
     "cameraBusy": "We're processing a lot right now. Try again in a moment.",
     "clearFilters": "Clear Filters",
     "browseLibrary": "Browse Library",

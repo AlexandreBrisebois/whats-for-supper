@@ -139,7 +139,7 @@ test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
     await page.goto('/capture?intent=goto');
 
     // Open the describe form
-    await page.getByRole('button', { name: /or describe it instead/i }).click();
+    await page.getByTestId('capture-secondary-action-describe').click();
 
     // Fill in the recipe name
     await page.getByPlaceholder(/our family spaghetti/i).fill('Our family spaghetti');
@@ -327,7 +327,7 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
     await page.goto('/capture?intent=goto');
 
     // Open the describe form
-    await page.getByRole('button', { name: /or describe it instead/i }).click();
+    await page.getByTestId('capture-secondary-action-describe').click();
 
     // Fill in the recipe name
     await page.getByPlaceholder(/our family spaghetti/i).fill('Our family spaghetti');

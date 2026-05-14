@@ -3,3 +3,4 @@ Warning: KiotaBuilder OpenAPI warning: #/ - Multiple servers entries were found 
 Warning: KiotaBuilder OpenAPI warning: #/paths/~1api~1inventory-captures/post - The operation describes multiple response schemas that are divergent. Only the schema of the lowest success status code will be used.
 Warning: KiotaBuilder OpenAPI warning: #/paths/~1api~1photo-search/post - The operation describes multiple response schemas that are divergent. Only the schema of the lowest success status code will be used.
 Warning: KiotaBuilder OpenAPI warning: #/components/schemas/CaptureUrlDto/properties/url - The format uri is not supported by Kiota and the string type will be used.
+Warning: KiotaBuilder OpenAPI warning: #/components/schemas/ImportedRecipeDto/properties/sourceUrl - The format uri is not supported by Kiota and the string type will be used.

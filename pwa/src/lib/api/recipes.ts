@@ -2,12 +2,17 @@ import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 import { usePlannerStore } from '@/store/plannerStore';
 import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
+import { RecipeShareInfoDto_bundleSourceObject } from './generated/models/index';
 import type {
+  ImportedRecipeDto,
   RecipeDto,
+  RecipeShareBundleDto,
+  RecipeShareInfoDto_bundleSource,
   RecommendationResultDto,
   RecipeSearchRequestDto,
   RecipeSearchResponseDto,
   RecipeSearchResultDto,
+  SharedImageDto,
 } from './generated/models/index';
 
 export interface Recipe {
@@ -257,6 +262,195 @@ export async function captureUrl(
   return {
     id: (result?.data as any)?.id || '',
   };
+}
+
+export async function getRecipeShareBundle(id: string): Promise<RecipeShareBundleDto> {
+  const result = await apiClient.api.recipes.byId(id as any).share.get();
+  if (!result?.data) {
+    throw new Error('Could not export this recipe right now.');
+  }
+  return result.data;
+}
+
+export async function importRecipeShareBundle(bundle: RecipeShareBundleDto): Promise<Recipe> {
+  const result = await apiClient.api.recipes.importBundle.post(bundle);
+  if (!result?.data) {
+    throw new Error('Could not import this recipe right now.');
+  }
+  return mapToRecipe(result.data);
+}
+
+export async function downloadRecipeBundleFile(
+  recipeName: string,
+  bundle: RecipeShareBundleDto
+): Promise<void> {
+  const file = createRecipeBundleFile(recipeName, bundle);
+  const canNativeShare =
+    typeof navigator !== 'undefined' &&
+    typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [file] });
+
+  if (canNativeShare) {
+    await navigator.share({
+      files: [file],
+      title: recipeName,
+    });
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = file.name;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBundleDto> {
+  const rawText = await readFileAsText(file);
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    throw new Error('This .recipe file could not be read.');
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('This .recipe file is not valid.');
+  }
+
+  const bundle = parsed as Record<string, unknown>;
+  const recipe = bundle.recipe as Record<string, unknown> | undefined;
+  const info = bundle.info as Record<string, unknown> | undefined;
+  const hero = bundle.hero as Record<string, unknown> | null | undefined;
+  const originals = Array.isArray(bundle.originals) ? bundle.originals : null;
+
+  if (
+    typeof bundle.version !== 'string' ||
+    !recipe ||
+    typeof recipe.name !== 'string' ||
+    !Array.isArray(recipe.ingredients) ||
+    !recipe.ingredients.every((item) => typeof item === 'string') ||
+    !Array.isArray(recipe.instructions) ||
+    !recipe.instructions.every((item) => typeof item === 'string') ||
+    typeof recipe.isSynthesized !== 'boolean' ||
+    !info ||
+    typeof info.exportedAtUtc !== 'string' ||
+    Number.isNaN(Date.parse(info.exportedAtUtc)) ||
+    info.bundleSource !== 'wfs-share' ||
+    !originals ||
+    !originals.every(isPortableSharedImage) ||
+    (hero !== null && hero !== undefined && !isPortableSharedImage(hero))
+  ) {
+    throw new Error('This .recipe file is not valid.');
+  }
+
+  return {
+    version: bundle.version,
+    recipe: {
+      name: recipe.name,
+      description: typeof recipe.description === 'string' ? recipe.description : null,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      prepTimeMinutes: typeof recipe.prepTimeMinutes === 'number' ? recipe.prepTimeMinutes : null,
+      cookTimeMinutes: typeof recipe.cookTimeMinutes === 'number' ? recipe.cookTimeMinutes : null,
+      totalTimeMinutes:
+        typeof recipe.totalTimeMinutes === 'number' ? recipe.totalTimeMinutes : null,
+      servings: typeof recipe.servings === 'number' ? recipe.servings : null,
+      sourceUrl: typeof recipe.sourceUrl === 'string' ? recipe.sourceUrl : null,
+      sourceName: typeof recipe.sourceName === 'string' ? recipe.sourceName : null,
+      category: typeof recipe.category === 'string' ? recipe.category : null,
+      isSynthesized: recipe.isSynthesized,
+    } satisfies ImportedRecipeDto,
+    info: {
+      exportedAtUtc: new Date(info.exportedAtUtc),
+      bundleSource: RecipeShareInfoDto_bundleSourceObject.WfsShare as RecipeShareInfoDto_bundleSource,
+      appVersion: typeof info.appVersion === 'string' ? info.appVersion : null,
+    },
+    hero: hero ? toSharedImage(hero) : null,
+    originals: originals.map((image) => toSharedImage(image as Record<string, unknown>)),
+  };
+}
+
+function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBundleDto): File {
+  const payload = {
+    version: bundle.version ?? '1.0',
+    recipe: {
+      name: bundle.recipe?.name ?? '',
+      description: bundle.recipe?.description ?? null,
+      ingredients: bundle.recipe?.ingredients ?? [],
+      instructions: bundle.recipe?.instructions ?? [],
+      prepTimeMinutes: bundle.recipe?.prepTimeMinutes ?? null,
+      cookTimeMinutes: bundle.recipe?.cookTimeMinutes ?? null,
+      totalTimeMinutes: bundle.recipe?.totalTimeMinutes ?? null,
+      servings: bundle.recipe?.servings ?? null,
+      sourceUrl: bundle.recipe?.sourceUrl ?? null,
+      sourceName: bundle.recipe?.sourceName ?? null,
+      category: bundle.recipe?.category ?? null,
+      isSynthesized: bundle.recipe?.isSynthesized ?? false,
+    },
+    info: {
+      exportedAtUtc: bundle.info?.exportedAtUtc
+        ? new Date(bundle.info.exportedAtUtc).toISOString()
+        : new Date().toISOString(),
+      bundleSource: 'wfs-share',
+      appVersion: bundle.info?.appVersion ?? null,
+    },
+    hero: bundle.hero ? toPortableSharedImage(bundle.hero as SharedImageDto) : null,
+    originals: (bundle.originals ?? []).map((image) => toPortableSharedImage(image)),
+  };
+
+  return new File([JSON.stringify(payload, null, 2)], `${slugifyRecipeName(recipeName)}.recipe`, {
+    type: 'application/json',
+  });
+}
+
+function toPortableSharedImage(image: SharedImageDto): { mimeType: string | null; base64: string | null } {
+  return {
+    mimeType: image.mimeType ?? null,
+    base64: image.base64 ?? null,
+  };
+}
+
+function toSharedImage(image: Record<string, unknown>): SharedImageDto {
+  return {
+    mimeType: image.mimeType as string,
+    base64: image.base64 as string,
+  };
+}
+
+function isPortableSharedImage(value: unknown): value is Record<string, unknown> {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as Record<string, unknown>).mimeType === 'string' &&
+    typeof (value as Record<string, unknown>).base64 === 'string'
+  );
+}
+
+function slugifyRecipeName(recipeName: string): string {
+  return (recipeName || 'recipe')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+}
+
+async function readFileAsText(file: File): Promise<string> {
+  if (typeof file.text === 'function') {
+    return file.text();
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read file.'));
+    reader.readAsText(file);
+  });
 }
 
 export async function updateRecipe(

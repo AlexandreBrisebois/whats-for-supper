@@ -313,19 +313,19 @@ test.describe('Capture — initial state rendering', () => {
     await expect(page.getByRole('button', { name: /pick from gallery/i })).toBeVisible();
 
     // Describe_Link is visible
-    await expect(page.getByRole('button', { name: /or describe it instead/i })).toBeVisible();
+    await expect(page.getByTestId('capture-secondary-action-describe')).toBeVisible();
 
     // Describe_Form (recipe name input) is NOT present
     await expect(page.getByPlaceholder(/our family spaghetti/i)).not.toBeVisible();
 
-    // "Or add from a link" button is visible
-    await expect(page.getByRole('button', { name: /or add from a link/i })).toBeVisible();
+    // Link entry is visible
+    await expect(page.getByTestId('capture-secondary-action-link')).toBeVisible();
   });
 
-  test('clicking "Or add from a link" shows the URL review form', async ({ page }) => {
+  test('clicking the link secondary action shows the URL review form', async ({ page }) => {
     await page.goto('/capture');
 
-    await page.getByRole('button', { name: /or add from a link/i }).click();
+    await page.getByTestId('capture-secondary-action-link').click();
 
     await expect(page.getByText('Review your link')).toBeVisible();
     await expect(page.getByPlaceholder(/paste a recipe link/i)).toBeVisible();
@@ -343,12 +343,12 @@ test.describe('Capture — initial state rendering', () => {
       });
     });
 
-    await page.getByRole('button', { name: /or add from a link/i }).click();
+    await page.getByTestId('capture-secondary-action-link').click();
     await page.getByRole('button', { name: /back/i }).click();
 
     await expect(page.getByText('Review your link')).not.toBeVisible();
     await expect(page.getByRole('button', { name: /take a photo/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /or add from a link/i })).toBeVisible();
+    await expect(page.getByTestId('capture-secondary-action-link')).toBeVisible();
   });
 });
 
@@ -385,13 +385,13 @@ test.describe('Capture — describe link interaction', () => {
     // Form is not visible before clicking
     await expect(page.getByPlaceholder(/our family spaghetti/i)).not.toBeVisible();
 
-    await page.getByRole('button', { name: /or describe it instead/i }).click();
+    await page.getByTestId('capture-secondary-action-describe').click();
 
     // Describe_Form is now visible
     await expect(page.getByPlaceholder(/our family spaghetti/i)).toBeVisible();
 
     // Describe_Link is no longer visible (hidden by !showDescribe guard)
-    await expect(page.getByRole('button', { name: /or describe it instead/i })).not.toBeVisible();
+    await expect(page.getByTestId('capture-secondary-action-describe')).not.toBeVisible();
   });
 });
 
@@ -432,7 +432,7 @@ test.describe('Capture — describe form validation', () => {
     });
 
     await page.goto('/capture');
-    await page.getByRole('button', { name: /or describe it instead/i }).click();
+    await page.getByTestId('capture-secondary-action-describe').click();
 
     // Synthesize button is disabled when name is empty (component guards on !describeName.trim())
     const synthesizeBtn = page.getByRole('button', { name: /synthesize recipe/i });
@@ -538,7 +538,7 @@ test.describe('Capture — GOTO intent', () => {
     await page.goto('/capture?intent=goto');
 
     // Switch to Describe form via the Describe_Link button
-    await page.getByRole('button', { name: /or describe it instead/i }).click();
+    await page.getByTestId('capture-secondary-action-describe').click();
 
     // Fill in the name
     await page.getByPlaceholder(/our family spaghetti/i).fill('Our family spaghetti');

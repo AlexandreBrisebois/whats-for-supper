@@ -15,9 +15,12 @@ import {
   Star,
   Images,
   ExternalLink,
+  Share2,
 } from 'lucide-react';
 import {
   getRecipe,
+  getRecipeShareBundle,
+  downloadRecipeBundleFile,
   updateRecipe,
   deleteRecipe,
   reimportRecipe,
@@ -77,6 +80,8 @@ export function RecipeDetailSheet({
   const [isUpdatingDiscovery, setIsUpdatingDiscovery] = useState(false);
   const [isSavingGoto, setIsSavingGoto] = useState(false);
   const [showOriginals, setShowOriginals] = useState(false);
+  const [isSharingRecipe, setIsSharingRecipe] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
   const familySettings = useFamilyStore((state) => state.familySettings);
@@ -361,6 +366,26 @@ export function RecipeDetailSheet({
     }
   };
 
+  const handleShareRecipe = async () => {
+    if (!recipe || isSharingRecipe) return;
+
+    setIsSharingRecipe(true);
+    setShareError(null);
+
+    try {
+      const bundle = await getRecipeShareBundle(recipe.id);
+      await downloadRecipeBundleFile(recipe.name, bundle);
+    } catch (error) {
+      const isAbortError = error instanceof DOMException && error.name === 'AbortError';
+      if (!isAbortError) {
+        console.error('Failed to share recipe', error);
+        setShareError(t('recipes.shareFailed', 'Could not share this recipe right now.'));
+      }
+    } finally {
+      setIsSharingRecipe(false);
+    }
+  };
+
   const primaryActionTestId = plannerDayLabel ? 'action-add-to-day' : 'action-cook-this';
   const primaryActionLabel = plannerDayLabel ? `Plan for ${plannerDayLabel}` : 'Cook This';
 
@@ -420,21 +445,23 @@ export function RecipeDetailSheet({
             {!isLoading && recipe && !isEditing && (
               <button
                 type="button"
-                data-testid="action-edit-recipe"
-                aria-label={t('common.edit', 'Edit')}
-                title={t('common.edit', 'Edit')}
-                onClick={() => {
-                  resetDrafts(recipe);
-                  setIsEditing(true);
-                }}
+                data-testid="recipe-share-btn"
+                aria-label={t('recipes.shareRecipe', 'Share recipe')}
+                title={t('recipes.shareRecipe', 'Share recipe')}
+                onClick={() => void handleShareRecipe()}
+                disabled={isSharingRecipe}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-charcoal shadow-sm transition hover:bg-charcoal/5"
               >
-                <Pencil size={14} />
+                <Share2 size={14} />
               </button>
             )}
             {!isLoading && recipe && !isEditing && (
               <ActionGearMenu
                 canReimport={recipe.canReimport}
+                onEdit={() => {
+                  resetDrafts(recipe);
+                  setIsEditing(true);
+                }}
                 onMoveToBin={() => void handleMoveToBin()}
                 onReimport={() => void handleReimport()}
               />
@@ -513,6 +540,14 @@ export function RecipeDetailSheet({
             </div>
 
             <div className="mb-5 flex flex-col gap-3">
+              {shareError && (
+                <p
+                  data-testid="recipe-share-error"
+                  className="rounded-2xl border border-pink/20 bg-pink/5 px-4 py-3 text-sm font-medium text-pink"
+                >
+                  {shareError}
+                </p>
+              )}
               {isEditing ? (
                 <label className="grid gap-2">
                   <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">

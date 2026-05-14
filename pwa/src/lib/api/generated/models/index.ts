@@ -313,6 +313,17 @@ export function createHealthCheckResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ImportedRecipeDto}
+ */
+// @ts-ignore
+export function createImportedRecipeDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoImportedRecipeDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {InventoryCaptureResponse}
  */
 // @ts-ignore
@@ -643,6 +654,50 @@ export function createRecipeSearchResultDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeShareBundleDto_heroMember1 | SharedImageDto}
+ */
+// @ts-ignore
+export function createRecipeShareBundleDto_heroFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeShareBundleDto_hero;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeShareBundleDto_heroMember1}
+ */
+// @ts-ignore
+export function createRecipeShareBundleDto_heroMember1FromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeShareBundleDto_heroMember1;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeShareBundleDto}
+ */
+// @ts-ignore
+export function createRecipeShareBundleDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeShareBundleDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeShareInfoDto}
+ */
+// @ts-ignore
+export function createRecipeShareInfoDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeShareInfoDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeStatusDto}
  */
 // @ts-ignore
@@ -815,6 +870,17 @@ export function createSettingsDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoSettingsDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SharedImageDto}
+ */
+// @ts-ignore
+export function createSharedImageDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSharedImageDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1339,6 +1405,54 @@ export function deserializeIntoHealthCheckResponse_checks(
   healthCheckResponse_checks: Partial<HealthCheckResponse_checks> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
+}
+/**
+ * The deserialization information for the current model
+ * @param ImportedRecipeDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoImportedRecipeDto(
+  importedRecipeDto: Partial<ImportedRecipeDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    category: (n) => {
+      importedRecipeDto.category = n.getStringValue();
+    },
+    cookTimeMinutes: (n) => {
+      importedRecipeDto.cookTimeMinutes = n.getNumberValue();
+    },
+    description: (n) => {
+      importedRecipeDto.description = n.getStringValue();
+    },
+    ingredients: (n) => {
+      importedRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
+    },
+    instructions: (n) => {
+      importedRecipeDto.instructions = n.getCollectionOfPrimitiveValues<string>();
+    },
+    isSynthesized: (n) => {
+      importedRecipeDto.isSynthesized = n.getBooleanValue();
+    },
+    name: (n) => {
+      importedRecipeDto.name = n.getStringValue();
+    },
+    prepTimeMinutes: (n) => {
+      importedRecipeDto.prepTimeMinutes = n.getNumberValue();
+    },
+    servings: (n) => {
+      importedRecipeDto.servings = n.getNumberValue();
+    },
+    sourceName: (n) => {
+      importedRecipeDto.sourceName = n.getStringValue();
+    },
+    sourceUrl: (n) => {
+      importedRecipeDto.sourceUrl = n.getStringValue();
+    },
+    totalTimeMinutes: (n) => {
+      importedRecipeDto.totalTimeMinutes = n.getNumberValue();
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -2126,6 +2240,94 @@ export function deserializeIntoRecipeSearchResultDto(
 }
 /**
  * The deserialization information for the current model
+ * @param RecipeShareBundleDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeShareBundleDto(
+  recipeShareBundleDto: Partial<RecipeShareBundleDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    hero: (n) => {
+      recipeShareBundleDto.hero =
+        n.getObjectValue<RecipeShareBundleDto_heroMember1>(
+          createRecipeShareBundleDto_heroMember1FromDiscriminatorValue
+        ) ?? n.getObjectValue<SharedImageDto>(createSharedImageDtoFromDiscriminatorValue);
+    },
+    info: (n) => {
+      recipeShareBundleDto.info = n.getObjectValue<RecipeShareInfoDto>(
+        createRecipeShareInfoDtoFromDiscriminatorValue
+      );
+    },
+    originals: (n) => {
+      recipeShareBundleDto.originals = n.getCollectionOfObjectValues<SharedImageDto>(
+        createSharedImageDtoFromDiscriminatorValue
+      );
+    },
+    recipe: (n) => {
+      recipeShareBundleDto.recipe = n.getObjectValue<ImportedRecipeDto>(
+        createImportedRecipeDtoFromDiscriminatorValue
+      );
+    },
+    version: (n) => {
+      recipeShareBundleDto.version = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeShareBundleDto_hero The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeShareBundleDto_hero(
+  recipeShareBundleDto_hero:
+    | Partial<RecipeShareBundleDto_heroMember1 | SharedImageDto>
+    | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    ...deserializeIntoRecipeShareBundleDto_heroMember1(
+      recipeShareBundleDto_hero as RecipeShareBundleDto_heroMember1
+    ),
+    ...deserializeIntoSharedImageDto(recipeShareBundleDto_hero as SharedImageDto),
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeShareBundleDto_heroMember1 The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeShareBundleDto_heroMember1(
+  recipeShareBundleDto_heroMember1: Partial<RecipeShareBundleDto_heroMember1> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeShareInfoDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeShareInfoDto(
+  recipeShareInfoDto: Partial<RecipeShareInfoDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    appVersion: (n) => {
+      recipeShareInfoDto.appVersion = n.getStringValue();
+    },
+    bundleSource: (n) => {
+      recipeShareInfoDto.bundleSource = n.getEnumValue<RecipeShareInfoDto_bundleSource>(
+        RecipeShareInfoDto_bundleSourceObject
+      );
+    },
+    exportedAtUtc: (n) => {
+      recipeShareInfoDto.exportedAtUtc = n.getDateValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param RecipeStatusDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -2463,6 +2665,24 @@ export function deserializeIntoSettingsDto_value(
   settingsDto_value: Partial<SettingsDto_value> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
+}
+/**
+ * The deserialization information for the current model
+ * @param SharedImageDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSharedImageDto(
+  sharedImageDto: Partial<SharedImageDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    base64: (n) => {
+      sharedImageDto.base64 = n.getStringValue();
+    },
+    mimeType: (n) => {
+      sharedImageDto.mimeType = n.getStringValue();
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -2928,6 +3148,56 @@ export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
   timestamp?: Date | null;
 }
 export interface HealthCheckResponse_checks extends AdditionalDataHolder, Parsable {}
+export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The category property
+   */
+  category?: string | null;
+  /**
+   * The cookTimeMinutes property
+   */
+  cookTimeMinutes?: number | null;
+  /**
+   * The description property
+   */
+  description?: string | null;
+  /**
+   * The ingredients property
+   */
+  ingredients?: string[] | null;
+  /**
+   * The instructions property
+   */
+  instructions?: string[] | null;
+  /**
+   * The isSynthesized property
+   */
+  isSynthesized?: boolean | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+  /**
+   * The prepTimeMinutes property
+   */
+  prepTimeMinutes?: number | null;
+  /**
+   * The servings property
+   */
+  servings?: number | null;
+  /**
+   * The sourceName property
+   */
+  sourceName?: string | null;
+  /**
+   * The sourceUrl property
+   */
+  sourceUrl?: string | null;
+  /**
+   * The totalTimeMinutes property
+   */
+  totalTimeMinutes?: number | null;
+}
 export interface InventoryCaptureResponse extends AdditionalDataHolder, Parsable {
   /**
    * The confidence property
@@ -3473,6 +3743,46 @@ export interface RecipeSearchResultDto extends AdditionalDataHolder, Parsable {
    */
   totalTime?: string | null;
 }
+export interface RecipeShareBundleDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The hero property
+   */
+  hero?: RecipeShareBundleDto_heroMember1 | SharedImageDto | null;
+  /**
+   * The info property
+   */
+  info?: RecipeShareInfoDto | null;
+  /**
+   * The originals property
+   */
+  originals?: SharedImageDto[] | null;
+  /**
+   * The recipe property
+   */
+  recipe?: ImportedRecipeDto | null;
+  /**
+   * The version property
+   */
+  version?: string | null;
+}
+export type RecipeShareBundleDto_hero = RecipeShareBundleDto_heroMember1 | SharedImageDto;
+export interface RecipeShareBundleDto_heroMember1 extends AdditionalDataHolder, Parsable {}
+export interface RecipeShareInfoDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The appVersion property
+   */
+  appVersion?: string | null;
+  /**
+   * The bundleSource property
+   */
+  bundleSource?: RecipeShareInfoDto_bundleSource | null;
+  /**
+   * The exportedAtUtc property
+   */
+  exportedAtUtc?: Date | null;
+}
+export type RecipeShareInfoDto_bundleSource =
+  (typeof RecipeShareInfoDto_bundleSourceObject)[keyof typeof RecipeShareInfoDto_bundleSourceObject];
 export interface RecipeStatusDto extends AdditionalDataHolder, Parsable {
   /**
    * The id property
@@ -3981,6 +4291,35 @@ export function serializeHealthCheckResponse_checks(
     return;
   }
   writer.writeAdditionalData(healthCheckResponse_checks.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ImportedRecipeDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeImportedRecipeDto(
+  writer: SerializationWriter,
+  importedRecipeDto: Partial<ImportedRecipeDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!importedRecipeDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('category', importedRecipeDto.category);
+  writer.writeNumberValue('cookTimeMinutes', importedRecipeDto.cookTimeMinutes);
+  writer.writeStringValue('description', importedRecipeDto.description);
+  writer.writeCollectionOfPrimitiveValues<string>('ingredients', importedRecipeDto.ingredients);
+  writer.writeCollectionOfPrimitiveValues<string>('instructions', importedRecipeDto.instructions);
+  writer.writeBooleanValue('isSynthesized', importedRecipeDto.isSynthesized);
+  writer.writeStringValue('name', importedRecipeDto.name);
+  writer.writeNumberValue('prepTimeMinutes', importedRecipeDto.prepTimeMinutes);
+  writer.writeNumberValue('servings', importedRecipeDto.servings);
+  writer.writeStringValue('sourceName', importedRecipeDto.sourceName);
+  writer.writeStringValue('sourceUrl', importedRecipeDto.sourceUrl);
+  writer.writeNumberValue('totalTimeMinutes', importedRecipeDto.totalTimeMinutes);
+  writer.writeAdditionalData(importedRecipeDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -4705,6 +5044,108 @@ export function serializeRecipeSearchResultDto(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeShareBundleDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeShareBundleDto(
+  writer: SerializationWriter,
+  recipeShareBundleDto: Partial<RecipeShareBundleDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeShareBundleDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<RecipeShareBundleDto_heroMember1 | SharedImageDto>(
+    'hero',
+    recipeShareBundleDto.hero,
+    serializeRecipeShareBundleDto_hero
+  );
+  writer.writeObjectValue<RecipeShareInfoDto>(
+    'info',
+    recipeShareBundleDto.info,
+    serializeRecipeShareInfoDto
+  );
+  writer.writeCollectionOfObjectValues<SharedImageDto>(
+    'originals',
+    recipeShareBundleDto.originals,
+    serializeSharedImageDto
+  );
+  writer.writeObjectValue<ImportedRecipeDto>(
+    'recipe',
+    recipeShareBundleDto.recipe,
+    serializeImportedRecipeDto
+  );
+  writer.writeStringValue('version', recipeShareBundleDto.version);
+  writer.writeAdditionalData(recipeShareBundleDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeShareBundleDto_hero The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeShareBundleDto_hero(
+  writer: SerializationWriter,
+  recipeShareBundleDto_hero:
+    | Partial<RecipeShareBundleDto_heroMember1 | SharedImageDto>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  serializeRecipeShareBundleDto_heroMember1(
+    writer,
+    recipeShareBundleDto_hero as RecipeShareBundleDto_heroMember1
+  );
+  serializeSharedImageDto(writer, recipeShareBundleDto_hero as SharedImageDto);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeShareBundleDto_heroMember1 The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeShareBundleDto_heroMember1(
+  writer: SerializationWriter,
+  recipeShareBundleDto_heroMember1:
+    | Partial<RecipeShareBundleDto_heroMember1>
+    | undefined
+    | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeShareBundleDto_heroMember1 || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(recipeShareBundleDto_heroMember1.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeShareInfoDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeShareInfoDto(
+  writer: SerializationWriter,
+  recipeShareInfoDto: Partial<RecipeShareInfoDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeShareInfoDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('appVersion', recipeShareInfoDto.appVersion);
+  writer.writeEnumValue<RecipeShareInfoDto_bundleSource>(
+    'bundleSource',
+    recipeShareInfoDto.bundleSource
+  );
+  writer.writeDateValue('exportedAtUtc', recipeShareInfoDto.exportedAtUtc);
+  writer.writeAdditionalData(recipeShareInfoDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param RecipeStatusDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -5065,6 +5506,25 @@ export function serializeSettingsDto_value(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SharedImageDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSharedImageDto(
+  writer: SerializationWriter,
+  sharedImageDto: Partial<SharedImageDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!sharedImageDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('base64', sharedImageDto.base64);
+  writer.writeStringValue('mimeType', sharedImageDto.mimeType);
+  writer.writeAdditionalData(sharedImageDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param SmartDefaultsDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -5407,6 +5867,16 @@ export interface SettingsDto extends AdditionalDataHolder, Parsable {
  * Opaque JSON value. Structure depends on the setting key.
  */
 export interface SettingsDto_value extends AdditionalDataHolder, Parsable {}
+export interface SharedImageDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The base64 property
+   */
+  base64?: string | null;
+  /**
+   * The mimeType property
+   */
+  mimeType?: string | null;
+}
 export interface SmartDefaultsDto extends AdditionalDataHolder, Parsable {
   /**
    * The consensusRecipesCount property
@@ -5709,6 +6179,9 @@ export const RecipeSearchResponseDto_searchModeObject = {
   Agent: 'agent',
   Similar: 'similar',
   PantryAssisted: 'pantry-assisted',
+} as const;
+export const RecipeShareInfoDto_bundleSourceObject = {
+  WfsShare: 'wfs-share',
 } as const;
 /**
  * "pending" while synthesis is in progress; "ready" once Name is set and either ImageCount > 0 (photo-upload path) or IsSynthesized = true (describe path)

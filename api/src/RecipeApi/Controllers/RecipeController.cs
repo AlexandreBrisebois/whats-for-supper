@@ -66,6 +66,26 @@ public class RecipeController(
         return Ok(result);
     }
 
+    /// <summary>GET /api/recipes/{id}/share — export a privacy-scrubbed recipe bundle.</summary>
+    [HttpGet("{id:guid}/share")]
+    public async Task<IActionResult> Share(
+        Guid id,
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
+    {
+        if (familyMemberId is null)
+            return BadRequest(new { message = "X-Family-Member-Id header is required." });
+
+        try
+        {
+            var result = await recipeService.ExportRecipeShareBundle(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     /// <summary>
     /// PATCH /api/recipes/{id} — partial update for notes and/or rating.
     /// Changes are persisted to both the database and the recipe.info file on disk.
@@ -181,6 +201,30 @@ public class RecipeController(
 
         var recipeId = await recipeService.CaptureUrl(dto, familyMemberId.Value);
         return Accepted(new { data = new { id = recipeId } });
+    }
+
+    /// <summary>POST /api/recipes/import-bundle — import a reviewed recipe bundle.</summary>
+    [HttpPost("import-bundle")]
+    public async Task<IActionResult> ImportBundle(
+        [FromBody] RecipeShareBundleDto dto,
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
+    {
+        if (familyMemberId is null)
+            return BadRequest(new { message = "X-Family-Member-Id header is required." });
+
+        try
+        {
+            var result = await recipeService.ImportRecipeShareBundle(dto, familyMemberId.Value);
+            return Created($"/api/recipes/{result.Id}", result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (FormatException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>GET /api/recipes/recommendations — mock recommendations (100% mocked data for development).</summary>

@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 import {
   type RecipeDto,
+  type RecipeShareBundleDto,
   RecipeDto_sourceType,
   RecipeDto_sourceTypeObject,
   type ScheduleRecipeDto,
@@ -168,6 +169,40 @@ export const builders = {
       unitText: null,
       recipeIds: [],
     })),
+
+  recipeShareBundle: (overrides: Partial<RecipeShareBundleDto> = {}): RecipeShareBundleDto => ({
+    version: '1.0',
+    recipe: {
+      name: 'Mock Recipe',
+      description: 'A delicious mock recipe for testing.',
+      ingredients: ['Ingredient 1', 'Ingredient 2'],
+      instructions: ['Step 1', 'Step 2'],
+      prepTimeMinutes: 10,
+      cookTimeMinutes: 20,
+      totalTimeMinutes: 30,
+      servings: 4,
+      sourceUrl: 'https://example.com/recipe',
+      sourceName: 'Example Kitchen',
+      category: 'Italian',
+      isSynthesized: false,
+    },
+    info: {
+      exportedAtUtc: new Date('2026-05-14T16:00:00Z'),
+      bundleSource: 'wfs-share' as any,
+      appVersion: '0.1.0',
+    },
+    hero: {
+      mimeType: 'image/jpeg',
+      base64: 'ZmFrZS1oZXJv',
+    },
+    originals: [
+      {
+        mimeType: 'image/jpeg',
+        base64: 'ZmFrZS1vcmlnaW5hbC0x',
+      },
+    ],
+    ...overrides,
+  }),
 };
 
 /**
@@ -481,6 +516,31 @@ export async function setupCommonRoutes(page: Page) {
     }
   });
 
+  // GET /api/recipes/{id}/share
+  await page.route('**/api/recipes/*/share', async (route) => {
+    if (route.request().method() === 'GET') {
+      const id =
+        route
+          .request()
+          .url()
+          .match(/\/recipes\/([0-9a-f-]+)\/share/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: builders.recipeShareBundle({
+            recipe: {
+              ...builders.recipeShareBundle().recipe,
+              name: REALISTIC_RECIPES[id]?.name ?? 'Mock Recipe',
+            },
+          }),
+        }),
+      });
+    } else {
+      await route.fallback();
+    }
+  });
+
   // GET /api/recipes/{recipeId}/original/{photoIndex}
   await page.route('**/api/recipes/*/original/*', async (route) => {
     await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
@@ -567,6 +627,34 @@ export async function setupCommonRoutes(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
       });
+    }
+  });
+
+  // POST /api/recipes/import-bundle — registered AFTER **/api/recipes/* so LIFO gives it priority
+  await page.route('**/api/recipes/import-bundle', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as RecipeShareBundleDto;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: builders.recipe({
+            id: MOCK_IDS.RECIPE_GOTO_STUB,
+            name: body.recipe?.name ?? 'Imported Recipe',
+            description: body.recipe?.description ?? null,
+            imageUrl: null,
+            ingredients: body.recipe?.ingredients ?? [],
+            sourceUrl: body.recipe?.sourceUrl ?? null,
+            sourceType: body.recipe?.sourceUrl
+              ? RecipeDto_sourceTypeObject.Url
+              : RecipeDto_sourceTypeObject.Synthesized,
+            canReimport: false,
+            isReady: true,
+          }),
+        }),
+      });
+    } else {
+      await route.fallback();
     }
   });
 

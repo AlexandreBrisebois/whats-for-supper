@@ -295,6 +295,8 @@
     "choosePhotos": "Depuis la bibliothèque",
     "searching": "Recherche…",
     "searchWithPhotos": "Chercher avec {{count}} photos",
+    "shareFailed": "Impossible de partager cette recette pour le moment.",
+    "shareRecipe": "Partager la recette",
     "cameraBusy": "Nous sommes très occupés. Réessayez dans un instant.",
     "clearFilters": "Effacer les filtres",
     "browseLibrary": "Voir la bibliothèque",

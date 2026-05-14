@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "recipe": {
+    "name": "Shared Lasagna",
+    "description": "Layered comfort food from another device.",
+    "ingredients": ["Pasta sheets", "Tomato sauce", "Cheese"],
+    "instructions": ["Layer", "Bake"],
+    "prepTimeMinutes": 20,
+    "cookTimeMinutes": 40,
+    "totalTimeMinutes": 60,
+    "servings": 6,
+    "sourceUrl": "https://example.com/shared-lasagna",
+    "sourceName": "Example Kitchen",
+    "category": "Dinner",
+    "isSynthesized": true
+  },
+  "info": {
+    "exportedAtUtc": "2026-05-14T16:00:00Z",
+    "bundleSource": "wfs-share",
+    "appVersion": "0.1.0"
+  },
+  "hero": {
+    "mimeType": "image/jpeg",
+    "base64": "ZmFrZS1oZXJv"
+  },
+  "originals": [
+    {
+      "mimeType": "image/jpeg",
+      "base64": "ZmFrZS1vcmlnaW5hbC0x"
+    }
+  ]
+}

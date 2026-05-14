@@ -9,6 +9,14 @@ import React from 'react';
 import { StackActionBar } from './StackActionBar';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 
+const mockGetRecipeShareBundle = vi.fn();
+const mockDownloadRecipeBundleFile = vi.fn();
+
+vi.mock('@/lib/api/recipes', () => ({
+  getRecipeShareBundle: (...args: unknown[]) => mockGetRecipeShareBundle(...args),
+  downloadRecipeBundleFile: (...args: unknown[]) => mockDownloadRecipeBundleFile(...args),
+}));
+
 vi.mock('@/locales', () => ({
   t: (key: string, defaultValue: string) => defaultValue,
   tWithVars: (key: string, defaultValue: string, vars: any) => {
@@ -100,6 +108,28 @@ describe('StackActionBar — depth indicator', () => {
 // ---------------------------------------------------------------------------
 
 describe('StackActionBar — container', () => {
+  beforeEach(() => {
+    mockGetRecipeShareBundle.mockReset();
+    mockDownloadRecipeBundleFile.mockReset();
+    mockGetRecipeShareBundle.mockResolvedValue({
+      version: '1.0',
+      recipe: {
+        name: 'Pasta Primavera',
+        ingredients: ['Pasta'],
+        instructions: ['Boil'],
+        isSynthesized: false,
+      },
+      info: {
+        exportedAtUtc: new Date('2026-05-14T16:00:00Z'),
+        bundleSource: 'wfs-share',
+        appVersion: '0.1.0',
+      },
+      hero: null,
+      originals: [],
+    });
+    mockDownloadRecipeBundleFile.mockResolvedValue(undefined);
+  });
+
   it('renders with data-testid="stack-action-bar"', () => {
     render(
       <StackActionBar
@@ -110,6 +140,58 @@ describe('StackActionBar — container', () => {
       />
     );
     expect(screen.getByTestId('stack-action-bar')).toBeTruthy();
+  });
+
+  it('renders recipe-share-btn', () => {
+    render(
+      <StackActionBar
+        currentRecipe={defaultRecipe}
+        currentIndex={0}
+        totalCount={5}
+        onToggleIndividualCuration={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('recipe-share-btn')).toBeTruthy();
+  });
+
+  it('requests a share bundle and downloads a .recipe file', async () => {
+    render(
+      <StackActionBar
+        currentRecipe={defaultRecipe}
+        currentIndex={0}
+        totalCount={5}
+        onToggleIndividualCuration={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('recipe-share-btn'));
+
+    await waitFor(() => {
+      expect(mockGetRecipeShareBundle).toHaveBeenCalledWith('recipe-abc');
+      expect(mockDownloadRecipeBundleFile).toHaveBeenCalledWith(
+        'Pasta Primavera',
+        expect.any(Object)
+      );
+    });
+  });
+
+  it('shows recipe-share-error when export fails', async () => {
+    mockGetRecipeShareBundle.mockRejectedValueOnce(new Error('share failed'));
+
+    render(
+      <StackActionBar
+        currentRecipe={defaultRecipe}
+        currentIndex={0}
+        totalCount={5}
+        onToggleIndividualCuration={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('recipe-share-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-share-error')).toBeTruthy();
+    });
   });
 });
 

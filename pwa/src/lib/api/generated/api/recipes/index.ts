@@ -18,6 +18,11 @@ import {
 } from './describe/index';
 // @ts-ignore
 import {
+  ImportBundleRequestBuilderRequestsMetadata,
+  type ImportBundleRequestBuilder,
+} from './importBundle/index';
+// @ts-ignore
+import {
   ImportsRequestBuilderNavigationMetadata,
   type ImportsRequestBuilder,
 } from './imports/index';
@@ -177,6 +182,10 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * The describe property
    */
   get describe(): DescribeRequestBuilder;
+  /**
+   * The importBundle property
+   */
+  get importBundle(): ImportBundleRequestBuilder;
   /**
    * The imports property
    */
@@ -343,6 +352,9 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
   },
   describe: {
     requestsMetadata: DescribeRequestBuilderRequestsMetadata,
+  },
+  importBundle: {
+    requestsMetadata: ImportBundleRequestBuilderRequestsMetadata,
   },
   imports: {
     navigationMetadata: ImportsRequestBuilderNavigationMetadata,

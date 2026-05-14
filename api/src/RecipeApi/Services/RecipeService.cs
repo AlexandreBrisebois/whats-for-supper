@@ -1,8 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
 namespace RecipeApi.Services;
@@ -11,10 +13,13 @@ public class RecipeService(
     RecipeDbContext db,
     IValidationService validation,
     ImageService images,
+    IRecipeStore recipeStore,
     IWorkflowOrchestrator orchestrator,
     SearchIndexWorkflow searchIndex,
     ILogger<RecipeService> logger)
 {
+    private const string RecipeShareBundleVersion = "1.0";
+
     /// <summary>
     /// Creates a new recipe from a multipart upload.
     /// Validates images and form fields, saves to disk and DB, writes recipe.info.
@@ -201,6 +206,101 @@ public class RecipeService(
             UpdatedAt = DateTimeOffset.UtcNow,
             Recipe = MapToDto(recipe)
         };
+    }
+
+    public async Task<RecipeShareBundleDto> ExportRecipeShareBundle(Guid id)
+    {
+        var recipe = await db.Recipes.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        return new RecipeShareBundleDto
+        {
+            Version = RecipeShareBundleVersion,
+            Recipe = new ImportedRecipeDto
+            {
+                Name = recipe.Name ?? string.Empty,
+                Description = recipe.Description,
+                Ingredients = DeserializeIngredients(recipe.Ingredients),
+                Instructions = ExtractRecipeInstructionStrings(recipe.RawMetadata),
+                PrepTimeMinutes = null,
+                CookTimeMinutes = null,
+                TotalTimeMinutes = ParseTotalTimeMinutes(recipe.TotalTime),
+                Servings = null,
+                SourceUrl = recipe.SourceUrl,
+                SourceName = ExtractSourceName(recipe.RawMetadata),
+                Category = recipe.Category,
+                IsSynthesized = recipe.IsSynthesized,
+            },
+            Info = new RecipeShareInfoDto
+            {
+                ExportedAtUtc = DateTimeOffset.UtcNow,
+                BundleSource = "wfs-share",
+                AppVersion = null,
+            },
+            Hero = await ReadSharedImageOrNull(async () => await images.GetHeroImage(id)),
+            Originals = await ReadOriginalImages(id, recipe.ImageCount),
+        };
+    }
+
+    public async Task<RecipeDto> ImportRecipeShareBundle(RecipeShareBundleDto bundle, Guid familyMemberId)
+    {
+        ValidateBundle(bundle);
+
+        var now = DateTimeOffset.UtcNow;
+        var recipeId = Guid.NewGuid();
+        var originalCount = Math.Min(bundle.Originals.Count, 5);
+
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Name = bundle.Recipe.Name,
+            Description = bundle.Recipe.Description,
+            Ingredients = JsonSerializer.Serialize(bundle.Recipe.Ingredients),
+            RawMetadata = BuildImportedRawMetadata(bundle.Recipe),
+            SourceUrl = bundle.Recipe.SourceUrl,
+            Category = bundle.Recipe.Category,
+            AddedBy = familyMemberId,
+            ImageCount = originalCount,
+            IsSynthesized = bundle.Recipe.IsSynthesized,
+            IsReady = true,
+            TotalTime = FormatTotalTime(bundle.Recipe.TotalTimeMinutes),
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+
+        await images.CreateRecipeInfo(new RecipeInfo
+        {
+            Id = recipeId,
+            Name = bundle.Recipe.Name,
+            Description = bundle.Recipe.Description,
+            ImageCount = originalCount,
+            AddedBy = familyMemberId,
+            SourceUrl = bundle.Recipe.SourceUrl,
+            Category = bundle.Recipe.Category,
+            TotalTime = recipe.TotalTime,
+            IsSynthesized = bundle.Recipe.IsSynthesized,
+            CreatedAt = now,
+        });
+
+        if (bundle.Hero is not null)
+        {
+            await recipeStore.SaveHeroImageAsync(recipeId, DecodeBase64ToStream(bundle.Hero.Base64));
+        }
+
+        for (var index = 0; index < originalCount; index++)
+        {
+            var original = bundle.Originals[index];
+            await recipeStore.SaveOriginalImageAsync(
+                recipeId,
+                index,
+                original.MimeType,
+                DecodeBase64ToStream(original.Base64));
+        }
+
+        return MapToDto(recipe);
     }
 
     /// <summary>
@@ -599,6 +699,176 @@ public class RecipeService(
 
         return null;
     }
+
+    private static List<string> ExtractRecipeInstructionStrings(string? rawMetadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawMetadataJson))
+            return [];
+
+        try
+        {
+            using var doc = JsonDocument.Parse(rawMetadataJson);
+            if (!doc.RootElement.TryGetProperty("recipeInstructions", out var instructions) ||
+                instructions.ValueKind != JsonValueKind.Array)
+            {
+                return [];
+            }
+
+            return instructions.EnumerateArray()
+                .Select((step, index) =>
+                {
+                    if (step.ValueKind == JsonValueKind.String)
+                        return step.GetString();
+
+                    if (step.ValueKind == JsonValueKind.Object)
+                    {
+                        if (step.TryGetProperty("text", out var text))
+                            return text.GetString();
+                        if (step.TryGetProperty("name", out var name))
+                            return name.GetString();
+                    }
+
+                    return $"Step {index + 1}";
+                })
+                .Where(static step => !string.IsNullOrWhiteSpace(step))
+                .Select(static step => step!)
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static string? ExtractSourceName(string? rawMetadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawMetadataJson))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(rawMetadataJson);
+            if (doc.RootElement.TryGetProperty("sourceName", out var sourceName) &&
+                sourceName.ValueKind == JsonValueKind.String)
+            {
+                return sourceName.GetString();
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    private static int? ParseTotalTimeMinutes(string? totalTime)
+    {
+        if (string.IsNullOrWhiteSpace(totalTime))
+            return null;
+
+        var isoMatch = Regex.Match(totalTime, @"^PT(?:(\d+)H)?(?:(\d+)M)?$", RegexOptions.IgnoreCase);
+        if (isoMatch.Success)
+        {
+            var hours = isoMatch.Groups[1].Success ? int.Parse(isoMatch.Groups[1].Value) : 0;
+            var minutes = isoMatch.Groups[2].Success ? int.Parse(isoMatch.Groups[2].Value) : 0;
+            return (hours * 60) + minutes;
+        }
+
+        var plainMatch = Regex.Match(totalTime, @"(\d+)");
+        if (plainMatch.Success && int.TryParse(plainMatch.Groups[1].Value, out var parsed))
+            return parsed;
+
+        return null;
+    }
+
+    private static string? FormatTotalTime(int? totalTimeMinutes)
+        => totalTimeMinutes is > 0 ? $"PT{totalTimeMinutes}M" : null;
+
+    private static string BuildImportedRawMetadata(ImportedRecipeDto recipe)
+        => JsonSerializer.Serialize(new
+        {
+            sourceName = recipe.SourceName,
+            recipeInstructions = recipe.Instructions,
+        });
+
+    private static void ValidateBundle(RecipeShareBundleDto bundle)
+    {
+        if (!string.Equals(bundle.Version, RecipeShareBundleVersion, StringComparison.Ordinal))
+            throw new InvalidOperationException($"Unsupported recipe bundle version '{bundle.Version}'.");
+
+        if (!string.Equals(bundle.Info.BundleSource, "wfs-share", StringComparison.Ordinal))
+            throw new InvalidOperationException("Unsupported recipe bundle source.");
+
+        if (bundle.Recipe is null ||
+            string.IsNullOrWhiteSpace(bundle.Recipe.Name) ||
+            bundle.Recipe.Ingredients.Count == 0 ||
+            bundle.Recipe.Instructions.Count == 0)
+        {
+            throw new InvalidOperationException("Malformed recipe bundle payload.");
+        }
+
+        if (bundle.Originals.Count > 5)
+            throw new InvalidOperationException("Recipe bundle cannot contain more than five original images.");
+
+        if (bundle.Hero is not null)
+            ValidateImagePayload(bundle.Hero);
+
+        foreach (var original in bundle.Originals)
+            ValidateImagePayload(original);
+    }
+
+    private static void ValidateImagePayload(SharedImageDto image)
+    {
+        if (string.IsNullOrWhiteSpace(image.MimeType) || string.IsNullOrWhiteSpace(image.Base64))
+            throw new InvalidOperationException("Malformed shared image payload.");
+
+        try
+        {
+            _ = Convert.FromBase64String(image.Base64);
+        }
+        catch (FormatException ex)
+        {
+            throw new FormatException("Shared image payload must be valid base64.", ex);
+        }
+    }
+
+    private async Task<List<SharedImageDto>> ReadOriginalImages(Guid recipeId, int imageCount)
+    {
+        var originals = new List<SharedImageDto>();
+        for (var index = 0; index < Math.Min(imageCount, 5); index++)
+        {
+            var original = await ReadSharedImageOrNull(async () => await images.GetImage(recipeId, index));
+            if (original is not null)
+                originals.Add(original);
+        }
+
+        return originals;
+    }
+
+    private static async Task<SharedImageDto?> ReadSharedImageOrNull(
+        Func<Task<(Stream Stream, string ContentType)>> readImage)
+    {
+        try
+        {
+            var (stream, contentType) = await readImage();
+            await using var disposableStream = stream;
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            return new SharedImageDto
+            {
+                MimeType = contentType,
+                Base64 = Convert.ToBase64String(memory.ToArray()),
+            };
+        }
+        catch (KeyNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    private static MemoryStream DecodeBase64ToStream(string base64)
+        => new(Convert.FromBase64String(base64));
 
     /// <summary>
     /// Deserializes the dietary_profile JSONB column to a RecipeDietaryProfileDto.

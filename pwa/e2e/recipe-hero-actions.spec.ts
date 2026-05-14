@@ -88,7 +88,8 @@ test.describe('Recipe Hero Actions', () => {
     await expect(page.getByTestId('hero-action-camera')).not.toBeVisible();
     await expect(page.getByTestId('hero-action-regenerate')).not.toBeVisible();
 
-    // Click Edit
+    // Click Edit from the gear menu
+    await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
 
     // Hero actions should now be visible
@@ -108,6 +109,7 @@ test.describe('Recipe Hero Actions', () => {
     });
 
     await openRecipeDetail(page);
+    await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
 
     // Click regenerate
@@ -130,6 +132,7 @@ test.describe('Recipe Hero Actions', () => {
     });
 
     await openRecipeDetail(page);
+    await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
 
     // Playwright cannot easily click a hidden input, so we use setInputFiles on the hidden input directly

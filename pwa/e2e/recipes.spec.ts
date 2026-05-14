@@ -274,6 +274,7 @@ test.describe('Recipes Search Page', () => {
     await page.getByTestId('recipe-search-input').press('Enter');
     await page.getByTestId('recipe-card-top-pick').click();
 
+    await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
     await page.getByTestId('recipe-edit-name-input').fill('Rainy Night Lasagna');
     await page

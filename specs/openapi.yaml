@@ -408,6 +408,58 @@ components:
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
 
+    ImportedRecipeDto:
+      type: object
+      required: [name, ingredients, instructions, isSynthesized]
+      properties:
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        ingredients:
+          type: array
+          items: { type: string }
+        instructions:
+          type: array
+          items: { type: string }
+        prepTimeMinutes: { type: [integer, 'null'] }
+        cookTimeMinutes: { type: [integer, 'null'] }
+        totalTimeMinutes: { type: [integer, 'null'] }
+        servings: { type: [integer, 'null'] }
+        sourceUrl: { type: [string, 'null'], format: uri }
+        sourceName: { type: [string, 'null'] }
+        category: { type: [string, 'null'] }
+        isSynthesized: { type: boolean }
+
+    RecipeShareInfoDto:
+      type: object
+      required: [exportedAtUtc, bundleSource]
+      properties:
+        exportedAtUtc: { type: string, format: date-time }
+        bundleSource: { type: string, enum: [wfs-share] }
+        appVersion: { type: [string, 'null'] }
+
+    SharedImageDto:
+      type: object
+      required: [mimeType, base64]
+      properties:
+        mimeType: { type: string, example: image/jpeg }
+        base64: { type: string }
+
+    RecipeShareBundleDto:
+      type: object
+      required: [version, recipe, info, originals]
+      properties:
+        version: { type: string, example: '1.0' }
+        recipe: { $ref: '#/components/schemas/ImportedRecipeDto' }
+        info: { $ref: '#/components/schemas/RecipeShareInfoDto' }
+        hero:
+          oneOf:
+            - { $ref: '#/components/schemas/SharedImageDto' }
+            - { type: 'null' }
+        originals:
+          type: array
+          maxItems: 5
+          items: { $ref: '#/components/schemas/SharedImageDto' }
+
     RecipeStatusDto:
       type: object
       required: [id, status, imageCount, isSynthesized]
@@ -1475,6 +1527,87 @@ paths:
                   assignedDays:
                     type: array
                     items: { type: string, format: date }
+
+  /api/recipes/{id}/share:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Export a privacy-scrubbed portable recipe bundle
+      operationId: exportRecipeShareBundle
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/RecipeShareBundleDto' }
+              example:
+                data:
+                  version: '1.0'
+                  recipe:
+                    name: 'Weeknight Tomato Pasta'
+                    description: 'Fast tomato pasta with basil and parmesan.'
+                    ingredients:
+                      - '300g spaghetti'
+                      - '2 cups tomato sauce'
+                      - '1/4 cup basil'
+                    instructions:
+                      - 'Boil the pasta until al dente.'
+                      - 'Warm the sauce and toss with pasta.'
+                    prepTimeMinutes: 10
+                    cookTimeMinutes: 15
+                    totalTimeMinutes: 25
+                    servings: 4
+                    sourceUrl: 'https://example.com/tomato-pasta'
+                    sourceName: Example Kitchen
+                    category: Dinner
+                    isSynthesized: false
+                  info:
+                    exportedAtUtc: '2026-05-14T16:00:00Z'
+                    bundleSource: wfs-share
+                    appVersion: '0.1.0'
+                  hero:
+                    mimeType: image/jpeg
+                    base64: '/9j/4AAQSkZJRgABAQAAAQABAAD'
+                  originals:
+                    - mimeType: image/jpeg
+                      base64: '/9j/4AAQSkZJRgABAQAAAQABAAD'
+
+  /api/recipes/import-bundle:
+    post:
+      summary: Import a reviewed portable recipe bundle
+      operationId: importRecipeShareBundle
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecipeShareBundleDto' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/RecipeDto' }
+        '400':
+          description: Unsupported bundle version or malformed payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
 
   /api/recipes/trash:
     get:
