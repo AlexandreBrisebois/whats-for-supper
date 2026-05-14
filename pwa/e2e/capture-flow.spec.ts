@@ -56,7 +56,7 @@ test.describe('Capture Flow', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ items: [] }),
+          body: JSON.stringify({ data: { items: [] } }),
         });
       } else {
         await route.continue();
@@ -339,10 +339,11 @@ test.describe('Capture — initial state rendering', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ items: [] }),
+        body: JSON.stringify({ data: { items: [] } }),
       });
     });
 
+    await page.getByRole('button', { name: /or add from a link/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
     await expect(page.getByText('Review your link')).not.toBeVisible();
@@ -470,7 +471,7 @@ test.describe('Capture — GOTO intent', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(gotoStore),
+          body: JSON.stringify({ data: gotoStore }),
         });
       } else if (route.request().method() === 'PUT') {
         const body = route.request().postDataJSON();
@@ -478,7 +479,7 @@ test.describe('Capture — GOTO intent', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(gotoStore),
+          body: JSON.stringify({ data: gotoStore }),
         });
       }
     });
@@ -639,13 +640,15 @@ test.describe('Settings — GOTO pending state', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          items: [
-            {
-              description: 'Our family spaghetti',
-              recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
-              status: 'pending',
-            },
-          ],
+          data: {
+            items: [
+              {
+                description: 'Our family spaghetti',
+                recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
+                status: 'pending',
+              },
+            ],
+          },
         }),
       });
     });

@@ -233,7 +233,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           <div className="flex-1 relative overflow-hidden min-h-0 mb-4 md:mb-6">
             <p className="text-charcoal/60 text-sm md:text-base leading-relaxed">{description}</p>
             {description && (
-              <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
             )}
           </div>
 

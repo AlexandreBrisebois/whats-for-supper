@@ -861,7 +861,7 @@ export async function setupCommonRoutes(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ items: gotoItems }),
+        body: JSON.stringify({ data: { items: gotoItems } }),
       });
     } else if (route.request().method() === 'PUT') {
       const body = route.request().postDataJSON();
@@ -869,7 +869,7 @@ export async function setupCommonRoutes(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(body),
+        body: JSON.stringify({ data: body }),
       });
     } else {
       await route.fallback();
@@ -883,7 +883,7 @@ export async function setupCommonRoutes(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(readyItem),
+        body: JSON.stringify({ data: readyItem }),
       });
     } else {
       await route.fulfill({

@@ -216,22 +216,25 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     const GOTO_DESCRIPTION = 'Slow-cooked Lasagna';
 
     // 1. Mock GOTO setting with a pending recipe
-    // 1. Mock GOTO list with a pending recipe
+    let gotoCallCount = 0;
     await page.route(
       (url) => url.pathname.includes('/api/goto'),
       async (route) => {
         if (route.request().method() === 'GET') {
+          gotoCallCount++;
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
-              items: [
-                {
-                  description: GOTO_DESCRIPTION,
-                  recipeId: GOTO_RECIPE_ID,
-                  status: 'pending',
-                },
-              ],
+              data: {
+                items: [
+                  {
+                    description: GOTO_DESCRIPTION,
+                    recipeId: GOTO_RECIPE_ID,
+                    status: gotoCallCount === 1 ? 'pending' : 'ready',
+                  },
+                ],
+              },
             }),
           });
         }
@@ -304,13 +307,15 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
-              items: [
-                {
-                  description: GOTO_DESCRIPTION,
-                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  status: 'ready',
-                },
-              ],
+              data: {
+                items: [
+                  {
+                    description: GOTO_DESCRIPTION,
+                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                    status: 'ready',
+                  },
+                ],
+              },
             }),
           });
         }
@@ -407,13 +412,15 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
-              items: [
-                {
-                  description: GOTO_DESCRIPTION,
-                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  status: 'pending',
-                },
-              ],
+              data: {
+                items: [
+                  {
+                    description: GOTO_DESCRIPTION,
+                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                    status: 'pending',
+                  },
+                ],
+              },
             }),
           });
         }

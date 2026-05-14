@@ -65,9 +65,11 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'ready',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
           }),
         });
       }
@@ -136,9 +138,11 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'ready',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
           }),
         });
       }
@@ -227,9 +231,11 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'ready',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
           }),
         });
       }
@@ -307,9 +313,11 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'ready',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
           }),
         });
       }
@@ -339,9 +347,11 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'ready',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
           }),
         });
       }
@@ -373,17 +383,20 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   // GOTO status endpoint returns 'pending' throughout — the button must appear
   // via the SSE recipe_ready event, not via the polling interval.
   test('SSE recipe_ready event makes confirm-goto-btn appear without polling', async ({ page }) => {
-    // 1. Mock active GOTO with a known recipe ID
+    let callCount = 0;
     await page.route(
       (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
+        callCount++;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'pending',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: callCount === 1 ? 'pending' : 'ready',
+            },
           }),
         });
       }
@@ -414,17 +427,20 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   });
 
   test('Pending GOTO transitions to ready via SSE recipe_ready event', async ({ page }) => {
-    // Mock active GOTO
+    let activeCallCount = 0;
     await page.route(
       (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
+        activeCallCount++;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Slow GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'pending',
+            data: {
+              description: 'Mock Recipe',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: activeCallCount === 1 ? 'pending' : 'ready',
+            },
           }),
         });
       }
@@ -498,9 +514,11 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'ready',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
           }),
         });
       }
@@ -554,9 +572,11 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'ready',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
           }),
         });
       }
@@ -665,9 +685,11 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            description: 'Family GOTO',
-            recipeId: MOCK_IDS.RECIPE_LASAGNA,
-            status: 'ready',
+            data: {
+              description: 'Family GOTO',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
           }),
         });
       }
