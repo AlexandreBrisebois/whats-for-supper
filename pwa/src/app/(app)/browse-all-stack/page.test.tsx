@@ -585,7 +585,7 @@ describe('BrowseAllStack — list mode', () => {
     });
   });
 
-  it('loads the final partial page when retained list items are capped', async () => {
+  it('loads all pages and retains all recipes in list mode', async () => {
     useFamilyStore.setState({
       familyMembers: [
         {
@@ -632,7 +632,10 @@ describe('BrowseAllStack — list mode', () => {
     }
 
     await waitFor(() => {
-      expect(useBrowseStackStore.getState().recipes.at(-1)?.id).toBe(ids[99]);
+      const state = useBrowseStackStore.getState();
+      expect(state.recipes.at(0)?.id).toBe(ids[0]); // First item is still there
+      expect(state.recipes.at(-1)?.id).toBe(ids[99]); // Last item is there
+      expect(state.recipes).toHaveLength(100); // All 100 items are retained
     });
 
     act(() => {

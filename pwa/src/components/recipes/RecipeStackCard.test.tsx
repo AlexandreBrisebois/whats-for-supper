@@ -132,13 +132,17 @@ describe('RecipeStackCard — swipe indicators', () => {
   it('renders "Back" indicator for right swipes when isFront', () => {
     render(<RecipeStackCard {...defaultProps} isFront={true} />);
     expect(screen.getByTestId('stack-swipe-next-indicator')).toBeTruthy();
-    expect(screen.getByTestId('stack-swipe-next-indicator').textContent?.toUpperCase()).toContain('BACK');
+    expect(screen.getByTestId('stack-swipe-next-indicator').textContent?.toUpperCase()).toContain(
+      'BACK'
+    );
   });
 
   it('renders "Next" indicator for left swipes when isFront', () => {
     render(<RecipeStackCard {...defaultProps} isFront={true} />);
     expect(screen.getByTestId('stack-swipe-back-indicator')).toBeTruthy();
-    expect(screen.getByTestId('stack-swipe-back-indicator').textContent?.toUpperCase()).toContain('NEXT');
+    expect(screen.getByTestId('stack-swipe-back-indicator').textContent?.toUpperCase()).toContain(
+      'NEXT'
+    );
   });
 
   it('does NOT render swipe indicators when isFront is false', () => {

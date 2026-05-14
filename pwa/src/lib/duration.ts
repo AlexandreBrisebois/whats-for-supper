@@ -2,7 +2,7 @@
  * Standardizes recipe duration formatting.
  * - Under 1 hour: "45 MINS"
  * - 1 hour or more: "1H 20 MINS" or "1H"
- * 
+ *
  * Supports ISO 8601 durations (PT10M, PT1H20M) and simple strings (45 min, 15).
  */
 export function formatRecipeTime(duration: string | undefined | null): string {

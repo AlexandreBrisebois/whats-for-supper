@@ -31,7 +31,6 @@ type BrowseViewMode = 'stack' | 'list';
 
 const STACK_PAGE_SIZE = 20;
 const LIST_PAGE_SIZE = 12;
-const LIST_RETAINED_RECIPE_COUNT = 72;
 
 // ---------------------------------------------------------------------------
 // BrowseAllStack page
@@ -160,10 +159,7 @@ export default function BrowseAllStackPage() {
         const paginationTotal = result?.pagination?.total ?? 0;
 
         if (append) {
-          appendRecipes(
-            fetchedRecipes,
-            browseViewMode === 'list' ? LIST_RETAINED_RECIPE_COUNT : undefined
-          );
+          appendRecipes(fetchedRecipes);
         } else {
           setRecipes(fetchedRecipes);
           setCurrentIndex(0);

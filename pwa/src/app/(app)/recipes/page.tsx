@@ -980,7 +980,8 @@ export default function RecipesPage() {
                   <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-2.5 text-white z-10">
                     <div className="flex gap-2">
                       <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                        <Clock size={10} /> {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                        <Clock size={10} />{' '}
+                        {tWithVars('common.readyIn', 'READY IN {{time}}', {
                           time: formatRecipeTime(topPick.totalTime),
                         })}
                       </span>
@@ -1040,7 +1041,8 @@ export default function RecipesPage() {
                   </div>
                   <div className="flex flex-col gap-1 px-1.5 pb-1">
                     <span className="text-[9px] font-black uppercase tracking-widest text-charcoal/30 flex items-center gap-1">
-                      <Clock size={9} /> {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                      <Clock size={9} />{' '}
+                      {tWithVars('common.readyIn', 'READY IN {{time}}', {
                         time: formatRecipeTime(recipe.totalTime),
                       })}
                     </span>

@@ -28,7 +28,6 @@ interface DiscoveryCardProps {
   hasFamilyInterest?: boolean;
 }
 
-
 export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   name,
   description,

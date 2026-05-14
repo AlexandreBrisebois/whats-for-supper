@@ -34,7 +34,6 @@ interface RecipeStackCardProps {
   onTap: () => void; // Open Recipe Detail Sheet
 }
 
-
 export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   id,
   name,

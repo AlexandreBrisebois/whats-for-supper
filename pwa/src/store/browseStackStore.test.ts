@@ -97,18 +97,6 @@ describe('browseStackStore — appendRecipes', () => {
       'r3',
     ]);
   });
-
-  it('retains a bounded recipe window when requested', () => {
-    useBrowseStackStore.getState().setRecipes([makeRecipe('r1'), makeRecipe('r2')]);
-    useBrowseStackStore
-      .getState()
-      .appendRecipes([makeRecipe('r3'), makeRecipe('r4'), makeRecipe('r5')], 3);
-    expect(useBrowseStackStore.getState().recipes.map((recipe) => recipe.id)).toEqual([
-      'r3',
-      'r4',
-      'r5',
-    ]);
-  });
 });
 
 describe('browseStackStore — reset', () => {

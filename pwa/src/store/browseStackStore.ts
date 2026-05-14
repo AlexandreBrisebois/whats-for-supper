@@ -19,7 +19,7 @@ export interface BrowseStackStore {
 
   // Actions
   setRecipes: (recipes: RecipeDto[]) => void;
-  appendRecipes: (recipes: RecipeDto[], maxRetained?: number) => void;
+  appendRecipes: (recipes: RecipeDto[]) => void;
   setCurrentIndex: (index: number) => void;
   setTotalCount: (count: number) => void;
   nextCard: () => void;
@@ -49,7 +49,7 @@ export const useBrowseStackStore = create<BrowseStackStore>((set, get) => ({
     set({ recipes });
   },
 
-  appendRecipes(recipes, maxRetained) {
+  appendRecipes(recipes) {
     set((s) => {
       const existingIds = new Set(s.recipes.map((recipe) => recipe.id).filter(Boolean));
       const deduped = recipes.filter((recipe) => {
@@ -58,7 +58,7 @@ export const useBrowseStackStore = create<BrowseStackStore>((set, get) => ({
         return true;
       });
       const merged = [...s.recipes, ...deduped];
-      return { recipes: maxRetained ? merged.slice(-maxRetained) : merged };
+      return { recipes: merged };
     });
   },
 
