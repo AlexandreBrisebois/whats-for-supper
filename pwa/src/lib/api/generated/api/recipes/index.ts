@@ -45,6 +45,8 @@ import {
 // @ts-ignore
 import { SearchRequestBuilderRequestsMetadata, type SearchRequestBuilder } from './search/index';
 // @ts-ignore
+import { ShareRequestBuilderNavigationMetadata, type ShareRequestBuilder } from './share/index';
+// @ts-ignore
 import { TrashRequestBuilderRequestsMetadata, type TrashRequestBuilder } from './trash/index';
 // @ts-ignore
 import {
@@ -197,6 +199,10 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * The search property
    */
   get search(): SearchRequestBuilder;
+  /**
+   * The share property
+   */
+  get share(): ShareRequestBuilder;
   /**
    * The trash property
    */
@@ -358,6 +364,9 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
   },
   search: {
     requestsMetadata: SearchRequestBuilderRequestsMetadata,
+  },
+  share: {
+    navigationMetadata: ShareRequestBuilderNavigationMetadata,
   },
   trash: {
     requestsMetadata: TrashRequestBuilderRequestsMetadata,

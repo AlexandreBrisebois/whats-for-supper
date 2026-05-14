@@ -870,7 +870,7 @@ public class ManagementService(
                     continue;
                 }
 
-                var existing = await db.Recipes.FindAsync(new object[] { recipe.Id }, ct);
+                var existing = await db.Recipes.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == recipe.Id, ct);
                 if (existing == null)
                 {
                     logger.LogDebug("Adding new recipe: {Id} ({Name})", recipe.Id, recipe.Name ?? "unknown");
@@ -879,7 +879,9 @@ public class ManagementService(
                 }
                 else
                 {
-                    logger.LogDebug("Updating existing recipe: {Id} ({Name})", recipe.Id, recipe.Name ?? "unknown");
+                    logger.LogDebug("Updating existing recipe: {Id} ({Name}) (deleted={IsDeleted})",
+                        recipe.Id, recipe.Name ?? "unknown", existing.DeletedAt.HasValue);
+
                     // Update metadata
                     existing.Rating = recipe.Rating;
                     existing.Notes = recipe.Notes;
@@ -897,6 +899,7 @@ public class ManagementService(
                     existing.LastCookedDate = recipe.LastCookedDate;
                     existing.SourceUrl = recipe.SourceUrl;
                     existing.DietaryProfile = recipe.DietaryProfile;
+                    existing.IsReady = true;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
                 }

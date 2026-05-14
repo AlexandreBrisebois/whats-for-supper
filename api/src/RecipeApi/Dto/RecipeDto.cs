@@ -74,6 +74,12 @@ public class RecipeDto
     [JsonPropertyName("isReady")]
     public bool IsReady { get; set; }
 
+    [JsonPropertyName("isSynthesized")]
+    public bool IsSynthesized { get; set; }
+
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+
     [JsonPropertyName("deletedAt")]
     public DateTimeOffset? DeletedAt { get; set; }
 }

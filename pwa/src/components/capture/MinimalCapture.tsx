@@ -22,7 +22,8 @@ import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants/routes';
 import { normalizeGotos } from '@/lib/gotoUtils';
 import { t, tWithVars } from '@/locales';
-import type { GoToListDto, GoToItem } from '@/lib/api/generated/models/index';
+import { importRecipeShare } from '@/lib/api/recipes';
+import type { GoToListDto, GoToItem, RecipeShareBundleDto } from '@/lib/api/generated/models/index';
 
 const PHOTO_UPLOAD_OVERLAY_DELAY_MS = 800;
 
@@ -115,6 +116,10 @@ export default function MinimalCapture({
 
   const [countdown, setCountdown] = useState<number | null>(null);
 
+  const [sharedBundle, setSharedBundle] = useState<RecipeShareBundleDto | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
   const isGoto = intent === 'goto';
 
   useEffect(() => {
@@ -191,6 +196,50 @@ export default function MinimalCapture({
       };
     }
   }, [onSuccess, readyRecipeName, countdown, router]);
+
+  const handleBundleImport = useCallback((bundle: RecipeShareBundleDto) => {
+    setSharedBundle(bundle);
+  }, []);
+
+  const handleConfirmImport = async () => {
+    if (!sharedBundle) return;
+    setIsImporting(true);
+    setImportError(null);
+    try {
+      const { id } = await importRecipeShare(sharedBundle);
+      if (id) {
+        setPendingRecipeId(id);
+        setReadyRecipeName(sharedBundle.recipe?.name ?? null);
+        setOnSuccess(true);
+      }
+    } catch (err) {
+      console.error('Failed to import shared recipe', err);
+      setImportError(t('recipes.importFailed', 'Failed to import shared recipe.'));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Launch Queue handling for PWA file handlers
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'launchQueue' in window) {
+      (window as any).launchQueue.setConsumer(async (launchParams: any) => {
+        if (launchParams.files && launchParams.files.length > 0) {
+          try {
+            const fileHandle = launchParams.files[0];
+            const file = await fileHandle.getFile();
+            if (file.name.endsWith('.recipe')) {
+              const text = await file.text();
+              const bundle = JSON.parse(text) as RecipeShareBundleDto;
+              handleBundleImport(bundle);
+            }
+          } catch (err) {
+            console.error('Failed to handle launch queue file', err);
+          }
+        }
+      });
+    }
+  }, [handleBundleImport]);
 
   const handleUrlCapture = useCallback(
     async (url: string) => {
@@ -280,8 +329,16 @@ export default function MinimalCapture({
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      files.forEach((file) => {
-        if (file.type.startsWith('image/')) {
+      files.forEach(async (file) => {
+        if (file.name.endsWith('.recipe')) {
+          try {
+            const text = await file.text();
+            const bundle = JSON.parse(text) as RecipeShareBundleDto;
+            handleBundleImport(bundle);
+          } catch (err) {
+            console.error('Failed to parse dropped .recipe file', err);
+          }
+        } else if (file.type.startsWith('image/')) {
           addImage(file);
         }
       });
@@ -496,6 +553,82 @@ export default function MinimalCapture({
             )}
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (sharedBundle && !onSuccess) {
+    const recipe = sharedBundle.recipe!;
+    return (
+      <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col gap-4">
+          <button
+            type="button"
+            onClick={() => setSharedBundle(null)}
+            className="flex w-fit items-center gap-1 text-sm font-bold uppercase tracking-widest text-charcoal/40 transition-colors hover:text-charcoal"
+          >
+            <ArrowLeft size={14} />
+            Cancel
+          </button>
+          <div className="flex flex-col gap-2">
+            <h2 className="font-heading text-3xl font-black text-charcoal tracking-tight">
+              Shared with you
+            </h2>
+            <p className="text-sm text-charcoal/50">A new recipe gift has arrived.</p>
+          </div>
+        </div>
+
+        <div className="relative aspect-[16/9] overflow-hidden rounded-[2.5rem] bg-charcoal/5 shadow-xl ring-1 ring-black/5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={sharedBundle.hero || '/placeholder-recipe.jpg'}
+            alt={recipe.name ?? ''}
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 to-transparent" />
+          <div className="absolute bottom-6 left-6 right-6">
+            <h3 className="text-2xl font-black text-white">{recipe.name}</h3>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/70">
+              {recipe.totalTime}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3 px-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-charcoal/45">
+              Ingredients
+            </label>
+            <ul className="flex flex-wrap gap-2">
+              {(recipe.ingredients || []).slice(0, 5).map((ing: string, i: number) => (
+                <li
+                  key={i}
+                  className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold text-charcoal shadow-sm"
+                >
+                  {ing}
+                </li>
+              ))}
+              {(recipe.ingredients || []).length > 5 && (
+                <li className="px-1 py-1 text-[11px] font-bold text-charcoal/40">
+                  + {(recipe.ingredients || []).length - 5} more
+                </li>
+              )}
+            </ul>
+          </div>
+
+          <Button
+            variant="primary"
+            fullWidth
+            size="lg"
+            isLoading={isImporting}
+            onClick={handleConfirmImport}
+            className="rounded-[2.5rem] py-8 text-xl font-black shadow-2xl shadow-terracotta/30"
+          >
+            Add to My Library
+          </Button>
+
+          {importError && <p className="text-center text-sm font-bold text-pink">{importError}</p>}
+        </div>
       </div>
     );
   }

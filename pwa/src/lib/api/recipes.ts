@@ -4,10 +4,11 @@ import { usePlannerStore } from '@/store/plannerStore';
 import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
 import type {
   RecipeDto,
-  RecommendationResultDto,
   RecipeSearchRequestDto,
   RecipeSearchResponseDto,
   RecipeSearchResultDto,
+  RecipeShareBundleDto,
+  RecommendationResultDto,
 } from './generated/models/index';
 
 export interface Recipe {
@@ -407,4 +408,36 @@ export async function getRecipeImage(recipeId: string, index: number): Promise<s
   );
   const blob = await response.blob();
   return URL.createObjectURL(blob);
+}
+/**
+ * Fetches a recipe share bundle (JSON + Base64 images).
+ */
+export async function getRecipeShareBundle(id: string): Promise<RecipeShareBundleDto> {
+  const result = await apiClient.api.recipes.byId(id as any).share.get();
+  if (!result) throw new Error('Failed to fetch share bundle');
+  return result;
+}
+
+/**
+ * Imports a shared recipe bundle.
+ */
+export async function importRecipeShare(bundle: RecipeShareBundleDto): Promise<{ id: string }> {
+  const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
+  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/share/import`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Family-Member-Id': familyMemberId || '',
+    },
+    body: JSON.stringify(bundle),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to import shared recipe: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  return {
+    id: (result?.data as any)?.id || result?.id || '',
+  };
 }

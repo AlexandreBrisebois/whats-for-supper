@@ -131,6 +131,8 @@ try
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<SearchIndexWorkflow>();
+    builder.Services.AddScoped<RecipeShareService>();
+    builder.Services.AddScoped<RecipeShareImportService>();
     builder.Services.AddScoped<DreamingWorkflowSeeder>();
     builder.Services.AddScoped<DemoWorkflowSeeder>();
     builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();

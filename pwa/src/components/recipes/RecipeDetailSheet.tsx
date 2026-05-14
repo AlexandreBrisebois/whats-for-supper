@@ -15,6 +15,7 @@ import {
   Star,
   Images,
   ExternalLink,
+  Share2,
 } from 'lucide-react';
 import {
   getRecipe,
@@ -23,6 +24,7 @@ import {
   reimportRecipe,
   uploadRecipeOriginal,
   regenerateHero,
+  getRecipeShareBundle,
   type Recipe,
 } from '@/lib/api/recipes';
 import { t, tWithVars } from '@/locales';
@@ -354,10 +356,43 @@ export function RecipeDetailSheet({
         type: 'error',
         message: t('recipes.uploadFailed', 'Failed to upload photo'),
       });
-    } finally {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+    }
+  };
+
+  const handleShare = async () => {
+    if (!recipe) return;
+    try {
+      const bundle = await getRecipeShareBundle(recipe.id);
+      const fileName = `${recipe.name?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'recipe'}.recipe`;
+      const file = new File([JSON.stringify(bundle, null, 2)], fileName, {
+        type: 'application/json',
+      });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: recipe.name ?? 'Recipe',
+          text: t('recipes.shareMessage', 'Check out this recipe!'),
+        });
+      } else {
+        // Fallback: Download file
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        addToast({
+          type: 'success',
+          message: t('recipes.downloaded', 'Recipe file downloaded'),
+        });
       }
+    } catch (error) {
+      console.error('Failed to share recipe', error);
+      addToast({
+        type: 'error',
+        message: t('recipes.shareFailed', 'Failed to share recipe'),
+      });
     }
   };
 
@@ -499,6 +534,14 @@ export function RecipeDetailSheet({
                     className="absolute bottom-4 left-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
                   >
                     <RefreshCw size={24} />
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="hero-action-share"
+                    onClick={() => void handleShare()}
+                    className="absolute bottom-4 left-[4.5rem] flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
+                  >
+                    <Share2 size={24} />
                   </button>
                   <button
                     type="button"

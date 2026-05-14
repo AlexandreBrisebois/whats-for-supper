@@ -59,6 +59,18 @@ public class ImageService(IRecipeStore recipeStore, ILogger<ImageService> logger
     public Task CreateRecipeInfo(RecipeInfo info)
         => recipeStore.WriteInfoAsync(info);
 
+    /// <summary>Reads the recipe.info metadata file from disk.</summary>
+    public Task<RecipeInfo?> ReadRecipeInfo(Guid recipeId)
+        => recipeStore.ReadInfoAsync(recipeId);
+
+    /// <summary>Writes the hero image binary for a recipe.</summary>
+    public Task SaveHeroImage(Guid recipeId, Stream stream)
+        => recipeStore.SaveHeroImageAsync(recipeId, stream);
+
+    /// <summary>Writes an original image binary for a recipe at the specified index.</summary>
+    public Task SaveOriginalImage(Guid recipeId, int index, string contentType, Stream stream)
+        => recipeStore.SaveOriginalImageAsync(recipeId, index, contentType, stream);
+
     /// <summary>
     /// Updates user-editable fields in recipe.info, creating the file if it does not exist.
     /// </summary>

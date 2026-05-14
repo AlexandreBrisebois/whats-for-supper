@@ -47,7 +47,7 @@ components:
     # --- Recipes ---
     RecipeDto:
       type: object
-      required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount, finishedDishIndex, isReady]
+      required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount, finishedDishIndex, isReady, isSynthesized]
       properties:
         id: { type: string, format: uuid }
         isReady: { type: boolean }
@@ -85,6 +85,8 @@ components:
           description: 'Parsed recipe instructions (string array or HowToStep objects)'
         createdAt: { type: string, format: date-time }
         deletedAt: { type: [string, 'null'], format: date-time }
+        isSynthesized: { type: boolean, default: false }
+        language: { type: [string, 'null'], example: 'en' }
 
     RecipeListResponse:
       type: object
@@ -794,6 +796,22 @@ components:
         message:
           type: string
 
+    # --- Share ---
+    RecipeShareBundleDto:
+      type: object
+      required: [version, recipe, info, hero, originals]
+      properties:
+        version: { type: string, example: "1.0" }
+        recipe: { $ref: '#/components/schemas/RecipeDto' }
+        info:
+          type: object
+          description: 'Raw recipe.info content'
+          additionalProperties: true
+        hero: { type: [string, 'null'], description: 'Base64 encoded hero image' }
+        originals:
+          type: array
+          items: { type: string, description: 'Base64 encoded original images' }
+
     # --- Photo Search ---
     PhotoSearchRequest:
       type: object
@@ -1432,10 +1450,11 @@ paths:
       summary: Get recipe detail
       responses:
         '200':
-          description: OK
+          description: Success
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+              schema:
+                $ref: '#/components/schemas/RecipeDetailResponse'
     patch:
       summary: Update a recipe
       security: [{ FamilyMemberId: [] }]
@@ -1475,6 +1494,47 @@ paths:
                   assignedDays:
                     type: array
                     items: { type: string, format: date }
+
+  /api/recipes/{id}/share:
+    get:
+      summary: GET /api/recipes/{id}/share — export a recipe as a .recipe JSON bundle.
+      tags: [Recipes]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: A .recipe JSON bundle
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeShareBundleDto' }
+        '404':
+          description: Recipe not found
+
+  /api/recipes/share/import:
+    post:
+      summary: POST /api/recipes/share/import — import a recipe from a .recipe JSON bundle.
+      tags: [Recipes]
+      security:
+        - FamilyMemberId: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecipeShareBundleDto' }
+      responses:
+        '201':
+          description: Recipe imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+        '400':
+          description: Invalid bundle format
 
   /api/recipes/trash:
     get:

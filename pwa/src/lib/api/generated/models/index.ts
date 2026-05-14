@@ -643,6 +643,28 @@ export function createRecipeSearchResultDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeShareBundleDto_info}
+ */
+// @ts-ignore
+export function createRecipeShareBundleDto_infoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeShareBundleDto_info;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeShareBundleDto}
+ */
+// @ts-ignore
+export function createRecipeShareBundleDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeShareBundleDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeStatusDto}
  */
 // @ts-ignore
@@ -1723,8 +1745,14 @@ export function deserializeIntoRecipeDto(
     isReady: (n) => {
       recipeDto.isReady = n.getBooleanValue();
     },
+    isSynthesized: (n) => {
+      recipeDto.isSynthesized = n.getBooleanValue();
+    },
     isVegetarian: (n) => {
       recipeDto.isVegetarian = n.getBooleanValue();
+    },
+    language: (n) => {
+      recipeDto.language = n.getStringValue();
     },
     name: (n) => {
       recipeDto.name = n.getStringValue();
@@ -2123,6 +2151,48 @@ export function deserializeIntoRecipeSearchResultDto(
       recipeSearchResultDto.totalTime = n.getStringValue();
     },
   };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeShareBundleDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeShareBundleDto(
+  recipeShareBundleDto: Partial<RecipeShareBundleDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    hero: (n) => {
+      recipeShareBundleDto.hero = n.getStringValue();
+    },
+    info: (n) => {
+      recipeShareBundleDto.info = n.getObjectValue<RecipeShareBundleDto_info>(
+        createRecipeShareBundleDto_infoFromDiscriminatorValue
+      );
+    },
+    originals: (n) => {
+      recipeShareBundleDto.originals = n.getCollectionOfPrimitiveValues<string>();
+    },
+    recipe: (n) => {
+      recipeShareBundleDto.recipe = n.getObjectValue<RecipeDto>(
+        createRecipeDtoFromDiscriminatorValue
+      );
+    },
+    version: (n) => {
+      recipeShareBundleDto.version = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeShareBundleDto_info The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeShareBundleDto_info(
+  recipeShareBundleDto_info: Partial<RecipeShareBundleDto_info> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
 }
 /**
  * The deserialization information for the current model
@@ -3213,9 +3283,17 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   isReady?: boolean | null;
   /**
+   * The isSynthesized property
+   */
+  isSynthesized?: boolean | null;
+  /**
    * The isVegetarian property
    */
   isVegetarian?: boolean | null;
+  /**
+   * The language property
+   */
+  language?: string | null;
   /**
    * The name property
    */
@@ -3473,6 +3551,32 @@ export interface RecipeSearchResultDto extends AdditionalDataHolder, Parsable {
    */
   totalTime?: string | null;
 }
+export interface RecipeShareBundleDto extends AdditionalDataHolder, Parsable {
+  /**
+   * Base64 encoded hero image
+   */
+  hero?: string | null;
+  /**
+   * Raw recipe.info content
+   */
+  info?: RecipeShareBundleDto_info | null;
+  /**
+   * The originals property
+   */
+  originals?: string[] | null;
+  /**
+   * The recipe property
+   */
+  recipe?: RecipeDto | null;
+  /**
+   * The version property
+   */
+  version?: string | null;
+}
+/**
+ * Raw recipe.info content
+ */
+export interface RecipeShareBundleDto_info extends AdditionalDataHolder, Parsable {}
 export interface RecipeStatusDto extends AdditionalDataHolder, Parsable {
   /**
    * The id property
@@ -4321,7 +4425,9 @@ export function serializeRecipeDto(
   writer.writeBooleanValue('isDiscoverable', recipeDto.isDiscoverable);
   writer.writeBooleanValue('isHealthyChoice', recipeDto.isHealthyChoice);
   writer.writeBooleanValue('isReady', recipeDto.isReady);
+  writer.writeBooleanValue('isSynthesized', recipeDto.isSynthesized);
   writer.writeBooleanValue('isVegetarian', recipeDto.isVegetarian);
+  writer.writeStringValue('language', recipeDto.language);
   writer.writeStringValue('name', recipeDto.name);
   writer.writeStringValue('notes', recipeDto.notes);
   writer.writeNumberValue('rating', recipeDto.rating);
@@ -4701,6 +4807,49 @@ export function serializeRecipeSearchResultDto(
   );
   writer.writeStringValue('totalTime', recipeSearchResultDto.totalTime);
   writer.writeAdditionalData(recipeSearchResultDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeShareBundleDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeShareBundleDto(
+  writer: SerializationWriter,
+  recipeShareBundleDto: Partial<RecipeShareBundleDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeShareBundleDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('hero', recipeShareBundleDto.hero);
+  writer.writeObjectValue<RecipeShareBundleDto_info>(
+    'info',
+    recipeShareBundleDto.info,
+    serializeRecipeShareBundleDto_info
+  );
+  writer.writeCollectionOfPrimitiveValues<string>('originals', recipeShareBundleDto.originals);
+  writer.writeObjectValue<RecipeDto>('recipe', recipeShareBundleDto.recipe, serializeRecipeDto);
+  writer.writeStringValue('version', recipeShareBundleDto.version);
+  writer.writeAdditionalData(recipeShareBundleDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeShareBundleDto_info The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeShareBundleDto_info(
+  writer: SerializationWriter,
+  recipeShareBundleDto_info: Partial<RecipeShareBundleDto_info> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeShareBundleDto_info || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(recipeShareBundleDto_info.additionalData);
 }
 /**
  * Serializes information the current object

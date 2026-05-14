@@ -531,7 +531,9 @@ public class RecipeService(
             CanReimport = sourceType != "synthesized",
             ImageCount = r.ImageCount,
             FinishedDishIndex = r.FinishedDishIndex,
-            IsReady = r.IsReady
+            IsReady = r.IsReady,
+            IsSynthesized = r.IsSynthesized,
+            Language = ExtractLanguage(r.RawMetadata) // We'll need a helper or just read from info
         };
     }
 
@@ -578,6 +580,26 @@ public class RecipeService(
                 return [json]; // Total failure? Return raw JSON as single string
             }
         }
+    }
+
+    private static string? ExtractLanguage(string? rawMetadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawMetadataJson)) return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(rawMetadataJson);
+            if (doc.RootElement.TryGetProperty("language", out var lang))
+            {
+                return lang.GetString();
+            }
+        }
+        catch
+        {
+            // Silently return null if parsing fails
+        }
+
+        return null;
     }
 
     private static object? ExtractRecipeInstructions(string? rawMetadataJson)

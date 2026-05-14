@@ -345,7 +345,11 @@
     "turnOffDiscovery": "Masquer de la Découverte pour cette recette",
     "turnOnDiscovery": "Afficher dans la Découverte pour cette recette",
     "viewOriginal": "Voir l'original",
-    "viewSource": "Voir la source"
+    "viewSource": "Voir la source",
+    "downloaded": "Fichier de recette téléchargé",
+    "importFailed": "Échec de l'importation de la recette partagée.",
+    "shareFailed": "Échec du partage de la recette",
+    "shareMessage": "Découvrez cette recette !"
   },
   "settings": {
     "failedCaptures": "Captures échouées",

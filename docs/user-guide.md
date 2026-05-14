@@ -131,6 +131,23 @@ Adding recipes saves you from retyping Grandma's lasagna off a crumpled index ca
 
 ---
 
+## Sharing Recipes
+
+Sharing a favourite meal is as easy as sending a text. Every recipe in your library has a **Share** button (look for the share icon).
+
+When you share a recipe:
+- The app bundles everything — the ingredients, the steps, and even the original photos — into a single `.recipe` file.
+- You can send this file through SMS, Email, or any messaging app like WhatsApp or Messenger.
+
+When you receive a `.recipe` file:
+- Tap it, and it will open directly in the app.
+- You'll see a preview of the recipe right away. 
+- Tap **Add to My Library** to save it forever.
+
+This is the fastest way to build a shared family library, even across different households.
+
+---
+
 ## Automated Recipe Translation
 
 Your household can be configured to automatically translate every new recipe you add into your preferred language (e.g., French). This happens during the initial processing of **Photo**, **URL**, and **Describe it** recipes.

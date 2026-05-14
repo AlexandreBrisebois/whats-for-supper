@@ -138,7 +138,16 @@ describe('searchRecipes', () => {
       }),
     });
 
-    const result = await searchRecipes({ query: 'chicken', mode: 'standard', limit: 5 });
+    const result = await searchRecipes({
+      query: 'chicken',
+      mode: 'standard',
+      limit: 5,
+      weekOffset: undefined,
+      dayIndex: undefined,
+      similarToRecipeId: undefined,
+      pantrySnapshotId: undefined,
+      filters: undefined,
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:5052/api/recipes/search',
@@ -183,7 +192,16 @@ describe('searchRecipes', () => {
       }),
     });
 
-    const result = await searchRecipes({ query: 'chicken', mode: 'standard', limit: 5 });
+    const result = await searchRecipes({
+      query: 'chicken',
+      mode: 'standard',
+      limit: 5,
+      weekOffset: undefined,
+      dayIndex: undefined,
+      similarToRecipeId: undefined,
+      pantrySnapshotId: undefined,
+      filters: undefined,
+    });
 
     expect(result.topPick?.name).toBe('Chicken Soup');
     expect(result.results).toEqual([]);
@@ -216,7 +234,16 @@ describe('searchRecipes', () => {
       }),
     });
 
-    const recovered = await searchRecipes({ query: 'lasagna', mode: 'standard', limit: 5 });
+    const recovered = await searchRecipes({
+      query: 'lasagna',
+      mode: 'standard',
+      limit: 5,
+      weekOffset: undefined,
+      dayIndex: undefined,
+      similarToRecipeId: undefined,
+      pantrySnapshotId: undefined,
+      filters: undefined,
+    });
     expect(recovered.topPick?.name).toBe('Homemade Lasagna');
     expect(recovered.topPick?.reasons[0]?.label).toBe('Name matches your search');
 
@@ -233,7 +260,16 @@ describe('searchRecipes', () => {
       }),
     });
 
-    const emptyMarker = await searchRecipes({ query: 'missing', mode: 'standard', limit: 5 });
+    const emptyMarker = await searchRecipes({
+      query: 'missing',
+      mode: 'standard',
+      limit: 5,
+      weekOffset: undefined,
+      dayIndex: undefined,
+      similarToRecipeId: undefined,
+      pantrySnapshotId: undefined,
+      filters: undefined,
+    });
     expect(emptyMarker.topPick).toBeNull();
   });
 });

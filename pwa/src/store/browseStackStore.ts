@@ -15,6 +15,8 @@ export interface BrowseStackStore {
   // Pagination state
   currentPage: number;
   isLoading: boolean;
+  isPrefetching: boolean;
+  loadError: boolean;
   hasMorePages: boolean;
 
   // Actions
@@ -33,6 +35,8 @@ const initialState = {
   totalCount: 0,
   currentPage: 1,
   isLoading: false,
+  isPrefetching: false,
+  loadError: false,
   hasMorePages: false,
 };
 
@@ -51,12 +55,20 @@ export const useBrowseStackStore = create<BrowseStackStore>((set, get) => ({
 
   appendRecipes(recipes) {
     set((s) => {
-      const existingIds = new Set(s.recipes.map((recipe) => recipe.id).filter(Boolean));
+      // In list view we want a contiguous array.
+      // In stack view we might have holes if we wrap-around.
+      // However, appendRecipes is mostly used for forward infinite scroll.
+      const existingIds = new Set(s.recipes.map((recipe) => recipe?.id).filter(Boolean));
       const deduped = recipes.filter((recipe) => {
         if (!recipe.id || existingIds.has(recipe.id)) return false;
         existingIds.add(recipe.id);
         return true;
       });
+
+      // If we already have a sparse array with a large length,
+      // we should find the first empty slot or just append if it's contiguous.
+      // For simplicity, if it's already sparse, we might need a different approach.
+      // But for the "Browse All Stack", we usually start at 1 and go forward.
       const merged = [...s.recipes, ...deduped];
       return { recipes: merged };
     });
@@ -71,7 +83,6 @@ export const useBrowseStackStore = create<BrowseStackStore>((set, get) => ({
   },
 
   nextCard() {
-    // We allow currentIndex to exceed recipes.length to show the EndCard
     set((s) => ({ currentIndex: s.currentIndex + 1 }));
   },
 

@@ -16,6 +16,8 @@ public class RecipeController(
     RecipeImportService importService,
     RecipeImportBulkService bulkImportService,
     RecipePurgeService recipePurgeService,
+    RecipeShareService shareService,
+    RecipeShareImportService shareImportService,
     ILogger<RecipeController> logger) : ControllerBase
 {
     /// <summary>POST /api/recipes — upload images and create a new recipe.</summary>
@@ -371,5 +373,41 @@ public class RecipeController(
             PurgeResult.NotFound => NotFound(new { message = "Recipe not found." }),
             _ => StatusCode(500)
         };
+    }
+
+    /// <summary>GET /api/recipes/{id}/share — export a recipe as a .recipe JSON bundle.</summary>
+    [HttpGet("{id:guid}/share")]
+    [SkipWrapping]
+    public async Task<IActionResult> Share(Guid id)
+    {
+        try
+        {
+            var bundle = await shareService.CreateBundleAsync(id);
+            return Ok(bundle);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>POST /api/recipes/share/import — import a recipe from a .recipe JSON bundle.</summary>
+    [HttpPost("share/import")]
+    public async Task<IActionResult> ImportShare(
+        [FromBody] RecipeShareBundleDto bundle,
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId)
+    {
+        if (familyMemberId is null)
+            return BadRequest(new { message = "X-Family-Member-Id header is required." });
+
+        try
+        {
+            var recipeId = await shareImportService.ImportBundleAsync(familyMemberId.Value, bundle);
+            return Created($"/api/recipes/{recipeId}", new { id = recipeId });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

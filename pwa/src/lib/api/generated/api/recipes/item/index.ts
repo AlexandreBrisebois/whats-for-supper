@@ -34,6 +34,8 @@ import { PurgeRequestBuilderRequestsMetadata, type PurgeRequestBuilder } from '.
 // @ts-ignore
 import { RestoreRequestBuilderRequestsMetadata, type RestoreRequestBuilder } from './restore/index';
 // @ts-ignore
+import { ShareRequestBuilderRequestsMetadata, type ShareRequestBuilder } from './share/index';
+// @ts-ignore
 import { StatusRequestBuilderRequestsMetadata, type StatusRequestBuilder } from './status/index';
 // @ts-ignore
 import {
@@ -165,6 +167,10 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * The restore property
    */
   get restore(): RestoreRequestBuilder;
+  /**
+   * The share property
+   */
+  get share(): ShareRequestBuilder;
   /**
    * The status property
    */
@@ -340,6 +346,9 @@ export const ItemRequestBuilderNavigationMetadata: Record<
   },
   restore: {
     requestsMetadata: RestoreRequestBuilderRequestsMetadata,
+  },
+  share: {
+    requestsMetadata: ShareRequestBuilderRequestsMetadata,
   },
   status: {
     requestsMetadata: StatusRequestBuilderRequestsMetadata,

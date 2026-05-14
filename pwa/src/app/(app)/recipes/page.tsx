@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import {
   Search as SearchIcon,
   Star,
@@ -196,6 +197,8 @@ export default function RecipesPage() {
           weekOffset: parsedWeekOffset,
           dayIndex: parsedDayIndex,
           similarToRecipeId: similarToRecipeId ?? undefined,
+          pantrySnapshotId: undefined,
+          filters: undefined,
         });
 
         if (!isActive) return;
@@ -220,7 +223,7 @@ export default function RecipesPage() {
     return () => {
       isActive = false;
     };
-  }, [parsedDayIndex, parsedWeekOffset]);
+  }, [parsedDayIndex, parsedWeekOffset, similarToRecipeId]);
 
   // Adjust state when URL 'open' parameter changes
   const openIdFromUrl = searchParams.get('open');
@@ -392,6 +395,9 @@ export default function RecipesPage() {
       limit,
       weekOffset: parsedWeekOffset,
       dayIndex: parsedDayIndex,
+      similarToRecipeId: undefined,
+      pantrySnapshotId: undefined,
+      filters: undefined,
     })
       .then((response) => setData(response))
       .catch(() =>
@@ -770,11 +776,12 @@ export default function RecipesPage() {
             <div className="flex flex-wrap gap-2">
               {pendingPhotos.map((file, i) => (
                 <div key={i} className="relative h-20 w-20 overflow-hidden rounded-xl shadow-sm">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={URL.createObjectURL(file)}
                     alt={`Photo ${i + 1}`}
-                    className="h-full w-full object-cover"
+                    fill
+                    unoptimized
+                    className="object-cover"
                   />
                   <button
                     type="button"
@@ -971,10 +978,11 @@ export default function RecipesPage() {
                 </button>
 
                 <div className="relative w-full aspect-[16/10] min-h-[240px] rounded-[2.5rem] overflow-hidden shadow-2xl glass-solar border border-white/20">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={getImageUrl(topPick.imageUrl) || '/placeholder-recipe.jpg'}
+                  <Image
+                    src={getImageUrl(topPick.imageUrl)}
                     alt={topPick.name}
+                    fill
+                    unoptimized
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent opacity-90" />

@@ -103,6 +103,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
           <button
             type="button"
             onClick={onClose}
+            data-testid="recycle-bin-close"
             className="rounded-full p-2 hover:bg-charcoal/5 transition-colors"
             aria-label="Close"
           >

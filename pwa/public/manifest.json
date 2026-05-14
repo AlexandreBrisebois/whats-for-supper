@@ -71,6 +71,22 @@
       ]
     }
   ],
+  "file_handlers": [
+    {
+      "action": "/capture",
+      "name": "Recipe Bundle",
+      "accept": {
+        "application/json": [".recipe"]
+      },
+      "icons": [
+        {
+          "src": "/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "share_target": {
     "action": "/capture",
     "method": "GET",

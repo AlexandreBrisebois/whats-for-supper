@@ -1,71 +1,52 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { X, Search, Loader2, Compass, Recycle, Layers3, Grid3X3 } from 'lucide-react';
+import { X, Search, Loader2, Compass, Recycle, Layers, Grid } from 'lucide-react';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
-import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { useBrowseStackStore } from '@/store/browseStackStore';
 import { useFamilyStore } from '@/store/familyStore';
 import { apiClient } from '@/lib/api/api-client';
-import { updateRecipe, type Recipe } from '@/lib/api/recipes';
-import {
-  assignRecipeToEmptySlot,
-  findFirstOpenPlannerSlot,
-  getPlannerSlot,
-  resolveOccupiedSlot,
-  type AssignmentRecipe,
-  type PlannerSlot,
-} from '@/lib/planner/slotAssignment';
+import { updateRecipe } from '@/lib/api/recipes';
 import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipes/index';
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 import { getImageUrl } from '@/lib/imageUtils';
-import { tWithVars } from '@/locales';
-import { formatRecipeTime } from '@/lib/duration';
 
 type BrowseViewMode = 'stack' | 'list';
 
 const STACK_PAGE_SIZE = 20;
 const LIST_PAGE_SIZE = 12;
 
-// ---------------------------------------------------------------------------
-// BrowseAllStack page
-// Full-screen immersive overlay for browsing the recipe library card by card.
-// Requirements: 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 2.1–2.9, 5.1–5.7
-// ---------------------------------------------------------------------------
-
 export default function BrowseAllStackPage() {
   const router = useRouter();
-  const { familyMembers, selectedFamilyMemberId, loadFamilyMembers, updateMemberPreferences } =
-    useFamilyStore();
-  const selectedMember = familyMembers.find((member) => member.id === selectedFamilyMemberId);
-  const savedBrowseViewMode: BrowseViewMode =
-    selectedMember?.browseViewMode === 'list' ? 'list' : 'stack';
 
-  // Store state
-  const {
-    recipes,
-    currentIndex,
-    totalCount,
-    currentPage,
-    isLoading,
-    hasMorePages,
-    setRecipes,
-    appendRecipes,
-    setCurrentIndex,
-    setTotalCount,
-    nextCard,
-    previousCard,
-    reset,
-  } = useBrowseStackStore();
+  const familyMembers = useFamilyStore((s) => s.familyMembers);
+  const selectedFamilyMemberId = useFamilyStore((s) => s.selectedFamilyMemberId);
+  const loadFamilyMembers = useFamilyStore((s) => s.loadFamilyMembers);
+  const selectedMember = useMemo(
+    () => familyMembers.find((m) => m.id === selectedFamilyMemberId),
+    [familyMembers, selectedFamilyMemberId]
+  );
+  const savedBrowseViewMode = selectedMember?.browseViewMode ?? 'stack';
 
-  // Local UI state
+  const recipes = useBrowseStackStore((s) => s.recipes);
+  const currentIndex = useBrowseStackStore((s) => s.currentIndex);
+  const totalCount = useBrowseStackStore((s) => s.totalCount);
+  const currentPage = useBrowseStackStore((s) => s.currentPage);
+  const hasMorePages = useBrowseStackStore((s) => s.hasMorePages);
+  const isInitialLoading = useBrowseStackStore((s) => s.isLoading);
+  const isPrefetching = useBrowseStackStore((s) => s.isPrefetching);
+  const loadError = useBrowseStackStore((s) => s.loadError);
+  const setCurrentIndex = useBrowseStackStore((s) => s.setCurrentIndex);
+  const reset = useBrowseStackStore((s) => s.reset);
+
   const [isDiscoverableOnly, setIsDiscoverableOnly] = useState(false);
   const [browseViewModeOverride, setBrowseViewModeOverride] = useState<{
     memberId: string | null;
@@ -75,223 +56,186 @@ export default function BrowseAllStackPage() {
     browseViewModeOverride?.memberId === selectedFamilyMemberId
       ? browseViewModeOverride.mode
       : savedBrowseViewMode;
-  const [isEndCard, setIsEndCard] = useState(false);
-  const [isPrefetching, setIsPrefetching] = useState(false);
-  const [prefetchFailed, setPrefetchFailed] = useState(false);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  // True while we are fetching the last page to wrap backwards
-  const [isWrappingToEnd, setIsWrappingToEnd] = useState(false);
 
-  // Recipe Detail Sheet state — freeze stack while open
+  const [isEndCard, setIsEndCard] = useState(false);
   const [detailRecipeId, setDetailRecipeId] = useState<string | null>(null);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
-  const [pendingRecovery, setPendingRecovery] = useState<{
-    slot: PlannerSlot;
-    recipe: AssignmentRecipe;
-    navigateTo: { weekOffset: number; dayIndex: number };
-  } | null>(null);
 
-  // Ref to track whether a prefetch is already in flight (avoid duplicate requests)
-  const prefetchInFlightRef = useRef(false);
-  const listScrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const listSentinelRef = useRef<HTMLDivElement | null>(null);
-  // Ref to track the page/filter being prefetched to avoid races
-  const currentRequestRef = useRef<{
-    page: number;
-    discoverableOnly: boolean;
-    viewMode: BrowseViewMode;
-  } | null>(null);
+  const currentRequestRef = useRef<any>(null);
+  const initialLoadRef = useRef(false);
+  const fetchInProgressRef = useRef(false);
+  const isLibrarySummaryLoadedRef = useRef(false);
+  const browseViewModeRef = useRef(browseViewMode);
+  const hasStartedInitialLoadRef = useRef(false);
 
   useEffect(() => {
-    if (selectedFamilyMemberId && familyMembers.length === 0) {
-      void loadFamilyMembers();
-    }
-  }, [familyMembers.length, loadFamilyMembers, selectedFamilyMemberId]);
+    browseViewModeRef.current = browseViewMode;
+  }, [browseViewMode]);
 
-  // ---------------------------------------------------------------------------
-  // Data Fetching: fetch summary + first page
-  // ---------------------------------------------------------------------------
   const fetchLibraryData = useCallback(
     async (page: number, discoverable: boolean, append = false) => {
-      const pageSize = browseViewMode === 'list' ? LIST_PAGE_SIZE : STACK_PAGE_SIZE;
+      if (fetchInProgressRef.current) return;
+      fetchInProgressRef.current = true;
+
+      const mode = browseViewModeRef.current;
+      const pageSize = mode === 'list' ? LIST_PAGE_SIZE : STACK_PAGE_SIZE;
+
+      // Yield to avoid synchronous setState in useEffect (satisfies react-hooks/set-state-in-effect)
+      await Promise.resolve();
+
       try {
-        if (!append) {
-          setIsInitialLoading(true);
-          setLoadError(false);
-          setIsEndCard(false);
-        } else {
-          setIsPrefetching(true);
-          setPrefetchFailed(false);
+        currentRequestRef.current = { page, discoverableOnly: discoverable, viewMode: mode };
+        if (append) useBrowseStackStore.setState({ isPrefetching: true });
+        else {
+          useBrowseStackStore.setState({ isLoading: true, loadError: false });
         }
 
-        currentRequestRef.current = {
-          page,
-          discoverableOnly: discoverable,
-          viewMode: browseViewMode,
-        };
-
-        // Fetch library summary for total counts (only on first load)
-        if (!append) {
-          const summaryResult = await apiClient.api.recipes.librarySummary.get();
-          const total = summaryResult?.data?.total ?? 0;
-          // Note: totalCount in indicator reflects the filtered total from pagination
-        }
-
-        // Fetch recipes in explore order with optional filter
         const result = await apiClient.api.recipes.get({
           queryParameters: {
             order: GetOrderQueryParameterTypeObject.Explore,
-            page: page,
+            page,
             limit: pageSize,
             discoverableOnly: discoverable,
           },
         });
 
-        // Check if this request is still relevant (not superseded by a filter toggle)
         if (
           currentRequestRef.current?.page !== page ||
           currentRequestRef.current?.discoverableOnly !== discoverable ||
-          currentRequestRef.current?.viewMode !== browseViewMode
-        ) {
+          currentRequestRef.current?.viewMode !== mode
+        )
           return;
-        }
 
-        const fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
-        const paginationTotal = result?.pagination?.total ?? 0;
+        const fetched = (result?.recipes ?? []) as RecipeDto[];
+        const total = result?.pagination?.total ?? useBrowseStackStore.getState().totalCount;
 
-        if (append) {
-          appendRecipes(fetchedRecipes);
-        } else {
-          setRecipes(fetchedRecipes);
-          setCurrentIndex(0);
-        }
+        useBrowseStackStore.setState((s) => {
+          const existingIds = new Set(s.recipes.map((r) => r?.id).filter(Boolean));
+          const deduped = fetched.filter((r) => r?.id && !existingIds.has(r.id));
+          const nextRecipes = append ? [...s.recipes, ...deduped] : fetched;
 
-        setTotalCount(paginationTotal);
-
-        // Update store pagination state
-        useBrowseStackStore.setState({
-          currentPage: page,
-          hasMorePages: page * pageSize < paginationTotal,
+          return {
+            recipes: nextRecipes,
+            totalCount: total,
+            currentPage: page,
+            hasMorePages: nextRecipes.length < total,
+            ...(append ? {} : { currentIndex: 0 }),
+          };
         });
+        useBrowseStackStore.setState({ loadError: false });
       } catch (err) {
-        console.error('BrowseAllStack: fetch failed', err);
-        if (append) {
-          setPrefetchFailed(true);
-        } else {
-          setLoadError(true);
-        }
+        console.error('Fetch failed', err);
+        if (!append) useBrowseStackStore.setState({ loadError: true });
       } finally {
-        setIsInitialLoading(false);
-        setIsPrefetching(false);
-        prefetchInFlightRef.current = false;
+        useBrowseStackStore.setState({ isLoading: false, isPrefetching: false });
+        fetchInProgressRef.current = false;
       }
     },
-    [appendRecipes, browseViewMode, setRecipes, setCurrentIndex, setTotalCount]
+    []
   );
 
-  // ---------------------------------------------------------------------------
-  // Wrap-to-last-page: fetch the last page and land on its last recipe.
-  // Called when swiping left from card 1 or left from the End Card.
-  // ---------------------------------------------------------------------------
-  const wrapToLastPage = useCallback(async () => {
-    // If all pages are already in memory, jump instantly.
-    if (!hasMorePages) {
-      setIsEndCard(false);
-      setCurrentIndex(recipes.length - 1);
-      return;
+  useEffect(() => {
+    if (familyMembers.length === 0 && !initialLoadRef.current) {
+      initialLoadRef.current = true;
+      void loadFamilyMembers();
     }
+  }, [familyMembers.length, loadFamilyMembers]);
 
-    // Otherwise calculate the last page number and fetch it.
-    const LIMIT = STACK_PAGE_SIZE;
-    const lastPage = Math.ceil(totalCount / LIMIT);
+  useEffect(() => {
+    if (familyMembers.length > 0 && !isLibrarySummaryLoadedRef.current) {
+      isLibrarySummaryLoadedRef.current = true;
+      void (async () => {
+        try {
+          const summary = await apiClient.api.recipes.librarySummary.get();
+          const total =
+            (summary as any)?.data?.total ??
+            (summary as any)?.total ??
+            (summary as any)?.totalRecipes ??
+            0;
+          if (total > 0) useBrowseStackStore.setState({ totalCount: total });
+        } catch (e) {
+          console.warn('Summary fetch failed', e);
+        }
+      })();
+    }
+  }, [familyMembers.length]);
 
-    setIsWrappingToEnd(true);
+  useEffect(() => {
+    if (familyMembers.length > 0 && !hasStartedInitialLoadRef.current) {
+      hasStartedInitialLoadRef.current = true;
+      void fetchLibraryData(1, isDiscoverableOnly);
+    }
+  }, [familyMembers.length, isDiscoverableOnly, fetchLibraryData]);
+
+  useEffect(() => {
+    if (!hasStartedInitialLoadRef.current) return;
+    // When filters change, reload page 1
+    void fetchLibraryData(1, isDiscoverableOnly);
+  }, [isDiscoverableOnly, browseViewMode, fetchLibraryData]);
+
+  useEffect(() => {
+    return () => reset();
+  }, [reset]);
+
+  const wrapToLastPage = useCallback(async () => {
+    const total = totalCount;
+    if (total <= 0) return;
+    const lastPage = Math.ceil(total / STACK_PAGE_SIZE);
+    useBrowseStackStore.setState({ isPrefetching: true });
     setIsEndCard(false);
     try {
       const result = await apiClient.api.recipes.get({
         queryParameters: {
           order: GetOrderQueryParameterTypeObject.Explore,
           page: lastPage,
-          limit: LIMIT,
+          limit: STACK_PAGE_SIZE,
           discoverableOnly: isDiscoverableOnly,
         },
       });
-
-      const fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
-
-      // Replace the store recipes with page 1 already in memory + this last
-      // page so the user can swipe left naturally from here.
-      // We only prepend page-1 recipes (already loaded) + last-page recipes.
-      // The middle pages are intentionally skipped; they'll load on forward
-      // swipe if the user reverses direction.
-      const firstPageRecipes = useBrowseStackStore.getState().recipes.slice(0, LIMIT);
-      const merged = [...firstPageRecipes, ...fetchedRecipes];
-      setRecipes(merged);
-
-      // Update pagination state so the store knows we're "at" the last page.
-      useBrowseStackStore.setState({
-        currentPage: lastPage,
-        hasMorePages: false,
+      const fetched = (result?.recipes ?? []) as RecipeDto[];
+      const actualTotal = result?.pagination?.total ?? total;
+      useBrowseStackStore.setState((s) => {
+        const existingIds = new Set(s.recipes.map((r) => r?.id).filter(Boolean));
+        const deduped = fetched.filter((r) => r?.id && !existingIds.has(r.id));
+        const merged = [...s.recipes, ...deduped];
+        return {
+          recipes: merged,
+          totalCount: actualTotal,
+          currentPage: lastPage,
+          hasMorePages: false,
+          currentIndex: merged.length - 1,
+        };
       });
-      setTotalCount(result?.pagination?.total ?? totalCount);
-
-      // Land on the last recipe.
-      setCurrentIndex(merged.length - 1);
     } catch (err) {
-      console.error('BrowseAllStack: wrapToLastPage failed', err);
-      // Fall back gracefully: just land on the last recipe we have.
-      setCurrentIndex(recipes.length - 1);
+      console.error(err);
     } finally {
-      setIsWrappingToEnd(false);
+      useBrowseStackStore.setState({ isPrefetching: false });
     }
-  }, [
-    hasMorePages,
-    totalCount,
-    isDiscoverableOnly,
-    recipes,
-    setRecipes,
-    setCurrentIndex,
-    setTotalCount,
-  ]);
+  }, [totalCount, isDiscoverableOnly]);
 
-  // Initial load or filter change
-  useEffect(() => {
-    // Defer to avoid "setState in effect" lint error
-    Promise.resolve().then(() => {
-      fetchLibraryData(1, isDiscoverableOnly);
-    });
-  }, [isDiscoverableOnly, browseViewMode, fetchLibraryData]);
+  const handleNext = useCallback(() => {
+    if (currentIndex >= totalCount - 1) setIsEndCard(true);
+    else setCurrentIndex(currentIndex + 1);
+  }, [currentIndex, totalCount, setCurrentIndex]);
 
-  // Unmount: reset store state
-  useEffect(() => {
-    return () => {
-      reset();
-    };
-  }, [reset]);
+  const handlePrevious = useCallback(() => {
+    if (currentIndex <= 0) void wrapToLastPage();
+    else setCurrentIndex(currentIndex - 1);
+  }, [currentIndex, setCurrentIndex, wrapToLastPage]);
 
-  // ---------------------------------------------------------------------------
-  // Pre-fetch next page when remainingCards <= 5 (requirement 5.3)
-  // ---------------------------------------------------------------------------
+  // Pre-fetch next page (stack)
   useEffect(() => {
     if (
       browseViewMode !== 'stack' ||
       isInitialLoading ||
       isEndCard ||
       !hasMorePages ||
-      prefetchInFlightRef.current
-    ) {
+      isPrefetching
+    )
       return;
-    }
-
-    const remainingCards = recipes.length - currentIndex - 1;
-
-    if (remainingCards <= 5) {
-      prefetchInFlightRef.current = true;
-      // Defer to avoid "setState in effect" lint error
-      Promise.resolve().then(() => {
-        fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
-      });
+    const remaining = recipes.length - (currentIndex + 1);
+    if (remaining <= 5) {
+      void fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
     }
   }, [
     currentIndex,
@@ -299,489 +243,235 @@ export default function BrowseAllStackPage() {
     hasMorePages,
     isInitialLoading,
     isEndCard,
-    currentPage,
-    isDiscoverableOnly,
-    fetchLibraryData,
     browseViewMode,
-  ]);
-
-  const loadNextListPage = useCallback(() => {
-    if (
-      browseViewMode !== 'list' ||
-      isInitialLoading ||
-      isPrefetching ||
-      !hasMorePages ||
-      prefetchInFlightRef.current
-    ) {
-      return;
-    }
-
-    prefetchInFlightRef.current = true;
-    Promise.resolve().then(() => {
-      fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
-    });
-  }, [
-    browseViewMode,
-    currentPage,
     fetchLibraryData,
-    hasMorePages,
     isDiscoverableOnly,
-    isInitialLoading,
     isPrefetching,
+    currentPage,
   ]);
 
+  // List view infinite scroll & external load more
   useEffect(() => {
-    if (browseViewMode !== 'list') return;
-    const root = listScrollContainerRef.current;
-    const sentinel = listSentinelRef.current;
-    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          loadNextListPage();
-        }
-      },
-      { root, rootMargin: '600px 0px' }
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [browseViewMode, loadNextListPage]);
+    const handleLoadMore = () => {
+      if (hasMorePages && !isPrefetching && !isInitialLoading) {
+        void fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
+      }
+    };
+    window.addEventListener('browse-list-load-more', handleLoadMore);
+    return () => window.removeEventListener('browse-list-load-more', handleLoadMore);
+  }, [
+    hasMorePages,
+    isPrefetching,
+    isInitialLoading,
+    currentPage,
+    isDiscoverableOnly,
+    fetchLibraryData,
+  ]);
 
   const handleListScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-      if (scrollHeight - scrollTop - clientHeight <= 600) {
-        loadNextListPage();
+    (e: React.UIEvent<HTMLDivElement>) => {
+      if (browseViewMode !== 'list' || !hasMorePages || isPrefetching || isInitialLoading) return;
+      const { scrollTop } = e.currentTarget;
+      if (scrollTop > 0) {
+        void fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
       }
     },
-    [loadNextListPage]
+    [
+      browseViewMode,
+      hasMorePages,
+      isPrefetching,
+      isInitialLoading,
+      currentPage,
+      isDiscoverableOnly,
+      fetchLibraryData,
+    ]
   );
 
-  useEffect(() => {
-    const handler = () => loadNextListPage();
-    window.addEventListener('browse-list-load-more', handler);
-    return () => window.removeEventListener('browse-list-load-more', handler);
-  }, [loadNextListPage]);
-
-  // ---------------------------------------------------------------------------
-  // Navigation handlers
-  // ---------------------------------------------------------------------------
-  const handleSwipeLeft = useCallback(() => {
-    const isLastCard = currentIndex >= recipes.length - 1;
-
-    if (isLastCard && hasMorePages && isPrefetching) return;
-
-    if (isLastCard && !hasMorePages) {
-      setCurrentIndex(0);
-      return;
-    }
-
-    setCurrentIndex(currentIndex + 1);
-  }, [currentIndex, recipes.length, hasMorePages, isPrefetching, setCurrentIndex]);
-
-  const handleSwipeRight = useCallback(() => {
-    if (currentIndex <= 0) {
-      wrapToLastPage();
-      return;
-    }
-    previousCard();
-  }, [currentIndex, previousCard, wrapToLastPage]);
-
-  // ---------------------------------------------------------------------------
-  // Recipe Detail Sheet handlers
-  // ---------------------------------------------------------------------------
-  const handleCardTap = useCallback((recipeId: string) => {
-    setDetailRecipeId(recipeId);
-  }, []);
-
-  const handleDetailSheetClose = useCallback(() => {
-    setDetailRecipeId(null);
-  }, []);
-
-  const toAssignmentRecipe = (recipe: Recipe): AssignmentRecipe => ({
-    id: recipe.id,
-    name: recipe.name ?? null,
-    image: recipe.imageUrl ?? '',
-  });
-
-  const handleCookTonight = useCallback(
-    async (recipe: Recipe) => {
-      const todayIndex = (new Date().getDay() + 6) % 7;
-      const assignmentRecipe = toAssignmentRecipe(recipe);
-      const slot = await getPlannerSlot(0, todayIndex);
-
-      if (slot?.recipe) {
-        setPendingRecovery({
-          slot,
-          recipe: assignmentRecipe,
-          navigateTo: { weekOffset: 0, dayIndex: todayIndex },
-        });
-        return;
-      }
-
-      await assignRecipeToEmptySlot(0, todayIndex, assignmentRecipe);
-      router.push(`/planner?success=1&dayIndex=${todayIndex}&weekOffset=0`);
-    },
-    [router]
-  );
-
-  const handlePlanForLater = useCallback(
-    async (recipe: Recipe) => {
-      // "Plan for Later" starts from tomorrow onwards
-      const todayIndex = (new Date().getDay() + 6) % 7;
-      let startDayIndex = todayIndex + 1;
-      let startWeekOffset = 0;
-
-      if (startDayIndex > 6) {
-        startDayIndex = 0;
-        startWeekOffset = 1;
-      }
-
-      const openSlot = await findFirstOpenPlannerSlot(startWeekOffset, startDayIndex);
-      if (!openSlot) return;
-
-      await assignRecipeToEmptySlot(
-        openSlot.weekOffset,
-        openSlot.dayIndex,
-        toAssignmentRecipe(recipe)
-      );
-      router.push(
-        `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}`
-      );
-    },
-    [router]
-  );
-
-  const handleRecoveryAction = useCallback(
-    async (action: string) => {
-      if (!pendingRecovery) return;
-      if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
-
-      await resolveOccupiedSlot(pendingRecovery.slot, action);
-      await assignRecipeToEmptySlot(
-        pendingRecovery.navigateTo.weekOffset,
-        pendingRecovery.navigateTo.dayIndex,
-        pendingRecovery.recipe
-      );
-
-      const { weekOffset, dayIndex } = pendingRecovery.navigateTo;
-      setPendingRecovery(null);
-      router.push(`/planner?success=1&dayIndex=${dayIndex}&weekOffset=${weekOffset}`);
-    },
-    [pendingRecovery, router]
-  );
-
-  // ---------------------------------------------------------------------------
-  // Discoverable handlers
-  // ---------------------------------------------------------------------------
-
-  // Individual curation (requirement 1.6)
-  const handleIndividualToggleDiscoverable = useCallback(
-    async (recipeId: string, newValue: boolean) => {
-      await updateRecipe(recipeId, { isDiscoverable: newValue });
-      useBrowseStackStore.setState((s) => ({
-        recipes: s.recipes.map((r) => (r.id === recipeId ? { ...r, isDiscoverable: newValue } : r)),
-      }));
-    },
-    []
-  );
-
-  // Global toggle (requirement 2.3)
-  const handleGlobalToggleDiscoverable = useCallback(() => {
-    setIsDiscoverableOnly((prev) => !prev);
-  }, []);
-
-  const handleViewModeChange = useCallback(
-    (nextMode: BrowseViewMode) => {
-      if (nextMode === browseViewMode) return;
-      setBrowseViewModeOverride({ memberId: selectedFamilyMemberId, mode: nextMode });
-      setIsEndCard(false);
-      setCurrentIndex(0);
-      if (selectedFamilyMemberId) {
-        void updateMemberPreferences(selectedFamilyMemberId, { browseViewMode: nextMode }).catch(
-          () => {
-            setBrowseViewModeOverride({ memberId: selectedFamilyMemberId, mode: browseViewMode });
-          }
-        );
-      }
-    },
-    [browseViewMode, selectedFamilyMemberId, setCurrentIndex, updateMemberPreferences]
-  );
-
-  // ---------------------------------------------------------------------------
-  // Exit and search escape handlers
-  // ---------------------------------------------------------------------------
-  const handleExit = useCallback(() => {
-    router.back();
-  }, [router]);
-
-  const handleSearchEscape = useCallback(() => {
-    router.push('/recipes?focus=search');
-  }, [router]);
-
-  const handleAddRecipe = useCallback(() => {
-    router.push('/capture');
-  }, [router]);
-
-  // ---------------------------------------------------------------------------
-  // Derived state
-  // ---------------------------------------------------------------------------
   const visibleRecipes = useMemo(() => {
-    if (recipes.length === 0) return [];
-    return recipes.slice(currentIndex, currentIndex + 4);
-  }, [recipes, currentIndex]);
+    if (browseViewMode === 'list') return recipes.filter(Boolean);
+    return recipes
+      .slice(currentIndex, currentIndex + 3)
+      .map((r, i) => ({ recipe: r, index: currentIndex + i }));
+  }, [recipes, currentIndex, browseViewMode]);
 
-  const currentRecipe = recipes[currentIndex] ?? null;
-  const position = currentIndex + 1;
-  const displayTotal = totalCount;
-
-  const isAtLastLoadedCard = currentIndex >= recipes.length - 1;
-  const showLoader =
-    browseViewMode === 'stack' &&
-    ((isAtLastLoadedCard && isPrefetching && !isEndCard && recipes.length > 0) || isWrappingToEnd);
-  const isEmpty = !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly;
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
   return (
     <div
       data-testid="browse-all-stack-container"
       className="fixed inset-0 z-50 flex flex-col bg-cream overflow-hidden"
     >
       <BackgroundBlobs />
-
-      {/* Top bar: exit (left) + search escape (right) */}
       <div className="relative z-10 flex items-center justify-between px-6 pt-safe-top pt-4 pb-2 shrink-0">
         <button
-          type="button"
+          onClick={() => router.back()}
           data-testid="browse-all-exit"
-          aria-label="Close browse overlay"
-          onClick={handleExit}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 border border-charcoal/8 shadow-sm hover:bg-white transition-all"
         >
           <X size={20} />
         </button>
-
-        <div className="flex items-center gap-1.5">
-          <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm backdrop-blur-sm">
-            <button
-              type="button"
-              data-testid="browse-view-stack"
-              aria-label="Show recipe cards"
-              onClick={() => handleViewModeChange('stack')}
-              className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
-                browseViewMode === 'stack' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
-              }`}
-            >
-              <Layers3 className="h-4 w-4" />
-              {/* Cards */}
-            </button>
-            <button
-              type="button"
-              data-testid="browse-view-list"
-              aria-label="Show recipe list"
-              onClick={() => handleViewModeChange('list')}
-              className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
-                browseViewMode === 'list' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
-              }`}
-            >
-              <Grid3X3 className="h-4 w-4" />
-              {/* List */}
-            </button>
-          </div>
-
-          <button
-            onClick={handleGlobalToggleDiscoverable}
-            data-testid="stack-toggle-discoverable"
-            className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all duration-300 border ${
-              isDiscoverableOnly
-                ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
-                : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
-            } backdrop-blur-sm focus:outline-none`}
-            aria-label={
-              isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
-            }
-          >
-            <Compass
-              className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`}
-            />
-            <span className="text-xs font-black tracking-wide uppercase">
-              {isDiscoverableOnly ? 'Discovery Recipes' : 'All Recipes'}
-            </span>
-          </button>
-        </div>
-
         <div className="flex items-center gap-1.5">
           <button
-            type="button"
-            data-testid="recycle-bin-entry"
-            aria-label="Recycle bin"
             onClick={() => setIsTrashOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
+            data-testid="recycle-bin-entry"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 border border-charcoal/8 shadow-sm hover:bg-white transition-all"
           >
             <Recycle size={20} />
           </button>
+          <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm">
+            <button
+              onClick={() =>
+                setBrowseViewModeOverride({ memberId: selectedFamilyMemberId, mode: 'stack' })
+              }
+              data-testid="browse-view-stack"
+              className={`rounded-full px-3 transition-all ${browseViewMode === 'stack' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'}`}
+            >
+              <Layers size={16} />
+            </button>
+            <button
+              onClick={() =>
+                setBrowseViewModeOverride({ memberId: selectedFamilyMemberId, mode: 'list' })
+              }
+              data-testid="browse-view-list"
+              className={`rounded-full px-3 transition-all ${browseViewMode === 'list' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'}`}
+            >
+              <Grid size={16} />
+            </button>
+          </div>
           <button
-            type="button"
-            data-testid="browse-all-search-trigger"
-            aria-label="Search recipes"
-            onClick={handleSearchEscape}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
+            onClick={() => setIsDiscoverableOnly(!isDiscoverableOnly)}
+            data-testid="stack-toggle-discoverable"
+            className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all border ${isDiscoverableOnly ? 'bg-terracotta border-terracotta text-white shadow-lg' : 'bg-white/80 border-charcoal/8 text-charcoal/60'}`}
           >
-            <Search size={20} />
+            <Compass size={16} />
+            <span className="text-[10px] font-black uppercase">
+              {isDiscoverableOnly ? 'Discovering' : 'All'}
+            </span>
           </button>
         </div>
       </div>
-
-      {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
-
-      {/* Main content area */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-2 min-h-0">
-        {isInitialLoading && (
-          <div className="flex flex-col items-center gap-4">
-            <Loader2
-              data-testid="browse-all-loader"
-              className="animate-spin text-ochre"
-              size={48}
-            />
-            <p className="text-sm font-medium text-charcoal/50">Loading your library…</p>
-          </div>
-        )}
-
-        {!isInitialLoading && loadError && (
-          <div className="flex flex-col items-center gap-4 text-center px-8">
-            <p className="text-base font-semibold text-charcoal/70">Failed to load recipes.</p>
-            <button
-              type="button"
-              onClick={() => fetchLibraryData(1, isDiscoverableOnly)}
-              className="px-6 py-3 rounded-full bg-ochre text-white font-bold text-sm shadow-md"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {isEmpty && <EndCard isEmpty={true} onSwipeRight={() => {}} onSwipeLeft={() => {}} />}
-
-        {!isInitialLoading && !loadError && browseViewMode === 'list' && recipes.length > 0 && (
-          <div
-            ref={listScrollContainerRef}
-            data-testid="browse-list-scroll-container"
-            onScroll={handleListScroll}
-            className="w-full max-w-6xl flex-1 min-h-0 overflow-y-auto px-1 pb-8"
-          >
-            <div
-              data-testid="browse-list-grid"
-              className="grid grid-cols-2 min-[1024px]:grid-cols-3 gap-3 sm:gap-4"
-            >
-              {recipes.map((recipe) => (
+      <div className="relative flex-1 flex flex-col items-center justify-center px-6 overflow-hidden">
+        {isInitialLoading || loadError ? (
+          <div className="flex flex-col items-center gap-4 text-center">
+            {loadError ? (
+              <>
+                <h3 className="text-xl font-bold">Failed to load</h3>
                 <button
-                  type="button"
-                  key={recipe.id}
-                  data-testid="browse-list-recipe-card"
-                  onClick={() => handleCardTap(recipe.id!)}
-                  className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+                  onClick={() => fetchLibraryData(1, isDiscoverableOnly)}
+                  className="text-terracotta underline"
                 >
-                  <div className="aspect-[4/3] bg-sage/10 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
-                      alt=""
-                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="p-3">
-                    <p className="line-clamp-2 text-sm font-black leading-tight text-charcoal">
-                      {recipe.name}
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-charcoal/50">
-                      {tWithVars('common.readyIn', 'READY IN {{time}}', {
-                        time: formatRecipeTime(recipe.totalTime),
-                      })}
-                    </p>
-                  </div>
+                  Try Again
                 </button>
-              ))}
-            </div>
-            <div ref={listSentinelRef} className="h-20 w-full" aria-hidden="true" />
-            {isPrefetching && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="animate-spin text-ochre" size={28} />
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-10 w-10 animate-spin text-terracotta" />
+                <p>Loading your library…</p>
               </div>
             )}
           </div>
-        )}
-
-        {!isInitialLoading && !loadError && browseViewMode === 'stack' && recipes.length > 0 && (
-          <div className="w-full max-w-sm md:max-w-xl flex-1 flex flex-col min-h-0 max-h-[82vh] md:max-h-[880px] lg:max-h-[780px] transition-all duration-500 ease-in-out">
-            <div className="relative flex-1 min-h-0">
-              <AnimatePresence mode="popLayout">
-                {showLoader ? (
-                  <div
-                    data-testid="browse-all-loader"
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <Loader2 className="animate-spin text-ochre" size={48} />
-                  </div>
-                ) : (
-                  visibleRecipes.map((recipe, i) => (
-                    <RecipeStackCard
-                      key={recipe.id}
-                      id={recipe.id!}
-                      name={recipe.name!}
-                      description={recipe.description || ''}
-                      imageUrl={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
-                      totalTime={recipe.totalTime || ''}
-                      category={recipe.category || ''}
-                      isFront={i === 0}
-                      stackIndex={i}
-                      onSwipeRight={handleSwipeRight}
-                      onSwipeLeft={handleSwipeLeft}
-                      onTap={() => handleCardTap(recipe.id!)}
-                    />
-                  ))
-                )}
-              </AnimatePresence>
+        ) : browseViewMode === 'list' ? (
+          <div
+            className="w-full h-full overflow-y-auto pb-20 pt-4"
+            data-testid="browse-list-scroll-container"
+            onScroll={handleListScroll}
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="browse-list-grid">
+              {visibleRecipes.map((r: any) => (
+                <div
+                  key={r.id}
+                  data-testid="browse-list-recipe-card"
+                  onClick={() => {
+                    const idx = recipes.findIndex((x) => x?.id === r.id);
+                    if (idx !== -1) {
+                      setCurrentIndex(idx);
+                      setBrowseViewModeOverride({
+                        memberId: selectedFamilyMemberId,
+                        mode: 'stack',
+                      });
+                    }
+                  }}
+                  className="relative aspect-[4/5] rounded-3xl bg-white border border-charcoal/5 overflow-hidden cursor-pointer"
+                >
+                  <Image
+                    src={getImageUrl(r.imageUrl)}
+                    alt={r.name ?? 'Recipe'}
+                    fill
+                    unoptimized
+                    className="object-cover"
+                  />
+                </div>
+              ))}
+              {hasMorePages && (
+                <button
+                  onClick={() => fetchLibraryData(currentPage + 1, isDiscoverableOnly, true)}
+                  className="col-span-full py-10 underline"
+                >
+                  Load More
+                </button>
+              )}
             </div>
-
-            {/* Stack Action Bar */}
-            {!isEndCard && currentRecipe && (
-              <StackActionBar
-                currentRecipe={currentRecipe}
-                currentIndex={currentIndex}
-                totalCount={totalCount}
-                onToggleIndividualCuration={handleIndividualToggleDiscoverable}
-              />
-            )}
+          </div>
+        ) : (
+          <div className="relative w-full max-w-sm aspect-[3/4] h-full flex items-center justify-center mb-12">
+            <AnimatePresence mode="popLayout">
+              {isEndCard ? (
+                <EndCard key="end-card" onSwipeLeft={handleNext} onSwipeRight={handlePrevious} />
+              ) : !recipes[currentIndex] ? (
+                <div key="loader" className="flex flex-col items-center gap-4">
+                  <Loader2 className="h-10 w-10 animate-spin text-terracotta" />
+                </div>
+              ) : (
+                visibleRecipes.map(
+                  ({ recipe, index }: any, i: number) =>
+                    recipe && (
+                      <RecipeStackCard
+                        key={recipe.id}
+                        id={recipe.id}
+                        name={recipe.name ?? ''}
+                        description={recipe.description ?? ''}
+                        imageUrl={recipe.imageUrl ?? ''}
+                        totalTime={recipe.totalTime ?? '0'}
+                        category={recipe.category ?? ''}
+                        isFront={i === 0}
+                        stackIndex={i}
+                        onSwipeLeft={handleNext}
+                        onSwipeRight={handlePrevious}
+                        onTap={() => setDetailRecipeId(recipe.id)}
+                      />
+                    )
+                )
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
-
+      {!isInitialLoading &&
+        !loadError &&
+        browseViewMode === 'stack' &&
+        !isEndCard &&
+        recipes[currentIndex] && (
+          <StackActionBar
+            currentRecipe={recipes[currentIndex]!}
+            currentIndex={currentIndex}
+            totalCount={totalCount}
+            onToggleIndividualCuration={async (id, val) => {
+              await updateRecipe(id, { isDiscoverable: val });
+              useBrowseStackStore.setState((s) => ({
+                recipes: s.recipes.map((r) => (r?.id === id ? { ...r, isDiscoverable: val } : r)),
+              }));
+            }}
+          />
+        )}
       {detailRecipeId && (
         <RecipeDetailSheet
           recipeId={detailRecipeId}
           plannerDayLabel={null}
-          onClose={handleDetailSheetClose}
-          onUseForDay={handleCookTonight}
-          onPlanForLater={handlePlanForLater}
-          onFindSimilar={(recipeId) => {
-            router.push(`/recipes?similarTo=${recipeId}`);
-          }}
+          onClose={() => setDetailRecipeId(null)}
+          onUseForDay={async () => {}}
+          onPlanForLater={async () => {}}
+          onFindSimilar={(id) => router.push(`/recipes?similarTo=${id}`)}
         />
       )}
-
-      {pendingRecovery && (
-        <SkipRecoveryDialog
-          isOpen={true}
-          step={2}
-          onClose={() => setPendingRecovery(null)}
-          onBack={() => setPendingRecovery(null)}
-          onAction={handleRecoveryAction}
-        />
-      )}
+      {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
     </div>
   );
 }

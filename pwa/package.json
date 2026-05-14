@@ -29,9 +29,9 @@
     "agent:drift": "python3 ../scripts/agent/drift.py",
     "agent:audit": "python3 ../scripts/agent/test_ops.py --audit",
     "agent:test:impact": "python3 ../scripts/agent/test_ops.py --impact",
-    "test:unit": "vitest run --passWithNoTests",
-    "test:unit:coverage": "vitest run --coverage --passWithNoTests",
-    "test:unit:watch": "vitest"
+    "test:unit": "NODE_OPTIONS=--max-old-space-size=8192 vitest run --passWithNoTests",
+    "test:unit:coverage": "NODE_OPTIONS=--max-old-space-size=8192 vitest run --coverage --passWithNoTests",
+    "test:unit:watch": "NODE_OPTIONS=--max-old-space-size=8192 vitest"
   },
   "dependencies": {
     "@microsoft/kiota-abstractions": "^1.0.0-preview.100",

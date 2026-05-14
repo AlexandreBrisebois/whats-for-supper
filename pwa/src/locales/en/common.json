@@ -345,7 +345,11 @@
     "turnOffDiscovery": "Turn off Discovery for this recipe",
     "turnOnDiscovery": "Turn on Discovery for this recipe",
     "viewOriginal": "View Original",
-    "viewSource": "View Source"
+    "viewSource": "View Source",
+    "downloaded": "Recipe file downloaded",
+    "importFailed": "Failed to import shared recipe.",
+    "shareFailed": "Failed to share recipe",
+    "shareMessage": "Check out this recipe!"
   },
   "settings": {
     "failedCaptures": "Failed Captures",
