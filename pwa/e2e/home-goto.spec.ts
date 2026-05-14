@@ -57,25 +57,17 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   });
 
   test('Confirming GOTO plans the meal', async ({ page }) => {
-    // 1. Mock GOTO setting
+    // 1. Mock active GOTO
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'ready',
           }),
         });
       }
@@ -133,26 +125,20 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
         }
       }
     );
+  });
 
-    // 2. Mock GOTO setting
+  test('Tapping GOTO on home shows loading state then redirects to planner', async ({ page }) => {
+    // 2. Mock active GOTO
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'ready',
           }),
         });
       }
@@ -203,9 +189,9 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       }
     );
 
-    // Mock family_goto setting to return 404 (no GOTO configured)
+    // Mock active GOTO to return 404 (no GOTO configured)
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 404,
@@ -233,25 +219,17 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   test('GOTO ready state shows Make This Tonight button with ghost secondary buttons', async ({
     page,
   }) => {
-    // Mock GOTO setting
+    // Mock active GOTO
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'ready',
           }),
         });
       }
@@ -321,24 +299,17 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
   test('GOTO-ready state shows "Make This Tonight" button', async ({ page }) => {
     // Mock GOTO setting with recipeId and status: 'ready'
+    // Mock active GOTO with recipeId and status: 'ready'
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'ready',
           }),
         });
       }
@@ -360,24 +331,17 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
   test('GOTO-ready state — secondary buttons are ghost/outline style', async ({ page }) => {
     // Mock GOTO setting with recipeId and status: 'ready'
+    // Mock active GOTO with recipeId and status: 'ready'
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'ready',
           }),
         });
       }
@@ -409,25 +373,17 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   // GOTO status endpoint returns 'pending' throughout — the button must appear
   // via the SSE recipe_ready event, not via the polling interval.
   test('SSE recipe_ready event makes confirm-goto-btn appear without polling', async ({ page }) => {
-    // 1. Mock GOTO setting with a known recipe ID
+    // 1. Mock active GOTO with a known recipe ID
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'pending',
           }),
         });
       }
@@ -458,25 +414,17 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   });
 
   test('Pending GOTO transitions to ready via SSE recipe_ready event', async ({ page }) => {
-    // Mock GOTO setting
+    // Mock active GOTO
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Slow GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Slow GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'pending',
           }),
         });
       }
@@ -542,25 +490,17 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
   test('"Make This Tonight" shows TonightMenuCard immediately without waiting for network', async ({
     page,
   }) => {
-    // Mock GOTO setting
+    // Mock active GOTO
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'ready',
           }),
         });
       }
@@ -606,25 +546,17 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     const monday = currentMonday();
     const today = toDateStr(monday);
 
-    // Mock GOTO setting
+    // Mock active GOTO
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'ready',
           }),
         });
       }
@@ -725,25 +657,17 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     const today = toDateStr(monday);
     let assignDone = false;
 
-    // Mock GOTO setting
+    // Mock active GOTO
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Family GOTO',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
+            description: 'Family GOTO',
+            recipeId: MOCK_IDS.RECIPE_LASAGNA,
+            status: 'ready',
           }),
         });
       }

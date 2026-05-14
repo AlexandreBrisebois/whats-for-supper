@@ -844,10 +844,51 @@ export async function setupCommonRoutes(page: Page) {
     }
   });
 
+  // GET /api/goto and PUT /api/goto
+  // Per-test in-memory store for GOTO items
+  let gotoItems: any[] = [];
+  await page.route('**/api/goto', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: gotoItems }),
+      });
+    } else if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON();
+      gotoItems = body.items || [];
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      });
+    } else {
+      await route.fallback();
+    }
+  });
+
+  // GET /api/goto/active
+  await page.route('**/api/goto/active', async (route) => {
+    const readyItem = gotoItems.find((i) => i.status === 'ready');
+    if (readyItem) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(readyItem),
+      });
+    } else {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+    }
+  });
+
   // GET /api/settings/{key} and POST /api/settings/{key}
   // Per-test in-memory store (reset each time setupCommonRoutes is called in beforeEach)
   const settingsStore: Record<string, unknown> = {
-    family_goto: null, // default: no GOTO configured
+    // family_goto is now handled via /api/goto
   };
   await page.route('**/api/settings/*', async (route) => {
     const key = new URL(route.request().url()).pathname.split('/').pop()!;

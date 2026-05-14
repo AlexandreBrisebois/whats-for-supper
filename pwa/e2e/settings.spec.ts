@@ -216,26 +216,25 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     const GOTO_DESCRIPTION = 'Slow-cooked Lasagna';
 
     // 1. Mock GOTO setting with a pending recipe
+    // 1. Mock GOTO list with a pending recipe
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto'),
       async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: GOTO_DESCRIPTION,
-                    recipeId: GOTO_RECIPE_ID,
-                  },
-                ],
-              },
-            },
-          }),
-        });
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              items: [
+                {
+                  description: GOTO_DESCRIPTION,
+                  recipeId: GOTO_RECIPE_ID,
+                  status: 'pending',
+                },
+              ],
+            }),
+          });
+        }
       }
     );
 
@@ -296,27 +295,25 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
   }) => {
     const GOTO_DESCRIPTION = 'Slow-cooked Lasagna';
 
-    // Mock GOTO setting with a recipe
+    // Mock GOTO list with a ready recipe
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto'),
       async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: GOTO_DESCRIPTION,
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
-          }),
-        });
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              items: [
+                {
+                  description: GOTO_DESCRIPTION,
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  status: 'ready',
+                },
+              ],
+            }),
+          });
+        }
       }
     );
 
@@ -401,27 +398,25 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
   test('GOTO pending state shows subtitle and description echo', async ({ page }) => {
     const GOTO_DESCRIPTION = "Grandma's Chicken Soup";
 
-    // Mock GOTO setting with a pending recipe
+    // Mock GOTO list with a pending recipe
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto'),
       async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: GOTO_DESCRIPTION,
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
-          }),
-        });
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              items: [
+                {
+                  description: GOTO_DESCRIPTION,
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  status: 'pending',
+                },
+              ],
+            }),
+          });
+        }
       }
     );
 

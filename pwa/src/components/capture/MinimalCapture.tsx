@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants/routes';
 import { normalizeGotos } from '@/lib/gotoUtils';
 import { t, tWithVars } from '@/locales';
+import type { GoToListDto, GoToItem } from '@/lib/api/generated/models/index';
 
 const PHOTO_UPLOAD_OVERLAY_DELAY_MS = 800;
 
@@ -53,7 +54,9 @@ export default function MinimalCapture({
 }: MinimalCaptureProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { saveSetting, familySettings } = useFamilyStore();
+  const familySettings = useFamilyStore((state) => state.familySettings);
+  const loadGoTo = useFamilyStore((state) => state.loadGoTo);
+  const saveGoTo = useFamilyStore((state) => state.saveGoTo);
   const {
     images,
     addImage,
@@ -113,6 +116,12 @@ export default function MinimalCapture({
   const [countdown, setCountdown] = useState<number | null>(null);
 
   const isGoto = intent === 'goto';
+
+  useEffect(() => {
+    if (isGoto) {
+      loadGoTo();
+    }
+  }, [isGoto, loadGoTo]);
 
   // Subscribe to libraryStore notifications — detect when our pending recipe becomes ready
   useEffect(() => {
@@ -190,13 +199,14 @@ export default function MinimalCapture({
       try {
         const id = await submitUrl(url);
         if (isGoto) {
-          const currentGotos = normalizeGotos(familySettings['family_goto']);
-          const newItem = {
+          const currentGotos = (familySettings['family_goto'] as GoToListDto)?.items ?? [];
+          const newItem: GoToItem = {
             description: 'Recipe from link',
             recipeId: id,
+            status: 'pending',
           };
-          await saveSetting('family_goto', {
-            items: currentGotos.concat(newItem),
+          await saveGoTo({
+            items: [...currentGotos, newItem],
           });
         }
         if (id) {
@@ -221,7 +231,7 @@ export default function MinimalCapture({
         setIsUrlCapturing(false);
       }
     },
-    [submitUrl, isGoto, saveSetting, familySettings]
+    [submitUrl, isGoto, saveGoTo, familySettings]
   );
 
   const capturedUrlRef = useRef<string | null>(null);
@@ -294,13 +304,14 @@ export default function MinimalCapture({
         if (isGoto) {
           // Use the first image's implied recipe name (we don't have a name from the photo path,
           // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
-          const currentGotos = normalizeGotos(familySettings['family_goto']);
-          const newItem = {
+          const currentGotos = (familySettings['family_goto'] as GoToListDto)?.items ?? [];
+          const newItem: GoToItem = {
             description: 'Your captured recipe',
             recipeId: id,
+            status: 'pending',
           };
-          await saveSetting('family_goto', {
-            items: currentGotos.concat(newItem),
+          await saveGoTo({
+            items: [...currentGotos, newItem],
           });
         }
         useCaptureStore.getState().addPending({ recipeId: id });
@@ -344,13 +355,14 @@ export default function MinimalCapture({
       if (id) {
         setWasDescribeCaptured(true);
         if (isGoto) {
-          const currentGotos = normalizeGotos(familySettings['family_goto']);
-          const newItem = {
+          const currentGotos = (familySettings['family_goto'] as GoToListDto)?.items ?? [];
+          const newItem: GoToItem = {
             description: describeName.trim(),
             recipeId: id,
+            status: 'pending',
           };
-          await saveSetting('family_goto', {
-            items: currentGotos.concat(newItem),
+          await saveGoTo({
+            items: [...currentGotos, newItem],
           });
         }
         useCaptureStore

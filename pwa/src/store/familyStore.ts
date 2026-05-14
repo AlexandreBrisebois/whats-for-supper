@@ -14,7 +14,7 @@ import {
   removeFamilyMemberIdCookie,
 } from '@/lib/identity/cookie';
 import { apiClient } from '@/lib/api/api-client';
-import type { GoToSettingValue } from '@/lib/api/generated/models/index';
+import type { GoToListDto, GoToItem } from '@/lib/api/generated/models/index';
 import type { FamilyMember } from '@/types/domain';
 
 interface FamilyState {
@@ -37,7 +37,10 @@ interface FamilyState {
   removeMember: (id: string) => Promise<void>;
   loadFamilyMembers: () => Promise<void>;
   loadSetting: (key: string) => Promise<unknown | null>;
-  saveSetting: (key: string, value: GoToSettingValue) => Promise<void>;
+  saveSetting: (key: string, value: any) => Promise<void>;
+  loadGoTo: () => Promise<GoToListDto | null>;
+  saveGoTo: (dto: GoToListDto) => Promise<void>;
+  loadActiveGoTo: () => Promise<GoToItem | null>;
 }
 
 export const useFamilyStore = create<FamilyState>((set, get) => ({
@@ -184,12 +187,43 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     }
   },
 
-  saveSetting: async (key: string, value: GoToSettingValue) => {
+  saveSetting: async (key: string, value: any) => {
     const response = await apiClient.api.settings.byKey(key).post({ key, value });
     // Use the echoed value from the server, fall back to what we sent.
     const saved = response?.data?.value ?? value;
     set((state) => ({
       familySettings: { ...state.familySettings, [key]: saved },
     }));
+  },
+
+  loadGoTo: async () => {
+    try {
+      const response = await apiClient.api.goto.get();
+      const value = response?.data ?? { items: [] };
+      set((state) => ({
+        familySettings: { ...state.familySettings, family_goto: value },
+      }));
+      return value;
+    } catch (err) {
+      console.error('Failed to load GOTO list:', err);
+      return null;
+    }
+  },
+
+  saveGoTo: async (dto: GoToListDto) => {
+    await apiClient.api.goto.put(dto);
+    set((state) => ({
+      familySettings: { ...state.familySettings, family_goto: dto },
+    }));
+  },
+
+  loadActiveGoTo: async () => {
+    try {
+      const response = await apiClient.api.goto.active.get();
+      return response?.data ?? null;
+    } catch (err) {
+      // 404 is normal if no ready recipes
+      return null;
+    }
   },
 }));

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { useFamilyStore } from '@/store/familyStore';
 
 const mocks = vi.hoisted(() => {
   const searchRecipes = vi.fn();
@@ -15,6 +16,9 @@ const mocks = vi.hoisted(() => {
   const purgeRecipe = vi.fn();
   const healthGet = vi.fn();
   const push = vi.fn();
+  const loadGoTo = vi.fn();
+  const saveGoTo = vi.fn();
+  const loadActiveGoTo = vi.fn();
   let searchParams = new URLSearchParams('');
   let familySettings: Record<string, unknown> = {};
 
@@ -32,6 +36,9 @@ const mocks = vi.hoisted(() => {
     purgeRecipe,
     healthGet,
     push,
+    loadGoTo,
+    saveGoTo,
+    loadActiveGoTo,
     setSearchParams: (value: string) => {
       searchParams = new URLSearchParams(value);
     },
@@ -82,12 +89,18 @@ vi.mock('@/lib/api/recipes', () => ({
 }));
 
 vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: () => ({
-    familySettings: mocks.getFamilySettings(),
-    loadSetting: (...args: unknown[]) => mocks.loadSetting(...args),
-    saveSetting: (...args: unknown[]) => mocks.saveSetting(...args),
-    selectedFamilyMemberId: 'member-1',
-  }),
+  useFamilyStore: (selector?: (state: any) => any) => {
+    const state = {
+      familySettings: mocks.getFamilySettings(),
+      loadSetting: (...args: unknown[]) => mocks.loadSetting(...args),
+      saveSetting: (...args: unknown[]) => mocks.saveSetting(...args),
+      loadGoTo: mocks.loadGoTo,
+      saveGoTo: mocks.saveGoTo,
+      loadActiveGoTo: mocks.loadActiveGoTo,
+      selectedFamilyMemberId: 'member-1',
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 vi.mock('@/lib/api/inventory', () => ({
@@ -160,6 +173,7 @@ function makeRecipeDetail(overrides: Record<string, unknown> = {}) {
     rating: 2,
     notes: 'Family favorite.',
     ingredients: ['Chicken', 'Broth', 'Carrots'],
+    isReady: true,
     ...overrides,
   };
 }
@@ -190,6 +204,12 @@ describe('RecipesPage', () => {
     mocks.getRecipe.mockResolvedValue(makeRecipeDetail());
     mocks.updateRecipe.mockResolvedValue(undefined);
     mocks.loadSetting.mockResolvedValue(null);
+    mocks.loadGoTo.mockResolvedValue({ items: [] });
+    mocks.saveGoTo.mockResolvedValue(undefined);
+    mocks.loadActiveGoTo.mockResolvedValue(null);
+    mocks.saveGoTo.mockImplementation(async (value: any) => {
+      mocks.setFamilySettings({ ...mocks.getFamilySettings(), family_goto: value });
+    });
     mocks.saveSetting.mockImplementation(async (key: string, value: unknown) => {
       mocks.setFamilySettings({ ...mocks.getFamilySettings(), [key]: value });
     });
@@ -457,14 +477,14 @@ describe('RecipesPage', () => {
     });
 
     fireEvent.click(screen.getByTestId('action-set-goto'));
-
     await waitFor(() => {
-      expect(mocks.saveSetting).toHaveBeenCalledWith('family_goto', {
+      expect(mocks.saveGoTo).toHaveBeenCalledWith({
         items: [
           {
             recipeId: '11111111-1111-1111-1111-111111111111',
             description: 'Chicken Soup',
             imageUrl: 'https://example.com/chicken-soup.jpg',
+            status: 'ready',
           },
         ],
       });
@@ -484,6 +504,7 @@ describe('RecipesPage', () => {
             recipeId: '11111111-1111-1111-1111-111111111111',
             description: 'Chicken Soup',
             imageUrl: 'https://example.com/chicken-soup.jpg',
+            status: 'ready',
           },
         ],
       },
@@ -505,7 +526,7 @@ describe('RecipesPage', () => {
 
     fireEvent.click(screen.getByTestId('action-current-goto'));
     await waitFor(() => {
-      expect(mocks.saveSetting).toHaveBeenCalledWith('family_goto', {
+      expect(mocks.saveGoTo).toHaveBeenCalledWith({
         items: [],
       });
     });

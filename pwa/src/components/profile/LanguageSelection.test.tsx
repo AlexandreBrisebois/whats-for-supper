@@ -28,10 +28,15 @@ vi.mock('@/components/common/LocaleProvider', () => ({
 // @/store/familyStore
 const mockUpdateMemberPreferences = vi.fn();
 vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: () => ({
-    selectedFamilyMemberId: 'member-123',
-    updateMemberPreferences: mockUpdateMemberPreferences,
-  }),
+  useFamilyStore: (selector?: (state: any) => any) => {
+    const state = {
+      selectedFamilyMemberId: 'member-123',
+      updateMemberPreferences: mockUpdateMemberPreferences,
+      loadGoTo: vi.fn().mockResolvedValue({ items: [] }),
+      saveGoTo: vi.fn().mockResolvedValue(undefined),
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 // ---------------------------------------------------------------------------

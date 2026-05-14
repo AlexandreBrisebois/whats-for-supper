@@ -43,12 +43,3 @@ export function isValidGoto(v: unknown): v is GotoValue {
     v != null && typeof v === 'object' && 'recipeId' in v && typeof (v as any).recipeId === 'string'
   );
 }
-
-/**
- * Picks a random GOTO from the list.
- */
-export function pickRandomGoto(gotos: GotoValue[]): GotoValue | null {
-  if (gotos.length === 0) return null;
-  const index = Math.floor(Math.random() * gotos.length);
-  return gotos[index];
-}

@@ -151,15 +151,23 @@ vi.mock('@/store/weekStore', () => ({
 }));
 
 vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: () => ({
-    loadSetting: mocks.loadSetting,
-    familySettings: {},
-  }),
+  useFamilyStore: (selector?: (state: any) => any) => {
+    const state = {
+      selectedFamilyMemberId: 'member-1',
+      loadSetting: mocks.loadSetting,
+      loadActiveGoTo: vi.fn().mockResolvedValue(null),
+      loadGoTo: vi.fn().mockResolvedValue({ items: [] }),
+      saveGoTo: vi.fn().mockResolvedValue(undefined),
+      familySettings: {},
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 vi.mock('@/store/gotoStore', () => ({
   useGotoStore: () => ({
     readyRecipeId: null,
+    isReady: vi.fn().mockReturnValue(false),
   }),
 }));
 

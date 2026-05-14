@@ -10,28 +10,39 @@ import { create } from 'zustand';
  * to replace the 5-second polling interval.
  */
 interface GotoState {
-  /** The recipeId that has been marked ready via SSE, or null if none. */
-  readyRecipeId: string | null;
+  /** Set of recipeIds that have been marked ready via SSE. */
+  readyRecipeIds: Set<string>;
 
   /**
    * Called by `useScheduleStream` when a `recipe_ready` event arrives.
-   * Sets `readyRecipeId` so any subscriber can react without polling.
+   * Adds `recipeId` to the set so any subscriber can react without polling.
    */
   markReady: (recipeId: string) => void;
+
+  /** Check if a recipe is marked as ready in this session. */
+  isReady: (recipeId: string) => boolean;
 
   /** Reset the ready state (e.g. after the user acts on it). */
   reset: () => void;
 }
 
-export const useGotoStore = create<GotoState>((set) => ({
-  readyRecipeId: null,
+export const useGotoStore = create<GotoState>((set, get) => ({
+  readyRecipeIds: new Set<string>(),
 
   markReady(recipeId: string) {
-    set({ readyRecipeId: recipeId });
+    set((state) => {
+      const next = new Set(state.readyRecipeIds);
+      next.add(recipeId);
+      return { readyRecipeIds: next };
+    });
+  },
+
+  isReady(recipeId: string) {
+    return get().readyRecipeIds.has(recipeId);
   },
 
   reset() {
-    set({ readyRecipeId: null });
+    set({ readyRecipeIds: new Set() });
   },
 }));
 

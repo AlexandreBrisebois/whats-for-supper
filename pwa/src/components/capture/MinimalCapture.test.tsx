@@ -80,14 +80,18 @@ vi.mock('@/hooks/useCapture', () => ({
   }),
 }));
 
-// Mock familyStore — saveSetting is called on GOTO path
+// Mock familyStore — saveSetting was replaced by saveGoTo
 vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: () => ({
-    saveSetting: vi.fn().mockResolvedValue(undefined),
-    familySettings: {
-      family_goto: { items: [] },
-    },
-  }),
+  useFamilyStore: (selector?: (state: any) => any) => {
+    const state = {
+      loadGoTo: vi.fn().mockResolvedValue({ items: [] }),
+      saveGoTo: vi.fn().mockResolvedValue(undefined),
+      familySettings: {
+        family_goto: { items: [] },
+      },
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 // Mock apiClient — used by handleDescribeSubmit

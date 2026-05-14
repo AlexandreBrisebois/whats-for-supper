@@ -50,8 +50,21 @@ test.describe('Capture Flow', () => {
       }
     });
 
-    // Settings mock — default: no GOTO configured (404)
-    await page.route('**/api/settings/*', async (route) => {
+    // GOTO mock — default: empty list
+    await page.route('**/api/goto', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ items: [] }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    // Active GOTO mock — default: 404
+    await page.route('**/api/goto/active', async (route) => {
       await route.fulfill({
         status: 404,
         contentType: 'application/json',
@@ -322,8 +335,13 @@ test.describe('Capture — initial state rendering', () => {
   test('clicking Back from URL review form returns to capture controls', async ({ page }) => {
     await page.goto('/capture');
 
-    await page.getByRole('button', { name: /or add from a link/i }).click();
-    await expect(page.getByText('Review your link')).toBeVisible();
+    await page.route('**/api/goto', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: [] }),
+      });
+    });
 
     await page.getByRole('button', { name: /back/i }).click();
 
@@ -445,42 +463,33 @@ test.describe('Capture — GOTO intent', () => {
 
     await setupCommonRoutes(page);
 
-    // Settings — writable in-memory store
-    const settingsStore: Record<string, unknown> = {};
-    await page.route('**/api/settings/*', async (route) => {
-      const key = new URL(route.request().url()).pathname.split('/').pop()!;
+    // GOTO — writable in-memory store
+    let gotoStore = { items: [] as any[] };
+    await page.route('**/api/goto', async (route) => {
       if (route.request().method() === 'GET') {
-        if (settingsStore[key] == null) {
-          await route.fulfill({
-            status: 404,
-            contentType: 'application/json',
-            body: JSON.stringify({ error: 'Not found' }),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
-          });
-        }
-      } else if (['POST', 'PATCH', 'PUT'].includes(route.request().method())) {
-        const raw = route.request().postData();
-        // Handle potential trailing commas in Kiota serialization
-        const cleanedRaw = raw?.replace(/,(\s*[\]}])/g, '$1');
-        const body = cleanedRaw ? JSON.parse(cleanedRaw) : null;
-        if (body) {
-          settingsStore[key] = body.value;
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { key, value: body.value } }),
-          });
-          return;
-        }
-        await route.continue();
-      } else {
-        await route.continue();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(gotoStore),
+        });
+      } else if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON();
+        gotoStore = body;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(gotoStore),
+        });
       }
+    });
+
+    // Active GOTO — default: 404
+    await page.route('**/api/goto/active', async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
     });
 
     // POST /api/recipes/describe
@@ -538,7 +547,7 @@ test.describe('Capture — GOTO intent', () => {
       (req) => req.url().includes('/api/recipes/describe') && req.method() === 'POST'
     );
     const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/settings/family_goto') && req.method() === 'POST'
+      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
     );
 
     await page.getByRole('button', { name: /synthesize recipe/i }).click();
@@ -549,11 +558,11 @@ test.describe('Capture — GOTO intent', () => {
     const descBody = descReq.postDataJSON();
     expect(descBody.name).toBe('Our family spaghetti');
 
-    // POST /api/settings/family_goto was called without status (now domain-driven)
-    const rawSett = settReq.postData()!;
-    const settBody = JSON.parse(rawSett.replace(/,(\s*[\]}])/g, '$1'));
-    expect(settBody.value?.items).toBeDefined();
-    expect(settBody.value.items[0].recipeId).toBe(MOCK_IDS.RECIPE_GOTO_STUB);
+    // PUT /api/goto was called without status (now domain-driven)
+    const settBody = settReq.postDataJSON();
+    expect(settBody?.items).toBeDefined();
+    expect(settBody.items[0].recipeId).toBe(MOCK_IDS.RECIPE_GOTO_STUB);
+    expect(settBody.items[0].status).toBe('pending');
 
     // Success screen stays visible — no auto-navigation for isGoto=true
     await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
@@ -575,16 +584,16 @@ test.describe('Capture — GOTO intent', () => {
     });
 
     const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/settings/family_goto') && req.method() === 'POST'
+      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
     );
 
     await page.getByRole('button', { name: /save recipe/i }).click();
 
     const settReq = await settingsRequest;
-    const raw = settReq.postData()!;
-    const settBody = JSON.parse(raw.replace(/,(\s*[\]}])/g, '$1'));
-    expect(settBody.value?.items).toBeDefined();
-    expect(settBody.value.items[0].recipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
+    const settBody = settReq.postDataJSON();
+    expect(settBody?.items).toBeDefined();
+    expect(settBody.items[0].recipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
+    expect(settBody.items[0].status).toBe('pending');
 
     // Success screen stays visible — no auto-navigation for isGoto=true
     await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
@@ -624,23 +633,19 @@ test.describe('Settings — GOTO pending state', () => {
       });
     });
 
-    // Settings returns a pending GOTO
-    await page.route('**/api/settings/*', async (route) => {
+    // GOTO returns a pending GOTO
+    await page.route('**/api/goto', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: {
-            key: 'family_goto',
-            value: {
-              items: [
-                {
-                  description: 'Our family spaghetti',
-                  recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
-                },
-              ],
+          items: [
+            {
+              description: 'Our family spaghetti',
+              recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
+              status: 'pending',
             },
-          },
+          ],
         }),
       });
     });

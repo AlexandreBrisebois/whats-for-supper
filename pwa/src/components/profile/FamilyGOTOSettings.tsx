@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   Loader2,
   Sparkles,
@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { useFamilyStore } from '@/store/familyStore';
 import { useGotoStore } from '@/store/gotoStore';
 import { apiClient } from '@/lib/api/api-client';
+import type { GoToListDto, GoToItem } from '@/lib/api/generated/models/index';
 import { normalizeGotos, isValidGoto, type GotoValue } from '@/lib/gotoUtils';
 
 const GOTO_KEY = 'family_goto';
@@ -24,81 +25,37 @@ const GOTO_KEY = 'family_goto';
 type RecipeStatus = 'pending' | 'ready' | null;
 
 export function FamilyGOTOSettings() {
-  const { loadSetting, saveSetting, familySettings } = useFamilyStore();
+  const familySettings = useFamilyStore((state) => state.familySettings);
+  const loadGoTo = useFamilyStore((state) => state.loadGoTo);
+  const saveGoTo = useFamilyStore((state) => state.saveGoTo);
   const [showSheet, setShowSheet] = useState(false);
-  const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>(null);
   const [showReadyFlash, setShowReadyFlash] = useState(false);
-  const prevStatusRef = useRef<RecipeStatus>(null);
-  const prevRecipeIdRef = useRef<string | null>(null);
   const [isRemovingId, setIsRemovingId] = useState<string | null>(null);
   const router = useRouter();
 
-  const currentGotos = normalizeGotos(familySettings[GOTO_KEY]);
-  // Use the most recently added or active one for status polling if needed
-  const currentGoto = currentGotos.length > 0 ? currentGotos[currentGotos.length - 1] : null;
-
-  const currentId = currentGoto?.recipeId ?? null;
-  if (currentId !== prevRecipeIdRef.current) {
-    prevRecipeIdRef.current = currentId;
-    setRecipeStatus(null);
-    // prevStatusRef is reset by its own useEffect on recipeStatus change
-  }
+  const currentGotos = useMemo(
+    () => (familySettings[GOTO_KEY] as GoToListDto)?.items ?? [],
+    [familySettings]
+  );
 
   useEffect(() => {
-    loadSetting(GOTO_KEY);
-  }, [loadSetting]);
+    loadGoTo();
+  }, [loadGoTo]);
 
-  // Seed status on mount via a single fetch — no polling
+  // Subscribe to gotoStore — when recipe_ready fires for any of our recipeIds, re-fetch the list
+  const { isReady } = useGotoStore();
   useEffect(() => {
-    if (!currentGoto?.recipeId) return;
+    const hasAnyPendingNowReady = currentGotos.some(
+      (g: GoToItem) => g.status === 'pending' && isReady(g.recipeId!)
+    );
 
-    let isMounted = true;
-
-    const fetchStatus = async () => {
-      try {
-        const response = await apiClient.api.recipes.byId(currentGoto.recipeId).status.get();
-        if (!isMounted) return;
-
-        const status = response?.data?.status as 'pending' | 'ready';
-        // Don't overwrite 'ready' — SSE may have already transitioned us while
-        // this fetch was in-flight. The SSE is authoritative.
-        setRecipeStatus((prev) => (prev === 'ready' ? 'ready' : status));
-      } catch (err) {
-        console.error('Failed to fetch recipe status:', err);
-      }
-    };
-
-    fetchStatus();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentGoto?.recipeId]);
-
-  // Subscribe to gotoStore — when recipe_ready fires for our recipeId, transition to ready
-  const readyRecipeId = useGotoStore((s) => s.readyRecipeId);
-  useEffect(() => {
-    if (!currentGoto?.recipeId) return;
-    if (readyRecipeId !== currentGoto.recipeId) return;
-
-    // Only flash if we're transitioning from pending → ready
-    const wasNotReady = prevStatusRef.current !== 'ready';
-    setRecipeStatus('ready'); // eslint-disable-line react-hooks/set-state-in-effect
-
-    if (wasNotReady) {
-      setShowReadyFlash(true);
-      const timer = setTimeout(() => setShowReadyFlash(false), 2000);
-      return () => clearTimeout(timer);
+    if (hasAnyPendingNowReady) {
+      loadGoTo().then(() => {
+        setShowReadyFlash(true);
+        setTimeout(() => setShowReadyFlash(false), 2000);
+      });
     }
-  }, [readyRecipeId, currentGoto?.recipeId]);
-
-  // Track previous status for flash detection
-  useEffect(() => {
-    prevStatusRef.current = recipeStatus;
-  }, [recipeStatus]);
-
-  const isPending = recipeStatus === 'pending';
-  const isReady = recipeStatus === 'ready';
+  }, [isReady, currentGotos, loadGoTo]);
 
   const handleDescribeIt = () => {
     setShowSheet(false);
@@ -118,8 +75,8 @@ export function FamilyGOTOSettings() {
   const handleRemove = async (recipeId: string) => {
     setIsRemovingId(recipeId);
     try {
-      const newList = currentGotos.filter((g) => g.recipeId !== recipeId);
-      await saveSetting(GOTO_KEY, { items: newList });
+      const newList = currentGotos.filter((g: GoToItem) => g.recipeId !== recipeId);
+      await saveGoTo({ items: newList });
     } catch (err) {
       console.error('Failed to remove GOTO:', err);
     } finally {
@@ -142,8 +99,8 @@ export function FamilyGOTOSettings() {
 
         {currentGotos.length > 0 ? (
           <div className="flex flex-col gap-4">
-            {currentGotos.map((goto) => {
-              const isItemPending = isPending && goto.recipeId === currentId;
+            {currentGotos.map((goto: GoToItem) => {
+              const isItemPending = goto.status === 'pending';
               const isRemoving = isRemovingId === goto.recipeId;
 
               return (
@@ -170,7 +127,7 @@ export function FamilyGOTOSettings() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleRemove(goto.recipeId)}
+                    onClick={() => handleRemove(goto.recipeId!)}
                     disabled={isRemoving}
                     className="p-2 rounded-full hover:bg-charcoal/5 text-charcoal/30 hover:text-terracotta transition-colors disabled:opacity-50"
                   >

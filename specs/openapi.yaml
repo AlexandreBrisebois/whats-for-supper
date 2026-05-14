@@ -446,8 +446,9 @@ components:
         recipeId:    { type: string, format: uuid }
         description: { type: string }
         imageUrl:    { type: [string, 'null'] }
+        status:      { type: string, enum: [pending, ready] }
 
-    GoToSettingValue:
+    GoToListDto:
       type: object
       required: [items]
       properties:
@@ -460,7 +461,10 @@ components:
       required: [key, value]
       properties:
         key:   { type: string }
-        value: { $ref: '#/components/schemas/GoToSettingValue' }
+        value:
+          type: object
+          additionalProperties: true
+          description: Opaque JSON value. Structure depends on the setting key.
 
     # --- SSE Stream Events ---
     # Base discriminated union for all SSE event payloads.
@@ -2344,13 +2348,6 @@ paths:
                 type: object
                 properties:
                   data: { $ref: '#/components/schemas/SettingsDto' }
-              example:
-                data:
-                  key: family_goto
-                  value:
-                    items:
-                      - recipeId: '660e8400-e29b-41d4-a716-446655440010'
-                        description: 'Our Family Spaghetti'
         '404':
           description: Setting not found
     post:
@@ -2370,13 +2367,55 @@ paths:
                 type: object
                 properties:
                   data: { $ref: '#/components/schemas/SettingsDto' }
-              example:
-                data:
-                  key: family_goto
-                  value:
-                    items:
-                      - recipeId: '660e8400-e29b-41d4-a716-446655440010'
-                        description: 'Our Family Spaghetti'
+
+  /api/goto:
+    get:
+      summary: Get the full family GOTO recipe list (Management)
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/GoToListDto' }
+        '404':
+          description: No GOTO list configured yet
+    put:
+      summary: Replace the family GOTO recipe list
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoToListDto' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/GoToListDto' }
+
+  /api/goto/active:
+    get:
+      summary: Get a single random READY GOTO recipe for the Home screen
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/GoToItem' }
+        '404':
+          description: No ready GOTO recipes found
 
   /api/inventory-captures:
     post:

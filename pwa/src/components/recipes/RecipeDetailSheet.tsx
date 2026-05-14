@@ -33,7 +33,7 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { ActionGearMenu } from './ActionGearMenu';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
 import { OriginalPhotosViewer } from './OriginalPhotosViewer';
-import { normalizeGotos, type GotoValue } from '@/lib/gotoUtils';
+import type { GoToListDto } from '@/lib/api/generated/models/index';
 
 const GOTO_KEY = 'family_goto';
 
@@ -79,11 +79,13 @@ export function RecipeDetailSheet({
   const [showOriginals, setShowOriginals] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
-  const { familySettings, loadSetting, saveSetting } = useFamilyStore();
+  const familySettings = useFamilyStore((state) => state.familySettings);
+  const loadGoTo = useFamilyStore((state) => state.loadGoTo);
+  const saveGoTo = useFamilyStore((state) => state.saveGoTo);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const currentGotos = normalizeGotos(familySettings[GOTO_KEY]);
-  const isCurrentGoto = !!recipe?.id && currentGotos.some((g) => g.recipeId === recipe.id);
+  const currentGotos = (familySettings[GOTO_KEY] as GoToListDto)?.items ?? [];
+  const isCurrentGoto = currentGotos.some((g) => g.recipeId === recipe?.id);
 
   useEffect(() => {
     let isActive = true;
@@ -118,8 +120,8 @@ export function RecipeDetailSheet({
   }, [recipeId]);
 
   useEffect(() => {
-    void loadSetting(GOTO_KEY);
-  }, [loadSetting]);
+    void loadGoTo();
+  }, [loadGoTo]);
 
   useEffect(() => {
     if (!recipe) return;
@@ -307,12 +309,13 @@ export function RecipeDetailSheet({
       } else {
         newList.push({
           recipeId: recipe.id,
-          description: recipe.name,
+          description: recipe.name!,
           imageUrl: recipe.imageUrl,
+          status: recipe.isReady ? 'ready' : 'pending',
         });
       }
 
-      await saveSetting(GOTO_KEY, { items: newList });
+      await saveGoTo({ items: newList });
       addToast({
         type: 'success',
         message: isRemoving

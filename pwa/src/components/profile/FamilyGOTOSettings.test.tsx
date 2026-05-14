@@ -21,14 +21,21 @@ vi.mock('framer-motion', () => ({
 }));
 
 vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: () => ({
-    loadSetting: (...args: unknown[]) => mocks.loadSetting(...args),
-    familySettings: {},
-  }),
+  useFamilyStore: (selector?: (state: any) => any) => {
+    const state = {
+      loadSetting: (...args: unknown[]) => mocks.loadSetting(...args),
+      loadGoTo: vi.fn().mockResolvedValue({ items: [] }),
+      saveGoTo: vi.fn().mockResolvedValue(undefined),
+      familySettings: {},
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 vi.mock('@/store/gotoStore', () => ({
-  useGotoStore: () => null,
+  useGotoStore: () => ({
+    isReady: vi.fn().mockReturnValue(false),
+  }),
 }));
 
 vi.mock('@/lib/api/api-client', () => ({

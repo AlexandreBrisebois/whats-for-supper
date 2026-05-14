@@ -16,7 +16,7 @@
  * [Bug A] "per-test settings handler wins over setupCommonRoutes glob (LIFO)"
  *   Expected: getByText(/your goto is being prepared/i) to be visible
  *   Actual:   Timed out — the glob handler in setupCommonRoutes intercepts
- *             GET /api/settings/family_goto and returns { data: { key: 'family_goto', value: null } }
+ *             GET /api/goto and returns { items: [] }
  *             instead of the per-test handler's stored value, so the GOTO success
  *             screen never renders correctly.
  *
@@ -50,10 +50,10 @@ const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 // Playwright resolves cross-type matchers FIFO (not LIFO), so the glob handler always wins.
 // The per-test settingsStore closure is never reached.
 //
-// EXPECTED (correct) behavior: per-test handler wins (LIFO), settingsStore stores the POSTed
-// value, and the GOTO success screen is visible.
-// ACTUAL (buggy) behavior: glob handler wins (FIFO), settingsStore is never written,
-// GET /api/settings/family_goto returns null, success screen never shows.
+// EXPECTED (correct) behavior: per-test handler wins (LIFO), gotoItems stores the PUT value,
+// and the GOTO success screen is visible.
+// ACTUAL (buggy) behavior: glob handler wins (FIFO), gotoItems is never written,
+// GET /api/goto returns empty, success screen never shows.
 // ---------------------------------------------------------------------------
 
 test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
@@ -71,38 +71,28 @@ test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
-    // Step 1: Register setupCommonRoutes — this registers '**/api/settings/*' (glob)
+    // Step 1: Register setupCommonRoutes — this registers '**/api/goto' (glob)
     await setupCommonRoutes(page);
 
-    // Step 2: Register per-test settings handler using a PREDICATE matcher (Bug Condition A)
-    // isBugConditionA: setupMatcher='**/api/settings/*' (string) AND testMatcher=function (predicate)
+    // Step 2: Register per-test GOTO handler using a PREDICATE matcher (Bug Condition A)
     // On unfixed code: Playwright resolves FIFO for cross-type matchers → glob wins → this handler never fires
-    const settingsStore: Record<string, unknown> = {};
+    let gotoItems: any[] = [];
     await page.route(
-      (url) => url.pathname.includes('/api/settings/'),
+      (url) => url.pathname.includes('/api/goto'),
       async (route) => {
-        const key = new URL(route.request().url()).pathname.split('/').pop()!;
         if (route.request().method() === 'GET') {
-          if (settingsStore[key] == null) {
-            await route.fulfill({
-              status: 404,
-              contentType: 'application/json',
-              body: JSON.stringify({ error: 'Not found' }),
-            });
-          } else {
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
-            });
-          }
-        } else {
-          const body = route.request().postDataJSON();
-          settingsStore[key] = body.value;
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { key, value: body.value } }),
+            body: JSON.stringify({ items: gotoItems }),
+          });
+        } else {
+          const body = route.request().postDataJSON();
+          gotoItems = body.items || [];
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(body),
           });
         }
       }
@@ -136,11 +126,11 @@ test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
    * completing the describe-it GOTO flow should show the success screen.
    *
    * FAILS on unfixed code because:
-   *   - The glob handler intercepts POST /api/settings/family_goto (settingsStore never written)
-   *   - The glob handler intercepts GET /api/settings/family_goto and returns { value: null }
+   *   - The glob handler intercepts PUT /api/goto (gotoItems never written)
+   *   - The glob handler intercepts GET /api/goto and returns empty list
    *   - The component cannot confirm the GOTO was saved, so the success screen may not render
    *     correctly, OR the success screen renders but the useEffect navigates away (Bug C also
-   *     present — but this test isolates Bug A by checking the handler is reached at all)
+   *     present)
    *
    * PASSES after Fix A: per-test glob handler wins via LIFO, settingsStore is written,
    * success screen is visible.
@@ -154,14 +144,14 @@ test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
     // Fill in the recipe name
     await page.getByPlaceholder(/our family spaghetti/i).fill('Our family spaghetti');
 
-    // Track the settings POST to confirm it was called
+    // Track the GOTO PUT to confirm it was called
     const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/settings/family_goto') && req.method() === 'POST'
+      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
     );
 
     await page.getByRole('button', { name: /synthesize recipe/i }).click();
 
-    // Wait for the settings POST to complete
+    // Wait for the GOTO PUT to complete
     await settingsRequest;
 
     // EXPECTED (correct): per-test handler stored the value, success screen is visible
@@ -254,32 +244,23 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
 
     await setupCommonRoutes(page);
 
-    // Per-test settings handler using GLOB matcher (not predicate) — Fix A applied here
+    // Per-test GOTO handler using GLOB matcher (not predicate) — Fix A applied here
     // This ensures Bug A does NOT interfere with Bug C's test
-    const settingsStore: Record<string, unknown> = {};
-    await page.route('**/api/settings/*', async (route) => {
-      const key = new URL(route.request().url()).pathname.split('/').pop()!;
+    let gotoItems: any[] = [];
+    await page.route('**/api/goto', async (route) => {
       if (route.request().method() === 'GET') {
-        if (settingsStore[key] == null) {
-          await route.fulfill({
-            status: 404,
-            contentType: 'application/json',
-            body: JSON.stringify({ error: 'Not found' }),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
-          });
-        }
-      } else {
-        const body = route.request().postDataJSON();
-        settingsStore[key] = body.value;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: { key, value: body.value } }),
+          body: JSON.stringify({ items: gotoItems }),
+        });
+      } else if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON();
+        gotoItems = body.items || [];
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(body),
         });
       }
     });
@@ -356,7 +337,7 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
       (req) => req.url().includes('/api/recipes/describe') && req.method() === 'POST'
     );
     const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/settings/family_goto') && req.method() === 'POST'
+      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
     );
 
     await page.getByRole('button', { name: /synthesize recipe/i }).click();
@@ -392,7 +373,7 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
     });
 
     const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/settings/family_goto') && req.method() === 'POST'
+      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
     );
 
     await page.getByRole('button', { name: /save recipe/i }).click();

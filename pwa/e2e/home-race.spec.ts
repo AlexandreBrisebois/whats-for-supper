@@ -21,25 +21,25 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
 
     // Mock family GOTO setting
     await page.route(
-      (url) => url.pathname.includes('/api/settings/family_goto'),
+      (url) => url.pathname.includes('/api/goto'),
       async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              key: 'family_goto',
-              value: {
-                items: [
-                  {
-                    description: 'Our Family Spaghetti',
-                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  },
-                ],
-              },
-            },
-          }),
-        });
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              items: [
+                {
+                  description: 'Our Family Spaghetti',
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  status: 'ready',
+                },
+              ],
+            }),
+          });
+        } else {
+          await route.fallback();
+        }
       }
     );
 

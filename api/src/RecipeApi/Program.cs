@@ -120,6 +120,7 @@ try
     builder.Services.AddScoped<GroceryRecomputeService>();
     builder.Services.AddScoped<IngredientCategoryService>();
     builder.Services.AddScoped<SettingsService>();
+    builder.Services.AddScoped<GoToService>();
     builder.Services.AddSingleton<IClock, SystemClock>();
     builder.Services.AddSingleton<CronScheduleCalculator>();
     builder.Services.AddSingleton<DemoModeOptions>();

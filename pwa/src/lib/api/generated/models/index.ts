@@ -269,13 +269,13 @@ export function createGoToItemFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {GoToSettingValue}
+ * @returns {GoToListDto}
  */
 // @ts-ignore
-export function createGoToSettingValueFromDiscriminatorValue(
+export function createGoToListDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoGoToSettingValue;
+  return deserializeIntoGoToListDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -797,6 +797,17 @@ export function createScheduleRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SettingsDto_value}
+ */
+// @ts-ignore
+export function createSettingsDto_valueFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSettingsDto_value;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {SettingsDto}
  */
 // @ts-ignore
@@ -1240,20 +1251,23 @@ export function deserializeIntoGoToItem(
     recipeId: (n) => {
       goToItem.recipeId = n.getGuidValue();
     },
+    status: (n) => {
+      goToItem.status = n.getEnumValue<GoToItem_status>(GoToItem_statusObject);
+    },
   };
 }
 /**
  * The deserialization information for the current model
- * @param GoToSettingValue The instance to deserialize into.
+ * @param GoToListDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoGoToSettingValue(
-  goToSettingValue: Partial<GoToSettingValue> | undefined = {}
+export function deserializeIntoGoToListDto(
+  goToListDto: Partial<GoToListDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     items: (n) => {
-      goToSettingValue.items = n.getCollectionOfObjectValues<GoToItem>(
+      goToListDto.items = n.getCollectionOfObjectValues<GoToItem>(
         createGoToItemFromDiscriminatorValue
       );
     },
@@ -2433,11 +2447,22 @@ export function deserializeIntoSettingsDto(
       settingsDto.key = n.getStringValue();
     },
     value: (n) => {
-      settingsDto.value = n.getObjectValue<GoToSettingValue>(
-        createGoToSettingValueFromDiscriminatorValue
+      settingsDto.value = n.getObjectValue<SettingsDto_value>(
+        createSettingsDto_valueFromDiscriminatorValue
       );
     },
   };
+}
+/**
+ * The deserialization information for the current model
+ * @param SettingsDto_value The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSettingsDto_value(
+  settingsDto_value: Partial<SettingsDto_value> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
 }
 /**
  * The deserialization information for the current model
@@ -2846,8 +2871,13 @@ export interface GoToItem extends AdditionalDataHolder, Parsable {
    * The recipeId property
    */
   recipeId?: Guid | null;
+  /**
+   * The status property
+   */
+  status?: GoToItem_status | null;
 }
-export interface GoToSettingValue extends AdditionalDataHolder, Parsable {
+export type GoToItem_status = (typeof GoToItem_statusObject)[keyof typeof GoToItem_statusObject];
+export interface GoToListDto extends AdditionalDataHolder, Parsable {
   /**
    * The items property
    */
@@ -3866,29 +3896,26 @@ export function serializeGoToItem(
   writer.writeStringValue('description', goToItem.description);
   writer.writeStringValue('imageUrl', goToItem.imageUrl);
   writer.writeGuidValue('recipeId', goToItem.recipeId);
+  writer.writeEnumValue<GoToItem_status>('status', goToItem.status);
   writer.writeAdditionalData(goToItem.additionalData);
 }
 /**
  * Serializes information the current object
- * @param GoToSettingValue The instance to serialize from.
+ * @param GoToListDto The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeGoToSettingValue(
+export function serializeGoToListDto(
   writer: SerializationWriter,
-  goToSettingValue: Partial<GoToSettingValue> | undefined | null = {},
+  goToListDto: Partial<GoToListDto> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
-  if (!goToSettingValue || isSerializingDerivedType) {
+  if (!goToListDto || isSerializingDerivedType) {
     return;
   }
-  writer.writeCollectionOfObjectValues<GoToItem>(
-    'items',
-    goToSettingValue.items,
-    serializeGoToItem
-  );
-  writer.writeAdditionalData(goToSettingValue.additionalData);
+  writer.writeCollectionOfObjectValues<GoToItem>('items', goToListDto.items, serializeGoToItem);
+  writer.writeAdditionalData(goToListDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5011,8 +5038,29 @@ export function serializeSettingsDto(
     return;
   }
   writer.writeStringValue('key', settingsDto.key);
-  writer.writeObjectValue<GoToSettingValue>('value', settingsDto.value, serializeGoToSettingValue);
+  writer.writeObjectValue<SettingsDto_value>(
+    'value',
+    settingsDto.value,
+    serializeSettingsDto_value
+  );
   writer.writeAdditionalData(settingsDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SettingsDto_value The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSettingsDto_value(
+  writer: SerializationWriter,
+  settingsDto_value: Partial<SettingsDto_value> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!settingsDto_value || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(settingsDto_value.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5351,10 +5399,14 @@ export interface SettingsDto extends AdditionalDataHolder, Parsable {
    */
   key?: string | null;
   /**
-   * The value property
+   * Opaque JSON value. Structure depends on the setting key.
    */
-  value?: GoToSettingValue | null;
+  value?: SettingsDto_value | null;
 }
+/**
+ * Opaque JSON value. Structure depends on the setting key.
+ */
+export interface SettingsDto_value extends AdditionalDataHolder, Parsable {}
 export interface SmartDefaultsDto extends AdditionalDataHolder, Parsable {
   /**
    * The consensusRecipesCount property
@@ -5610,6 +5662,10 @@ export const CaptureFailureDto_sourceTypeObject = {
 } as const;
 export const CaptureFailureDto_statusObject = {
   Failed: 'failed',
+} as const;
+export const GoToItem_statusObject = {
+  Pending: 'pending',
+  Ready: 'ready',
 } as const;
 export const ManagementTaskStatusResponse_statusObject = {
   Pending: 'Pending',

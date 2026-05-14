@@ -34,9 +34,14 @@ vi.mock('@/hooks/useCapture', () => ({
 }));
 
 vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: () => ({
-    saveSetting: vi.fn().mockResolvedValue(undefined),
-  }),
+  useFamilyStore: (selector?: (state: any) => any) => {
+    const state = {
+      saveSetting: vi.fn().mockResolvedValue(undefined),
+      loadGoTo: vi.fn().mockResolvedValue({ items: [] }),
+      saveGoTo: vi.fn().mockResolvedValue(undefined),
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 vi.mock('@/store/captureStore', () => ({

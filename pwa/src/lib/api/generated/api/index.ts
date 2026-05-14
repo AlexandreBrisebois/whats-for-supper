@@ -19,6 +19,12 @@ import {
   type FamilyRequestBuilder,
 } from './family/index';
 // @ts-ignore
+import {
+  GotoRequestBuilderNavigationMetadata,
+  GotoRequestBuilderRequestsMetadata,
+  type GotoRequestBuilder,
+} from './goto/index';
+// @ts-ignore
 import { HealthRequestBuilderRequestsMetadata, type HealthRequestBuilder } from './health/index';
 // @ts-ignore
 import {
@@ -89,6 +95,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
    */
   get family(): FamilyRequestBuilder;
   /**
+   * The goto property
+   */
+  get goto(): GotoRequestBuilder;
+  /**
    * The health property
    */
   get health(): HealthRequestBuilder;
@@ -150,6 +160,10 @@ export const ApiRequestBuilderNavigationMetadata: Record<
   family: {
     requestsMetadata: FamilyRequestBuilderRequestsMetadata,
     navigationMetadata: FamilyRequestBuilderNavigationMetadata,
+  },
+  goto: {
+    requestsMetadata: GotoRequestBuilderRequestsMetadata,
+    navigationMetadata: GotoRequestBuilderNavigationMetadata,
   },
   health: {
     requestsMetadata: HealthRequestBuilderRequestsMetadata,

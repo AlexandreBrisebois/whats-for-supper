@@ -25,9 +25,9 @@ import { useFamilyStore } from '@/store/familyStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useGotoStore } from '@/store/gotoStore';
 import { useWeekStore } from '@/store/weekStore';
-import { normalizeGotos, pickRandomGoto } from '@/lib/gotoUtils';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
+import type { GoToItem } from '@/lib/api/generated/models/index';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
@@ -63,114 +63,37 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const sessionDone = status === 2 || status === 3;
 
   // ── Family / GOTO settings ────────────────────────────────────────────────
-  const { loadSetting, familySettings } = useFamilyStore();
-  const gotoValue = familySettings['family_goto'];
+  const { loadActiveGoTo } = useFamilyStore();
+  const [activeGoto, setActiveGoto] = useState<GoToItem | null>(null);
+  const [hasCheckedActive, setHasCheckedActive] = useState(false);
 
-  // Randomly pick one GOTO from the list on load (or whenever settings change)
-  const activeGoto = useMemo(() => {
-    const list = normalizeGotos(gotoValue);
-    return pickRandomGoto(list);
-  }, [gotoValue]);
+  const { isReady } = useGotoStore();
 
   const gotoDescription = activeGoto?.description ?? null;
   const gotoRecipeId = activeGoto?.recipeId ?? null;
   const gotoImageUrl = activeGoto?.imageUrl ?? null;
+  const gotoStatus = hasCheckedActive ? (activeGoto?.status ?? null) : null;
 
-  // ── GOTO recipe status — driven by SSE recipe_ready event ─────────────────
-  // useScheduleStream calls useGotoStore.getState().markReady(recipeId) when
-  // the recipe_ready SSE event arrives. We subscribe here and fetch the recipe
-  // detail once when the ID matches, then reset the store.
-  const [gotoRecipeStatus, setGotoRecipeStatus] = useState<'pending' | 'ready' | null>(null);
-  const [gotoRecipeData, setGotoRecipeData] = useState<any>(null);
-
-  // Track previous GOTO ID to reset status during render pass (avoids cascading effect)
-  const [prevGotoId, setPrevGotoId] = useState<string | null>(gotoRecipeId);
-
-  if (gotoRecipeId !== prevGotoId) {
-    setPrevGotoId(gotoRecipeId);
-    setGotoRecipeStatus(null);
-  }
-
-  const { readyRecipeId } = useGotoStore();
-
-  // ── Priming read: check GOTO status once on mount ─────────────────────────
-  // SSE only fires recipe_ready for future transitions. If the recipe was
-  // already ready before this page load, we need a single status fetch to
-  // prime the initial state — otherwise the card shows "Checking your GOTO…"
-  // indefinitely until the next SSE event (which never comes for a ready recipe).
+  // ── Mount: load active GOTO and background sync ──────────────────────────
   useEffect(() => {
-    if (!gotoRecipeId) return;
-
-    let isMounted = true;
-
-    const checkInitialStatus = async () => {
-      try {
-        const statusRes = await apiClient.api.recipes.byId(gotoRecipeId).status.get();
-        if (!isMounted) return;
-        const status = statusRes?.data?.status;
-        if (status === 'ready') {
-          const recipeRes = await apiClient.api.recipes.byId(gotoRecipeId).get();
-          if (!isMounted) return;
-          if (recipeRes?.recipe) {
-            setGotoRecipeData(recipeRes.recipe);
-          }
-          setGotoRecipeStatus('ready');
-        } else if (status === 'pending') {
-          setGotoRecipeStatus('pending');
-          // SSE recipe_ready will drive the transition when synthesis completes
-        }
-      } catch {
-        // Status check failed — leave as null (isFetching state), SSE will recover
-      }
-    };
-
-    checkInitialStatus();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [gotoRecipeId]);
-
-  // ── SSE-driven transition: recipe_ready event ─────────────────────────────
-  // Fires when synthesis completes after this page was already loaded.
-  // Fetches recipe detail and transitions from pending → ready.
-  useEffect(() => {
-    if (!gotoRecipeId || readyRecipeId !== gotoRecipeId) return;
-
-    let isMounted = true;
-
-    const fetchReadyRecipe = async () => {
-      try {
-        const recipeRes = await apiClient.api.recipes.byId(gotoRecipeId).get();
-        if (!isMounted) return;
-        if (recipeRes?.recipe) {
-          setGotoRecipeData(recipeRes.recipe);
-        }
-        setGotoRecipeStatus('ready');
-      } catch (err) {
-        console.error('Failed to fetch GOTO recipe detail after recipe_ready:', err);
-        setGotoRecipeStatus('ready');
-      }
-    };
-
-    fetchReadyRecipe();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [gotoRecipeId, readyRecipeId]);
-
-  // ── Mount: load settings and background sync ─────────────────────────────
-  // NOTE: init() is intentionally NOT called here (BS-1 fix).
-  // TodayStoreInitializer (rendered by the home page server component) is the
-  // sole initialiser. Calling init() here would create a dual-init race.
-  useEffect(() => {
-    loadSetting('family_goto');
+    loadActiveGoTo().then((item) => {
+      setActiveGoto(item);
+      setHasCheckedActive(true);
+    });
 
     // Background sync — non-blocking; reconciles stale SSR data
     sync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── SSE-driven transition: recipe_ready event ─────────────────────────────
+  // Fires when synthesis completes after this page was already loaded.
+  // Re-fetches the active GOTO to transition from pending → ready.
+  useEffect(() => {
+    if (activeGoto?.recipeId && activeGoto.status === 'pending' && isReady(activeGoto.recipeId)) {
+      loadActiveGoTo().then(setActiveGoto);
+    }
+  }, [activeGoto, isReady, loadActiveGoTo]);
 
   // ── Reset cookedDismissed when no longer cooked ───────────────────────────
   // Note: cookedDismissed is only visually meaningful when isCooked is true.
@@ -371,16 +294,16 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         <>
           {!currentRecipe && !isSkipped && !sessionDone && !isCooked && (
             <TonightPivotCard
-              gotoDescription={gotoRecipeData?.name ?? gotoDescription}
+              gotoDescription={gotoDescription}
               gotoRecipeId={gotoRecipeId}
-              gotoImageUrl={gotoRecipeData?.imageUrl ?? gotoImageUrl}
-              gotoStatus={gotoRecipeStatus}
+              gotoImageUrl={gotoImageUrl}
+              gotoStatus={gotoStatus}
               onConfirmGoto={() => {
                 if (gotoRecipeId) {
                   assignRecipe({
                     id: gotoRecipeId,
-                    name: gotoRecipeData?.name ?? gotoDescription ?? null,
-                    image: gotoRecipeData?.imageUrl ?? gotoImageUrl ?? '',
+                    name: gotoDescription || null,
+                    image: gotoImageUrl || '',
                   });
                 } else {
                   setRecoveryFlow({ kind: 'quick_find', intent: null });
