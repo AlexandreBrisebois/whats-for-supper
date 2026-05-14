@@ -85,7 +85,9 @@ export default function RecipesPage() {
   const [prevOpenIdFromUrl, setPrevOpenIdFromUrl] = useState<string | null>(() =>
     searchParams.get('open')
   );
-  const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(null);
+  const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(() =>
+    searchParams.get('similarTo')
+  );
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
   const [limit, setLimit] = useState(INITIAL_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -193,7 +195,7 @@ export default function RecipesPage() {
           limit: INITIAL_LIMIT,
           weekOffset: parsedWeekOffset,
           dayIndex: parsedDayIndex,
-          similarToRecipeId: undefined,
+          similarToRecipeId: similarToRecipeId ?? undefined,
         });
 
         if (!isActive) return;

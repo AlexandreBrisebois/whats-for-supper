@@ -767,8 +767,8 @@ export default function BrowseAllStackPage() {
           onClose={handleDetailSheetClose}
           onUseForDay={handleCookTonight}
           onPlanForLater={handlePlanForLater}
-          onFindSimilar={() => {
-            handleDetailSheetClose();
+          onFindSimilar={(recipeId) => {
+            router.push(`/recipes?similarTo=${recipeId}`);
           }}
         />
       )}

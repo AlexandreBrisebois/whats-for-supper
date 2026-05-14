@@ -1145,4 +1145,19 @@ describe('RecipesPage', () => {
     expect(textarea).toHaveFocus();
     expect(mocks.searchRecipes.mock.calls.length).toBe(callsBefore);
   });
+  it('fires recipe search on mount with similarToRecipeId if provided in search params', async () => {
+    mocks.setSearchParams('similarTo=recipe-123');
+
+    await act(async () => {
+      render(<RecipesPage />);
+    });
+
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenCalledWith(
+        expect.objectContaining({
+          similarToRecipeId: 'recipe-123',
+        })
+      );
+    });
+  });
 });
