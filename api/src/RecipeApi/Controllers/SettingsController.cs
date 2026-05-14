@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Dto;
 using RecipeApi.Services;
@@ -21,9 +22,12 @@ public class SettingsController(SettingsService settingsService) : ControllerBas
     }
 
     [HttpPost("{settingsKey}")]
-    public async Task<IActionResult> UpsertSetting([FromRoute] string settingsKey, [FromBody] SettingsDto dto)
+    public async Task<IActionResult> UpsertSetting([FromRoute] string settingsKey, [FromBody] JsonElement body)
     {
-        var saved = await _settingsService.UpsertSettingAsync(settingsKey, dto.Value);
+        // Extract "value" from the body if present, otherwise use the whole body
+        var value = body.ValueKind == JsonValueKind.Object && body.TryGetProperty("value", out var v) ? v : body;
+
+        var saved = await _settingsService.UpsertSettingAsync(settingsKey, value);
         return Ok(new { data = new SettingsDto(saved.Key, saved.Value) });
     }
 }

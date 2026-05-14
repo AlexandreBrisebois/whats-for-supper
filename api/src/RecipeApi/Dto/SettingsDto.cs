@@ -13,6 +13,7 @@ public class SettingsDto
 
     public SettingsDto() { }
 
+    [JsonConstructor]
     public SettingsDto(string key, JsonElement value)
     {
         Key = key;

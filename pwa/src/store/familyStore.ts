@@ -164,7 +164,9 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
       // Kiota puts arbitrary JSON fields into additionalData if the schema is empty.
       // We merge them with the value itself as a fallback.
       const valueObj = response?.data?.value as any;
-      const value = valueObj?.additionalData ?? (valueObj && Object.keys(valueObj).length > 0 ? valueObj : null);
+      const value =
+        valueObj?.additionalData ??
+        (valueObj && Object.keys(valueObj).length > 0 ? valueObj : null);
       set((state) => ({
         familySettings: { ...state.familySettings, [key]: value },
       }));
