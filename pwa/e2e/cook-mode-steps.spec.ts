@@ -198,7 +198,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
                 consensusRecipesCount: 0,
                 isVotingOpen: false,
               },
-          }),
+            }),
           });
           return;
         }

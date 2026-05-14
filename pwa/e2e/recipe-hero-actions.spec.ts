@@ -43,7 +43,7 @@ test.describe('Recipe Hero Actions', () => {
             searchMode: 'standard',
             resultPath: 'lexical-only',
           },
-          }),
+        }),
       });
     });
 

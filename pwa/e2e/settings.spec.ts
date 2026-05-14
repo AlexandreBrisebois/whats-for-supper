@@ -58,7 +58,7 @@ test.describe('Settings — Failed Captures section', () => {
               },
             ],
           },
-          }),
+        }),
       });
     });
 
@@ -96,7 +96,7 @@ test.describe('Settings — Failed Captures section', () => {
               },
             ],
           },
-          }),
+        }),
       });
     });
 
@@ -137,7 +137,7 @@ test.describe('Settings — Failed Captures section', () => {
               },
             ],
           },
-          }),
+        }),
       });
     });
 
@@ -226,10 +226,12 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
             data: {
               key: 'family_goto',
               value: {
-                items: [{
-                  description: GOTO_DESCRIPTION,
-                  recipeId: GOTO_RECIPE_ID,
-                }],
+                items: [
+                  {
+                    description: GOTO_DESCRIPTION,
+                    recipeId: GOTO_RECIPE_ID,
+                  },
+                ],
               },
             },
           }),
@@ -305,10 +307,12 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
             data: {
               key: 'family_goto',
               value: {
-                items: [{
-                  description: GOTO_DESCRIPTION,
-                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                }],
+                items: [
+                  {
+                    description: GOTO_DESCRIPTION,
+                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  },
+                ],
               },
             },
           }),
@@ -408,10 +412,12 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
             data: {
               key: 'family_goto',
               value: {
-                items: [{
-                  description: GOTO_DESCRIPTION,
-                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                }],
+                items: [
+                  {
+                    description: GOTO_DESCRIPTION,
+                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  },
+                ],
               },
             },
           }),
@@ -456,7 +462,7 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
                 id: MOCK_IDS.MEMBER_JORDAN,
                 name: renamedMember,
               },
-          }),
+            }),
           });
           return;
         }

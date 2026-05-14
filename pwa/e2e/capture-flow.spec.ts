@@ -633,13 +633,15 @@ test.describe('Settings — GOTO pending state', () => {
           data: {
             key: 'family_goto',
             value: {
-              items: [{
-                description: 'Our family spaghetti',
-                recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
-              }],
+              items: [
+                {
+                  description: 'Our family spaghetti',
+                  recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
+                },
+              ],
             },
           },
-          }),
+        }),
       });
     });
 
@@ -652,7 +654,7 @@ test.describe('Settings — GOTO pending state', () => {
             id: MOCK_IDS.RECIPE_GOTO_STUB,
             status: 'pending',
           },
-          }),
+        }),
       });
     });
 

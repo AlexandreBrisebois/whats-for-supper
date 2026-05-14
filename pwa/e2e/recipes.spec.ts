@@ -346,7 +346,7 @@ test.describe('Recipes Search Page', () => {
             searchMode: 'standard',
             resultPath: 'lexical-only',
           },
-          }),
+        }),
       });
     });
 
@@ -379,7 +379,7 @@ test.describe('Recipes Search Page', () => {
             searchMode: 'standard',
             resultPath: 'lexical-only',
           },
-          }),
+        }),
       });
     });
 
@@ -430,7 +430,7 @@ test.describe('Recipes Search Page', () => {
             searchMode: similarId ? 'similar' : 'standard',
             resultPath: 'lexical-only',
           },
-          }),
+        }),
       });
     });
 
@@ -477,7 +477,7 @@ test.describe('Recipes Search Page', () => {
             searchMode: 'agent',
             resultPath: 'lexical-only',
           },
-          }),
+        }),
       });
     });
 
@@ -549,7 +549,7 @@ test.describe('Recipes Search Page', () => {
             searchMode: 'pantry-assisted',
             resultPath: 'lexical-only',
           },
-          }),
+        }),
       });
     });
 

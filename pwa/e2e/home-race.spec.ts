@@ -30,10 +30,12 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
             data: {
               key: 'family_goto',
               value: {
-                items: [{
-                  description: 'Our Family Spaghetti',
-                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                }],
+                items: [
+                  {
+                    description: 'Our Family Spaghetti',
+                    recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  },
+                ],
               },
             },
           }),
@@ -79,7 +81,7 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
                 weekOffset: 0,
                 days: [],
               },
-          }),
+            }),
           });
         } else {
           await route.continue();

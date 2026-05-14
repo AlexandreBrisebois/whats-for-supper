@@ -59,7 +59,7 @@ test.describe('Recipe Original Viewer', () => {
             searchMode: 'standard',
             resultPath: 'lexical-only',
           },
-          }),
+        }),
       });
     });
 

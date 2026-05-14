@@ -131,7 +131,7 @@ async function setupPlanner(page: Page, locked = false) {
             status: isLocked ? 2 : 0,
             days: isLocked ? buildLockedDays() : draftDays,
           },
-          }),
+        }),
       });
     }
   );
@@ -256,7 +256,7 @@ test.describe('Planner — Ordered-In State', () => {
                 openSlots: [],
                 consensusRecipesCount: 0,
               },
-          }),
+            }),
           });
           return;
         }
@@ -314,7 +314,7 @@ test.describe('Planner — Voting Flow', () => {
                 consensusRecipesCount: 0,
                 isVotingOpen: true,
               },
-          }),
+            }),
           });
           return;
         }
@@ -422,7 +422,7 @@ test.describe('Planner — SSE Live Updates', () => {
                 consensusRecipesCount: 0,
                 isVotingOpen: false,
               },
-          }),
+            }),
           });
           return;
         }
