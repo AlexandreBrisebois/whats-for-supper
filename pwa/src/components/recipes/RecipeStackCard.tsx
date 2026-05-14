@@ -12,7 +12,6 @@ import {
 import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // RecipeStackCard
@@ -200,9 +199,8 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
                   scale: nextScale,
                 }}
                 data-testid="stack-swipe-next-indicator"
-                className="flex flex-col items-center gap-2 rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
               >
-                <ChevronLeft size={48} />
                 <span className="text-xl font-black tracking-widest">
                   {t('buttons.back', 'BACK')}
                 </span>
@@ -215,9 +213,8 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
                   scale: backScale,
                 }}
                 data-testid="stack-swipe-back-indicator"
-                className="flex flex-col items-center gap-2 rounded-full bg-sage/30 p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center rounded-full bg-sage/30 p-8 text-white backdrop-blur-md shadow-2xl"
               >
-                <ChevronRight size={48} />
                 <span className="text-xl font-black tracking-widest">
                   {t('buttons.next', 'NEXT')}
                 </span>
@@ -228,11 +225,19 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         </div>
 
-        <div className="flex-1 p-8 flex flex-col justify-between">
-          <h2 className="text-2xl font-bold tracking-tight font-heading mb-4 leading-tight">
+        <div className="flex-1 p-8 flex flex-col min-h-0">
+          <h2 className="text-2xl font-bold tracking-tight font-heading mb-3 leading-tight shrink-0">
             {name}
           </h2>
-          <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
+
+          <div className="flex-1 relative overflow-hidden min-h-0 mb-4">
+            <p className="text-charcoal/60 text-sm leading-relaxed">{description}</p>
+            {description && (
+              <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+            )}
+          </div>
+
+          <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-4 shrink-0">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
               {tWithVars('common.readyIn', 'READY IN {{time}}', {
                 time: formatRecipeTime(totalTime),

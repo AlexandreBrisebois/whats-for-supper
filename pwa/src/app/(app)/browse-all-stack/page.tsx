@@ -560,12 +560,12 @@ export default function BrowseAllStackPage() {
           data-testid="browse-all-exit"
           aria-label="Close browse overlay"
           onClick={handleExit}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
         >
           <X size={20} />
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm backdrop-blur-sm">
             <button
               type="button"
@@ -596,11 +596,11 @@ export default function BrowseAllStackPage() {
           <button
             onClick={handleGlobalToggleDiscoverable}
             data-testid="stack-toggle-discoverable"
-            className={`flex h-11 items-center gap-2 rounded-full px-4 transition-all duration-300 border ${
+            className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all duration-300 border ${
               isDiscoverableOnly
                 ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
                 : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
-            } backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2`}
+            } backdrop-blur-sm focus:outline-none`}
             aria-label={
               isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
             }
@@ -614,13 +614,13 @@ export default function BrowseAllStackPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             data-testid="recycle-bin-entry"
             aria-label="Recycle bin"
             onClick={() => setIsTrashOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
           >
             <Recycle size={20} />
           </button>
@@ -629,7 +629,7 @@ export default function BrowseAllStackPage() {
             data-testid="browse-all-search-trigger"
             aria-label="Search recipes"
             onClick={handleSearchEscape}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
           >
             <Search size={20} />
           </button>

@@ -44,7 +44,7 @@ export default function PlannerPage() {
   const router = useRouter();
   const { currentWeekOffset, activeTab, setWeekOffset, setActiveTab, setGroceryState } =
     usePlannerStore();
-// const balanceSummary = useWeekStore((s) => s.balanceSummary);
+  // const balanceSummary = useWeekStore((s) => s.balanceSummary);
   const schedule = useWeekStore((s) => s.schedule);
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
@@ -552,7 +552,7 @@ export default function PlannerPage() {
                 )}
               </div>
 
-{/* <div className="mb-4 opacity-90">
+              {/* <div className="mb-4 opacity-90">
   <BalanceIndicator summary={balanceSummary} className="mb-0" />
 </div> */}
 
