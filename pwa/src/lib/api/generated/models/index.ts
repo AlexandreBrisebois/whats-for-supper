@@ -1654,6 +1654,9 @@ export function deserializeIntoRecipeDto(
     isHealthyChoice: (n) => {
       recipeDto.isHealthyChoice = n.getBooleanValue();
     },
+    isReady: (n) => {
+      recipeDto.isReady = n.getBooleanValue();
+    },
     isVegetarian: (n) => {
       recipeDto.isVegetarian = n.getBooleanValue();
     },
@@ -3111,6 +3114,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   isHealthyChoice?: boolean | null;
   /**
+   * The isReady property
+   */
+  isReady?: boolean | null;
+  /**
    * The isVegetarian property
    */
   isVegetarian?: boolean | null;
@@ -4178,6 +4185,7 @@ export function serializeRecipeDto(
   writer.writeCollectionOfPrimitiveValues<string>('ingredients', recipeDto.ingredients);
   writer.writeBooleanValue('isDiscoverable', recipeDto.isDiscoverable);
   writer.writeBooleanValue('isHealthyChoice', recipeDto.isHealthyChoice);
+  writer.writeBooleanValue('isReady', recipeDto.isReady);
   writer.writeBooleanValue('isVegetarian', recipeDto.isVegetarian);
   writer.writeStringValue('name', recipeDto.name);
   writer.writeStringValue('notes', recipeDto.notes);

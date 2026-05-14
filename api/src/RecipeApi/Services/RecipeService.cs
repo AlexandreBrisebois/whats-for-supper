@@ -530,7 +530,8 @@ public class RecipeService(
             SourceType = sourceType,
             CanReimport = sourceType != "synthesized",
             ImageCount = r.ImageCount,
-            FinishedDishIndex = r.FinishedDishIndex
+            FinishedDishIndex = r.FinishedDishIndex,
+            IsReady = r.IsReady
         };
     }
 

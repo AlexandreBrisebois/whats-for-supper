@@ -47,9 +47,10 @@ components:
     # --- Recipes ---
     RecipeDto:
       type: object
-      required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount, finishedDishIndex]
+      required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount, finishedDishIndex, isReady]
       properties:
         id: { type: string, format: uuid }
+        isReady: { type: boolean }
         name: { type: [string, 'null'] }
         description: { type: [string, 'null'] }
         imageUrl: { type: [string, 'null'], example: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }

@@ -29,6 +29,7 @@ export interface Recipe {
   imageCount: number;
   finishedDishIndex: number;
   sourceUrl?: string | null;
+  isReady: boolean;
 }
 
 export type RecommendationResult = {
@@ -125,6 +126,7 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     imageCount: dto.imageCount || 0,
     finishedDishIndex: dto.finishedDishIndex ?? -1,
     sourceUrl: dto.sourceUrl ?? null,
+    isReady: dto.isReady ?? false,
   };
 }
 

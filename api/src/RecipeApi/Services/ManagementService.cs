@@ -771,6 +771,7 @@ public class ManagementService(
                             TotalTime = info.TotalTime,
                             LastCookedDate = info.LastCookedDate,
                             SourceUrl = info.SourceUrl,
+                            IsReady = true,
                             DietaryProfile = info.DietaryProfile != null
                                 ? JsonSerializer.Serialize(info.DietaryProfile, JsonDefaults.CamelCase)
                                 : null

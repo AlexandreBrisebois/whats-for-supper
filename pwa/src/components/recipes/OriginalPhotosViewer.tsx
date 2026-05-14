@@ -50,6 +50,30 @@ export function OriginalPhotosViewer({
     setScale((prev) => (prev === 1 ? 2.5 : 1));
   }, []);
 
+  const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2) {
+        const distance = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+
+        if (lastPinchDistance !== null) {
+          const delta = distance / lastPinchDistance;
+          setScale((prev) => Math.min(Math.max(1, prev * delta), 5));
+        }
+        setLastPinchDistance(distance);
+      }
+    },
+    [lastPinchDistance]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    setLastPinchDistance(null);
+  }, []);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -88,7 +112,11 @@ export function OriginalPhotosViewer({
       </div>
 
       {/* Main Viewer Area */}
-      <div className="relative flex-1 overflow-hidden touch-none">
+      <div
+        className="relative flex-1 overflow-hidden touch-none"
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
             key={currentIndex}
@@ -117,18 +145,28 @@ export function OriginalPhotosViewer({
             className="absolute inset-0 flex items-center justify-center p-4"
           >
             <motion.div
+              drag={scale > 1}
+              dragConstraints={{ left: -500, right: 500, top: -500, bottom: 500 }}
+              dragElastic={0.1}
+              dragMomentum={false}
               animate={{ scale }}
               transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-              className="relative h-full w-full max-w-4xl"
+              className="relative h-full w-full max-w-4xl flex items-center justify-center"
               style={{ cursor: scale > 1 ? 'move' : 'zoom-in' }}
-              onClick={() => scale === 1 && toggleZoom()}
+              onClick={() => {
+                if (scale === 1) {
+                  toggleZoom();
+                } else {
+                  setScale(1);
+                }
+              }}
             >
               {/* Using native img here because we want raw original aspect ratio and easy zoom control */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl}
                 alt={`Recipe photo ${currentIndex + 1}`}
-                className="h-full w-full object-contain select-none"
+                className="max-h-full max-w-full object-contain select-none pointer-events-none"
                 draggable={false}
               />
             </motion.div>
