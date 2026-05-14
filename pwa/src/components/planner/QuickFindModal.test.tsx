@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, act, waitFor } from '@testing-library/react';
+import { render, act, waitFor, screen } from '@testing-library/react';
+import React from 'react';
 
 // ── Store mock ────────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ vi.mock('@/store/discoveryStore', () => ({
 
 const mockGetFillTheGap = vi
   .fn()
-  .mockResolvedValue([{ id: 'r1', name: 'Pasta', image: '', description: '' }]);
+  .mockResolvedValue([{ id: 'r1', name: 'Pasta', image: '', description: '', time: 'PT20M' }]);
 
 vi.mock('@/lib/api/planner', () => ({
   getFillTheGap: (...args: unknown[]) => mockGetFillTheGap(...args),
@@ -43,9 +44,11 @@ vi.mock('next/image', () => ({
 
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...props}>{children}</div>
-    ),
+    div: ({ children, ...props }: any) => {
+      // Strip framer-motion props
+      const { initial, animate, exit, transition, ...rest } = props;
+      return <div {...rest}>{children}</div>;
+    },
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -89,7 +92,9 @@ function renderModal() {
 beforeEach(() => {
   mockFillTheGapVersion = 0;
   mockGetFillTheGap.mockClear();
-  mockGetFillTheGap.mockResolvedValue([{ id: 'r1', name: 'Pasta', image: '', description: '' }]);
+  mockGetFillTheGap.mockResolvedValue([
+    { id: 'r1', name: 'Pasta', image: '', description: '', time: 'PT20M' },
+  ]);
 });
 
 describe('QuickFindModal — initial fetch', () => {
@@ -100,6 +105,13 @@ describe('QuickFindModal — initial fetch', () => {
       expect(mockGetFillTheGap).toHaveBeenCalledTimes(1);
     });
     expect(mockGetFillTheGap).toHaveBeenCalledWith(0);
+  });
+
+  it('renders standardized time display', async () => {
+    renderModal();
+    await waitFor(() => {
+      expect(screen.getByText(/READY IN 20 MINS/i)).toBeTruthy();
+    });
   });
 });
 

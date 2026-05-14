@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getImageUrl } from '@/lib/imageUtils';
-import { t } from '@/locales';
+import { t, tWithVars } from '@/locales';
+import { formatRecipeTime } from '@/lib/duration';
 
 // ---------------------------------------------------------------------------
 // TonightCardBase — shared Solar Earth card shell used by TonightMenuCard and
@@ -77,7 +78,9 @@ export function TonightMenuCard({
             </h2>
             {prepTime && (
               <span className="text-[10px] font-black text-terracotta bg-terracotta/10 px-3 py-1 rounded-full uppercase tracking-widest">
-                {prepTime}
+                {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                  time: formatRecipeTime(prepTime),
+                })}
               </span>
             )}
           </div>

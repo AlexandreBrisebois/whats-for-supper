@@ -18,6 +18,7 @@ vi.mock('next/link', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
+  tWithVars: (_key: string, fallback: string) => fallback,
 }));
 
 vi.mock('@/lib/imageUtils', () => ({

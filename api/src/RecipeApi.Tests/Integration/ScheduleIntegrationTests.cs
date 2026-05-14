@@ -996,7 +996,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             p => p.PublishRecipeReadyAsync(
                 recipeId,
                 "Spaghetti Carbonara",
-                $"/api/recipes/{recipeId}/image/0"),
+                $"/api/recipes/{recipeId}/hero"),
             Times.Once);
     }
 

@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { getImageUrl } from '@/lib/imageUtils';
 import { useDiscoveryStore } from '@/store/discoveryStore';
+import { t, tWithVars } from '@/locales';
+import { formatRecipeTime } from '@/lib/duration';
 
 interface QuickFindModalProps {
   onClose: () => void;
@@ -179,7 +181,9 @@ export function QuickFindModal({
                           </h4>
                           <div className="flex items-center space-x-2">
                             <span className="text-white text-[10px] font-black uppercase tracking-widest bg-ochre px-3 py-1.5 rounded-full shadow-lg">
-                              Ready in 25 mins
+                              {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                                time: formatRecipeTime(currentRecipe.time || currentRecipe.prepTime || currentRecipe.totalTime),
+                              })}
                             </span>
                           </div>
                         </div>

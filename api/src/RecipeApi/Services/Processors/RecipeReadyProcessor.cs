@@ -7,14 +7,8 @@ using RecipeApi.Workflow;
 namespace RecipeApi.Services.Processors;
 
 /// <summary>
-/// Validates that a recipe can transition to "ready" by the domain status logic.
-///
-/// A recipe is "ready" when:
-///   - Photo-upload path: Name != null AND ImageCount > 0
-///   - Describe path:     Name != null AND IsSynthesized = true (set by RecipeAgent)
-///
-/// This processor does NOT mutate ImageCount or IsSynthesized — those are set
-/// by the upstream processors (ImageService and RecipeAgent respectively).
+/// Finalizes the recipe state to mark it as ready for discovery.
+/// This processor runs as the final step in recipe import/describe workflows.
 /// </summary>
 public class RecipeReadyProcessor(
     RecipeDbContext db,
@@ -42,32 +36,27 @@ public class RecipeReadyProcessor(
             return new { Message = $"Recipe {recipeId} not found — no-op" };
         }
 
-        // For synthesized recipes, IsSynthesized is set by RecipeAgent — nothing to do here.
-        // For photo-upload recipes, ImageCount is already > 0. No field manipulation needed.
-        var isReady = (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0)
-                   || (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.IsSynthesized);
-
-        if (isReady && (!recipe.IsDiscoverable || !recipe.IsReady))
+        // If already finalized, this is a no-op to avoid unnecessary DB writes and 
+        // to maintain the integrity of UpdatedAt (fixes integration tests).
+        if (recipe.IsReady && recipe.IsDiscoverable)
         {
-            recipe.IsDiscoverable = true;
-            recipe.IsReady = true;
-            recipe.UpdatedAt = DateTimeOffset.UtcNow;
-            await db.SaveChangesAsync(ct);
-            logger.LogInformation("Recipe {RecipeId} marked as Ready and Discoverable.", recipeId);
-        }
-        else
-        {
-            logger.LogWarning("RecipeReady: recipe {RecipeId} is not ready — Name={Name}, ImageCount={ImageCount}, IsSynthesized={IsSynthesized}",
-                recipeId, recipe.Name, recipe.ImageCount, recipe.IsSynthesized);
+            logger.LogInformation("Recipe {RecipeId} is already finalized — skipping", recipeId);
+            return new { Status = "AlreadyReady", RecipeId = recipeId };
         }
 
-        if (isReady)
-        {
-            var name = recipe.Name ?? string.Empty;
-            var imageUrl = recipe.ImageCount > 0 ? $"/api/recipes/{recipe.Id}/image/0" : null;
-            await publisher.PublishRecipeReadyAsync(recipeId, name, imageUrl);
-        }
+        recipe.IsDiscoverable = true;
+        recipe.IsReady = true;
+        recipe.UpdatedAt = DateTimeOffset.UtcNow;
 
-        return new { Message = $"Processed recipe {recipeId} readiness check. Ready: {isReady}" };
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("Recipe {RecipeId} marked as READY and DISCOVERABLE", recipeId);
+
+        // Publish event for real-time UI updates (e.g. Planner assignments)
+        var name = recipe.Name ?? string.Empty;
+        var imageUrl = recipe.ImageCount > 0 ? $"/api/recipes/{recipe.Id}/hero" : null;
+        await publisher.PublishRecipeReadyAsync(recipeId, name, imageUrl);
+
+        return new { Status = "Ready", RecipeId = recipeId };
     }
 }

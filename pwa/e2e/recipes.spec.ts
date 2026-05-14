@@ -6,7 +6,7 @@ const MOCK_SEARCH_RESULTS = {
     id: MOCK_IDS.RECIPE_LASAGNA,
     name: 'Homemade Lasagna',
     imageUrl: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
-    totalTime: '45 min',
+    totalTime: 'PT45M',
     rating: 3,
     isDiscoverable: true,
     notes: null,
@@ -18,7 +18,7 @@ const MOCK_SEARCH_RESULTS = {
       id: MOCK_IDS.RECIPE_STIR_FRY,
       name: 'Chicken Stir Fry',
       imageUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae',
-      totalTime: '20 min',
+      totalTime: 'PT20M',
       rating: 2,
       isDiscoverable: true,
       notes: null,
@@ -29,7 +29,7 @@ const MOCK_SEARCH_RESULTS = {
       id: MOCK_IDS.RECIPE_TACOS,
       name: 'Beef Tacos',
       imageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47',
-      totalTime: '25 min',
+      totalTime: 'PT25M',
       rating: 2,
       isDiscoverable: true,
       notes: null,
@@ -44,7 +44,7 @@ const MOCK_DETAIL_RECIPE = builders.recipe({
   name: 'Homemade Lasagna',
   description: 'Layered comfort food for the whole family.',
   imageUrl: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
-  totalTime: '45 min',
+  totalTime: 'PT45M',
   rating: 3,
   notes: 'Family favorite on rainy nights.',
   ingredients: ['Pasta', 'Tomato', 'Cheese'],
@@ -150,8 +150,12 @@ test.describe('Recipes Search Page', () => {
 
     await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
     await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/Homemade Lasagna/i);
+    await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/READY IN 45 MINS/i);
 
     await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toBeVisible();
+    await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toContainText(
+      /READY IN 20 MINS/i
+    );
   });
 
   test('planning mode can be cancelled back to the planner', async ({ page }) => {
@@ -183,6 +187,7 @@ test.describe('Recipes Search Page', () => {
 
     await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
     await expect(page.getByTestId('recipe-detail-name')).toContainText(/Homemade Lasagna/i);
+    await expect(page.getByTestId('recipe-detail-sheet')).toContainText(/READY IN 45 MINS/i);
 
     await page.getByTestId('action-close-sheet').click();
 
@@ -401,7 +406,7 @@ test.describe('Recipes Search Page', () => {
       id: MOCK_IDS.RECIPE_STIR_FRY,
       name: 'Chicken Stir Fry',
       imageUrl: 'https://images.unsplash.com/photo-1559847844-5315695dadae',
-      totalTime: '20 min',
+      totalTime: 'PT20M',
       rating: 2,
       isDiscoverable: true,
       notes: null,

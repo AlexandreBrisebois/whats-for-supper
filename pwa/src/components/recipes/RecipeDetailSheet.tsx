@@ -25,7 +25,8 @@ import {
   regenerateHero,
   type Recipe,
 } from '@/lib/api/recipes';
-import { t } from '@/locales';
+import { t, tWithVars } from '@/locales';
+import { formatRecipeTime } from '@/lib/duration';
 import { useUiStore } from '@/store/uiStore';
 import { useFamilyStore } from '@/store/familyStore';
 import { getImageUrl } from '@/lib/imageUtils';
@@ -520,7 +521,9 @@ export function RecipeDetailSheet({
               )}
               <div className="flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-widest text-charcoal/55">
                 <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 shadow-sm">
-                  <Clock size={12} /> {recipe.totalTime}
+                  <Clock size={12} /> {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                    time: formatRecipeTime(recipe.totalTime),
+                  })}
                 </span>
               </div>
               {isEditing ? (

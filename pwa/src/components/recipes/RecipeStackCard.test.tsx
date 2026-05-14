@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 
 // ---------------------------------------------------------------------------
@@ -49,13 +49,6 @@ vi.mock('framer-motion', () => ({
   useAnimation: () => ({ start: vi.fn().mockResolvedValue(undefined) }),
   useMotionValueEvent: vi.fn(),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-vi.mock('next/image', () => ({
-  default: ({ fill: _fill, sizes: _sizes, ...props }: any) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img {...props} alt={props.alt} />
-  ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -131,7 +124,7 @@ describe('RecipeStackCard — rendering', () => {
 
   it('renders formatted total time', () => {
     render(<RecipeStackCard {...defaultProps} totalTime="PT30M" />);
-    expect(screen.getByText(/30m/i)).toBeTruthy();
+    expect(screen.getByText(/READY IN 30 MINS/i)).toBeTruthy();
   });
 });
 
@@ -139,13 +132,13 @@ describe('RecipeStackCard — swipe indicators', () => {
   it('renders "Back" indicator for right swipes when isFront', () => {
     render(<RecipeStackCard {...defaultProps} isFront={true} />);
     expect(screen.getByTestId('stack-swipe-next-indicator')).toBeTruthy();
-    expect(screen.getByTestId('stack-swipe-next-indicator').textContent).toContain('Back');
+    expect(screen.getByTestId('stack-swipe-next-indicator').textContent?.toUpperCase()).toContain('BACK');
   });
 
   it('renders "Next" indicator for left swipes when isFront', () => {
     render(<RecipeStackCard {...defaultProps} isFront={true} />);
     expect(screen.getByTestId('stack-swipe-back-indicator')).toBeTruthy();
-    expect(screen.getByTestId('stack-swipe-back-indicator').textContent).toContain('Next');
+    expect(screen.getByTestId('stack-swipe-back-indicator').textContent?.toUpperCase()).toContain('NEXT');
   });
 
   it('does NOT render swipe indicators when isFront is false', () => {

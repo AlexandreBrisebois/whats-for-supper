@@ -28,7 +28,8 @@
     "saveChanges": "Enregistrer les changements",
     "saving": "Enregistrement",
     "loading": "Chargement...",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "readyIn": "PRÊT EN {{time}}"
   },
   "errors": {
     "notFoundTitle": "Page introuvable",

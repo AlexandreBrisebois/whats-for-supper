@@ -34,6 +34,7 @@ import {
   type PlannerSlot,
 } from '@/lib/planner/slotAssignment';
 import { getImageUrl } from '@/lib/imageUtils';
+import { formatRecipeTime } from '@/lib/duration';
 
 type SearchMode = 'standard' | 'agent' | 'camera';
 
@@ -979,7 +980,9 @@ export default function RecipesPage() {
                   <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-2.5 text-white z-10">
                     <div className="flex gap-2">
                       <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                        <Clock size={10} /> {topPick.totalTime}
+                        <Clock size={10} /> {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                          time: formatRecipeTime(topPick.totalTime),
+                        })}
                       </span>
                     </div>
                     <h3 className="text-3xl font-black tracking-tighter leading-none mb-1">
@@ -1037,7 +1040,9 @@ export default function RecipesPage() {
                   </div>
                   <div className="flex flex-col gap-1 px-1.5 pb-1">
                     <span className="text-[9px] font-black uppercase tracking-widest text-charcoal/30 flex items-center gap-1">
-                      <Clock size={9} /> {recipe.totalTime}
+                      <Clock size={9} /> {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                        time: formatRecipeTime(recipe.totalTime),
+                      })}
                     </span>
                     <h4 className="text-base font-black tracking-tighter leading-tight text-charcoal truncate">
                       {recipe.name}

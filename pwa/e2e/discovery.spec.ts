@@ -78,6 +78,7 @@ test.describe('Discovery Flow', () => {
     await expect(page.getByTestId('discovery-card').first()).toContainText(
       /Mock Gourmet Discovery/i
     );
+    await expect(page.getByTestId('discovery-card').first()).toContainText(/READY IN 30 MINS/i);
   });
 
   test('should swipe through all categories and show summary', async ({ page }) => {

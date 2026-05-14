@@ -9,9 +9,10 @@ import {
   PanInfo,
   useMotionValueEvent,
 } from 'framer-motion';
-import { Heart, X } from 'lucide-react';
-import { t } from '@/locales';
+import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
+import { formatRecipeTime } from '@/lib/duration';
+import { Heart, X } from 'lucide-react';
 
 interface DiscoveryCardProps {
   id: string;
@@ -27,25 +28,6 @@ interface DiscoveryCardProps {
   hasFamilyInterest?: boolean;
 }
 
-const formatDuration = (duration: string) => {
-  if (!duration) return 'N/A';
-  if (!duration.startsWith('PT')) return duration;
-
-  try {
-    const hoursMatch = duration.match(/(\d+)H/);
-    const minutesMatch = duration.match(/(\d+)M/);
-
-    const hours = hoursMatch ? parseInt(hoursMatch[1]) : 0;
-    const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
-
-    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-    if (hours > 0) return `${hours}h`;
-    if (minutes > 0) return `${minutes}m`;
-    return '0m';
-  } catch {
-    return duration;
-  }
-};
 
 export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   name,
@@ -218,7 +200,9 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
           </h2>
           <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
-              {t('discovery.prep', 'Prep')}: {formatDuration(totalTime)}
+              {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                time: formatRecipeTime(totalTime),
+              })}
             </span>
           </div>
         </div>
