@@ -209,6 +209,15 @@ export async function setupCommonRoutes(page: Page) {
     }
   });
 
+  // GET /api/family/me
+  await page.route('**/api/family/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: builders.familyMember() }),
+    });
+  });
+
   // PUT /api/family/{id}/preferences
   await page.route('**/api/family/*/preferences', async (route) => {
     if (route.request().method() === 'PUT') {
