@@ -33,9 +33,14 @@ export function setFamilyMemberIdCookie(id: string, days = 365) {
     expires = `; expires=${date.toUTCString()}`;
   }
 
+  // Robust cookie flags to match h_access (BS-PWA-PERSISTENCE)
+  // Secure is required for PWA persistence on HTTPS.
+  // We use window.location.protocol check to avoid breaking local dev on http.
+  const isSecure = window.location.protocol === 'https:';
+  const secureFlag = isSecure ? '; Secure' : '';
+
   // Set cookie with Path=/ so it's sent to all routes
-  // SameSite=Lax is a good default for PWA identity.
-  document.cookie = `${COOKIE_NAME}=${id}${expires}; path=/; SameSite=Lax`;
+  document.cookie = `${COOKIE_NAME}=${id}${expires}; path=/; SameSite=Lax${secureFlag}`;
 }
 
 /**
@@ -43,5 +48,6 @@ export function setFamilyMemberIdCookie(id: string, days = 365) {
  */
 export function removeFamilyMemberIdCookie() {
   if (typeof document === 'undefined') return;
-  document.cookie = `${COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT`;
+  // Clear cookie with matching Path and SameSite for reliable removal
+  document.cookie = `${COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
 }

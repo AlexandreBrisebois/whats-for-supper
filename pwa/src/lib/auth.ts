@@ -18,7 +18,8 @@ export async function validateHearthSecret(token: string): Promise<boolean> {
  * Sets the h_access cookie with the provided token
  */
 export async function setHearthCookie(token: string): Promise<void> {
-  const isSecure = process.env.NODE_ENV === 'production';
+  const isTest = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test';
+  const isSecure = process.env.NODE_ENV === 'production' && !isTest;
   const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
   const maxAge = 60 * 60 * 24 * 365;
 
@@ -80,9 +81,14 @@ export async function getVotingLink(baseUrl: string): Promise<string> {
  * Sets the x-family-member-id cookie
  */
 export async function setFamilyMemberCookie(id: string): Promise<void> {
-  const isSecure = process.env.NODE_ENV === 'production';
+  const isTest = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test';
   const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
   const maxAge = 60 * 60 * 24 * 365;
+
+  // Only set Secure if in production AND not in a test/localhost environment.
+  // This prevents cookies from being rejected when running E2E tests over HTTP.
+  const isSecure =
+    process.env.NODE_ENV === 'production' && !isTest && !domain?.includes('localhost');
 
   (await cookies()).set('x-family-member-id', id, {
     maxAge,
