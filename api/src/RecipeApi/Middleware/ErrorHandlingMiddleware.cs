@@ -15,7 +15,14 @@ public class ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandling
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled exception for {Method} {Path}", context.Request.Method, context.Request.Path);
+            if (ex is KeyNotFoundException or ArgumentException or UnauthorizedAccessException)
+            {
+                logger.LogWarning("Request error for {Method} {Path}: {Message}", context.Request.Method, context.Request.Path, ex.Message);
+            }
+            else
+            {
+                logger.LogError(ex, "Unhandled exception for {Method} {Path}", context.Request.Method, context.Request.Path);
+            }
             await HandleExceptionAsync(context, ex);
         }
     }

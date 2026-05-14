@@ -118,7 +118,7 @@ public class RecipeHeroAgent(
 
         var httpOptions = new HttpOptions
         {
-            Timeout = 300000 // 5 minutes
+            Timeout = 600000 // 10 minutes
         };
         var client = new Client(apiKey: apiKey, httpOptions: httpOptions);
         var content = new Content { Role = "user", Parts = new List<Part>() };
@@ -170,7 +170,7 @@ public class RecipeHeroAgent(
                 ThinkingConfig = new ThinkingConfig
                 {
                     IncludeThoughts = true,
-                    ThinkingBudget = 16000
+                    ThinkingBudget = 4000
                 },
                 MaxOutputTokens = 2048
             }, cancellationToken: ct);

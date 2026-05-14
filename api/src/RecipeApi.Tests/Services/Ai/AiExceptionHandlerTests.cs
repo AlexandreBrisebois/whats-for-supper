@@ -49,6 +49,58 @@ public class AiExceptionHandlerTests
     }
 
     [Fact]
+    public void IsTransient_ShouldReturnTrue_ForTimeoutException()
+    {
+        // Arrange
+        var ex = new TimeoutException("Operation timed out");
+
+        // Act
+        var result = _handler.IsTransient(ex);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsTransient_ShouldReturnTrue_ForTaskCanceledException_WithTimeout()
+    {
+        // Arrange
+        var ex = new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout of 300 seconds elapsing.");
+
+        // Act
+        var result = _handler.IsTransient(ex);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsTransient_ShouldReturnTrue_ForHtmlErrorResponse()
+    {
+        // Arrange
+        var ex = new Exception("The provider returned an error: <!DOCTYPE html><html>...</html>");
+
+        // Act
+        var result = _handler.IsTransient(ex);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsTransient_ShouldReturnTrue_ForHttpRequestException_408()
+    {
+        // Arrange
+        var ex = new HttpRequestException("Request timeout", null, System.Net.HttpStatusCode.RequestTimeout);
+
+        // Act
+        var result = _handler.IsTransient(ex);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
     public void MapException_ShouldCaptureStatusCode()
     {
         // Arrange

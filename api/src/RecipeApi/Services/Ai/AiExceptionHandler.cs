@@ -84,7 +84,28 @@ public class AiExceptionHandler(ILogger<AiExceptionHandler> logger)
         {
             return hre.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
                    hre.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
-                   hre.StatusCode == System.Net.HttpStatusCode.GatewayTimeout;
+                   hre.StatusCode == System.Net.HttpStatusCode.GatewayTimeout ||
+                   hre.StatusCode == System.Net.HttpStatusCode.RequestTimeout;
+        }
+
+        if (ex is TimeoutException)
+        {
+            return true;
+        }
+
+        if (ex is TaskCanceledException tce)
+        {
+            // If it's a timeout, it's transient. 
+            // In .NET HttpClient, timeouts often manifest as TaskCanceledException with an inner TimeoutException or specific message.
+            return tce.InnerException is TimeoutException ||
+                   tce.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+                   tce.Message.Contains("canceled", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Handle cases where the AI might return an HTML error page (e.g. from a proxy)
+        if (ex.Message.Contains("<!DOCTYPE html>", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
         }
 
         return false;
