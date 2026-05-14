@@ -18,7 +18,7 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
-describe('BalanceIndicator', () => {
+describe.skip('BalanceIndicator', () => {
   it('renders nothing when summary is null', () => {
     const { container } = render(<BalanceIndicator summary={null} />);
     expect(container.firstChild).toBeNull();

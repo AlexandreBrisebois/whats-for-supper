@@ -33,7 +33,7 @@ import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
 import { getImageUrl, getTodayString } from '@/lib/imageUtils';
 import { GroceryList } from '@/components/planner/GroceryList';
-import { BalanceIndicator } from '@/components/planner/BalanceIndicator';
+// import { BalanceIndicator } from '@/components/planner/BalanceIndicator';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
@@ -44,7 +44,7 @@ export default function PlannerPage() {
   const router = useRouter();
   const { currentWeekOffset, activeTab, setWeekOffset, setActiveTab, setGroceryState } =
     usePlannerStore();
-  const balanceSummary = useWeekStore((s) => s.balanceSummary);
+// const balanceSummary = useWeekStore((s) => s.balanceSummary);
   const schedule = useWeekStore((s) => s.schedule);
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
@@ -552,9 +552,9 @@ export default function PlannerPage() {
                 )}
               </div>
 
-              <div className="mb-4 opacity-90">
-                <BalanceIndicator summary={balanceSummary} className="mb-0" />
-              </div>
+{/* <div className="mb-4 opacity-90">
+  <BalanceIndicator summary={balanceSummary} className="mb-0" />
+</div> */}
 
               <Reorder.Group
                 axis="y"
