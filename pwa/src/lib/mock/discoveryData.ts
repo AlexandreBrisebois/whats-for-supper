@@ -3,7 +3,7 @@ export interface DiscoveryRecipe {
   title: string;
   description: string;
   imageUrl: string;
-  prepTime: string;
+  totalTime: string;
   category: string;
 }
 
@@ -15,7 +15,7 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
       'A harmonious blend of sun-dried tomatoes, wilted spinach, and rustic parmesan over linguine.',
     imageUrl:
       'https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&w=800&q=80',
-    prepTime: '20 Min',
+    totalTime: '20 Min',
     category: 'Gourmet Discovery',
   },
   {
@@ -25,7 +25,7 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
       'Wild-caught salmon infused with aromatic wood smoke, fresh lemon zest, and rosemary.',
     imageUrl:
       'https://images.unsplash.com/photo-1485921325833-c519f76c4927?auto=format&fit=crop&w=800&q=80',
-    prepTime: '25 Min',
+    totalTime: '25 Min',
     category: 'Coastal Kitchen',
   },
   {
@@ -35,7 +35,7 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
       'Roasted sweet potato, black quinoa, and massaged kale dressed in a creamy liquid-gold tahini.',
     imageUrl:
       'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
-    prepTime: '15 Min',
+    totalTime: '15 Min',
     category: 'Organic Vitality',
   },
   {
@@ -45,7 +45,7 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
       'Flaky artisanal pastry topped with garden-fresh heirlooms, goat cheese, and balsamic reduction.',
     imageUrl:
       'https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&w=800&q=80',
-    prepTime: '35 Min',
+    totalTime: '35 Min',
     category: 'Artisanal Bakery',
   },
   {
@@ -55,7 +55,7 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
       'Succulent organic chicken roasted with lavender, thyme, and seasonal baby vegetables.',
     imageUrl:
       'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=800&q=80',
-    prepTime: '60 Min',
+    totalTime: '60 Min',
     category: 'Family Traditions',
   },
   {
@@ -65,7 +65,7 @@ export const DISCOVERY_RECIPES: DiscoveryRecipe[] = [
       'Creamy Arborio rice slowly folded with foraged mushrooms, truffle oil, and aged Pecorino.',
     imageUrl:
       'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=800&q=80',
-    prepTime: '40 Min',
+    totalTime: '40 Min',
     category: "Chef's Signature",
   },
 ];

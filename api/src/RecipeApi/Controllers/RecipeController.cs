@@ -195,7 +195,7 @@ public class RecipeController(
                 Name = "Homemade Lasagna",
                 Description = "The ultimate comfort food, layered with rich meat sauce and creamy béchamel.",
                 ImageUrl = "https://images.unsplash.com/photo-1574894709920-11b28e7367e3",
-                PrepTime = "45 mins",
+                TotalTime = "45 mins",
             },
             Results = new List<RecommendationResultDto>
             {
@@ -203,14 +203,14 @@ public class RecipeController(
                 {
                     Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440011"),
                     Name = "Zesty Lemon Chicken",
-                    Time = "30m",
+                    TotalTime = "30m",
                     Image = "https://images.unsplash.com/photo-1532550907401-a500c9a57435",
                 },
                 new RecommendationResultDto
                 {
                     Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440012"),
                     Name = "Creamy Pesto Pasta",
-                    Time = "15m",
+                    TotalTime = "15m",
                     Image = "https://images.unsplash.com/photo-1473093226795-af9932fe5856",
                 },
             },

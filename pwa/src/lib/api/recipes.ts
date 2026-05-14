@@ -35,7 +35,7 @@ export interface Recipe {
 export type RecommendationResult = {
   id: string;
   name: string;
-  time: string;
+  totalTime: string;
   image: string;
 };
 
@@ -45,7 +45,7 @@ export type RecommendationsResponse = {
     name: string;
     description: string;
     imageUrl: string;
-    prepTime: string;
+    totalTime: string;
   } | null;
   results: RecommendationResult[];
 };
@@ -385,13 +385,13 @@ export async function getRecommendations(): Promise<RecommendationsResponse> {
           name: data.topPick.name || '',
           description: data.topPick.description || '',
           imageUrl: data.topPick.imageUrl || '',
-          prepTime: data.topPick.prepTime || '',
+          totalTime: data.topPick.totalTime || '',
         }
       : null,
     results: (data?.results || []).map((r: RecommendationResultDto) => ({
       id: r.id || '',
       name: r.name || '',
-      time: r.time || '',
+      totalTime: r.totalTime || '',
       image: r.image || '',
     })),
   };

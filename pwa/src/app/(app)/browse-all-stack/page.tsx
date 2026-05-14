@@ -26,6 +26,8 @@ import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipe
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 import { getImageUrl } from '@/lib/imageUtils';
+import { tWithVars } from '@/locales';
+import { formatRecipeTime } from '@/lib/duration';
 
 type BrowseViewMode = 'stack' | 'list';
 
@@ -696,7 +698,9 @@ export default function BrowseAllStackPage() {
                       {recipe.name}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-charcoal/50">
-                      {recipe.totalTime || 'N/A'}
+                      {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                        time: formatRecipeTime(recipe.totalTime),
+                      })}
                     </p>
                   </div>
                 </button>

@@ -1488,6 +1488,9 @@ export function deserializeIntoPreSelectedRecipeDto(
     recipeId: (n) => {
       preSelectedRecipeDto.recipeId = n.getGuidValue();
     },
+    totalTime: (n) => {
+      preSelectedRecipeDto.totalTime = n.getStringValue();
+    },
     unanimousVote: (n) => {
       preSelectedRecipeDto.unanimousVote = n.getBooleanValue();
     },
@@ -2166,8 +2169,8 @@ export function deserializeIntoRecommendationResultDto(
     name: (n) => {
       recommendationResultDto.name = n.getStringValue();
     },
-    time: (n) => {
-      recommendationResultDto.time = n.getStringValue();
+    totalTime: (n) => {
+      recommendationResultDto.totalTime = n.getStringValue();
     },
   };
 }
@@ -2469,8 +2472,8 @@ export function deserializeIntoTopPickDto(
     name: (n) => {
       topPickDto.name = n.getStringValue();
     },
-    prepTime: (n) => {
-      topPickDto.prepTime = n.getStringValue();
+    totalTime: (n) => {
+      topPickDto.totalTime = n.getStringValue();
     },
   };
 }
@@ -2988,6 +2991,10 @@ export interface PreSelectedRecipeDto extends AdditionalDataHolder, Parsable {
    */
   recipeId?: Guid | null;
   /**
+   * The totalTime property
+   */
+  totalTime?: string | null;
+  /**
    * The unanimousVote property
    */
   unanimousVote?: boolean | null;
@@ -3452,9 +3459,9 @@ export interface RecommendationResultDto extends AdditionalDataHolder, Parsable 
    */
   name?: string | null;
   /**
-   * The time property
+   * The totalTime property
    */
-  time?: string | null;
+  totalTime?: string | null;
 }
 export interface RecommendationsResponse extends AdditionalDataHolder, Parsable {
   /**
@@ -4053,6 +4060,7 @@ export function serializePreSelectedRecipeDto(
   writer.writeBooleanValue('isLocked', preSelectedRecipeDto.isLocked);
   writer.writeStringValue('name', preSelectedRecipeDto.name);
   writer.writeGuidValue('recipeId', preSelectedRecipeDto.recipeId);
+  writer.writeStringValue('totalTime', preSelectedRecipeDto.totalTime);
   writer.writeBooleanValue('unanimousVote', preSelectedRecipeDto.unanimousVote);
   writer.writeNumberValue('voteCount', preSelectedRecipeDto.voteCount);
   writer.writeAdditionalData(preSelectedRecipeDto.additionalData);
@@ -4672,7 +4680,7 @@ export function serializeRecommendationResultDto(
   writer.writeGuidValue('id', recommendationResultDto.id);
   writer.writeStringValue('image', recommendationResultDto.image);
   writer.writeStringValue('name', recommendationResultDto.name);
-  writer.writeStringValue('time', recommendationResultDto.time);
+  writer.writeStringValue('totalTime', recommendationResultDto.totalTime);
   writer.writeAdditionalData(recommendationResultDto.additionalData);
 }
 /**
@@ -4995,7 +5003,7 @@ export function serializeTopPickDto(
   writer.writeGuidValue('id', topPickDto.id);
   writer.writeStringValue('imageUrl', topPickDto.imageUrl);
   writer.writeStringValue('name', topPickDto.name);
-  writer.writeStringValue('prepTime', topPickDto.prepTime);
+  writer.writeStringValue('totalTime', topPickDto.totalTime);
   writer.writeAdditionalData(topPickDto.additionalData);
 }
 /**
@@ -5319,9 +5327,9 @@ export interface TopPickDto extends AdditionalDataHolder, Parsable {
    */
   name?: string | null;
   /**
-   * The prepTime property
+   * The totalTime property
    */
-  prepTime?: string | null;
+  totalTime?: string | null;
 }
 export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
   /**

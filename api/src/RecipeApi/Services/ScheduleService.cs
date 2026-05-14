@@ -453,7 +453,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 $"/api/recipes/{x.Recipe.Id}/hero",
                 x.Match.LikeCount,
                 RecipeService.DeserializeIngredients(x.Recipe.Ingredients),
-                x.Recipe.Description))
+                x.Recipe.Description,
+                x.Recipe.TotalTime))
             .ToList();
 
         if (dtos.Count < 5)
@@ -476,7 +477,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                     $"/api/recipes/{dr.Id}/hero",
                     null,
                     RecipeService.DeserializeIngredients(dr.Ingredients),
-                    dr.Description)));
+                    dr.Description,
+                    dr.TotalTime)));
         }
 
         return dtos;
@@ -592,7 +594,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 FamilySize: familySize,
                 UnanimousVote: isUnanimous,
                 DayIndex: dayIndex,
-                IsLocked: isUnanimous
+                IsLocked: isUnanimous,
+                TotalTime: recipe.TotalTime
             ));
 
             dayIndex++;

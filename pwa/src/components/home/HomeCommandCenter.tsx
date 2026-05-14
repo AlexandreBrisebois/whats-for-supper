@@ -437,7 +437,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 }
                 imageUrl={currentRecipe.image || undefined}
                 ingredients={currentRecipe.ingredients || []}
-                prepTime={formatTotalTime(currentRecipe.totalTime) ?? undefined}
+                totalTime={formatTotalTime(currentRecipe.totalTime) ?? undefined}
                 onCookMode={handleCookMode}
                 onSkip={handleSkipTrigger}
               />

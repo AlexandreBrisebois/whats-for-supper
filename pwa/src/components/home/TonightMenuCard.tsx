@@ -36,7 +36,7 @@ interface TonightMenuCardProps {
   recipeName: string;
   description?: string;
   imageUrl?: string;
-  prepTime?: string;
+  totalTime?: string;
   ingredients?: string[];
   onCookMode?: (id: string) => void;
   onSkip?: (id: string) => void;
@@ -47,7 +47,7 @@ export function TonightMenuCard({
   recipeName,
   description,
   imageUrl,
-  prepTime = '30-45 mins',
+  totalTime = '30-45 mins',
   ingredients = [],
   onCookMode,
   onSkip,
@@ -76,10 +76,10 @@ export function TonightMenuCard({
             <h2 className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/40">
               {t('home.tonightsMenu', "Tonight's Menu")}
             </h2>
-            {prepTime && (
+            {totalTime && (
               <span className="text-[10px] font-black text-terracotta bg-terracotta/10 px-3 py-1 rounded-full uppercase tracking-widest">
                 {tWithVars('common.readyIn', 'READY IN {{time}}', {
-                  time: formatRecipeTime(prepTime),
+                  time: formatRecipeTime(totalTime),
                 })}
               </span>
             )}

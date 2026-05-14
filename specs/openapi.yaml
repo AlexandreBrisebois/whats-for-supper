@@ -212,22 +212,21 @@ components:
 
     TopPickDto:
       type: object
-      required: [id, name, description, imageUrl, prepTime]
+      required: [id, name, description, imageUrl, totalTime]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         description: { type: string }
         imageUrl: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440000/hero' }
-
-        prepTime: { type: string }
+        totalTime: { type: string }
 
     RecommendationResultDto:
       type: object
-      required: [id, name, time, image]
+      required: [id, name, totalTime, image]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        time: { type: string }
+        totalTime: { type: string }
         image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
 
     # --- Dietary Profile ---
@@ -431,6 +430,7 @@ components:
         unanimousVote: { type: boolean }
         dayIndex: { type: integer }
         isLocked: { type: boolean }
+        totalTime: { type: [string, 'null'] }
 
     ValidationDto:
       type: object

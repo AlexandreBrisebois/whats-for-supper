@@ -23,7 +23,7 @@ vi.mock('@/store/discoveryStore', () => ({
 
 const mockGetFillTheGap = vi
   .fn()
-  .mockResolvedValue([{ id: 'r1', name: 'Pasta', image: '', description: '', time: 'PT20M' }]);
+  .mockResolvedValue([{ id: 'r1', name: 'Pasta', image: '', description: '', totalTime: 'PT20M' }]);
 
 vi.mock('@/lib/api/planner', () => ({
   getFillTheGap: (...args: unknown[]) => mockGetFillTheGap(...args),
@@ -93,7 +93,7 @@ beforeEach(() => {
   mockFillTheGapVersion = 0;
   mockGetFillTheGap.mockClear();
   mockGetFillTheGap.mockResolvedValue([
-    { id: 'r1', name: 'Pasta', image: '', description: '', time: 'PT20M' },
+    { id: 'r1', name: 'Pasta', image: '', description: '', totalTime: 'PT20M' },
   ]);
 });
 

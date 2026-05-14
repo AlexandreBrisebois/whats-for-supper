@@ -182,11 +182,7 @@ export function QuickFindModal({
                           <div className="flex items-center space-x-2">
                             <span className="text-white text-[10px] font-black uppercase tracking-widest bg-ochre px-3 py-1.5 rounded-full shadow-lg">
                               {tWithVars('common.readyIn', 'READY IN {{time}}', {
-                                time: formatRecipeTime(
-                                  currentRecipe.time ||
-                                    currentRecipe.prepTime ||
-                                    currentRecipe.totalTime
-                                ),
+                                time: formatRecipeTime(currentRecipe.totalTime),
                               })}
                             </span>
                           </div>

@@ -10,7 +10,8 @@ public record PreSelectedRecipeDto(
     [property: JsonPropertyName("familySize")] int FamilySize,
     [property: JsonPropertyName("unanimousVote")] bool UnanimousVote,
     [property: JsonPropertyName("dayIndex")] int DayIndex,
-    [property: JsonPropertyName("isLocked")] bool IsLocked
+    [property: JsonPropertyName("isLocked")] bool IsLocked,
+    [property: JsonPropertyName("totalTime")] string? TotalTime = null
 );
 
 public record OpenSlotDto([property: JsonPropertyName("dayIndex")] int DayIndex);

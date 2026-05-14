@@ -16,7 +16,7 @@ public class TopPickDto
     [JsonPropertyName("imageUrl")]
     public string ImageUrl { get; set; } = string.Empty;
 
-    [JsonPropertyName("prepTime")]
-    public string PrepTime { get; set; } = string.Empty;
+    [JsonPropertyName("totalTime")]
+    public string TotalTime { get; set; } = string.Empty;
 
 }
