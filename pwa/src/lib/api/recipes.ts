@@ -266,10 +266,12 @@ export async function captureUrl(
 
 export async function getRecipeShareBundle(id: string): Promise<RecipeShareBundleDto> {
   const result = await apiClient.api.recipes.byId(id as any).share.get();
-  if (!result?.data) {
+
+  if (!result) {
     throw new Error('Could not export this recipe right now.');
   }
-  return result.data;
+
+  return result;
 }
 
 export async function importRecipeShareBundle(bundle: RecipeShareBundleDto): Promise<Recipe> {
@@ -292,11 +294,17 @@ export async function downloadRecipeBundleFile(
     navigator.canShare({ files: [file] });
 
   if (canNativeShare) {
-    await navigator.share({
-      files: [file],
-      title: recipeName,
-    });
-    return;
+    try {
+      await navigator.share({
+        files: [file],
+        title: recipeName,
+      });
+      return;
+    } catch (error) {
+      const isAbort = error instanceof Error && error.name === 'AbortError';
+      if (isAbort) return;
+      console.warn('navigator.share failed, falling back to download:', error);
+    }
   }
 
   const objectUrl = URL.createObjectURL(file);
@@ -368,7 +376,8 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
     } satisfies ImportedRecipeDto,
     info: {
       exportedAtUtc: new Date(info.exportedAtUtc),
-      bundleSource: RecipeShareInfoDto_bundleSourceObject.WfsShare as RecipeShareInfoDto_bundleSource,
+      bundleSource:
+        RecipeShareInfoDto_bundleSourceObject.WfsShare as RecipeShareInfoDto_bundleSource,
       appVersion: typeof info.appVersion === 'string' ? info.appVersion : null,
     },
     hero: hero ? toSharedImage(hero) : null,
@@ -409,7 +418,10 @@ function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBundleDto
   });
 }
 
-function toPortableSharedImage(image: SharedImageDto): { mimeType: string | null; base64: string | null } {
+function toPortableSharedImage(image: SharedImageDto): {
+  mimeType: string | null;
+  base64: string | null;
+} {
   return {
     mimeType: image.mimeType ?? null,
     base64: image.base64 ?? null,
@@ -432,12 +444,14 @@ function isPortableSharedImage(value: unknown): value is Record<string, unknown>
   );
 }
 
-function slugifyRecipeName(recipeName: string): string {
-  return (recipeName || 'recipe')
+function slugifyRecipeName(recipeName: string | null | undefined): string {
+  const name = recipeName || 'recipe';
+  return name
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64);
+    .replace(/(^-|-$)+/g, '');
 }
 
 async function readFileAsText(file: File): Promise<string> {

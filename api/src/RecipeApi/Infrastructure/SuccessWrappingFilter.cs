@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Logging;
 
 namespace RecipeApi.Infrastructure;
 
@@ -8,7 +9,7 @@ namespace RecipeApi.Infrastructure;
 /// to provide a consistent structure for the PWA client.
 /// Skip wrapping for FileResult, EmptyResult, or already wrapped responses.
 /// </summary>
-public class SuccessWrappingFilter : IAsyncResultFilter
+public class SuccessWrappingFilter(ILogger<SuccessWrappingFilter> logger) : IAsyncResultFilter
 {
     public async Task OnResultExecutionAsync(ResultExecutingContext context, ResultExecutionDelegate next)
     {
@@ -17,9 +18,20 @@ public class SuccessWrappingFilter : IAsyncResultFilter
         {
             var value = objectResult.Value;
 
-            if (value != null && !ShouldSkip(context, value))
+            if (value != null)
             {
-                objectResult.Value = new { data = value };
+                var type = value.GetType();
+                var shouldSkip = ShouldSkip(context, value);
+
+                if (shouldSkip)
+                {
+                    logger.LogDebug("Skipping wrapping for type {TypeName}", type.Name);
+                }
+                else
+                {
+                    logger.LogDebug("Wrapping result for type {TypeName} in {{ data: ... }}", type.Name);
+                    objectResult.Value = new { data = value };
+                }
             }
         }
 
@@ -43,8 +55,8 @@ public class SuccessWrappingFilter : IAsyncResultFilter
         if (type.Name.EndsWith("ResponseDto") && !type.Name.StartsWith("WorkflowTrigger"))
             return true;
 
-        // 4. Specifically named Response types
-        if (type.Name.EndsWith("Response") && !type.Name.StartsWith("WorkflowTrigger"))
+        // 4. Specifically named Response types or Bundles
+        if ((type.Name.EndsWith("Response") || type.Name.EndsWith("BundleDto")) && !type.Name.StartsWith("WorkflowTrigger"))
             return true;
 
         return false;

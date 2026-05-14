@@ -82,7 +82,7 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
 
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
-        var bundle = doc.RootElement.GetProperty("data");
+        var bundle = doc.RootElement;
         var exportedRecipe = bundle.GetProperty("recipe");
 
         Assert.Equal("1.0", bundle.GetProperty("version").GetString());

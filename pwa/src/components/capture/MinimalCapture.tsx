@@ -293,7 +293,9 @@ export default function MinimalCapture({
     } catch (error) {
       setParsedBundle(null);
       setSelectedBundleFileName(null);
-      setBundleImportError(error instanceof Error ? error.message : 'This .recipe file is not valid.');
+      setBundleImportError(
+        error instanceof Error ? error.message : 'This .recipe file is not valid.'
+      );
     }
   };
 

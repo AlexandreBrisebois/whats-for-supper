@@ -84,6 +84,11 @@ public class RecipeController(
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to export recipe share bundle for {Id}", id);
+            return StatusCode(500, new { message = "An internal error occurred while generating the share bundle." });
+        }
     }
 
     /// <summary>

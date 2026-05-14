@@ -296,6 +296,8 @@
     "searching": "Recherche…",
     "searchWithPhotos": "Chercher avec {{count}} photos",
     "shareFailed": "Impossible de partager cette recette pour le moment.",
+    "shareFailedWithDetail": "Impossible de partager : {{message}}",
+    "sharePermissionDenied": "L'autorisation de partager a été refusée.",
     "shareRecipe": "Partager la recette",
     "cameraBusy": "Nous sommes très occupés. Réessayez dans un instant.",
     "clearFilters": "Effacer les filtres",

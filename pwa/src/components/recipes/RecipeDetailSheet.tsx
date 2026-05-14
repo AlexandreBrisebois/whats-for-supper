@@ -379,7 +379,10 @@ export function RecipeDetailSheet({
       const isAbortError = error instanceof DOMException && error.name === 'AbortError';
       if (!isAbortError) {
         console.error('Failed to share recipe', error);
-        setShareError(t('recipes.shareFailed', 'Could not share this recipe right now.'));
+        const message = error instanceof Error ? error.message : String(error);
+        setShareError(
+          tWithVars('recipes.shareFailedWithDetail', 'Could not share: {{message}}', { message })
+        );
       }
     } finally {
       setIsSharingRecipe(false);

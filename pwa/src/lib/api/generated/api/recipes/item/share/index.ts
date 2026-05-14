@@ -4,78 +4,18 @@
 // @ts-ignore
 import {
   createRecipeShareBundleDtoFromDiscriminatorValue,
-  serializeRecipeShareBundleDto,
   type RecipeShareBundleDto,
 } from '../../../../models/index';
 // @ts-ignore
 import {
-  type AdditionalDataHolder,
   type BaseRequestBuilder,
   type Parsable,
   type ParsableFactory,
-  type ParseNode,
   type RequestConfiguration,
   type RequestInformation,
   type RequestsMetadata,
-  type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ShareGetResponse}
- */
-// @ts-ignore
-export function createShareGetResponseFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoShareGetResponse;
-}
-/**
- * The deserialization information for the current model
- * @param ShareGetResponse The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoShareGetResponse(
-  shareGetResponse: Partial<ShareGetResponse> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    data: (n) => {
-      shareGetResponse.data = n.getObjectValue<RecipeShareBundleDto>(
-        createRecipeShareBundleDtoFromDiscriminatorValue
-      );
-    },
-  };
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param ShareGetResponse The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeShareGetResponse(
-  writer: SerializationWriter,
-  shareGetResponse: Partial<ShareGetResponse> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!shareGetResponse || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeObjectValue<RecipeShareBundleDto>(
-    'data',
-    shareGetResponse.data,
-    serializeRecipeShareBundleDto
-  );
-  writer.writeAdditionalData(shareGetResponse.additionalData);
-}
-export interface ShareGetResponse extends AdditionalDataHolder, Parsable {
-  /**
-   * The data property
-   */
-  data?: RecipeShareBundleDto | null;
-}
 /**
  * Builds and executes requests for operations under /api/recipes/{-id}/share
  */
@@ -83,11 +23,11 @@ export interface ShareRequestBuilder extends BaseRequestBuilder<ShareRequestBuil
   /**
    * Export a privacy-scrubbed portable recipe bundle
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {Promise<ShareGetResponse>}
+   * @returns {Promise<RecipeShareBundleDto>}
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<ShareGetResponse | undefined>;
+  ): Promise<RecipeShareBundleDto | undefined>;
   /**
    * Export a privacy-scrubbed portable recipe bundle
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -109,7 +49,7 @@ export const ShareRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: ShareRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     adapterMethodName: 'send',
-    responseBodyFactory: createShareGetResponseFromDiscriminatorValue,
+    responseBodyFactory: createRecipeShareBundleDtoFromDiscriminatorValue,
   },
 };
 /* tslint:enable */

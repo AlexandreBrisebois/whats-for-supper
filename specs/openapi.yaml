@@ -1544,31 +1544,27 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [data]
-                properties:
-                  data: { $ref: '#/components/schemas/RecipeShareBundleDto' }
+                $ref: '#/components/schemas/RecipeShareBundleDto'
               example:
-                data:
-                  version: '1.0'
-                  recipe:
-                    name: 'Weeknight Tomato Pasta'
-                    description: 'Fast tomato pasta with basil and parmesan.'
-                    ingredients:
-                      - '300g spaghetti'
-                      - '2 cups tomato sauce'
-                      - '1/4 cup basil'
-                    instructions:
-                      - 'Boil the pasta until al dente.'
-                      - 'Warm the sauce and toss with pasta.'
-                    prepTimeMinutes: 10
-                    cookTimeMinutes: 15
-                    totalTimeMinutes: 25
-                    servings: 4
-                    sourceUrl: 'https://example.com/tomato-pasta'
-                    sourceName: Example Kitchen
-                    category: Dinner
-                    isSynthesized: false
+                version: '1.0'
+                recipe:
+                  name: 'Weeknight Tomato Pasta'
+                  description: 'Fast tomato pasta with basil and parmesan.'
+                  ingredients:
+                    - '300g spaghetti'
+                    - '2 cups tomato sauce'
+                    - '1/4 cup basil'
+                  instructions:
+                    - 'Boil the pasta until al dente.'
+                    - 'Warm the sauce and toss with pasta.'
+                  prepTimeMinutes: 10
+                  cookTimeMinutes: 15
+                  totalTimeMinutes: 25
+                  servings: 4
+                  sourceUrl: 'https://example.com/tomato-pasta'
+                  sourceName: Example Kitchen
+                  category: Dinner
+                  isSynthesized: false
                   info:
                     exportedAtUtc: '2026-05-14T16:00:00Z'
                     bundleSource: wfs-share
