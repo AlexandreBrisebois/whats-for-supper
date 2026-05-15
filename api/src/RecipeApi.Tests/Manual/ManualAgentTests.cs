@@ -96,7 +96,7 @@ public class ManualAgentTests : IDisposable
         // 5. Agents & Processors
         services.AddScoped<RecipeAgent>();
         services.AddScoped<RecipeHeroAgent>();
-        services.AddScoped<ClassifyDietaryProfileProcessor>();
+        services.AddScoped<HealthComputationService>();
 
         _services = services.BuildServiceProvider();
         _db = _services.GetRequiredService<RecipeDbContext>();
@@ -143,22 +143,22 @@ public class ManualAgentTests : IDisposable
     {
         EnsureApiKey();
         using var scope = _services.CreateScope();
-        var processor = scope.ServiceProvider.GetRequiredService<ClassifyDietaryProfileProcessor>();
+        var service = scope.ServiceProvider.GetRequiredService<HealthComputationService>();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
 
         _output.WriteLine($"Classifying dietary profile for recipe {_sampleRecipeId}...");
-        var payload = JsonSerializer.Serialize(new { recipeId = _sampleRecipeId, forceReclassify = true });
-        var task = new WorkflowTask { Payload = payload };
-
-        await processor.ExecuteAsync(task, CancellationToken.None);
+        
+        await service.ProcessRecipeChangedAsync(_sampleRecipeId, CancellationToken.None);
 
         // Refresh from DB
         var recipe = await db.Recipes.AsNoTracking().FirstOrDefaultAsync(r => r.Id == _sampleRecipeId);
+        var profile = await db.HealthRecipeProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.RecipeId == _sampleRecipeId);
+
         _output.WriteLine("Classification complete.");
         _output.WriteLine($"Category: {recipe?.Category}");
-        _output.WriteLine($"Dietary Profile: {recipe?.DietaryProfile}");
+        _output.WriteLine($"Dietary Profile: {profile?.DietaryProfile}");
 
-        Assert.NotNull(recipe?.DietaryProfile);
+        Assert.NotNull(profile?.DietaryProfile);
     }
 
     [Fact(Skip = "Manual test - requires real Gemini API Key and Local DB")]

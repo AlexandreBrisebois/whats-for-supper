@@ -364,8 +364,6 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
       description: typeof recipe.description === 'string' ? recipe.description : null,
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
-      prepTimeMinutes: typeof recipe.prepTimeMinutes === 'number' ? recipe.prepTimeMinutes : null,
-      cookTimeMinutes: typeof recipe.cookTimeMinutes === 'number' ? recipe.cookTimeMinutes : null,
       totalTimeMinutes:
         typeof recipe.totalTimeMinutes === 'number' ? recipe.totalTimeMinutes : null,
       servings: typeof recipe.servings === 'number' ? recipe.servings : null,
@@ -393,8 +391,6 @@ function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBundleDto
       description: bundle.recipe?.description ?? null,
       ingredients: bundle.recipe?.ingredients ?? [],
       instructions: bundle.recipe?.instructions ?? [],
-      prepTimeMinutes: bundle.recipe?.prepTimeMinutes ?? null,
-      cookTimeMinutes: bundle.recipe?.cookTimeMinutes ?? null,
       totalTimeMinutes: bundle.recipe?.totalTimeMinutes ?? null,
       servings: bundle.recipe?.servings ?? null,
       sourceUrl: bundle.recipe?.sourceUrl ?? null,

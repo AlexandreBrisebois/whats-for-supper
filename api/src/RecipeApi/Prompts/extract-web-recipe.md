@@ -29,8 +29,6 @@ Extract a recipe from the HTML of a webpage and return a Schema.org/Recipe JSON 
   "languageCode": "FR/EN",
   "name": "Recipe Title",
   "recipeYield": "Total yield text",
-  "prepTime": "ISO8601 duration or null",
-  "cookTime": "ISO8601 duration or null",
   "totalTime": "ISO8601 duration or null",
   "recipeIngredient": ["Exact ingredient 1", "Exact ingredient 2"],
   "recipeInstructions": [

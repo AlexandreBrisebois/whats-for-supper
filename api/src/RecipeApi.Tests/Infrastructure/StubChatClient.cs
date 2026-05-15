@@ -35,6 +35,22 @@ public sealed class StubChatClient(string? response, bool throwOnCall = false) :
             {
                 finalResponse = """{"intent":"inventory","query":"","ingredients":["pasta"],"confidence":0.85}""";
             }
+            else if (text.Contains("Canada's 2019 Food Guide") || text.Contains("primaryFoodGroup"))
+            {
+                finalResponse = """
+                {
+                  "primaryFoodGroup": "ProteinFoods",
+                  "secondaryFoodGroups": ["VegetablesAndFruits"],
+                  "wholeGrainConfident": false,
+                  "proteinSource": "Poultry",
+                  "cuisineType": "Canadian",
+                  "mealTypes": ["Dinner"],
+                  "primaryMealType": "Dinner",
+                  "confidence": 0.9,
+                  "source": "stub"
+                }
+                """;
+            }
         }
 
         var reply = new ChatResponse(new ChatMessage(ChatRole.Assistant, finalResponse ?? string.Empty));

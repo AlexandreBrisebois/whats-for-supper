@@ -38,7 +38,8 @@ Decouple health-related logic and persistence from the core WFS transactional fl
 ### AC 5: WFS Cleanup & De-Zombification
 - [ ] `GroceryRecomputeService` no longer calls `WeeklyBalanceScorer` or writes to `weekly_plans.balance_summary`.
 - [ ] `ClassifyDietaryProfileProcessor` is removed and its logic is fully migrated to the `HealthWorker`.
-- [ ] `ClassifyDietaryProfile` step is removed from all YAML workflows (`recipe-import.yaml`, `goto-synthesis.yaml`, etc.).
+- [ ] `ClassifyDietaryProfile` step is removed from all YAML workflows.
+- [ ] **Ghost Fields**: `prepTimeMinutes` and `cookTimeMinutes` are removed from `openapi.yaml`, DTOs, and AI prompts.
 - [ ] Legacy columns `recipes.dietary_profile` and `weekly_plans.balance_summary` are marked as obsolete.
 - [ ] `classify-recipe.yaml` workflow is deleted.
 

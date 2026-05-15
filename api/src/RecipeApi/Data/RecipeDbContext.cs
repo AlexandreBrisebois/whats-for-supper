@@ -20,6 +20,9 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<IngredientCategory> IngredientCategories => Set<IngredientCategory>();
     public DbSet<RecipeSearchDocument> RecipeSearchDocuments => Set<RecipeSearchDocument>();
     public DbSet<MaintenanceCommand> MaintenanceCommands => Set<MaintenanceCommand>();
+    public DbSet<HealthEvent> HealthEvents => Set<HealthEvent>();
+    public DbSet<HealthRecipeProfile> HealthRecipeProfiles => Set<HealthRecipeProfile>();
+    public DbSet<HealthWeekSummary> HealthWeekSummaries => Set<HealthWeekSummary>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -225,6 +228,42 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                 t.HasCheckConstraint("CK_maintenance_commands_status", "status IN ('pending', 'processing', 'completed', 'failed', 'skipped')"));
             entity.HasIndex(e => new { e.Status, e.ScheduledFor, e.CreatedAt })
                   .HasDatabaseName("idx_maintenance_commands_status_scheduled");
+        });
+
+        modelBuilder.Entity<HealthEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasDefaultValue("pending");
+            entity.Property(e => e.Attempts).HasDefaultValue(0);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.ScheduledFor).HasDefaultValueSql("NOW()");
+            entity.ToTable("health_events", t =>
+                t.HasCheckConstraint("CK_health_events_status", "status IN ('pending', 'processing', 'completed', 'failed')"));
+            entity.HasIndex(e => new { e.Status, e.ScheduledFor, e.CreatedAt })
+                  .HasDatabaseName("idx_health_events_status_scheduled");
+        });
+
+        modelBuilder.Entity<HealthRecipeProfile>(entity =>
+        {
+            entity.HasKey(e => e.RecipeId);
+            entity.Property(e => e.DietaryProfile).HasColumnType("jsonb");
+            entity.Property(e => e.FopFlags).HasColumnType("jsonb");
+            entity.Property(e => e.LastRecomputedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.Version).HasDefaultValue(1);
+            entity.HasOne(e => e.Recipe)
+                  .WithOne()
+                  .HasForeignKey<HealthRecipeProfile>(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable("health_recipe_profiles");
+        });
+
+        modelBuilder.Entity<HealthWeekSummary>(entity =>
+        {
+            entity.HasKey(e => e.WeekStartDate);
+            entity.Property(e => e.BalanceSummary).HasColumnType("jsonb");
+            entity.Property(e => e.FopWeekSummary).HasColumnType("jsonb");
+            entity.Property(e => e.LastRecomputedAt).HasDefaultValueSql("NOW()");
+            entity.ToTable("health_week_summaries");
         });
     }
 

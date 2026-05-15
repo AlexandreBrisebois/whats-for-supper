@@ -124,3 +124,12 @@ To achieve full extraction, the following **parasitic steps** must be removed fr
 4. **`classify-recipe.yaml`**: Delete entire workflow. Manual re-classification will now trigger a `recipe_changed` event with `forceReclassify: true`.
 
 This ensures the AI workflow engine is not blocked by health-specific logic, and the PWA remains responsive during recipe acquisition.
+
+## Ghost Field Pruning
+
+The following fields are identified as **Zombies** and will be eliminated to reduce context bloat:
+
+1. **`prepTimeMinutes`**: Removed from `openapi.yaml`, `ImportedRecipeDto.cs`, and `extract-recipe.md`.
+2. **`cookTimeMinutes`**: Removed from `openapi.yaml`, `ImportedRecipeDto.cs`, and `extract-recipe.md`.
+
+*Note: `servings` is kept as it is intended for future scaling logic, although currently unmapped to the core DB model.*

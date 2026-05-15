@@ -426,8 +426,6 @@ components:
         instructions:
           type: array
           items: { type: string }
-        prepTimeMinutes: { type: [integer, 'null'] }
-        cookTimeMinutes: { type: [integer, 'null'] }
         totalTimeMinutes: { type: [integer, 'null'] }
         servings: { type: [integer, 'null'] }
         sourceUrl: { type: [string, 'null'], format: uri }

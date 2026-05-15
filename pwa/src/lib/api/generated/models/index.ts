@@ -1419,9 +1419,6 @@ export function deserializeIntoImportedRecipeDto(
     category: (n) => {
       importedRecipeDto.category = n.getStringValue();
     },
-    cookTimeMinutes: (n) => {
-      importedRecipeDto.cookTimeMinutes = n.getNumberValue();
-    },
     description: (n) => {
       importedRecipeDto.description = n.getStringValue();
     },
@@ -1436,9 +1433,6 @@ export function deserializeIntoImportedRecipeDto(
     },
     name: (n) => {
       importedRecipeDto.name = n.getStringValue();
-    },
-    prepTimeMinutes: (n) => {
-      importedRecipeDto.prepTimeMinutes = n.getNumberValue();
     },
     servings: (n) => {
       importedRecipeDto.servings = n.getNumberValue();
@@ -3159,10 +3153,6 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
    */
   category?: string | null;
   /**
-   * The cookTimeMinutes property
-   */
-  cookTimeMinutes?: number | null;
-  /**
    * The description property
    */
   description?: string | null;
@@ -3182,10 +3172,6 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
    * The name property
    */
   name?: string | null;
-  /**
-   * The prepTimeMinutes property
-   */
-  prepTimeMinutes?: number | null;
   /**
    * The servings property
    */
@@ -4313,13 +4299,11 @@ export function serializeImportedRecipeDto(
     return;
   }
   writer.writeStringValue('category', importedRecipeDto.category);
-  writer.writeNumberValue('cookTimeMinutes', importedRecipeDto.cookTimeMinutes);
   writer.writeStringValue('description', importedRecipeDto.description);
   writer.writeCollectionOfPrimitiveValues<string>('ingredients', importedRecipeDto.ingredients);
   writer.writeCollectionOfPrimitiveValues<string>('instructions', importedRecipeDto.instructions);
   writer.writeBooleanValue('isSynthesized', importedRecipeDto.isSynthesized);
   writer.writeStringValue('name', importedRecipeDto.name);
-  writer.writeNumberValue('prepTimeMinutes', importedRecipeDto.prepTimeMinutes);
   writer.writeNumberValue('servings', importedRecipeDto.servings);
   writer.writeStringValue('sourceName', importedRecipeDto.sourceName);
   writer.writeStringValue('sourceUrl', importedRecipeDto.sourceUrl);

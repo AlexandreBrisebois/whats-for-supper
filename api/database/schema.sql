@@ -178,3 +178,32 @@ COALESCE(v.vote_count, 0) AS vote_count
 FROM recipes r
 LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id
 WHERE r.is_discoverable = true AND r.is_ready = true AND r.deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS health_events (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_type varchar(50) NOT NULL,
+    entity_id varchar(100) NOT NULL,
+    status varchar(20) NOT NULL DEFAULT 'pending',
+    attempts integer DEFAULT 0 NOT NULL,
+    last_error text,
+    created_at timestamptz DEFAULT now() NOT NULL,
+    scheduled_for timestamptz DEFAULT now() NOT NULL,
+    CONSTRAINT health_events_status_check CHECK (status IN ('pending', 'processing', 'completed', 'failed'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_health_events_status_scheduled ON health_events (status, scheduled_for, created_at);
+
+CREATE TABLE IF NOT EXISTS health_recipe_profiles (
+    recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
+    dietary_profile jsonb,
+    fop_flags jsonb,
+    last_recomputed_at timestamptz DEFAULT now() NOT NULL,
+    version integer DEFAULT 1 NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS health_week_summaries (
+    week_start_date date PRIMARY KEY,
+    balance_summary jsonb,
+    fop_week_summary jsonb,
+    last_recomputed_at timestamptz DEFAULT now() NOT NULL
+);

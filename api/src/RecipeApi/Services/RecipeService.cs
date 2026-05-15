@@ -16,6 +16,7 @@ public class RecipeService(
     IRecipeStore recipeStore,
     IWorkflowOrchestrator orchestrator,
     SearchIndexWorkflow searchIndex,
+    IHealthEventPublisher healthPublisher,
     ILogger<RecipeService> logger)
 {
     private const string RecipeShareBundleVersion = "1.0";
@@ -104,6 +105,9 @@ public class RecipeService(
         {
             logger.LogError(ex, "Failed to trigger recipe-import workflow for recipe {RecipeId}", recipeId);
         }
+
+        // Publish neutral health event (outbox pattern)
+        await healthPublisher.PublishRecipeChangedAsync(recipeId, default);
 
         return recipeId;
     }
@@ -222,8 +226,6 @@ public class RecipeService(
                 Description = recipe.Description,
                 Ingredients = DeserializeIngredients(recipe.Ingredients),
                 Instructions = ExtractRecipeInstructionStrings(recipe.RawMetadata),
-                PrepTimeMinutes = null,
-                CookTimeMinutes = null,
                 TotalTimeMinutes = ParseTotalTimeMinutes(recipe.TotalTime),
                 Servings = null,
                 SourceUrl = recipe.SourceUrl,
@@ -300,6 +302,9 @@ public class RecipeService(
                 DecodeBase64ToStream(original.Base64));
         }
 
+        // Publish neutral health event (outbox pattern)
+        await healthPublisher.PublishRecipeChangedAsync(recipeId, default);
+
         return MapToDto(recipe);
     }
 
@@ -375,6 +380,15 @@ public class RecipeService(
             dto.Description is not null ? recipe.Description : null,
             dto.RecipeInstructions is not null ? dto.RecipeInstructions : null);
 
+        // Publish neutral health event (outbox pattern) if relevant fields changed
+        if (dto.Name is not null ||
+            dto.Description is not null ||
+            dto.Ingredients is not null ||
+            dto.RecipeInstructions is not null)
+        {
+            await healthPublisher.PublishRecipeChangedAsync(id, default);
+        }
+
         return new RecipeDetailResponseDto
         {
             UpdatedAt = recipe.UpdatedAt,
@@ -430,6 +444,9 @@ public class RecipeService(
         {
             logger.LogError(ex, "Failed to trigger goto-synthesis workflow for recipe {RecipeId}", recipeId);
         }
+
+        // Publish neutral health event (outbox pattern)
+        await healthPublisher.PublishRecipeChangedAsync(recipeId, default);
 
         return MapToDto(recipe);
     }
@@ -487,6 +504,9 @@ public class RecipeService(
         {
             logger.LogError(ex, "Failed to trigger url-import workflow for recipe {RecipeId} (URL: {Url})", recipeId, dto.Url);
         }
+
+        // Publish neutral health event (outbox pattern)
+        await healthPublisher.PublishRecipeChangedAsync(recipeId, default);
 
         return recipeId;
     }
@@ -602,6 +622,9 @@ public class RecipeService(
         {
             logger.LogError(ex, "Failed to trigger search index for restored recipe {RecipeId}", id);
         }
+
+        // Publish neutral health event (outbox pattern)
+        await healthPublisher.PublishRecipeChangedAsync(id, default);
 
         return MapToDetailResponse(recipe);
     }

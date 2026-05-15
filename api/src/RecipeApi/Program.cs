@@ -98,6 +98,8 @@ try
     builder.Services.AddSingleton<AisleMapper>();
     builder.Services.AddSingleton<SseConnectionManager>();
     builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
+    builder.Services.AddScoped<IHealthEventPublisher, DbHealthEventPublisher>();
+    builder.Services.AddScoped<HealthComputationService>();
     builder.Services.AddSingleton<DataRootResolver>();
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
@@ -193,7 +195,6 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
     builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CategorizeIngredientsProcessor>();
-    builder.Services.AddScoped<IWorkflowProcessor, ClassifyDietaryProfileProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
     builder.Services.AddScoped<IWorkflowProcessor, WorkflowProcessor>();
@@ -233,6 +234,7 @@ try
     builder.Services.AddHostedService<DreamingWorkflowSeederHostedService>();
     builder.Services.AddHostedService<DemoWorkflowSeederHostedService>();
     builder.Services.AddHostedService<WorkflowWorker>();
+    builder.Services.AddHostedService<HealthWorker>();
     builder.Services.Configure<WorkflowRetryOptions>(builder.Configuration.GetSection("WorkflowRetry"));
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────

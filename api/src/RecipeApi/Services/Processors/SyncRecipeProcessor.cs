@@ -12,6 +12,7 @@ public class SyncRecipeProcessor(
     RecipeRepository recipeRepository,
     DiscoveryService discoveryService,
     GroceryRecomputeService groceryRecomputeService,
+    IHealthEventPublisher healthPublisher,
     ILogger<SyncRecipeProcessor> logger) : IWorkflowProcessor
 {
     public string ProcessorName => "SyncRecipe";
@@ -113,5 +114,8 @@ public class SyncRecipeProcessor(
 
         // Recompute grocery items for all week plans that include this recipe
         await groceryRecomputeService.RecomputeForRecipeAsync(recipeId, ct);
+
+        // Publish neutral health event (outbox pattern)
+        await healthPublisher.PublishRecipeChangedAsync(recipeId, ct);
     }
 }

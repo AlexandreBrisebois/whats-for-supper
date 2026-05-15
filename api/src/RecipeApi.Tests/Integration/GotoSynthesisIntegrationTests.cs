@@ -89,7 +89,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object, new Mock<IHealthEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -127,7 +127,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object, new Mock<IHealthEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -181,7 +181,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object, new Mock<IHealthEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -219,7 +219,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
+        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object, new Mock<IHealthEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),

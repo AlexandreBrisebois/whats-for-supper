@@ -20,12 +20,6 @@ public class ImportedRecipeDto
     [JsonPropertyName("instructions")]
     public required List<string> Instructions { get; set; } = [];
 
-    [JsonPropertyName("prepTimeMinutes")]
-    public int? PrepTimeMinutes { get; set; }
-
-    [JsonPropertyName("cookTimeMinutes")]
-    public int? CookTimeMinutes { get; set; }
-
     [JsonPropertyName("totalTimeMinutes")]
     public int? TotalTimeMinutes { get; set; }
 

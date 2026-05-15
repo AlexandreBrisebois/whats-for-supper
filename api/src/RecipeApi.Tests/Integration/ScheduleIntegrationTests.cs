@@ -928,7 +928,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var processor = new RecipeReadyProcessor(
             _db,
             NullLogger<RecipeReadyProcessor>.Instance,
-            publisherMock.Object);
+            publisherMock.Object,
+            new Mock<IHealthEventPublisher>().Object);
 
         var task = new WorkflowTask
         {
@@ -973,7 +974,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var processor = new RecipeReadyProcessor(
             _db,
             NullLogger<RecipeReadyProcessor>.Instance,
-            publisherMock.Object);
+            publisherMock.Object,
+            new Mock<IHealthEventPublisher>().Object);
 
         var task = new WorkflowTask
         {

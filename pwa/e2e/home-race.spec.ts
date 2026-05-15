@@ -234,7 +234,9 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     await expect(page.getByText('Mock Recipe').first()).toBeVisible();
   });
 
-  test('sync() on mount merges details if ID matches during optimistic window', async ({ page }) => {
+  test('sync() on mount merges details if ID matches during optimistic window', async ({
+    page,
+  }) => {
     const monday = currentMonday();
     const today = toDateStr(monday);
     const recipeId = MOCK_IDS.RECIPE_LASAGNA;

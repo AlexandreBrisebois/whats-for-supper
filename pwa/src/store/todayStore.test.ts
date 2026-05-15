@@ -139,7 +139,7 @@ describe('todayStore — applyServerUpdate', () => {
   it('updates details from server push even within 2s echo window if ID matches', () => {
     const recipeId = 'recipe-1';
     const optimisticRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
-    
+
     useTodayStore.setState({
       currentRecipe: optimisticRecipe as any,
       status: 0,
@@ -281,7 +281,7 @@ describe('todayStore — init', () => {
   it('updates details if ID matches during optimistic window', () => {
     const recipeId = 'recipe-1';
     const optimisticRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
-    
+
     useTodayStore.setState({
       currentRecipe: optimisticRecipe as any,
       status: 0,

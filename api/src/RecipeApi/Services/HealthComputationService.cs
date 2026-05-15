@@ -5,24 +5,24 @@ using Microsoft.Extensions.AI;
 using RecipeApi.Data;
 using RecipeApi.Models;
 using RecipeApi.Utils;
-using RecipeApi.Workflow;
 
-namespace RecipeApi.Services.Processors;
+namespace RecipeApi.Services;
 
 /// <summary>
-/// Workflow processor that classifies recipes into dietary profiles using an LLM.
-/// This is the only place in the feature that calls the LLM.
-/// Classification is idempotent: if a recipe already has a dietary_profile, it is skipped
-/// unless forceReclassify is true in the payload.
+/// Service responsible for computing dietary profiles and health-related metadata for recipes.
+/// This encapsulates logic previously held in ClassifyDietaryProfileProcessor.
 /// </summary>
-public class ClassifyDietaryProfileProcessor(
+public class HealthComputationService(
     RecipeDbContext db,
     IChatClient chatClient,
-    ILogger<ClassifyDietaryProfileProcessor> logger) : IWorkflowProcessor
+    ILogger<HealthComputationService> logger)
 {
-    public string ProcessorName => "ClassifyDietaryProfile";
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
-    // Valid values for primaryFoodGroup
     private static readonly HashSet<string> ValidPrimaryFoodGroups = new(StringComparer.Ordinal)
     {
         "VegetablesAndFruits",
@@ -31,7 +31,6 @@ public class ClassifyDietaryProfileProcessor(
         "Mixed"
     };
 
-    // Valid values for proteinSource
     private static readonly HashSet<string> ValidProteinSources = new(StringComparer.Ordinal)
     {
         "RedMeat",
@@ -43,7 +42,6 @@ public class ClassifyDietaryProfileProcessor(
         "None"
     };
 
-    // System prompt for the LLM
     private const string SystemPrompt = """
         You are a culinary dietitian. Classify the recipe using Canada's 2019 Food Guide.
 
@@ -74,91 +72,41 @@ public class ClassifyDietaryProfileProcessor(
         Respond with JSON only. No explanation. No markdown.
         """;
 
-    public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
+    public async Task ProcessRecipeChangedAsync(Guid recipeId, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(task.Payload))
-            throw new ArgumentException("Task payload is empty.");
-
-        using var doc = JsonDocument.Parse(task.Payload);
-        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) &&
-            !doc.RootElement.TryGetProperty("RecipeId", out idProp))
-            throw new ArgumentException("Task payload does not contain recipeId.");
-
-        var recipeId = idProp.GetGuid();
-
-        // Parse optional forceReclassify flag (default false)
-        var forceReclassify = false;
-        if (doc.RootElement.TryGetProperty("forceReclassify", out var forceProp))
+        logger.LogInformation("Processing recipe health profile for {RecipeId}", recipeId);
+        var recipe = await db.Recipes.AsNoTracking().FirstOrDefaultAsync(r => r.Id == recipeId, ct);
+        if (recipe == null)
         {
-            forceReclassify = forceProp.GetBoolean();
-        }
-
-        try
-        {
-            await ClassifyAsync(recipeId, forceReclassify, ct);
-        }
-        catch (Exception ex)
-        {
-            // Per spec: if any error occurs, log and complete without throwing — workflow continues.
-            logger.LogError(ex, "ClassifyDietaryProfile: unexpected error for recipe {RecipeId} — workflow continues", recipeId);
-        }
-
-        return new { Message = $"ClassifyDietaryProfile completed for recipe {recipeId}." };
-    }
-
-    private async Task ClassifyAsync(Guid recipeId, bool forceReclassify, CancellationToken ct)
-    {
-        // 1. Load the recipe from DB.
-        var recipe = await db.Recipes.FindAsync([recipeId], ct);
-        if (recipe is null)
-        {
-            logger.LogWarning("ClassifyDietaryProfile: recipe {RecipeId} not found — skipping", recipeId);
+            logger.LogWarning("Recipe {RecipeId} not found for health computation", recipeId);
             return;
         }
 
-        // 2. Check idempotence: if dietary_profile is already set and forceReclassify is false, skip.
-        if (recipe.DietaryProfile != null && !forceReclassify)
-        {
-            logger.LogDebug("ClassifyDietaryProfile: recipe {RecipeId} already classified — skipping", recipeId);
-            return;
-        }
-
-        // 3. If forceReclassify is true, clear the existing profile to force re-classification.
-        if (forceReclassify)
-        {
-            recipe.DietaryProfile = null;
-        }
-
-        // 4. Read raw_metadata.
         if (string.IsNullOrWhiteSpace(recipe.RawMetadata))
         {
-            logger.LogDebug("ClassifyDietaryProfile: recipe {RecipeId} has no raw_metadata — skipping", recipeId);
+            logger.LogDebug("Recipe {RecipeId} has no raw_metadata — skipping health computation", recipeId);
             return;
         }
 
-        // 5. Extract supply names and nutrition from raw_metadata.
         var (supplyNames, nutrition) = ExtractSupplyAndNutrition(recipe.RawMetadata, recipeId);
         if (supplyNames.Count == 0)
         {
-            logger.LogDebug("ClassifyDietaryProfile: recipe {RecipeId} has no supply[] or recipeIngredient[] entries — skipping", recipeId);
+            logger.LogDebug("Recipe {RecipeId} has no supply[] or recipeIngredient[] entries — skipping health computation", recipeId);
             return;
         }
 
-        // 6. Call LLM with structured payload.
         var llmResult = await CallLlmAsync(recipe.Name, recipe.Description, supplyNames, ct);
-        if (llmResult is null)
+        if (llmResult == null)
         {
-            logger.LogWarning("ClassifyDietaryProfile: LLM returned no result for recipe {RecipeId}", recipeId);
-            return;
+            throw new InvalidOperationException($"LLM classification failed for recipe {recipeId}");
         }
 
-        // 7. Validate response shape.
         if (!ValidateLlmResponse(llmResult, recipeId))
         {
-            return;
+            throw new InvalidOperationException($"LLM returned invalid response shape for recipe {recipeId}");
         }
 
-        // 8. Apply WholeGrain guard: if wholeGrainConfident is false, remove WholeGrains from secondary.
+        // Apply WholeGrain guard: if wholeGrainConfident is false, remove WholeGrains from secondary.
         if (!llmResult.WholeGrainConfident)
         {
             llmResult = llmResult with
@@ -169,27 +117,84 @@ public class ClassifyDietaryProfileProcessor(
             };
         }
 
-        // 9. Compute FOP flags from nutrition (deterministic, no LLM involved).
         var fopFlags = NutritionParser.ComputeFopFlags(nutrition);
+        var result = llmResult with { FopFlags = fopFlags };
 
-        // 10. Attach FOP flags to the profile.
-        var profile = llmResult with { FopFlags = fopFlags };
+        // Upsert HealthRecipeProfile
+        var profile = await db.HealthRecipeProfiles.FirstOrDefaultAsync(p => p.RecipeId == recipeId, ct);
+        if (profile == null)
+        {
+            profile = new HealthRecipeProfile { RecipeId = recipeId };
+            db.HealthRecipeProfiles.Add(profile);
+        }
 
-        // 11. Serialize and write to recipe.
-        recipe.DietaryProfile = JsonSerializer.Serialize(profile, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        recipe.Category = profile.PrimaryFoodGroup;
+        profile.DietaryProfile = JsonSerializer.Serialize(result, _jsonOptions);
+        profile.PrimaryFoodGroup = result.PrimaryFoodGroup;
+        profile.IsHealthyChoice = recipe.IsHealthyChoice;
+        profile.IsVegetarian = recipe.IsVegetarian;
+        profile.FopFlags = JsonSerializer.Serialize(result.FopFlags, _jsonOptions);
+        profile.LastRecomputedAt = DateTimeOffset.UtcNow;
+        profile.Version++;
 
-        // 12. Save changes.
         await db.SaveChangesAsync(ct);
-
-        logger.LogInformation(
-            "ClassifyDietaryProfile: recipe {RecipeId} classified as {PrimaryFoodGroup}",
-            recipeId, profile.PrimaryFoodGroup);
+        logger.LogInformation("Updated health recipe profile for {RecipeId}", recipeId);
     }
 
-    /// <summary>
-    /// Extracts supply names and nutrition information from raw_metadata JSON.
-    /// </summary>
+    public async Task ProcessWeekChangedAsync(DateOnly weekStartDate, CancellationToken ct)
+    {
+        logger.LogInformation("Recomputing weekly health summary for {WeekStart}", weekStartDate);
+
+        var weekEnd = weekStartDate.AddDays(7);
+        var events = await db.CalendarEvents
+            .AsNoTracking()
+            .Where(e => e.Date >= weekStartDate && e.Date < weekEnd && e.MealSlot == (short)0) // 0 = Dinner
+            .OrderBy(e => e.Date)
+            .ToListAsync(ct);
+
+        // Map events to profiles (must have 7 slots, even if null)
+        var profiles = new List<RecipeDietaryProfile?>();
+        for (int i = 0; i < 7; i++)
+        {
+            var date = weekStartDate.AddDays(i);
+            var ev = events.FirstOrDefault(e => e.Date == date);
+
+            if (ev?.RecipeId != null)
+            {
+                var profile = await db.HealthRecipeProfiles
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.RecipeId == ev.RecipeId, ct);
+
+                if (!string.IsNullOrEmpty(profile?.DietaryProfile))
+                {
+                    profiles.Add(JsonSerializer.Deserialize<RecipeDietaryProfile>(profile.DietaryProfile, _jsonOptions));
+                }
+                else
+                {
+                    profiles.Add(null);
+                }
+            }
+            else
+            {
+                profiles.Add(null);
+            }
+        }
+
+        var balanceSummary = WeeklyBalanceScorer.Compute(profiles);
+
+        var summary = await db.HealthWeekSummaries.FirstOrDefaultAsync(s => s.WeekStartDate == weekStartDate, ct);
+        if (summary == null)
+        {
+            summary = new HealthWeekSummary { WeekStartDate = weekStartDate };
+            db.HealthWeekSummaries.Add(summary);
+        }
+
+        summary.BalanceSummary = JsonSerializer.Serialize(balanceSummary, _jsonOptions);
+        summary.FopWeekSummary = JsonSerializer.Serialize(balanceSummary.FopWeekSummary, _jsonOptions);
+        summary.LastRecomputedAt = DateTimeOffset.UtcNow;
+
+        await db.SaveChangesAsync(ct);
+    }
+
     private (List<string> supplyNames, NutritionInformation? nutrition) ExtractSupplyAndNutrition(
         string rawMetadata, Guid recipeId)
     {
@@ -203,11 +208,10 @@ public class ClassifyDietaryProfileProcessor(
         }
         catch (JsonException ex)
         {
-            logger.LogDebug(ex, "ClassifyDietaryProfile: failed to parse raw_metadata for recipe {RecipeId}", recipeId);
+            logger.LogDebug(ex, "Failed to parse raw_metadata for recipe {RecipeId}", recipeId);
             return (supplyNames, nutrition);
         }
 
-        // Extract supply array, fall back to recipeIngredient strings if supply is absent
         var supplyArray = root?["supply"]?.AsArray();
         if (supplyArray != null && supplyArray.Count > 0)
         {
@@ -234,7 +238,6 @@ public class ClassifyDietaryProfileProcessor(
             }
         }
 
-        // Extract nutrition information
         var nutritionNode = root?["nutrition"];
         if (nutritionNode != null)
         {
@@ -245,24 +248,19 @@ public class ClassifyDietaryProfileProcessor(
             }
             catch (JsonException ex)
             {
-                logger.LogDebug(ex, "ClassifyDietaryProfile: failed to parse nutrition for recipe {RecipeId}", recipeId);
+                logger.LogDebug(ex, "Failed to parse nutrition for recipe {RecipeId}", recipeId);
             }
         }
 
         return (supplyNames, nutrition);
     }
 
-    /// <summary>
-    /// Calls the LLM with the recipe information and returns the parsed response.
-    /// Returns null if the LLM call fails.
-    /// </summary>
     private async Task<RecipeDietaryProfile?> CallLlmAsync(
         string? recipeName,
         string? description,
         List<string> ingredientNames,
         CancellationToken ct)
     {
-        // Truncate description to first 150 characters
         var truncatedDescription = description != null && description.Length > 150
             ? description[..150]
             : description;
@@ -274,10 +272,7 @@ public class ClassifyDietaryProfileProcessor(
             ingredients = ingredientNames
         };
 
-        var requestJson = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        });
+        var requestJson = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
         var prompt = $"""
             {SystemPrompt}
@@ -291,7 +286,6 @@ public class ClassifyDietaryProfileProcessor(
             var response = await chatClient.GetResponseAsync(prompt, cancellationToken: ct);
             var responseText = response.Text?.Trim() ?? string.Empty;
 
-            // Strip markdown code fences if present.
             if (responseText.StartsWith("```"))
             {
                 var firstNewline = responseText.IndexOf('\n');
@@ -300,40 +294,31 @@ public class ClassifyDietaryProfileProcessor(
                     responseText = responseText[(firstNewline + 1)..lastFence].Trim();
             }
 
-            var result = JsonSerializer.Deserialize<RecipeDietaryProfile>(responseText, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
+            var result = JsonSerializer.Deserialize<RecipeDietaryProfile>(responseText, _jsonOptions);
 
             return result;
         }
         catch (Exception ex)
         {
-            // Per spec: if LLM call fails, log and return null — workflow continues.
-            logger.LogError(ex, "ClassifyDietaryProfile: LLM call failed");
+            logger.LogError(ex, "LLM call failed during health computation");
             return null;
         }
     }
 
-    /// <summary>
-    /// Validates the LLM response shape. Returns true if valid, false otherwise.
-    /// </summary>
     private bool ValidateLlmResponse(RecipeDietaryProfile profile, Guid recipeId)
     {
-        // Validate primaryFoodGroup
         if (!ValidPrimaryFoodGroups.Contains(profile.PrimaryFoodGroup))
         {
             logger.LogWarning(
-                "ClassifyDietaryProfile: LLM returned invalid primaryFoodGroup '{PrimaryFoodGroup}' for recipe {RecipeId}",
+                "Invalid primaryFoodGroup '{PrimaryFoodGroup}' for recipe {RecipeId}",
                 profile.PrimaryFoodGroup, recipeId);
             return false;
         }
 
-        // Validate proteinSource
         if (!ValidProteinSources.Contains(profile.ProteinSource))
         {
             logger.LogWarning(
-                "ClassifyDietaryProfile: LLM returned invalid proteinSource '{ProteinSource}' for recipe {RecipeId}",
+                "Invalid proteinSource '{ProteinSource}' for recipe {RecipeId}",
                 profile.ProteinSource, recipeId);
             return false;
         }
