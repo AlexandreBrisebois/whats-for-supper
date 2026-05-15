@@ -39,7 +39,9 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
         if (isLanding) {
           const target = selectedFamilyMemberId ? ROUTES.HOME : ROUTES.ONBOARDING;
           if (process.env.NEXT_PUBLIC_ENVIRONMENT === 'test') {
-            console.log(`[IdentityValidator] Landing redirect: ${target} (memberId: ${selectedFamilyMemberId})`);
+            console.log(
+              `[IdentityValidator] Landing redirect: ${target} (memberId: ${selectedFamilyMemberId})`
+            );
           }
           router.replace(target);
           return;
@@ -70,8 +72,10 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
           if (isTest) {
             await new Promise((r) => setTimeout(r, 100));
             if (useFamilyStore.getState().selectedFamilyMemberId) return;
-            
-            console.log(`[IdentityValidator] Identity missing at ${pathname}, redirecting to /onboarding`);
+
+            console.log(
+              `[IdentityValidator] Identity missing at ${pathname}, redirecting to /onboarding`
+            );
           }
 
           router.replace(ROUTES.ONBOARDING);

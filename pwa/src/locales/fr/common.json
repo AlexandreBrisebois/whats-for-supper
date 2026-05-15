@@ -354,7 +354,8 @@
     "turnOffDiscovery": "Masquer de la Découverte pour cette recette",
     "turnOnDiscovery": "Afficher dans la Découverte pour cette recette",
     "viewOriginal": "Voir l'original",
-    "viewSource": "Voir la source"
+    "viewSource": "Voir la source",
+    "fitToScreen": "Adapter à l'écran"
   },
   "settings": {
     "failedCaptures": "Captures échouées",

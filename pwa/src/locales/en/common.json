@@ -354,7 +354,8 @@
     "turnOffDiscovery": "Turn off Discovery for this recipe",
     "turnOnDiscovery": "Turn on Discovery for this recipe",
     "viewOriginal": "View Original",
-    "viewSource": "View Source"
+    "viewSource": "View Source",
+    "fitToScreen": "Fit to Screen"
   },
   "settings": {
     "failedCaptures": "Failed Captures",

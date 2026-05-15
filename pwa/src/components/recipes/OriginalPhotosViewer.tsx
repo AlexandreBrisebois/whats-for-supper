@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
 import { getImageUrl } from '@/lib/imageUtils';
 import { t } from '@/locales';
@@ -33,6 +33,23 @@ export function OriginalPhotosViewer({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [scale, setScale] = useState(1);
   const [direction, setDirection] = useState(0);
+  const controls = useAnimation();
+
+  useEffect(() => {
+    if (scale === 1) {
+      void controls.start({
+        scale: 1,
+        x: 0,
+        y: 0,
+        transition: { type: 'spring', stiffness: 200, damping: 25 },
+      });
+    } else {
+      void controls.start({
+        scale,
+        transition: { type: 'spring', stiffness: 200, damping: 25 },
+      });
+    }
+  }, [scale, controls]);
 
   const handleNext = useCallback(() => {
     if (scale > 1) setScale(1);
@@ -149,8 +166,7 @@ export function OriginalPhotosViewer({
               dragConstraints={{ left: -500, right: 500, top: -500, bottom: 500 }}
               dragElastic={0.1}
               dragMomentum={false}
-              animate={{ scale }}
-              transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+              animate={controls}
               className="relative h-full w-full max-w-4xl flex items-center justify-center"
               style={{ cursor: scale > 1 ? 'move' : 'zoom-in' }}
               onClick={() => {
@@ -177,9 +193,20 @@ export function OriginalPhotosViewer({
         <button
           type="button"
           onClick={toggleZoom}
-          className="absolute bottom-10 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-terracotta text-white shadow-2xl transition hover:scale-105 active:scale-95"
+          className={`absolute bottom-10 right-6 flex h-14 items-center justify-center rounded-full bg-terracotta text-white shadow-2xl transition-all hover:scale-105 active:scale-95 ${
+            scale > 1 ? 'px-6 gap-2' : 'w-14'
+          }`}
         >
-          {scale > 1 ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+          {scale > 1 ? (
+            <>
+              <Minimize2 size={20} />
+              <span className="text-xs font-black uppercase tracking-wider">
+                {t('recipes.fitToScreen', 'Fit to Screen')}
+              </span>
+            </>
+          ) : (
+            <Maximize2 size={24} />
+          )}
         </button>
 
         {/* Navigation Arrows (Hidden on mobile touch) */}
