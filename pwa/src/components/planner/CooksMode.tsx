@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   Circle,
   Sparkles,
+  Pencil,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -127,15 +129,15 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   };
 
   const handleSaveEdit = async () => {
-    setIsEditing(false);
-    if (!recipeDetails || editingValue === currentStepData.instruction) return;
+    if (!recipeDetails || editingValue === currentStepData.instruction) {
+      setIsEditing(false);
+      return;
+    }
 
     try {
       const originalInstructions = [...(recipeDetails.recipeInstructions || [])];
 
       // Simple mapping for flat arrays (string[] or HowToStep[])
-      // If it's a more complex structure like HowToSection[], this simple map
-      // might need refinement, but for now we follow the requirement of object[].
       const updatedInstructions = originalInstructions.map((step, idx) => {
         if (idx === activeRecipeStepIndex) {
           if (typeof step === 'string') {
@@ -166,9 +168,15 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       if (newSteps.length > 0) {
         setParsedSteps(newSteps);
       }
+      setIsEditing(false);
     } catch (error) {
       console.error('[CooksMode] Failed to save instruction edit:', error);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditingValue(currentStepData.instruction);
   };
 
   if (isLoading) {
@@ -283,9 +291,25 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 </span>
               </div>
 
-              <h3 className="text-3xl md:text-4xl font-heading font-black text-charcoal mb-6 leading-tight">
-                {isPrepStep ? t('cook.checkAndPrep', 'Check & Prep') : currentStepData.title}
-              </h3>
+              <div className="flex items-center justify-between mb-6 gap-4">
+                <h3 className="text-3xl md:text-4xl font-heading font-black text-charcoal leading-tight">
+                  {isPrepStep ? t('cook.checkAndPrep', 'Check & Prep') : currentStepData.title}
+                </h3>
+                {!isPrepStep && !isEditing && (
+                  <button
+                    type="button"
+                    data-testid="cooks-mode-edit-step"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditingValue(currentStepData.instruction);
+                    }}
+                    className="p-3 rounded-full bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10 active:scale-90 transition-all"
+                    aria-label={t('common.edit', 'Edit')}
+                  >
+                    <Pencil size={20} />
+                  </button>
+                )}
+              </div>
 
               {isPrepStep ? (
                 <div className="mt-8 space-y-8 bg-terracotta/[0.02]">
@@ -347,22 +371,37 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                   )}
                 </div>
               ) : isEditing ? (
-                <textarea
-                  autoFocus
-                  className="w-full bg-transparent text-3xl font-bold text-charcoal/80 leading-relaxed border-none focus:ring-0 resize-none p-0 outline-none"
-                  rows={4}
-                  value={editingValue}
-                  onChange={(e) => setEditingValue(e.target.value)}
-                  onBlur={handleSaveEdit}
-                />
+                <div className="space-y-4 w-full">
+                  <textarea
+                    autoFocus
+                    className="w-full rounded-[1.5rem] border border-charcoal/10 bg-white/90 px-6 py-5 text-2xl font-bold text-charcoal/80 leading-relaxed shadow-sm outline-none transition focus:border-terracotta/30"
+                    rows={6}
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      data-testid="cooks-mode-save-edit"
+                      onClick={handleSaveEdit}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-6 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 active:scale-95"
+                    >
+                      <Check size={18} />
+                      <span>{t('common.save', 'Save')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="cooks-mode-cancel-edit"
+                      onClick={handleCancelEdit}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-6 text-sm font-black text-charcoal shadow-sm transition hover:bg-charcoal/5 active:scale-95"
+                    >
+                      <X size={18} />
+                      <span>{t('common.cancel', 'Cancel')}</span>
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <p
-                  className="text-3xl font-bold text-charcoal/80 leading-relaxed cursor-text"
-                  onClick={() => {
-                    setIsEditing(true);
-                    setEditingValue(currentStepData.instruction);
-                  }}
-                >
+                <p className="text-3xl font-bold text-charcoal/80 leading-relaxed">
                   {currentStepData.instruction}
                 </p>
               )}

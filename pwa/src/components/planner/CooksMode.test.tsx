@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('next/image', () => ({
   default: ({ fill: _fill, priority: _priority, unoptimized: _unoptimized, ...props }: any) => (
@@ -143,7 +143,7 @@ describe('CooksMode', () => {
     expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
   });
 
-  it('allows editing a step and saves on blur', async () => {
+  it('allows editing a step and saves on explicit Save button click', async () => {
     getRecipeMock.mockResolvedValue({
       id: 'recipe-1',
       name: 'Pasta Night',
@@ -160,16 +160,53 @@ describe('CooksMode', () => {
     // Advance to Step 1
     fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
 
-    const instruction = screen.getByText('Original Step 1');
-    fireEvent.click(instruction);
+    // Should find a pencil icon to trigger edit
+    const editBtn = screen.getByTestId('cooks-mode-edit-step');
+    fireEvent.click(editBtn);
 
     const textarea = screen.getByDisplayValue('Original Step 1');
     fireEvent.change(textarea, { target: { value: 'Updated Step 1' } });
-    fireEvent.blur(textarea);
 
-    expect(updateRecipeMock).toHaveBeenCalledWith('recipe-1', {
-      recipeInstructions: ['Updated Step 1', 'Original Step 2'],
-    });
+    // Save button should be present
+    const saveBtn = screen.getByTestId('cooks-mode-save-edit');
+    fireEvent.click(saveBtn);
+
+    await waitFor(() =>
+      expect(updateRecipeMock).toHaveBeenCalledWith('recipe-1', {
+        recipeInstructions: ['Updated Step 1', 'Original Step 2'],
+      })
+    );
     expect(await screen.findByText('Updated Step 1')).toBeInTheDocument();
   });
+
+
+  it('cancels editing without saving when Cancel button is clicked', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      recipeInstructions: ['Original Step 1'],
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    // Advance to Step 1
+    fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+
+    fireEvent.click(screen.getByTestId('cooks-mode-edit-step'));
+    const textarea = screen.getByDisplayValue('Original Step 1');
+    fireEvent.change(textarea, { target: { value: 'Nonsense' } });
+
+    const cancelBtn = screen.getByTestId('cooks-mode-cancel-edit');
+    fireEvent.click(cancelBtn);
+
+    expect(updateRecipeMock).not.toHaveBeenCalled();
+    expect(screen.getByText('Original Step 1')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Nonsense')).not.toBeInTheDocument();
+  });
 });
+

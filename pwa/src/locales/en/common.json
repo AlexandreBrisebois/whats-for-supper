@@ -29,7 +29,8 @@
     "saving": "Saving",
     "loading": "Loading...",
     "settings": "Settings",
-    "readyIn": "READY IN {{time}}"
+    "readyIn": "READY IN {{time}}",
+    "save": "Save"
   },
   "errors": {
     "notFoundTitle": "Page not found",

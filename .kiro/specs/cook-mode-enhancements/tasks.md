@@ -26,8 +26,8 @@
 - [x] **VERIFY**: Run PWA unit tests (GREEN).
 
 ## Phase 5: Micro-Editing (B5.2) [DONE]
-- [x] **TEST**: Add `CooksMode.test.tsx` case for editing a step and saving (GREEN).
-- [x] **PWA**: Implement editing UI and `save-on-blur` logic in `CooksMode.tsx`.
+- [x] **TEST**: Add `CooksMode.test.tsx` case for editing a step via pencil icon and Save/Cancel buttons (GREEN).
+- [x] **PWA**: Implement refined editing UI with pencil icon and explicit button controls in `CooksMode.tsx`.
 - [x] **VERIFY**: Final full-stack verification (GREEN).
 
 ## Phase 6: Stability & Regression Fixes [DONE]
