@@ -179,7 +179,6 @@ describe('CooksMode', () => {
     expect(await screen.findByText('Updated Step 1')).toBeInTheDocument();
   });
 
-
   it('cancels editing without saving when Cancel button is clicked', async () => {
     getRecipeMock.mockResolvedValue({
       id: 'recipe-1',
@@ -209,4 +208,3 @@ describe('CooksMode', () => {
     expect(screen.queryByDisplayValue('Nonsense')).not.toBeInTheDocument();
   });
 });
-
