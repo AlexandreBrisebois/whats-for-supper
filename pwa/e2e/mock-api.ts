@@ -115,6 +115,7 @@ export const builders = {
                 ],
               },
             ] as unknown as UntypedNode,
+            isReady: true,
             createdAt: new Date(),
           };
     return { ...base, ...overrides };

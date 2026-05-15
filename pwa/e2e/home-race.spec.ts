@@ -19,27 +19,21 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
 
     await setupCommonRoutes(page);
 
-    // Mock family GOTO setting
+    // Mock active family GOTO
     await page.route(
-      (url) => url.pathname.includes('/api/goto'),
+      (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
-        if (route.request().method() === 'GET') {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              items: [
-                {
-                  description: 'Our Family Spaghetti',
-                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
-                  status: 'ready',
-                },
-              ],
-            }),
-          });
-        } else {
-          await route.fallback();
-        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              description: 'Mock Recipe',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: 'ready',
+            },
+          }),
+        });
       }
     );
 
@@ -195,10 +189,25 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
   });
 
   test('Pending GOTO transitions to ready via SSE recipe_ready event', async ({ page }) => {
-    // Override the SSE mock from beforeEach: start with no recipe_ready event,
-    // then navigate to /home and verify the button is absent while pending.
-    // The beforeEach already sets up mockSseWithRecipeReady, so this test
-    // verifies the SSE-driven path works end-to-end (button appears after SSE fires).
+    // Override the GOTO mock to start as pending
+    let activeCallCount = 0;
+    await page.route(
+      (url) => url.pathname.includes('/api/goto/active'),
+      async (route) => {
+        activeCallCount++;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              description: 'Mock Recipe',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: activeCallCount === 1 ? 'pending' : 'ready',
+            },
+          }),
+        });
+      }
+    );
 
     // Status endpoint always returns 'pending' — polling must NOT resolve this
     await page.route(
@@ -223,5 +232,71 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
     await expect(confirmBtn).toBeVisible({ timeout: 20000 });
     await expect(confirmBtn).toBeEnabled();
     await expect(page.getByText('Mock Recipe').first()).toBeVisible();
+  });
+
+  test('sync() on mount merges details if ID matches during optimistic window', async ({ page }) => {
+    const monday = currentMonday();
+    const today = toDateStr(monday);
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+
+    // 1. Mock assign API to resolve
+    await page.route(
+      (url) => url.pathname.includes('/api/schedule/assign'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
+
+    // 2. Mock schedule to return full details for the same ID
+    await page.route(
+      (url) => url.pathname === '/api/schedule' && url.searchParams.get('weekOffset') === '0',
+      async (route) => {
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(monday);
+          d.setUTCDate(monday.getUTCDate() + i);
+          const dateStr = toDateStr(d);
+          return {
+            date: dateStr,
+            status: 0,
+            recipe:
+              dateStr === today
+                ? {
+                    id: recipeId,
+                    name: 'Family Lasagna',
+                    description: 'Hydrated via sync()',
+                    ingredients: ['Pasta'],
+                    totalTime: 'PT30M',
+                  }
+                : null,
+          };
+        });
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { weekOffset: 0, days } }),
+        });
+      }
+    );
+
+    // 3. Confirm GOTO (optimistic assignment)
+    const confirmBtn = page.getByTestId('confirm-goto-btn');
+    await expect(confirmBtn).toBeVisible({ timeout: 10000 });
+    await confirmBtn.click();
+
+    // Card appears immediately
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+
+    // 4. Reload page to trigger sync() and init() on mount
+    await page.reload();
+    await expect(page.getByTestId('home-loader')).not.toBeVisible();
+
+    // 5. Verify Hydration: flip the card and check for the description
+    await page.getByTestId('tonight-menu-card').click();
+    await expect(page.getByText('Hydrated via sync()')).toBeVisible({ timeout: 5000 });
   });
 });

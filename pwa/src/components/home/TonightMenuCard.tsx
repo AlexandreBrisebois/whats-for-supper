@@ -1,6 +1,13 @@
 'use client';
 
-import { Utensils, UtensilsCrossed, ArrowRightLeft, Sparkles, ChevronRight, Clock } from 'lucide-react';
+import {
+  Utensils,
+  UtensilsCrossed,
+  ArrowRightLeft,
+  Sparkles,
+  ChevronRight,
+  Clock,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';

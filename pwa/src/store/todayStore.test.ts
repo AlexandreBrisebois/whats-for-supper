@@ -1,14 +1,46 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-vi.mock('@/lib/api/planner', () => ({
-  assignRecipeToDay: vi.fn().mockResolvedValue(undefined),
-  getSchedule: vi.fn().mockResolvedValue(undefined),
-  isScheduleRecipe: (recipe: any) =>
-    !!recipe && typeof recipe.id === 'string' && recipe.id.length > 0,
-}));
+vi.mock('@/lib/api/planner', async (importActual) => {
+  const actual = (await importActual()) as any;
+  return {
+    ...actual,
+    assignRecipeToDay: vi.fn().mockResolvedValue(undefined),
+    getSchedule: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 import { useTodayStore } from './todayStore';
-import { assignRecipeToDay } from '@/lib/api/planner';
+import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
+import { apiClient } from '@/lib/api/api-client';
+
+vi.mock('@/lib/api/api-client', () => ({
+  apiClient: {
+    api: {
+      recipes: {
+        byId: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({
+            recipe: {
+              id: 'recipe-1',
+              name: 'Pasta Bolognese',
+              description: 'Hearty meat sauce',
+              ingredients: ['Pasta', 'Beef', 'Tomato'],
+              totalTime: 'PT30M',
+            },
+          }),
+        }),
+      },
+      schedule: {
+        day: {
+          byDate: vi.fn().mockReturnValue({
+            validate: {
+              post: vi.fn().mockResolvedValue({}),
+            },
+          }),
+        },
+      },
+    },
+  },
+}));
 
 // Reset store state before each test
 beforeEach(() => {
@@ -104,6 +136,30 @@ describe('todayStore — applyServerUpdate', () => {
 
     expect(useTodayStore.getState().optimisticWriteAt).toBeNull();
   });
+  it('updates details from server push even within 2s echo window if ID matches', () => {
+    const recipeId = 'recipe-1';
+    const optimisticRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+    
+    useTodayStore.setState({
+      currentRecipe: optimisticRecipe as any,
+      status: 0,
+      optimisticWriteAt: Date.now() - 500, // 0.5s ago (within echo window)
+    });
+
+    const serverRecipe = {
+      id: recipeId,
+      name: 'Pasta Bolognese',
+      description: 'Hydrated details',
+      image: '/img.jpg',
+    };
+
+    useTodayStore.getState().applyServerUpdate({ recipe: serverRecipe as any, status: 0 });
+
+    // EXPECTATION: Should apply the update because the ID matches, even if it's an "echo"
+    expect(useTodayStore.getState().currentRecipe?.description).toBe('Hydrated details');
+    // And it should clear the optimistic guard
+    expect(useTodayStore.getState().optimisticWriteAt).toBeNull();
+  });
 });
 
 describe('todayStore — assignRecipe', () => {
@@ -120,6 +176,86 @@ describe('todayStore — assignRecipe', () => {
     expect(state.status).toBe(0);
     expect(state.currentRecipe?.id).toBe('recipe-2');
     expect(assignRecipeToDay).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers a background fetch for recipe details (HYDRATION)', async () => {
+    // This test expects assignRecipe to eventually fetch full details
+    // We mock the specific ID we're assigning
+    const recipeId = 'recipe-hydrated';
+    const mockGet = vi.fn().mockResolvedValue({
+      recipe: {
+        id: recipeId,
+        name: 'Hydrated Soup',
+        description: 'Warm and cozy',
+        ingredients: ['Carrot', 'Onion'],
+        totalTime: 'PT15M',
+      },
+    });
+
+    (apiClient.api.recipes.byId as any).mockReturnValue({
+      get: mockGet,
+    });
+
+    useTodayStore.getState().assignRecipe({
+      id: recipeId,
+      name: 'Soup',
+      image: '/img.jpg',
+    });
+
+    // Check immediate state
+    expect(useTodayStore.getState().currentRecipe?.description).toBeUndefined();
+
+    // Wait for microtasks (e.g. the detail fetch promise)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // EXPECTATION: The description should now be hydrated
+    // Currently this will FAIL because assignRecipe doesn't fetch details.
+    expect(useTodayStore.getState().currentRecipe?.description).toBe('Warm and cozy');
+  });
+});
+
+describe('todayStore — sync', () => {
+  it('updates details if ID matches during optimistic window (SMART RECONCILIATION)', async () => {
+    const recipeId = 'recipe-1';
+    const initialRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+
+    // Set optimistic state
+    useTodayStore.setState({
+      currentRecipe: initialRecipe as any,
+      status: 0,
+      optimisticWriteAt: Date.now() - 1000, // 1s ago (recent)
+    });
+
+    // Mock schedule response with full details for the SAME recipe
+    const fullRecipe = {
+      id: recipeId,
+      name: 'Pasta Bolognese',
+      description: 'Full description',
+      ingredients: ['A', 'B'],
+      totalTime: '30m',
+    };
+
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    (getSchedule as any).mockResolvedValue({
+      days: [
+        {
+          date: todayStr,
+          recipe: fullRecipe,
+          status: 0,
+        },
+      ],
+    });
+
+    await useTodayStore.getState().sync();
+
+    // EXPECTATION: Details should be updated even if optimistic is recent
+    // Currently this will FAIL because sync() skips updating currentRecipe if optimisticIsRecent.
+    expect(useTodayStore.getState().currentRecipe?.description).toBe('Full description');
   });
 });
 
@@ -138,5 +274,32 @@ describe('todayStore — clearOptimisticGuard', () => {
     useTodayStore.getState().clearOptimisticGuard();
 
     expect(useTodayStore.getState().optimisticWriteAt).toBeNull();
+  });
+});
+
+describe('todayStore — init', () => {
+  it('updates details if ID matches during optimistic window', () => {
+    const recipeId = 'recipe-1';
+    const optimisticRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+    
+    useTodayStore.setState({
+      currentRecipe: optimisticRecipe as any,
+      status: 0,
+      optimisticWriteAt: Date.now() - 5000,
+    });
+
+    const serverRecipe = {
+      id: recipeId,
+      name: 'Pasta Bolognese',
+      description: 'Hydrated details',
+      image: '/img.jpg',
+    };
+
+    useTodayStore.getState().init(serverRecipe as any, 0);
+
+    // SHOULD merge details
+    expect(useTodayStore.getState().currentRecipe?.description).toBe('Hydrated details');
+    // SHOULD preserve optimisticWriteAt
+    expect(useTodayStore.getState().optimisticWriteAt).not.toBeNull();
   });
 });

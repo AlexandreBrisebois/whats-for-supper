@@ -24,7 +24,7 @@ The technical ambition grew alongside the product. WFS became a testbed for **co
 
 ## What it does
 
-**What's For Supper** is a self-hosted, family-scale meal planning PWA. Install it once on a home server and every member of the household gets a shared, real-time view of the week's meals — on any device, with no accounts, no cloud subscriptions, and minimal friction.
+**What's For Supper** is a self-hosted, family-scale meal planning PWA. Install it once on a home server and every member of the household gets a shared, real-time view of the week's meals — on any device, with no accounts and minimal friction.
 
 ### The pillars
 
@@ -168,8 +168,8 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 | NAS deployment (Synology / Unraid) | ✅ Running in production | Family self-hosted |
 | Semantic recipe search (hybrid lexical + vector, planner-aware, family-fit) | ✅ Complete | |
 | Recipe library management (edit, soft delete, restore, Recycle Bin, discovery toggle) | ✅ Complete | |
-| Pantry/fridge/freezer photo search (inventory-led ingredient boost) | ✅ Complete | |
-| Agent super-search (long-form natural language → structured results) | ✅ Complete | |
+| Pantry/fridge/freezer photo search (inventory-led ingredient boost) | ⚠️ TODO  | |
+| Agent super-search (long-form natural language → structured results) | ⚠️ TODO  | |
 | Resilient search indexing workflow (pgvector, background retry, ADR 041) | ✅ Complete | |
 | Failed Captures recovery (Settings queue, retry with idempotency guard) | ✅ Complete | |
 | Recipe Library Browse (immersive card-flip library discovery) | ✅ Complete | |

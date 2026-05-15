@@ -99,12 +99,21 @@ export const useTodayStore = create<TodayState>((set, get) => ({
 
     if (optimisticIsRecent) {
       // Preserve optimistic state during client-side navigation if a write is recent.
-      // We keep the existing recipe, status, and the write timestamp.
-      set({
-        currentRecipe: existingRecipe,
-        status: existingStatus,
-        optimisticWriteAt,
-      });
+      // EXCEPTION: If the IDs match, allow updating details (description, ingredients)
+      // from the server-provided recipe.
+      if (recipe && recipe.id === existingRecipe?.id) {
+        set({
+          currentRecipe: recipe,
+          status: existingStatus,
+          optimisticWriteAt,
+        });
+      } else {
+        set({
+          currentRecipe: existingRecipe,
+          status: existingStatus,
+          optimisticWriteAt,
+        });
+      }
     } else if (recipe === null && existingRecipe !== null) {
       // SSR returned null but the store already has a recipe (e.g. from an SSE
       // connected event that raced ahead of TodayStoreInitializer). Preserve it —
@@ -135,6 +144,29 @@ export const useTodayStore = create<TodayState>((set, get) => ({
     assignRecipeToDay(0, dayIndex, recipe).catch((err) =>
       console.error('[todayStore] assignRecipe failed:', err)
     );
+
+    // Eager hydration — fetch full details immediately so the card flip side is populated.
+    apiClient.api.recipes
+      .byId(recipe.id as any)
+      .get()
+      .then((res) => {
+        const full = res?.recipe;
+        if (!full) return;
+
+        const { currentRecipe } = get();
+        // Only apply if the ID still matches (user hasn't switched to another recipe)
+        if (currentRecipe?.id === recipe.id) {
+          set({
+            currentRecipe: {
+              ...currentRecipe,
+              description: full.description,
+              ingredients: full.ingredients,
+              totalTime: full.totalTime,
+            },
+          });
+        }
+      })
+      .catch((err) => console.warn('[todayStore] eager hydration failed:', err));
   },
 
   // ── markCooked ────────────────────────────────────────────────────────────
@@ -179,17 +211,24 @@ export const useTodayStore = create<TodayState>((set, get) => ({
         set({ status: 2, lastSyncedAt: Date.now() });
       } else if (todaysEntry?.status === 3) {
         set({ status: 3, lastSyncedAt: Date.now() });
-      } else if (!optimisticIsRecent) {
-        // Only reconcile currentRecipe when no optimistic write is in-flight
+      } else if (optimisticIsRecent) {
+        // Optimistic write is recent — usually keep currentRecipe as-is to avoid flickering.
+        // EXCEPTION: If the IDs match, allow updating details (description, ingredients)
+        // so the card hydrates as soon as the server response is ready.
+        const recipe = normalizeScheduleRecipe(todaysEntry?.recipe);
+        if (recipe && recipe.id === get().currentRecipe?.id) {
+          set({ currentRecipe: recipe, lastSyncedAt: Date.now() });
+        } else {
+          set({ lastSyncedAt: Date.now() });
+        }
+      } else {
+        // Optimistic window expired — treat server as authoritative
         const recipe = normalizeScheduleRecipe(todaysEntry?.recipe);
         if (recipe) {
           set({ currentRecipe: recipe, lastSyncedAt: Date.now() });
         } else {
           set({ currentRecipe: null, lastSyncedAt: Date.now() });
         }
-      } else {
-        // Optimistic write is recent — keep currentRecipe, still update lastSyncedAt
-        set({ lastSyncedAt: Date.now() });
       }
     } catch (err) {
       console.error('[todayStore] sync failed:', err);
@@ -202,10 +241,14 @@ export const useTodayStore = create<TodayState>((set, get) => ({
   applyServerUpdate({ recipe, status }) {
     // Server push is authoritative — always apply, even if optimistic write is recent.
     // Exception: if optimisticWriteAt is within 2 seconds, the push may be echoing
-    // our own write back to us — skip to avoid flicker.
-    const { optimisticWriteAt } = get();
+    // our own write back to us — skip to avoid flicker UNLESS the ID matches
+    // (in which case we want to absorb any extra details from the server).
+    const { optimisticWriteAt, currentRecipe } = get();
     const isEcho = optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 2_000;
-    if (isEcho) return;
+
+    if (isEcho && recipe?.id !== currentRecipe?.id) {
+      return;
+    }
 
     set({
       currentRecipe: recipe,

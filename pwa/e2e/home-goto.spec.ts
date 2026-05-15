@@ -92,6 +92,32 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       }
     );
 
+    // 4. Mock recipe detail fetch (triggered by eager hydration)
+    let recipeFetched = false;
+    await page.route(
+      (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
+      async (route) => {
+        if (route.request().method() !== 'GET') {
+          return route.continue();
+        }
+        recipeFetched = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            updatedAt: new Date().toISOString(),
+            recipe: builders.recipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: 'Family Lasagna',
+              description: 'E2E Hydrated Description',
+              ingredients: ['Pasta', 'Cheese'],
+              totalTime: 'PT45M',
+            }),
+          }),
+        });
+      }
+    );
+
     await page.goto('/home');
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
 
@@ -103,6 +129,13 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
     await expect.poll(() => assignCalled).toBe(true);
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 3000 });
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+
+    // Verify Hydration: flip the card and check for the description
+    // The eager fetch should have completed by now (or will shortly)
+    await page.getByTestId('tonight-menu-card').click();
+    await expect(page.getByText('E2E Hydrated Description')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Pasta')).toBeVisible();
+    expect(recipeFetched).toBe(true);
   });
 
   test('Menu card stays after GOTO confirm when schedule re-sync returns empty', async ({

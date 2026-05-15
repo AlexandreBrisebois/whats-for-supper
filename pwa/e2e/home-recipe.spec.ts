@@ -783,7 +783,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       }
     );
 
-    // Track assign call
+    // 2. Track assign call
     let assignCalled = false;
     await page.route(
       (url) => url.pathname.includes('/api/schedule/assign'),
@@ -793,6 +793,31 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({ success: true }),
+        });
+      }
+    );
+
+    // 3. Mock recipe detail fetch (triggered by eager hydration)
+    let recipeFetched = false;
+    await page.route(
+      (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
+      async (route) => {
+        if (route.request().method() !== 'GET') {
+          return route.continue();
+        }
+        recipeFetched = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            updatedAt: new Date().toISOString(),
+            recipe: builders.recipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: 'Test Lasagna',
+              description: 'Quick Hydrated Description',
+              ingredients: ['Pasta'],
+            }),
+          }),
         });
       }
     );
@@ -814,6 +839,11 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Assign API must have been called
     await expect.poll(() => assignCalled).toBe(true);
+
+    // Verify Hydration: flip the card and check for the description
+    await page.getByTestId('tonight-menu-card').click();
+    await expect(page.getByText('Quick Hydrated Description')).toBeVisible({ timeout: 5000 });
+    expect(recipeFetched).toBe(true);
   });
 
   test('Completing Cook Mode marks meal as cooked', async ({ page }) => {
