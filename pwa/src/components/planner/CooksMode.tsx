@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { getRecipe, Recipe } from '@/lib/api/recipes';
 import { SolarLoader } from '@/components/ui/SolarLoader';
+import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { t } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { getImageUrl } from '@/lib/imageUtils';
@@ -63,6 +64,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [isLoading, setIsLoading] = useState(true);
   const [gathered, setGathered] = useState<Record<string, boolean>>({});
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showDetailId, setShowDetailId] = useState<string | null>(null);
   const { cookProgress, setCookProgress } = usePlannerStore();
   const currentStep = cookProgress[initialRecipe.id] ?? 0;
 
@@ -158,36 +160,43 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Header */}
-      <div className="p-8 flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md">
-        <div className="flex items-center space-x-4">
-          <div className="h-14 w-14 rounded-2xl overflow-hidden relative border-2 border-white shadow-md bg-charcoal/5 flex items-center justify-center">
-            {initialRecipe.image ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={getImageUrl(initialRecipe.image)}
-                alt={initialRecipe.name || 'Recipe'}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            ) : (
-              <UtensilsCrossed size={24} className="text-charcoal/20" />
-            )}
+      {/* Large Hero Header */}
+      <div
+        className="relative h-48 md:h-64 shrink-0 overflow-hidden cursor-pointer group"
+        onClick={() => setShowDetailId(initialRecipe.id)}
+      >
+        {initialRecipe.image ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={getImageUrl(initialRecipe.image)}
+            alt={initialRecipe.name || 'Recipe'}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-charcoal/5 flex items-center justify-center">
+            <UtensilsCrossed size={48} className="text-charcoal/10" />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-terracotta/60">
-              {t('cook.cooksMode', "Cook's mode")}
-            </p>
-            <h2 className="text-xl font-heading font-black text-charcoal">
-              {initialRecipe.name || t('cook.untitledRecipe', 'Untitled Recipe')}
-            </h2>
-          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-charcoal/80 via-charcoal/20 to-transparent" />
+
+        <div className="absolute bottom-6 left-8 right-20">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70 mb-1">
+            {t('cook.cooksMode', "Cook's mode")}
+          </p>
+          <h2 className="text-2xl md:text-3xl font-heading font-black text-white leading-tight">
+            {initialRecipe.name || t('cook.untitledRecipe', 'Untitled Recipe')}
+          </h2>
         </div>
+
         <button
           data-testid="close-cooks-mode"
-          onClick={onClose}
-          className="p-4 rounded-full bg-charcoal/5 text-charcoal/40 active:scale-90 transition-all"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="absolute top-6 right-6 p-3 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 active:scale-90 transition-all"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
       </div>
 
@@ -206,15 +215,15 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
       {/* Main Instruction Area */}
       <div className="flex-1 overflow-y-auto bg-cream/50">
-        <div className="min-h-full flex flex-col items-center justify-start p-8 md:p-12 text-center">
+        <div className="min-h-full flex flex-col items-start justify-start p-8 md:p-12 text-left">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -40 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-              className="w-full max-w-2xl py-12"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+              className="w-full max-w-2xl py-8"
             >
               <div
                 data-testid="cooks-mode-step-indicator"
@@ -227,13 +236,13 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 </span>
               </div>
 
-              <h3 className="text-4xl font-heading font-black text-charcoal mb-4 leading-tight">
+              <h3 className="text-3xl md:text-4xl font-heading font-black text-charcoal mb-6 leading-tight">
                 {isPrepStep ? t('cook.checkAndPrep', 'Check & Prep') : currentStepData.title}
               </h3>
 
               {isPrepStep ? (
                 <div className="mt-8 space-y-8 bg-terracotta/[0.02]">
-                  <p className="text-xl font-medium text-charcoal/80 leading-relaxed max-w-lg mx-auto">
+                  <p className="text-xl font-medium text-charcoal/80 leading-relaxed max-w-lg">
                     {t(
                       'cook.ingredientsReady',
                       'Check off your ingredients before you start cooking.'
@@ -244,7 +253,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                   {recipeDetails?.ingredients && recipeDetails.ingredients.length > 0 ? (
                     <>
                       {/* Progress counter */}
-                      <p className="text-xs font-bold text-sage text-center">
+                      <p className="text-xs font-bold text-sage">
                         {Object.values(gathered).filter(Boolean).length} of{' '}
                         {recipeDetails.ingredients.length} ready
                       </p>
@@ -327,6 +336,20 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           <ChevronRight size={28} />
         </Button>
       </div>
+
+      {showDetailId && (
+        <RecipeDetailSheet
+          recipeId={showDetailId}
+          plannerDayLabel={null}
+          onClose={() => setShowDetailId(null)}
+          onUseForDay={async () => {}}
+          onFindSimilar={(id) => {
+            setShowDetailId(null);
+            onClose();
+            router.push(`/recipes?similarTo=${id}`);
+          }}
+        />
+      )}
     </motion.div>
   );
 }

@@ -42,6 +42,12 @@ vi.mock('@/lib/api/recipes', () => ({
   getRecipe: (...args: any[]) => getRecipeMock(...args),
 }));
 
+vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
+  RecipeDetailSheet: ({ recipeId }: { recipeId: string }) => (
+    <div data-testid="recipe-detail-sheet">Recipe Detail for {recipeId}</div>
+  ),
+}));
+
 import { CooksMode } from './CooksMode';
 import { usePlannerStore } from '@/store/plannerStore';
 
@@ -85,5 +91,52 @@ describe('CooksMode', () => {
 
     expect(await screen.findByText('Boil Water')).toBeInTheDocument();
     expect(screen.getByText('Bring a large pot of salted water to a boil.')).toBeInTheDocument();
+  });
+
+  it('aligns instructions to the left for better legibility', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      recipeInstructions: [{ name: 'Step 1', text: 'Instruction 1' }],
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    // Advance past Check & Prep
+    fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+
+    const instructionArea = screen.getByText('Instruction 1').closest('.text-left');
+    expect(instructionArea).toBeInTheDocument();
+  });
+
+  it('renders a large editorial hero image and opens detail sheet on tap', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      recipeInstructions: [{ name: 'Step 1', text: 'Instruction 1' }],
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    const heroImage = await screen.findByAltText('Pasta Night');
+    const heroContainer = heroImage.closest('div');
+
+    // Requirement: Larger, editorial hero image (not h-14 w-14)
+    expect(heroContainer).not.toHaveClass('h-14');
+    expect(heroContainer).toHaveClass('h-48'); // Assuming h-48 or similar for "large"
+
+    // Tapping the hero image should open the detail sheet
+    fireEvent.click(heroImage);
+    expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
   });
 });

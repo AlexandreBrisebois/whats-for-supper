@@ -20,10 +20,10 @@
 - [x] **PWA**: Add icon beside time pill in `RecipeDetailSheet.tsx`.
 - [x] **VERIFY**: Run PWA unit tests (GREEN).
 
-## Phase 4: Cook's Mode Redesign (B5.1)
-- [ ] **TEST**: Update `CooksMode.test.tsx` to verify left-alignment and header changes (RED).
-- [ ] **PWA**: Update `CooksMode.tsx` layout (left-align, single title, larger image).
-- [ ] **VERIFY**: Run PWA unit tests (GREEN).
+## Phase 4: Cook's Mode Redesign (B5.1) [DONE]
+- [x] **TEST**: Update `CooksMode.test.tsx` to verify left-alignment and header changes (GREEN).
+- [x] **PWA**: Update `CooksMode.tsx` layout (left-align, single title, larger image).
+- [x] **VERIFY**: Run PWA unit tests (GREEN).
 
 ## Phase 5: Micro-Editing (B5.2)
 - [ ] **TEST**: Add `CooksMode.test.tsx` case for editing a step and saving (RED).
