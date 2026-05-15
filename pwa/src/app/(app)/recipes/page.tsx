@@ -529,7 +529,7 @@ export default function RecipesPage() {
   }, [handleShowMore]);
 
   return (
-    <div className="flex flex-col gap-6 pt-6 pb-12">
+    <div className="flex flex-col gap-4 pt-2 pb-12">
       {addToDay !== null && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -562,9 +562,6 @@ export default function RecipesPage() {
           </button>
         </motion.div>
       )}
-
-      {/* Top Bar: Spacing */}
-      <div className="flex items-center px-1 h-11" />
 
       {/* Mode selector */}
       {(isAgentSearchEnabled || isPhotoSearchEnabled) && (
@@ -882,7 +879,7 @@ export default function RecipesPage() {
       </div>
 
       {/* Results Section */}
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {isLoading ? (
           <div className="flex h-48 w-full items-center justify-center">
             <Loader2 className="animate-spin text-ochre" size={48} data-testid="recipe-loader" />

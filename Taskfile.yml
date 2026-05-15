@@ -30,6 +30,12 @@ vars:
   # Extract Hearth Secret for authenticated management calls
   HEARTH_SECRET:
     sh: (grep "^HEARTH_SECRET=" docker/.env.local 2>/dev/null || grep "^HEARTH_SECRET=" docker/.env 2>/dev/null || echo "HEARTH_SECRET=our family loves cooking") | cut -d'=' -f2-
+  POSTGRES_USER:
+    sh: (grep "^POSTGRES_USER=" docker/.env.local 2>/dev/null || grep "^POSTGRES_USER=" docker/.env 2>/dev/null || echo "POSTGRES_USER=recipe_app") | cut -d'=' -f2-
+  POSTGRES_PASSWORD:
+    sh: (grep "^POSTGRES_PASSWORD=" docker/.env.local 2>/dev/null || grep "^POSTGRES_PASSWORD=" docker/.env 2>/dev/null || echo "POSTGRES_PASSWORD=secure_dev_password") | cut -d'=' -f2-
+  POSTGRES_DB:
+    sh: (grep "^POSTGRES_DB=" docker/.env.local 2>/dev/null || grep "^POSTGRES_DB=" docker/.env 2>/dev/null || echo "POSTGRES_DB=recipe_app_db") | cut -d'=' -f2-
 
 tasks:
   default:
@@ -63,7 +69,8 @@ tasks:
       ASPNETCORE_ENVIRONMENT: Development
       RECIPES_ROOT: "/Users/alex/Code/whats-for-supper/data/recipes"
       ASPNETCORE_URLS: http://localhost:9001
-      POSTGRES_CONNECTION_STRING: "Host=localhost;Port=5432;Database=recipe_app_db;Username=recipe_app;Password=secure_dev_password"
+      HEARTH_SECRET: "{{.HEARTH_SECRET}}"
+      POSTGRES_CONNECTION_STRING: "Host=localhost;Port=5432;Database={{.POSTGRES_DB}};Username={{.POSTGRES_USER}};Password={{.POSTGRES_PASSWORD}}"
     cmds:
       - dotnet watch run --project RecipeApi.csproj
 
@@ -590,7 +597,7 @@ tasks:
       - |
         DRY_FLAG=""
         if [ "{{.DRY_RUN}}" == "true" ]; then DRY_FLAG="--dry-run"; fi
-        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD=secure_dev_password sqldef/psqldef:latest -h postgres -U recipe_app {{.DB_NAME}} $DRY_FLAG -f /schema.sql
+        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD={{.POSTGRES_PASSWORD}} sqldef/psqldef:latest -h postgres -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} $DRY_FLAG -f /schema.sql
 
   seed:
     desc: "Populate database with test data"

@@ -554,7 +554,7 @@ export default function BrowseAllStackPage() {
       <BackgroundBlobs />
 
       {/* Top bar: Clustered actions (right) */}
-      <div className="relative z-10 flex items-center justify-end px-6 pt-safe-top pt-4 pb-2 shrink-0 gap-1.5">
+      <div className="relative z-10 flex items-center justify-end px-6 pt-safe-top pt-2 pb-1 shrink-0 gap-1.5">
         <button
           onClick={handleGlobalToggleDiscoverable}
           data-testid="stack-toggle-discoverable"
@@ -622,7 +622,7 @@ export default function BrowseAllStackPage() {
       {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
 
       {/* Main content area */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-2 min-h-0">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-start pt-4 px-6 pb-2 min-h-0">
         {isInitialLoading && (
           <div className="flex flex-col items-center gap-4">
             <Loader2
