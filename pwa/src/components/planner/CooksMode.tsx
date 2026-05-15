@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { getRecipe, Recipe } from '@/lib/api/recipes';
+import { getRecipe, updateRecipe, Recipe } from '@/lib/api/recipes';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { t } from '@/locales';
@@ -65,6 +65,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [gathered, setGathered] = useState<Record<string, boolean>>({});
   const [showCelebration, setShowCelebration] = useState(false);
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingValue, setEditingValue] = useState('');
   const { cookProgress, setCookProgress } = usePlannerStore();
   const currentStep = cookProgress[initialRecipe.id] ?? 0;
 
@@ -121,6 +123,51 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const prevStep = () => {
     if (currentStep > 0) {
       setCookProgress(initialRecipe.id, currentStep - 1);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    setIsEditing(false);
+    if (!recipeDetails || editingValue === currentStepData.instruction) return;
+
+    try {
+      const originalInstructions = [...(recipeDetails.recipeInstructions || [])];
+
+      // Simple mapping for flat arrays (string[] or HowToStep[])
+      // If it's a more complex structure like HowToSection[], this simple map
+      // might need refinement, but for now we follow the requirement of object[].
+      const updatedInstructions = originalInstructions.map((step, idx) => {
+        if (idx === activeRecipeStepIndex) {
+          if (typeof step === 'string') {
+            return editingValue;
+          } else if (typeof step === 'object' && step !== null) {
+            const stepObj = step as any;
+            if ('text' in stepObj) {
+              return { ...stepObj, text: editingValue };
+            } else {
+              return { ...stepObj, name: editingValue };
+            }
+          }
+        }
+        return step;
+      });
+
+      await updateRecipe(initialRecipe.id, {
+        recipeInstructions: updatedInstructions,
+      });
+
+      // Update local state for immediate feedback
+      const updatedDetails = {
+        ...recipeDetails,
+        recipeInstructions: updatedInstructions,
+      };
+      setRecipeDetails(updatedDetails);
+      const newSteps = parseRecipeSteps(updatedInstructions);
+      if (newSteps.length > 0) {
+        setParsedSteps(newSteps);
+      }
+    } catch (error) {
+      console.error('[CooksMode] Failed to save instruction edit:', error);
     }
   };
 
@@ -299,8 +346,23 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     </div>
                   )}
                 </div>
+              ) : isEditing ? (
+                <textarea
+                  autoFocus
+                  className="w-full bg-transparent text-3xl font-bold text-charcoal/80 leading-relaxed border-none focus:ring-0 resize-none p-0 outline-none"
+                  rows={4}
+                  value={editingValue}
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  onBlur={handleSaveEdit}
+                />
               ) : (
-                <p className="text-3xl font-bold text-charcoal/80 leading-relaxed">
+                <p
+                  className="text-3xl font-bold text-charcoal/80 leading-relaxed cursor-text"
+                  onClick={() => {
+                    setIsEditing(true);
+                    setEditingValue(currentStepData.instruction);
+                  }}
+                >
                   {currentStepData.instruction}
                 </p>
               )}

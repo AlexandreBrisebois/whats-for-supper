@@ -37,9 +37,11 @@ vi.mock('@/lib/imageUtils', () => ({
 }));
 
 const getRecipeMock = vi.fn();
+const updateRecipeMock = vi.fn();
 
 vi.mock('@/lib/api/recipes', () => ({
   getRecipe: (...args: any[]) => getRecipeMock(...args),
+  updateRecipe: (...args: any[]) => updateRecipeMock(...args),
 }));
 
 vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
@@ -54,6 +56,7 @@ import { usePlannerStore } from '@/store/plannerStore';
 describe('CooksMode', () => {
   beforeEach(() => {
     getRecipeMock.mockReset();
+    updateRecipeMock.mockReset();
     usePlannerStore.setState({ cookProgress: {} });
   });
 
@@ -138,5 +141,35 @@ describe('CooksMode', () => {
     // Tapping the hero image should open the detail sheet
     fireEvent.click(heroImage);
     expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+  });
+
+  it('allows editing a step and saves on blur', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      recipeInstructions: ['Original Step 1', 'Original Step 2'],
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    // Advance to Step 1
+    fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+
+    const instruction = screen.getByText('Original Step 1');
+    fireEvent.click(instruction);
+
+    const textarea = screen.getByDisplayValue('Original Step 1');
+    fireEvent.change(textarea, { target: { value: 'Updated Step 1' } });
+    fireEvent.blur(textarea);
+
+    expect(updateRecipeMock).toHaveBeenCalledWith('recipe-1', {
+      recipeInstructions: ['Updated Step 1', 'Original Step 2'],
+    });
+    expect(await screen.findByText('Updated Step 1')).toBeInTheDocument();
   });
 });

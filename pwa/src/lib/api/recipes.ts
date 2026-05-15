@@ -473,6 +473,7 @@ export async function updateRecipe(
     name?: string;
     description?: string;
     ingredients?: string[];
+    recipeInstructions?: unknown[];
     notes?: string;
     rating?: number;
     isDiscoverable?: boolean | null;
@@ -482,11 +483,13 @@ export async function updateRecipe(
     name: updates.name,
     description: updates.description,
     ingredients: updates.ingredients,
+    recipeInstructions: updates.recipeInstructions as any,
     notes: updates.notes,
     rating: updates.rating,
     isDiscoverable: updates.isDiscoverable,
   });
 }
+
 
 export async function searchRecipes(
   request: Pick<
