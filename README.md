@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.png" alt="What's For Supper?" width="600" />
+  <img src="docs/whats-for-supper.webp" alt="What's For Supper?" width="1024" />
 </p>
 
 <p align="center">
