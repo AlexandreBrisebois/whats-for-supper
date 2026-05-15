@@ -1,6 +1,6 @@
 'use client';
 
-import { Utensils, ArrowRightLeft, Sparkles, ChevronRight, Clock } from 'lucide-react';
+import { Utensils, UtensilsCrossed, ArrowRightLeft, Sparkles, ChevronRight, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -182,7 +182,7 @@ export function TonightMenuCard({
                   className="flex items-center justify-center gap-2 h-14 rounded-[1.5rem] bg-ochre text-white shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110"
                   data-testid="cook-mode-btn"
                 >
-                  <Utensils size={18} />
+                  <UtensilsCrossed size={18} />
                   <span className="text-[10px] font-black uppercase tracking-widest">
                     {t('home.cook', 'Cook')}
                   </span>

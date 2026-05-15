@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   Ban,
   Sparkles,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useWeekStore } from '@/store/weekStore';
@@ -962,12 +963,12 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       e.stopPropagation();
                       onCookMode();
                     }}
-                    className="h-9 w-9 rounded-xl bg-sage/8 text-lg active:scale-90 transition-transform"
+                    className="h-9 w-9 rounded-xl bg-sage/8 flex items-center justify-center text-sage active:scale-90 transition-transform"
                     data-testid="start-cook-mode"
                     title="Open cook mode"
                     aria-label="Open cook mode"
                   >
-                    👨‍🍳
+                    <UtensilsCrossed size={18} />
                   </motion.button>
                 )}
                 <div
