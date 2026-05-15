@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Circle, ShoppingCart, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
 import type { GrocerySection } from '@/lib/grocery/aisleMapper';
@@ -15,6 +16,7 @@ interface GroceryListProps {
   weekOffset: number;
   items: GroceryLineItemDto[];
   onClose?: () => void;
+  isEmbedded?: boolean;
 }
 
 const AISLE_ICONS: Record<GrocerySection, string> = {
@@ -46,7 +48,7 @@ function formatQuantityHint(
   return `(${rounded} ${unitText})`;
 }
 
-export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
+export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryListProps) {
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
   const { toggleGroceryItem } = useSchedule();
   const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
@@ -126,18 +128,33 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-cream flex flex-col" data-testid="grocery-checklist">
+    <div
+      className={cn('flex flex-col bg-cream', isEmbedded ? 'h-full' : 'fixed inset-0 z-[100]')}
+      data-testid="grocery-checklist"
+    >
       {/* Header */}
-      <div className="p-8 flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-sage/60">
-            {t('grocery.smartShopping', 'Smart Shopping')}
-          </p>
-          <h2 className="text-xl font-heading font-black text-charcoal">
+      <div
+        className={cn(
+          'flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md',
+          isEmbedded ? 'px-6 py-2.5' : 'p-8'
+        )}
+      >
+        <div className={cn(isEmbedded ? 'py-0.5' : 'py-0')}>
+          {!isEmbedded && (
+            <p className="text-[10px] font-black uppercase tracking-widest text-sage/60">
+              {t('grocery.smartShopping', 'Smart Shopping')}
+            </p>
+          )}
+          <h2
+            className={cn(
+              'font-heading font-black text-charcoal',
+              isEmbedded ? 'text-lg' : 'text-xl'
+            )}
+          >
             {t('grocery.checklist', 'Grocery Checklist')}
           </h2>
         </div>
-        {onClose && (
+        {onClose && !isEmbedded && (
           <Button
             variant="secondary"
             onClick={onClose}
@@ -150,7 +167,12 @@ export function GroceryList({ weekOffset, items, onClose }: GroceryListProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto bg-cream/50">
-        <div className="max-w-2xl mx-auto py-8 px-6">
+        <div
+          className={cn(
+            'mx-auto',
+            isEmbedded ? 'max-w-full pt-2 pb-20 px-4' : 'max-w-2xl py-8 px-6'
+          )}
+        >
           <AnimatePresence mode="wait">
             {Object.keys(grouped).length === 0 ? (
               <motion.div

@@ -13,7 +13,7 @@ export function ToastContainer() {
   const removeToast = useUiStore((state) => state.removeToast);
 
   return (
-    <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 flex flex-col items-center gap-2 pointer-events-none">
+    <div className="flex flex-col items-center gap-2">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />
@@ -39,21 +39,21 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
     loading: <Loader2 size={18} className="text-ochre animate-spin" />,
   };
 
-  const bgColors = {
-    success: 'bg-sage/10 border-sage/20',
-    error: 'bg-terracotta/10 border-terracotta/20',
-    info: 'bg-ochre/10 border-ochre/20',
-    loading: 'bg-ochre/10 border-ochre/20',
+  const borderColors = {
+    success: 'border-sage/30 border-l-sage',
+    error: 'border-terracotta/30 border-l-terracotta',
+    info: 'border-ochre/30 border-l-ochre',
+    loading: 'border-ochre/30 border-l-ochre',
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      initial={{ opacity: 0, y: -20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
       className={cn(
-        'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border backdrop-blur-md shadow-lg min-w-[200px] max-w-sm',
-        bgColors[toast.type as keyof typeof bgColors] || bgColors.info
+        'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border border-l-4 bg-white/95 backdrop-blur-md shadow-glass min-w-[200px] max-w-sm',
+        borderColors[toast.type as keyof typeof borderColors] || borderColors.info
       )}
     >
       <div className="flex-shrink-0">{icons[toast.type as keyof typeof icons] || icons.info}</div>

@@ -28,7 +28,7 @@ public class IngredientCategoryService(
                 NormalizedKey = normalizedKey,
                 GrocerySection = grocerySection,
                 Confidence = 1.0,
-                Source = "human",
+                Source = "manual",
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
@@ -36,7 +36,7 @@ public class IngredientCategoryService(
         else
         {
             existing.GrocerySection = grocerySection;
-            existing.Source = "human";
+            existing.Source = "manual";
             existing.Confidence = 1.0;
             existing.UpdatedAt = DateTimeOffset.UtcNow;
         }
@@ -44,7 +44,7 @@ public class IngredientCategoryService(
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "Ingredient '{Key}' reclassified to '{Section}' by human",
+            "Ingredient '{Key}' reclassified to '{Section}' manually",
             normalizedKey, grocerySection);
 
         await groceryRecompute.RecomputeForIngredientAsync(normalizedKey, ct);

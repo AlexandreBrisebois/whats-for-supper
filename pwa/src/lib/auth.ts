@@ -19,9 +19,13 @@ export async function validateHearthSecret(token: string): Promise<boolean> {
  */
 export async function setHearthCookie(token: string): Promise<void> {
   const isTest = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test';
-  const isSecure = process.env.NODE_ENV === 'production' && !isTest;
   const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
   const maxAge = 60 * 60 * 24 * 365;
+
+  // Only set Secure if in production AND not in a test/localhost environment.
+  // This prevents cookies from being rejected when running E2E tests over HTTP.
+  const isSecure =
+    process.env.NODE_ENV === 'production' && !isTest && !domain?.includes('localhost');
 
   (await cookies()).set('h_access', token, {
     maxAge,

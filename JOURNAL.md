@@ -3,6 +3,27 @@
 This file contains the historical session logs and technical archives for the "What's For Supper" project. Refer to this only when deep-diving into historical technical context or past decisions that have not yet been promoted to ADRs.
 
 ---
+ 
+### [2026-05-14] Session — Multi-Recipe GOTO Rotation
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+Expanded the "GOTO" system from a singular fallback to a dynamic list-based rotation to provide more variety when no meal is scheduled.
+
+**Key Achievements:**
+1. **Dynamic Rotation**: Implemented randomized cycling of GOTO recipes on the Home screen when no meal is scheduled.
+2. **GOTO Management List**: Transformed GOTO management in Settings into a list-based UI with quick-removal and an "Add a GOTO" sheet.
+3. **Recipe Details Integration**: Added a "GOTO" star toggle in the Recipe Detail Sheet for managing list membership.
+4. **E2E Stability**: Verified and updated `settings.spec.ts`, `capture-flow.spec.ts`, and `home-goto.spec.ts` to support the new array-based schema.
+5. **User Guide**: Updated `user-guide.md` to document the multi-recipe rotation and management flow.
+
+#### Verification
+- `npm run test:unit` — ✅ 340 passed.
+- `npx playwright test e2e/home-goto.spec.ts` — ✅ 5 passed.
+- `task gate` — ✅ passed.
+
+---
 
 ### [2026-05-11] Session — Recipe Purge 500 Hardening
 **Status**: COMPLETED ✅

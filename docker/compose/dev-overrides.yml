@@ -20,3 +20,6 @@ services:
     ports:
       - "${TRAEFIK_HTTP_PORT:-80}:80"
       - "${TRAEFIK_ADMIN_PORT:-8080}:8080"
+    volumes:
+      # Use ./ to ensure Docker Desktop sees it as a relative file path
+      - ./traefik_dynamic.yml:/etc/traefik/dynamic.yml:ro

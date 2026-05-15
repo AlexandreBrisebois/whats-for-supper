@@ -54,15 +54,23 @@ public class GroceryRecomputeService(
         foreach (var evt in events)
         {
             var recipe = evt.Recipe;
-            if (recipe?.RawMetadata == null)
+            if (recipe == null) continue;
+
+            var supplies = !string.IsNullOrEmpty(recipe.RawMetadata)
+                ? ExtractSupplies(recipe.RawMetadata, recipe.Id)
+                : new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId)>();
+
+            // Fallback: If no structured supply entries found, use the raw ingredients list
+            if (supplies.Count == 0 && !string.IsNullOrEmpty(recipe.Ingredients))
             {
-                logger.LogDebug(
-                    "Recipe {RecipeId} on {Date} has null raw_metadata — skipping supply extraction",
-                    evt.RecipeId, evt.Date);
-                continue;
+                var ingredients = RecipeService.DeserializeIngredients(recipe.Ingredients);
+                foreach (var ing in ingredients)
+                {
+                    supplies.Add((ing, null, null, recipe.Id));
+                }
+                logger.LogDebug("Recipe {RecipeId} has no structured supply — fell back to {Count} raw ingredients", recipe.Id, ingredients.Count);
             }
 
-            var supplies = ExtractSupplies(recipe.RawMetadata, recipe.Id);
             supplyEntries.AddRange(supplies);
         }
 

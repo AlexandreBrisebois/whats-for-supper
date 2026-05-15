@@ -3,6 +3,19 @@ import { useWeekStore } from './weekStore';
 import type { UILocalScheduleDay } from './weekStore';
 import { usePlannerStore } from './plannerStore';
 
+vi.mock('@/lib/api/planner', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/planner')>();
+  return {
+    ...actual,
+    assignRecipeToDay: vi.fn(),
+    lockSchedule: vi.fn(),
+    getSchedule: vi.fn(),
+    getSmartDefaults: vi.fn(),
+  };
+});
+
+import { assignRecipeToDay, lockSchedule } from '@/lib/api/planner';
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function makeDay(overrides: Partial<UILocalScheduleDay> = {}): UILocalScheduleDay {
@@ -446,5 +459,43 @@ describe('weekStore — applySmartDefaultsUpdate', () => {
     expect(state.schedule[0]._isPending).toBe(false);
     expect(state.schedule[0]._voteCount).toBeNull();
     expect(state.schedule[0]._unanimousVote).toBeNull();
+  });
+});
+
+// ─── closeVoting ─────────────────────────────────────────────────────────────
+
+describe('weekStore — closeVoting', () => {
+  it('promotes pending suggestions to official assignments before locking', async () => {
+    const mockedAssign = vi.mocked(assignRecipeToDay);
+    const mockedLock = vi.mocked(lockSchedule);
+
+    mockedAssign.mockResolvedValue({ success: true } as any);
+    mockedLock.mockResolvedValue({ success: true } as any);
+
+    const pendingRecipe = { id: 'p1', name: 'Pasta', image: '/img/p1', voteCount: 2 };
+    const confirmedRecipe = { id: 'c1', name: 'Curry', image: '/img/c1', voteCount: 0 };
+
+    useWeekStore.setState({
+      weekOffset: 0,
+      status: 1, // Voting Open
+      schedule: [
+        makeDay({ date: '2025-01-06', recipe: pendingRecipe as any, _isPending: true }),
+        makeDay({ date: '2025-01-07', recipe: confirmedRecipe as any, _isPending: false }),
+        makeDay({ date: '2025-01-08', recipe: undefined }), // empty
+      ],
+    });
+
+    await useWeekStore.getState().closeVoting();
+
+    // Should have called assignRecipeToDay for the pending item ONLY
+    expect(mockedAssign).toHaveBeenCalledTimes(1);
+    expect(mockedAssign).toHaveBeenCalledWith(0, 0, expect.objectContaining({ id: 'p1' }));
+
+    // Should have called lockSchedule AFTER assignments
+    expect(mockedLock).toHaveBeenCalledTimes(1);
+    expect(mockedLock).toHaveBeenCalledWith(0);
+
+    // Status should be 2 (Locked)
+    expect(useWeekStore.getState().status).toBe(2);
   });
 });

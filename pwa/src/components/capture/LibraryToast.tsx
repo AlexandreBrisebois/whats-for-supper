@@ -144,17 +144,17 @@ export function LibraryToast() {
         {current && !drawerOpen && (
           <motion.div
             key={current.recipeId}
-            initial={{ y: 80, opacity: 0 }}
+            initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 right-4 z-40 flex flex-col items-stretch gap-1.5"
+            className="flex flex-col items-stretch gap-1.5 w-full max-w-sm pointer-events-auto"
             role="status"
             aria-live="polite"
             aria-label={`${current.name} is ready`}
           >
             {/* Toast card */}
-            <div className="relative w-full overflow-hidden rounded-2xl border border-sage/30 border-l-4 border-l-sage bg-sage/10">
+            <div className="relative w-full overflow-hidden rounded-2xl border border-sage/30 border-l-4 border-l-sage bg-white/95 shadow-glass backdrop-blur-md">
               <button
                 type="button"
                 onClick={handleToastTap}

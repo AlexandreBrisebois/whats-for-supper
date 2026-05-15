@@ -35,7 +35,7 @@ describe('RecipeFailureBanner', () => {
     ];
   });
 
-  it('renders a top toast with retry and dismiss controls', () => {
+  it('renders a banner with retry and dismiss controls', () => {
     render(<RecipeFailureBanner />);
 
     expect(screen.getByTestId('recipe-failure-banner-recipe-fail')).toBeInTheDocument();

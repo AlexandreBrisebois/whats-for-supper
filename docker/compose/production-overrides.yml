@@ -32,6 +32,8 @@ services:
       - "${PWA_PORT_EXTERNAL:-9102}:3000"
 
   traefik:
+    volumes:
+      - ./traefik_dynamic.yml:/etc/traefik/dynamic.yml:ro
     ports:
       - "${TRAEFIK_HTTP_PORT:-9100}:80"
       - "${TRAEFIK_ADMIN_PORT:-9180}:8080"

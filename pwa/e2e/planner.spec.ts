@@ -79,7 +79,8 @@ test.describe('Supper Planner', () => {
       return toDateStr(d);
     });
 
-    let isLocked = false;
+    let currentStatus = 0;
+    let isLockedState = false;
 
     // Single intercept covering all schedule calls — zero Prism dependency
     await page.route(
@@ -89,7 +90,14 @@ test.describe('Supper Planner', () => {
         const method = route.request().method();
 
         if (method !== 'GET') {
-          isLocked = true;
+          if (url.includes('/voting/open')) {
+            currentStatus = 1;
+            isLockedState = false;
+          } else if (url.includes('/lock')) {
+            currentStatus = 2;
+            isLockedState = true;
+          }
+
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -141,7 +149,7 @@ test.describe('Supper Planner', () => {
                 ],
                 openSlots: [],
                 consensusRecipesCount: 1,
-                isVotingOpen: false,
+                isVotingOpen: currentStatus === 1,
               },
             }),
           });
@@ -175,8 +183,8 @@ test.describe('Supper Planner', () => {
           body: JSON.stringify({
             data: {
               weekOffset: 0,
-              locked: isLocked,
-              status: isLocked ? 2 : 0,
+              locked: isLockedState,
+              status: currentStatus,
               days,
             },
           }),
@@ -305,17 +313,23 @@ test.describe('Supper Planner', () => {
     await expect(reorderGroup).toBeVisible();
   });
 
-  test('should assign pending smart default slots and lock when finalizing', async ({ page }) => {
-    // 1. Open voting to surface smart defaults (1 manual + 3 smart = 4 planned)
-    // The finalize button requires plannedCount >= 4.
+  test('should assign pending smart default slots and lock when closing voting', async ({
+    page,
+  }) => {
+    // 1. Open voting to surface smart defaults
     await page.getByTestId('ask-family-cta').click();
 
-    const finalizeBtn = page.getByTestId('finalize-button');
-    await expect(finalizeBtn).toBeVisible({ timeout: 10_000 });
-    await finalizeBtn.scrollIntoViewIfNeeded();
-    await finalizeBtn.click();
+    // 2. Wait for the consolidated closure button to appear
+    const closeVotingBtn = page.getByTestId('close-voting-btn');
+    await expect(closeVotingBtn).toBeVisible({ timeout: 10_000 });
 
-    await expect(page.getByTestId('finalized-status')).toBeVisible({ timeout: 15_000 });
+    // 3. Close voting (triggers promotion and lock in store)
+    await closeVotingBtn.click();
+
+    // 4. Verify success feedback and locked state
+    await expect(page.getByText(/Week finalized/i)).toBeVisible();
+    await expect(closeVotingBtn).not.toBeVisible();
+    await expect(page.getByTestId('ask-family-cta')).toBeVisible();
   });
 
   test('should SHOW Cook Mode button and OPEN even if recipe image is missing', async ({

@@ -74,7 +74,8 @@ export function LanguageSwitchProposal() {
         initial={{ y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ opacity: 0, y: -10 }}
-        className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[60] flex flex-col gap-2"
+        className="w-full max-w-sm pointer-events-auto"
+        data-testid="language-proposal"
       >
         <div className="w-full overflow-hidden rounded-2xl border border-sage/30 border-l-4 border-l-sage bg-white/95 shadow-glass backdrop-blur-md">
           <div className="flex items-center gap-3 p-3">
@@ -92,12 +93,14 @@ export function LanguageSwitchProposal() {
               <button
                 onClick={handleSwitch}
                 className="rounded-xl bg-sage px-4 py-1.5 text-xs font-bold text-white transition-all active:scale-95 shadow-sm"
+                data-testid="language-proposal-switch"
               >
                 {content.switch}
               </button>
               <button
                 onClick={handleDismiss}
                 className="rounded-xl px-3 py-1.5 text-xs font-bold text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
+                data-testid="language-proposal-dismiss"
               >
                 {content.dismiss}
               </button>

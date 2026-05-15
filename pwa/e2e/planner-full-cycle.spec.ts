@@ -87,15 +87,25 @@ async function setupPlanner(page: Page, locked = false) {
     name: 'Other',
   });
 
-  // Stateful: POST/PUT (e.g. finalize) flips isLocked so the next GET reflects locked state
-  let isLocked = locked;
+  // Stateful: POST/PUT flips status/isLocked so the next GET reflects new state
+  let currentStatus = locked ? 2 : 0;
+  let isLockedState = locked;
 
   await page.route(
     (url) => url.pathname.includes('/api/schedule'),
     async (route) => {
       const url = route.request().url();
-      if (route.request().method() !== 'GET') {
-        isLocked = true;
+      const method = route.request().method();
+
+      if (method !== 'GET') {
+        if (url.includes('/voting/open')) {
+          currentStatus = 1;
+          isLockedState = false;
+        } else if (url.includes('/lock')) {
+          currentStatus = 2;
+          isLockedState = true;
+        }
+
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -115,7 +125,7 @@ async function setupPlanner(page: Page, locked = false) {
               preSelectedRecipes: [],
               openSlots: [],
               consensusRecipesCount: 0,
-              isVotingOpen: false,
+              isVotingOpen: currentStatus === 1,
             },
           }),
         });
@@ -127,9 +137,9 @@ async function setupPlanner(page: Page, locked = false) {
         body: JSON.stringify({
           data: {
             weekOffset: 0,
-            locked: isLocked,
-            status: isLocked ? 2 : 0,
-            days: isLocked ? buildLockedDays() : draftDays,
+            locked: isLockedState,
+            status: currentStatus,
+            days: isLockedState ? buildLockedDays() : draftDays,
           },
         }),
       });
@@ -151,22 +161,27 @@ async function setupPlanner(page: Page, locked = false) {
 }
 
 test.describe('Planner — Finalize & Lock', () => {
-  test('finalize shows locked state and plan-next-week button', async ({ page }) => {
+  test('closing voting promotes pending items and locks the week', async ({ page }) => {
     await setupPlanner(page, false);
 
-    // Wait for recipes to load and plannedCount to reach threshold
-    await expect(page.getByTestId('planned-count-badge')).toContainText('7/7');
+    // 1. Open voting to surface the "Close Voting" button
+    const askFamilyCta = page.getByTestId('ask-family-cta');
+    await expect(askFamilyCta).toBeVisible();
+    await askFamilyCta.click();
 
-    const finalizeBtn = page.getByTestId('finalize-button');
-    await expect(finalizeBtn).toBeVisible();
+    // 2. Wait for "Close Voting" to appear
+    const closeVotingBtn = page.getByTestId('close-voting-btn');
+    await expect(closeVotingBtn).toBeVisible();
 
-    // setupPlanner already intercepts all schedule calls — including POSTs.
-    // After finalize, the GET returns locked:true from the same intercept (locked=false
-    // was the initial state; the catch block in handleFinalize sets isLocked=true locally).
-    await finalizeBtn.scrollIntoViewIfNeeded();
-    await finalizeBtn.click();
+    // 3. Click "Close Voting"
+    await closeVotingBtn.click();
 
-    await expect(page.getByTestId('finalized-status')).toBeVisible({ timeout: 15_000 });
+    // 4. Verify locked state: "Ask the Family" is back, "Close Voting" is gone
+    await expect(askFamilyCta).toBeVisible();
+    await expect(closeVotingBtn).not.toBeVisible();
+
+    // 5. Verify success toast feedback
+    await expect(page.getByText(/Week finalized/i)).toBeVisible();
   });
 });
 

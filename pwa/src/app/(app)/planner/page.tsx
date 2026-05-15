@@ -39,6 +39,7 @@ import { useTodayStore } from '@/store/todayStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { type AssignmentRecipe, resolveOccupiedSlot } from '@/lib/planner/slotAssignment';
 import { getVotingLink } from '@/lib/auth';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -77,6 +78,7 @@ export default function PlannerPage() {
   const draggedUiIdRef = useRef<string | null>(null);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const isWide = useMediaQuery('(min-width: 1024px)');
 
   useEffect(() => {
     if (!isLoading) {
@@ -157,7 +159,13 @@ export default function PlannerPage() {
   const handleNextWeek = () => setWeekOffset(currentWeekOffset + 1);
 
   const handleCloseVoting = async () => {
-    await useWeekStore.getState().lockWeek();
+    try {
+      await useWeekStore.getState().closeVoting();
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error: any) {
+      console.warn('Failed to close voting:', error?.message || error);
+    }
   };
 
   const handleNudgeFamily = () => {
@@ -186,47 +194,6 @@ export default function PlannerPage() {
       });
     } catch (error) {
       console.error('Error sharing:', error);
-    }
-  };
-
-  const handleFinalize = async () => {
-    try {
-      const pendingSlots = schedule
-        .map((day, index) => ({ day, index }))
-        .filter(({ day }) => day._isPending && day.recipe);
-
-      for (const { day, index } of pendingSlots) {
-        if (day.recipe && day.recipe.id && day.recipe.image) {
-          await assignRecipeToDay(currentWeekOffset, index, {
-            id: day.recipe.id,
-            name: day.recipe.name || null,
-            image: day.recipe.image || '',
-          });
-        }
-      }
-
-      await lockSchedule(currentWeekOffset);
-
-      // Open voting for next week immediately
-      try {
-        await openVoting(currentWeekOffset + 1);
-      } catch {
-        // non-fatal — next week voting can be opened manually
-      }
-
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        // Navigate to next week with clean state
-        setWeekOffset(currentWeekOffset + 1);
-      }, 2000);
-    } catch (error: any) {
-      console.warn('Failed to finalize:', error?.message || error);
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        setWeekOffset(currentWeekOffset + 1);
-      }, 2000);
     }
   };
 
@@ -348,31 +315,38 @@ export default function PlannerPage() {
       <div className="blob blob-ochre -bottom-20 left-1/4 animate-[pulse_12s_infinite] [animation-delay:2s]" />
 
       {/* Header Section */}
-      <header className="sticky top-0 z-30 px-4 pt-3 pb-3 sm:px-6 sm:pt-5 sm:pb-4 glass-nav">
-        <div className="max-w-[27rem] sm:max-w-sm mx-auto w-full">
+      <header className="sticky top-0 z-30 px-4 pt-2 pb-2 sm:px-6 sm:pt-3 sm:pb-2 glass-nav">
+        <div
+          className={cn(
+            'mx-auto w-full transition-all duration-500',
+            isWide ? 'max-w-[1400px]' : 'max-w-[27rem] sm:max-w-sm md:max-w-2xl'
+          )}
+        >
           {/* Tab Switcher */}
-          <div className="flex bg-charcoal/5 p-1.5 rounded-[1.5rem] relative">
-            <button
-              onClick={() => setActiveTab('planner')}
-              data-testid="planner-tab"
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
-                activeTab === 'planner' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
-              )}
-            >
-              <Calendar size={14} /> {t('planner.planner', 'Planner')}
-            </button>
-            <button
-              onClick={() => setActiveTab('grocery')}
-              data-testid="grocery-tab"
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
-                activeTab === 'grocery' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
-              )}
-            >
-              <ShoppingCart size={14} /> {t('planner.groceryList', 'Grocery list')}
-            </button>
-          </div>
+          {!isWide && (
+            <div className="flex bg-charcoal/5 p-1.5 rounded-[1.5rem] relative">
+              <button
+                onClick={() => setActiveTab('planner')}
+                data-testid="planner-tab"
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
+                  activeTab === 'planner' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
+                )}
+              >
+                <Calendar size={14} /> {t('planner.planner', 'Planner')}
+              </button>
+              <button
+                onClick={() => setActiveTab('grocery')}
+                data-testid="grocery-tab"
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
+                  activeTab === 'grocery' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
+                )}
+              >
+                <ShoppingCart size={14} /> {t('planner.groceryList', 'Grocery list')}
+              </button>
+            </div>
+          )}
 
           {/* Week Navigator */}
           <div className="mt-3 flex items-start justify-between gap-3">
@@ -465,7 +439,14 @@ export default function PlannerPage() {
       </header>
 
       {/* Main Content */}
-      <main className="px-4 sm:px-6 py-5 sm:py-7 overflow-x-hidden max-w-[27rem] sm:max-w-sm mx-auto w-full">
+      <main
+        className={cn(
+          'px-4 sm:px-6 py-2 sm:py-3 overflow-x-hidden w-full transition-all duration-500',
+          isWide
+            ? 'max-w-[1400px] mx-auto grid grid-cols-[1fr_420px] gap-8 items-start'
+            : 'max-w-[27rem] sm:max-w-sm md:max-w-2xl mx-auto'
+        )}
+      >
         <AnimatePresence>
           {isLoading && schedule.length === 0 ? (
             <motion.div
@@ -477,7 +458,7 @@ export default function PlannerPage() {
             >
               <SolarLoader label={t('planner.curatingWeek', 'Curating your week...')} />
             </motion.div>
-          ) : activeTab === 'grocery' ? (
+          ) : activeTab === 'grocery' && !isWide ? (
             <motion.div
               key="grocery"
               initial={{ opacity: 0, x: 20 }}
@@ -501,55 +482,61 @@ export default function PlannerPage() {
               <div
                 data-testid="planner-action-row"
                 className={cn(
-                  'mb-4 items-center gap-2',
-                  isVotingOpen ? 'grid grid-cols-[auto_1fr_auto]' : 'flex flex-wrap justify-start'
+                  'grid grid-cols-[1fr_auto_1fr] items-center gap-2',
+                  isWide ? 'mb-2 pt-2.5' : 'mb-3'
                 )}
               >
-                {canOpenVoting && (
-                  <Button
-                    onClick={handleAskFamily}
-                    data-testid="ask-family-cta"
-                    className="h-9 rounded-full bg-sage px-4 text-[10px] font-bold uppercase tracking-widest text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
-                  >
-                    <Users size={12} className="mr-2" />
-                    {t('planner.askFamily', 'Ask the Family')}
-                  </Button>
-                )}
-                {isVotingOpen && (
-                  <button
-                    onClick={handleNudgeFamily}
-                    data-testid="nudge-family-cta"
-                    className="flex h-9 items-center gap-1.5 rounded-full bg-sage px-3 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
-                  >
-                    <Share2 size={10} />
-                    {t('planner.nudgeFamily', 'Nudge family')}
-                  </button>
-                )}
+                {/* Left Slot: Secondary Actions */}
+                <div className="flex justify-start">
+                  {isVotingOpen && (
+                    <button
+                      onClick={handleNudgeFamily}
+                      data-testid="nudge-family-cta"
+                      className="flex h-9 items-center gap-1.5 rounded-full bg-sage px-3 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                    >
+                      <Share2 size={10} />
+                      {t('planner.nudgeFamily', 'Nudge family')}
+                    </button>
+                  )}
+                </div>
+
+                {/* Center Slot: Status Anchor */}
                 <div
                   data-testid="planned-count-badge"
-                  className={cn(
-                    'flex h-9 items-center space-x-1 rounded-full border border-sage/10 bg-white/75 px-3 text-[9px] font-bold uppercase tracking-widest text-sage shadow-sm shadow-sage/5',
-                    isVotingOpen && 'justify-self-center'
-                  )}
+                  className="flex h-9 items-center space-x-1 rounded-full border border-sage/10 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-sage shadow-sm shadow-sage/5"
                 >
                   <span className="relative mr-1 flex h-1.5 w-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sage opacity-75"></span>
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sage"></span>
                   </span>
-                  {tWithVars('planner.plannedCount', `${plannedCount}/7 Planned`, {
+                  {tWithVars('planner.plannedCount', `${plannedCount}/7`, {
                     current: plannedCount,
                   })}
                 </div>
-                {isVotingOpen && (
-                  <button
-                    onClick={handleCloseVoting}
-                    data-testid="close-voting-btn"
-                    className="flex h-9 items-center gap-1.5 justify-self-end rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
-                  >
-                    <Ban size={10} />
-                    {t('planner.closeVoting', 'Close Voting')}
-                  </button>
-                )}
+
+                {/* Right Slot: Primary Actions */}
+                <div className="flex justify-end">
+                  {canOpenVoting && (
+                    <button
+                      onClick={handleAskFamily}
+                      data-testid="ask-family-cta"
+                      className="flex h-9 items-center rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                    >
+                      <Users size={12} className="mr-2" />
+                      {t('planner.askFamily', 'Ask the Family')}
+                    </button>
+                  )}
+                  {isVotingOpen && (
+                    <button
+                      onClick={handleCloseVoting}
+                      data-testid="close-voting-btn"
+                      className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
+                    >
+                      <Ban size={10} />
+                      {t('planner.closeVoting', 'Close Voting')}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* <div className="mb-4 opacity-90">
@@ -579,43 +566,23 @@ export default function PlannerPage() {
                     preDragSnapshotRef={preDragSnapshotRef}
                     draggedUiIdRef={draggedUiIdRef}
                     hasAnimatedIn={hasAnimatedIn}
+                    isWide={isWide}
                   />
                 ))}
               </Reorder.Group>
-
-              {/* Relocated from fixed bottom to prevent overlap while remaining thumb-friendly at end of list */}
-              {!isFinalized && plannedCount >= 4 && (
-                <div className="mt-8 mb-4">
-                  <Button
-                    variant="primary"
-                    fullWidth
-                    size="lg"
-                    onClick={handleFinalize}
-                    data-testid="finalize-button"
-                    className="rounded-[2.5rem] h-20 text-xl font-black shadow-2xl shadow-terracotta/30 bg-gradient-to-br from-terracotta to-[#CD5D45] text-white border-none group relative overflow-hidden transition-all active:scale-[0.98]"
-                  >
-                    <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="flex items-center justify-center gap-3">
-                      <Sparkles size={24} className="animate-pulse" />
-                      {t('planner.planNextWeek', 'Plan next week')}
-                    </div>
-                  </Button>
-                </div>
-              )}
-
-              {isFinalized && (
-                <div className="mt-8 mb-4">
-                  <div
-                    data-testid="finalized-status"
-                    className="w-full h-16 rounded-[2rem] bg-sage text-white font-black text-lg flex items-center justify-center shadow-xl shadow-sage/20 border-2 border-white/20"
-                  >
-                    {t('planner.menusIn', "Menu's In!")}
-                  </div>
-                </div>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {isWide && (
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="sticky top-[72px] h-[calc(100vh-285px)] rounded-[2.5rem] overflow-hidden border border-white/20 shadow-2xl glass flex flex-col"
+          >
+            <GroceryList weekOffset={currentWeekOffset} items={groceryItems ?? []} isEmbedded />
+          </motion.div>
+        )}
       </main>
 
       {showSuccess && (
@@ -629,10 +596,13 @@ export default function PlannerPage() {
           </div>
           <div className="flex flex-col">
             <h4 className="font-heading text-lg font-black tracking-tight leading-none">
-              {t('planner.weekFinalized', 'Week finalized')}
+              {t('planner.weekFinalized', "Menu's in!")}
             </h4>
             <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">
-              {t('planner.discoveryVotesPurged', 'Discovery votes purged and dates updated.')}
+              {t(
+                'planner.discoveryVotesPurged',
+                "Votes have been recorded and reset, we're ready for the next family voting session."
+              )}
             </p>
           </div>
         </motion.div>
@@ -798,6 +768,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
   preDragSnapshotRef,
   draggedUiIdRef,
   hasAnimatedIn,
+  isWide,
 }: {
   day: UILocalScheduleDay;
   index: number;
@@ -807,6 +778,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
   preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
   draggedUiIdRef: React.RefObject<string | null>;
   hasAnimatedIn: boolean;
+  isWide: boolean;
 }) {
   const dragControls = useDragControls();
 
@@ -879,7 +851,10 @@ const PlannerDayCard = memo(function PlannerDayCard({
     >
       <motion.div
         whileTap={{ scale: 0.98 }}
-        className="flex items-stretch px-4 py-2 relative z-10 min-h-[68px]"
+        className={cn(
+          'flex items-stretch px-4 relative z-10',
+          isWide ? 'py-2 min-h-[64px]' : 'py-2.5 min-h-[72px]'
+        )}
       >
         <div className="flex flex-col items-center justify-center w-12 mr-4 shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
@@ -919,7 +894,12 @@ const PlannerDayCard = memo(function PlannerDayCard({
           ) : day.recipe?.id ? (
             <div className="flex items-stretch">
               {day.recipe.image && (
-                <div className="relative h-12 w-12 rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center">
+                <div
+                  className={cn(
+                    'relative rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center',
+                    isWide ? 'h-10 w-10' : 'h-12 w-12'
+                  )}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={getImageUrl(day.recipe.image)}
@@ -939,9 +919,12 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
                 data-testid="edit-recipe-button"
               >
-                <div className="flex w-full flex-col justify-center gap-1">
+                <div className="flex w-full flex-col justify-center gap-0.5">
                   <h4
-                    className="text-sm leading-[1.15rem] font-bold text-charcoal line-clamp-2"
+                    className={cn(
+                      'font-bold text-charcoal line-clamp-2',
+                      isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
+                    )}
                     data-testid="recipe-name"
                   >
                     {day.recipe.name}
@@ -1012,8 +995,13 @@ const PlannerDayCard = memo(function PlannerDayCard({
                   size={18}
                 />
               </div>
-              <div className="flex min-h-[40px] flex-col justify-center">
-                <span className="text-sm font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors">
+              <div className="flex flex-col justify-center">
+                <span
+                  className={cn(
+                    'font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors',
+                    isWide ? 'text-xs' : 'text-sm'
+                  )}
+                >
                   Plan supper
                 </span>
               </div>

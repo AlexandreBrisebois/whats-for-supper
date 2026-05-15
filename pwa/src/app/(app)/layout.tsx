@@ -86,11 +86,16 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     <>
       {/* Pre-seed weekStore for weekOffset=0 on app load (BS-2 fix) */}
       <WeekStoreInitializer />
-      {/* Notification layer — mounted at layout level, same as useScheduleStream */}
-      <LibraryToast />
-      <ToastContainer />
-      <LanguageSwitchProposal />
-      <RecipeFailureBanner />
+      {/* Notification layer — fixed at the top, stackable flex column */}
+      <div
+        data-testid="notification-zone"
+        className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[100] flex flex-col items-center gap-2 pointer-events-none"
+      >
+        <LanguageSwitchProposal />
+        <RecipeFailureBanner />
+        <LibraryToast />
+        <ToastContainer />
+      </div>
       <Layout
         {...headerProps}
         hideNavigation={isCapture || isBrowseAllStack}

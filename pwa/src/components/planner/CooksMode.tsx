@@ -264,7 +264,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             )}
           </div>
         </div>
-
       </div>
 
       <button

@@ -30,7 +30,7 @@ public class IngredientCategoryIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Patch_ValidSection_Returns204AndPersistsHumanSource()
+    public async Task Patch_ValidSection_Returns204AndPersistsManualSource()
     {
         var response = await _client.PatchAsJsonAsync(
             "/api/ingredients/potato/category",
@@ -41,7 +41,7 @@ public class IngredientCategoryIntegrationTests : IAsyncLifetime
         var row = await _db.IngredientCategories
             .SingleAsync(r => r.NormalizedKey == "potato");
         Assert.Equal("Produce", row.GrocerySection);
-        Assert.Equal("human", row.Source);
+        Assert.Equal("manual", row.Source);
     }
 
     [Fact]

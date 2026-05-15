@@ -45,13 +45,13 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ReclassifyAsync_NewKey_InsertsRowWithHumanSource()
+    public async Task ReclassifyAsync_NewKey_InsertsRowWithManualSource()
     {
         await _service.ReclassifyAsync("potato", "Produce", CancellationToken.None);
 
         var row = await _db.IngredientCategories.SingleAsync(r => r.NormalizedKey == "potato");
         Assert.Equal("Produce", row.GrocerySection);
-        Assert.Equal("human", row.Source);
+        Assert.Equal("manual", row.Source);
         Assert.Equal(1.0, row.Confidence);
     }
 
@@ -73,7 +73,7 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
 
         var row = await _db.IngredientCategories.SingleAsync(r => r.NormalizedKey == "onion");
         Assert.Equal("Produce", row.GrocerySection);
-        Assert.Equal("human", row.Source);
+        Assert.Equal("manual", row.Source);
         Assert.Equal(1.0, row.Confidence);
     }
 

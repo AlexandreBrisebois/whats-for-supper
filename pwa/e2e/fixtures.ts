@@ -17,18 +17,22 @@ export const test = base.extend({
     const secret = process.env.HEARTH_SECRET || 'our family loves cooking';
     const token = await generateSecretToken(secret);
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
-    await page.context().addCookies([
-      {
-        name: 'h_access',
-        value: token,
-        url: baseUrl,
-      },
-      {
-        name: 'wfs-test-date',
-        value: fixedTestDate,
-        url: baseUrl,
-      },
-    ]);
+    const origins = [baseUrl, 'http://localhost:3000', 'http://pwa.wfs.localhost'];
+
+    for (const origin of origins) {
+      await page.context().addCookies([
+        {
+          name: 'h_access',
+          value: token,
+          url: origin,
+        },
+        {
+          name: 'wfs-test-date',
+          value: fixedTestDate,
+          url: origin,
+        },
+      ]);
+    }
 
     page.on('console', (msg) => {
       if (msg.type() === 'log' || msg.type() === 'error') {

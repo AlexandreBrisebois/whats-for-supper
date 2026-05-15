@@ -13,21 +13,13 @@ const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 test.describe('Capture Flow', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    const origins = [baseUrl, 'http://localhost:3000', 'http://pwa.wfs.localhost'];
 
-    await page
-      .context()
-      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
-
-    // Inject localStorage before any navigation so the store hydrates correctly
-    await page.addInitScript((id) => {
-      localStorage.setItem(
-        'family-storage',
-        JSON.stringify({
-          state: { selectedFamilyMemberId: id },
-          version: 0,
-        })
-      );
-    }, MOCK_IDS.MEMBER_ALEX);
+    for (const origin of origins) {
+      await page
+        .context()
+        .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: origin }]);
+    }
 
     await setupCommonRoutes(page);
 
@@ -754,8 +746,8 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
 
   // ── LibraryToast on recipe_ready ─────────────────────────────────────────
   // When SSE fires `recipe_ready` for a recipe that was submitted in this
-  // session (captureStore has it), the LibraryToast appears at the bottom of
-  // the screen with the recipe name and a "Tap to add to your week" hint.
+  // session (captureStore has it), the LibraryToast appears at the top of
+  // the screen (inside notification-zone) with the recipe name and a "Tap to add to your week" hint.
   //
   // Strategy: navigate to /home, then push a 'ready' notification directly to
   // libraryStore via window.__libraryStore (exposed in non-production builds).
@@ -763,6 +755,9 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
   test('SSE recipe_ready → LibraryToast appears with recipe name', async ({ page }) => {
     const recipeId = MOCK_IDS.RECIPE_LASAGNA;
     const recipeName = 'Test Lasagna';
+
+    const cookies = await page.context().cookies();
+    console.log('COOKIES BEFORE GOTO:', JSON.stringify(cookies, null, 2));
 
     // Navigate to /home — the layout mounts LibraryToast
     await page.goto('/home');
@@ -783,12 +778,13 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
       { id: recipeId, name: recipeName }
     );
 
-    // Wait for the LibraryToast to appear — it shows when libraryStore has a 'ready' notification
     // The toast renders with role="status" and contains the recipe name
-    await expect(page.locator('[role="status"]').filter({ hasText: recipeName })).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.locator('[role="status"]').filter({ hasText: /is ready/i })).toBeVisible();
+    const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
+    await expect(toast).toBeVisible({ timeout: 5_000 });
+    await expect(toast).toContainText(/is ready/i);
+
+    // Ensure it's in the top notification zone
+    await expect(page.getByTestId('notification-zone')).toContainText(recipeName);
   });
 
   test('LibraryToast drawer actions let the user add a recipe to this week', async ({ page }) => {
@@ -849,16 +845,12 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
       { id: recipeId, name: recipeName }
     );
 
-    // Wait for the RecipeFailureBanner to appear
-    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toContainText(
-      /couldn't be saved/i
-    );
-    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toContainText(
-      /tap to try again/i
-    );
+    // Wait for the RecipeFailureBanner to appear in the notification zone
+    const banner = page.getByTestId(`recipe-failure-banner-${recipeId}`);
+    await expect(banner).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('notification-zone')).toContainText(recipeName);
+    await expect(banner).toContainText(/couldn't be saved/i);
+    await expect(banner).toContainText(/tap to try again/i);
   });
 
   test('RecipeFailureBanner dismiss action removes the failed notification', async ({ page }) => {

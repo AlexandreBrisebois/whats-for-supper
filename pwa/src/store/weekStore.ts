@@ -353,12 +353,34 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
   // ── closeVoting ───────────────────────────────────────────────────────────
   async closeVoting() {
-    const prev = get().status;
+    const prevStatus = get().status;
+    const schedule = get().schedule;
+    const weekOffset = get().weekOffset;
+
+    // AC-1: Suggestion Promotion
+    // Identify slots with pending suggestions that need to be committed
+    const pendingSlots = schedule
+      .map((slot, index) => ({ slot, index }))
+      .filter(({ slot }) => slot._isPending && slot.recipe?.id);
+
     set({ status: 2 });
+
     try {
-      await lockSchedule(get().weekOffset);
+      // Commit all pending suggestions in parallel
+      await Promise.all(
+        pendingSlots.map(({ slot, index }) =>
+          assignRecipeToDay(weekOffset, index, {
+            id: slot.recipe!.id!,
+            name: slot.recipe!.name ?? null,
+            image: slot.recipe!.image ?? '',
+          })
+        )
+      );
+
+      // AC-2: Atomic Lock
+      await lockSchedule(weekOffset);
     } catch {
-      set({ status: prev });
+      set({ status: prevStatus });
       throw new Error('Failed to close voting');
     }
   },

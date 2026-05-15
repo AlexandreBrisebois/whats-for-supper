@@ -5,14 +5,11 @@ services:
     restart: unless-stopped
     command:
       - "--api.insecure=true"
-      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml" # This is correct
       - "--entrypoints.web.address=:80"
-    volumes:
-      - ./traefik_dynamic.yml:/etc/traefik/dynamic.yml:ro
     networks:
       - proxy
       - internal
-
   # ──────────────────────────────────────────────────────────────────────────
   # PostgreSQL 18
   # ──────────────────────────────────────────────────────────────────────────

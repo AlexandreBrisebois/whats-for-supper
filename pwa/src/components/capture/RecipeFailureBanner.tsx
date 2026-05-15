@@ -34,7 +34,7 @@ export function RecipeFailureBanner() {
 
   return (
     <div
-      className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-50 flex flex-col gap-2"
+      className="flex flex-col gap-2 w-full max-w-sm pointer-events-auto"
       role="alert"
       aria-live="assertive"
     >
