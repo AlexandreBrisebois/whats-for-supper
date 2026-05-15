@@ -245,7 +245,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           <div className="flex flex-wrap gap-2">
             {/* Status Pills: Glassmorphic Overlay */}
             <div className="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-full text-white shadow-xl">
-              <span className="text-[10px] font-black uppercase tracking-widest">
+              <span
+                data-testid="cooks-mode-step-indicator"
+                className="text-[10px] font-black uppercase tracking-widest"
+              >
                 {isPrepStep
                   ? t('cook.checkAndPrep', 'Check & Prep')
                   : `${currentStep} / ${steps.length}`}
@@ -266,16 +269,18 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         </div>
       </div>
 
-      <button
-        data-testid="close-cooks-mode"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        className="absolute top-6 right-6 z-[110] p-3 rounded-full bg-white/80 backdrop-blur-md text-charcoal/40 border border-charcoal/10 hover:bg-white active:scale-90 transition-all shadow-md"
-      >
-        <X size={20} />
-      </button>
+      {!showDetailId && (
+        <button
+          data-testid="close-cooks-mode"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="absolute top-6 right-6 z-[110] p-3 rounded-full bg-white/80 backdrop-blur-md text-charcoal/40 border border-charcoal/10 hover:bg-white active:scale-90 transition-all shadow-md"
+        >
+          <X size={20} />
+        </button>
+      )}
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Progress Bar */}

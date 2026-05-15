@@ -15,9 +15,13 @@ export const test = base.extend({
 
     // Inject h_access cookie (Hearth Secret)
     const secret = process.env.HEARTH_SECRET || 'our family loves cooking';
+    if (process.env.DEBUG?.includes('pw:auth')) {
+      console.log(`[AUTH] Using HEARTH_SECRET: ${secret === 'our family loves cooking' ? 'DEFAULT' : 'CUSTOM'}`);
+    }
+
     const token = await generateSecretToken(secret);
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
-    const origins = [baseUrl, 'http://localhost:3000', 'http://pwa.wfs.localhost'];
+    const origins = [baseUrl, 'http://localhost:3000', 'http://127.0.0.1:3000', 'http://pwa.wfs.localhost'];
 
     for (const origin of origins) {
       await page.context().addCookies([
@@ -41,8 +45,9 @@ export const test = base.extend({
     });
 
     // Force English locale for deterministic tests
+    // Match LOCALE_KEY from pwa/src/locales/index.ts
     await page.addInitScript(() => {
-      window.localStorage.setItem('whats-for-supper-locale', 'en');
+      window.localStorage.setItem('locale', 'en');
     });
 
     page.on('request', (request) => {

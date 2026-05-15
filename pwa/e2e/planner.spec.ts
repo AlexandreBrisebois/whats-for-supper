@@ -197,8 +197,16 @@ test.describe('Supper Planner', () => {
   });
 
   test('should display the planner navigation and segmented control', async ({ page }) => {
-    await expect(page.getByTestId('planner-tab')).toBeVisible();
-    await expect(page.getByTestId('grocery-tab')).toBeVisible();
+    // Tab switcher only visible on mobile/narrow viewports
+    const isMobile = await page.evaluate(() => window.innerWidth < 1024);
+    if (isMobile) {
+      await expect(page.getByTestId('planner-tab')).toBeVisible();
+      await expect(page.getByTestId('grocery-tab')).toBeVisible();
+    } else {
+      // On desktop, we expect the grocery list to be visible in the dashboard
+      await expect(page.getByTestId('grocery-checklist')).toBeVisible();
+    }
+
     await expect(page.getByTestId('planner-action-row')).toBeVisible();
     await expect(
       page.getByTestId('planner-action-row').getByTestId('ask-family-cta')
@@ -327,7 +335,7 @@ test.describe('Supper Planner', () => {
     await closeVotingBtn.click();
 
     // 4. Verify success feedback and locked state
-    await expect(page.getByText(/Week finalized/i)).toBeVisible();
+    await expect(page.getByText(/Menu's in!/i)).toBeVisible();
     await expect(closeVotingBtn).not.toBeVisible();
     await expect(page.getByTestId('ask-family-cta')).toBeVisible();
   });

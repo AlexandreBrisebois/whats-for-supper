@@ -65,7 +65,11 @@ test.describe('Onboarding', () => {
 
     const alexMember = page.getByTestId(`family-member-${MOCK_IDS.MEMBER_ALEX}`);
     await expect(alexMember).toBeVisible({ timeout: 10_000 });
-    await alexMember.click();
+    
+    await Promise.all([
+      page.waitForURL(/\/home/),
+      alexMember.click()
+    ]);
 
     await expect(page).toHaveURL(/\/home/);
     await expect(

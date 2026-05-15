@@ -397,7 +397,7 @@ export function RecipeDetailSheet({
   const primaryActionLabel = plannerDayLabel ? `Plan for ${plannerDayLabel}` : 'Cook This';
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center px-4 pb-4 sm:items-center">
+    <div className="fixed inset-0 z-[130] flex items-end justify-center px-4 pb-4 sm:items-center">
       <button
         type="button"
         aria-label={t('common.close', 'Close')}
