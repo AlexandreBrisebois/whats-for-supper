@@ -1,0 +1,460 @@
+
+ RUN  v3.2.4 /Users/alex/Code/whats-for-supper/pwa
+
+(node:90760) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+stderr | src/app/(app)/recipes/page.test.tsx > RecipesPage > blurs the search input when Enter is pressed
+An update to RecipesPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to RecipesPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to RecipesPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ❯ src/app/(app)/recipes/page.test.tsx (39 tests | 3 failed) 2336ms
+   ✓ RecipesPage > renders the search input and mode controls after load 21ms
+   ✓ RecipesPage > fires recipe search on mount and again when Enter is pressed with the current query 14ms
+   ✓ RecipesPage > renders the top pick card and alternate cards from the search response 5ms
+   ✓ RecipesPage > top-pick-feeling-lucky button promotes a different result without changing query 9ms
+   ✓ RecipesPage > loads more search results from an infinite-scroll sentinel instead of a manual button 13ms
+   ✓ RecipesPage > renders the empty state when search returns no top pick and no results 6ms
+   ✓ RecipesPage > shows planner mode banner when planner context is present 5ms
+   ✓ RecipesPage > opens the detail sheet from a result card and closes it without re-running search or clearing results 40ms
+   ✓ RecipesPage > marks a recipe as the family GOTO from the detail sheet star pill 22ms
+   ✓ RecipesPage > shows the current GOTO pill without re-saving when the detail recipe is already GOTO 15ms
+   ✓ RecipesPage > edits notes and rating from the detail sheet using PATCH calls  845ms
+   ✓ RecipesPage > edits recipe card fields in edit mode and saves them with one PATCH call 52ms
+   ✓ RecipesPage > cancels recipe card edits without patching editable fields 19ms
+   ✓ RecipesPage > renders the planner CTA in planner mode and assigns the recipe back to the planner 19ms
+   ✓ RecipesPage > Quick filter pills > renders all 5 filter pills 5ms
+   ✓ RecipesPage > Quick filter pills > tapping a filter pill marks it active and fires a new search with the filter 7ms
+   ✓ RecipesPage > Quick filter pills > tapping an active filter pill deactivates it and re-runs search without that filter 12ms
+   ✓ RecipesPage > Quick filter pills > combining two filters sends both in the request 10ms
+   ✓ RecipesPage > Quick filter pills > shows filter-no-results when filters are active and search returns empty 7ms
+   ✓ RecipesPage > toggling discovery from the detail sheet calls PATCH with isDiscoverable and keeps the sheet open 15ms
+   ✓ RecipesPage > runs a similar search from the detail sheet with an empty query and the current recipe id 20ms
+   ✓ RecipesPage > inventory-camera-trigger tap opens the inventory-capture-popup 6ms
+   ✓ RecipesPage > inventory-capture-popup renders take photo, choose photos, submit and cancel buttons 6ms
+   × RecipesPage > submit button stays available and updates the photo count as photos are added 11ms
+     → expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  /Search with 1 photo/i
+Received:
+  Search with 0 photos
+   × RecipesPage > removing a photo updates the count and keeps submit available when the queue becomes empty 12ms
+     → expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  /Search with 0 photos/i
+Received:
+  Search with 1 photos
+   ✓ RecipesPage > submitting inventory photos uses the pantry snapshot in the next search 16ms
+   ✓ RecipesPage > submitting a recipe photo searches the library with extracted recipe text 16ms
+   ✓ RecipesPage > inventory-capture-cancel closes popup and clears queue 13ms
+   ✓ RecipesPage > popup shows busy message when capture returns busy status 15ms
+   ✓ RecipesPage > agent-search-trigger tap shows agent-search-input textarea 7ms
+   ✓ RecipesPage > agent-search-trigger shows demo notice instead of textarea in demo mode 8ms
+   ✓ RecipesPage > agent-search-submit calls searchRecipes with mode: "agent" 9ms
+   ✓ RecipesPage > agent search results render in the same recipe-card-top-pick template 13ms
+   ✓ RecipesPage > agent search does NOT render a chat UI element 5ms
+   ✓ RecipesPage > agent-search-close hides agent-search-input and keeps existing results visible 4ms
+   ✓ RecipesPage > blurs the search input when Enter is pressed 3ms
+   × RecipesPage > submits and blurs the agent search textarea when Enter (without Shift) is pressed 1007ms
+     → expected last "spy" call to have been called with [ ObjectContaining{…} ]
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex flex-col gap-6 pt-6 pb-12"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center px-1 h-11"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex flex-wrap gap-2 px-1"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-terracotta bg-terracotta text-white"[39m
+            [33mdata-testid[39m=[32m"agent-search-trigger"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-sparkles text-white"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M20 2v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M22 4h-4"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"4"[39m
+                [33mcy[39m=[32m"20"[39m
+                [33mr[39m=[32m"2"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mAgent Search[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-charcoal/10 bg-white/70 text-charcoal"[39m
+            [33mdata-testid[39m=[32m"inventory-camera-trigger"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-camera text-terracotta"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"12"[39m
+                [33mcy[39m=[32m"13"[39m
+                [33mr[39m=[32m"3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mPhoto Search[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33manimate[39m=[32m"[object Object]"[39m
+          [33mclass[39m=[32m"flex flex-col gap-2"[39m
+          [33minitial[39m=[32m"[object Object]"[39m
+        [36m>[39m
+          [36m<textarea[39m
+            [33mclass[39m=[32m"w-full rounded-2xl border-2 border-charcoal/5 bg-white/60 backdrop-blur-md p-4 text-base font-bold text-charcoal placeholder:text-charcoal/20 focus:border-terracotta/20 focus:outline-none resize-none shadow-sm transition-all"[39m
+            [33mdata-testid[39m=[32m"agent-search-input"[39m
+            [33mplaceholder[39m=[32m"Describe what you feel like tonight in your own words…"[39m
+            [33mrows[39m=[32m"3"[39m
+          [36m>[39m
+            [0mhealthy lunch[0m
+          [36m</textarea>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"[39m
+              [33mdata-testid[39m=[32m"agent-search-submit"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mSearch[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"[39m
+              [33mdata-testid[39m=[32m"agent-search-close"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCancel[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<input[39m
+          [33maccept[39m=[32m"image/*"[39m
+          [33mcapture[39m=[32m"environment"[39m
+          [33mclass[39m=[32m"hidden"[39m
+          [33mdata-testid[39m=[32m"inventory-camera-input"[39m
+          [33mtype[39m=[32m"file"[39m
+        [36m/>[39m
+        [36m<input[39m
+          [33maccept[39m=[32m"image/*"[39m
+          [33mclass[39m=[32m"hidden"[39m
+          [33mdata-testid[39m=[32m"inventory-gallery-input"[39m
+          [33mmultiple[39m=[32m""[39m
+          [33mtype[39m=[32m"file"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex flex-col gap-2 px-1"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40"[39m
+          [36m>[39m
+            [0mFilter by[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-charcoal/10 bg-white/70 text-charcoal"[39m
+              [33mdata-testid[39m=[32m"filter-new-recipes"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mNew[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mcl...
+   ✓ RecipesPage > does NOT submit agent search when Shift+Enter is pressed in textarea 7ms
+   ✓ RecipesPage > fires recipe search on mount with similarToRecipeId if provided in search params 14ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/(app)/recipes/page.test.tsx > RecipesPage > submit button stays available and updates the photo count as photos are added
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  /Search with 1 photo/i
+Received:
+  Search with 0 photos
+ ❯ src/app/(app)/recipes/page.test.tsx:894:23
+    892|     fireEvent.change(input, { target: { files: [file] } });
+    893| 
+    894|     expect(submitBtn).toHaveTextContent(/Search with 1 photo/i);
+       |                       ^
+    895|     expect(screen.getByTestId('remove-photo-0')).toBeInTheDocument();
+    896|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/app/(app)/recipes/page.test.tsx > RecipesPage > removing a photo updates the count and keeps submit available when the queue becomes empty
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  /Search with 0 photos/i
+Received:
+  Search with 1 photos
+ ❯ src/app/(app)/recipes/page.test.tsx:915:23
+    913| 
+    914|     expect(submitBtn).not.toBeDisabled();
+    915|     expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
+       |                       ^
+    916|   });
+    917| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/app/(app)/recipes/page.test.tsx > RecipesPage > submits and blurs the agent search textarea when Enter (without Shift) is pressed
+AssertionError: expected last "spy" call to have been called with [ ObjectContaining{…} ]
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex flex-col gap-6 pt-6 pb-12"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center px-1 h-11"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex flex-wrap gap-2 px-1"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-terracotta bg-terracotta text-white"[39m
+            [33mdata-testid[39m=[32m"agent-search-trigger"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-sparkles text-white"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M20 2v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M22 4h-4"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"4"[39m
+                [33mcy[39m=[32m"20"[39m
+                [33mr[39m=[32m"2"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mAgent Search[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-charcoal/10 bg-white/70 text-charcoal"[39m
+            [33mdata-testid[39m=[32m"inventory-camera-trigger"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-camera text-terracotta"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"12"[39m
+                [33mcy[39m=[32m"13"[39m
+                [33mr[39m=[32m"3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mPhoto Search[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33manimate[39m=[32m"[object Object]"[39m
+          [33mclass[39m=[32m"flex flex-col gap-2"[39m
+          [33minitial[39m=[32m"[object Object]"[39m
+        [36m>[39m
+          [36m<textarea[39m
+            [33mclass[39m=[32m"w-full rounded-2xl border-2 border-charcoal/5 bg-white/60 backdrop-blur-md p-4 text-base font-bold text-charcoal placeholder:text-charcoal/20 focus:border-terracotta/20 focus:outline-none resize-none shadow-sm transition-all"[39m
+            [33mdata-testid[39m=[32m"agent-search-input"[39m
+            [33mplaceholder[39m=[32m"Describe what you feel like tonight in your own words…"[39m
+            [33mrows[39m=[32m"3"[39m
+          [36m>[39m
+            [0mhealthy lunch[0m
+          [36m</textarea>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"[39m
+              [33mdata-testid[39m=[32m"agent-search-submit"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mSearch[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"[39m
+              [33mdata-testid[39m=[32m"agent-search-close"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mCancel[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<input[39m
+          [33maccept[39m=[32m"image/*"[39m
+          [33mcapture[39m=[32m"environment"[39m
+          [33mclass[39m=[32m"hidden"[39m
+          [33mdata-testid[39m=[32m"inventory-camera-input"[39m
+          [33mtype[39m=[32m"file"[39m
+        [36m/>[39m
+        [36m<input[39m
+          [33maccept[39m=[32m"image/*"[39m
+          [33mclass[39m=[32m"hidden"[39m
+          [33mdata-testid[39m=[32m"inventory-gallery-input"[39m
+          [33mmultiple[39m=[32m""[39m
+          [33mtype[39m=[32m"file"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex flex-col gap-2 px-1"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40"[39m
+          [36m>[39m
+            [0mFilter by[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-charcoal/10 bg-white/70 text-charcoal"[39m
+              [33mdata-testid[39m=[32m"filter-new-recipes"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mNew[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mcl...
+
+- Expected
++ Received
+
+  [
+-   ObjectContaining {
+-     "mode": "agent",
+-     "query": "healthy lunch",
++   {
++     "dayIndex": undefined,
++     "filters": undefined,
++     "limit": 6,
++     "mode": "standard",
++     "pantrySnapshotId": undefined,
++     "query": "chicken",
++     "similarToRecipeId": undefined,
++     "weekOffset": undefined,
+    },
+  ]
+
+ ❯ src/app/(app)/recipes/page.test.tsx:1139:35
+    1137|     expect(textarea).not.toHaveFocus();
+    1138|     await waitFor(() => {
+    1139|       expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+       |                                   ^
+    1140|         expect.objectContaining({ query: 'healthy lunch', mode: 'agent…
+    1141|       );
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 36 passed (39)
+   Start at  20:42:52
+   Duration  2.88s (transform 92ms, setup 46ms, collect 156ms, tests 2.34s, environment 102ms, prepare 33ms)
+

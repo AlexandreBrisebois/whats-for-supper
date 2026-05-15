@@ -68,6 +68,7 @@ vi.mock('framer-motion', () => ({
       <div {...props}>{children}</div>
     ),
   },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('@/locales', () => ({

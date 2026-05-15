@@ -490,7 +490,6 @@ export async function updateRecipe(
   });
 }
 
-
 export async function searchRecipes(
   request: Pick<
     RecipeSearchRequestDto,

@@ -151,7 +151,7 @@ describe('RecipeDetailSheet', () => {
       />
     );
 
-    expect(await screen.findByTestId('hero-cook-btn')).toBeVisible();
-    expect(screen.getByTestId('time-cook-btn')).toBeVisible();
+    expect(await screen.findByTestId('time-cook-btn')).toBeVisible();
+    expect(screen.getByTestId('time-cook-btn')).toHaveTextContent(/STEPS/i);
   });
 });

@@ -645,4 +645,30 @@ test.describe('Browse All Stack — Recycle Bin', () => {
 
     await expect(page.getByTestId('trash-list')).toBeVisible();
   });
+
+  test('header buttons are ordered correctly (Discovery -> View -> Recycle -> Close)', async ({
+    page,
+  }) => {
+    const discovery = page.getByTestId('stack-toggle-discoverable');
+    const viewStack = page.getByTestId('browse-view-stack');
+    // Get the container of the view toggle (the flex div with p-1)
+    const viewContainer = page.locator('div:has(> [data-testid="browse-view-stack"])').first();
+    const recycle = page.getByTestId('recycle-bin-entry');
+    const close = page.getByTestId('browse-all-exit');
+
+    const discoveryBox = await discovery.boundingBox();
+    const viewBox = await viewContainer.boundingBox();
+    const recycleBox = await recycle.boundingBox();
+    const closeBox = await close.boundingBox();
+
+    if (!discoveryBox || !viewBox || !recycleBox || !closeBox) {
+      throw new Error('Could not get bounding boxes for header buttons');
+    }
+
+    // Expected order: Discovery (leftmost), View, Recycle, Close (rightmost)
+    // We expect Discovery.x < View.x < Recycle.x < Close.x
+    expect(discoveryBox.x).toBeLessThan(viewBox.x);
+    expect(viewBox.x).toBeLessThan(recycleBox.x);
+    expect(recycleBox.x).toBeLessThan(closeBox.x);
+  });
 });

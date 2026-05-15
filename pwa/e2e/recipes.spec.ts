@@ -189,9 +189,9 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId('recipe-detail-name')).toContainText(/Homemade Lasagna/i);
     await expect(page.getByTestId('recipe-detail-sheet')).toContainText(/READY IN 45 MINS/i);
 
-    // Verify the new COOK entry points are visible
-    await expect(page.getByTestId('hero-cook-btn')).toBeVisible();
+    // Verify the new COOK entry point is visible
     await expect(page.getByTestId('time-cook-btn')).toBeVisible();
+    await expect(page.getByTestId('time-cook-btn')).toContainText(/STEPS/i);
 
     await page.getByTestId('action-close-sheet').click();
 

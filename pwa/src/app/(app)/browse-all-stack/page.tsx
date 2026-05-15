@@ -555,6 +555,24 @@ export default function BrowseAllStackPage() {
 
       {/* Top bar: Clustered actions (right) */}
       <div className="relative z-10 flex items-center justify-end px-6 pt-safe-top pt-4 pb-2 shrink-0 gap-1.5">
+        <button
+          onClick={handleGlobalToggleDiscoverable}
+          data-testid="stack-toggle-discoverable"
+          className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all duration-300 border ${
+            isDiscoverableOnly
+              ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
+              : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
+          } backdrop-blur-sm focus:outline-none`}
+          aria-label={
+            isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
+          }
+        >
+          <Compass className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`} />
+          <span className="text-xs font-black tracking-wide uppercase">
+            {isDiscoverableOnly ? 'Discovery' : 'All'}
+          </span>
+        </button>
+
         <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm backdrop-blur-sm">
           <button
             type="button"
@@ -579,24 +597,6 @@ export default function BrowseAllStackPage() {
             <Grid3X3 className="h-4 w-4" />
           </button>
         </div>
-
-        <button
-          onClick={handleGlobalToggleDiscoverable}
-          data-testid="stack-toggle-discoverable"
-          className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all duration-300 border ${
-            isDiscoverableOnly
-              ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
-              : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
-          } backdrop-blur-sm focus:outline-none`}
-          aria-label={
-            isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
-          }
-        >
-          <Compass className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`} />
-          <span className="text-xs font-black tracking-wide uppercase">
-            {isDiscoverableOnly ? 'Discovery' : 'All'}
-          </span>
-        </button>
 
         <button
           type="button"

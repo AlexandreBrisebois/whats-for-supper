@@ -310,6 +310,8 @@
     "confirmDeleteDescription": "Cette action est irréversible. Entrez votre NIP pour confirmer.",
     "cook": "CUISINER",
     "cookNow": "Cuisiner maintenant",
+    "steps": "ÉTAPES",
+    "viewSteps": "Voir les étapes",
     "currentGoto": "Recette GOTO actuelle",
     "detailTitle": "Détail de la recette",
     "description": "Description",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import {
   X,
   Clock,
@@ -37,6 +38,7 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { ActionGearMenu } from './ActionGearMenu';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
 import { OriginalPhotosViewer } from './OriginalPhotosViewer';
+import { CooksMode } from '../planner/CooksMode';
 import type { GoToListDto } from '@/lib/api/generated/models/index';
 
 const GOTO_KEY = 'family_goto';
@@ -83,6 +85,7 @@ export function RecipeDetailSheet({
   const [showOriginals, setShowOriginals] = useState(false);
   const [isSharingRecipe, setIsSharingRecipe] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [showCooksMode, setShowCooksMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
   const familySettings = useFamilyStore((state) => state.familySettings);
@@ -513,18 +516,6 @@ export function RecipeDetailSheet({
                   <span>{t('recipes.viewOriginal', 'View Original')}</span>
                 </button>
               )}
-              {!isEditing && (
-                <button
-                  type="button"
-                  data-testid="hero-cook-btn"
-                  onClick={() => void handleUseRecipe()}
-                  disabled={isSavingAction}
-                  className="absolute bottom-4 left-4 flex h-12 items-center gap-2 rounded-full border border-terracotta/30 bg-terracotta/80 px-5 text-xs font-black uppercase tracking-wider text-white shadow-xl backdrop-blur-md transition-all hover:bg-terracotta active:scale-95 disabled:opacity-50"
-                >
-                  <UtensilsCrossed size={18} />
-                  <span>{t('recipes.cook', 'COOK')}</span>
-                </button>
-              )}
               {isEditing && (
                 <>
                   <input
@@ -595,13 +586,14 @@ export function RecipeDetailSheet({
                   <button
                     type="button"
                     data-testid="time-cook-btn"
-                    onClick={() => void handleUseRecipe()}
+                    onClick={() => setShowCooksMode(true)}
                     disabled={isSavingAction}
-                    aria-label={t('recipes.cookNow', 'Cook now')}
-                    title={t('recipes.cookNow', 'Cook now')}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-terracotta shadow-sm transition hover:bg-terracotta/5 active:scale-95 disabled:opacity-50"
+                    aria-label={t('recipes.viewSteps', 'View steps')}
+                    title={t('recipes.viewSteps', 'View steps')}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[10px] font-black uppercase tracking-wider text-terracotta shadow-sm transition hover:bg-terracotta/5 active:scale-95 disabled:opacity-50"
                   >
-                    <UtensilsCrossed size={14} />
+                    <UtensilsCrossed size={12} />
+                    <span>{t('recipes.steps', 'STEPS')}</span>
                   </button>
                 )}
               </div>
@@ -781,9 +773,10 @@ export function RecipeDetailSheet({
                     plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
                   }
                   disabled={isSavingAction}
-                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
                 >
-                  {primaryActionLabel}
+                  {!plannerDayLabel && <UtensilsCrossed size={18} />}
+                  <span>{primaryActionLabel}</span>
                 </button>
               ) : (
                 <div className="flex flex-col gap-3 sm:flex-row">
@@ -792,9 +785,10 @@ export function RecipeDetailSheet({
                     data-testid="action-cook-tonight"
                     onClick={() => void handleUseRecipe()}
                     disabled={isSavingAction}
-                    className="flex-1 inline-flex min-h-12 items-center justify-center rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                    className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
                   >
-                    Cook Tonight
+                    <UtensilsCrossed size={18} />
+                    <span>Cook Tonight</span>
                   </button>
                   <button
                     type="button"
@@ -836,6 +830,18 @@ export function RecipeDetailSheet({
           onClose={() => setShowOriginals(false)}
         />
       )}
+      <AnimatePresence>
+        {showCooksMode && recipe && (
+          <CooksMode
+            recipe={{
+              id: recipe.id,
+              name: recipe.name,
+              image: getImageUrl(recipe.imageUrl) || '',
+            }}
+            onClose={() => setShowCooksMode(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

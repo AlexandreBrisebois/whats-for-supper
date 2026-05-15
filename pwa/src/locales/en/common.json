@@ -310,6 +310,8 @@
     "confirmDeleteDescription": "This action cannot be undone. Enter your PIN to confirm.",
     "cook": "COOK",
     "cookNow": "Cook now",
+    "steps": "STEPS",
+    "viewSteps": "View steps",
     "currentGoto": "Current GOTO recipe",
     "detailTitle": "Recipe detail",
     "description": "Description",

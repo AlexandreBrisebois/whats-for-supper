@@ -25,7 +25,12 @@
 - [x] **PWA**: Update `CooksMode.tsx` layout (left-align, single title, larger image).
 - [x] **VERIFY**: Run PWA unit tests (GREEN).
 
-## Phase 5: Micro-Editing (B5.2)
+## Phase 5: Micro-Editing (B5.2) [DONE]
 - [x] **TEST**: Add `CooksMode.test.tsx` case for editing a step and saving (GREEN).
 - [x] **PWA**: Implement editing UI and `save-on-blur` logic in `CooksMode.tsx`.
 - [x] **VERIFY**: Final full-stack verification (GREEN).
+
+## Phase 6: Stability & Regression Fixes [DONE]
+- [x] **FIX**: Update `RecipesPage.test.tsx` with `AnimatePresence` export in `framer-motion` mock (GREEN).
+- [x] **VERIFY**: Run full unit test suite via `task test:unit` (GREEN).
+- [x] **VERIFY**: Run E2E tests for recipes flow (GREEN).
