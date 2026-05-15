@@ -308,6 +308,8 @@
     "confirmDelete": "Supprimer définitivement la recette",
     "confirmDeleteButton": "Supprimer pour toujours",
     "confirmDeleteDescription": "Cette action est irréversible. Entrez votre NIP pour confirmer.",
+    "cook": "CUISINER",
+    "cookNow": "Cuisiner maintenant",
     "currentGoto": "Recette GOTO actuelle",
     "detailTitle": "Détail de la recette",
     "description": "Description",

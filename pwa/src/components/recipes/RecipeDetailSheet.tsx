@@ -16,6 +16,7 @@ import {
   Images,
   ExternalLink,
   Share2,
+  UtensilsCrossed,
 } from 'lucide-react';
 import {
   getRecipe,
@@ -512,6 +513,18 @@ export function RecipeDetailSheet({
                   <span>{t('recipes.viewOriginal', 'View Original')}</span>
                 </button>
               )}
+              {!isEditing && (
+                <button
+                  type="button"
+                  data-testid="hero-cook-btn"
+                  onClick={() => void handleUseRecipe()}
+                  disabled={isSavingAction}
+                  className="absolute bottom-4 left-4 flex h-12 items-center gap-2 rounded-full border border-terracotta/30 bg-terracotta/80 px-5 text-xs font-black uppercase tracking-wider text-white shadow-xl backdrop-blur-md transition-all hover:bg-terracotta active:scale-95 disabled:opacity-50"
+                >
+                  <UtensilsCrossed size={18} />
+                  <span>{t('recipes.cook', 'COOK')}</span>
+                </button>
+              )}
               {isEditing && (
                 <>
                   <input
@@ -578,6 +591,19 @@ export function RecipeDetailSheet({
                     time: formatRecipeTime(recipe.totalTime),
                   })}
                 </span>
+                {!isEditing && (
+                  <button
+                    type="button"
+                    data-testid="time-cook-btn"
+                    onClick={() => void handleUseRecipe()}
+                    disabled={isSavingAction}
+                    aria-label={t('recipes.cookNow', 'Cook now')}
+                    title={t('recipes.cookNow', 'Cook now')}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-terracotta shadow-sm transition hover:bg-terracotta/5 active:scale-95 disabled:opacity-50"
+                  >
+                    <UtensilsCrossed size={14} />
+                  </button>
+                )}
               </div>
               {isEditing ? (
                 <label className="grid gap-2">

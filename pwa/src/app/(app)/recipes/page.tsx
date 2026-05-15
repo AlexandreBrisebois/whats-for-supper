@@ -563,17 +563,8 @@ export default function RecipesPage() {
         </motion.div>
       )}
 
-      {/* Top Bar: Browse Library (left) */}
-      <div className="flex items-center px-1">
-        <Link
-          href="/browse-all-stack"
-          data-testid="browse-all-stack-trigger"
-          aria-label={t('recipes.browseLibrary', 'Browse Library')}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
-        >
-          <BookOpen size={20} className="text-ochre" />
-        </Link>
-      </div>
+      {/* Top Bar: Spacing */}
+      <div className="flex items-center px-1 h-11" />
 
       {/* Mode selector */}
       {(isAgentSearchEnabled || isPhotoSearchEnabled) && (

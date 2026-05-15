@@ -139,4 +139,19 @@ describe('RecipeDetailSheet', () => {
       expect(screen.getByTestId('recipe-share-error')).toBeVisible();
     });
   });
+
+  it('renders COOK entry points on hero and beside time pill', async () => {
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByTestId('hero-cook-btn')).toBeVisible();
+    expect(screen.getByTestId('time-cook-btn')).toBeVisible();
+  });
 });

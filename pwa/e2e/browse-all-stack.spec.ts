@@ -236,17 +236,6 @@ test.describe('Browse All Stack — Entry Points', () => {
 
     await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
   });
-
-  // Requirement 1.2, 1.3
-  test('Recipes page trigger opens Browse All Stack overlay', async ({ page }) => {
-    await setupBrowseAllStack(page);
-    await page.goto('/recipes');
-
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
-    await page.getByTestId('browse-all-stack-trigger').click();
-
-    await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
-  });
 });
 
 test.describe('Browse All Stack — Overlay Structure', () => {
@@ -266,11 +255,6 @@ test.describe('Browse All Stack — Overlay Structure', () => {
   // Requirement 1.6
   test('exit button is visible', async ({ page }) => {
     await expect(page.getByTestId('browse-all-exit')).toBeVisible();
-  });
-
-  // Requirement 1.7
-  test('search escape button is visible', async ({ page }) => {
-    await expect(page.getByTestId('browse-all-search-trigger')).toBeVisible();
   });
 
   // Requirement 4.2
@@ -322,8 +306,7 @@ test.describe('Browse All Stack — View Modes', () => {
     await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(13, { timeout: 10_000 });
   });
 });
-
-test.describe('Browse All Stack — Exit and Search Escape', () => {
+test.describe('Browse All Stack — Exit', () => {
   test.beforeEach(async ({ page }) => {
     await setupBrowseAllStack(page);
     await page.goto('/browse-all-stack');
@@ -339,13 +322,6 @@ test.describe('Browse All Stack — Exit and Search Escape', () => {
     await expect(page.getByTestId('browse-all-stack-container')).not.toBeVisible({
       timeout: 5_000,
     });
-  });
-
-  // Requirement 1.7
-  test('search escape button navigates to /recipes', async ({ page }) => {
-    await page.getByTestId('browse-all-search-trigger').click();
-
-    await expect(page).toHaveURL(/\/recipes/, { timeout: 5_000 });
   });
 });
 
@@ -653,7 +629,6 @@ test.describe('Browse All Stack — Endless Navigation', () => {
     }
 
     await expect(page.getByTestId('browse-all-exit')).toBeVisible();
-    await expect(page.getByTestId('browse-all-search-trigger')).toBeVisible();
   });
 });
 

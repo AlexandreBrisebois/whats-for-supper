@@ -553,8 +553,61 @@ export default function BrowseAllStackPage() {
     >
       <BackgroundBlobs />
 
-      {/* Top bar: exit (left) + search escape (right) */}
-      <div className="relative z-10 flex items-center justify-between px-6 pt-safe-top pt-4 pb-2 shrink-0">
+      {/* Top bar: Clustered actions (right) */}
+      <div className="relative z-10 flex items-center justify-end px-6 pt-safe-top pt-4 pb-2 shrink-0 gap-1.5">
+        <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm backdrop-blur-sm">
+          <button
+            type="button"
+            data-testid="browse-view-stack"
+            aria-label="Show recipe cards"
+            onClick={() => handleViewModeChange('stack')}
+            className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
+              browseViewMode === 'stack' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
+            }`}
+          >
+            <Layers3 className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            data-testid="browse-view-list"
+            aria-label="Show recipe list"
+            onClick={() => handleViewModeChange('list')}
+            className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
+              browseViewMode === 'list' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
+            }`}
+          >
+            <Grid3X3 className="h-4 w-4" />
+          </button>
+        </div>
+
+        <button
+          onClick={handleGlobalToggleDiscoverable}
+          data-testid="stack-toggle-discoverable"
+          className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all duration-300 border ${
+            isDiscoverableOnly
+              ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
+              : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
+          } backdrop-blur-sm focus:outline-none`}
+          aria-label={
+            isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
+          }
+        >
+          <Compass className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`} />
+          <span className="text-xs font-black tracking-wide uppercase">
+            {isDiscoverableOnly ? 'Discovery' : 'All'}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          data-testid="recycle-bin-entry"
+          aria-label="Recycle bin"
+          onClick={() => setIsTrashOpen(true)}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
+        >
+          <Recycle size={20} />
+        </button>
+
         <button
           type="button"
           data-testid="browse-all-exit"
@@ -564,76 +617,6 @@ export default function BrowseAllStackPage() {
         >
           <X size={20} />
         </button>
-
-        <div className="flex items-center gap-1.5">
-          <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm backdrop-blur-sm">
-            <button
-              type="button"
-              data-testid="browse-view-stack"
-              aria-label="Show recipe cards"
-              onClick={() => handleViewModeChange('stack')}
-              className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
-                browseViewMode === 'stack' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
-              }`}
-            >
-              <Layers3 className="h-4 w-4" />
-              {/* Cards */}
-            </button>
-            <button
-              type="button"
-              data-testid="browse-view-list"
-              aria-label="Show recipe list"
-              onClick={() => handleViewModeChange('list')}
-              className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
-                browseViewMode === 'list' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
-              }`}
-            >
-              <Grid3X3 className="h-4 w-4" />
-              {/* List */}
-            </button>
-          </div>
-
-          <button
-            onClick={handleGlobalToggleDiscoverable}
-            data-testid="stack-toggle-discoverable"
-            className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all duration-300 border ${
-              isDiscoverableOnly
-                ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
-                : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
-            } backdrop-blur-sm focus:outline-none`}
-            aria-label={
-              isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
-            }
-          >
-            <Compass
-              className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`}
-            />
-            <span className="text-xs font-black tracking-wide uppercase">
-              {isDiscoverableOnly ? 'Discovery Recipes' : 'All Recipes'}
-            </span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            data-testid="recycle-bin-entry"
-            aria-label="Recycle bin"
-            onClick={() => setIsTrashOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
-          >
-            <Recycle size={20} />
-          </button>
-          <button
-            type="button"
-            data-testid="browse-all-search-trigger"
-            aria-label="Search recipes"
-            onClick={handleSearchEscape}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
-          >
-            <Search size={20} />
-          </button>
-        </div>
       </div>
 
       {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}

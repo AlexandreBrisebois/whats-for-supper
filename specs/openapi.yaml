@@ -389,6 +389,12 @@ components:
             - array
             - 'null'
           items: { type: string }
+        recipeInstructions:
+          type:
+            - array
+            - 'null'
+          items: {}
+          description: 'Parsed recipe instructions (string array or HowToStep objects)'
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
         isDiscoverable: { type: [boolean, 'null'] }

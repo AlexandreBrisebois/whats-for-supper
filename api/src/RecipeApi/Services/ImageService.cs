@@ -67,7 +67,8 @@ public class ImageService(IRecipeStore recipeStore, ILogger<ImageService> logger
         string? notes,
         RecipeRating? rating,
         string? name = null,
-        string? description = null)
+        string? description = null,
+        object? recipeInstructions = null)
     {
         var info = await recipeStore.ReadInfoAsync(recipeId) ?? new RecipeInfo { Id = recipeId };
 
@@ -75,6 +76,7 @@ public class ImageService(IRecipeStore recipeStore, ILogger<ImageService> logger
         if (rating.HasValue) info.Rating = rating.Value;
         if (name is not null) info.Name = name;
         if (description is not null) info.Description = description;
+        if (recipeInstructions is not null) info.RecipeInstructions = recipeInstructions;
 
         await recipeStore.WriteInfoAsync(info);
         logger.LogDebug("Updated recipe.info for {RecipeId}", recipeId);

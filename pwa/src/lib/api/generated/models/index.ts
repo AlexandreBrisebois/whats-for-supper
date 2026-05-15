@@ -2788,6 +2788,11 @@ export function deserializeIntoUpdateRecipeDto(
     rating: (n) => {
       updateRecipeDto.rating = n.getNumberValue();
     },
+    recipeInstructions: (n) => {
+      updateRecipeDto.recipeInstructions = n.getObjectValue<UntypedNode>(
+        createUntypedNodeFromDiscriminatorValue
+      );
+    },
   };
 }
 /**
@@ -5614,6 +5619,7 @@ export function serializeUpdateRecipeDto(
   writer.writeStringValue('name', updateRecipeDto.name);
   writer.writeStringValue('notes', updateRecipeDto.notes);
   writer.writeNumberValue('rating', updateRecipeDto.rating);
+  writer.writeObjectValue('recipeInstructions', updateRecipeDto.recipeInstructions);
   writer.writeAdditionalData(updateRecipeDto.additionalData);
 }
 /**
@@ -5956,6 +5962,10 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
    * The rating property
    */
   rating?: number | null;
+  /**
+   * Parsed recipe instructions (string array or HowToStep objects)
+   */
+  recipeInstructions?: UntypedNode | null;
 }
 export interface ValidationDto extends AdditionalDataHolder, Parsable {
   /**

@@ -18,6 +18,9 @@ public class UpdateRecipeDto
     [JsonPropertyName("ingredients")]
     public List<string>? Ingredients { get; set; }
 
+    [JsonPropertyName("recipeInstructions")]
+    public object? RecipeInstructions { get; set; }
+
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
 

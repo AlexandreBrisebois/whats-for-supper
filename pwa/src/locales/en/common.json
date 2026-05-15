@@ -308,6 +308,8 @@
     "confirmDelete": "Permanently Delete Recipe",
     "confirmDeleteButton": "Delete Forever",
     "confirmDeleteDescription": "This action cannot be undone. Enter your PIN to confirm.",
+    "cook": "COOK",
+    "cookNow": "Cook now",
     "currentGoto": "Current GOTO recipe",
     "detailTitle": "Recipe detail",
     "description": "Description",

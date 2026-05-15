@@ -333,6 +333,16 @@ public class RecipeService(
         if (dto.IsDiscoverable.HasValue)
             recipe.IsDiscoverable = dto.IsDiscoverable.Value;
 
+        if (dto.RecipeInstructions is not null)
+        {
+            var raw = string.IsNullOrWhiteSpace(recipe.RawMetadata)
+                ? new Dictionary<string, object>()
+                : JsonSerializer.Deserialize<Dictionary<string, object>>(recipe.RawMetadata) ?? new Dictionary<string, object>();
+
+            raw["recipeInstructions"] = dto.RecipeInstructions;
+            recipe.RawMetadata = JsonSerializer.Serialize(raw);
+        }
+
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
 
@@ -342,7 +352,8 @@ public class RecipeService(
             dto.Ingredients is not null ||
             dto.Notes is not null ||
             dto.Rating.HasValue ||
-            dto.IsDiscoverable.HasValue)
+            dto.IsDiscoverable.HasValue ||
+            dto.RecipeInstructions is not null)
         {
             try
             {
@@ -361,7 +372,8 @@ public class RecipeService(
             dto.Notes is not null ? recipe.Notes : null,
             dto.Rating.HasValue ? recipe.Rating : null,
             dto.Name is not null ? recipe.Name : null,
-            dto.Description is not null ? recipe.Description : null);
+            dto.Description is not null ? recipe.Description : null,
+            dto.RecipeInstructions is not null ? dto.RecipeInstructions : null);
 
         return new RecipeDetailResponseDto
         {

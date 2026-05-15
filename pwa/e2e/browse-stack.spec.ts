@@ -53,7 +53,7 @@ test.describe('Recipe Stack Browse', () => {
     await page.getByTestId('home-browse-all-trigger').click();
 
     const toggle = page.getByTestId('stack-toggle-discoverable');
-    await expect(toggle).toContainText('All Recipes');
+    await expect(toggle).toContainText('All');
 
     await toggle.click();
     await expect(toggle).toContainText('Discovery');
