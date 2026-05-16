@@ -1041,8 +1041,9 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
     await expect(page.getByTestId('quick-find-modal')).toBeVisible({ timeout: 3000 });
     await page.getByTestId('quick-find-select').first().click();
 
-    // 5. Confirm the assign REST call fired
-    await expect.poll(() => assignCalled).toBe(true);
+    // 5. Wait for the assign response — guarantees assignCalled is true before we navigate,
+    // so the schedule GET on /home returns the recipe and todayStore.init() gets it from SSR.
+    await page.waitForResponse((resp) => resp.url().includes('/api/schedule/assign'));
 
     // 6. Navigate to /home — planner assignment has already updated todayStore
     await page.goto('/home');

@@ -86,7 +86,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         scale: Math.max(0.8, scale),
         y: yOffset,
         opacity: Math.max(0, opacity),
-        transition: { duration: 0.3 },
+        transition: { duration: 0.15 },
       });
     }
   }, [isFront, stackIndex, controls, scale, yOffset, opacity]);
@@ -134,6 +134,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         transformOrigin: 'bottom center',
         touchAction: 'none',
         zIndex: 10 - stackIndex,
+        willChange: 'transform',
       }}
       drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}

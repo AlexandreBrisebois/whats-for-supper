@@ -215,7 +215,6 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   // GOTO status endpoint returns 'pending' throughout — the button must appear
   // via the SSE recipe_ready event, not via the polling interval.
   test('SSE recipe_ready event makes confirm-goto-btn appear without polling', async ({ page }) => {
-    let callCount = 0;
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
@@ -231,22 +230,34 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       }
     );
 
-    // Mock active GOTO to return 404 (no GOTO configured)
+    // First call returns pending — subsequent calls (after SSE fires) return ready.
+    // This is the only path that can produce confirm-goto-btn: the component gates
+    // rendering on hasGoto && gotoStatus === 'ready', so an initial 404 can never work.
+    let activeCallCount = 0;
     await page.route(
       (url) => url.pathname.includes('/api/goto/active'),
       async (route) => {
+        activeCallCount++;
         await route.fulfill({
-          status: 404,
+          status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ error: 'Not found' }),
+          body: JSON.stringify({
+            data: {
+              description: 'Test GOTO Recipe',
+              recipeId: MOCK_IDS.RECIPE_LASAGNA,
+              status: activeCallCount === 1 ? 'pending' : 'ready',
+            },
+          }),
         });
       }
     );
 
+    // SSE fires recipe_ready for the GOTO recipe — triggers pending → ready transition
+    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
+
     await page.goto('/home');
 
     // confirm-goto-btn must appear driven by the SSE event, not the polling interval
-    // (status endpoint always returns 'pending', so polling can never resolve this)
     const confirmBtn = page.getByTestId('confirm-goto-btn');
     await expect(confirmBtn).toBeVisible({ timeout: 10000 });
     await expect(confirmBtn).toBeEnabled();

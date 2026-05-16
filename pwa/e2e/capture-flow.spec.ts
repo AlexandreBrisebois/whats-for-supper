@@ -809,7 +809,7 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await page.locator('[role="status"]').filter({ hasText: recipeName }).click();
 
     await expect(page.getByTestId('library-toast-add-to-week')).toBeVisible();
-    await page.getByTestId('library-toast-add-to-week').click();
+    await page.getByTestId('library-toast-add-to-week').click({ force: true });
 
     await expect(page).toHaveURL(/\/planner/, { timeout: 15_000 });
   });

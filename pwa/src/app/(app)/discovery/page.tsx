@@ -2,7 +2,6 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import confetti from 'canvas-confetti';
 import { DiscoveryCard } from '@/components/discovery/DiscoveryCard';
 import { RefreshCcw, Loader2 } from 'lucide-react';
 import { getCategories, getDiscoveryStack, submitVote, DiscoveryRecipe } from '@/lib/api/discovery';
@@ -20,7 +19,6 @@ export default function DiscoveryPage() {
   const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
   const { selectedFamilyMemberId, _hasHydrated } = useFamily();
   const [isLoading, setIsLoading] = useState(true);
-  const [isEureka, setIsEureka] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
   const categoriesRef = useRef<string[]>([]);
   const categoryIndexRef = useRef(0);
@@ -256,35 +254,6 @@ export default function DiscoveryPage() {
     };
   }, []);
 
-  const triggerEureka = useCallback(() => {
-    const duration = 3 * 1000;
-    const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-
-    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
-
-    const interval: any = setInterval(function () {
-      const timeLeft = animationEnd - Date.now();
-
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
-
-      const particleCount = 50 * (timeLeft / duration);
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        colors: ['#CD5D45', '#E1AD01'],
-      });
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        colors: ['#CD5D45', '#E1AD01'],
-      });
-    }, 250);
-  }, []);
 
   const handleSwipeRight = (recipeId: string) => {
     // Optimistic Update
@@ -308,11 +277,6 @@ export default function DiscoveryPage() {
       console.error('Failed to submit like vote', error);
       // Optional: Re-insert or show toast
     });
-
-    // Eureka Effect!
-    setIsEureka(true);
-    triggerEureka();
-    setTimeout(() => setIsEureka(false), 2000);
 
     if (updatedRecipes.length === 0) {
       loadNextCategory();
@@ -477,17 +441,6 @@ export default function DiscoveryPage() {
         </button>
       </div>
 
-      {/* Eureka Pulse Overlay */}
-      <AnimatePresence>
-        {isEureka && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-0 pointer-events-none bg-ochre/5"
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
