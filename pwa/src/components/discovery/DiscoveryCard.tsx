@@ -98,6 +98,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
     const velocityThreshold = 500;
 
     if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
+      x.set(0);
       controls
         .start({
           x: 500,
@@ -107,6 +108,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         })
         .then(onSwipeRight);
     } else if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
+      x.set(0);
       controls
         .start({
           x: -500,
@@ -126,7 +128,6 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
   return (
     <motion.div
-      layout
       style={{
         x,
         rotate,

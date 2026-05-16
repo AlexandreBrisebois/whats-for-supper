@@ -356,7 +356,8 @@
     "turnOnDiscovery": "Afficher dans la Découverte pour cette recette",
     "viewOriginal": "Voir l'original",
     "viewSource": "Voir la source",
-    "fitToScreen": "Adapter à l'écran"
+    "fitToScreen": "Adapter à l'écran",
+    "saveEditingLabel": "Enregistrer les modifications"
   },
   "settings": {
     "failedCaptures": "Captures échouées",

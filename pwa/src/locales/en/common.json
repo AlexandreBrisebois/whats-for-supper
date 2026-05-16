@@ -356,7 +356,8 @@
     "turnOnDiscovery": "Turn on Discovery for this recipe",
     "viewOriginal": "View Original",
     "viewSource": "View Source",
-    "fitToScreen": "Fit to Screen"
+    "fitToScreen": "Fit to Screen",
+    "saveEditingLabel": "Save recipe edits"
   },
   "settings": {
     "failedCaptures": "Failed Captures",

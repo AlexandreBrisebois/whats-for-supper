@@ -749,7 +749,10 @@ export function RecipeDetailSheet({
             )}
 
             {isEditing && (
-              <div className="sticky bottom-0 z-10 -mx-6 mb-5 flex flex-col gap-3 border-y border-charcoal/8 bg-[rgba(253,252,240,0.96)] px-6 py-4 backdrop-blur sm:flex-row">
+              <div className="-mx-6 mb-5 flex flex-col gap-3 border-t border-charcoal/8 bg-[rgba(253,252,240,0.96)] px-6 py-4 sm:flex-row sm:items-center">
+                <p className="w-full text-[10px] font-black uppercase tracking-[0.24em] text-charcoal/45 sm:hidden">
+                  {t('recipes.saveEditingLabel', 'Save recipe edits')}
+                </p>
                 <button
                   type="button"
                   data-testid="recipe-save-edits"
