@@ -281,31 +281,49 @@ test.describe('Supper Planner', () => {
   });
 
   test('should trigger Cook Mode from a recipe card and navigate steps', async ({ page }) => {
-    // Monday (index 0) has a recipe in mock data
-    const mondayCard = page.getByTestId('day-card-0');
+    // Pin the browser's Date to the same Monday used by currentMonday() (2026-05-04).
+    // getTodayString() reads new Date() in the browser, so pinning here makes day-card-0
+    // (Monday) the "today" card and causes start-cook-mode to render.
+    const PINNED_DATE = '2026-05-04T12:00:00Z';
+    await page.addInitScript((isoDate) => {
+      const RealDate = Date;
+      const pinned = new RealDate(isoDate).getTime();
+      // @ts-ignore
+      globalThis.Date = class extends RealDate {
+        constructor(...args: any[]) {
+          if (args.length === 0) {
+            super(pinned);
+          } else {
+            // @ts-ignore
+            super(...args);
+          }
+        }
+        static now() { return pinned; }
+      };
+    }, PINNED_DATE);
 
-    // Ensure the card has a recipe
-    await expect(mondayCard.getByTestId('start-cook-mode')).toBeVisible();
+    await page.goto('/planner');
+    await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
 
-    // Find and click the cook button
-    await mondayCard.getByTestId('start-cook-mode').click();
+    // day-card-0 is Monday 2026-05-04, which matches the pinned "today"
+    const todayCard = page.getByTestId('day-card-0');
+    await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible();
+    await todayCard.getByTestId('start-cook-mode').click();
 
-    // Verify overlay
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
     await expect(page.getByTestId('cooks-mode-step-next')).toContainText(/Let's Cook/i);
 
-    // Navigate steps
+    // Navigate steps — text from builders.recipe() default: Step 1, Step 2
     await page.getByTestId('cooks-mode-step-next').click();
-    await expect(page.getByText(/Chop the onions and mince the garlic/i).first()).toBeVisible();
+    await expect(page.getByText(/Step 1/i).first()).toBeVisible();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
     await page.getByTestId('cooks-mode-step-next').click();
-    await expect(page.getByText(/Saute until golden and fragrant/i).first()).toBeVisible();
+    await expect(page.getByText(/Step 2/i).first()).toBeVisible();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
-    // Close overlay
     await page.getByTestId('close-cooks-mode').click();
     await expect(overlay).not.toBeVisible();
   });

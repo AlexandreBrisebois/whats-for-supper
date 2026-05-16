@@ -62,7 +62,13 @@ vi.mock('./api-client', () => ({
   },
 }));
 
-import { createRecipe, searchRecipes, parseRecipeBundleFile } from './recipes';
+import {
+  createRecipe,
+  searchRecipes,
+  parseRecipeBundleFile,
+  createRecipeBundleFile,
+} from './recipes';
+import { builders } from '@/testing/builders';
 
 describe('createRecipe', () => {
   beforeEach(() => {
@@ -394,5 +400,126 @@ describe('parseRecipeBundleFile', () => {
     expect(result.recipe?.notes).toBeNull();
     expect(result.recipe?.rating).toBeNull();
     expect(result.recipe?.description).toBeNull();
+  });
+});
+
+function readFileAsJson(
+  file: File
+): Promise<{ recipe: Record<string, unknown>; [key: string]: unknown }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(JSON.parse(String(reader.result ?? '')));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+describe('createRecipeBundleFile / privacy scrubbing', () => {
+  it('includes notes and rating in the serialized JSON payload', async () => {
+    const bundle = builders.recipeShareBundle({
+      recipe: {
+        name: 'Chicken Soup',
+        description: null,
+        ingredients: ['chicken'],
+        instructions: [{ name: 'Cook', itemListElement: [{ text: 'Simmer' }] }],
+        totalTimeMinutes: 45,
+        servings: 2,
+        sourceUrl: null,
+        sourceName: null,
+        category: null,
+        isSynthesized: false,
+        notes: 'Great for winter',
+        rating: 5,
+      },
+    });
+
+    const file = createRecipeBundleFile('Chicken Soup', bundle);
+    const payload = await readFileAsJson(file);
+
+    expect(payload.recipe.notes).toBe('Great for winter');
+    expect(payload.recipe.rating).toBe(5);
+  });
+
+  it('serializes notes and rating as null when absent', async () => {
+    const bundle = builders.recipeShareBundle({
+      recipe: {
+        name: 'Plain Recipe',
+        description: null,
+        ingredients: ['water'],
+        instructions: [{ name: 'Prepare', itemListElement: [{ text: 'Add water' }] }],
+        totalTimeMinutes: null,
+        servings: null,
+        sourceUrl: null,
+        sourceName: null,
+        category: null,
+        isSynthesized: false,
+        notes: null,
+        rating: null,
+      },
+    });
+
+    const file = createRecipeBundleFile('Plain Recipe', bundle);
+    const payload = await readFileAsJson(file);
+
+    expect(payload.recipe.notes).toBeNull();
+    expect(payload.recipe.rating).toBeNull();
+  });
+
+  it('preserves isSynthesized faithfully', async () => {
+    const synthesized = builders.recipeShareBundle({
+      recipe: {
+        name: 'AI Recipe',
+        description: null,
+        ingredients: ['magic'],
+        instructions: [{ name: 'Conjure', itemListElement: [{ text: 'Imagine it' }] }],
+        totalTimeMinutes: null,
+        servings: null,
+        sourceUrl: null,
+        sourceName: null,
+        category: null,
+        isSynthesized: true,
+        notes: null,
+        rating: null,
+      },
+    });
+
+    const file = createRecipeBundleFile('AI Recipe', synthesized);
+    const payload = await readFileAsJson(file);
+
+    expect(payload.recipe.isSynthesized).toBe(true);
+  });
+
+  it('omits private fields not present in the bundle schema', async () => {
+    const bundle = builders.recipeShareBundle({
+      recipe: {
+        name: 'Shared Recipe',
+        description: 'Tasty',
+        ingredients: ['flour'],
+        instructions: [{ name: 'Bake', itemListElement: [{ text: 'Mix and bake' }] }],
+        totalTimeMinutes: 30,
+        servings: 8,
+        sourceUrl: 'https://example.com',
+        sourceName: 'Test Kitchen',
+        category: 'Baking',
+        isSynthesized: false,
+        notes: null,
+        rating: null,
+      },
+    });
+
+    const file = createRecipeBundleFile('Shared Recipe', bundle);
+    const payload = await readFileAsJson(file);
+
+    // Fields that must not leak into the shared bundle
+    expect(payload.recipe).not.toHaveProperty('id');
+    expect(payload.recipe).not.toHaveProperty('imageUrl');
+    expect(payload.recipe).not.toHaveProperty('isDiscoverable');
+    expect(payload.recipe).not.toHaveProperty('isReady');
+  });
+
+  it('slugifies the recipe name for the filename', () => {
+    const bundle = builders.recipeShareBundle();
+    const file = createRecipeBundleFile('Tarte Flambée', bundle);
+    expect(file.name).toBe('tarte-flambee.recipe');
   });
 });

@@ -1,9 +1,8 @@
 /**
- * Standard MOCK_IDS for E2E tests.
+ * Standard MOCK_IDS for E2E and Unit tests.
  * Always use these GUIDs instead of hardcoded strings like "recipe-1".
  *
- * This is in a separate file to avoid circular dependencies between mock-api.ts
- * and realistic-recipes.ts.
+ * This is in a separate file to avoid circular dependencies.
  */
 export const MOCK_IDS = {
   // Members

@@ -409,7 +409,7 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
   };
 }
 
-function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBundleDto): File {
+export function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBundleDto): File {
   const payload = {
     version: bundle.version ?? '1.0',
     recipe: {

@@ -1,10 +1,10 @@
 import { MOCK_IDS } from './mock-ids';
-import { type RecipeDto, type ScheduleRecipeDto } from '../src/lib/api/generated/models/index';
+import { type RecipeDto, type ScheduleRecipeDto } from '../lib/api/generated/models/index';
 import { type UntypedNode } from '@microsoft/kiota-abstractions';
 
 /**
  * Realistic recipe data extracted from /data/recipes.
- * These are used to make E2E tests more robust against real-world data structures.
+ * These are used to make tests more robust against real-world data structures.
  */
 
 export const REALISTIC_RECIPES: Record<string, RecipeDto> = {

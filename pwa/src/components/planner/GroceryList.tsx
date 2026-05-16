@@ -311,7 +311,10 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                                   >
                                     <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
                                     <span className="min-w-0 flex-1 transition-all line-through opacity-60">
-                                      <span className="block font-medium transition-all line-through opacity-60">
+                                      <span
+                                        data-testid="grocery-item-label"
+                                        className="block font-medium transition-all line-through opacity-60"
+                                      >
                                         {key}
                                       </span>
                                       {quantityHint && (
@@ -350,7 +353,10 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                                   >
                                     <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
                                     <span className="min-w-0 flex-1 transition-all">
-                                      <span className="block font-medium transition-all">
+                                      <span
+                                        data-testid="grocery-item-label"
+                                        className="block font-medium transition-all"
+                                      >
                                         {key}
                                       </span>
                                       {quantityHint && (

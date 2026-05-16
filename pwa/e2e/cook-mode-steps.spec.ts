@@ -14,7 +14,7 @@
  */
 import { test, expect } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
-import { REALISTIC_RECIPES } from './realistic-recipes';
+import { REALISTIC_RECIPES } from '../src/testing/realistic-recipes';
 
 // The first step text from RECIPE_SPAGHETTI's first HowToSection
 const FIRST_STEP_TEXT = 'Bring a large pot of salted water to a boil';

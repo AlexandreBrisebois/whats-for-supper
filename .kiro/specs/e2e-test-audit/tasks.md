@@ -3,38 +3,38 @@
 ## Wave 0: Infrastructure & Tracer (Pattern Setter)
 _Goal: Establish the shared fixture architecture and complete the first migration._
 
-- [ ] 0. **Infrastructure - Extract Shared Builders**
+- [x] 0. **Infrastructure - Extract Shared Builders**
     - Create `pwa/src/testing/builders.ts`.
     - Move `builders` logic from `pwa/e2e/mock-api.ts` to this shared file.
     - Update `pwa/e2e/mock-api.ts` to import from the new shared file.
-- [ ] 1. **Tracer - Step Parser Scaffolding**
+- [x] 1. **Tracer - Step Parser Scaffolding**
     - Create `pwa/src/lib/cooking/stepParser.test.ts`.
-- [ ] 2. **Tracer - Port Logic**
+- [x] 2. **Tracer - Port Logic**
     - Port unit and property tests from `pwa/e2e/step-parser.spec.ts`.
     - **Use `builders.ts`** for any mock data needed.
-- [ ] 3. **Tracer - Prune & Verify**
+- [x] 3. **Tracer - Prune & Verify**
     - Delete `pwa/e2e/step-parser.spec.ts`.
     - **Retain Happy Path**: Ensure `pwa/e2e/recipes.spec.ts` still covers "I can see steps" without the complex logic assertions.
     - Run `task agent:test:impact`.
 
 ## Wave 1: Grocery Slice
-- [ ] 4. **Grocery - Audit & Harden**
+- [x] 4. **Grocery - Audit & Harden**
     - Run `task agent:audit AREA=grocery`.
     - Replace **❌ brittle span selector** in `pwa/e2e/grocery.spec.ts` with `data-testid`.
-- [ ] 5. **Grocery - Migrate Sorting Logic**
+- [x] 5. **Grocery - Migrate Sorting Logic**
     - Move aisle sorting assertions to `pwa/src/lib/grocery/aisleMapper.test.ts`.
     - **Use `builders.ts`** for mock grocery lists.
-- [ ] 6. **Grocery - Prune E2E**
+- [x] 6. **Grocery - Prune E2E**
     - Remove logic-heavy assertions.
     - **Verify Seam**: Run E2E to ensure the grocery list still loads from the API.
 
 ## Wave 2: Recipe Sharing Slice
-- [ ] 7. **Sharing - Audit & Harden**
+- [x] 7. **Sharing - Audit & Harden**
     - Run `task agent:audit AREA=share`.
-- [ ] 8. **Sharing - Migrate Privacy Logic**
+- [x] 8. **Sharing - Migrate Privacy Logic**
     - Add unit tests to `pwa/src/lib/api/recipes.test.ts` for DTO privacy scrubbing.
     - **Use `builders.ts`** to generate recipes with notes/ratings.
-- [ ] 9. **Sharing - Prune E2E**
+- [x] 9. **Sharing - Prune E2E**
     - Remove DTO assertions.
     - **Verify Seam**: Run E2E to ensure the share button still copies to clipboard.
 

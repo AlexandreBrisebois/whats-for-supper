@@ -3,6 +3,7 @@ import * as fc from 'fast-check';
 import * as aisleMapperModule from './aisleMapper';
 import { mapIngredientToSection } from './aisleMapper';
 import type { GrocerySection } from './aisleMapper';
+import { builders } from '../../testing/builders';
 
 // All valid GrocerySection values
 const GROCERY_SECTIONS: GrocerySection[] = [
@@ -94,6 +95,25 @@ describe('mapIngredientToSection — unit tests', () => {
 
   it('assigns empty string to Grocery (fallback)', () => {
     expect(mapIngredientToSection('')).toBe('Grocery');
+  });
+
+  it('maps generated grocery items to their expected sections', () => {
+    const expectedSections: Record<string, string> = {
+      'olive oil': 'Pantry',
+      coffee: 'Beverages',
+      sausage: 'Meat',
+      baguette: 'Bakery',
+    };
+
+    const items = builders.groceryItems(
+      Object.keys(expectedSections),
+      expectedSections as Record<string, string>
+    );
+
+    for (const item of items) {
+      expect(item.section).toBe(expectedSections[item.displayName]);
+      expect(mapIngredientToSection(item.displayName)).toBe(expectedSections[item.displayName]);
+    }
   });
 });
 
