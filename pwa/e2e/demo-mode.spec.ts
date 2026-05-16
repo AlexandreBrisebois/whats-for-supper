@@ -20,13 +20,7 @@ test.describe('Demo Mode', () => {
     });
   });
 
-  test('pre-populates the passphrase on the welcome page', async ({ page }) => {
-    await page.goto('/welcome');
-
-    // Check that the passphrase input is pre-populated
-    const passphraseInput = page.getByPlaceholder(/Family passphrase/i);
-    await expect(passphraseInput).toHaveValue('Swipe-Match-Cook');
-  });
+  // pre-populates the passphrase on the welcome page is covered by welcome/page.test.tsx
 
   test('shows AI notice and prevents agent search on recipes page', async ({ page, baseURL }) => {
     const baseUrl = baseURL || 'http://127.0.0.1:3000';

@@ -162,23 +162,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 15_000 });
   });
 
-  test("Cook's mode shows parsed steps", async ({ page }) => {
-    // Cook Mode button only shows on today's card (E2 constraint).
-    const todayCard = page.locator(`[data-date="${TODAY}"]`);
-    await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible();
-
-    await todayCard.getByTestId('start-cook-mode').click();
-
-    const overlay = page.getByTestId('cooks-mode-overlay');
-    await expect(overlay).toBeVisible();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
-
-    await page.getByTestId('cooks-mode-step-next').click();
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
-
-    await page.getByTestId('close-cooks-mode').click();
-    await expect(overlay).not.toBeVisible();
-  });
+  // Cook's mode step rendering is covered by CooksMode.test.tsx.
 
   test('Grocery checklist persists state across refresh', async ({ page }) => {
     const itemName = 'Tomato Sauce';

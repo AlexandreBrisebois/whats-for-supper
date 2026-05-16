@@ -16,9 +16,6 @@ import { test, expect } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
 import { REALISTIC_RECIPES } from '../src/testing/realistic-recipes';
 
-// The first step text from RECIPE_SPAGHETTI's first HowToSection
-const FIRST_STEP_TEXT = 'Bring a large pot of salted water to a boil';
-
 /**
  * Build a 7-day schedule response with RECIPE_SPAGHETTI on Monday (the fixed test date).
  * Uses currentMonday() / toDateStr() — never new Date() — so the date is always stable.
@@ -126,123 +123,11 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     });
   });
 
-  // ── Test 1: Home page Cook Mode shows real HowToSection steps ──────────────
+  // HowToSection[] step parsing (home + planner entry points) is covered by
+  // CooksMode.test.tsx. Only the Done → celebration → /home navigation seam
+  // requires a real browser.
 
-  test('Home page Cook Mode shows real recipe steps for HowToSection[] recipe', async ({
-    page,
-  }) => {
-    // Override the default schedule mock to return RECIPE_SPAGHETTI for today.
-    // Use includes() to match regardless of path prefix (the app may use /api/api/schedule).
-    await page.route(
-      (url) => url.pathname.includes('/api/schedule') && !url.pathname.includes('smart-defaults'),
-      async (route) => {
-        if (route.request().method() === 'GET') {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify(buildSpaghettiSchedule()),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { message: 'ok' } }),
-          });
-        }
-      }
-    );
-
-    // Navigate to home and wait for the menu card (today has a planned recipe)
-    await page.goto('/home');
-    await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
-
-    // Flip the card to reveal the back face (cook-mode-btn is on the back).
-    // Use dispatchEvent to bypass pointer-events-none on the pre-flip front face.
-    await page.getByTestId('tonight-menu-card').click();
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
-      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
-    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
-
-    // Advance past the ingredients screen (step 0)
-    await page.getByTestId('cooks-mode-step-next').click();
-
-    // Real step text must be visible — proves HowToSection[] steps are parsed correctly
-    await expect(page.getByTestId('cooks-mode-step-text')).toContainText(FIRST_STEP_TEXT, {
-      timeout: 5_000,
-    });
-  });
-
-  // ── Test 2: Planner Cook Mode shows real HowToSection steps ───────────────
-
-  test('Planner Cook Mode shows real recipe steps for HowToSection[] recipe', async ({ page }) => {
-    // Override the schedule mock for the planner (handles both main and smart-defaults endpoints)
-    await page.route(
-      (url) => url.pathname.includes('/api/schedule'),
-      async (route) => {
-        const reqUrl = route.request().url();
-        const method = route.request().method();
-
-        if (method !== 'GET') {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { message: 'ok' } }),
-          });
-          return;
-        }
-
-        if (reqUrl.includes('smart-defaults')) {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: {
-                weekOffset: 0,
-                familySize: 2,
-                consensusThreshold: 2,
-                preSelectedRecipes: [],
-                openSlots: [],
-                consensusRecipesCount: 0,
-                isVotingOpen: false,
-              },
-            }),
-          });
-          return;
-        }
-
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(buildSpaghettiSchedule()),
-        });
-      }
-    );
-
-    // Navigate to planner and wait for day cards to load
-    await page.goto('/planner');
-    await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
-
-    // Monday (day-card-0) has RECIPE_SPAGHETTI — click start-cook-mode
-    const mondayCard = page.getByTestId('day-card-0');
-    await expect(mondayCard.getByTestId('start-cook-mode')).toBeVisible({ timeout: 5_000 });
-    await mondayCard.getByTestId('start-cook-mode').click();
-
-    // Cook's Mode must open
-    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 5_000 });
-
-    // Advance past the ingredients screen
-    await page.getByTestId('cooks-mode-step-next').click();
-
-    // Real step text must be visible
-    await expect(page.getByTestId('cooks-mode-step-text')).toContainText(FIRST_STEP_TEXT, {
-      timeout: 5_000,
-    });
-  });
-
-  // ── Test 3: Done → celebration → /home navigation seam ──────────────────
+  // ── Done → celebration → /home navigation seam ──────────────────────────
 
   test('completing all steps shows celebration overlay then navigates to /home', async ({
     page,

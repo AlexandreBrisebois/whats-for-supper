@@ -215,6 +215,49 @@ describe('RecipeDetailSheet', () => {
     });
   });
 
+  it('hides action-view-original for synthesized recipes with no source URL', async () => {
+    mockGetRecipe.mockResolvedValue({
+      id: '550e8400-e29b-41d4-a716-446655440111',
+      name: 'Synthesized Recipe',
+      imageUrl: '/api/recipes/550e8400-e29b-41d4-a716-446655440111/hero',
+      isReady: true,
+      sourceType: 'synthesized',
+      canReimport: false,
+      imageCount: 0,
+      sourceUrl: null,
+    });
+
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    expect(screen.queryByTestId('action-view-original')).toBeNull();
+  });
+
+  it('shows action-view-original with ExternalLink icon for url-type recipes', async () => {
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    const viewBtn = await screen.findByTestId('action-view-original');
+    expect(viewBtn).toBeVisible();
+    expect(viewBtn.textContent).toMatch(/View Original/i);
+    expect(viewBtn.querySelector('[data-testid="view-original-icon"]')).not.toBeNull();
+  });
+
   it('renders COOK entry points on hero and beside time pill', async () => {
     render(
       <RecipeDetailSheet

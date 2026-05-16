@@ -481,3 +481,90 @@ describe('MinimalCapture — property-based preservation tests', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Initial state and form interaction tests
+// Migrated from capture-flow.spec.ts — Capture initial state rendering section
+// ---------------------------------------------------------------------------
+
+describe('MinimalCapture — initial state rendering', () => {
+  it('tab switcher is absent and capture controls are visible on load', () => {
+    render(<MinimalCapture />);
+
+    // Legacy tab switcher (pill bar) must not be present
+    expect(screen.queryByTestId('capture-tab-camera')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('capture-tab-gallery')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('capture-tab-describe')).not.toBeInTheDocument();
+
+    // Camera, gallery, and describe secondary action must be visible
+    expect(screen.getByTestId('capture-take-photo-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('capture-pick-gallery-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('capture-secondary-action-describe')).toBeInTheDocument();
+
+    // Describe form (recipe name input) must not be present yet
+    expect(screen.queryByPlaceholderText(/our family spaghetti/i)).not.toBeInTheDocument();
+
+    // Link secondary action must be visible
+    expect(screen.getByTestId('capture-secondary-action-link')).toBeInTheDocument();
+  });
+
+  it('clicking the link secondary action shows the URL review form', async () => {
+    render(<MinimalCapture />);
+
+    await act(async () => {
+      screen.getByTestId('capture-secondary-action-link').click();
+    });
+
+    expect(screen.getByTestId('capture-url-review-heading')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/paste a recipe link/i)).toBeInTheDocument();
+    expect(screen.getByTestId('capture-url-save-btn')).toBeInTheDocument();
+  });
+
+  it('clicking Back from URL review form returns to capture controls', async () => {
+    render(<MinimalCapture />);
+
+    await act(async () => {
+      screen.getByTestId('capture-secondary-action-link').click();
+    });
+
+    expect(screen.getByTestId('capture-url-review-heading')).toBeInTheDocument();
+
+    await act(async () => {
+      screen.getByTestId('capture-url-back-btn').click();
+    });
+
+    expect(screen.queryByTestId('capture-url-review-heading')).not.toBeInTheDocument();
+    expect(screen.getByTestId('capture-take-photo-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('capture-secondary-action-link')).toBeInTheDocument();
+  });
+
+  it('clicking Describe link reveals the form and hides the describe link', async () => {
+    render(<MinimalCapture />);
+
+    // Form not visible before clicking
+    expect(screen.queryByPlaceholderText(/our family spaghetti/i)).not.toBeInTheDocument();
+
+    await act(async () => {
+      screen.getByTestId('capture-secondary-action-describe').click();
+    });
+
+    // Describe form is now visible
+    expect(screen.getByPlaceholderText(/our family spaghetti/i)).toBeInTheDocument();
+
+    // Describe link is no longer visible (hidden by !showDescribe guard)
+    expect(screen.queryByTestId('capture-secondary-action-describe')).not.toBeInTheDocument();
+  });
+});
+
+describe('MinimalCapture — describe form validation', () => {
+  it('synthesize button is disabled when recipe name is empty', async () => {
+    render(<MinimalCapture />);
+
+    await act(async () => {
+      screen.getByTestId('capture-secondary-action-describe').click();
+    });
+
+    const synthesizeBtn = screen.getByTestId('capture-synthesize-btn');
+    expect(synthesizeBtn).toBeDisabled();
+  });
+});

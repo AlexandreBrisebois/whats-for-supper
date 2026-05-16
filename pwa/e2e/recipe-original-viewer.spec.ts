@@ -93,15 +93,7 @@ test.describe('Recipe Original Viewer', () => {
     const viewButton = page.getByTestId('action-view-original');
     await expect(viewButton).toBeVisible();
     await expect(viewButton).toContainText('View Original');
-
-    // Check for ExternalLink icon (lucide-external-link class usually)
-    // We can just check that it's visible.
-    await expect(viewButton.locator('svg')).toBeVisible();
-
-    // Verify window.open was called
-    // We can't easily intercept window.open in E2E without injecting code,
-    // but we can verify the button exists and is clickable.
-    // For now, let's just ensure it's visible and correctly labeled.
+    await expect(viewButton.getByTestId('view-original-icon')).toBeVisible();
   });
 
   test('View Original shows Images icon and opens viewer for photo-based recipes', async ({

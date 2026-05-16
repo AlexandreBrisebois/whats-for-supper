@@ -208,8 +208,14 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
   });
 
-  test('Empty state shows correct header and no badge', async ({ page }) => {
-    // Mock empty schedule
+  // Empty-state header, GOTO-ready button label, and ghost button styles are
+  // pure prop-driven render assertions covered by TonightPivotCard.test.tsx.
+
+  // Task 18: SSE recipe_ready → confirm-goto-btn appears (replaces polling test)
+  // GOTO status endpoint returns 'pending' throughout — the button must appear
+  // via the SSE recipe_ready event, not via the polling interval.
+  test('SSE recipe_ready event makes confirm-goto-btn appear without polling', async ({ page }) => {
+    let callCount = 0;
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
@@ -250,165 +256,6 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
     // Ochre CTA button is visible in footer
     await expect(page.getByTestId('add-goto-btn')).toBeVisible();
-  });
-
-  test('GOTO ready state shows Make This Tonight button with ghost secondary buttons', async ({
-    page,
-  }) => {
-    // Mock active GOTO
-    await page.route(
-      (url) => url.pathname.includes('/api/goto/active'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              description: 'Family GOTO',
-              recipeId: MOCK_IDS.RECIPE_LASAGNA,
-              status: 'ready',
-            },
-          }),
-        });
-      }
-    );
-
-    // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
-    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
-
-    await page.goto('/home');
-    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
-
-    // Primary button has "Make This Tonight" label
-    const confirmBtn = page.getByTestId('confirm-goto-btn');
-    await expect(confirmBtn).toBeVisible();
-    await expect(confirmBtn).toHaveText('Make This Tonight');
-
-    // Secondary buttons are ghost/outline — they should NOT have filled background classes
-    const discoverBtn = page.getByTestId('discover-btn');
-    const orderInBtn = page.getByTestId('order-in-btn');
-
-    await expect(discoverBtn).toBeVisible();
-    await expect(orderInBtn).toBeVisible();
-
-    // In GOTO-ready state, secondary buttons use border/transparent (ghost) not filled bg
-    const discoverClass = (await discoverBtn.getAttribute('class')) || '';
-    const orderInClass = (await orderInBtn.getAttribute('class')) || '';
-
-    const discoverClasses = discoverClass.split(' ');
-    const orderInClasses = orderInClass.split(' ');
-
-    expect(discoverClasses).not.toContain('bg-indigo/10');
-    expect(orderInClasses).not.toContain('bg-charcoal/10');
-  });
-
-  test('Empty state (default routes) shows correct header and no badge', async ({ page }) => {
-    // setupCommonRoutes already sets family_goto: null by default — no override needed
-    await page.goto('/home');
-
-    // Pivot card is visible
-    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
-
-    // Header shows "What's for Supper?" in empty state (not "Tonight's Menu")
-    const pivotCard = page.getByTestId('tonight-pivot-card');
-    await expect(pivotCard.getByTestId('pivot-card-header')).toContainText("What's for Supper?");
-
-    // Prep-time badge is NOT visible in empty state
-    await expect(page.getByText('30-45 Mins')).not.toBeVisible();
-  });
-
-  test('Empty state shows ochre CTA button in footer (not buried in image area)', async ({
-    page,
-  }) => {
-    // setupCommonRoutes already sets family_goto: null by default — no override needed
-    await page.goto('/home');
-
-    // Ochre CTA button is visible
-    const addGotoBtn = page.getByTestId('add-goto-btn');
-    await expect(addGotoBtn).toBeVisible();
-
-    // The CTA is a footer link to the profile area where Family GOTO is configured.
-    await expect(addGotoBtn).toHaveAttribute('href', '/profile');
-
-    // There is NO <a> tag inside the image area (rounded-[2.5rem] div)
-    const imageArea = page.getByTestId('pivot-card-image-area');
-    await expect(imageArea.getByRole('link')).toHaveCount(0);
-  });
-
-  test('GOTO-ready state shows "Make This Tonight" button', async ({ page }) => {
-    // Mock GOTO setting with recipeId and status: 'ready'
-    // Mock active GOTO with recipeId and status: 'ready'
-    await page.route(
-      (url) => url.pathname.includes('/api/goto/active'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              description: 'Family GOTO',
-              recipeId: MOCK_IDS.RECIPE_LASAGNA,
-              status: 'ready',
-            },
-          }),
-        });
-      }
-    );
-
-    // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
-    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
-
-    await page.goto('/home');
-
-    // confirm-goto-btn is visible with text "Make This Tonight"
-    const confirmBtn = page.getByTestId('confirm-goto-btn');
-    await expect(confirmBtn).toBeVisible();
-    await expect(confirmBtn).toHaveText('Make This Tonight');
-
-    // It does NOT have text "Confirm GOTO"
-    await expect(confirmBtn).not.toHaveText('Confirm GOTO');
-  });
-
-  test('GOTO-ready state — secondary buttons are ghost/outline style', async ({ page }) => {
-    // Mock GOTO setting with recipeId and status: 'ready'
-    // Mock active GOTO with recipeId and status: 'ready'
-    await page.route(
-      (url) => url.pathname.includes('/api/goto/active'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              description: 'Family GOTO',
-              recipeId: MOCK_IDS.RECIPE_LASAGNA,
-              status: 'ready',
-            },
-          }),
-        });
-      }
-    );
-
-    // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
-    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
-
-    await page.goto('/home');
-
-    // Wait for GOTO to be ready — confirm-goto-btn only renders when gotoReady === true
-    await expect(page.getByTestId('confirm-goto-btn')).toBeVisible({ timeout: 10000 });
-
-    // discover-btn is visible and does NOT have class bg-indigo/10 (should have border class)
-    const discoverBtn = page.getByTestId('discover-btn');
-    await expect(discoverBtn).toBeVisible();
-    const discoverClass = (await discoverBtn.getAttribute('class')) || '';
-    expect(discoverClass.split(' ')).not.toContain('bg-indigo/10');
-    expect(discoverClass).toContain('border');
-
-    // order-in-btn is visible and does NOT have class bg-charcoal/10
-    const orderInBtn = page.getByTestId('order-in-btn');
-    await expect(orderInBtn).toBeVisible();
-    const orderInClass = (await orderInBtn.getAttribute('class')) || '';
-    expect(orderInClass.split(' ')).not.toContain('bg-charcoal/10');
   });
 
   // Task 18: SSE recipe_ready → confirm-goto-btn appears (replaces polling test)
