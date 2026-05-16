@@ -87,6 +87,8 @@ public class WebAcquisitionAgent(
         catch { info = new RecipeInfo { Id = recipeId }; }
 
         info.Name = context.Name;
+        if (!string.IsNullOrWhiteSpace(context.Notes))
+            info.Notes = context.Notes;
         await recipeRepository.SaveInfoAsync(info, ct);
 
         // 4. Download Hero Image if found
@@ -132,5 +134,8 @@ public class WebAcquisitionAgent(
 
         [JsonPropertyName("heroImageUrl")]
         public string? HeroImageUrl { get; set; }
+
+        [JsonPropertyName("notes")]
+        public string? Notes { get; set; }
     }
 }

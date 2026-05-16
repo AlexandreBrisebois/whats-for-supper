@@ -86,6 +86,8 @@ test.describe('Onboarding', () => {
 
     await page.getByTestId('add-member-submit').click();
     // Verify the POST was made — new member appears in the list after reload
-    await expect(page.getByTestId(`family-member-${NEW_MEMBER_ID}`)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId(`family-member-${NEW_MEMBER_ID}`)).toBeVisible({
+      timeout: 10_000,
+    });
   });
 });
