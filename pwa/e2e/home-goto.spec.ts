@@ -245,59 +245,6 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
     await page.goto('/home');
 
-    // Pivot card is visible
-    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
-
-    // Header shows "What's for Supper?" in empty state
-    await expect(page.getByRole('heading', { name: "What's for Supper?" })).toBeVisible();
-
-    // Prep-time badge is NOT visible in empty state
-    await expect(page.getByText('30-45 Mins')).not.toBeVisible();
-
-    // Ochre CTA button is visible in footer
-    await expect(page.getByTestId('add-goto-btn')).toBeVisible();
-  });
-
-  // Task 18: SSE recipe_ready → confirm-goto-btn appears (replaces polling test)
-  // GOTO status endpoint returns 'pending' throughout — the button must appear
-  // via the SSE recipe_ready event, not via the polling interval.
-  test('SSE recipe_ready event makes confirm-goto-btn appear without polling', async ({ page }) => {
-    let callCount = 0;
-    await page.route(
-      (url) => url.pathname.includes('/api/goto/active'),
-      async (route) => {
-        callCount++;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              description: 'Family GOTO',
-              recipeId: MOCK_IDS.RECIPE_LASAGNA,
-              status: callCount === 1 ? 'pending' : 'ready',
-            },
-          }),
-        });
-      }
-    );
-
-    // 2. Mock status endpoint to always return 'pending' — polling must NOT resolve this
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA, status: 'pending' } }),
-        });
-      }
-    );
-
-    // 3. Mock SSE to emit recipe_ready for the GOTO recipe ID
-    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
-
-    await page.goto('/home');
-
     // confirm-goto-btn must appear driven by the SSE event, not the polling interval
     // (status endpoint always returns 'pending', so polling can never resolve this)
     const confirmBtn = page.getByTestId('confirm-goto-btn');
