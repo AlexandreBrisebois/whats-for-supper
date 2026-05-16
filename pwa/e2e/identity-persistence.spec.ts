@@ -33,7 +33,7 @@ test.describe('Identity Persistence', () => {
   }) => {
     // 1. Start at Profile
     await page.goto('/profile');
-    await expect(page.getByText('Alex')).toBeVisible();
+    await expect(page.getByText('Alex', { exact: true })).toBeVisible();
 
     // 2. Navigate to Home via Nav
     await page.getByTestId('nav-item-home').click();
@@ -44,7 +44,7 @@ test.describe('Identity Persistence', () => {
     await expect(page).toHaveURL(/\/profile/);
 
     // 4. Verify active member is displayed
-    await expect(page.getByText('Alex')).toBeVisible();
+    await expect(page.getByText('Alex', { exact: true })).toBeVisible();
 
     // 5. Navigate to Settings
     await page.getByRole('button', { name: /settings/i }).click();
@@ -60,7 +60,7 @@ test.describe('Identity Persistence', () => {
   }) => {
     // 1. Load Profile successfully
     await page.goto('/profile');
-    await expect(page.getByText('Alex')).toBeVisible();
+    await expect(page.getByText('Alex', { exact: true })).toBeVisible();
 
     // 2. Mock API failure for subsequent family fetches
     // This will affect client-side fetches. Server-side fetches from the PWA server
@@ -81,6 +81,6 @@ test.describe('Identity Persistence', () => {
     await page.getByTestId('nav-item-profile').click();
 
     // 5. Verify data is still there (not trashed by the failed transition)
-    await expect(page.getByText('Alex')).toBeVisible();
+    await expect(page.getByText('Alex', { exact: true })).toBeVisible();
   });
 });

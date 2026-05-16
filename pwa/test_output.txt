@@ -1,460 +1,480 @@
-
- RUN  v3.2.4 /Users/alex/Code/whats-for-supper/pwa
-
-(node:90760) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:61922) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
-stderr | src/app/(app)/recipes/page.test.tsx > RecipesPage > blurs the search input when Enter is pressed
-An update to RecipesPage inside a test was not wrapped in act(...).
 
-When testing, code that causes React state updates should be wrapped into act(...):
+Running 14 tests using 5 workers
 
-act(() => {
-  /* fire events that update state */
-});
-/* assert on the output */
-
-This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
-An update to RecipesPage inside a test was not wrapped in act(...).
-
-When testing, code that causes React state updates should be wrapped into act(...):
-
-act(() => {
-  /* fire events that update state */
-});
-/* assert on the output */
-
-This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
-An update to RecipesPage inside a test was not wrapped in act(...).
-
-When testing, code that causes React state updates should be wrapped into act(...):
-
-act(() => {
-  /* fire events that update state */
-});
-/* assert on the output */
-
-This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
-
- ❯ src/app/(app)/recipes/page.test.tsx (39 tests | 3 failed) 2336ms
-   ✓ RecipesPage > renders the search input and mode controls after load 21ms
-   ✓ RecipesPage > fires recipe search on mount and again when Enter is pressed with the current query 14ms
-   ✓ RecipesPage > renders the top pick card and alternate cards from the search response 5ms
-   ✓ RecipesPage > top-pick-feeling-lucky button promotes a different result without changing query 9ms
-   ✓ RecipesPage > loads more search results from an infinite-scroll sentinel instead of a manual button 13ms
-   ✓ RecipesPage > renders the empty state when search returns no top pick and no results 6ms
-   ✓ RecipesPage > shows planner mode banner when planner context is present 5ms
-   ✓ RecipesPage > opens the detail sheet from a result card and closes it without re-running search or clearing results 40ms
-   ✓ RecipesPage > marks a recipe as the family GOTO from the detail sheet star pill 22ms
-   ✓ RecipesPage > shows the current GOTO pill without re-saving when the detail recipe is already GOTO 15ms
-   ✓ RecipesPage > edits notes and rating from the detail sheet using PATCH calls  845ms
-   ✓ RecipesPage > edits recipe card fields in edit mode and saves them with one PATCH call 52ms
-   ✓ RecipesPage > cancels recipe card edits without patching editable fields 19ms
-   ✓ RecipesPage > renders the planner CTA in planner mode and assigns the recipe back to the planner 19ms
-   ✓ RecipesPage > Quick filter pills > renders all 5 filter pills 5ms
-   ✓ RecipesPage > Quick filter pills > tapping a filter pill marks it active and fires a new search with the filter 7ms
-   ✓ RecipesPage > Quick filter pills > tapping an active filter pill deactivates it and re-runs search without that filter 12ms
-   ✓ RecipesPage > Quick filter pills > combining two filters sends both in the request 10ms
-   ✓ RecipesPage > Quick filter pills > shows filter-no-results when filters are active and search returns empty 7ms
-   ✓ RecipesPage > toggling discovery from the detail sheet calls PATCH with isDiscoverable and keeps the sheet open 15ms
-   ✓ RecipesPage > runs a similar search from the detail sheet with an empty query and the current recipe id 20ms
-   ✓ RecipesPage > inventory-camera-trigger tap opens the inventory-capture-popup 6ms
-   ✓ RecipesPage > inventory-capture-popup renders take photo, choose photos, submit and cancel buttons 6ms
-   × RecipesPage > submit button stays available and updates the photo count as photos are added 11ms
-     → expect(element).toHaveTextContent()
-
-Expected element to have text content:
-  /Search with 1 photo/i
-Received:
-  Search with 0 photos
-   × RecipesPage > removing a photo updates the count and keeps submit available when the queue becomes empty 12ms
-     → expect(element).toHaveTextContent()
-
-Expected element to have text content:
-  /Search with 0 photos/i
-Received:
-  Search with 1 photos
-   ✓ RecipesPage > submitting inventory photos uses the pantry snapshot in the next search 16ms
-   ✓ RecipesPage > submitting a recipe photo searches the library with extracted recipe text 16ms
-   ✓ RecipesPage > inventory-capture-cancel closes popup and clears queue 13ms
-   ✓ RecipesPage > popup shows busy message when capture returns busy status 15ms
-   ✓ RecipesPage > agent-search-trigger tap shows agent-search-input textarea 7ms
-   ✓ RecipesPage > agent-search-trigger shows demo notice instead of textarea in demo mode 8ms
-   ✓ RecipesPage > agent-search-submit calls searchRecipes with mode: "agent" 9ms
-   ✓ RecipesPage > agent search results render in the same recipe-card-top-pick template 13ms
-   ✓ RecipesPage > agent search does NOT render a chat UI element 5ms
-   ✓ RecipesPage > agent-search-close hides agent-search-input and keeps existing results visible 4ms
-   ✓ RecipesPage > blurs the search input when Enter is pressed 3ms
-   × RecipesPage > submits and blurs the agent search textarea when Enter (without Shift) is pressed 1007ms
-     → expected last "spy" call to have been called with [ ObjectContaining{…} ]
-
-Ignored nodes: comments, script, style
-[36m<html>[39m
-  [36m<head />[39m
-  [36m<body>[39m
-    [36m<div>[39m
-      [36m<div[39m
-        [33mclass[39m=[32m"flex flex-col gap-6 pt-6 pb-12"[39m
-      [36m>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex items-center px-1 h-11"[39m
-        [36m/>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex flex-wrap gap-2 px-1"[39m
-        [36m>[39m
-          [36m<button[39m
-            [33mclass[39m=[32m"inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-terracotta bg-terracotta text-white"[39m
-            [33mdata-testid[39m=[32m"agent-search-trigger"[39m
-            [33mtype[39m=[32m"button"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-sparkles text-white"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"16"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"2"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"16"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M20 2v4"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M22 4h-4"[39m
-              [36m/>[39m
-              [36m<circle[39m
-                [33mcx[39m=[32m"4"[39m
-                [33mcy[39m=[32m"20"[39m
-                [33mr[39m=[32m"2"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [0mAgent Search[0m
-          [36m</button>[39m
-          [36m<button[39m
-            [33mclass[39m=[32m"inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-charcoal/10 bg-white/70 text-charcoal"[39m
-            [33mdata-testid[39m=[32m"inventory-camera-trigger"[39m
-            [33mtype[39m=[32m"button"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-camera text-terracotta"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"16"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"2"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"16"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"[39m
-              [36m/>[39m
-              [36m<circle[39m
-                [33mcx[39m=[32m"12"[39m
-                [33mcy[39m=[32m"13"[39m
-                [33mr[39m=[32m"3"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [0mPhoto Search[0m
-          [36m</button>[39m
-        [36m</div>[39m
-        [36m<div[39m
-          [33manimate[39m=[32m"[object Object]"[39m
-          [33mclass[39m=[32m"flex flex-col gap-2"[39m
-          [33minitial[39m=[32m"[object Object]"[39m
-        [36m>[39m
-          [36m<textarea[39m
-            [33mclass[39m=[32m"w-full rounded-2xl border-2 border-charcoal/5 bg-white/60 backdrop-blur-md p-4 text-base font-bold text-charcoal placeholder:text-charcoal/20 focus:border-terracotta/20 focus:outline-none resize-none shadow-sm transition-all"[39m
-            [33mdata-testid[39m=[32m"agent-search-input"[39m
-            [33mplaceholder[39m=[32m"Describe what you feel like tonight in your own words…"[39m
-            [33mrows[39m=[32m"3"[39m
-          [36m>[39m
-            [0mhealthy lunch[0m
-          [36m</textarea>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex gap-2"[39m
-          [36m>[39m
-            [36m<button[39m
-              [33mclass[39m=[32m"rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"[39m
-              [33mdata-testid[39m=[32m"agent-search-submit"[39m
-              [33mtype[39m=[32m"button"[39m
-            [36m>[39m
-              [0mSearch[0m
-            [36m</button>[39m
-            [36m<button[39m
-              [33mclass[39m=[32m"rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"[39m
-              [33mdata-testid[39m=[32m"agent-search-close"[39m
-              [33mtype[39m=[32m"button"[39m
-            [36m>[39m
-              [0mCancel[0m
-            [36m</button>[39m
-          [36m</div>[39m
-        [36m</div>[39m
-        [36m<input[39m
-          [33maccept[39m=[32m"image/*"[39m
-          [33mcapture[39m=[32m"environment"[39m
-          [33mclass[39m=[32m"hidden"[39m
-          [33mdata-testid[39m=[32m"inventory-camera-input"[39m
-          [33mtype[39m=[32m"file"[39m
-        [36m/>[39m
-        [36m<input[39m
-          [33maccept[39m=[32m"image/*"[39m
-          [33mclass[39m=[32m"hidden"[39m
-          [33mdata-testid[39m=[32m"inventory-gallery-input"[39m
-          [33mmultiple[39m=[32m""[39m
-          [33mtype[39m=[32m"file"[39m
-        [36m/>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex flex-col gap-2 px-1"[39m
-        [36m>[39m
-          [36m<p[39m
-            [33mclass[39m=[32m"text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40"[39m
-          [36m>[39m
-            [0mFilter by[0m
-          [36m</p>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
-          [36m>[39m
-            [36m<button[39m
-              [33mclass[39m=[32m"rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-charcoal/10 bg-white/70 text-charcoal"[39m
-              [33mdata-testid[39m=[32m"filter-new-recipes"[39m
-              [33mtype[39m=[32m"button"[39m
-            [36m>[39m
-              [0mNew[0m
-            [36m</button>[39m
-            [36m<button[39m
-              [33mcl...
-   ✓ RecipesPage > does NOT submit agent search when Shift+Enter is pressed in textarea 7ms
-   ✓ RecipesPage > fires recipe search on mount with similarToRecipeId if provided in search params 14ms
-
-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
-
- FAIL  src/app/(app)/recipes/page.test.tsx > RecipesPage > submit button stays available and updates the photo count as photos are added
-Error: expect(element).toHaveTextContent()
-
-Expected element to have text content:
-  /Search with 1 photo/i
-Received:
-  Search with 0 photos
- ❯ src/app/(app)/recipes/page.test.tsx:894:23
-    892|     fireEvent.change(input, { target: { files: [file] } });
-    893| 
-    894|     expect(submitBtn).toHaveTextContent(/Search with 1 photo/i);
-       |                       ^
-    895|     expect(screen.getByTestId('remove-photo-0')).toBeInTheDocument();
-    896|   });
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
-
- FAIL  src/app/(app)/recipes/page.test.tsx > RecipesPage > removing a photo updates the count and keeps submit available when the queue becomes empty
-Error: expect(element).toHaveTextContent()
-
-Expected element to have text content:
-  /Search with 0 photos/i
-Received:
-  Search with 1 photos
- ❯ src/app/(app)/recipes/page.test.tsx:915:23
-    913| 
-    914|     expect(submitBtn).not.toBeDisabled();
-    915|     expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
-       |                       ^
-    916|   });
-    917| 
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
-
- FAIL  src/app/(app)/recipes/page.test.tsx > RecipesPage > submits and blurs the agent search textarea when Enter (without Shift) is pressed
-AssertionError: expected last "spy" call to have been called with [ ObjectContaining{…} ]
-
-Ignored nodes: comments, script, style
-[36m<html>[39m
-  [36m<head />[39m
-  [36m<body>[39m
-    [36m<div>[39m
-      [36m<div[39m
-        [33mclass[39m=[32m"flex flex-col gap-6 pt-6 pb-12"[39m
-      [36m>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex items-center px-1 h-11"[39m
-        [36m/>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex flex-wrap gap-2 px-1"[39m
-        [36m>[39m
-          [36m<button[39m
-            [33mclass[39m=[32m"inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-terracotta bg-terracotta text-white"[39m
-            [33mdata-testid[39m=[32m"agent-search-trigger"[39m
-            [33mtype[39m=[32m"button"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-sparkles text-white"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"16"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"2"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"16"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M20 2v4"[39m
-              [36m/>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M22 4h-4"[39m
-              [36m/>[39m
-              [36m<circle[39m
-                [33mcx[39m=[32m"4"[39m
-                [33mcy[39m=[32m"20"[39m
-                [33mr[39m=[32m"2"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [0mAgent Search[0m
-          [36m</button>[39m
-          [36m<button[39m
-            [33mclass[39m=[32m"inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-charcoal/10 bg-white/70 text-charcoal"[39m
-            [33mdata-testid[39m=[32m"inventory-camera-trigger"[39m
-            [33mtype[39m=[32m"button"[39m
-          [36m>[39m
-            [36m<svg[39m
-              [33maria-hidden[39m=[32m"true"[39m
-              [33mclass[39m=[32m"lucide lucide-camera text-terracotta"[39m
-              [33mfill[39m=[32m"none"[39m
-              [33mheight[39m=[32m"16"[39m
-              [33mstroke[39m=[32m"currentColor"[39m
-              [33mstroke-linecap[39m=[32m"round"[39m
-              [33mstroke-linejoin[39m=[32m"round"[39m
-              [33mstroke-width[39m=[32m"2"[39m
-              [33mviewBox[39m=[32m"0 0 24 24"[39m
-              [33mwidth[39m=[32m"16"[39m
-              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-            [36m>[39m
-              [36m<path[39m
-                [33md[39m=[32m"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"[39m
-              [36m/>[39m
-              [36m<circle[39m
-                [33mcx[39m=[32m"12"[39m
-                [33mcy[39m=[32m"13"[39m
-                [33mr[39m=[32m"3"[39m
-              [36m/>[39m
-            [36m</svg>[39m
-            [0mPhoto Search[0m
-          [36m</button>[39m
-        [36m</div>[39m
-        [36m<div[39m
-          [33manimate[39m=[32m"[object Object]"[39m
-          [33mclass[39m=[32m"flex flex-col gap-2"[39m
-          [33minitial[39m=[32m"[object Object]"[39m
-        [36m>[39m
-          [36m<textarea[39m
-            [33mclass[39m=[32m"w-full rounded-2xl border-2 border-charcoal/5 bg-white/60 backdrop-blur-md p-4 text-base font-bold text-charcoal placeholder:text-charcoal/20 focus:border-terracotta/20 focus:outline-none resize-none shadow-sm transition-all"[39m
-            [33mdata-testid[39m=[32m"agent-search-input"[39m
-            [33mplaceholder[39m=[32m"Describe what you feel like tonight in your own words…"[39m
-            [33mrows[39m=[32m"3"[39m
-          [36m>[39m
-            [0mhealthy lunch[0m
-          [36m</textarea>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex gap-2"[39m
-          [36m>[39m
-            [36m<button[39m
-              [33mclass[39m=[32m"rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"[39m
-              [33mdata-testid[39m=[32m"agent-search-submit"[39m
-              [33mtype[39m=[32m"button"[39m
-            [36m>[39m
-              [0mSearch[0m
-            [36m</button>[39m
-            [36m<button[39m
-              [33mclass[39m=[32m"rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"[39m
-              [33mdata-testid[39m=[32m"agent-search-close"[39m
-              [33mtype[39m=[32m"button"[39m
-            [36m>[39m
-              [0mCancel[0m
-            [36m</button>[39m
-          [36m</div>[39m
-        [36m</div>[39m
-        [36m<input[39m
-          [33maccept[39m=[32m"image/*"[39m
-          [33mcapture[39m=[32m"environment"[39m
-          [33mclass[39m=[32m"hidden"[39m
-          [33mdata-testid[39m=[32m"inventory-camera-input"[39m
-          [33mtype[39m=[32m"file"[39m
-        [36m/>[39m
-        [36m<input[39m
-          [33maccept[39m=[32m"image/*"[39m
-          [33mclass[39m=[32m"hidden"[39m
-          [33mdata-testid[39m=[32m"inventory-gallery-input"[39m
-          [33mmultiple[39m=[32m""[39m
-          [33mtype[39m=[32m"file"[39m
-        [36m/>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex flex-col gap-2 px-1"[39m
-        [36m>[39m
-          [36m<p[39m
-            [33mclass[39m=[32m"text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40"[39m
-          [36m>[39m
-            [0mFilter by[0m
-          [36m</p>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
-          [36m>[39m
-            [36m<button[39m
-              [33mclass[39m=[32m"rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors border-charcoal/10 bg-white/70 text-charcoal"[39m
-              [33mdata-testid[39m=[32m"filter-new-recipes"[39m
-              [33mtype[39m=[32m"button"[39m
-            [36m>[39m
-              [0mNew[0m
-            [36m</button>[39m
-            [36m<button[39m
-              [33mcl...
-
-- Expected
-+ Received
-
-  [
--   ObjectContaining {
--     "mode": "agent",
--     "query": "healthy lunch",
-+   {
-+     "dayIndex": undefined,
-+     "filters": undefined,
-+     "limit": 6,
-+     "mode": "standard",
-+     "pantrySnapshotId": undefined,
-+     "query": "chicken",
-+     "similarToRecipeId": undefined,
-+     "weekOffset": undefined,
-    },
-  ]
-
- ❯ src/app/(app)/recipes/page.test.tsx:1139:35
-    1137|     expect(textarea).not.toHaveFocus();
-    1138|     await waitFor(() => {
-    1139|       expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-       |                                   ^
-    1140|         expect.objectContaining({ query: 'healthy lunch', mode: 'agent…
-    1141|       );
- ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
- ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
- ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+(node:61925) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:61927) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:61926) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:61923) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:61924) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+  ✘   2 [chromium] › e2e/settings.spec.ts:30:7 › Settings — Failed Captures section › Settings page renders failed-captures-section (5.5s)
+  ✘   4 [chromium] › e2e/profile.spec.ts:28:7 › Profile Page › Escape hatch "Continue as" button is visible when a member is already selected (5.5s)
+  ✘   5 [chromium] › e2e/profile.spec.ts:43:7 › Profile Page › user can switch the active family member from the profile dropdown (5.5s)
+(node:61990) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:61989) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:61991) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+  ✘   3 [chromium] › e2e/profile.spec.ts:19:7 › Profile Page › "Table's Set!" title is visible on the profile page (10.5s)
+(node:62024) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+  ✘   6 [chromium] › e2e/settings.spec.ts:76:7 › Settings — Failed Captures section › retry tap calls retry endpoint and shows in-progress state (5.2s)
+  ✘   8 [chromium] › e2e/settings.spec.ts:117:7 › Settings — Failed Captures section › clear tap calls clear endpoint and removes row from list (5.2s)
+  ✘   7 [chromium] › e2e/settings.spec.ts:36:7 › Settings — Failed Captures section › renders failure row with friendly reason (5.2s)
+(node:62038) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:62037) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:62039) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+  ✘   9 [chromium] › e2e/settings.spec.ts:212:7 › Settings — FamilyGOTOSettings card › SSE recipe_ready replaces pending spinner with recipe name (no polling) (5.2s)
+(node:62075) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+  ✘  12 [chromium] › e2e/settings.spec.ts:354:7 › Settings — FamilyGOTOSettings card › language toggle selection persists on navigation (5.3s)
+  ✘  10 [chromium] › e2e/settings.spec.ts:296:7 › Settings — FamilyGOTOSettings card › GOTO ready state shows recipe name when status endpoint returns ready (5.3s)
+  ✘  11 [chromium] › e2e/settings.spec.ts:403:7 › Settings — FamilyGOTOSettings card › GOTO pending state shows subtitle and description echo (5.3s)
+(node:62080) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[REQUEST] GET http://127.0.0.1:3000/api/health
+[REQUEST] GET http://127.0.0.1:3000/api/health
+  ✘  13 [chromium] › e2e/settings.spec.ts:452:7 › Settings — FamilyGOTOSettings card › family member name can be edited from settings (5.2s)
+  ✘   1 [chromium] › e2e/profile.spec.ts:36:7 › Profile Page › Tapping "Continue as" navigates to /home (30.1s)
+  ✘  14 [chromium] › e2e/settings.spec.ts:490:7 › Settings — FamilyGOTOSettings card › invite dialog can copy the generated link and close cleanly (30.1s)
 
 
- Test Files  1 failed (1)
-      Tests  3 failed | 36 passed (39)
-   Start at  20:42:52
-   Duration  2.88s (transform 92ms, setup 46ms, collect 156ms, tests 2.34s, environment 102ms, prepare 33ms)
+  1) [chromium] › e2e/profile.spec.ts:19:7 › Profile Page › "Table's Set!" title is visible on the profile page 
 
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /table.*set/i })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 10000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /table.*set/i })[22m
+
+
+      21 |
+      22 |     // The heading must contain the updated title text
+    > 23 |     await expect(page.getByRole('heading', { name: /table.*set/i })).toBeVisible({
+         |                                                                      ^
+      24 |       timeout: 10000,
+      25 |     });
+      26 |   });
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/profile.spec.ts:23:70
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/profile-Profile-Page-Table-a4d71-visible-on-the-profile-page-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/profile-Profile-Page-Table-a4d71-visible-on-the-profile-page-chromium/error-context.md
+
+  2) [chromium] › e2e/profile.spec.ts:28:7 › Profile Page › Escape hatch "Continue as" button is visible when a member is already selected 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('continue-as-btn')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('continue-as-btn')[22m
+
+
+      30 |     await page.goto('/profile');
+      31 |
+    > 32 |     await expect(page.getByTestId('continue-as-btn')).toBeVisible();
+         |                                                       ^
+      33 |     await expect(page.getByTestId('continue-as-btn')).toContainText(/alex/i);
+      34 |   });
+      35 |
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/profile.spec.ts:32:55
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/profile-Profile-Page-Escap-f7c80--member-is-already-selected-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/profile-Profile-Page-Escap-f7c80--member-is-already-selected-chromium/error-context.md
+
+  3) [chromium] › e2e/profile.spec.ts:36:7 › Profile Page › Tapping "Continue as" navigates to /home 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByTestId('continue-as-btn')[22m
+
+
+      37 |     await page.goto('/profile');
+      38 |
+    > 39 |     await page.getByTestId('continue-as-btn').click();
+         |                                               ^
+      40 |     await expect(page).toHaveURL(/\/home/);
+      41 |   });
+      42 |
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/profile.spec.ts:39:47
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/profile-Profile-Page-Tapping-Continue-as-navigates-to-home-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/profile-Profile-Page-Tapping-Continue-as-navigates-to-home-chromium/error-context.md
+
+  4) [chromium] › e2e/profile.spec.ts:43:7 › Profile Page › user can switch the active family member from the profile dropdown 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('profile-dropdown-toggle')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('profile-dropdown-toggle')[22m
+
+
+      44 |     await page.goto('/profile');
+      45 |
+    > 46 |     await expect(page.getByTestId('profile-dropdown-toggle')).toBeVisible();
+         |                                                               ^
+      47 |     await page.getByTestId('profile-dropdown-toggle').click();
+      48 |
+      49 |     await expect(page.getByTestId('profile-dropdown-menu')).toBeVisible();
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/profile.spec.ts:46:63
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/profile-Profile-Page-user--89118-r-from-the-profile-dropdown-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/profile-Profile-Page-user--89118-r-from-the-profile-dropdown-chromium/error-context.md
+
+  5) [chromium] › e2e/settings.spec.ts:30:7 › Settings — Failed Captures section › Settings page renders failed-captures-section 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('failed-captures-section')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('failed-captures-section')[22m
+
+
+      30 |   test('Settings page renders failed-captures-section', async ({ page }) => {
+      31 |     await page.goto('/profile/settings');
+    > 32 |     await expect(page.getByTestId('failed-captures-section')).toBeVisible({ timeout: 5000 });
+         |                                                               ^
+      33 |   });
+      34 |
+      35 |   // E2E 2: Failed capture present → visible with friendly reason
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:32:63
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Failed-f3dc8-ers-failed-captures-section-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Failed-f3dc8-ers-failed-captures-section-chromium/error-context.md
+
+  6) [chromium] › e2e/settings.spec.ts:36:7 › Settings — Failed Captures section › renders failure row with friendly reason 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('failed-capture-880e8400-e29b-41d4-a716-446655440040')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('failed-capture-880e8400-e29b-41d4-a716-446655440040')[22m
+
+
+      65 |     await page.goto('/profile/settings');
+      66 |
+    > 67 |     await expect(page.getByTestId(`failed-capture-${MOCK_IDS.CAPTURE_FAILURE_URL}`)).toBeVisible({
+         |                                                                                      ^
+      68 |       timeout: 5000,
+      69 |     });
+      70 |     await expect(
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:67:86
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Failed-52924-re-row-with-friendly-reason-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Failed-52924-re-row-with-friendly-reason-chromium/error-context.md
+
+  7) [chromium] › e2e/settings.spec.ts:76:7 › Settings — Failed Captures section › retry tap calls retry endpoint and shows in-progress state 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('action-retry-880e8400-e29b-41d4-a716-446655440040')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('action-retry-880e8400-e29b-41d4-a716-446655440040')[22m
+
+
+      103 |     await page.goto('/profile/settings');
+      104 |
+    > 105 |     await expect(page.getByTestId(`action-retry-${MOCK_IDS.CAPTURE_FAILURE_URL}`)).toBeVisible({
+          |                                                                                    ^
+      106 |       timeout: 5000,
+      107 |     });
+      108 |
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:105:84
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Failed-460b4-and-shows-in-progress-state-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Failed-460b4-and-shows-in-progress-state-chromium/error-context.md
+
+  8) [chromium] › e2e/settings.spec.ts:117:7 › Settings — Failed Captures section › clear tap calls clear endpoint and removes row from list 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('failed-capture-880e8400-e29b-41d4-a716-446655440040')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('failed-capture-880e8400-e29b-41d4-a716-446655440040')[22m
+
+
+      169 |     await page.goto('/profile/settings');
+      170 |
+    > 171 |     await expect(page.getByTestId(`failed-capture-${MOCK_IDS.CAPTURE_FAILURE_URL}`)).toBeVisible({
+          |                                                                                      ^
+      172 |       timeout: 5000,
+      173 |     });
+      174 |
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:171:86
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Failed-ff2fa-t-and-removes-row-from-list-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Failed-ff2fa-t-and-removes-row-from-list-chromium/error-context.md
+
+  9) [chromium] › e2e/settings.spec.ts:212:7 › Settings — FamilyGOTOSettings card › SSE recipe_ready replaces pending spinner with recipe name (no polling) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('goto-pending-spinner')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('goto-pending-spinner')[22m
+
+
+      263 |
+      264 |     // 4. Initially the pending spinner should be visible (status endpoint returns 'pending')
+    > 265 |     await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 5000 });
+          |                                                            ^
+      266 |
+      267 |     // 5. Change link should be visible as the escape hatch (now "Add a GOTO" or implicit in list)
+      268 |     await expect(page.getByTestId('add-goto-btn')).toBeVisible();
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:265:60
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Family-0e32b-ith-recipe-name-no-polling--chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Family-0e32b-ith-recipe-name-no-polling--chromium/error-context.md
+
+  10) [chromium] › e2e/settings.spec.ts:296:7 › Settings — FamilyGOTOSettings card › GOTO ready state shows recipe name when status endpoint returns ready 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('goto-recipe-name')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('goto-recipe-name')[22m
+
+
+      340 |
+      341 |     // Recipe name must be visible — spinner must not be present
+    > 342 |     await expect(page.getByTestId('goto-recipe-name')).toBeVisible({ timeout: 5000 });
+          |                                                        ^
+      343 |     await expect(page.getByTestId('goto-recipe-name')).toContainText(GOTO_DESCRIPTION);
+      344 |     await expect(page.getByTestId('goto-pending-spinner')).not.toBeVisible();
+      345 |   });
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:342:56
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Family-d62ae-atus-endpoint-returns-ready-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Family-d62ae-atus-endpoint-returns-ready-chromium/error-context.md
+
+  11) [chromium] › e2e/settings.spec.ts:354:7 › Settings — FamilyGOTOSettings card › language toggle selection persists on navigation 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('locale-btn-en')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('locale-btn-en')[22m
+
+
+      375 |
+      376 |     // Wait for the profile page to render
+    > 377 |     await expect(page.getByTestId('locale-btn-en')).toBeVisible({ timeout: 5000 });
+          |                                                     ^
+      378 |     await expect(page.getByTestId('locale-btn-fr')).toBeVisible();
+      379 |
+      380 |     // 2. Switch to French and wait for the UI to update optimistically
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:377:53
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Family-fc7d9-tion-persists-on-navigation-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Family-fc7d9-tion-persists-on-navigation-chromium/error-context.md
+
+  12) [chromium] › e2e/settings.spec.ts:403:7 › Settings — FamilyGOTOSettings card › GOTO pending state shows subtitle and description echo 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('goto-pending-spinner')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('goto-pending-spinner')[22m
+
+
+      445 |
+      446 |     // Pending state elements visible
+    > 447 |     await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 5000 });
+          |                                                            ^
+      448 |     await expect(page.getByTestId('goto-pending-description')).toHaveText(GOTO_DESCRIPTION);
+      449 |     await expect(page.getByTestId('add-goto-btn')).toBeVisible();
+      450 |   });
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:447:60
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Family-78974-btitle-and-description-echo-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Family-78974-btitle-and-description-echo-chromium/error-context.md
+
+  13) [chromium] › e2e/settings.spec.ts:452:7 › Settings — FamilyGOTOSettings card › family member name can be edited from settings 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('family-member-edit-550e8400-e29b-41d4-a716-446655440002')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('family-member-edit-550e8400-e29b-41d4-a716-446655440002')[22m
+
+
+      476 |     await page.goto('/profile/settings');
+      477 |
+    > 478 |     await expect(page.getByTestId(`family-member-edit-${MOCK_IDS.MEMBER_JORDAN}`)).toBeVisible();
+          |                                                                                    ^
+      479 |     await page.getByTestId(`family-member-edit-${MOCK_IDS.MEMBER_JORDAN}`).click();
+      480 |
+      481 |     const editInput = page.getByTestId(`family-member-edit-input-${MOCK_IDS.MEMBER_JORDAN}`);
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:478:84
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Family-ddc5d-can-be-edited-from-settings-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Family-ddc5d-can-be-edited-from-settings-chromium/error-context.md
+
+  14) [chromium] › e2e/settings.spec.ts:490:7 › Settings — FamilyGOTOSettings card › invite dialog can copy the generated link and close cleanly 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByTestId('family-member-invite-550e8400-e29b-41d4-a716-446655440002')[22m
+
+
+      503 |     await page.goto('/profile/settings');
+      504 |
+    > 505 |     await page.getByTestId(`family-member-invite-${MOCK_IDS.MEMBER_JORDAN}`).click();
+          |                                                                              ^
+      506 |
+      507 |     await expect(page.getByTestId('invite-dialog')).toBeVisible();
+      508 |     await expect(page.getByTestId('invite-dialog-link')).toContainText(MOCK_IDS.MEMBER_JORDAN);
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/settings.spec.ts:505:78
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-Settings-—-Family-e8120-ated-link-and-close-cleanly-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-Settings-—-Family-e8120-ated-link-and-close-cleanly-chromium/error-context.md
+
+  14 failed
+    [chromium] › e2e/profile.spec.ts:19:7 › Profile Page › "Table's Set!" title is visible on the profile page 
+    [chromium] › e2e/profile.spec.ts:28:7 › Profile Page › Escape hatch "Continue as" button is visible when a member is already selected 
+    [chromium] › e2e/profile.spec.ts:36:7 › Profile Page › Tapping "Continue as" navigates to /home 
+    [chromium] › e2e/profile.spec.ts:43:7 › Profile Page › user can switch the active family member from the profile dropdown 
+    [chromium] › e2e/settings.spec.ts:30:7 › Settings — Failed Captures section › Settings page renders failed-captures-section 
+    [chromium] › e2e/settings.spec.ts:36:7 › Settings — Failed Captures section › renders failure row with friendly reason 
+    [chromium] › e2e/settings.spec.ts:76:7 › Settings — Failed Captures section › retry tap calls retry endpoint and shows in-progress state 
+    [chromium] › e2e/settings.spec.ts:117:7 › Settings — Failed Captures section › clear tap calls clear endpoint and removes row from list 
+    [chromium] › e2e/settings.spec.ts:212:7 › Settings — FamilyGOTOSettings card › SSE recipe_ready replaces pending spinner with recipe name (no polling) 
+    [chromium] › e2e/settings.spec.ts:296:7 › Settings — FamilyGOTOSettings card › GOTO ready state shows recipe name when status endpoint returns ready 
+    [chromium] › e2e/settings.spec.ts:354:7 › Settings — FamilyGOTOSettings card › language toggle selection persists on navigation 
+    [chromium] › e2e/settings.spec.ts:403:7 › Settings — FamilyGOTOSettings card › GOTO pending state shows subtitle and description echo 
+    [chromium] › e2e/settings.spec.ts:452:7 › Settings — FamilyGOTOSettings card › family member name can be edited from settings 
+    [chromium] › e2e/settings.spec.ts:490:7 › Settings — FamilyGOTOSettings card › invite dialog can copy the generated link and close cleanly 

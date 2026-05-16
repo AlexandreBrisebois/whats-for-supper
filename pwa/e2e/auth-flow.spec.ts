@@ -16,7 +16,7 @@ test.describe('Auth Flow', () => {
   test('user can log in with passphrase', async ({ page }) => {
     await page.goto('/welcome');
 
-    const secret = process.env.HEARTH_SECRET || 'our family loves cooking';
+    const secret = process.env.HEARTH_SECRET || 'Paris-Montreal';
     const input = page.getByTestId('passphrase-input');
     await expect(input).toBeVisible();
     await input.fill(secret);
@@ -29,7 +29,7 @@ test.describe('Auth Flow', () => {
   });
 
   test('magic invite link works and redirects to home', async ({ page }) => {
-    const secret = process.env.HEARTH_SECRET || 'our family loves cooking';
+    const secret = process.env.HEARTH_SECRET || 'Paris-Montreal';
     const token = await generateSecretToken(secret);
     const memberId = '550e8400-e29b-41d4-a716-446655440001';
 
@@ -40,7 +40,7 @@ test.describe('Auth Flow', () => {
   });
 
   test('magic voting link redirects to discovery', async ({ page }) => {
-    const secret = process.env.HEARTH_SECRET || 'our family loves cooking';
+    const secret = process.env.HEARTH_SECRET || 'Paris-Montreal';
     const token = await generateSecretToken(secret);
 
     await page.goto(`/invite?secret=${token}&redirect=/discovery`);

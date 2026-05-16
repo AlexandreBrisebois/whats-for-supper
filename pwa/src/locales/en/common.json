@@ -92,8 +92,8 @@
     }
   },
   "profile": {
-    "title": "Who's Eating?",
-    "subtitle": "Switch active family member or manage your group.",
+    "title": "Table's Set!",
+    "subtitle": "Pick a family member to get started.",
     "activeMember": "Active Member",
     "language": "Language",
     "pickSomethingElse": "Find something quick",
@@ -106,7 +106,8 @@
     "openMemberMenu": "Open member menu",
     "selectMember": "Select Member",
     "settings": "Settings",
-    "settingsSubtitle": "Family & app preferences"
+    "settingsSubtitle": "Family & app preferences",
+    "continueAs": "Continue as {{name}}"
   },
   "family": {
     "addPrompt": "Don't see your name? Add it",

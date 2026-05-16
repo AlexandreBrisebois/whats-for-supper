@@ -243,12 +243,18 @@ export async function setupCommonRoutes(page: Page) {
     }
   });
 
-  // GET /api/family/me
+  // GET /api/family/me - Dynamic based on cookie
   await page.route('**/api/family/me', async (route) => {
+    const cookies = await page.context().cookies();
+    const cookie = cookies.find((c) => c.name === 'x-family-member-id');
+    const memberId = cookie?.value || MOCK_IDS.MEMBER_ALEX;
+    const name = memberId === MOCK_IDS.MEMBER_JORDAN ? 'Jordan' : 'Alex';
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: builders.familyMember() }),
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+      body: JSON.stringify({ data: builders.familyMember({ id: memberId, name }) }),
     });
   });
 
@@ -356,6 +362,19 @@ export async function setupCommonRoutes(page: Page) {
       }
     }
   );
+
+  // POST /api/schedule/day/{date} (Assign/Validate recipe)
+  await page.route('**/api/schedule/day/*', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { message: 'Day updated' } }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
 
   // GET /api/recipes/library-summary — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes/library-summary', async (route) => {

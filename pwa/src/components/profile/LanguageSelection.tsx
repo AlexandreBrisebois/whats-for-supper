@@ -17,23 +17,23 @@ export function LanguageSelection() {
   };
 
   return (
-    <div className="w-full rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
-      <div className="flex items-center gap-2 mb-6">
-        <Languages className="h-4 w-4 text-indigo" />
-        <h3 className="text-xs font-bold uppercase tracking-widest text-indigo">
+    <div className="w-full rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-8 shadow-glass">
+      <div className="flex items-center gap-3 mb-8">
+        <Languages className="h-4 w-4 text-terracotta" />
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-terracotta">
           {t('profile.language', 'Language')}
         </h3>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <button
           data-testid="locale-btn-en"
           onClick={() => handleLanguageChange('en')}
           className={[
-            'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
+            'flex-1 rounded-2xl py-4 text-sm font-black transition-all active:scale-[0.98]',
             locale === 'en'
-              ? 'bg-indigo text-lavender shadow-card'
-              : 'bg-white/60 text-charcoal hover:bg-indigo/5 border border-transparent',
+              ? 'bg-terracotta text-white shadow-card'
+              : 'bg-white/50 text-charcoal/60 hover:bg-white/70 border border-white/80 shadow-sm',
           ].join(' ')}
         >
           {t('profile.english', 'English')}
@@ -42,10 +42,10 @@ export function LanguageSelection() {
           data-testid="locale-btn-fr"
           onClick={() => handleLanguageChange('fr')}
           className={[
-            'flex-1 rounded-2xl py-3 text-sm font-bold transition-all',
+            'flex-1 rounded-2xl py-4 text-sm font-black transition-all active:scale-[0.98]',
             locale === 'fr'
-              ? 'bg-indigo text-lavender shadow-card'
-              : 'bg-white/60 text-charcoal hover:bg-indigo/5 border border-transparent',
+              ? 'bg-terracotta text-white shadow-card'
+              : 'bg-white/50 text-charcoal/60 hover:bg-white/70 border border-white/80 shadow-sm',
           ].join(' ')}
         >
           {t('profile.french', 'French')}

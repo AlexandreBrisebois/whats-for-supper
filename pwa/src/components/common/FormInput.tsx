@@ -41,7 +41,9 @@ export function FormInput({
           'w-full rounded-xl border bg-white px-4 py-2.5 text-charcoal',
           'placeholder:text-charcoal-300 focus:outline-none focus:ring-2',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          error ? 'border-pink focus:ring-pink/40' : 'border-indigo/30 focus:ring-indigo/40',
+          error
+            ? 'border-ochre/40 focus:ring-ochre/20'
+            : 'border-terracotta/20 focus:ring-terracotta/20',
         ].join(' ')}
       />
       {error && (

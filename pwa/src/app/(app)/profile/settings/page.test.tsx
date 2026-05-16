@@ -17,6 +17,13 @@ vi.mock('next/navigation', () => ({
 // @/locales — avoids localStorage access in jsdom
 vi.mock('@/locales', () => ({
   t: (_key: string, defaultValue: string) => defaultValue,
+  tWithVars: (_key: string, defaultValue: string, vars: Record<string, any>) => {
+    let result = defaultValue;
+    for (const [k, v] of Object.entries(vars)) {
+      result = result.replace(`{{${k}}}`, String(v));
+    }
+    return result;
+  },
 }));
 
 // @/components/profile/FamilyManagement — avoid deep dependency tree

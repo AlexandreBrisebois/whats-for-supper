@@ -1,4 +1,4 @@
-# Flow: "Who's Eating?" — Profile Member Selection
+# Flow: "Table's Set!" — Profile Member Selection
 
 **Spec:** `.kiro/specs/00-live-schedule` — R10 (profile page accessibility + dead-end fix)
 **Reviewed by:** The Mère-Designer
@@ -54,7 +54,7 @@ sequenceDiagram
         User->>Profile: Opens app → /profile
         Profile->>API: GET /api/family/members
         API-->>Profile: [{ id, name, avatarUrl }, ...]
-        Profile->>User: Shows member cards\nTitle: "Who's Eating?"\nSubtitle: "Pick a family member to get started."\nNo "Continue as" button (no member selected yet)
+        Profile->>User: Shows member cards\nTitle: "Table's Set!"\nSubtitle: "Pick a family member to get started."\nNo "Continue as" button (no member selected yet)
     end
 
     rect rgb(230, 255, 230)
@@ -89,7 +89,7 @@ sequenceDiagram
         User->>Profile: Navigates to /profile
         Profile->>API: GET /api/family/members
         API-->>Profile: [{ id, name, avatarUrl }, ...]
-        Profile->>User: Shows member cards\nTitle: "Who's Eating?"\nSubtitle: "Pick a family member to get started."\nAlex's card highlighted (selectedFamilyMemberId matches)\nFooter: "Continue as Alex" button (ghost/outline, terracotta, full-width)
+        Profile->>User: Shows member cards\nTitle: "Table's Set!"\nSubtitle: "Pick a family member to get started."\nAlex's card highlighted (selectedFamilyMemberId matches)\nFooter: "Continue as Alex" button (ghost/outline, terracotta, full-width)
     end
 
     alt User wants to continue as Alex
@@ -134,12 +134,12 @@ The escape hatch solves the dead-end problem: a returning user who navigates to 
 
 | Element | Copy |
 |---|---|
-| Page title | "Who's Eating?" |
+| Page title | "Table's Set!" |
 | Subtitle | "Pick a family member to get started." |
 | Escape hatch button | "Continue as [name]" |
 | Hint text colour | `text-charcoal/60` (minimum for WCAG AA on cream background) |
 
-**Mère-Designer ruling on title:** "Family Profile" was corporate jargon. "Who's Eating?" is the actual question the app is answering. It aligns with the app's warmth and directness.
+**Mère-Designer ruling on title:** "Family Profile" was corporate jargon. "Who's Eating?" was the original direct question, but has been refined to **"Table's Set!"** (and **"À table !"** in French) to improve warmth and avoid unintended linguistic connotations in certain dialects. It maintains the "Gather 'round" sanctuary feel.
 
 ---
 
@@ -169,7 +169,7 @@ The SSE connection (`useScheduleStream`) is established at layout level and uses
 
 | Scenario | Test file |
 |---|---|
-| Profile page shows "Who's Eating?" title | `profile.spec.ts` |
+| Profile page shows "Table's Set!" title | `profile.spec.ts` |
 | No member selected → no "Continue as" button | `profile.spec.ts` |
 | Member selected → "Continue as [name]" button visible | `profile.spec.ts` |
 | Tapping "Continue as [name]" navigates to /home | `profile.spec.ts` |

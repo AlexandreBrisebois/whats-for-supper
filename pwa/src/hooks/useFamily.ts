@@ -22,7 +22,10 @@ export function useFamily() {
     hasLoaded,
   } = useFamilyStore();
 
-  const selectedMember = familyMembers?.find((m) => m.id === selectedFamilyMemberId) ?? null;
+  const selectedMember =
+    familyMembers?.find(
+      (m) => String(m.id).toLowerCase() === String(selectedFamilyMemberId).toLowerCase()
+    ) ?? null;
 
   return {
     familyMembers,

@@ -92,8 +92,8 @@
     }
   },
   "profile": {
-    "title": "Qui mange ?",
-    "subtitle": "Changer de membre ou gérer votre groupe.",
+    "title": "À table !",
+    "subtitle": "Choisissez un membre de la famille pour commencer.",
     "activeMember": "Membre actif",
     "language": "Langue",
     "pickSomethingElse": "Trouver quelque chose de rapide",
@@ -106,7 +106,8 @@
     "openMemberMenu": "Ouvrir le menu des membres",
     "selectMember": "Choisir un membre",
     "settings": "Paramètres",
-    "settingsSubtitle": "Préférences famille et application"
+    "settingsSubtitle": "Préférences famille et application",
+    "continueAs": "Continuer en tant que {{name}}"
   },
   "family": {
     "addPrompt": "Vous ne voyez pas votre nom ? Ajoutez-le",

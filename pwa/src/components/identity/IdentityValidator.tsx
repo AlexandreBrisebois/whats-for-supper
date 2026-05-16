@@ -73,9 +73,11 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
             await new Promise((r) => setTimeout(r, 100));
             if (useFamilyStore.getState().selectedFamilyMemberId) return;
 
-            console.log(
-              `[IdentityValidator] Identity missing at ${pathname}, redirecting to /onboarding`
-            );
+            if (process.env.NEXT_PUBLIC_ENVIRONMENT === 'test') {
+              console.log(
+                `[IdentityValidator] Identity missing at ${pathname}, redirecting to /onboarding`
+              );
+            }
           }
 
           router.replace(ROUTES.ONBOARDING);

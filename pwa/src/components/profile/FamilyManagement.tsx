@@ -16,10 +16,10 @@ export function FamilyManagement() {
   return (
     <div className="flex flex-col gap-6">
       {/* Member List & Add Section */}
-      <div className="w-full rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
-        <div className="flex items-center gap-2 mb-6">
-          <Settings2 className="h-4 w-4 text-indigo" />
-          <h3 className="text-xs font-bold uppercase tracking-widest text-indigo">
+      <div className="w-full rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-8 shadow-glass">
+        <div className="flex items-center gap-3 mb-8">
+          <Settings2 className="h-4 w-4 text-terracotta" />
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-terracotta">
             {t('profile.manageFamily', 'Manage Family')}
           </h3>
         </div>

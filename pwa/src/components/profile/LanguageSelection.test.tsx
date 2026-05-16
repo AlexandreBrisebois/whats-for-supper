@@ -49,32 +49,32 @@ describe('LanguageSelection', () => {
     currentLocale = 'en';
   });
 
-  it('English button has bg-indigo and text-lavender when locale is en', () => {
+  it('English button has bg-terracotta and text-white when locale is en', () => {
     currentLocale = 'en';
     render(<LanguageSelection />);
 
     const englishBtn = screen.getByText('English');
     const frenchBtn = screen.getByText('French');
 
-    expect(englishBtn.className.split(' ')).toContain('bg-indigo');
-    expect(englishBtn.className).toContain('text-lavender');
+    expect(englishBtn.className.split(' ')).toContain('bg-terracotta');
+    expect(englishBtn.className).toContain('text-white');
 
-    expect(frenchBtn.className.split(' ')).not.toContain('bg-indigo');
-    expect(frenchBtn.className).not.toContain('text-lavender');
+    expect(frenchBtn.className.split(' ')).not.toContain('bg-terracotta');
+    expect(frenchBtn.className).not.toContain('text-white');
   });
 
-  it('French button has bg-indigo and text-lavender when locale is fr', () => {
+  it('French button has bg-terracotta and text-white when locale is fr', () => {
     currentLocale = 'fr';
     render(<LanguageSelection />);
 
     const frenchBtn = screen.getByText('French');
     const englishBtn = screen.getByText('English');
 
-    expect(frenchBtn.className.split(' ')).toContain('bg-indigo');
-    expect(frenchBtn.className).toContain('text-lavender');
+    expect(frenchBtn.className.split(' ')).toContain('bg-terracotta');
+    expect(frenchBtn.className).toContain('text-white');
 
-    expect(englishBtn.className.split(' ')).not.toContain('bg-indigo');
-    expect(englishBtn.className).not.toContain('text-lavender');
+    expect(englishBtn.className.split(' ')).not.toContain('bg-terracotta');
+    expect(englishBtn.className).not.toContain('text-white');
   });
 
   it('calls setCurrentLocale and updateMemberPreferences when French button is clicked', () => {

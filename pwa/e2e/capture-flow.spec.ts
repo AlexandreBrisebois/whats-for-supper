@@ -13,7 +13,12 @@ const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'test-meal.jpg');
 test.describe('Capture Flow', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
-    const origins = [baseUrl, 'http://localhost:3000', 'http://pwa.wfs.localhost'];
+    const origins = [
+      baseUrl,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://pwa.wfs.localhost',
+    ];
 
     for (const origin of origins) {
       await page
@@ -791,8 +796,11 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     const recipeId = MOCK_IDS.RECIPE_LASAGNA;
     const recipeName = 'Test Lasagna';
 
+    await page.setViewportSize({ width: 390, height: 1000 });
     await page.goto('/home');
-    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
+    // Ensure page is hydrated
+    await expect(page.getByTestId('quick-capture-trigger')).toBeVisible({ timeout: 15_000 });
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 10_000 });
 
     await page.evaluate(
       ({ id, name }) => {
@@ -808,10 +816,15 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await expect(page.locator('[role="status"]').filter({ hasText: recipeName })).toBeVisible();
     await page.locator('[role="status"]').filter({ hasText: recipeName }).click();
 
-    await expect(page.getByTestId('library-toast-add-to-week')).toBeVisible();
-    await page.getByTestId('library-toast-add-to-week').click();
+    // Wait for drawer animation
+    await page.waitForTimeout(1000);
 
-    await expect(page).toHaveURL(/\/planner/);
+    await expect(page.getByTestId('library-toast-add-to-week')).toBeVisible();
+    await page.evaluate(() => {
+      (document.querySelector('[data-testid="library-toast-add-to-week"]') as HTMLElement)?.click();
+    });
+
+    await expect(page).toHaveURL(/\/planner/, { timeout: 15_000 });
   });
 
   // ── RecipeFailureBanner on recipe_failed ─────────────────────────────────

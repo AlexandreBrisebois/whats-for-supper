@@ -234,7 +234,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/50 to-transparent" />
 
-        <div className="absolute bottom-6 left-8 right-8">
+        <div className="absolute bottom-6 left-8 right-20 md:right-8">
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/80 mb-2">
             {t('cook.cooksMode', "Cook's mode")}
           </p>
@@ -276,7 +276,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             e.stopPropagation();
             onClose();
           }}
-          className="absolute top-6 right-6 z-[110] p-3 rounded-full bg-white/80 backdrop-blur-md text-charcoal/40 border border-charcoal/10 hover:bg-white active:scale-90 transition-all shadow-md"
+          className="absolute top-4 right-4 z-[110] p-3 rounded-full bg-white/80 backdrop-blur-md text-charcoal/60 border border-charcoal/10 hover:bg-white active:scale-90 transition-all shadow-md"
         >
           <X size={20} />
         </button>

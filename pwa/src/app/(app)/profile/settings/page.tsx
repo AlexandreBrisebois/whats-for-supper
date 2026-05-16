@@ -14,21 +14,24 @@ export default function SettingsPage() {
   const { selectedFamilyMemberId, updateMemberPreferences } = useFamilyStore();
 
   return (
-    <div className="flex flex-col gap-8 py-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="flex flex-col gap-10 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
+      {/* Decorative background element */}
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-20%,#FDFCF0_0%,#FFFFFF_100%)]" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[150%] h-[40%] -z-10 bg-terracotta/[0.03] blur-[120px] rounded-[100%]" />
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5">
         <button
           onClick={() => router.push(ROUTES.PROFILE)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/40 border border-white/40 shadow-glass hover:bg-white/60 transition-colors active:scale-90"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/40 backdrop-blur-xl border border-white/60 shadow-glass hover:bg-white/60 transition-all active:scale-90"
           aria-label={t('buttons.back', 'Back')}
         >
-          <ChevronLeft className="h-6 w-6 text-indigo" />
+          <ChevronLeft className="h-6 w-6 text-terracotta" />
         </button>
         <div>
-          <h2 className="font-outfit text-2xl font-bold text-charcoal tracking-tight">
+          <h1 className="font-outfit text-3xl font-bold text-charcoal tracking-tight leading-none">
             {t('profile.settings', 'Settings')}
-          </h2>
-          <p className="text-sm font-medium text-charcoal-300">
+          </h1>
+          <p className="mt-1 text-base font-medium text-charcoal/60 leading-relaxed">
             {t('profile.settingsSubtitle', 'Family & app preferences')}
           </p>
         </div>

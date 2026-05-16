@@ -43,10 +43,10 @@ export function FamilyGOTOSettings() {
   }, [loadGoTo]);
 
   // Subscribe to gotoStore — when recipe_ready fires for any of our recipeIds, re-fetch the list
-  const { isReady } = useGotoStore();
+  const readyRecipeIds = useGotoStore((state) => state.readyRecipeIds);
   useEffect(() => {
     const hasAnyPendingNowReady = currentGotos.some(
-      (g: GoToItem) => g.status === 'pending' && isReady(g.recipeId!)
+      (g: GoToItem) => g.status === 'pending' && readyRecipeIds.has(g.recipeId!)
     );
 
     if (hasAnyPendingNowReady) {
@@ -55,7 +55,7 @@ export function FamilyGOTOSettings() {
         setTimeout(() => setShowReadyFlash(false), 2000);
       });
     }
-  }, [isReady, currentGotos, loadGoTo]);
+  }, [readyRecipeIds, currentGotos, loadGoTo]);
 
   const handleDescribeIt = () => {
     setShowSheet(false);
@@ -86,10 +86,12 @@ export function FamilyGOTOSettings() {
 
   return (
     <>
-      <div className="w-full max-w-sm rounded-3xl bg-white/40 backdrop-blur-md border border-white/40 p-6 shadow-glass">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="w-full max-w-sm rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-8 shadow-glass">
+        <div className="flex items-center gap-3 mb-8">
           <Sparkles className="h-4 w-4 text-ochre" />
-          <h3 className="text-xs font-bold uppercase tracking-widest text-ochre">Family GOTO</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-ochre">
+            Family GOTO
+          </h3>
         </div>
 
         <p className="text-sm text-charcoal/60 mb-6">
@@ -218,14 +220,14 @@ export function FamilyGOTOSettings() {
                 {/* Describe it */}
                 <button
                   onClick={handleDescribeIt}
-                  className="flex items-center gap-4 w-full h-16 rounded-2xl bg-indigo/10 px-5 text-left hover:bg-indigo/20 transition-colors"
+                  className="flex items-center gap-4 w-full h-20 rounded-[1.25rem] bg-terracotta/10 px-6 text-left hover:bg-terracotta/20 transition-all active:scale-[0.98]"
                 >
-                  <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-indigo/20 flex items-center justify-center">
-                    <PenLine size={18} className="text-indigo" />
+                  <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-terracotta/20 flex items-center justify-center">
+                    <PenLine size={20} className="text-terracotta" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-charcoal">Describe it</p>
-                    <p className="text-[10px] text-charcoal/40 font-medium">
+                    <p className="text-sm font-black text-charcoal tracking-tight">Describe it</p>
+                    <p className="text-[10px] text-charcoal/40 font-semibold leading-tight">
                       AI synthesizes a full recipe from your description
                     </p>
                   </div>

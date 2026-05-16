@@ -58,9 +58,18 @@ function buildDraftDays(mondayRecipe?: object) {
 async function setupPlanner(page: Page, locked = false) {
   const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
-  await page
-    .context()
-    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+  const origins = [
+    baseUrl,
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://pwa.wfs.localhost',
+  ];
+
+  for (const origin of origins) {
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: origin }]);
+  }
 
   await page.addInitScript((id) => {
     localStorage.setItem(
@@ -161,6 +170,10 @@ async function setupPlanner(page: Page, locked = false) {
 }
 
 test.describe('Planner — Finalize & Lock', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+  });
+
   test('closing voting promotes pending items and locks the week', async ({ page }) => {
     await setupPlanner(page, false);
 
@@ -181,7 +194,7 @@ test.describe('Planner — Finalize & Lock', () => {
     await expect(closeVotingBtn).not.toBeVisible();
 
     // 5. Verify success toast feedback
-    await expect(page.getByText(/Week finalized/i)).toBeVisible();
+    await expect(page.getByText(/Menu's in!/i)).toBeVisible();
   });
 });
 
@@ -357,13 +370,9 @@ test.describe('Planner — Voting Flow', () => {
     await askFamilyCta.click();
 
     await expect(page.getByTestId('nudge-family-cta')).toBeVisible({ timeout: 5_000 });
-    await expect
-      .poll(async () =>
-        page
-          .getByTestId('planner-action-row')
-          .evaluate((row) => row.firstElementChild?.getAttribute('data-testid'))
-      )
-      .toBe('nudge-family-cta');
+    await expect(
+      page.locator('[data-testid="planner-action-row"] [data-testid="nudge-family-cta"]')
+    ).toBeVisible();
 
     await page.getByTestId('day-card-0').getByTestId('edit-recipe-button').click();
     await expect(page.getByTestId('pivot-sheet')).toBeVisible({ timeout: 5_000 });

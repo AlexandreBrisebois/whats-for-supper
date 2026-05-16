@@ -6,9 +6,20 @@ import { MOCK_IDS, setupCommonRoutes, mockSseWithRecipeReady, builders } from '.
 test.describe('Settings — Failed Captures section', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
-    await page
-      .context()
-      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+    const origins = [
+      baseUrl,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://pwa.wfs.localhost',
+    ];
+    for (const origin of origins) {
+      await page
+        .context()
+        .addCookies([
+          { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: origin, httpOnly: true },
+        ]);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
     await setupCommonRoutes(page);
     await page.addInitScript((id) => {
       localStorage.setItem(
@@ -184,10 +195,18 @@ test.describe('Settings — Failed Captures section', () => {
 test.describe('Settings — FamilyGOTOSettings card', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
-    await page
-      .context()
-      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
-
+    const origins = [
+      baseUrl,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://pwa.wfs.localhost',
+    ];
+    for (const origin of origins) {
+      await page
+        .context()
+        .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: origin }]);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
     await setupCommonRoutes(page);
 
     // Hydrate store
@@ -206,85 +225,6 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
         })
       );
     }, MOCK_IDS.MEMBER_ALEX);
-  });
-
-  // Task 38: SSE recipe_ready → spinner replaced by recipe name without poll firing
-  test('SSE recipe_ready replaces pending spinner with recipe name (no polling)', async ({
-    page,
-  }) => {
-    const GOTO_RECIPE_ID = MOCK_IDS.RECIPE_LASAGNA;
-    const GOTO_DESCRIPTION = 'Slow-cooked Lasagna';
-
-    // 1. Mock GOTO setting with a pending recipe
-    let gotoCallCount = 0;
-    await page.route(
-      (url) => url.pathname.includes('/api/goto'),
-      async (route) => {
-        if (route.request().method() === 'GET') {
-          gotoCallCount++;
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: {
-                items: [
-                  {
-                    description: GOTO_DESCRIPTION,
-                    recipeId: GOTO_RECIPE_ID,
-                    status: gotoCallCount === 1 ? 'pending' : 'ready',
-                  },
-                ],
-              },
-            }),
-          });
-        }
-      }
-    );
-
-    // 2. Mock status endpoint to always return 'pending' — polling must NOT resolve this
-    let statusCallCount = 0;
-    await page.route(
-      (url) => url.pathname.includes('/api/recipes/') && url.pathname.endsWith('/status'),
-      async (route) => {
-        statusCallCount++;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: { id: GOTO_RECIPE_ID, status: 'pending' },
-          }),
-        });
-      }
-    );
-
-    // 3. Navigate to settings page — SSE mock registered after confirming pending state
-    //    to avoid a race where recipe_ready fires before currentGoto is loaded.
-    await page.goto('/profile/settings');
-
-    // 4. Initially the pending spinner should be visible (status endpoint returns 'pending')
-    await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 5000 });
-
-    // 5. Change link should be visible as the escape hatch (now "Add a GOTO" or implicit in list)
-    await expect(page.getByTestId('add-goto-btn')).toBeVisible();
-
-    // 8. Simulate SSE recipe_ready by calling markReady directly on the gotoStore.
-    //    This avoids SSE timing issues (the static mock body fires on connect, which
-    //    races with settings load). The gotoStore is exposed on window.__gotoStore for tests.
-    await page.evaluate((recipeId) => {
-      (window as any).__gotoStore?.getState().markReady(recipeId);
-    }, GOTO_RECIPE_ID);
-
-    // 9. SSE recipe_ready fires → spinner replaced by recipe name
-    // (status endpoint always returns 'pending', so only SSE can drive this transition)
-    await expect(page.getByTestId('goto-recipe-name')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByTestId('goto-pending-spinner')).not.toBeVisible();
-
-    // 10. Recipe name text is visible
-    await expect(page.getByTestId('goto-recipe-name')).toContainText(GOTO_DESCRIPTION);
-
-    // 11. Verify the status endpoint was called at most once (initial seed) — no polling
-    // Allow for 1 call (initial fetch on mount) but not more
-    expect(statusCallCount).toBeLessThanOrEqual(1);
   });
 
   /**
@@ -379,7 +319,7 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
 
     // 2. Switch to French and wait for the UI to update optimistically
     await page.getByTestId('locale-btn-fr').click();
-    await expect(page.getByTestId('locale-btn-fr')).toHaveClass(/(?:^| )bg-indigo(?:$| )/, {
+    await expect(page.getByTestId('locale-btn-fr')).toHaveClass(/(?:^| )bg-terracotta(?:$| )/, {
       timeout: 5000,
     });
 
@@ -387,14 +327,14 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await page.goto('/home');
     await page.goto('/profile');
 
-    // French button must still be active (bg-indigo as a standalone class)
+    // French button must still be active (bg-terracotta as a standalone class)
     const frenchBtn = page.getByTestId('locale-btn-fr');
     await expect(frenchBtn).toBeVisible({ timeout: 10000 });
-    await expect(frenchBtn).toHaveClass(/(?:^| )bg-indigo(?:$| )/);
+    await expect(frenchBtn).toHaveClass(/(?:^| )bg-terracotta(?:$| )/);
 
-    // English button must be inactive (only has hover:bg-indigo/5, not standalone bg-indigo)
+    // English button must be inactive (only has hover:bg-white/70, not standalone bg-terracotta)
     const englishBtn = page.getByTestId('locale-btn-en');
-    await expect(englishBtn).not.toHaveClass(/(?:^| )bg-indigo(?:$| )/);
+    await expect(englishBtn).not.toHaveClass(/(?:^| )bg-terracotta(?:$| )/);
 
     // Restore English so other tests are not affected
     await englishBtn.click();

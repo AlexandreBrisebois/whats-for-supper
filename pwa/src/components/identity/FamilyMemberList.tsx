@@ -48,13 +48,13 @@ export function FamilyMemberList({
       ) : (
         <ul className="flex flex-col gap-2" aria-label="Family members">
           {members.map((member) => {
-            const selected = member.id === selectedId;
+            const selected = String(member.id).toLowerCase() === String(selectedId).toLowerCase();
             const isEditing = editingId === member.id;
 
             return (
               <li key={member.id}>
                 {isEditing ? (
-                  <div className="flex w-full items-center gap-2 rounded-2xl bg-white p-2 shadow-card ring-2 ring-indigo">
+                  <div className="flex w-full items-center gap-2 rounded-2xl bg-white p-2 shadow-card ring-2 ring-terracotta/20">
                     <input
                       type="text"
                       value={editName}
@@ -63,7 +63,7 @@ export function FamilyMemberList({
                       aria-label={tWithVars('family.editNameFor', 'Edit name for {name}', {
                         name: member.name,
                       })}
-                      className="flex-1 rounded-xl bg-indigo/5 px-3 py-2 text-sm font-medium text-charcoal focus:outline-none"
+                      className="flex-1 rounded-xl bg-terracotta/5 px-3 py-2 text-sm font-medium text-charcoal focus:outline-none"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleUpdate(member.id);
@@ -75,7 +75,7 @@ export function FamilyMemberList({
                       onClick={() => handleUpdate(member.id)}
                       disabled={isLoading || !editName.trim()}
                       data-testid={`family-member-save-${member.id}`}
-                      className="rounded-full p-2 text-indigo hover:bg-indigo/10 disabled:opacity-30"
+                      className="rounded-full p-2 text-terracotta hover:bg-terracotta/10 disabled:opacity-30"
                       aria-label={t('family.saveName', 'Save name')}
                     >
                       <Check className="h-4 w-4" />
@@ -99,16 +99,17 @@ export function FamilyMemberList({
                       data-testid={`family-member-${member.id}`}
                       className={[
                         'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all',
-                        'focus:outline-none focus:ring-2 focus:ring-indigo/40',
+                        'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all active:scale-[0.98]',
+                        'focus:outline-none focus:ring-2 focus:ring-terracotta/40',
                         selected
-                          ? `bg-indigo text-lavender shadow-card ${onInvite ? 'pr-36' : 'pr-24'}`
-                          : `bg-white text-charcoal shadow-card hover:bg-indigo/10 ${onInvite ? 'pr-28' : 'pr-12'}`,
+                          ? `bg-terracotta text-white shadow-card ${onInvite ? 'pr-36' : 'pr-24'}`
+                          : `bg-white/40 backdrop-blur-xl border border-white/60 text-charcoal shadow-glass hover:bg-white/60 ${onInvite ? 'pr-28' : 'pr-12'}`,
                       ].join(' ')}
                     >
                       <span className="font-medium truncate">{member.name}</span>
                       {selected && (
                         <>
-                          <span className="ml-auto text-xs font-semibold text-lavender/80">
+                          <span className="ml-auto text-xs font-semibold text-white/80">
                             {t('family.selected', 'you')}
                           </span>
                           <span className="sr-only">Selected family member</span>
@@ -128,7 +129,7 @@ export function FamilyMemberList({
                           className={[
                             'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm',
                             selected
-                              ? 'bg-white/20 text-lavender hover:bg-white/30 ring-1 ring-white/30'
+                              ? 'bg-white/20 text-white hover:bg-white/30 ring-1 ring-white/30'
                               : 'bg-terracotta/10 text-terracotta hover:bg-terracotta/20 ring-1 ring-terracotta/20',
                           ].join(' ')}
                         >
@@ -146,8 +147,8 @@ export function FamilyMemberList({
                         className={[
                           'rounded-full p-2.5 transition-all',
                           selected
-                            ? 'opacity-100 text-lavender hover:bg-white/20'
-                            : 'opacity-0 group-hover:opacity-100 text-indigo hover:bg-indigo/10',
+                            ? 'opacity-100 text-white hover:bg-white/20'
+                            : 'opacity-40 hover:opacity-100 text-terracotta hover:bg-terracotta/10',
                         ].join(' ')}
                         aria-label={tWithVars('family.editMember', 'Edit {{name}}', {
                           name: member.name,

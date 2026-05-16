@@ -12,6 +12,13 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, defaultValue: string) => defaultValue,
+  tWithVars: (_key: string, defaultValue: string, vars: Record<string, any>) => {
+    let result = defaultValue;
+    for (const [k, v] of Object.entries(vars)) {
+      result = result.replace(`{{${k}}}`, String(v));
+    }
+    return result;
+  },
 }));
 
 vi.mock('@/hooks/useFamily', () => ({
@@ -19,6 +26,8 @@ vi.mock('@/hooks/useFamily', () => ({
     selectFamilyMember: vi.fn(),
     selectedFamilyMemberId: 'member-123',
     selectedMember: { id: 'member-123', name: 'Test User' },
+    loadFamily: vi.fn(),
+    hasLoaded: true,
   }),
 }));
 

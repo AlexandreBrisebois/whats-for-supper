@@ -22,13 +22,23 @@ test.describe("Cook's Mode and Grocery Flows", () => {
   test.beforeEach(async ({ page }) => {
     // Set identity
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
-    await page.context().addCookies([
-      {
-        name: 'x-family-member-id',
-        value: MOCK_IDS.MEMBER_ALEX,
-        url: baseUrl,
-      },
-    ]);
+    const origins = [
+      baseUrl,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://pwa.wfs.localhost',
+    ];
+    for (const origin of origins) {
+      await page.context().addCookies([
+        {
+          name: 'x-family-member-id',
+          value: MOCK_IDS.MEMBER_ALEX,
+          url: origin,
+          httpOnly: true,
+        },
+      ]);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
     // Set localStorage before first navigation — no goto('/') needed
     await page.addInitScript((id) => {
       localStorage.setItem(
@@ -173,6 +183,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
   test('Grocery checklist persists state across refresh', async ({ page }) => {
     const itemName = 'Tomato Sauce';
 
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.getByTestId('grocery-tab').click();
     const checklist = page.getByTestId('grocery-checklist');
     await expect(checklist).toBeVisible();
@@ -262,6 +273,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     await page.reload();
     await expect(page.locator(`[data-date="${TODAY}"]`)).toBeVisible({ timeout: 15_000 });
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.getByTestId('grocery-tab').click();
     await expect(checklist).toBeVisible({ timeout: 10_000 });
     const refreshedItem = checklist.getByRole('checkbox', { name: itemName, exact: true });
@@ -271,6 +283,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
   });
 
   test('Grocery items grouped by aisle sections', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.getByTestId('grocery-tab').click();
     await expect(page.getByTestId('grocery-checklist')).toBeVisible();
     await expect(page.getByText('Your list is empty')).not.toBeVisible();

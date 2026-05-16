@@ -21,6 +21,13 @@ vi.mock('@/lib/api/captures', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, defaultValue: string) => defaultValue,
+  tWithVars: (_key: string, defaultValue: string, vars: Record<string, any>) => {
+    let result = defaultValue;
+    for (const [k, v] of Object.entries(vars)) {
+      result = result.replace(`{{${k}}}`, String(v));
+    }
+    return result;
+  },
 }));
 
 // ---------------------------------------------------------------------------

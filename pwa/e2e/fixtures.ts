@@ -14,7 +14,7 @@ export const test = base.extend({
     await page.context().clearCookies();
 
     // Inject h_access cookie (Hearth Secret)
-    const secret = process.env.HEARTH_SECRET || 'our family loves cooking';
+    const secret = process.env.HEARTH_SECRET || 'Paris-Montreal';
     if (process.env.DEBUG?.includes('pw:auth')) {
       console.log(
         `[AUTH] Using HEARTH_SECRET: ${secret === 'our family loves cooking' ? 'DEFAULT' : 'CUSTOM'}`
