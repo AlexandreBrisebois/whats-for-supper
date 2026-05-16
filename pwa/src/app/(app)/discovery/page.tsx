@@ -254,7 +254,6 @@ export default function DiscoveryPage() {
     };
   }, []);
 
-
   const handleSwipeRight = (recipeId: string) => {
     // Optimistic Update
     const recipe = recipes.find((r) => r.id === recipeId);
@@ -440,7 +439,6 @@ export default function DiscoveryPage() {
           <div className="text-3xl">♥</div>
         </button>
       </div>
-
     </div>
   );
 }

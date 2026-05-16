@@ -263,9 +263,11 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Flip the card to reveal the back face (skip button is on the back)
     await page.getByTestId('tonight-menu-card').click();
 
-    // Wait for flip animation to complete (back face becomes visible), then click skip
+    // Wait for flip animation to complete (back face becomes visible), then click skip.
+    // force: true bypasses hit-testing — the spring animation can leave the 3D-transformed
+    // front face intercepting pointer events momentarily after the back face is visible.
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').click();
+    await page.getByTestId('skip-tonight-btn').click({ force: true });
 
     // Recovery dialog must open
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
