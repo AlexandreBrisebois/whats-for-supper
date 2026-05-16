@@ -100,6 +100,81 @@ describe('RecipeDetailSheet', () => {
     expect(screen.getByTestId('action-view-original')).toBeVisible();
   });
 
+  it('hides the share button if the recipe has no hero image', async () => {
+    mockGetRecipe.mockResolvedValue({
+      id: '550e8400-e29b-41d4-a716-446655440111',
+      name: 'Non-shareable Pasta',
+      imageUrl: '', // hero missing
+      isReady: true,
+      sourceType: 'url',
+      canReimport: true,
+      imageCount: 0,
+    });
+
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    expect(screen.queryByTestId('recipe-share-btn')).toBeNull();
+  });
+
+  it('hides the share button if the recipe is not ready', async () => {
+    mockGetRecipe.mockResolvedValue({
+      id: '550e8400-e29b-41d4-a716-446655440111',
+      name: 'Pending Pasta',
+      imageUrl: '/api/recipes/550e8400-e29b-41d4-a716-446655440111/hero',
+      isReady: false,
+      sourceType: 'url',
+      canReimport: true,
+      imageCount: 1,
+    });
+
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    expect(screen.queryByTestId('recipe-share-btn')).toBeNull();
+  });
+
+  it('hides the share button if the imageUrl is a placeholder', async () => {
+    mockGetRecipe.mockResolvedValue({
+      id: '550e8400-e29b-41d4-a716-446655440111',
+      name: 'Placeholder Pasta',
+      imageUrl: 'https://example.com/placeholder-recipe.jpg',
+      isReady: true,
+      sourceType: 'url',
+      canReimport: true,
+      imageCount: 1,
+    });
+
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    expect(screen.queryByTestId('recipe-share-btn')).toBeNull();
+  });
+
   it('moves Edit under the gear menu instead of leaving it as a visible header action', async () => {
     render(
       <RecipeDetailSheet

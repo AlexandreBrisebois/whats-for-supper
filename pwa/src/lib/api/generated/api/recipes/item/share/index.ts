@@ -8,14 +8,68 @@ import {
 } from '../../../../models/index';
 // @ts-ignore
 import {
+  type AdditionalDataHolder,
+  type ApiError,
   type BaseRequestBuilder,
   type Parsable,
   type ParsableFactory,
+  type ParseNode,
   type RequestConfiguration,
   type RequestInformation,
   type RequestsMetadata,
+  type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeShareBundleDto400Error}
+ */
+// @ts-ignore
+export function createRecipeShareBundleDto400ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeShareBundleDto400Error;
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeShareBundleDto400Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeShareBundleDto400Error(
+  recipeShareBundleDto400Error: Partial<RecipeShareBundleDto400Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      recipeShareBundleDto400Error.messageEscaped = n.getStringValue();
+    },
+  };
+}
+export interface RecipeShareBundleDto400Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeShareBundleDto400Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeShareBundleDto400Error(
+  writer: SerializationWriter,
+  recipeShareBundleDto400Error: Partial<RecipeShareBundleDto400Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeShareBundleDto400Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', recipeShareBundleDto400Error.messageEscaped);
+  writer.writeAdditionalData(recipeShareBundleDto400Error.additionalData);
+}
 /**
  * Builds and executes requests for operations under /api/recipes/{-id}/share
  */
@@ -24,6 +78,7 @@ export interface ShareRequestBuilder extends BaseRequestBuilder<ShareRequestBuil
    * Export a privacy-scrubbed portable recipe bundle
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeShareBundleDto>}
+   * @throws {RecipeShareBundleDto400Error} error when the service returns a 400 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -48,6 +103,9 @@ export const ShareRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: ShareRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      400: createRecipeShareBundleDto400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeShareBundleDtoFromDiscriminatorValue,
   },

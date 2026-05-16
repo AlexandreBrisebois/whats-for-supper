@@ -225,13 +225,15 @@ public class RecipeService(
                 Name = recipe.Name ?? string.Empty,
                 Description = recipe.Description,
                 Ingredients = DeserializeIngredients(recipe.Ingredients),
-                Instructions = ExtractRecipeInstructionStrings(recipe.RawMetadata),
+                Instructions = MapInstructionsToHowToSections(recipe.RawMetadata),
                 TotalTimeMinutes = ParseTotalTimeMinutes(recipe.TotalTime),
                 Servings = null,
                 SourceUrl = recipe.SourceUrl,
                 SourceName = ExtractSourceName(recipe.RawMetadata),
                 Category = recipe.Category,
                 IsSynthesized = recipe.IsSynthesized,
+                Notes = null, // AC 2.3: Scrubbed for sharing
+                Rating = null, // AC 2.3: Scrubbed for sharing
             },
             Info = new RecipeShareInfoDto
             {
@@ -268,6 +270,8 @@ public class RecipeService(
             TotalTime = FormatTotalTime(bundle.Recipe.TotalTimeMinutes),
             CreatedAt = now,
             UpdatedAt = now,
+            Notes = bundle.Recipe.Notes,
+            Rating = (RecipeRating)(bundle.Recipe.Rating ?? 0),
         };
 
         db.Recipes.Add(recipe);
@@ -285,6 +289,8 @@ public class RecipeService(
             TotalTime = recipe.TotalTime,
             IsSynthesized = bundle.Recipe.IsSynthesized,
             CreatedAt = now,
+            Notes = bundle.Recipe.Notes,
+            Rating = recipe.Rating,
         });
 
         if (bundle.Hero is not null)
@@ -735,10 +741,9 @@ public class RecipeService(
         return null;
     }
 
-    private static List<string> ExtractRecipeInstructionStrings(string? rawMetadataJson)
+    private static List<HowToSectionDto> MapInstructionsToHowToSections(string? rawMetadataJson)
     {
-        if (string.IsNullOrWhiteSpace(rawMetadataJson))
-            return [];
+        if (string.IsNullOrWhiteSpace(rawMetadataJson)) return [];
 
         try
         {
@@ -749,25 +754,70 @@ public class RecipeService(
                 return [];
             }
 
-            return instructions.EnumerateArray()
-                .Select((step, index) =>
+            var result = new List<HowToSectionDto>();
+            var looseSteps = new List<HowToStepDto>();
+
+            foreach (var element in instructions.EnumerateArray())
+            {
+                if (element.ValueKind == JsonValueKind.String)
                 {
-                    if (step.ValueKind == JsonValueKind.String)
-                        return step.GetString();
-
-                    if (step.ValueKind == JsonValueKind.Object)
+                    looseSteps.Add(new HowToStepDto { Text = element.GetString() ?? "" });
+                }
+                else if (element.ValueKind == JsonValueKind.Object)
+                {
+                    if (element.TryGetProperty("@type", out var type) && type.GetString() == "HowToSection")
                     {
-                        if (step.TryGetProperty("text", out var text))
-                            return text.GetString();
-                        if (step.TryGetProperty("name", out var name))
-                            return name.GetString();
-                    }
+                        // Flush accumulated loose steps to a section
+                        if (looseSteps.Count > 0)
+                        {
+                            result.Add(new HowToSectionDto
+                            {
+                                Name = result.Count == 0 ? "Instructions" : $"Section {result.Count + 1}",
+                                ItemListElement = [.. looseSteps]
+                            });
+                            looseSteps.Clear();
+                        }
 
-                    return $"Step {index + 1}";
-                })
-                .Where(static step => !string.IsNullOrWhiteSpace(step))
-                .Select(static step => step!)
-                .ToList();
+                        try
+                        {
+                            var section = JsonSerializer.Deserialize<HowToSectionDto>(element.GetRawText());
+                            if (section != null) result.Add(section);
+                        }
+                        catch { /* skip malformed section */ }
+                    }
+                    else if (element.TryGetProperty("@type", out var stepType) && stepType.GetString() == "HowToStep")
+                    {
+                        if (element.TryGetProperty("text", out var text))
+                        {
+                            looseSteps.Add(new HowToStepDto { Text = text.GetString() ?? "" });
+                        }
+                    }
+                    else
+                    {
+                        // Fallback for objects that might just have 'text' or 'name'
+                        if (element.TryGetProperty("text", out var t))
+                        {
+                            looseSteps.Add(new HowToStepDto { Text = t.GetString() ?? "" });
+                        }
+                        else if (element.TryGetProperty("name", out var n))
+                        {
+                            looseSteps.Add(new HowToStepDto { Text = n.GetString() ?? "" });
+                        }
+                    }
+                }
+            }
+
+            // Flush remaining loose steps (AC 2.2 fallback)
+            if (looseSteps.Count > 0)
+            {
+                result.Add(new HowToSectionDto
+                {
+                    Name = result.Count == 0 ? "Instructions" : "Additional Steps",
+                    ItemListElement = [.. looseSteps]
+                });
+            }
+
+            return result;
         }
         catch
         {

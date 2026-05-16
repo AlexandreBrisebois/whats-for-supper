@@ -449,19 +449,24 @@ export function RecipeDetailSheet({
                 {isCurrentGoto && <span>GOTO</span>}
               </button>
             )}
-            {!isLoading && recipe && !isEditing && (
-              <button
-                type="button"
-                data-testid="recipe-share-btn"
-                aria-label={t('recipes.shareRecipe', 'Share recipe')}
-                title={t('recipes.shareRecipe', 'Share recipe')}
-                onClick={() => void handleShareRecipe()}
-                disabled={isSharingRecipe}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-charcoal shadow-sm transition hover:bg-charcoal/5"
-              >
-                <Share2 size={14} />
-              </button>
-            )}
+            {!isLoading &&
+              recipe &&
+              !isEditing &&
+              recipe.imageUrl &&
+              !recipe.imageUrl.includes('placeholder') &&
+              recipe.isReady && (
+                <button
+                  type="button"
+                  data-testid="recipe-share-btn"
+                  aria-label={t('recipes.shareRecipe', 'Share recipe')}
+                  title={t('recipes.shareRecipe', 'Share recipe')}
+                  onClick={() => void handleShareRecipe()}
+                  disabled={isSharingRecipe}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-charcoal shadow-sm transition hover:bg-charcoal/5"
+                >
+                  <Share2 size={14} />
+                </button>
+              )}
             {!isLoading && recipe && !isEditing && (
               <ActionGearMenu
                 canReimport={recipe.canReimport}

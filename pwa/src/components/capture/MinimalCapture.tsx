@@ -650,6 +650,69 @@ export default function MinimalCapture({
                 {originalCount} original photo{originalCount === 1 ? '' : 's'}
               </p>
             )}
+
+            {parsedBundle.recipe?.instructions && (
+              <div className="flex flex-col gap-4 mt-2">
+                {parsedBundle.recipe.instructions.map((section, sIdx) => (
+                  <div key={sIdx} className="flex flex-col gap-2">
+                    {section.name && (
+                      <h4
+                        data-testid="bundle-preview-section-title"
+                        className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40"
+                      >
+                        {section.name}
+                      </h4>
+                    )}
+                    <ul className="flex flex-col gap-2">
+                      {section.itemListElement?.map((step, tIdx) => (
+                        <li
+                          key={tIdx}
+                          data-testid="bundle-preview-step-text"
+                          className="text-sm text-charcoal/70 leading-relaxed"
+                        >
+                          {step.text}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {parsedBundle.recipe?.notes && (
+              <div className="mt-4 flex flex-col gap-2 rounded-2xl bg-cream/50 p-4 border border-charcoal/5">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">
+                  Notes
+                </h4>
+                <p
+                  data-testid="bundle-preview-notes"
+                  className="text-sm italic text-charcoal/70 leading-relaxed"
+                >
+                  {parsedBundle.recipe.notes}
+                </p>
+              </div>
+            )}
+
+            {parsedBundle.recipe?.rating && parsedBundle.recipe.rating > 0 && (
+              <div className="mt-4 flex flex-col gap-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">
+                  Rating
+                </h4>
+                <div data-testid="bundle-preview-rating" className="flex gap-1">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      size={16}
+                      className={
+                        i < (parsedBundle.recipe?.rating || 0)
+                          ? 'fill-ochre text-ochre'
+                          : 'text-charcoal/10'
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

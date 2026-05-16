@@ -344,7 +344,6 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
     !Array.isArray(recipe.ingredients) ||
     !recipe.ingredients.every((item) => typeof item === 'string') ||
     !Array.isArray(recipe.instructions) ||
-    !recipe.instructions.every((item) => typeof item === 'string') ||
     typeof recipe.isSynthesized !== 'boolean' ||
     !info ||
     typeof info.exportedAtUtc !== 'string' ||
@@ -352,10 +351,35 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
     info.bundleSource !== 'wfs-share' ||
     !originals ||
     !originals.every(isPortableSharedImage) ||
-    (hero !== null && hero !== undefined && !isPortableSharedImage(hero))
+    (hero !== null && hero !== undefined && hero.base64 !== null && !isPortableSharedImage(hero))
   ) {
     throw new Error('This .recipe file is not valid.');
   }
+
+  // Validate structured instructions
+  if (
+    !Array.isArray(recipe.instructions) ||
+    !recipe.instructions.every(
+      (section) =>
+        typeof section === 'object' &&
+        section !== null &&
+        Array.isArray(section.itemListElement) &&
+        section.itemListElement.every(
+          (step: any) => typeof step === 'object' && step !== null && typeof step.text === 'string'
+        )
+    )
+  ) {
+    throw new Error('This .recipe file is not valid.');
+  }
+
+  const structuredInstructions = recipe.instructions.map((section: any) => ({
+    '@type': 'HowToSection',
+    name: typeof section.name === 'string' ? section.name : null,
+    itemListElement: section.itemListElement.map((step: any) => ({
+      '@type': 'HowToStep',
+      text: step.text,
+    })),
+  }));
 
   return {
     version: bundle.version,
@@ -363,7 +387,9 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
       name: recipe.name,
       description: typeof recipe.description === 'string' ? recipe.description : null,
       ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
+      instructions: structuredInstructions,
+      notes: typeof recipe.notes === 'string' ? recipe.notes : null,
+      rating: typeof recipe.rating === 'number' ? recipe.rating : null,
       totalTimeMinutes:
         typeof recipe.totalTimeMinutes === 'number' ? recipe.totalTimeMinutes : null,
       servings: typeof recipe.servings === 'number' ? recipe.servings : null,
@@ -396,6 +422,8 @@ function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBundleDto
       sourceUrl: bundle.recipe?.sourceUrl ?? null,
       sourceName: bundle.recipe?.sourceName ?? null,
       category: bundle.recipe?.category ?? null,
+      notes: bundle.recipe?.notes ?? null,
+      rating: bundle.recipe?.rating ?? null,
       isSynthesized: bundle.recipe?.isSynthesized ?? false,
     },
     info: {
@@ -417,7 +445,8 @@ function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBundleDto
 function toPortableSharedImage(image: SharedImageDto): {
   mimeType: string | null;
   base64: string | null;
-} {
+} | null {
+  if (!image || !image.base64) return null;
   return {
     mimeType: image.mimeType ?? null,
     base64: image.base64 ?? null,

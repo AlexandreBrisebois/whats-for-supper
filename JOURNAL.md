@@ -3,6 +3,46 @@
 This file contains the historical session logs and technical archives for the "What's For Supper" project. Refer to this only when deep-diving into historical technical context or past decisions that have not yet been promoted to ADRs.
 
 ---
+
+### [2026-05-16] Session — High-Fidelity Recipe Sharing — Preview UI
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+Updated the PWA bundle preview interface to support structured instructions (Schema.org alignment) and optional recipe metadata.
+
+**Key Achievements:**
+1. **Structured Instruction Rendering**: Updated `MinimalCapture.tsx` to correctly render `HowToSection` headings and `HowToStep` lists using standard semantic HTML (h4, ul, li).
+2. **Standardized Test-IDs**: Aligned the UI with `design.md` by implementing `bundle-preview-section-title` and `bundle-preview-step-text` data-testids.
+3. **Optional Notes Preview**: Added a dedicated notes section to the bundle preview (`bundle-preview-notes`) that only renders when `notes` are present in the import bundle.
+4. **Resilient Testing**: Updated `MinimalCapture.recipe-import.test.tsx` to verify the new structured layout and added a regression test for optional notes rendering.
+
+#### Verification
+- `task test:unit` — ✅ Passed.
+- `task agent:drift` — ✅ No drift detected.
+
+---
+
+### [2026-05-15] Session — iPad Planner & CNF/Health Alignment
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+Transformed the Planner into a high-utility dashboard for iPad/Desktop and finalized cross-spec alignment for CNF/Health features.
+
+**Key Achievements:**
+1. **iPad "Super Power" Planner**: Implemented 2-column layout (60/40) for large screens with embedded scrolling grocery list.
+2. **CNF/Health Decisions**: Resolved multiple architectural decisions (R1-R10) regarding explainability, confidence mapping, provider strategies, and allergy semantics.
+3. **Recipe Purge Hardening**: Fixed 500 errors during hard purge by ensuring explicit cleanup of dependent search docs, votes, and calendar events.
+4. **Hero Actions**: Integrated photo capture and AI regeneration into the recipe detail sheet.
+
+#### Verification
+- `task test:api` — ✅ Passed.
+- `task agent:drift` — ✅ No drift detected.
+- `task gate` — ✅ Passed.
+
+---
+
  
 ### [2026-05-14] Session — Multi-Recipe GOTO Rotation
 **Status**: COMPLETED ✅

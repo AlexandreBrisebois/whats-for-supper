@@ -414,6 +414,23 @@ components:
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
 
+    HowToStepDto:
+      type: object
+      required: ["@type", text]
+      properties:
+        "@type": { type: string, enum: [HowToStep], default: HowToStep }
+        text: { type: string }
+
+    HowToSectionDto:
+      type: object
+      required: ["@type", itemListElement]
+      properties:
+        "@type": { type: string, enum: [HowToSection], default: HowToSection }
+        name: { type: [string, 'null'] }
+        itemListElement:
+          type: array
+          items: { $ref: '#/components/schemas/HowToStepDto' }
+
     ImportedRecipeDto:
       type: object
       required: [name, ingredients, instructions, isSynthesized]
@@ -425,7 +442,9 @@ components:
           items: { type: string }
         instructions:
           type: array
-          items: { type: string }
+          items: { $ref: '#/components/schemas/HowToSectionDto' }
+        notes: { type: [string, 'null'] }
+        rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
         totalTimeMinutes: { type: [integer, 'null'] }
         servings: { type: [integer, 'null'] }
         sourceUrl: { type: [string, 'null'], format: uri }
@@ -1557,28 +1576,32 @@ paths:
                   ingredients:
                     - '300g spaghetti'
                     - '2 cups tomato sauce'
-                    - '1/4 cup basil'
                   instructions:
-                    - 'Boil the pasta until al dente.'
-                    - 'Warm the sauce and toss with pasta.'
-                  prepTimeMinutes: 10
-                  cookTimeMinutes: 15
-                  totalTimeMinutes: 25
-                  servings: 4
+                    - name: 'Instructions'
+                      itemListElement:
+                        - text: 'Boil pasta'
+                        - text: 'Finish in sauce'
                   sourceUrl: 'https://example.com/tomato-pasta'
                   sourceName: Example Kitchen
                   category: Dinner
                   isSynthesized: false
-                  info:
-                    exportedAtUtc: '2026-05-14T16:00:00Z'
-                    bundleSource: wfs-share
-                    appVersion: '0.1.0'
-                  hero:
-                    mimeType: image/jpeg
-                    base64: '/9j/4AAQSkZJRgABAQAAAQABAAD'
-                  originals:
-                    - mimeType: image/jpeg
-                      base64: '/9j/4AAQSkZJRgABAQAAAQABAAD'
+                info:
+                  exportedAtUtc: '2026-05-14T16:00:00Z'
+                  bundleSource: wfs-share
+                hero:
+                  mimeType: image/jpeg
+                  base64: '/9j/4AAQSkZJRgABAQAAAQABAAD'
+                originals: []
+        '400':
+          description: Bad Request (e.g. Missing hero image)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example:
+                message: "Recipe must have a hero image before it can be shared."
 
   /api/recipes/import-bundle:
     post:

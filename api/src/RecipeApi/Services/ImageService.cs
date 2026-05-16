@@ -55,6 +55,9 @@ public class ImageService(IRecipeStore recipeStore, ILogger<ImageService> logger
         return result.Value;
     }
 
+    public Task<bool> HasHeroImage(Guid recipeId)
+        => recipeStore.HasHeroImageAsync(recipeId);
+
     /// <summary>Writes the recipe.info metadata file for a new recipe.</summary>
     public Task CreateRecipeInfo(RecipeInfo info)
         => recipeStore.WriteInfoAsync(info);

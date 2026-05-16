@@ -313,6 +313,28 @@ export function createHealthCheckResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {HowToSectionDto}
+ */
+// @ts-ignore
+export function createHowToSectionDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoHowToSectionDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {HowToStepDto}
+ */
+// @ts-ignore
+export function createHowToStepDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoHowToStepDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ImportedRecipeDto}
  */
 // @ts-ignore
@@ -1408,6 +1430,51 @@ export function deserializeIntoHealthCheckResponse_checks(
 }
 /**
  * The deserialization information for the current model
+ * @param HowToSectionDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoHowToSectionDto(
+  howToSectionDto: Partial<HowToSectionDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    itemListElement: (n) => {
+      howToSectionDto.itemListElement = n.getCollectionOfObjectValues<HowToStepDto>(
+        createHowToStepDtoFromDiscriminatorValue
+      );
+    },
+    name: (n) => {
+      howToSectionDto.name = n.getStringValue();
+    },
+    '@type': (n) => {
+      howToSectionDto.type =
+        n.getEnumValue<HowToSectionDto_Type>(HowToSectionDto_TypeObject) ??
+        HowToSectionDto_TypeObject.HowToSection;
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param HowToStepDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoHowToStepDto(
+  howToStepDto: Partial<HowToStepDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    text: (n) => {
+      howToStepDto.text = n.getStringValue();
+    },
+    '@type': (n) => {
+      howToStepDto.type =
+        n.getEnumValue<HowToStepDto_Type>(HowToStepDto_TypeObject) ??
+        HowToStepDto_TypeObject.HowToStep;
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param ImportedRecipeDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -1426,13 +1493,21 @@ export function deserializeIntoImportedRecipeDto(
       importedRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
     },
     instructions: (n) => {
-      importedRecipeDto.instructions = n.getCollectionOfPrimitiveValues<string>();
+      importedRecipeDto.instructions = n.getCollectionOfObjectValues<HowToSectionDto>(
+        createHowToSectionDtoFromDiscriminatorValue
+      );
     },
     isSynthesized: (n) => {
       importedRecipeDto.isSynthesized = n.getBooleanValue();
     },
     name: (n) => {
       importedRecipeDto.name = n.getStringValue();
+    },
+    notes: (n) => {
+      importedRecipeDto.notes = n.getStringValue();
+    },
+    rating: (n) => {
+      importedRecipeDto.rating = n.getNumberValue();
     },
     servings: (n) => {
       importedRecipeDto.servings = n.getNumberValue();
@@ -3147,6 +3222,34 @@ export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
   timestamp?: Date | null;
 }
 export interface HealthCheckResponse_checks extends AdditionalDataHolder, Parsable {}
+export interface HowToSectionDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The itemListElement property
+   */
+  itemListElement?: HowToStepDto[] | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+  /**
+   * The Type property
+   */
+  type?: HowToSectionDto_Type | null;
+}
+export type HowToSectionDto_Type =
+  (typeof HowToSectionDto_TypeObject)[keyof typeof HowToSectionDto_TypeObject];
+export interface HowToStepDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The text property
+   */
+  text?: string | null;
+  /**
+   * The Type property
+   */
+  type?: HowToStepDto_Type | null;
+}
+export type HowToStepDto_Type =
+  (typeof HowToStepDto_TypeObject)[keyof typeof HowToStepDto_TypeObject];
 export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The category property
@@ -3163,7 +3266,7 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The instructions property
    */
-  instructions?: string[] | null;
+  instructions?: HowToSectionDto[] | null;
   /**
    * The isSynthesized property
    */
@@ -3172,6 +3275,14 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
    * The name property
    */
   name?: string | null;
+  /**
+   * The notes property
+   */
+  notes?: string | null;
+  /**
+   * The rating property
+   */
+  rating?: number | null;
   /**
    * The servings property
    */
@@ -4285,6 +4396,55 @@ export function serializeHealthCheckResponse_checks(
 }
 /**
  * Serializes information the current object
+ * @param HowToSectionDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeHowToSectionDto(
+  writer: SerializationWriter,
+  howToSectionDto: Partial<HowToSectionDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!howToSectionDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<HowToStepDto>(
+    'itemListElement',
+    howToSectionDto.itemListElement,
+    serializeHowToStepDto
+  );
+  writer.writeStringValue('name', howToSectionDto.name);
+  writer.writeEnumValue<HowToSectionDto_Type>(
+    '@type',
+    howToSectionDto.type ?? HowToSectionDto_TypeObject.HowToSection
+  );
+  writer.writeAdditionalData(howToSectionDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param HowToStepDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeHowToStepDto(
+  writer: SerializationWriter,
+  howToStepDto: Partial<HowToStepDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!howToStepDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('text', howToStepDto.text);
+  writer.writeEnumValue<HowToStepDto_Type>(
+    '@type',
+    howToStepDto.type ?? HowToStepDto_TypeObject.HowToStep
+  );
+  writer.writeAdditionalData(howToStepDto.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param ImportedRecipeDto The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -4301,9 +4461,15 @@ export function serializeImportedRecipeDto(
   writer.writeStringValue('category', importedRecipeDto.category);
   writer.writeStringValue('description', importedRecipeDto.description);
   writer.writeCollectionOfPrimitiveValues<string>('ingredients', importedRecipeDto.ingredients);
-  writer.writeCollectionOfPrimitiveValues<string>('instructions', importedRecipeDto.instructions);
+  writer.writeCollectionOfObjectValues<HowToSectionDto>(
+    'instructions',
+    importedRecipeDto.instructions,
+    serializeHowToSectionDto
+  );
   writer.writeBooleanValue('isSynthesized', importedRecipeDto.isSynthesized);
   writer.writeStringValue('name', importedRecipeDto.name);
+  writer.writeStringValue('notes', importedRecipeDto.notes);
+  writer.writeNumberValue('rating', importedRecipeDto.rating);
   writer.writeNumberValue('servings', importedRecipeDto.servings);
   writer.writeStringValue('sourceName', importedRecipeDto.sourceName);
   writer.writeStringValue('sourceUrl', importedRecipeDto.sourceUrl);
@@ -6130,6 +6296,12 @@ export const CaptureFailureDto_statusObject = {
 export const GoToItem_statusObject = {
   Pending: 'pending',
   Ready: 'ready',
+} as const;
+export const HowToSectionDto_TypeObject = {
+  HowToSection: 'HowToSection',
+} as const;
+export const HowToStepDto_TypeObject = {
+  HowToStep: 'HowToStep',
 } as const;
 export const ManagementTaskStatusResponse_statusObject = {
   Pending: 'Pending',

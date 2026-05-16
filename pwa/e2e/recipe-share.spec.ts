@@ -91,6 +91,71 @@ test.describe('Recipe Share And Capture', () => {
     await expect(page.getByTestId('action-edit-recipe')).toBeVisible();
   });
 
+  test('share button is hidden if hero image is missing or recipe is not ready', async ({
+    page,
+  }) => {
+    await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          recipe: builders.recipe({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name: 'Incomplete Recipe',
+            imageUrl: '', // Missing hero
+            isReady: true,
+          }),
+        }),
+      });
+    });
+
+    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await expect(page.getByTestId('recipe-share-btn')).not.toBeVisible();
+  });
+
+  test('share button is hidden if recipe is not ready', async ({ page }) => {
+    await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          recipe: builders.recipe({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name: 'Pending Recipe',
+            imageUrl: 'https://example.com/hero.jpg',
+            isReady: false,
+          }),
+        }),
+      });
+    });
+
+    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await expect(page.getByTestId('recipe-share-btn')).not.toBeVisible();
+  });
+
+  test('share button is hidden if imageUrl is a placeholder', async ({ page }) => {
+    await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          recipe: builders.recipe({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name: 'Placeholder Recipe',
+            imageUrl: '/placeholder-recipe.jpg',
+            isReady: true,
+          }),
+        }),
+      });
+    });
+
+    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await expect(page.getByTestId('recipe-share-btn')).not.toBeVisible();
+  });
+
   test('manual .recipe import starts on capture, shows review, and exits back home', async ({
     page,
   }) => {

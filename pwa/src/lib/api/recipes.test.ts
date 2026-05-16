@@ -62,7 +62,7 @@ vi.mock('./api-client', () => ({
   },
 }));
 
-import { createRecipe, searchRecipes } from './recipes';
+import { createRecipe, searchRecipes, parseRecipeBundleFile } from './recipes';
 
 describe('createRecipe', () => {
   beforeEach(() => {
@@ -235,5 +235,165 @@ describe('searchRecipes', () => {
 
     const emptyMarker = await searchRecipes({ query: 'missing', mode: 'standard', limit: 5 });
     expect(emptyMarker.topPick).toBeNull();
+  });
+});
+
+describe('parseRecipeBundleFile', () => {
+
+  it('preserves already structured HowToSections', async () => {
+    const structuredBundle = {
+      version: '1.1',
+      recipe: {
+        name: 'Structured Recipe',
+        ingredients: ['Item 1'],
+        instructions: [
+          {
+            name: 'The Base',
+            itemListElement: [{ text: 'Mix it' }],
+          },
+        ],
+        isSynthesized: true,
+        notes: 'Good for lunch',
+        rating: 3,
+      },
+      info: {
+        exportedAtUtc: '2026-05-15T10:00:00Z',
+        bundleSource: 'wfs-share',
+      },
+      hero: null,
+      originals: [],
+    };
+
+    const file = new File([JSON.stringify(structuredBundle)], 'structured.recipe', {
+      type: 'application/json',
+    });
+    const result = await parseRecipeBundleFile(file);
+
+    expect(result.recipe?.instructions).toEqual([
+      {
+        '@type': 'HowToSection',
+        name: 'The Base',
+        itemListElement: [
+          {
+            '@type': 'HowToStep',
+            text: 'Mix it',
+          },
+        ],
+      },
+    ]);
+    expect(result.recipe?.notes).toBe('Good for lunch');
+    expect(result.recipe?.rating).toBe(3);
+  });
+
+  it('throws error for invalid files', async () => {
+    const file = new File(['not-json'], 'broken.recipe', { type: 'application/json' });
+    await expect(parseRecipeBundleFile(file)).rejects.toThrow(
+      'This .recipe file could not be read.'
+    );
+  });
+
+  it('throws error if structured instructions are missing itemListElement', async () => {
+    const invalidBundle = {
+      version: '1.0',
+      recipe: {
+        name: 'Invalid Recipe',
+        ingredients: ['Item 1'],
+        instructions: [
+          {
+            name: 'Missing Steps',
+            // itemListElement is missing
+          },
+        ],
+        isSynthesized: false,
+      },
+      info: {
+        exportedAtUtc: '2026-05-14T16:00:00Z',
+        bundleSource: 'wfs-share',
+      },
+      hero: null,
+      originals: [],
+    };
+
+    const file = new File([JSON.stringify(invalidBundle)], 'invalid.recipe', {
+      type: 'application/json',
+    });
+    await expect(parseRecipeBundleFile(file)).rejects.toThrow('This .recipe file is not valid.');
+  });
+
+  it('handles @type field in structured instructions', async () => {
+    const structuredBundle = {
+      version: '1.0',
+      recipe: {
+        name: 'Type Recipe',
+        ingredients: ['Item 1'],
+        instructions: [
+          {
+            '@type': 'HowToSection',
+            name: 'Section 1',
+            itemListElement: [
+              {
+                '@type': 'HowToStep',
+                text: 'Step 1',
+              },
+            ],
+          },
+        ],
+        isSynthesized: false,
+      },
+      info: {
+        exportedAtUtc: '2026-05-14T16:00:00Z',
+        bundleSource: 'wfs-share',
+      },
+      hero: null,
+      originals: [],
+    };
+
+    const file = new File([JSON.stringify(structuredBundle)], 'type.recipe', {
+      type: 'application/json',
+    });
+    const result = await parseRecipeBundleFile(file);
+
+    expect(result.recipe?.instructions?.[0]).toMatchObject({
+      '@type': 'HowToSection',
+      name: 'Section 1',
+    });
+    expect(result.recipe?.instructions?.[0].itemListElement?.[0]).toMatchObject({
+      '@type': 'HowToStep',
+      text: 'Step 1',
+    });
+  });
+
+  it('is resilient to missing optional fields in recipe', async () => {
+    const minimalBundle = {
+      version: '1.0',
+      recipe: {
+        name: 'Minimal Recipe',
+        ingredients: ['Item 1'],
+        instructions: [
+          {
+            name: 'Instructions',
+            itemListElement: [{ text: 'Step 1' }],
+          },
+        ],
+        isSynthesized: false,
+        // Optional fields like description, notes, rating are missing
+      },
+      info: {
+        exportedAtUtc: '2026-05-14T16:00:00Z',
+        bundleSource: 'wfs-share',
+      },
+      hero: null,
+      originals: [],
+    };
+
+    const file = new File([JSON.stringify(minimalBundle)], 'minimal.recipe', {
+      type: 'application/json',
+    });
+    const result = await parseRecipeBundleFile(file);
+
+    expect(result.recipe?.name).toBe('Minimal Recipe');
+    expect(result.recipe?.notes).toBeNull();
+    expect(result.recipe?.rating).toBeNull();
+    expect(result.recipe?.description).toBeNull();
   });
 });

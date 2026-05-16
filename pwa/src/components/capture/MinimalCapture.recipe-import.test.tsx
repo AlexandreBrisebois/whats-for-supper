@@ -109,7 +109,12 @@ describe('MinimalCapture recipe import', () => {
           recipe: {
             name: 'Imported Shared Recipe',
             ingredients: ['1 onion'],
-            instructions: ['Simmer'],
+            instructions: [
+              {
+                name: 'Main Steps',
+                itemListElement: [{ text: 'Simmer' }, { text: 'Serve' }],
+              },
+            ],
             isSynthesized: true,
           },
           info: {
@@ -126,10 +131,58 @@ describe('MinimalCapture recipe import', () => {
     );
 
     fireEvent.change(input, { target: { files: [file] } });
-
     expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
+
+    const sections = screen.getAllByTestId('bundle-preview-section-title');
+    expect(sections[0]).toHaveTextContent('Main Steps');
+
+    const steps = screen.getAllByTestId('bundle-preview-step-text');
+    expect(steps[0]).toHaveTextContent('Simmer');
+    expect(steps[1]).toHaveTextContent('Serve');
+
     expect(screen.getByTestId('accept-bundle-btn')).toBeVisible();
     expect(screen.getByTestId('reject-bundle-btn')).toBeVisible();
+  });
+
+  it('renders optional notes in the bundle preview if present', async () => {
+    render(<MinimalCapture />);
+
+    const input = screen.getByTestId('import-recipe-file-input') as HTMLInputElement;
+    const file = new File(
+      [
+        JSON.stringify({
+          version: '1.0',
+          recipe: {
+            name: 'Backup Recipe',
+            ingredients: ['1 onion'],
+            instructions: [
+              {
+                name: 'Main Steps',
+                itemListElement: [{ text: 'Simmer' }],
+              },
+            ],
+            notes: 'This is a personal note.',
+            isSynthesized: true,
+          },
+          info: {
+            exportedAtUtc: '2026-05-14T16:00:00Z',
+            bundleSource: 'wfs-share',
+            appVersion: '0.1.0',
+          },
+          hero: null,
+          originals: [],
+        }),
+      ],
+      'backup.recipe',
+      { type: 'application/json' }
+    );
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
+    expect(screen.getByTestId('bundle-preview-notes')).toHaveTextContent(
+      'This is a personal note.'
+    );
   });
 
   it('shows bundle-import-error for invalid bundle files', async () => {
@@ -156,7 +209,12 @@ describe('MinimalCapture recipe import', () => {
           recipe: {
             name: 'Imported Shared Recipe',
             ingredients: ['1 onion'],
-            instructions: ['Simmer'],
+            instructions: [
+              {
+                name: 'Main Steps',
+                itemListElement: [{ text: 'Simmer' }, { text: 'Serve' }],
+              },
+            ],
             isSynthesized: true,
           },
           info: {

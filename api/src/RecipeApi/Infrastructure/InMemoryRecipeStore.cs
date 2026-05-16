@@ -86,6 +86,9 @@ public sealed class InMemoryRecipeStore : IRecipeStore
         return Task.FromResult<(Stream, string)?>(null);
     }
 
+    public Task<bool> HasHeroImageAsync(Guid recipeId, CancellationToken ct = default)
+        => Task.FromResult(_images.ContainsKey(ImageKey(recipeId, "hero.jpg")));
+
     public Task<bool> HasOriginalImagesAsync(Guid recipeId, CancellationToken ct = default)
     {
         var prefix = $"{recipeId}/original/";

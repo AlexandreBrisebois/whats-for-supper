@@ -77,6 +77,11 @@ public class RecipeController(
 
         try
         {
+            if (!await imageService.HasHeroImage(id))
+            {
+                return BadRequest(new { message = "Recipe must have a hero image before it can be shared." });
+            }
+
             var result = await recipeService.ExportRecipeShareBundle(id);
             return Ok(result);
         }

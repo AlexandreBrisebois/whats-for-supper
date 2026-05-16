@@ -33,6 +33,8 @@ export const MOCK_IDS = {
   RECIPE_LIST_12: '660e8400-e29b-41d4-a716-446655440112',
   RECIPE_LIST_13: '660e8400-e29b-41d4-a716-446655440113',
   RECIPE_GOTO_STUB: '660e8400-e29b-41d4-a716-446655440020', // stub created by POST /api/recipes/describe
+  RECIPE_BACKUP: '660e8400-e29b-41d4-a716-446655440021', // recipe for backup fidelity testing
+  RECIPE_SHARED: '660e8400-e29b-41d4-a716-446655440022', // recipe for share scrubbing testing
 
   // Inventory captures (Task 13)
   INVENTORY_CAPTURE: '770e8400-e29b-41d4-a716-446655440030',

@@ -27,6 +27,7 @@ public interface IRecipeStore
     Task<(Stream Stream, string ContentType)?> ReadOriginalImageAsync(Guid recipeId, int index, CancellationToken ct = default);
     Task SaveHeroImageAsync(Guid recipeId, Stream source, CancellationToken ct = default);
     Task<(Stream Stream, string ContentType)?> ReadHeroImageAsync(Guid recipeId, CancellationToken ct = default);
+    Task<bool> HasHeroImageAsync(Guid recipeId, CancellationToken ct = default);
     Task<bool> HasOriginalImagesAsync(Guid recipeId, CancellationToken ct = default);
 
     // ── lifecycle ────────────────────────────────────────────────────────────

@@ -110,11 +110,11 @@ export const builders = {
                 '@type': 'HowToSection',
                 name: 'Instructions',
                 itemListElement: [
-                  { '@type': 'HowToStep', text: 'Chop the onions and mince the garlic.' },
-                  { '@type': 'HowToStep', text: 'Saute until golden and fragrant.' },
+                  { '@type': 'HowToStep', text: 'Step 1' },
+                  { '@type': 'HowToStep', text: 'Step 2' },
                 ],
               },
-            ] as unknown as UntypedNode,
+            ] as any,
             isReady: true,
             createdAt: new Date(),
           };
@@ -177,13 +177,20 @@ export const builders = {
       name: 'Mock Recipe',
       description: 'A delicious mock recipe for testing.',
       ingredients: ['Ingredient 1', 'Ingredient 2'],
-      instructions: ['Step 1', 'Step 2'],
+      instructions: [
+        {
+          name: 'Instructions',
+          itemListElement: [{ text: 'Step 1' }, { text: 'Step 2' }],
+        },
+      ],
       totalTimeMinutes: 30,
       servings: 4,
       sourceUrl: 'https://example.com/recipe',
       sourceName: 'Example Kitchen',
       category: 'Italian',
       isSynthesized: false,
+      notes: null,
+      rating: null,
     },
     info: {
       exportedAtUtc: new Date('2026-05-14T16:00:00Z'),

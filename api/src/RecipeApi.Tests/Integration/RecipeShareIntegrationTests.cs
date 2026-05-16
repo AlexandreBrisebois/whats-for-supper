@@ -91,7 +91,11 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
         Assert.Equal("https://example.com/shareable-pasta", exportedRecipe.GetProperty("sourceUrl").GetString());
         Assert.Equal("Dinner", exportedRecipe.GetProperty("category").GetString());
         Assert.False(exportedRecipe.GetProperty("isSynthesized").GetBoolean());
-        Assert.Equal(2, exportedRecipe.GetProperty("instructions").GetArrayLength());
+        Assert.Equal(1, exportedRecipe.GetProperty("instructions").GetArrayLength());
+        var section = exportedRecipe.GetProperty("instructions")[0];
+        Assert.Equal("Instructions", section.GetProperty("name").GetString());
+        Assert.Equal(2, section.GetProperty("itemListElement").GetArrayLength());
+        Assert.Equal("Boil pasta", section.GetProperty("itemListElement")[0].GetProperty("text").GetString());
 
         Assert.False(exportedRecipe.TryGetProperty("addedBy", out _));
         Assert.False(exportedRecipe.TryGetProperty("rating", out _));
@@ -105,6 +109,148 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetShareBundle_PreservesStructuredInstructions_WhenPresentInRawMetadata()
+    {
+        var recipeId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Name = "High Fidelity Pasta",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                RawMetadata = """
+                {
+                    "recipeInstructions": [
+                        {
+                            "@type": "HowToSection",
+                            "name": "The Sauce",
+                            "itemListElement": [
+                                { "@type": "HowToStep", "text": "Sauté garlic" },
+                                { "@type": "HowToStep", "text": "Add tomatoes" }
+                            ]
+                        },
+                        {
+                            "@type": "HowToSection",
+                            "name": "The Pasta",
+                            "itemListElement": [
+                                { "@type": "HowToStep", "text": "Boil water" },
+                                { "@type": "HowToStep", "text": "Cook pasta" }
+                            ]
+                        }
+                    ]
+                }
+                """,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await db.SaveChangesAsync();
+
+            var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
+            await store.SaveHeroImageAsync(recipeId, new MemoryStream(MinimalJpeg));
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/api/recipes/{recipeId}/share");
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var exportedRecipe = doc.RootElement.GetProperty("recipe");
+        var instructions = exportedRecipe.GetProperty("instructions");
+
+        Assert.Equal(2, instructions.GetArrayLength());
+        Assert.Equal("The Sauce", instructions[0].GetProperty("name").GetString());
+        Assert.Equal(2, instructions[0].GetProperty("itemListElement").GetArrayLength());
+        Assert.Equal("Sauté garlic", instructions[0].GetProperty("itemListElement")[0].GetProperty("text").GetString());
+        Assert.Equal("The Pasta", instructions[1].GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task GetShareBundle_WrapsFlatInstructions_InDefaultSection()
+    {
+        var recipeId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Name = "Flat Instruction Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                RawMetadata = """{"recipeInstructions":["Step 1","Step 2"]}""",
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await db.SaveChangesAsync();
+
+            var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
+            await store.SaveHeroImageAsync(recipeId, new MemoryStream(MinimalJpeg));
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/api/recipes/{recipeId}/share");
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var exportedRecipe = doc.RootElement.GetProperty("recipe");
+        var instructions = exportedRecipe.GetProperty("instructions");
+
+        Assert.Equal(1, instructions.GetArrayLength());
+        Assert.Equal("Instructions", instructions[0].GetProperty("name").GetString());
+        Assert.Equal(2, instructions[0].GetProperty("itemListElement").GetArrayLength());
+        Assert.Equal("Step 1", instructions[0].GetProperty("itemListElement")[0].GetProperty("text").GetString());
+    }
+
+    [Fact]
+    public async Task GetShareBundle_ReturnsBadRequest_IfHeroIsMissing()
+    {
+        var recipeId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Name = "No Hero Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await db.SaveChangesAsync();
+            
+            // NOTE: We do NOT save a hero image here.
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/api/recipes/{recipeId}/share");
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.Contains("hero image", json);
+    }
+
+    [Fact]
     public async Task ImportBundle_WithUnsupportedVersion_ReturnsBadRequest()
     {
         var request = BuildBundleRequest(
@@ -115,7 +261,10 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
                 {
                     name = "Imported",
                     ingredients = new[] { "A" },
-                    instructions = new[] { "B" },
+                    instructions = new[]
+                    {
+                        new { name = "Instructions", itemListElement = new[] { new { text = "B" } } }
+                    },
                     isSynthesized = true,
                 },
                 info = new
@@ -159,7 +308,18 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
                     name = "Imported Shared Recipe",
                     description = "Bundle import description",
                     ingredients = new[] { "1 onion", "2 carrots" },
-                    instructions = new[] { "Chop vegetables", "Simmer gently" },
+                    instructions = new[]
+                    {
+                        new
+                        {
+                            name = "Instructions",
+                            itemListElement = new[]
+                            {
+                                new { text = "Chop vegetables" },
+                                new { text = "Simmer gently" }
+                            }
+                        }
+                    },
                     prepTimeMinutes = 10,
                     cookTimeMinutes = 20,
                     totalTimeMinutes = 30,
@@ -213,6 +373,52 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
         Assert.Equal("Bundle import description", recipe.Description);
         Assert.Equal("https://example.com/imported-shared-recipe", recipe.SourceUrl);
         Assert.Equal("Soup", recipe.Category);
+    }
+
+    [Fact]
+    public async Task ImportBundle_RestoresNotesAndRating_WhenPresentInBundle()
+    {
+        var request = BuildBundleRequest(
+            new
+            {
+                version = "1.0",
+                recipe = new
+                {
+                    name = "Full Fidelity Recipe",
+                    ingredients = new[] { "A" },
+                    instructions = new[]
+                    {
+                        new { name = "Instructions", itemListElement = new[] { new { text = "B" } } }
+                    },
+                    notes = "Restored note",
+                    rating = 3, // Love
+                    isSynthesized = true,
+                },
+                info = new
+                {
+                    exportedAtUtc = "2026-05-14T16:00:00Z",
+                    bundleSource = "wfs-share",
+                },
+                hero = (object?)null,
+                originals = Array.Empty<object>(),
+            });
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var data = doc.RootElement.GetProperty("data");
+        var recipeId = data.GetProperty("id").GetGuid();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var recipe = await db.Recipes.FindAsync(recipeId);
+
+        Assert.NotNull(recipe);
+        Assert.Equal("Restored note", recipe!.Notes);
+        Assert.Equal(RecipeRating.Love, recipe.Rating);
     }
 
     private HttpRequestMessage BuildBundleRequest<TBody>(TBody body)

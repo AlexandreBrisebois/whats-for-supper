@@ -112,6 +112,9 @@ public sealed class LocalRecipeStore(RecipesRootResolver resolver, ILogger<Local
         return Task.FromResult<(Stream, string)?>((File.OpenRead(path), "image/jpeg"));
     }
 
+    public Task<bool> HasHeroImageAsync(Guid recipeId, CancellationToken ct = default)
+        => Task.FromResult(File.Exists(HeroPath(recipeId)));
+
     public Task<bool> HasOriginalImagesAsync(Guid recipeId, CancellationToken ct = default)
     {
         var dir = OriginalDir(recipeId);

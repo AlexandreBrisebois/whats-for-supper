@@ -18,7 +18,15 @@ public class ImportedRecipeDto
 
     [Required]
     [JsonPropertyName("instructions")]
-    public required List<string> Instructions { get; set; } = [];
+    public required List<HowToSectionDto> Instructions { get; set; } = [];
+
+    [JsonPropertyName("notes")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Notes { get; set; }
+
+    [JsonPropertyName("rating")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Rating { get; set; }
 
     [JsonPropertyName("totalTimeMinutes")]
     public int? TotalTimeMinutes { get; set; }
