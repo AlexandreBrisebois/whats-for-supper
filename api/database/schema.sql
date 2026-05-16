@@ -181,12 +181,13 @@ WHERE r.is_discoverable = true AND r.is_ready = true AND r.deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS health_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    entity_type varchar(50) NOT NULL,
+    event_type varchar(50) NOT NULL,
     entity_id varchar(100) NOT NULL,
     status varchar(20) NOT NULL DEFAULT 'pending',
     attempts integer DEFAULT 0 NOT NULL,
-    last_error text,
+    error_message text,
     created_at timestamptz DEFAULT now() NOT NULL,
+    updated_at timestamptz DEFAULT now() NOT NULL,
     scheduled_for timestamptz DEFAULT now() NOT NULL,
     CONSTRAINT health_events_status_check CHECK (status IN ('pending', 'processing', 'completed', 'failed'))
 );
@@ -195,6 +196,9 @@ CREATE INDEX IF NOT EXISTS idx_health_events_status_scheduled ON health_events (
 
 CREATE TABLE IF NOT EXISTS health_recipe_profiles (
     recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
+    is_healthy_choice boolean DEFAULT false NOT NULL,
+    is_vegetarian boolean DEFAULT false NOT NULL,
+    primary_food_group varchar(50),
     dietary_profile jsonb,
     fop_flags jsonb,
     last_recomputed_at timestamptz DEFAULT now() NOT NULL,
