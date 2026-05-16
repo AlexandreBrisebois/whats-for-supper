@@ -264,10 +264,11 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await page.getByTestId('tonight-menu-card').click();
 
     // Wait for flip animation to complete (back face becomes visible), then click skip.
-    // force: true bypasses hit-testing — the spring animation can leave the 3D-transformed
-    // front face intercepting pointer events momentarily after the back face is visible.
+    // dispatchEvent bypasses coordinate hit-testing — the CSS rotate-y-180 transform
+    // means the element's DOM bounding box doesn't match its visual position, causing
+    // force:true clicks to miss. dispatchEvent fires directly on the element.
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').click({ force: true });
+    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
 
     // Recovery dialog must open
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
