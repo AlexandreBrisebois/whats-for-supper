@@ -24,7 +24,7 @@ public sealed class LocalRecipeStore(RecipesRootResolver resolver, ILogger<Local
     private string InfoPath(Guid id) => Path.Combine(RecipeDir(id), "recipe.info");
     private string JsonPath(Guid id) => Path.Combine(RecipeDir(id), "recipe.json");
     private string OriginalDir(Guid id) => Path.Combine(RecipeDir(id), "original");
-    private string HeroPath(Guid id) => Path.Combine(RecipeDir(id), "hero.jpg");
+    private string HeroPath(Guid id) => Path.Combine(RecipeDir(id), "hero.webp");
 
     // ── recipe.info ──────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ public sealed class LocalRecipeStore(RecipesRootResolver resolver, ILogger<Local
         var path = HeroPath(recipeId);
         if (!File.Exists(path))
             return Task.FromResult<(Stream, string)?>(null);
-        return Task.FromResult<(Stream, string)?>((File.OpenRead(path), "image/jpeg"));
+        return Task.FromResult<(Stream, string)?>((File.OpenRead(path), "image/webp"));
     }
 
     public Task<bool> HasHeroImageAsync(Guid recipeId, CancellationToken ct = default)

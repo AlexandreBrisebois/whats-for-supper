@@ -989,6 +989,38 @@ tasks:
           echo "✓ No project images found"
         fi
 
+  # ── IMAGE UTILITIES ──────────────────────────────────────────────────────────
+
+  images:migrate-hero-webp:
+    desc: "🖼️  Convert all hero.jpg files in data/recipes to hero.webp (Python/Pillow, run once). Override path: task images:migrate-hero-webp DIR=/Volumes/nas/data/recipes"
+    vars:
+      DIR: '{{.DIR | default "data/recipes"}}'
+    cmds:
+      - |
+        python3 - "{{.DIR}}" <<'EOF'
+        import sys
+        from pathlib import Path
+        from PIL import Image
+
+        count = 0
+        failed = 0
+
+        for jpg in Path(sys.argv[1]).rglob("hero.jpg"):
+            webp = jpg.with_suffix(".webp")
+            try:
+                with Image.open(jpg) as img:
+                    img.save(webp, "WEBP", quality=85)
+                jpg.unlink()
+                count += 1
+            except Exception as e:
+                print(f"  ✗ Failed: {jpg} — {e}", file=sys.stderr)
+                failed += 1
+
+        print(f"✓ Migration complete — {count} converted, {failed} failed")
+        if failed:
+            sys.exit(1)
+        EOF
+
   # ============================================================================
   # SETUP & INITIALIZATION
   # ============================================================================

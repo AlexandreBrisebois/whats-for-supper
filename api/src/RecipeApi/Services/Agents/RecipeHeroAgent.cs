@@ -73,7 +73,7 @@ public class RecipeHeroAgent(
             throw new DirectoryNotFoundException($"Recipe directory not found: {recipeDir}");
         }
 
-        var heroPath = Path.Combine(recipeDir, "hero.jpg");
+        var heroPath = Path.Combine(recipeDir, "hero.webp");
         if (!force && System.IO.File.Exists(heroPath))
         {
             logger.LogInformation("Hero image already exists for recipe {RecipeId}. Skipping.", recipeId);
@@ -129,7 +129,7 @@ public class RecipeHeroAgent(
         if (useFinishedDish)
         {
             var imagePath = imageFiles[finishedDishIndex];
-            taskPrompt = "Generate a high-quality 400x400 JPG hero image based on the provided finished dish image. Focus on a beautiful, plated presentation. Do not include any text, logos, or recipe names in the image.";
+            taskPrompt = "Generate a high-quality 400x400 WebP hero image based on the provided finished dish image. Focus on a beautiful, plated presentation. Do not include any text, logos, or recipe names in the image.";
 
             content.Parts.Add(new Part { Text = taskPrompt });
             var bytes = await System.IO.File.ReadAllBytesAsync(imagePath);
@@ -153,7 +153,7 @@ public class RecipeHeroAgent(
             if (System.IO.File.Exists(recipeJsonPath))
             {
                 var recipeJson = await System.IO.File.ReadAllTextAsync(recipeJsonPath);
-                taskPrompt = $"Generate a high-quality 400x400 JPG hero image of the finished dish for this recipe based on its raw metadata. Focus on a beautiful, plated presentation. Do not include any text, logos, or recipe names in the image.\n\nRaw Metadata: \n{recipeJson}";
+                taskPrompt = $"Generate a high-quality 400x400 WebP hero image of the finished dish for this recipe based on its raw metadata. Focus on a beautiful, plated presentation. Do not include any text, logos, or recipe names in the image.\n\nRaw Metadata: \n{recipeJson}";
                 content.Parts.Add(new Part { Text = taskPrompt });
             }
             else
@@ -180,7 +180,7 @@ public class RecipeHeroAgent(
             if (part?.InlineData?.Data != null)
             {
                 // Task 7: Generate to temp file first, then replace hero.jpg
-                var tempPath = Path.Combine(recipeDir, $"hero.tmp_{Guid.NewGuid()}.jpg");
+                var tempPath = Path.Combine(recipeDir, $"hero.tmp_{Guid.NewGuid()}.webp");
                 await System.IO.File.WriteAllBytesAsync(tempPath, part.InlineData.Data);
 
                 if (System.IO.File.Exists(heroPath))
