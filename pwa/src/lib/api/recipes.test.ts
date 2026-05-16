@@ -239,7 +239,6 @@ describe('searchRecipes', () => {
 });
 
 describe('parseRecipeBundleFile', () => {
-
   it('preserves already structured HowToSections', async () => {
     const structuredBundle = {
       version: '1.1',

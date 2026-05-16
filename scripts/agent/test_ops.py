@@ -6,31 +6,6 @@ import re
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 E2E_DIR = os.path.join(ROOT, "pwa/e2e")
 
-def audit():
-    print("🔍 Auditing tests for brittle selectors...")
-    brittle_count = 0
-    
-    # Pattern to find .locator() calls that don't use data-testid
-    # matches .locator('div') but not .locator('[data-testid="foo"]')
-    locator_pattern = r"\.locator\(['\"]([^'\"\[][^'\"]*)['\"]\)"
-    
-    for root, dirs, files in os.walk(E2E_DIR):
-        for file in files:
-            if file.endswith(".spec.ts"):
-                path = os.path.join(root, file)
-                with open(path, 'r') as f:
-                    content = f.read()
-                
-                matches = re.finditer(locator_pattern, content)
-                for m in matches:
-                    print(f"⚠️ Brittle selector found in {os.path.relpath(path, ROOT)}: `{m.group(1)}`")
-                    brittle_count += 1
-                    
-    if brittle_count == 0:
-        print("✅ No brittle selectors found in E2E tests.")
-    else:
-        print(f"⚠️ Total brittle selectors found: {brittle_count}")
-
 def get_impacted_tests():
     try:
         # Check staged changes first
@@ -128,12 +103,10 @@ def run_impacted():
         sys.exit(1)
 
 def main():
-    if "--audit" in sys.argv:
-        audit()
-    elif "--impact" in sys.argv or "--all" in sys.argv:
+    if "--impact" in sys.argv or "--all" in sys.argv:
         run_impacted()
     else:
-        print("Usage: python3 test_ops.py [--audit | --impact | --all]")
+        print("Usage: python3 test_ops.py [--impact | --all]")
 
 if __name__ == "__main__":
     main()

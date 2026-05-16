@@ -18,6 +18,11 @@ This file tracks the real-time execution state for **Active Tasks only**. Refer 
 
 ## Recently Completed
  
+- **Core Harness — Test Audit Integration (2026-05-16):** Integrated the `test-audit` skill into the core execution harness.
+  - **Unified Tooling**: Migrated audit logic to `scripts/agent/test_audit.py` and registered `task test:audit` and `task agent:audit`.
+  - **Harness Enforcement**: Updated `execution-harness.md` to establish a mandatory pre-implementation audit workflow for identifying test surface and brittle selectors.
+  - **Impact Preservation**: Cleaned up `test_ops.py` while preserving the impact-aware test runner logic.
+
 - **High-Fidelity Recipe Sharing — Preview UI (2026-05-16):** Updated the PWA bundle preview to render structured instructions and optional notes.
   - **Structured Preview**: Updated `MinimalCapture.tsx` to use generic `data-testid` (`bundle-preview-section-title`, `bundle-preview-step-text`) and render `HowToSection` headings and `HowToStep` lists (AC 4.2).
   - **Optional Notes**: Added rendering for `bundle.recipe.notes` with `bundle-preview-notes` test-id.

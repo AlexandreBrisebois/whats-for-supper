@@ -16,6 +16,7 @@ Use the following canonical commands to perform regular operational duties safel
 - **`task dev:kill`**: Run this manually if you encounter "port already in use" errors or strange flakiness.
 - **`task test:kill`**: Run this manually to clear zombie Playwright workers.
 - **`task agent:test:impact`**: Run this to execute only the tests affected by your recent git changes.
+- **`task agent:audit AREA=<keyword>`**: Run this to identify tests, analyze migration candidates, and detect brittle selectors for a specific feature area.
 - **`task review`**: Run this for a full pre-commit review. Like `gate`, it clears lingerng processes before starting.
 
 ## 4. Agent Toolbox
@@ -30,12 +31,19 @@ Each `task` command in Section 3 is backed by a script in `scripts/agent/`. Befo
 - **Targeted Context Loading**: When loading context to act safely, prioritize targeted commands like `task agent:slice` over recursively reading the file system.
 - **Destructive Actions**: Never modify schema or core logic without first verifying the impact using `task gate` or `task agent:drift`.
 
-## 6. Completion workflow
+## 6. Pre-Implementation Audit
+Before starting a new feature or refactoring:
+1. Run `task agent:audit AREA=<feature>` to identify the relevant test surface.
+2. Address any flagged brittle selectors (`data-testid` migration) in the existing tests first to establish a stable green baseline.
+3. Review migration candidates — if a logic-heavy E2E test is flagged, prioritize moving that logic to a Vitest unit test.
+
+## 7. Completion workflow
 Before concluding any implementation phase:
 1. Verify contract integrity (`task agent:drift`).
 2. Run high-speed validation (`task gate`).
 3. Ensure the codebase passes the full project review (`task review`).
-4. Do not declare work complete until these validation steps succeed.
+4. Run a final `task agent:audit` to ensure no new brittle selectors were introduced.
+5. Do not declare work complete until these validation steps succeed.
 
 ## 7. Session state files
 

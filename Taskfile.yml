@@ -208,6 +208,11 @@ tasks:
     cmds:
       - npm run test:e2e:ci
 
+  test:audit:
+    desc: "🔍 Audit tests for a specific area (Usage: task test:audit AREA=<keyword>)"
+    cmds:
+      - python3 scripts/agent/test_audit.py "{{.AREA}}"
+
   test:smoke:
     desc: "💨 Docker Smoke Test (Local CI Parity)"
     summary: |
@@ -1277,9 +1282,10 @@ tasks:
       - python3 scripts/agent/drift_mocks.py
 
   agent:audit:
-    desc: "🤖 Brittle Selector Audit (Check tests for missing data-testid)"
+    desc: "🤖 High-Fidelity Test Audit — coverage identification + migration analysis + brittle selector detection"
     cmds:
-      - python3 scripts/agent/test_ops.py --audit
+      - task: test:audit
+        vars: { AREA: "{{.AREA}}" }
 
   agent:test:impact:
     desc: "🤖 Impact-Aware Test Runner (Only run tests affected by git changes)"
