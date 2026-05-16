@@ -20,8 +20,8 @@ export default defineConfig({
   // Run tests in files in parallel
   fullyParallel: true,
 
-  // Parallelise across workers
-  workers: isCI ? 2 : undefined,
+  // Parallelise across workers (4 matches GitHub Actions ubuntu-latest vCPU count)
+  workers: isCI ? 4 : undefined,
 
   // Per-test timeout
   timeout: 30_000,

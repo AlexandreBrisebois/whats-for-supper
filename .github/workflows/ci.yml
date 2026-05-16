@@ -91,7 +91,7 @@ jobs:
     needs: contract-integrity-gate
     env:
       CI: true
-      HEARTH_SECRET: ${{ secrets.HEARTH_SECRET || 'our family loves cooking' }}
+      HEARTH_SECRET: ${{ secrets.HEARTH_SECRET || 'Paris-Montreal' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -137,7 +137,7 @@ jobs:
           NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: true
 
       - name: E2E — Playwright
-        run: npm run test:e2e -- --workers=2
+        run: npm run test:e2e
         working-directory: pwa
 
       - name: Upload Playwright report

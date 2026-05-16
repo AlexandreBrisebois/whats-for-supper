@@ -150,8 +150,7 @@ test.describe('Recipe Action Pivot', () => {
     // Go to the nudge card (5th card)
     for (let i = 0; i < 4; i++) {
       await page.getByTestId('quick-find-next').click();
-      // Wait for card transition to settle
-      await page.waitForTimeout(100);
+      await expect(page.getByTestId('quick-find-next')).toBeVisible();
     }
 
     const searchLibraryLink = page.getByTestId('quick-find-search-library');

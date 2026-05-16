@@ -263,12 +263,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Flip the card to reveal the back face (skip button is on the back)
     await page.getByTestId('tonight-menu-card').click();
 
-    // Wait for flip animation to complete, then click skip
-    await page.waitForTimeout(600);
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
-      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    // Wait for flip animation to complete (back face becomes visible), then click skip
+    await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
+    await page.getByTestId('skip-tonight-btn').click();
 
     // Recovery dialog must open
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
@@ -359,11 +356,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Flip the card and click skip
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
-      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
+    await page.getByTestId('skip-tonight-btn').click();
 
     // Click "Pick Something Else"
     await page.getByTestId('recovery-action-pick-else').click();
@@ -446,11 +440,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Flip the card and click skip
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
-      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
+    await page.getByTestId('skip-tonight-btn').click();
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
@@ -540,11 +531,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Flip the card and click skip
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
-      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
+    await page.getByTestId('skip-tonight-btn').click();
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
@@ -646,11 +634,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByRole('heading', { name: 'Test Lasagna' }).first()).toBeVisible();
 
     await page.getByTestId('tonight-menu-card').click();
-    await page.waitForTimeout(600);
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="skip-tonight-btn"]') as HTMLElement;
-      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
+    await page.getByTestId('skip-tonight-btn').click();
 
     await page.getByTestId('recovery-action-pick-else').click();
 

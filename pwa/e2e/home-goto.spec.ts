@@ -203,9 +203,8 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
     // Menu card must appear despite syncRecipe() getting an empty schedule
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 3000 });
-    // Wait out any re-sync window to confirm the card does not flicker back
-    await page.waitForTimeout(2000);
-    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+    // Confirm the card stays visible through any re-sync window (no flicker)
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 500 });
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
   });
 

@@ -287,7 +287,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
         break;
       }
       await nextBtn.click();
-      await page.waitForTimeout(200);
+      await expect(nextBtn).toBeVisible();
     }
     expect(isDone).toBe(true);
 

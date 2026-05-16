@@ -75,9 +75,13 @@ export const test = base.extend({
       async (route) => {
         const request = route.request();
 
-        // Allow health checks
-        if (request.url().includes('/health')) {
-          return route.continue();
+        // Intercept health checks so the backend being absent doesn't cause ERR_CONNECTION_REFUSED
+        if (request.url().includes('/api/health')) {
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ status: 'Healthy', demoMode: false }),
+          });
         }
 
         console.error(`❌ UNMOCKED API CALL DETECTED: ${request.method()} ${request.url()}`);

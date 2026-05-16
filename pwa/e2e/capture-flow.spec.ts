@@ -808,13 +808,8 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await expect(page.locator('[role="status"]').filter({ hasText: recipeName })).toBeVisible();
     await page.locator('[role="status"]').filter({ hasText: recipeName }).click();
 
-    // Wait for drawer animation
-    await page.waitForTimeout(1000);
-
     await expect(page.getByTestId('library-toast-add-to-week')).toBeVisible();
-    await page.evaluate(() => {
-      (document.querySelector('[data-testid="library-toast-add-to-week"]') as HTMLElement)?.click();
-    });
+    await page.getByTestId('library-toast-add-to-week').click();
 
     await expect(page).toHaveURL(/\/planner/, { timeout: 15_000 });
   });

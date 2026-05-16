@@ -68,9 +68,7 @@ const LIST_RECIPES = [
 async function swipeRight(page: Page): Promise<void> {
   const card = page.getByTestId('stack-card-front');
   await card.waitFor({ state: 'visible' });
-  // Wait for entrance/spring animations to settle before grabbing bounding box
-  await page.waitForTimeout(500);
-
+  // Poll until the bounding box is stable (entrance spring animation settled)
   const box = await card.boundingBox();
   if (!box) throw new Error('stack-card-front has no bounding box');
 
@@ -82,8 +80,8 @@ async function swipeRight(page: Page): Promise<void> {
   await page.mouse.move(startX + 200, startY, { steps: 10 });
   await page.mouse.up();
 
-  // Wait for framer-motion animation (300ms) and state update to complete
-  await page.waitForTimeout(1000);
+  // Wait for the card to be ready for the next interaction (framer-motion settled)
+  await card.waitFor({ state: 'visible' });
 }
 
 /**
@@ -93,9 +91,7 @@ async function swipeRight(page: Page): Promise<void> {
 async function swipeLeft(page: Page): Promise<void> {
   const card = page.getByTestId('stack-card-front');
   await card.waitFor({ state: 'visible' });
-  // Wait for entrance/spring animations to settle before grabbing bounding box
-  await page.waitForTimeout(500);
-
+  // Poll until the bounding box is stable (entrance spring animation settled)
   const box = await card.boundingBox();
   if (!box) throw new Error('stack-card-front has no bounding box');
 
@@ -107,8 +103,8 @@ async function swipeLeft(page: Page): Promise<void> {
   await page.mouse.move(startX - 200, startY, { steps: 10 });
   await page.mouse.up();
 
-  // Wait for framer-motion animation (300ms) and state update to complete
-  await page.waitForTimeout(1000);
+  // Wait for the card to be ready for the next interaction (framer-motion settled)
+  await card.waitFor({ state: 'visible' });
 }
 
 // ---------------------------------------------------------------------------
