@@ -145,6 +145,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
       <motion.div
+        data-testid={hasFamilyInterest ? 'discovery-card-interest-ring' : undefined}
         className={`h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col${hasFamilyInterest ? ' ring-2 ring-sage' : ''}`}
         animate={hasFamilyInterest ? { scale: [1, 1.03, 1] } : {}}
         transition={{ duration: 1.5, repeat: Infinity }}

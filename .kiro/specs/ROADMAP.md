@@ -322,3 +322,13 @@ Run task review when done.
 | 8 | Capture optional E2E tests | `capture-describe-entry` | 5.2–5.4 | Small | [ ] |
 
 Mark sessions complete by changing `[ ]` to `[x]` as you ship them.
+
+---
+
+## Future Consideration — PWA Notification Pipeline Upgrade
+
+When the native-notification feature matures, consider migrating from the hand-rolled `sw.js` to **`@ducanh2912/next-pwa`** for automated service worker generation with built-in push handler scaffolding.
+
+- **Benefit**: Automated precaching, Workbox strategies, and cleaner push/notificationclick registration.
+- **Cost**: New dependency, SW generation pipeline change, requires re-testing offline behavior.
+- **Prerequisite**: Native notification feature (`native-push-notifications` spec) must be stable and shipped first.

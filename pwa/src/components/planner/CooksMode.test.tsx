@@ -207,4 +207,80 @@ describe('CooksMode', () => {
     expect(screen.getByText('Original Step 1')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Nonsense')).not.toBeInTheDocument();
   });
+
+  it('ingredient checklist toggles aria-checked on tap', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      ingredients: ['Pasta', 'Tomatoes'],
+      recipeInstructions: [{ name: 'Step 1', text: 'Cook pasta.' }],
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    const toggles = await screen.findAllByTestId('ingredient-toggle');
+    const first = toggles[0];
+
+    expect(first).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(first);
+    expect(first).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.click(first);
+    expect(first).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('dietary badge text is absent on the ingredient prep screen', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      isVegetarian: true,
+      isHealthyChoice: true,
+      ingredients: ['Pasta'],
+      recipeInstructions: [{ name: 'Step 1', text: 'Cook pasta.' }],
+    });
+
+    render(
+      <CooksMode
+        recipe={{
+          id: 'recipe-1',
+          name: 'Pasta Night',
+          image: '/img/pasta.jpg',
+          isVegetarian: true,
+          isHealthyChoice: true,
+        }}
+        onClose={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('ingredient-toggle');
+
+    expect(screen.queryByText('Plant-Powered Choice!')).not.toBeInTheDocument();
+    expect(screen.queryByText('Healthy Pick!')).not.toBeInTheDocument();
+  });
+
+  it('next button reads "Let\'s Cook" on the ingredient prep screen (step 0)', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      ingredients: ['Pasta'],
+      recipeInstructions: [{ name: 'Step 1', text: 'Cook pasta.' }],
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('ingredient-toggle');
+
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveTextContent("Let's Cook");
+  });
 });

@@ -40,6 +40,7 @@ export default function ProfilePage() {
         <button
           onClick={() => router.push(ROUTES.PROFILE_SETTINGS as any)}
           className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center rounded-full bg-white/40 backdrop-blur-xl border border-white/60 shadow-glass hover:bg-white/60 transition-all active:scale-90"
+          data-testid="settings-btn"
           aria-label={t('profile.settings', 'Settings')}
         >
           <Settings className="h-5 w-5 text-terracotta" />

@@ -203,6 +203,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       <AnimatePresence>
         {showCelebration && (
           <motion.div
+            data-testid="cooks-mode-celebration"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
@@ -238,7 +239,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/80 mb-2">
             {t('cook.cooksMode', "Cook's mode")}
           </p>
-          <h2 className="text-xl md:text-3xl font-heading font-black text-white leading-tight mb-4 drop-shadow-md">
+          <h2
+            data-testid="cooks-mode-recipe-name"
+            className="text-xl md:text-3xl font-heading font-black text-white leading-tight mb-4 drop-shadow-md"
+          >
             {initialRecipe.name || t('cook.untitledRecipe', 'Untitled Recipe')}
           </h2>
 
@@ -363,6 +367,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                               <motion.button
                                 key={idx}
                                 data-testid="ingredient-toggle"
+                                aria-checked={isChecked}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: idx * 0.03 }}
@@ -439,7 +444,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     </div>
                   </div>
                 ) : (
-                  <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-charcoal/80 leading-[1.4] md:leading-[1.5]">
+                  <p
+                    data-testid="cooks-mode-step-text"
+                    className="text-2xl md:text-3xl lg:text-4xl font-bold text-charcoal/80 leading-[1.4] md:leading-[1.5]"
+                  >
                     {currentStepData.instruction}
                   </p>
                 )}

@@ -39,43 +39,43 @@ _Goal: Establish the shared fixture architecture and complete the first migratio
     - **Verify Seam**: Run E2E to ensure the share button still copies to clipboard.
 
 ## Wave 3: Cook Mode Slice
-- [ ] 10. **Cook Mode - Audit & Harden**
+- [x] 10. **Cook Mode - Audit & Harden**
     - Run `task agent:audit AREA=cook`.
-- [ ] 11. **Cook Mode - Migrate Component State**
+- [x] 11. **Cook Mode - Migrate Component State**
     - Port checklist interactivity and badge visibility tests to `CookModeOverlay.test.tsx`.
     - Verify "bg-sage" and "CheckCircle2" toggles.
-- [ ] 12. **Cook Mode - Prune E2E**
+- [x] 12. **Cook Mode - Prune E2E**
     - **Verify Seam**: Run E2E to ensure the overlay still opens from the Home card.
 
 ## Wave 4: Library & Browse Slice
-- [ ] 13. **Browse - Audit & Harden**
-- [ ] 14. **Browse - Migrate Stack Logic**
-- [ ] 15. **Browse - Prune E2E**
+- [x] 13. **Browse - Audit & Harden**
+- [x] 14. **Browse - Migrate Stack Logic**
+- [x] 15. **Browse - Prune E2E**
     - **Verify Seam**: Run E2E to ensure clicking a card still navigates to details.
 
 ## Wave 5: Home, Identity & Settings Slice
-- [ ] 16. **Home & Settings - Audit & Harden**
-- [ ] 17. **Home & Settings - Migrate Logic**
+- [x] 16. **Home & Settings - Audit & Harden**
+- [x] 17. **Home & Settings - Migrate Logic**
     - Port state transition logic and **"Demo Mode" / "Hostage Mock"** assertions.
-- [ ] 18. **Home & Settings - Prune E2E**
+- [x] 18. **Home & Settings - Prune E2E**
     - **Verify Seam**: Run E2E to ensure the app still hydrates and redirects correctly.
 
 ## Wave 6: Discovery & Search Slice
-- [ ] 19. **Search - Audit & Harden**
-- [ ] 20. **Search - Migrate Filtering Logic**
-- [ ] 21. **Search - Prune E2E**
+- [x] 19. **Search - Audit & Harden**
+- [x] 20. **Search - Migrate Filtering Logic**
+- [x] 21. **Search - Prune E2E**
     - **Verify Seam**: Run E2E to ensure search results update on input.
 
 ## Wave 7: Planner & Capture Hardening
-- [ ] 22. **Planner - Audit & Harden**
-- [ ] 23. **Planner - Migrate Complex State**
-- [ ] 24. **Planner - Prune E2E**
+- [x] 22. **Planner - Audit & Harden**
+- [x] 23. **Planner - Migrate Complex State**
+- [x] 24. **Planner - Prune E2E**
     - **Verify Seam**: Run E2E to ensure the "Let's Cook" button is still reachable.
 
 ## Wave 8: Global Integrity & Cleanup
-- [ ] 25. **Integrity - Final E2E Suite Run**
-- [ ] 26. **Cleanup - Death Audit**
-- [ ] 27. **Session Review**
+- [x] 25. **Integrity - Final E2E Suite Run**
+- [x] 26. **Cleanup - Death Audit**
+- [x] 27. **Session Review**
 
 ## Task Dependencies
 ```json

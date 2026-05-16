@@ -386,15 +386,15 @@ test.describe('Discovery Flow', () => {
       page
         .locator('[data-testid="discovery-card"]')
         .filter({ hasText: /Mock Chicken Delight/i })
-        .locator('.ring-2.ring-sage')
+        .getByTestId('discovery-card-interest-ring')
     ).toBeVisible({ timeout: 10_000 });
 
-    // Position-0 card (Lasagna) must NOT have the ring class
+    // Position-0 card (Lasagna) must NOT have the interest ring
     await expect(
       page
         .locator('[data-testid="discovery-card"]')
         .filter({ hasText: /Mock Gourmet Discovery/i })
-        .locator('.ring-2.ring-sage')
+        .getByTestId('discovery-card-interest-ring')
     ).not.toBeVisible({ timeout: 5_000 });
   });
 });

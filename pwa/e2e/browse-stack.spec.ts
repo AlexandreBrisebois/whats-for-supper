@@ -34,9 +34,9 @@ test.describe('Recipe Stack Browse', () => {
     // Check counter
     await expect(page.getByTestId('stack-depth-indicator')).toHaveText(/1\s*\/\s*\d+/);
 
-    // Swipe next (simulate by clicking the right area or finding the button if any)
-    const firstRecipeName = await page.getByTestId('stack-card-front').locator('h2').textContent();
-    expect(firstRecipeName).toBeTruthy();
+    // Verify the front card is bound to a recipe
+    const recipeId = await page.getByTestId('stack-card-front').getAttribute('data-recipe-id');
+    expect(recipeId).toBeTruthy();
 
     // Tap to open detail
     await page.getByTestId('stack-card-front').click();

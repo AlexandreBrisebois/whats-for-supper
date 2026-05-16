@@ -783,7 +783,7 @@ export default function MinimalCapture({
             <h3 className="font-heading text-xl font-bold text-charcoal">
               Uploading your photos...
             </h3>
-            <p className="text-sm text-charcoal/50">
+            <p data-testid="capture-upload-keep-open" className="text-sm text-charcoal/50">
               Please keep this screen open while we send them.
             </p>
           </div>
@@ -808,6 +808,7 @@ export default function MinimalCapture({
           >
             <button
               type="button"
+              data-testid="capture-take-photo-btn"
               onClick={handleCapture}
               aria-label="Take a photo"
               className="flex h-28 w-28 items-center justify-center rounded-full bg-terracotta text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
@@ -817,6 +818,7 @@ export default function MinimalCapture({
 
             <button
               type="button"
+              data-testid="capture-pick-gallery-btn"
               onClick={handleGallery}
               className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
             >
@@ -836,6 +838,7 @@ export default function MinimalCapture({
             />
             <input
               ref={galleryInputRef}
+              data-testid="capture-gallery-input"
               type="file"
               accept="image/*"
               multiple
@@ -907,7 +910,10 @@ export default function MinimalCapture({
           {images.length > 0 && (
             <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center justify-between px-2">
-                <h3 className="font-heading text-lg font-bold text-charcoal">
+                <h3
+                  data-testid="capture-photos-count"
+                  className="font-heading text-lg font-bold text-charcoal"
+                >
                   {tWithVars('capture.photosCount', `Photos (${images.length})`, {
                     count: images.length,
                   })}
@@ -979,6 +985,7 @@ export default function MinimalCapture({
                     ].map((opt) => (
                       <button
                         key={opt.value}
+                        data-testid={`capture-rating-${opt.value}`}
                         onClick={() => setRating(opt.value as any)}
                         className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
                       >
@@ -1009,6 +1016,7 @@ export default function MinimalCapture({
                   variant="primary"
                   fullWidth
                   size="lg"
+                  data-testid="capture-save-btn"
                   isLoading={isSubmitting || isPhotoSubmitPending}
                   loadingText="Uploading Photos..."
                   onClick={handleSave}
@@ -1043,6 +1051,7 @@ export default function MinimalCapture({
           <div className="flex flex-col gap-4">
             <button
               type="button"
+              data-testid="capture-url-back-btn"
               onClick={() => {
                 setShowUrlReview(false);
                 setUrlCaptureError(null);
@@ -1056,7 +1065,10 @@ export default function MinimalCapture({
               <Globe size={24} />
             </div>
             <div className="flex flex-col gap-2">
-              <h2 className="font-heading text-2xl font-black text-charcoal tracking-tight">
+              <h2
+                data-testid="capture-url-review-heading"
+                className="font-heading text-2xl font-black text-charcoal tracking-tight"
+              >
                 Review your link
               </h2>
               <p className="text-sm text-charcoal/50">
@@ -1070,6 +1082,7 @@ export default function MinimalCapture({
             <div className="flex flex-col gap-3 px-2">
               <label className="text-sm font-bold text-charcoal/80">Link URL</label>
               <textarea
+                data-testid="capture-url-input"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 placeholder="Paste a recipe link here..."
@@ -1091,6 +1104,7 @@ export default function MinimalCapture({
                   ].map((opt) => (
                     <button
                       key={opt.value}
+                      data-testid={`capture-rating-${opt.value}`}
                       onClick={() => setRating(opt.value as any)}
                       className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
                     >
@@ -1120,6 +1134,7 @@ export default function MinimalCapture({
               variant="primary"
               fullWidth
               size="lg"
+              data-testid="capture-url-save-btn"
               isLoading={isUrlCapturing}
               onClick={() => handleUrlCapture(urlInput.trim())}
               disabled={!urlInput.trim() || isUrlCapturing}
@@ -1130,7 +1145,10 @@ export default function MinimalCapture({
           </div>
 
           {urlCaptureError && (
-            <p className="px-4 text-center text-sm font-medium text-pink animate-in shake duration-300">
+            <p
+              data-testid="capture-url-error"
+              className="px-4 text-center text-sm font-medium text-pink animate-in shake duration-300"
+            >
               {urlCaptureError}
             </p>
           )}
@@ -1184,6 +1202,7 @@ export default function MinimalCapture({
             variant="primary"
             fullWidth
             size="lg"
+            data-testid="capture-synthesize-btn"
             isLoading={isDescribing}
             onClick={handleDescribeSubmit}
             disabled={!describeName.trim() || isDescribing}

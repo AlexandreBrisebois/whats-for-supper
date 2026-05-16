@@ -57,7 +57,10 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-terracotta/60">
               {t('profile.activeMember', 'Active Member')}
             </p>
-            <p className="font-outfit text-xl font-bold text-charcoal leading-tight">
+            <p
+              data-testid="selected-member-name"
+              className="font-outfit text-xl font-bold text-charcoal leading-tight"
+            >
               {selectedMember?.name || t('profile.selectMember', 'Select Member')}
             </p>
           </div>

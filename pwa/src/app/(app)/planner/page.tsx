@@ -596,7 +596,10 @@ export default function PlannerPage() {
             <Check size={24} />
           </div>
           <div className="flex flex-col">
-            <h4 className="font-heading text-lg font-black tracking-tight leading-none">
+            <h4
+              data-testid="planner-week-finalized"
+              className="font-heading text-lg font-black tracking-tight leading-none"
+            >
               {t('planner.weekFinalized', "Menu's in!")}
             </h4>
             <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">

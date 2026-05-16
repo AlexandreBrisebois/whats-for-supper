@@ -194,7 +194,7 @@ test.describe('Planner — Finalize & Lock', () => {
     await expect(closeVotingBtn).not.toBeVisible();
 
     // 5. Verify success toast feedback
-    await expect(page.getByText(/Menu's in!/i)).toBeVisible();
+    await expect(page.getByTestId('planner-week-finalized')).toBeVisible();
   });
 });
 

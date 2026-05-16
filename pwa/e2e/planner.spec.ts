@@ -298,7 +298,9 @@ test.describe('Supper Planner', () => {
             super(...args);
           }
         }
-        static now() { return pinned; }
+        static now() {
+          return pinned;
+        }
       };
     }, PINNED_DATE);
 
@@ -317,11 +319,11 @@ test.describe('Supper Planner', () => {
 
     // Navigate steps — text from builders.recipe() default: Step 1, Step 2
     await page.getByTestId('cooks-mode-step-next').click();
-    await expect(page.getByText(/Step 1/i).first()).toBeVisible();
+    await expect(page.getByTestId('cooks-mode-step-text')).toContainText(/Step 1/i);
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
     await page.getByTestId('cooks-mode-step-next').click();
-    await expect(page.getByText(/Step 2/i).first()).toBeVisible();
+    await expect(page.getByTestId('cooks-mode-step-text')).toContainText(/Step 2/i);
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/\d+ \/ \d+/i);
 
     await page.getByTestId('close-cooks-mode').click();
@@ -353,7 +355,7 @@ test.describe('Supper Planner', () => {
     await closeVotingBtn.click();
 
     // 4. Verify success feedback and locked state
-    await expect(page.getByText(/Menu's in!/i)).toBeVisible();
+    await expect(page.getByTestId('planner-week-finalized')).toBeVisible();
     await expect(closeVotingBtn).not.toBeVisible();
     await expect(page.getByTestId('ask-family-cta')).toBeVisible();
   });
@@ -413,6 +415,6 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('cooks-mode-loading')).not.toBeVisible({ timeout: 10_000 });
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
-    await expect(overlay.getByText(/No Image Lasagna/i)).toBeVisible();
+    await expect(overlay.getByTestId('cooks-mode-recipe-name')).toContainText(/No Image Lasagna/i);
   });
 });
