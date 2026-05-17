@@ -315,9 +315,12 @@ test.describe('Grocery List — SSE sync', () => {
 
     await setupCommonRoutes(page);
 
-    // Mock SSE to emit week_updated with the grocery state embedded — registered AFTER
-    // setupCommonRoutes so LIFO gives this handler priority over the default stream route.
-    await mockSseWithWeekUpdate(
+    // Mock SSE (connected only) — registered AFTER setupCommonRoutes so LIFO
+    // gives this handler priority over the default stream route. The week_updated
+    // event is dispatched manually after the page loads to avoid the mount-race
+    // where the static SSE body is consumed before useScheduleStream's listener
+    // is attached (was causing flaky 10s poll timeouts on CI).
+    const { triggerWeekUpdated } = await mockSseWithWeekUpdate(
       page,
       scheduleWithGrocery as Parameters<typeof mockSseWithWeekUpdate>[1]
     );
@@ -351,21 +354,16 @@ test.describe('Grocery List — SSE sync', () => {
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
 
+    // Fire week_updated now that useScheduleStream is mounted and __sseSource is set.
+    await triggerWeekUpdated();
+
     // Switch to the grocery tab
     await page.getByTestId('grocery-tab').click();
     await expect(page.getByTestId('grocery-checklist')).toBeVisible({ timeout: 10_000 });
 
-    // Assert that Pasta is now checked (true) and Beef is still unchecked (false)
-    // Use poll to give SSE processing time to hydrate the store
-    await expect
-      .poll(
-        async () => {
-          const pastaItem = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Pasta' });
-          return await pastaItem.getAttribute('aria-checked');
-        },
-        { timeout: 10_000 }
-      )
-      .toBe('true');
+    // Pasta must be checked (set by week_updated groceryState) and Beef unchecked.
+    const pastaItem = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Pasta' });
+    await expect(pastaItem).toHaveAttribute('aria-checked', 'true');
 
     const beefItem = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Beef' });
     await expect(beefItem).toHaveAttribute('aria-checked', 'false');

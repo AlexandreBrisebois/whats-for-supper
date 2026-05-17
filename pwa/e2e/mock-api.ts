@@ -1045,10 +1045,19 @@ export async function mockSseWithSlotUpdate(
  * `connected` snapshot. Use this to simulate a full week snapshot push
  * (e.g. after lock, voting open, or move).
  *
+ * Returns a `triggerWeekUpdated` function. Call it *after* `page.goto()`
+ * and after a stable element is visible — this guarantees useScheduleStream
+ * is mounted and `window.__sseSource` is set before the event fires,
+ * eliminating the mount-race that caused flaky failures on CI.
+ *
  * @param page - Playwright Page instance
  * @param schedule - The full ScheduleDays snapshot to push
+ * @returns triggerWeekUpdated - call after page navigation to fire the event
  */
-export async function mockSseWithWeekUpdate(page: Page, schedule: ScheduleDays): Promise<void> {
+export async function mockSseWithWeekUpdate(
+  page: Page,
+  schedule: ScheduleDays
+): Promise<{ triggerWeekUpdated: () => Promise<void> }> {
   await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -1058,12 +1067,25 @@ export async function mockSseWithWeekUpdate(page: Page, schedule: ScheduleDays):
         Connection: 'keep-alive',
         'X-Accel-Buffering': 'no',
       },
-      body: buildSseBody([
-        buildConnectedEvent(),
-        buildSseFrame('week_updated', { type: 'week_updated', schedule }),
-      ]),
+      body: buildSseBody([buildConnectedEvent()]),
     });
   });
+
+  const triggerWeekUpdated = async () => {
+    await page.evaluate(
+      (sched) => {
+        const source = (window as unknown as Record<string, EventSource>).__sseSource;
+        if (!source) throw new Error('__sseSource not found — useScheduleStream not mounted yet');
+        const event = new MessageEvent('week_updated', {
+          data: JSON.stringify({ type: 'week_updated', schedule: sched }),
+        });
+        source.dispatchEvent(event);
+      },
+      schedule as unknown as Record<string, unknown>
+    );
+  };
+
+  return { triggerWeekUpdated };
 }
 
 /**
