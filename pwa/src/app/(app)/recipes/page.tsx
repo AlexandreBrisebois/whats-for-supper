@@ -220,7 +220,7 @@ export default function RecipesPage() {
     return () => {
       isActive = false;
     };
-  }, [parsedDayIndex, parsedWeekOffset]);
+  }, [parsedDayIndex, parsedWeekOffset, similarToRecipeId]);
 
   // Adjust state when URL 'open' parameter changes
   const openIdFromUrl = searchParams.get('open');
