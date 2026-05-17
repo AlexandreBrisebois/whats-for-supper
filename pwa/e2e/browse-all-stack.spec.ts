@@ -89,7 +89,9 @@ async function swipeRight(page: Page): Promise<void> {
  * Drags from the card centre leftward by 200px — well beyond the 80px threshold.
  */
 async function swipeLeft(page: Page): Promise<void> {
-  const card = page.getByTestId('stack-card-front');
+  // Wait until exactly one front card is present (transition complete)
+  await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
+  const card = page.getByTestId('stack-card-front').first();
   await card.waitFor({ state: 'visible' });
   // Poll until the bounding box is stable (entrance spring animation settled)
   const box = await card.boundingBox();
@@ -103,8 +105,8 @@ async function swipeLeft(page: Page): Promise<void> {
   await page.mouse.move(startX - 200, startY, { steps: 10 });
   await page.mouse.up();
 
-  // Wait for the card to be ready for the next interaction (framer-motion settled)
-  await card.waitFor({ state: 'visible' });
+  // Wait for transition to settle: exactly one front card visible
+  await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
 }
 
 // ---------------------------------------------------------------------------

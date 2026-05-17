@@ -709,6 +709,8 @@ export default function RecipesPage() {
         accept="image/*"
         capture="environment"
         data-testid="inventory-camera-input"
+        aria-label="Take a photo"
+        title="Take a photo"
         className="hidden"
         onChange={handlePhotoInput}
       />
@@ -718,6 +720,8 @@ export default function RecipesPage() {
         accept="image/*"
         multiple
         data-testid="inventory-gallery-input"
+        aria-label="Choose photos from your library"
+        title="Choose photos from your library"
         className="hidden"
         onChange={handlePhotoInput}
       />

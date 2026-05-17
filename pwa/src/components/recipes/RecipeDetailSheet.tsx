@@ -534,12 +534,16 @@ export function RecipeDetailSheet({
                     type="file"
                     accept="image/*"
                     capture="environment"
+                    aria-label="Take a photo for hero image"
+                    title="Take a photo for hero image"
                     className="hidden"
                     onChange={handleFileChange}
                   />
                   <button
                     type="button"
                     data-testid="hero-action-regenerate"
+                    aria-label="Regenerate hero image"
+                    title="Regenerate hero image"
                     onClick={() => void handleHeroRegenerateClick()}
                     className="absolute bottom-4 left-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
                   >
@@ -548,6 +552,8 @@ export function RecipeDetailSheet({
                   <button
                     type="button"
                     data-testid="hero-action-camera"
+                    aria-label="Take a new photo"
+                    title="Take a new photo"
                     onClick={handleHeroCameraClick}
                     className="absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"
                   >
@@ -638,6 +644,8 @@ export function RecipeDetailSheet({
                       <div key={index} className="flex items-center gap-2">
                         <input
                           data-testid={`recipe-edit-ingredient-${index}`}
+                          aria-label={`Ingredient ${index + 1}`}
+                          title={`Ingredient ${index + 1}`}
                           value={ingredient}
                           onChange={(event) => handleIngredientChange(index, event.target.value)}
                           className="min-h-11 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-4 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"

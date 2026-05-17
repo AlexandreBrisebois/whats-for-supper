@@ -892,6 +892,8 @@ export default function MinimalCapture({
               data-testid="import-recipe-file-input"
               type="file"
               accept=".recipe,application/json"
+              aria-label="Import recipe file"
+              title="Import recipe file"
               className="hidden"
               onChange={handleRecipeBundleFileChange}
             />

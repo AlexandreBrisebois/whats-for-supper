@@ -59,6 +59,8 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
       <div className="flex-shrink-0">{icons[toast.type as keyof typeof icons] || icons.info}</div>
       <p className="text-sm font-bold text-charcoal leading-tight flex-1">{toast.message}</p>
       <button
+        aria-label="Dismiss notification"
+        title="Dismiss notification"
         onClick={() => onDismiss(toast.id)}
         className="flex-shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors"
       >

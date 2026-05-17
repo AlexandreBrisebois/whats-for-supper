@@ -276,6 +276,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       {!showDetailId && (
         <button
           data-testid="close-cooks-mode"
+          aria-label="Close cook's mode"
+          title="Close cook's mode"
           onClick={(e) => {
             e.stopPropagation();
             onClose();
@@ -417,6 +419,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                   <div className="space-y-6 w-full">
                     <textarea
                       autoFocus
+                      aria-label="Edit step instructions"
+                      title="Edit step instructions"
                       className="w-full rounded-[2rem] border-2 border-charcoal/5 bg-white/90 px-8 py-8 text-2xl md:text-3xl font-bold text-charcoal/80 leading-relaxed shadow-inner outline-none transition focus:border-terracotta/20"
                       rows={8}
                       value={editingValue}

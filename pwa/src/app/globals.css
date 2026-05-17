@@ -71,6 +71,7 @@
 
   html {
     -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     font-feature-settings: normal;
     font-variation-settings: normal;
     -webkit-tap-highlight-color: transparent;
@@ -104,32 +105,32 @@
 @layer utilities {
   .glass {
     background: rgba(253, 252, 240, 0.4);
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     border: 1px solid rgba(253, 252, 240, 0.2);
     box-shadow: 0 8px 32px rgba(74, 55, 40, 0.08);
   }
 
   .glass-nav {
     background: rgba(253, 252, 240, 0.85);
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     border-top: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 -4px 20px rgba(74, 55, 40, 0.02);
   }
 
   .glass-sage {
     background: rgba(138, 154, 91, 0.1);
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     border: 1px solid rgba(138, 154, 91, 0.1);
     box-shadow: 0 8px 32px rgba(138, 154, 91, 0.05);
   }
 
   .glass-solar {
     background: rgba(225, 173, 1, 0.05);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     border: 1px solid rgba(225, 173, 1, 0.2);
     box-shadow:
       0 12px 40px rgba(225, 173, 1, 0.15),
@@ -221,13 +222,13 @@
 
   /* 3D Transforms */
   .preserve-3d {
-    transform-style: preserve-3d;
     -webkit-transform-style: preserve-3d;
+    transform-style: preserve-3d;
   }
 
   .backface-hidden {
-    backface-visibility: hidden !important;
     -webkit-backface-visibility: hidden !important;
+    backface-visibility: hidden !important;
   }
 
   .rotate-y-180 {
@@ -235,8 +236,8 @@
   }
 
   .perspective-1000 {
-    perspective: 1000px;
     -webkit-perspective: 1000px;
+    perspective: 1000px;
   }
 
   .scrollbar-none {

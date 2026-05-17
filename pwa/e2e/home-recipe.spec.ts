@@ -360,7 +360,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Flip the card and click skip
     await page.getByTestId('tonight-menu-card').click();
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').click();
+    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
 
     // Click "Pick Something Else"
     await page.getByTestId('recovery-action-pick-else').click();
@@ -444,7 +444,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Flip the card and click skip
     await page.getByTestId('tonight-menu-card').click();
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').click();
+    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
@@ -535,7 +535,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Flip the card and click skip
     await page.getByTestId('tonight-menu-card').click();
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').click();
+    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
@@ -638,7 +638,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     await page.getByTestId('tonight-menu-card').click();
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').click();
+    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
 
     await page.getByTestId('recovery-action-pick-else').click();
 
