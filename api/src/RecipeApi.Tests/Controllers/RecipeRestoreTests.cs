@@ -57,7 +57,7 @@ public class RecipeRestoreTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var workflow = Assert.Single(db.WorkflowInstances.Where(i => i.WorkflowId == "index-recipe-search"));
-            using var parameters = JsonDocument.Parse(workflow.Parameters);
+            using var parameters = JsonDocument.Parse(workflow.Parameters!);
             Assert.True(parameters.RootElement.TryGetProperty("fingerprint", out _), "Missing required 'fingerprint' parameter in restore trigger");
         }
     }

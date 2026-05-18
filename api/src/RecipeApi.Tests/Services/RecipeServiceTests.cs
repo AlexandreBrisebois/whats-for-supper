@@ -178,7 +178,7 @@ public class RecipeServiceTests : IAsyncLifetime
             Assert.Equal(["Chicken thighs", "Carrots", "Broth"], RecipeApi.Services.RecipeService.DeserializeIngredients(recipe.Ingredients));
 
             var workflow = Assert.Single(db.WorkflowInstances.Where(instance => instance.WorkflowId == "index-recipe-search"));
-            using var parameters = JsonDocument.Parse(workflow.Parameters);
+            using var parameters = JsonDocument.Parse(workflow.Parameters!);
             Assert.Equal(recipeId.ToString(), parameters.RootElement.GetProperty("recipeId").GetString());
             Assert.False(string.IsNullOrWhiteSpace(parameters.RootElement.GetProperty("fingerprint").GetString()));
         }

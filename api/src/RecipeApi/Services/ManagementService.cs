@@ -24,7 +24,6 @@ public class ManagementService(
     RecipesRootResolver recipesRoot,
     DataRootResolver dataRoot,
     IClock clock,
-    IHealthEventPublisher healthPublisher,
     ILogger<ManagementService> logger)
 {
     private string DataRoot => dataRoot.Root;

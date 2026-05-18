@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
@@ -10,7 +9,6 @@ namespace RecipeApi.Services;
 public class RecipePurgeService(
     RecipeDbContext db,
     RecipesRootResolver recipesRoot,
-    IConfiguration configuration,
     ILogger<RecipePurgeService> logger)
 {
     /// <summary>

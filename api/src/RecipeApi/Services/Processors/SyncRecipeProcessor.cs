@@ -10,7 +10,6 @@ namespace RecipeApi.Services.Processors;
 public class SyncRecipeProcessor(
     RecipeDbContext db,
     RecipeRepository recipeRepository,
-    DiscoveryService discoveryService,
     GroceryRecomputeService groceryRecomputeService,
     IHealthEventPublisher healthPublisher,
     ILogger<SyncRecipeProcessor> logger) : IWorkflowProcessor

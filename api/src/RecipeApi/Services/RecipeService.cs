@@ -15,7 +15,6 @@ public class RecipeService(
     ImageService images,
     IRecipeStore recipeStore,
     IWorkflowOrchestrator orchestrator,
-    SearchIndexWorkflow searchIndex,
     IHealthEventPublisher healthPublisher,
     ILogger<RecipeService> logger)
 {

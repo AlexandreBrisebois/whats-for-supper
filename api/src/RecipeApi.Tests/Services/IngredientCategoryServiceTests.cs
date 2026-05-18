@@ -26,7 +26,9 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
 
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>();
-        _recomputeMock = new Mock<GroceryRecomputeService>(_db, new AisleMapper(), logger, (IScheduleEventPublisher?)null)
+#pragma warning disable CS8625
+        _recomputeMock = new Mock<GroceryRecomputeService>(_db, new AisleMapper(), logger, null)
+#pragma warning restore CS8625
         {
             CallBase = false
         };

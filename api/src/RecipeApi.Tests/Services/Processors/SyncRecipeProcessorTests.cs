@@ -26,12 +26,10 @@ public class SyncRecipeProcessorTests : IDisposable
         _storage = new InMemoryStorageProvider();
         _recipeRepository = new RecipeRepository(_storage);
         
-        var publisherMock = new Mock<IScheduleEventPublisher>();
-        var discoveryService = new DiscoveryService(_db, publisherMock.Object);
         var aisleMapper = new AisleMapper();
         var groceryRecomputeService = new GroceryRecomputeService(
             _db, aisleMapper, new Mock<ILogger<GroceryRecomputeService>>().Object);
-        _processor = new SyncRecipeProcessor(_db, _recipeRepository, discoveryService, groceryRecomputeService, new Mock<IHealthEventPublisher>().Object, _loggerMock.Object);
+        _processor = new SyncRecipeProcessor(_db, _recipeRepository, groceryRecomputeService, new Mock<IHealthEventPublisher>().Object, _loggerMock.Object);
     }
 
     public void Dispose()
