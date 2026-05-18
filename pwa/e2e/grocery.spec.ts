@@ -301,13 +301,14 @@ test.describe('Grocery List — SSE sync', () => {
     });
 
     // Build a week_updated schedule that carries groceryState with Pasta already checked.
-    // The groceryState is embedded in additionalData to match the Kiota AdditionalDataHolder
-    // pattern used by weekStore.applySnapshot.
+    // groceryItems must be included so applySnapshot doesn't reset the list to [].
+    // groceryState.additionalData matches the Kiota AdditionalDataHolder pattern.
     const scheduleWithGrocery = {
       weekOffset: 0,
       locked: false,
       status: 0,
       days,
+      groceryItems: builders.groceryItems(GROCERY_INGREDIENTS_WEEK, GROCERY_SECTION_MAP_WEEK),
       groceryState: {
         additionalData: { Pasta: true, Beef: false, 'Tomato Sauce': false, Cheese: false },
       },
