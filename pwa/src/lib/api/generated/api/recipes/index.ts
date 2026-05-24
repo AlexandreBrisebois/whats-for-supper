@@ -262,12 +262,24 @@ export interface RecipesRequestBuilderGetQueryParameters {
    * When true, only returns recipes marked as discoverable (high family interest).When false (default), returns all ready, non-soft-deleted recipes.
    */
   discoverableOnly?: boolean;
+  /**
+   * Optional exact ID filter to find duplicate recipes by original GUID.
+   */
+  id?: Guid;
   limit?: number;
+  /**
+   * Optional exact, case-insensitive name filter to find duplicate recipes.
+   */
+  name?: string;
   /**
    * Sort order for recipes. When "explore" is specified, recipes are ordered bylastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).When absent, default ordering (newest-created first) is applied.Returns HTTP 400 for unrecognised values.
    */
   order?: GetOrderQueryParameterType;
   page?: number;
+  /**
+   * Optional exact, case-insensitive source URL filter to find duplicate recipes.
+   */
+  url?: string;
 }
 /**
  * Serializes information the current object
@@ -331,7 +343,7 @@ export function serializeRecipesPostResponse_data(
  * Uri template for the request builder.
  */
 export const RecipesRequestBuilderUriTemplate =
-  '{+baseurl}/api/recipes{?discoverableOnly*,limit*,order*,page*}';
+  '{+baseurl}/api/recipes{?discoverableOnly*,id*,limit*,name*,order*,page*,url*}';
 export const GetOrderQueryParameterTypeObject = {
   Explore: 'explore',
 } as const;

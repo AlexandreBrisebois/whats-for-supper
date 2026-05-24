@@ -308,6 +308,28 @@ Run task review when done.
 
 ---
 
+## Session 9 — Capture: Duplicate Recipe Prevention
+
+**Spec:** `.kiro/specs/capture-duplicate-detection/tasks.md`
+**Effort:** Medium
+**Status:** [ ] Not started
+
+**What it adds:**
+- Reuses `GET /api/recipes` with `id`, `name`, and `url` filters for sub-millisecond check speed with zero extra infrastructure.
+- GUID preservation in shared `.recipe` files. On collision, API generates a new GUID for the duplicate copy.
+- 3-choice recovery flow for Mom: Discard (deletes synthesized records immediately), Keep anyway, and View overlay.
+- Visual warning banners and detail drawers across File, URL, Describe, and Photo capture modes.
+
+**Kick-off prompt:**
+```
+Execute the capture-duplicate-detection spec.
+
+Spec: .kiro/specs/capture-duplicate-detection/tasks.md
+Start with Wave 1 (API seams & backend), Wave 2 (Client gen), Wave 3 (PWA UI), and Wave 4 (Tests).
+```
+
+---
+
 ## Status Overview
 
 | # | Session | Spec | Groups/Reqs | Effort | Status |
@@ -320,6 +342,7 @@ Run task review when done.
 | 6 | weekStore digital twin | `planner-voting-ux` | Req 5–6 | Large | [ ] |
 | 7 | Flow doc updates | `home-command-center-hardening` | D | Small | [ ] |
 | 8 | Capture optional E2E tests | `capture-describe-entry` | 5.2–5.4 | Small | [ ] |
+| 9 | Duplicate Recipe Prevention | `capture-duplicate-detection` | Req 1–5 | Medium | [ ] |
 
 Mark sessions complete by changing `[ ]` to `[x]` as you ship them.
 

@@ -598,6 +598,263 @@ public class RecipeControllerTests : IAsyncLifetime
         Assert.Equal(1, doc.RootElement.GetProperty("queuedCount").GetInt32());
     }
 
+    // ── GET /api/recipes — duplicate prevention filtering ────────────────────
+
+    [Fact]
+    public async Task GetRecipesList_FilterById_ReturnsMatch()
+    {
+        Guid matchedId;
+        Guid nonMatchedId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var matched = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Matched Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var nonMatched = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Other Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(matched, nonMatched);
+            await db.SaveChangesAsync();
+
+            matchedId = matched.Id;
+            nonMatchedId = nonMatched.Id;
+        }
+
+        var response = await _client.GetAsync($"/api/recipes?id={matchedId}&page=1&limit=10");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipes = doc.RootElement.GetProperty("recipes").EnumerateArray().ToList();
+
+        Assert.Single(recipes);
+        Assert.Equal(matchedId, recipes[0].GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task GetRecipesList_FilterByName_ReturnsCaseInsensitiveMatch()
+    {
+        Guid matchedId;
+        Guid nonMatchedId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var matched = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Spaghetti Carbonara",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var nonMatched = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Lasagna Bolognese",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(matched, nonMatched);
+            await db.SaveChangesAsync();
+
+            matchedId = matched.Id;
+            nonMatchedId = nonMatched.Id;
+        }
+
+        // Query with mixed case and leading/trailing whitespace
+        var response = await _client.GetAsync("/api/recipes?name=  sPaGhEtTi CaRbOnArA  &page=1&limit=10");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipes = doc.RootElement.GetProperty("recipes").EnumerateArray().ToList();
+
+        Assert.Single(recipes);
+        Assert.Equal(matchedId, recipes[0].GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task GetRecipesList_FilterByUrl_ReturnsMatch()
+    {
+        Guid matchedId;
+        Guid nonMatchedId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var matched = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Matched URL",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                SourceUrl = "https://example.com/spaghetti-recipe",
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var nonMatched = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Non Matched URL",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                SourceUrl = "https://example.com/lasagna-recipe",
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(matched, nonMatched);
+            await db.SaveChangesAsync();
+
+            matchedId = matched.Id;
+            nonMatchedId = nonMatched.Id;
+        }
+
+        // Query with mixed case and leading/trailing whitespace for the URL
+        var response = await _client.GetAsync("/api/recipes?url=  https://eXaMpLe.CoM/SpAgHeTtI-rEcIpE  &page=1&limit=10");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipes = doc.RootElement.GetProperty("recipes").EnumerateArray().ToList();
+
+        Assert.Single(recipes);
+        Assert.Equal(matchedId, recipes[0].GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task GetRecipesList_IgnoresSoftDeletedDuplicates()
+    {
+        Guid activeId;
+        Guid deletedId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var active = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Duplicate Name",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var deleted = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Duplicate Name",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                DeletedAt = now.AddDays(-1),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(active, deleted);
+            await db.SaveChangesAsync();
+
+            activeId = active.Id;
+            deletedId = deleted.Id;
+        }
+
+        var response = await _client.GetAsync("/api/recipes?name=Duplicate%20Name&page=1&limit=10");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipes = doc.RootElement.GetProperty("recipes").EnumerateArray().ToList();
+
+        Assert.Single(recipes);
+        Assert.Equal(activeId, recipes[0].GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task GetRecipesList_IgnoresNotReadyDuplicates()
+    {
+        Guid readyId;
+        Guid notReadyId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var now = DateTimeOffset.UtcNow;
+
+            var ready = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Ready Duplicate",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var notReady = new RecipeApi.Models.Recipe
+            {
+                Id = Guid.NewGuid(),
+                Name = "Ready Duplicate",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = false,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            db.Recipes.AddRange(ready, notReady);
+            await db.SaveChangesAsync();
+
+            readyId = ready.Id;
+            notReadyId = notReady.Id;
+        }
+
+        var response = await _client.GetAsync("/api/recipes?name=Ready%20Duplicate&page=1&limit=10");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var recipes = doc.RootElement.GetProperty("recipes").EnumerateArray().ToList();
+
+        Assert.Single(recipes);
+        Assert.Equal(readyId, recipes[0].GetProperty("id").GetGuid());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private MultipartFormDataContent BuildRecipeForm(int rating, int cookedIndex, bool includeImage)

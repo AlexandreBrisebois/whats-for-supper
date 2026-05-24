@@ -2393,6 +2393,9 @@ export function deserializeIntoRecipeShareInfoDto(
     exportedAtUtc: (n) => {
       recipeShareInfoDto.exportedAtUtc = n.getDateValue();
     },
+    recipeId: (n) => {
+      recipeShareInfoDto.recipeId = n.getGuidValue();
+    },
   };
 }
 /**
@@ -3882,6 +3885,10 @@ export interface RecipeShareInfoDto extends AdditionalDataHolder, Parsable {
    * The exportedAtUtc property
    */
   exportedAtUtc?: Date | null;
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
 }
 export type RecipeShareInfoDto_bundleSource =
   (typeof RecipeShareInfoDto_bundleSourceObject)[keyof typeof RecipeShareInfoDto_bundleSourceObject];
@@ -5296,6 +5303,7 @@ export function serializeRecipeShareInfoDto(
     recipeShareInfoDto.bundleSource
   );
   writer.writeDateValue('exportedAtUtc', recipeShareInfoDto.exportedAtUtc);
+  writer.writeGuidValue('recipeId', recipeShareInfoDto.recipeId);
   writer.writeAdditionalData(recipeShareInfoDto.additionalData);
 }
 /**

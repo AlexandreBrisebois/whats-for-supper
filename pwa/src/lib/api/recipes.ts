@@ -403,6 +403,7 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
       bundleSource:
         RecipeShareInfoDto_bundleSourceObject.WfsShare as RecipeShareInfoDto_bundleSource,
       appVersion: typeof info.appVersion === 'string' ? info.appVersion : null,
+      recipeId: typeof info.recipeId === 'string' ? (info.recipeId as any) : null,
     },
     hero: hero ? toSharedImage(hero) : null,
     originals: originals.map((image) => toSharedImage(image as Record<string, unknown>)),

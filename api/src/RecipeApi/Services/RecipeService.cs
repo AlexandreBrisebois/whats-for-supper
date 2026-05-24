@@ -112,7 +112,14 @@ public class RecipeService(
     }
 
     /// <summary>Returns a paginated list of recipes, newest first (default) or oldest-cooked first (order=explore).</summary>
-    public async Task<RecipeListResponseDto> GetRecipesList(int page, int limit, string? order = null, bool? discoverableOnly = null)
+    public async Task<RecipeListResponseDto> GetRecipesList(
+        int page,
+        int limit,
+        string? order = null,
+        bool? discoverableOnly = null,
+        Guid? id = null,
+        string? name = null,
+        string? url = null)
     {
         page = Math.Max(1, page);
         limit = Math.Clamp(limit, 1, 100);
@@ -120,6 +127,19 @@ public class RecipeService(
         var query = db.Recipes.Where(r =>
             r.DeletedAt == null &&
             r.IsReady);
+
+        if (id.HasValue)
+        {
+            query = query.Where(r => r.Id == id.Value);
+        }
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            query = query.Where(r => r.Name != null && r.Name.ToLower() == name.Trim().ToLower());
+        }
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            query = query.Where(r => r.SourceUrl != null && r.SourceUrl.ToLower() == url.Trim().ToLower());
+        }
 
         if (discoverableOnly == true)
         {
@@ -239,6 +259,7 @@ public class RecipeService(
                 ExportedAtUtc = DateTimeOffset.UtcNow,
                 BundleSource = "wfs-share",
                 AppVersion = null,
+                RecipeId = id,
             },
             Hero = await ReadSharedImageOrNull(async () => await images.GetHeroImage(id)),
             Originals = await ReadOriginalImages(id, recipe.ImageCount),
@@ -250,7 +271,13 @@ public class RecipeService(
         ValidateBundle(bundle);
 
         var now = DateTimeOffset.UtcNow;
-        var recipeId = Guid.NewGuid();
+        var recipeId = bundle.Info.RecipeId ?? Guid.NewGuid();
+
+        if (await db.Recipes.AnyAsync(r => r.Id == recipeId))
+        {
+            recipeId = Guid.NewGuid();
+        }
+
         var originalCount = Math.Min(bundle.Originals.Count, 5);
 
         var recipe = new Recipe

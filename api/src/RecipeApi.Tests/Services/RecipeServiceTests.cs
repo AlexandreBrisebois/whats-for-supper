@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -250,5 +251,167 @@ public class RecipeServiceTests : IAsyncLifetime
         using var doc = JsonDocument.Parse(json);
         var recipe = doc.RootElement.GetProperty("recipe");
         Assert.Equal(2, recipe.GetProperty("finishedDishIndex").GetInt32());
+    }
+
+    // ── Export/Import Share Bundle duplicate prevention tests ───────────────
+
+    [Fact]
+    public async Task ExportRecipeShareBundle_PopulatesRecipeId()
+    {
+        var recipeId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = recipeId,
+                Name = "Export Test Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            // We need to write a fake hero image because recipeService.ExportRecipeShareBundle expects a hero image
+            var store = _factory.Services.GetRequiredService<IRecipeStore>();
+            await store.SaveHeroImageAsync(recipeId, new MemoryStream([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]));
+
+            await db.SaveChangesAsync();
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/api/recipes/{recipeId}/share");
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var info = doc.RootElement.GetProperty("info");
+        
+        Assert.True(info.TryGetProperty("recipeId", out var recipeIdProp));
+        Assert.Equal(recipeId, recipeIdProp.GetGuid());
+    }
+
+    [Fact]
+    public async Task ImportRecipeShareBundle_UsesOriginalRecipeId_WhenNotDuplicate()
+    {
+        var originalRecipeId = Guid.NewGuid();
+
+        var bundle = new
+        {
+            version = "1.0",
+            recipe = new
+            {
+                name = "Imported Recipe",
+                description = "Yummy imported recipe",
+                ingredients = new[] { "Salt", "Pepper" },
+                instructions = new[]
+                {
+                    new { name = "Instructions", itemListElement = new[] { new { text = "Cook it." } } }
+                },
+                totalTimeMinutes = 15,
+                sourceUrl = "https://example.com/imported",
+                isSynthesized = false
+            },
+            info = new
+            {
+                exportedAtUtc = DateTimeOffset.UtcNow.ToString("o"),
+                bundleSource = "wfs-share",
+                recipeId = originalRecipeId.ToString()
+            },
+            originals = new object[] { }
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/recipes/import-bundle")
+        {
+            Content = JsonContent.Create(bundle)
+        };
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var recipe = await db.Recipes.FindAsync(originalRecipeId);
+            Assert.NotNull(recipe);
+            Assert.Equal("Imported Recipe", recipe.Name);
+        }
+    }
+
+    [Fact]
+    public async Task ImportRecipeShareBundle_GeneratesNewGuid_WhenDuplicateIdExists()
+    {
+        var existingRecipeId = Guid.NewGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = existingRecipeId,
+                Name = "Already Existing Recipe",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var bundle = new
+        {
+            version = "1.0",
+            recipe = new
+            {
+                name = "Imported Recipe Duplicate",
+                description = "Another yummy imported recipe",
+                ingredients = new[] { "Salt", "Pepper" },
+                instructions = new[]
+                {
+                    new { name = "Instructions", itemListElement = new[] { new { text = "Cook it." } } }
+                },
+                totalTimeMinutes = 15,
+                sourceUrl = "https://example.com/imported",
+                isSynthesized = false
+            },
+            info = new
+            {
+                exportedAtUtc = DateTimeOffset.UtcNow.ToString("o"),
+                bundleSource = "wfs-share",
+                recipeId = existingRecipeId.ToString() // same ID!
+            },
+            originals = new object[] { }
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/recipes/import-bundle")
+        {
+            Content = JsonContent.Create(bundle)
+        };
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var importedRecipeId = doc.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+
+        Assert.NotEqual(existingRecipeId, importedRecipeId);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var existingRecipe = await db.Recipes.FindAsync(existingRecipeId);
+            var importedRecipe = await db.Recipes.FindAsync(importedRecipeId);
+
+            Assert.NotNull(existingRecipe);
+            Assert.NotNull(importedRecipe);
+            Assert.Equal("Already Existing Recipe", existingRecipe.Name);
+            Assert.Equal("Imported Recipe Duplicate", importedRecipe.Name);
+        }
     }
 }

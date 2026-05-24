@@ -40,12 +40,15 @@ public class RecipeController(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20,
         [FromQuery] string? order = null,
-        [FromQuery] bool? discoverableOnly = null)
+        [FromQuery] bool? discoverableOnly = null,
+        [FromQuery] Guid? id = null,
+        [FromQuery] string? name = null,
+        [FromQuery] string? url = null)
     {
         if (order is not null && !string.Equals(order, "explore", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { error = "Invalid order parameter. Allowed values: explore" });
 
-        var result = await recipeService.GetRecipesList(page, limit, order, discoverableOnly);
+        var result = await recipeService.GetRecipesList(page, limit, order, discoverableOnly, id, name, url);
         return Ok(result);
     }
 

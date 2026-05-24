@@ -17,9 +17,11 @@ import { useCapture } from '@/hooks/useCapture';
 import { useFamilyStore } from '@/store/familyStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { useUiStore } from '@/store/uiStore';
 import { apiClient } from '@/lib/api/api-client';
 import { importRecipeShareBundle, parseRecipeBundleFile } from '@/lib/api/recipes';
 import { Button } from '@/components/ui/button';
+import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { ROUTES } from '@/lib/constants/routes';
 import { normalizeGotos } from '@/lib/gotoUtils';
 import { t, tWithVars } from '@/locales';
@@ -28,6 +30,7 @@ import type {
   GoToItem,
   RecipeShareBundleDto,
   SharedImageDto,
+  RecipeDto,
 } from '@/lib/api/generated/models/index';
 
 const PHOTO_UPLOAD_OVERLAY_DELAY_MS = 800;
@@ -60,6 +63,7 @@ export default function MinimalCapture({
 }: MinimalCaptureProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const addToast = useUiStore((state) => state.addToast);
   const familySettings = useFamilyStore((state) => state.familySettings);
   const loadGoTo = useFamilyStore((state) => state.loadGoTo);
   const saveGoTo = useFamilyStore((state) => state.saveGoTo);
@@ -128,6 +132,13 @@ export default function MinimalCapture({
 
   const [countdown, setCountdown] = useState<number | null>(null);
 
+  const [duplicateRecipeId, setDuplicateRecipeId] = useState<string | null>(null);
+  const [fileDuplicate, setFileDuplicate] = useState<RecipeDto | null>(null);
+  const [urlDuplicate, setUrlDuplicate] = useState<RecipeDto | null>(null);
+  const [describeDuplicate, setDescribeDuplicate] = useState<RecipeDto | null>(null);
+  const [photoDuplicate, setPhotoDuplicate] = useState<RecipeDto | null>(null);
+  const [isDiscardingDuplicate, setIsDiscardingDuplicate] = useState(false);
+
   const isGoto = intent === 'goto';
 
   useEffect(() => {
@@ -155,6 +166,90 @@ export default function MinimalCapture({
 
     return unsubscribe;
   }, [pendingRecipeId]);
+
+  // URL Capture duplicate check (debounced 500ms)
+  useEffect(() => {
+    const trimmed = urlInput.trim();
+
+    const timer = setTimeout(
+      async () => {
+        if (!trimmed) {
+          setUrlDuplicate(null);
+          return;
+        }
+        try {
+          const res = await apiClient.api.recipes.get({
+            query: { url: trimmed },
+            queryParameters: { url: trimmed },
+          } as any);
+          const match = res?.recipes?.[0] || null;
+          setUrlDuplicate(match);
+        } catch (err) {
+          console.error('Error checking duplicate URL:', err);
+        }
+      },
+      trimmed ? 500 : 0
+    );
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [urlInput]);
+
+  // Describe Capture duplicate check (debounced 500ms)
+  useEffect(() => {
+    const trimmed = describeName.trim();
+
+    const timer = setTimeout(
+      async () => {
+        if (!trimmed) {
+          setDescribeDuplicate(null);
+          return;
+        }
+        try {
+          const res = await apiClient.api.recipes.get({
+            query: { name: trimmed },
+            queryParameters: { name: trimmed },
+          } as any);
+          const match = res?.recipes?.[0] || null;
+          setDescribeDuplicate(match);
+        } catch (err) {
+          console.error('Error checking duplicate describe name:', err);
+        }
+      },
+      trimmed ? 500 : 0
+    );
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [describeName]);
+
+  // Photo capture duplicate check once readyRecipeName is set
+  useEffect(() => {
+    if (!readyRecipeName || !pendingRecipeId) {
+      if (photoDuplicate !== null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPhotoDuplicate(null);
+      }
+      return;
+    }
+    const checkPhotoDuplicate = async () => {
+      try {
+        const res = await apiClient.api.recipes.get({
+          query: { name: readyRecipeName },
+          queryParameters: { name: readyRecipeName },
+        } as any);
+        const matches = res?.recipes || [];
+        const duplicateMatch = matches.find((r) => r.id !== pendingRecipeId) || null;
+        setPhotoDuplicate(duplicateMatch);
+      } catch (err) {
+        console.error('Error checking duplicate photo recipe name:', err);
+      }
+    };
+    checkPhotoDuplicate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyRecipeName, pendingRecipeId]);
 
   useEffect(() => {
     if (images.length > 0) {
@@ -286,13 +381,44 @@ export default function MinimalCapture({
 
     try {
       setBundleImportError(null);
-      setParsedBundle(await parseRecipeBundleFile(file));
+      const parsed = await parseRecipeBundleFile(file);
+      setParsedBundle(parsed);
       setSelectedBundleFileName(file.name);
       setShowDescribe(false);
       setShowUrlReview(false);
+
+      // Perform duplicate detection
+      let duplicateMatch: RecipeDto | null = null;
+
+      // 1. If parsed.info.recipeId is present, check by ID first
+      if (parsed.info?.recipeId) {
+        const res = await apiClient.api.recipes.get({
+          query: { id: parsed.info.recipeId },
+          queryParameters: { id: parsed.info.recipeId },
+        } as any);
+        const match = res?.recipes?.[0] || null;
+        if (match) {
+          duplicateMatch = match;
+        }
+      }
+
+      // 2. If no match found or GUID missing, check by name
+      if (!duplicateMatch && parsed.recipe?.name) {
+        const res = await apiClient.api.recipes.get({
+          query: { name: parsed.recipe.name },
+          queryParameters: { name: parsed.recipe.name },
+        } as any);
+        const match = res?.recipes?.[0] || null;
+        if (match) {
+          duplicateMatch = match;
+        }
+      }
+
+      setFileDuplicate(duplicateMatch);
     } catch (error) {
       setParsedBundle(null);
       setSelectedBundleFileName(null);
+      setFileDuplicate(null);
       setBundleImportError(
         error instanceof Error ? error.message : 'This .recipe file is not valid.'
       );
@@ -379,6 +505,21 @@ export default function MinimalCapture({
     setSelectedBundleFileName(null);
     setBundleImportError(null);
     setIsBundleSubmitting(false);
+    setFileDuplicate(null);
+  };
+
+  const handleDiscardDuplicate = async () => {
+    if (!pendingRecipeId || isDiscardingDuplicate) return;
+    setIsDiscardingDuplicate(true);
+    try {
+      await apiClient.api.recipes.byId(pendingRecipeId).delete();
+      addToast('Duplicate recipe discarded.');
+      router.push('/' as any);
+    } catch (err) {
+      console.error('Error discarding duplicate recipe:', err);
+    } finally {
+      setIsDiscardingDuplicate(false);
+    }
   };
 
   const handleAcceptBundle = async () => {
@@ -506,6 +647,24 @@ export default function MinimalCapture({
             </h2>
             <p className="text-charcoal/60 px-4 max-w-sm">It&apos;s in your library.</p>
           </div>
+
+          {photoDuplicate && (
+            <div
+              data-testid="duplicate-recipe-warning"
+              className="w-full max-w-sm rounded-2xl border border-ochre/20 bg-ochre/5 px-4 py-3 text-sm text-ochre flex flex-col gap-2 items-center"
+            >
+              <span>A recipe with this name already exists: {photoDuplicate.name}</span>
+              <button
+                type="button"
+                data-testid="view-existing-recipe-btn"
+                onClick={() => setDuplicateRecipeId(photoDuplicate.id || null)}
+                className="underline font-bold text-xs hover:text-ochre/80 animate-in fade-in"
+              >
+                View existing recipe
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col gap-3 w-full max-w-xs">
             <Button
               variant="primary"
@@ -523,7 +682,29 @@ export default function MinimalCapture({
             >
               Done
             </Button>
+            {photoDuplicate && (
+              <Button
+                variant="ghost"
+                data-testid="discard-duplicate-btn"
+                onClick={handleDiscardDuplicate}
+                isLoading={isDiscardingDuplicate}
+                disabled={isDiscardingDuplicate}
+                className="rounded-2xl px-8 text-pink hover:text-pink/80 font-bold"
+              >
+                Discard duplicate
+              </Button>
+            )}
           </div>
+          {duplicateRecipeId && (
+            <RecipeDetailSheet
+              recipeId={duplicateRecipeId}
+              plannerDayLabel={null}
+              onClose={() => setDuplicateRecipeId(null)}
+              onUseForDay={async () => {}}
+              onPlanForLater={async () => {}}
+              onFindSimilar={() => {}}
+            />
+          )}
         </div>
       );
     }
@@ -609,6 +790,23 @@ export default function MinimalCapture({
             {selectedBundleFileName || 'Shared recipe file'} is ready to import.
           </p>
         </div>
+
+        {fileDuplicate && (
+          <div
+            data-testid="duplicate-recipe-warning"
+            className="w-full rounded-2xl border border-ochre/20 bg-ochre/5 px-4 py-3 text-sm text-ochre flex flex-col gap-2 items-center"
+          >
+            <span>This recipe already exists in your library.</span>
+            <button
+              type="button"
+              data-testid="view-existing-recipe-btn"
+              onClick={() => setDuplicateRecipeId(fileDuplicate.id || null)}
+              className="underline font-bold text-xs hover:text-ochre/80"
+            >
+              View existing recipe
+            </button>
+          </div>
+        )}
 
         <div
           data-testid="bundle-preview-card"
@@ -745,6 +943,16 @@ export default function MinimalCapture({
             Cancel
           </Button>
         </div>
+        {duplicateRecipeId && (
+          <RecipeDetailSheet
+            recipeId={duplicateRecipeId}
+            plannerDayLabel={null}
+            onClose={() => setDuplicateRecipeId(null)}
+            onUseForDay={async () => {}}
+            onPlanForLater={async () => {}}
+            onFindSimilar={() => {}}
+          />
+        )}
       </div>
     );
   }
@@ -1057,6 +1265,8 @@ export default function MinimalCapture({
               onClick={() => {
                 setShowUrlReview(false);
                 setUrlCaptureError(null);
+                setUrlDuplicate(null);
+                setUrlInput('');
               }}
               className="flex w-fit items-center gap-1 text-sm font-bold uppercase tracking-widest text-charcoal/40 transition-colors hover:text-charcoal"
             >
@@ -1078,6 +1288,23 @@ export default function MinimalCapture({
               </p>
             </div>
           </div>
+
+          {urlDuplicate && (
+            <div
+              data-testid="duplicate-recipe-warning"
+              className="w-full rounded-2xl border border-ochre/20 bg-ochre/5 px-4 py-3 text-sm text-ochre flex flex-col gap-2 items-center"
+            >
+              <span>You already have a recipe from this link: {urlDuplicate.name}</span>
+              <button
+                type="button"
+                data-testid="view-existing-recipe-btn"
+                onClick={() => setDuplicateRecipeId(urlDuplicate.id || null)}
+                className="underline font-bold text-xs hover:text-ochre/80"
+              >
+                View existing recipe
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-col gap-6">
             {/* URL Display - Multi-line Textbox */}
@@ -1182,6 +1409,22 @@ export default function MinimalCapture({
                 placeholder="e.g. Our family spaghetti"
                 className="w-full rounded-2xl border-2 border-charcoal/10 bg-white px-5 py-4 text-sm text-charcoal placeholder:text-charcoal/30 focus:border-ochre focus:outline-none focus:ring-4 focus:ring-ochre/10 transition-all"
               />
+              {describeDuplicate && (
+                <div
+                  data-testid="duplicate-recipe-warning"
+                  className="w-full rounded-2xl border border-ochre/20 bg-ochre/5 px-4 py-3 text-sm text-ochre flex flex-col gap-2 items-center"
+                >
+                  <span>A recipe with this name already exists in your library.</span>
+                  <button
+                    type="button"
+                    data-testid="view-existing-recipe-btn"
+                    onClick={() => setDuplicateRecipeId(describeDuplicate.id || null)}
+                    className="underline font-bold text-xs hover:text-ochre/80"
+                  >
+                    View existing recipe
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Description — optional */}
@@ -1219,7 +1462,33 @@ export default function MinimalCapture({
               'Synthesize Recipe'
             )}
           </Button>
+
+          <Button
+            variant="ghost"
+            fullWidth
+            data-testid="describe-cancel-btn"
+            onClick={() => {
+              setShowDescribe(false);
+              setDescribeName('');
+              setDescribeText('');
+              setDescribeDuplicate(null);
+              setDescribeError(null);
+            }}
+            className="rounded-[2rem] py-6 text-lg font-bold text-charcoal/60"
+          >
+            Cancel
+          </Button>
         </div>
+      )}
+      {duplicateRecipeId && (
+        <RecipeDetailSheet
+          recipeId={duplicateRecipeId}
+          plannerDayLabel={null}
+          onClose={() => setDuplicateRecipeId(null)}
+          onUseForDay={async () => {}}
+          onPlanForLater={async () => {}}
+          onFindSimilar={() => {}}
+        />
       )}
     </div>
   );

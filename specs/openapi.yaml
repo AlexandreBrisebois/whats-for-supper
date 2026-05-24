@@ -459,6 +459,7 @@ components:
         exportedAtUtc: { type: string, format: date-time }
         bundleSource: { type: string, enum: [wfs-share] }
         appVersion: { type: [string, 'null'] }
+        recipeId: { type: string, format: uuid }
 
     SharedImageDto:
       type: object
@@ -1420,6 +1421,21 @@ paths:
           description: |
             When true, only returns recipes marked as discoverable (high family interest).
             When false (default), returns all ready, non-soft-deleted recipes.
+        - name: id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: Optional exact ID filter to find duplicate recipes by original GUID.
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+          description: Optional exact, case-insensitive name filter to find duplicate recipes.
+        - name: url
+          in: query
+          required: false
+          schema: { type: string }
+          description: Optional exact, case-insensitive source URL filter to find duplicate recipes.
       responses:
         '200':
           description: OK (Not wrapped in data envelope)

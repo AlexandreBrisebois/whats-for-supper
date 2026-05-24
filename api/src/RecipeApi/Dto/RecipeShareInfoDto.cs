@@ -15,4 +15,7 @@ public class RecipeShareInfoDto
 
     [JsonPropertyName("appVersion")]
     public string? AppVersion { get; set; }
+
+    [JsonPropertyName("recipeId")]
+    public Guid? RecipeId { get; set; }
 }
