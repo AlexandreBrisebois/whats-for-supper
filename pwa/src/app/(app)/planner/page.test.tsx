@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const push = vi.fn();
+  const replace = vi.fn();
   const setWeekOffset = vi.fn();
   const setActiveTab = vi.fn();
   const setGroceryState = vi.fn();
@@ -16,9 +17,11 @@ const mocks = vi.hoisted(() => {
   const reorderLocally = vi.fn();
   let weekState: any;
   let plannerState: any;
+  let searchParams = '';
 
   return {
     push,
+    replace,
     setWeekOffset,
     setActiveTab,
     setGroceryState,
@@ -38,12 +41,16 @@ const mocks = vi.hoisted(() => {
     setPlannerState: (value: any) => {
       plannerState = value;
     },
+    setSearchParams: (value: string) => {
+      searchParams = value;
+    },
+    getSearchParams: () => searchParams,
   };
 });
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mocks.push }),
-  useSearchParams: () => new URLSearchParams(''),
+  useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
+  useSearchParams: () => new URLSearchParams(mocks.getSearchParams()),
 }));
 
 vi.mock('framer-motion', () => ({
@@ -220,6 +227,7 @@ function renderPlanner(status: 0 | 1 | 2, sundayDate = '2026-05-17') {
 describe('PlannerPage voting action row', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.setSearchParams('');
     mocks.getVotingLink.mockResolvedValue('http://example.com/discovery');
 
     Object.defineProperty(window, 'matchMedia', {
@@ -305,6 +313,15 @@ describe('PlannerPage voting action row', () => {
       expect(mockShare).toHaveBeenCalledWith(
         expect.objectContaining({ url: 'http://example.com/discovery' })
       );
+    });
+  });
+
+  it('hydrates week offset from URL query on load', async () => {
+    mocks.setSearchParams('weekOffset=1');
+    renderPlanner(0);
+
+    await waitFor(() => {
+      expect(mocks.setWeekOffset).toHaveBeenCalledWith(1);
     });
   });
 });

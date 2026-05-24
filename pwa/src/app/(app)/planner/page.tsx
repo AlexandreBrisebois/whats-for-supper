@@ -111,6 +111,15 @@ export default function PlannerPage() {
   }, [showNudgeDialog]);
 
   useEffect(() => {
+    const weekOffsetParam = searchParams.get('weekOffset');
+    const parsed = weekOffsetParam === null ? 0 : Number.parseInt(weekOffsetParam, 10);
+    if (!Number.isFinite(parsed)) return;
+    if (parsed === currentWeekOffset) return;
+
+    setWeekOffset(parsed);
+  }, [searchParams, currentWeekOffset, setWeekOffset]);
+
+  useEffect(() => {
     useWeekStore.getState().init(currentWeekOffset);
   }, [currentWeekOffset, successParam]);
 
@@ -156,8 +165,19 @@ export default function PlannerPage() {
     }
   }, [searchParams]);
 
-  const handlePrevWeek = () => setWeekOffset(currentWeekOffset - 1);
-  const handleNextWeek = () => setWeekOffset(currentWeekOffset + 1);
+  const navigateToWeekOffset = (nextWeekOffset: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextWeekOffset === 0) {
+      params.delete('weekOffset');
+    } else {
+      params.set('weekOffset', nextWeekOffset.toString());
+    }
+    const query = params.toString();
+    router.replace(query ? `/planner?${query}` : '/planner');
+  };
+
+  const handlePrevWeek = () => navigateToWeekOffset(currentWeekOffset - 1);
+  const handleNextWeek = () => navigateToWeekOffset(currentWeekOffset + 1);
 
   const handleCloseVoting = async () => {
     try {
@@ -415,7 +435,7 @@ export default function PlannerPage() {
                 <button
                   type="button"
                   data-testid="planner-this-week-pill"
-                  onClick={() => setWeekOffset(0)}
+                  onClick={() => navigateToWeekOffset(0)}
                   className="mx-auto mt-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-terracotta/15 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
                   aria-label={t('planner.backToThisWeek', 'Back to this week')}
                   title={t('planner.backToThisWeek', 'Back to this week')}

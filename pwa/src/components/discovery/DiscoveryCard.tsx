@@ -146,9 +146,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       data-testid="discovery-card"
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
-      <motion.div
-        className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col"
-      >
+      <motion.div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
         <div className="relative h-[62%] w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -168,7 +166,9 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                 className="flex flex-col items-center gap-2 rounded-full p-8 text-white backdrop-blur-md shadow-2xl bg-sage/30"
               >
                 <Heart size={48} fill="currentColor" />
-                <span className="text-xl font-black tracking-widest">{t('discovery.love', 'LOVE')}</span>
+                <span className="text-xl font-black tracking-widest">
+                  {t('discovery.love', 'LOVE')}
+                </span>
               </motion.div>
 
               <motion.div

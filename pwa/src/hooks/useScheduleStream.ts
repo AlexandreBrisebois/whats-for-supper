@@ -131,6 +131,7 @@ export function useScheduleStream() {
     source.addEventListener('smart_defaults_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "smart_defaults_updated" event');
       const { defaults } = JSON.parse(e.data);
+      if (defaults?.weekOffset !== useWeekStore.getState().weekOffset) return;
       useWeekStore.getState().applySmartDefaultsUpdate(defaults);
     });
 

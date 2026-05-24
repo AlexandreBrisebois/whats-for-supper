@@ -345,13 +345,23 @@ describe('vote_updated event', () => {
 // ── smart_defaults_updated event ─────────────────────────────────────────────
 
 describe('smart_defaults_updated event', () => {
-  it('calls applySmartDefaultsUpdate on weekStore with defaults', () => {
+  it('calls applySmartDefaultsUpdate on weekStore with defaults for current week', () => {
     const { source } = setupHook();
 
-    const defaults = { preSelectedRecipes: [{ dayIndex: 0, recipeId: 'r1' }] };
+    const defaults = { weekOffset: 0, preSelectedRecipes: [{ dayIndex: 0, recipeId: 'r1' }] };
     source.emit('smart_defaults_updated', { defaults });
 
     expect(mockApplySmartDefaultsUpdate).toHaveBeenCalledWith(defaults);
+  });
+
+  it('ignores smart defaults for a different weekOffset', () => {
+    const { source } = setupHook();
+    mockWeekOffset = 0;
+
+    const defaults = { weekOffset: 1, preSelectedRecipes: [{ dayIndex: 0, recipeId: 'r1' }] };
+    source.emit('smart_defaults_updated', { defaults });
+
+    expect(mockApplySmartDefaultsUpdate).not.toHaveBeenCalled();
   });
 });
 

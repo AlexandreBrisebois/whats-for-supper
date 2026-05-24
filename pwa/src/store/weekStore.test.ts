@@ -583,3 +583,67 @@ describe('weekStore — active voting week smart-defaults regression (red)', () 
     expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0);
   });
 });
+
+describe('weekStore — applySmartDefaultsUpdate week guard', () => {
+  it('applies smart defaults when defaults.weekOffset matches current weekOffset', () => {
+    useWeekStore.setState({
+      weekOffset: 1,
+      schedule: [makeDay({ date: '2025-01-06', day: 'Mon' })],
+    });
+
+    useWeekStore.getState().applySmartDefaultsUpdate({
+      weekOffset: 1,
+      preSelectedRecipes: [
+        {
+          dayIndex: 0,
+          recipeId: 'r1',
+          name: 'Pasta',
+          heroImageUrl: '/api/recipes/r1/hero',
+          voteCount: 3,
+          familySize: 4,
+          unanimousVote: false,
+          isLocked: false,
+        },
+      ],
+      openSlots: [],
+      familySize: 4,
+      consensusThreshold: 3,
+      consensusRecipesCount: 1,
+    } as any);
+
+    const state = useWeekStore.getState();
+    expect(state.schedule[0]._isPending).toBe(true);
+    expect(state.schedule[0].recipe?.id).toBe('r1');
+  });
+
+  it('ignores smart defaults when defaults.weekOffset differs from current weekOffset', () => {
+    useWeekStore.setState({
+      weekOffset: 0,
+      schedule: [makeDay({ date: '2025-01-06', day: 'Mon' })],
+    });
+
+    useWeekStore.getState().applySmartDefaultsUpdate({
+      weekOffset: 1,
+      preSelectedRecipes: [
+        {
+          dayIndex: 0,
+          recipeId: 'r1',
+          name: 'Pasta',
+          heroImageUrl: '/api/recipes/r1/hero',
+          voteCount: 3,
+          familySize: 4,
+          unanimousVote: false,
+          isLocked: false,
+        },
+      ],
+      openSlots: [],
+      familySize: 4,
+      consensusThreshold: 3,
+      consensusRecipesCount: 1,
+    } as any);
+
+    const state = useWeekStore.getState();
+    expect(state.schedule[0]._isPending).toBeUndefined();
+    expect(state.schedule[0].recipe).toBeUndefined();
+  });
+});

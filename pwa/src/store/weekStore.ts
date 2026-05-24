@@ -538,6 +538,8 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
   // ── applySmartDefaultsUpdate ──────────────────────────────────────────────
   applySmartDefaultsUpdate(defaults: SmartDefaultsDto) {
+    if ((defaults.weekOffset ?? 0) !== get().weekOffset) return;
+
     const prev = get().schedule;
     const defaultsByDayIndex = new Map(
       defaults.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
