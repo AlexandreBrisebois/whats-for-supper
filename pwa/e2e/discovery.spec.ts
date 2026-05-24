@@ -347,7 +347,7 @@ test.describe('Discovery Flow', () => {
     await expect(page.getByTestId('discovery-card').first()).toBeVisible({ timeout: 10_000 });
   });
 
-  test('SSE vote_updated: ring appears on voted card; position-0 card unchanged', async ({
+  test('SSE vote_updated: voted card re-ranks without vote-specific ring; position-0 card unchanged', async ({
     page,
   }) => {
     // Arrange: 3-card stack so we have a card at position 2
@@ -378,23 +378,12 @@ test.describe('Discovery Flow', () => {
     await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('discovery-card').first()).toBeVisible();
 
-    // After SSE vote_updated fires, the Chicken card (originally position 2)
-    // should have hasFamilyInterest=true → ring-2 ring-sage class on its inner wrapper.
-    // The re-rank rule moves it from position 2 to position 1 (max 2 up, never to 0).
-    // We assert the ring class is present on a discovery-card element.
-    await expect(
-      page
-        .locator('[data-testid="discovery-card"]')
-        .filter({ hasText: /Mock Chicken Delight/i })
-        .getByTestId('discovery-card-interest-ring')
-    ).toBeVisible({ timeout: 10_000 });
+    // The re-rank rule moves Chicken from position 2 to position 1 (never to 0).
+    const cards = page.getByTestId('discovery-card');
+    await expect(cards.nth(0)).toContainText('Mock Gourmet Discovery');
+    await expect(cards.nth(1)).toContainText('Mock Chicken Delight');
 
-    // Position-0 card (Lasagna) must NOT have the interest ring
-    await expect(
-      page
-        .locator('[data-testid="discovery-card"]')
-        .filter({ hasText: /Mock Gourmet Discovery/i })
-        .getByTestId('discovery-card-interest-ring')
-    ).not.toBeVisible({ timeout: 5_000 });
+    // Visual branch is neutralized: no vote-specific ring should exist.
+    await expect(page.getByTestId('discovery-card-interest-ring')).toHaveCount(0);
   });
 });

@@ -37,7 +37,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   isFront,
   stackIndex,
   totalTime,
-  hasFamilyInterest,
+  hasFamilyInterest: _hasFamilyInterest,
 }) => {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
@@ -147,10 +147,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
       <motion.div
-        data-testid={hasFamilyInterest ? 'discovery-card-interest-ring' : undefined}
-        className={`h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col${hasFamilyInterest ? ' ring-2 ring-sage' : ''}`}
-        animate={hasFamilyInterest ? { scale: [1, 1.03, 1] } : {}}
-        transition={{ duration: 1.5, repeat: Infinity }}
+        className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col"
       >
         <div className="relative h-[62%] w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -168,14 +165,10 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                   opacity: likeOpacity,
                   scale: likeScale,
                 }}
-                className={`flex flex-col items-center gap-2 rounded-full p-8 text-white backdrop-blur-md shadow-2xl ${
-                  hasFamilyInterest ? 'bg-sage/40 ring-4 ring-sage glow-sage' : 'bg-sage/30'
-                }`}
+                className="flex flex-col items-center gap-2 rounded-full p-8 text-white backdrop-blur-md shadow-2xl bg-sage/30"
               >
                 <Heart size={48} fill="currentColor" />
-                <span className="text-xl font-black tracking-widest">
-                  {hasFamilyInterest ? t('discovery.match', 'MATCH!') : t('discovery.love', 'LOVE')}
-                </span>
+                <span className="text-xl font-black tracking-widest">{t('discovery.love', 'LOVE')}</span>
               </motion.div>
 
               <motion.div

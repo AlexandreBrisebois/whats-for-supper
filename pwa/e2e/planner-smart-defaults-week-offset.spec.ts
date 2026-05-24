@@ -2,12 +2,15 @@ import { test, expect } from './fixtures';
 import { MOCK_IDS, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
 
 test.describe('Planner smart defaults on active non-zero voting week', () => {
-  test('shows pending vote signal on weekOffset=1 when voting is open', async ({ page, baseURL }) => {
+  test('shows pending vote signal on weekOffset=1 when voting is open', async ({
+    page,
+    baseURL,
+  }) => {
     await setupCommonRoutes(page);
     const baseUrl = baseURL || 'http://127.0.0.1:3000';
-    await page.context().addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl },
-    ]);
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
     await page.addInitScript((id) => {
       localStorage.setItem(
         'family-storage',
@@ -29,25 +32,35 @@ test.describe('Planner smart defaults on active non-zero voting week', () => {
       });
     };
 
-    await page.route((url) => url.pathname === '/api/schedule', async (route) => {
-      const weekOffset = Number(new URL(route.request().url()).searchParams.get('weekOffset') ?? '0');
-      const status = weekOffset === 1 ? 1 : 0;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            weekOffset,
-            locked: false,
-            status,
-            days: buildWeekDays(weekOffset),
-          },
-        }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname === '/api/schedule',
+      async (route) => {
+        const weekOffset = Number(
+          new URL(route.request().url()).searchParams.get('weekOffset') ?? '0'
+        );
+        const status = weekOffset === 1 ? 1 : 0;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset,
+              locked: false,
+              status,
+              days: buildWeekDays(weekOffset),
+            },
+          }),
+        });
+      }
+    );
 
     await page.route('**/api/schedule/*/smart-defaults', async (route) => {
-      const weekOffset = Number(route.request().url().match(/\/api\/schedule\/(\-?\d+)\/smart-defaults/)?.[1] ?? '0');
+      const weekOffset = Number(
+        route
+          .request()
+          .url()
+          .match(/\/api\/schedule\/(\-?\d+)\/smart-defaults/)?.[1] ?? '0'
+      );
       if (weekOffset !== 1) {
         await route.fulfill({
           status: 200,

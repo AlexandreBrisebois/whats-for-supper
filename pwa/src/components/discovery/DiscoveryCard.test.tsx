@@ -36,19 +36,22 @@ const BASE_PROPS = {
   category: 'Dinner',
 };
 
-describe('DiscoveryCard — hasFamilyInterest ring', () => {
-  it('renders discovery-card-interest-ring when hasFamilyInterest is true', () => {
+describe('DiscoveryCard — neutral visual parity', () => {
+  it('does not require vote-specific highlight ring when hasFamilyInterest is true', () => {
     render(<DiscoveryCard {...BASE_PROPS} hasFamilyInterest={true} />);
-    expect(screen.getByTestId('discovery-card-interest-ring')).toBeInTheDocument();
-  });
-
-  it('does NOT render discovery-card-interest-ring when hasFamilyInterest is false', () => {
-    render(<DiscoveryCard {...BASE_PROPS} hasFamilyInterest={false} />);
+    expect(screen.getByTestId('discovery-card')).toBeInTheDocument();
     expect(screen.queryByTestId('discovery-card-interest-ring')).not.toBeInTheDocument();
   });
 
-  it('does NOT render discovery-card-interest-ring when hasFamilyInterest is omitted', () => {
+  it('renders the same card anchor when hasFamilyInterest is false', () => {
+    render(<DiscoveryCard {...BASE_PROPS} hasFamilyInterest={false} />);
+    expect(screen.getByTestId('discovery-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('discovery-card-interest-ring')).not.toBeInTheDocument();
+  });
+
+  it('renders without vote-specific highlight ring when hasFamilyInterest is omitted', () => {
     render(<DiscoveryCard {...BASE_PROPS} />);
+    expect(screen.getByTestId('discovery-card')).toBeInTheDocument();
     expect(screen.queryByTestId('discovery-card-interest-ring')).not.toBeInTheDocument();
   });
 });

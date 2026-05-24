@@ -5,14 +5,14 @@ This work is sequenced in Red-Green waves so regression risk is isolated and beh
 
 ## Tasks
 
-- [ ] 1. DiscoveryCard Unit Tests — Red Baseline for Visual Branch Removal
+- [x] 1. DiscoveryCard Unit Tests — Red Baseline for Visual Branch Removal
   - Update `pwa/src/components/discovery/DiscoveryCard.test.tsx`.
   - Replace old ring-specific assertions with tests that assert visual parity for `hasFamilyInterest=true/false`.
   - Add assertions that no vote-specific highlight branch is required for rendering.
   - Run targeted component tests and confirm failing/red state before implementation changes.
   - _Requirements: AC-1, AC-2, AC-3_
 
-- [ ] 2. DiscoveryCard Visual Simplification — Green
+- [x] 2. DiscoveryCard Visual Simplification — Green
   - Update `pwa/src/components/discovery/DiscoveryCard.tsx`.
   - Remove `hasFamilyInterest`-specific ring/outline styles.
   - Remove vote-driven infinite/pulsing scale animation.
@@ -20,13 +20,13 @@ This work is sequenced in Red-Green waves so regression risk is isolated and beh
   - Keep drag/swipe mechanics and stack transitions unchanged.
   - _Requirements: AC-1, AC-2, AC-3, AC-5_
 
-- [ ] 3. Regression Guards — Preserve Vote Ranking and Live Event Path
+- [x] 3. Regression Guards — Preserve Vote Ranking and Live Event Path
   - Verify `pwa/src/store/discoveryStore.test.ts` remains green with re-rank rules intact.
   - Verify `pwa/src/hooks/useScheduleStream.test.ts` remains green for `vote_updated` dispatch into discovery store.
   - No logic changes to ranking/event flow unless a test reveals accidental drift.
   - _Requirements: AC-4_
 
-- [ ] 4. Validation and Completion Gates
+- [x] 4. Validation and Completion Gates
   - Run `task agent:test:impact`.
   - If test impact is unclear or broadens, run `task review`.
   - Confirm no contract files changed and no API drift introduced.
