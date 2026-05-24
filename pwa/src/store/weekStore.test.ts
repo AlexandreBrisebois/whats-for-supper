@@ -9,12 +9,19 @@ vi.mock('@/lib/api/planner', async (importOriginal) => {
     ...actual,
     assignRecipeToDay: vi.fn(),
     lockSchedule: vi.fn(),
+    openVoting: vi.fn(),
     getSchedule: vi.fn(),
     getSmartDefaults: vi.fn(),
   };
 });
 
-import { assignRecipeToDay, lockSchedule } from '@/lib/api/planner';
+import {
+  assignRecipeToDay,
+  getSchedule,
+  getSmartDefaults,
+  lockSchedule,
+  openVoting,
+} from '@/lib/api/planner';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -45,6 +52,7 @@ function makeScheduleDays(days: Partial<UILocalScheduleDay>[] = []) {
 // ─── Reset store before each test ────────────────────────────────────────────
 
 beforeEach(() => {
+  vi.clearAllMocks();
   useWeekStore.setState({
     weekOffset: 0,
     schedule: [],
@@ -497,5 +505,81 @@ describe('weekStore — closeVoting', () => {
 
     // Status should be 2 (Locked)
     expect(useWeekStore.getState().status).toBe(2);
+  });
+});
+
+describe('weekStore — active voting week smart-defaults regression (red)', () => {
+  it('init(1) with status=1 requests getSmartDefaults(1), not getSmartDefaults(0)', async () => {
+    const mockedGetSchedule = vi.mocked(getSchedule);
+    const mockedGetSmartDefaults = vi.mocked(getSmartDefaults);
+
+    const scheduleData = makeScheduleDays([{ date: '2025-01-06', recipe: null }]);
+    scheduleData.status = 1;
+    scheduleData.weekOffset = 1;
+
+    mockedGetSchedule.mockResolvedValue(scheduleData as any);
+    mockedGetSmartDefaults.mockResolvedValue({
+      weekOffset: 1,
+      preSelectedRecipes: [],
+      openSlots: [],
+    } as any);
+
+    await useWeekStore.getState().init(1);
+
+    expect(mockedGetSchedule).toHaveBeenCalledWith(1);
+    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1);
+    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0);
+  });
+
+  it('openVoting() at weekOffset=1 requests getSchedule(1) and getSmartDefaults(1), not week 0', async () => {
+    const mockedOpenVoting = vi.mocked(openVoting);
+    const mockedGetSchedule = vi.mocked(getSchedule);
+    const mockedGetSmartDefaults = vi.mocked(getSmartDefaults);
+
+    useWeekStore.setState({ weekOffset: 1, status: 0, schedule: [makeDay()] });
+
+    const scheduleData = makeScheduleDays([{ date: '2025-01-06', recipe: null }]);
+    scheduleData.status = 1;
+    scheduleData.weekOffset = 1;
+
+    mockedOpenVoting.mockResolvedValue({ success: true } as any);
+    mockedGetSchedule.mockResolvedValue(scheduleData as any);
+    mockedGetSmartDefaults.mockResolvedValue({
+      weekOffset: 1,
+      preSelectedRecipes: [],
+      openSlots: [],
+    } as any);
+
+    await useWeekStore.getState().openVoting();
+
+    expect(mockedOpenVoting).toHaveBeenCalledWith(1);
+    expect(mockedGetSchedule).toHaveBeenCalledWith(1);
+    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1);
+    expect(mockedGetSchedule).not.toHaveBeenCalledWith(0);
+    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0);
+  });
+
+  it('sync() at weekOffset=1 with status=1 requests getSmartDefaults(1), not getSmartDefaults(0)', async () => {
+    const mockedGetSchedule = vi.mocked(getSchedule);
+    const mockedGetSmartDefaults = vi.mocked(getSmartDefaults);
+
+    useWeekStore.setState({ weekOffset: 1, schedule: [makeDay()], optimisticWriteAt: null });
+
+    const scheduleData = makeScheduleDays([{ date: '2025-01-06', recipe: null }]);
+    scheduleData.status = 1;
+    scheduleData.weekOffset = 1;
+
+    mockedGetSchedule.mockResolvedValue(scheduleData as any);
+    mockedGetSmartDefaults.mockResolvedValue({
+      weekOffset: 1,
+      preSelectedRecipes: [],
+      openSlots: [],
+    } as any);
+
+    await useWeekStore.getState().sync();
+
+    expect(mockedGetSchedule).toHaveBeenCalledWith(1);
+    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1);
+    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0);
   });
 });

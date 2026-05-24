@@ -188,8 +188,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       // the family — breaking the Ask → Vote → Lock flow entirely.
       // When status === 0 (draft), the planner starts blank and mom controls it.
       // When status === 1 (voting open), the family's votes surface as pending suggestions.
-      const defaultsData =
-        weekOffset === 0 && status === 1 ? await getSmartDefaults(weekOffset) : null;
+      const defaultsData = status === 1 ? await getSmartDefaults(weekOffset) : null;
 
       const mergedDays = buildScheduleDays(scheduleData, defaultsData ?? undefined, get().schedule);
 
@@ -336,14 +335,13 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     try {
       await openVotingApi(get().weekOffset);
       // Fetch defaults immediately so they appear without waiting for the next sync
-      if (get().weekOffset === 0) {
-        const [scheduleData, defaultsData] = await Promise.all([
-          getSchedule(0),
-          getSmartDefaults(0),
-        ]);
-        if (scheduleData) {
-          set({ schedule: buildScheduleDays(scheduleData, defaultsData, get().schedule) });
-        }
+      const weekOffset = get().weekOffset;
+      const [scheduleData, defaultsData] = await Promise.all([
+        getSchedule(weekOffset),
+        getSmartDefaults(weekOffset),
+      ]);
+      if (scheduleData) {
+        set({ schedule: buildScheduleDays(scheduleData, defaultsData, get().schedule) });
       }
     } catch {
       set({ status: prevStatus, schedule: prevSchedule });
@@ -410,13 +408,11 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
       const status = ((data as any).status ?? 0) as 0 | 1 | 2;
 
+      const weekOffset = get().weekOffset;
       if (!optimisticIsRecent) {
+        const defaultsData = status === 1 ? await getSmartDefaults(weekOffset) : undefined;
         set({
-          schedule: buildScheduleDays(
-            data,
-            get().weekOffset === 0 && status === 1 ? await getSmartDefaults(0) : undefined,
-            get().schedule
-          ),
+          schedule: buildScheduleDays(data, defaultsData, get().schedule),
           status,
           lastSyncedAt: Date.now(),
         });
