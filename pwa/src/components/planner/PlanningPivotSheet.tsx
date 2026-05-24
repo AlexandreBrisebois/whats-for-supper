@@ -48,8 +48,11 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                   {t('planner.choosePathLabel', 'Planner options')}
                 </h2>
                 <h3 className="text-3xl font-heading font-black text-charcoal leading-none tracking-tighter">
-                  {t('planner.choosePathTitle', 'Choose your path')}
+                  {t('planner.choosePathTitle', 'Change this recipe')}
                 </h3>
+                <p className="text-[11px] text-charcoal/45 font-medium mt-1">
+                  {t('planner.choosePathSubtitle', 'Choose how to replace or remove this recipe')}
+                </p>
               </div>
               <button
                 onClick={onClose}
@@ -76,7 +79,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                 </div>
                 <div className="flex-1">
                   <h4 className="font-heading text-xl font-black text-charcoal tracking-tight">
-                    Quick find
+                    {t('planner.quickFindAction', 'Quick replace')}
                   </h4>
                   <p className="text-[11px] text-charcoal/40 font-medium">
                     Swipe through 5 tailored picks
@@ -95,7 +98,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                 </div>
                 <div className="flex-1">
                   <h4 className="font-heading text-xl font-black text-charcoal tracking-tight">
-                    Search library
+                    {t('planner.searchLibraryAction', 'Search library')}
                   </h4>
                   <p className="text-[11px] text-charcoal/40 font-medium">Browse your collection</p>
                 </div>
@@ -113,7 +116,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                   </div>
                   <div className="flex-1">
                     <h4 className="font-heading text-lg font-black text-charcoal tracking-tight">
-                      Remove recipe
+                      {t('planner.removeRecipeAction', 'Remove recipe')}
                     </h4>
                     <p className="text-[11px] text-charcoal/40 font-medium">Clear this slot</p>
                   </div>

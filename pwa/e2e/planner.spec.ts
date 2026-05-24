@@ -164,12 +164,12 @@ test.describe('Supper Planner', () => {
           return {
             day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
             date: toDateStr(d),
-            ...(i === 0
+            ...(i === 0 || i === 1
               ? {
                   recipe: builders.scheduleRecipe({
-                    id: MOCK_IDS.RECIPE_LASAGNA,
-                    name: 'Homemade Lasagna',
-                    voteCount: 3,
+                    id: i === 0 ? MOCK_IDS.RECIPE_LASAGNA : MOCK_IDS.RECIPE_TACOS,
+                    name: i === 0 ? 'Homemade Lasagna' : 'Street Tacos',
+                    voteCount: i === 0 ? 3 : 2,
                     ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
                   }),
                 }
@@ -328,6 +328,39 @@ test.describe('Supper Planner', () => {
 
     await page.getByTestId('close-cooks-mode').click();
     await expect(overlay).not.toBeVisible();
+  });
+
+  test('uses fixed date fixtures to show non-today view action and today cook mode only', async ({
+    page,
+  }) => {
+    const PINNED_DATE = '2026-05-04T12:00:00Z';
+    await page.addInitScript((isoDate) => {
+      const RealDate = Date;
+      const pinned = new RealDate(isoDate).getTime();
+      // @ts-ignore
+      globalThis.Date = class extends RealDate {
+        constructor(...args: any[]) {
+          if (args.length === 0) {
+            super(pinned);
+          } else {
+            // @ts-ignore
+            super(...args);
+          }
+        }
+        static now() {
+          return pinned;
+        }
+      };
+    }, PINNED_DATE);
+
+    await page.goto('/planner');
+
+    const todayCard = page.getByTestId('day-card-0');
+    const nonTodayCard = page.getByTestId('day-card-1');
+
+    await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible();
+    await expect(todayCard.getByTestId('view-recipe-button')).toHaveCount(0);
+    await expect(nonTodayCard.getByTestId('view-recipe-button')).toBeVisible();
   });
 
   test('should display smart default recipes merged into the 7-day grid', async ({ page }) => {

@@ -218,7 +218,12 @@
     "balancedWeek": "Balanced Week",
     "cfgBalanced": "Your menu hits Canada's Food Guide targets!",
     "choosePathLabel": "Planner options",
-    "choosePathTitle": "Choose your path",
+    "choosePathTitle": "Change this recipe",
+    "choosePathSubtitle": "Choose how to replace or remove this recipe",
+    "quickFindAction": "Quick replace",
+    "searchLibraryAction": "Search library",
+    "removeRecipeAction": "Remove recipe",
+    "viewRecipe": "View recipe",
     "closeVoting": "Close Voting",
     "diversify": "Diversify"
   },

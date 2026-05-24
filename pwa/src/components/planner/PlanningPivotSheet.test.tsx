@@ -1,6 +1,30 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
+const localeMock = vi.hoisted(() => {
+  let language: 'en' | 'fr' = 'en';
+  const dictionary: Record<string, { en: string; fr: string }> = {
+    'planner.choosePathTitle': {
+      en: 'Change this recipe',
+      fr: 'Changer cette recette',
+    },
+    'planner.choosePathSubtitle': {
+      en: 'Choose how to replace or remove this recipe',
+      fr: 'Choisissez comment remplacer ou retirer cette recette',
+    },
+    'planner.quickFindAction': { en: 'Quick replace', fr: 'Remplacement rapide' },
+    'planner.searchLibraryAction': { en: 'Search library', fr: 'Chercher dans la bibliothèque' },
+    'planner.removeRecipeAction': { en: 'Remove recipe', fr: 'Retirer la recette' },
+  };
+
+  return {
+    setLanguage: (next: 'en' | 'fr') => {
+      language = next;
+    },
+    translate: (key: string, fallback: string) => dictionary[key]?.[language] ?? fallback,
+  };
+});
+
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
@@ -11,7 +35,7 @@ vi.mock('framer-motion', () => ({
 }));
 
 vi.mock('@/locales', () => ({
-  t: (_key: string, fallback: string) => fallback,
+  t: (key: string, fallback: string) => localeMock.translate(key, fallback),
 }));
 
 import { PlanningPivotSheet } from './PlanningPivotSheet';
@@ -33,6 +57,31 @@ function renderSheet({ hasRecipe = true }: { hasRecipe?: boolean } = {}) {
 }
 
 describe('PlanningPivotSheet', () => {
+  it('renders explicit recipe-change copy in English', () => {
+    localeMock.setLanguage('en');
+    renderSheet();
+
+    expect(screen.getByText('Change this recipe')).toBeInTheDocument();
+    expect(screen.getByText('Choose how to replace or remove this recipe')).toBeInTheDocument();
+    expect(screen.getByText('Quick replace')).toBeInTheDocument();
+    expect(screen.getByText('Search library')).toBeInTheDocument();
+    expect(screen.getByText('Remove recipe')).toBeInTheDocument();
+  });
+
+  it('renders explicit recipe-change copy in French', () => {
+    localeMock.setLanguage('fr');
+    renderSheet();
+
+    expect(screen.getByText('Changer cette recette')).toBeInTheDocument();
+    expect(
+      screen.getByText('Choisissez comment remplacer ou retirer cette recette')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Remplacement rapide')).toBeInTheDocument();
+    expect(screen.getByText('Chercher dans la bibliothèque')).toBeInTheDocument();
+    expect(screen.getByText('Retirer la recette')).toBeInTheDocument();
+    expect(screen.queryByText(/repas/i)).not.toBeInTheDocument();
+  });
+
   it('renders an explicit close button', () => {
     renderSheet();
 

@@ -58,6 +58,9 @@ vi.mock('framer-motion', () => ({
     div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
       <div {...props}>{children}</div>
     ),
+    button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button {...props}>{children}</button>
+    ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   Reorder: {
@@ -158,6 +161,10 @@ vi.mock('@/components/planner/CooksMode', () => ({
   CooksMode: () => null,
 }));
 
+vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
+  RecipeDetailSheet: () => null,
+}));
+
 vi.mock('@/components/planner/GroceryList', () => ({
   GroceryList: () => null,
 }));
@@ -197,6 +204,20 @@ function makeSchedule(sundayDate: string) {
           : undefined,
     };
   });
+}
+
+function makeAssignedSchedule(sundayDate: string, assignedDayIndex: number) {
+  return makeSchedule(sundayDate).map((day, index) => ({
+    ...day,
+    recipe:
+      index === assignedDayIndex
+        ? {
+            id: '11111111-1111-1111-1111-111111111111',
+            name: index === 0 ? 'Pasta Carbonara' : 'Homemade Lasagna',
+            image: '',
+          }
+        : undefined,
+  }));
 }
 
 function renderPlanner(status: 0 | 1 | 2, sundayDate = '2026-05-17') {
@@ -323,5 +344,63 @@ describe('PlannerPage voting action row', () => {
     await waitFor(() => {
       expect(mocks.setWeekOffset).toHaveBeenCalledWith(1);
     });
+  });
+
+  it('shows view recipe on a non-today assigned row', () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      balanceSummary: null,
+      schedule: makeAssignedSchedule('2026-05-10', 0),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+
+    render(<PlannerPage />);
+
+    expect(
+      within(screen.getByTestId('day-card-0')).getByTestId('view-recipe-button')
+    ).toBeInTheDocument();
+  });
+
+  it('hides view recipe and shows cook mode on today assigned row', () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      balanceSummary: null,
+      schedule: makeAssignedSchedule('2026-05-10', 6),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+
+    render(<PlannerPage />);
+
+    const todayCard = screen.getByTestId('day-card-6');
+    expect(within(todayCard).queryByTestId('view-recipe-button')).not.toBeInTheDocument();
+    expect(within(todayCard).getByTestId('start-cook-mode')).toBeInTheDocument();
   });
 });

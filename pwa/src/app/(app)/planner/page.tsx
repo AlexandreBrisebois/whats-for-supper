@@ -17,6 +17,7 @@ import {
   Ban,
   Sparkles,
   UtensilsCrossed,
+  BookOpen,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useWeekStore } from '@/store/weekStore';
@@ -32,6 +33,7 @@ import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
+import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { getImageUrl, getTodayString } from '@/lib/imageUtils';
 import { GroceryList } from '@/components/planner/GroceryList';
 // import { BalanceIndicator } from '@/components/planner/BalanceIndicator';
@@ -59,6 +61,7 @@ export default function PlannerPage() {
   const [pendingQuickFindDayIndex, setPendingQuickFindDayIndex] = useState<number | null>(null);
   const [successDay, setSuccessDay] = useState<number | null>(null);
   const [activeCookMode, setActiveCookMode] = useState<UILocalScheduleDay | null>(null);
+  const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
   const [showNudgeDialog, setShowNudgeDialog] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
@@ -584,6 +587,9 @@ export default function PlannerPage() {
                     onCookMode={() => {
                       setActiveCookMode(day);
                     }}
+                    onViewRecipe={(recipeId) => {
+                      setOpenDetailRecipeId(recipeId);
+                    }}
                     preDragSnapshotRef={preDragSnapshotRef}
                     draggedUiIdRef={draggedUiIdRef}
                     hasAnimatedIn={hasAnimatedIn}
@@ -768,6 +774,20 @@ export default function PlannerPage() {
         )}
       </AnimatePresence>
 
+      {openDetailRecipeId && (
+        <RecipeDetailSheet
+          recipeId={openDetailRecipeId}
+          plannerDayLabel={null}
+          onClose={() => setOpenDetailRecipeId(null)}
+          onUseForDay={async () => {
+            // Planner opens details for viewing; assignment flows stay in planner/recipes entrypoints.
+          }}
+          onFindSimilar={(recipeId) => {
+            router.push(`/recipes?open=${recipeId}`);
+          }}
+        />
+      )}
+
       <AnimatePresence>
         {pendingRecovery && (
           <SkipRecoveryDialog
@@ -789,6 +809,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
   successDay,
   onPivot,
   onCookMode,
+  onViewRecipe,
   preDragSnapshotRef,
   draggedUiIdRef,
   hasAnimatedIn,
@@ -799,6 +820,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
   successDay: number | null;
   onPivot: () => void;
   onCookMode: () => void;
+  onViewRecipe: (recipeId: string) => void;
   preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
   draggedUiIdRef: React.RefObject<string | null>;
   hasAnimatedIn: boolean;
@@ -977,6 +999,28 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 </div>
               </button>
               <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
+                {(() => {
+                  const recipeId = day.recipe?.id;
+                  if (day.date === getTodayString() || !recipeId) return null;
+
+                  return (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewRecipe(recipeId);
+                      }}
+                      className="h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center text-ochre active:scale-90 transition-transform"
+                      data-testid="view-recipe-button"
+                      title={t('planner.viewRecipe', 'View recipe')}
+                      aria-label={t('planner.viewRecipe', 'View recipe')}
+                    >
+                      <BookOpen size={18} />
+                    </motion.button>
+                  );
+                })()}
                 {day.date === getTodayString() && day.recipe && (
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
