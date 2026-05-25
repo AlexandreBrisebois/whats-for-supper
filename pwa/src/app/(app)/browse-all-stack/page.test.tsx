@@ -195,6 +195,8 @@ function makeRecipe(id: string, index: number) {
     imageUrl: `/img/${id}.jpg`,
     totalTime: 'PT30M',
     category: 'Dinner',
+    cuisineType: 'Italian',
+    mealTypes: ['Supper', 'Lunch'],
     rating: 0,
     isDiscoverable: true,
     notes: '',
@@ -368,6 +370,19 @@ describe('BrowseAllStack — initial card display', () => {
 
     // The front card should be the first recipe
     expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[0]);
+  });
+
+  it('renders cuisine and meal-type badges in browse stack cards', async () => {
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('recipe-stack-cuisine-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('recipe-stack-meal-type-supper')).toBeInTheDocument();
   });
 });
 

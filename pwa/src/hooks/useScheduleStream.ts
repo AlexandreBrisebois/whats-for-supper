@@ -206,16 +206,6 @@ export function useScheduleStream() {
       }
     });
 
-    // ── discovery_nudge ────────────────────────────────────────────────────
-    // A food group reached its target during plan recomputation.
-    // Update the active category filter in the discovery store to steer
-    // the user toward under-represented food groups.
-    source.addEventListener('discovery_nudge', (e: MessageEvent) => {
-      console.log('[SSE] Received "discovery_nudge" event');
-      const { nextFoodGroup } = JSON.parse(e.data);
-      useDiscoveryStore.getState().setActiveCategory(nextFoodGroup);
-    });
-
     // ── cleanup ────────────────────────────────────────────────────────────
     return () => {
       console.log('[SSE] Hook effect cleanup (closing connection)');

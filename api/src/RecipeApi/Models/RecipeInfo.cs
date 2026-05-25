@@ -18,6 +18,8 @@ public class RecipeInfo
     public string? Language { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public string? Category { get; set; }
+    public string? CuisineType { get; set; }
+    public string[]? MealTypes { get; set; }
     public bool IsDiscoverable { get; set; } = false;
     public bool IsHealthyChoice { get; set; } = false;
     public bool IsVegetarian { get; set; } = false;

@@ -39,7 +39,7 @@ import { ActionGearMenu } from './ActionGearMenu';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
 import { OriginalPhotosViewer } from './OriginalPhotosViewer';
 import { CooksMode } from '../planner/CooksMode';
-import type { GoToListDto } from '@/lib/api/generated/models/index';
+import type { GoToListDto, UpdateRecipeDto_mealTypes } from '@/lib/api/generated/models/index';
 
 const GOTO_KEY = 'family_goto';
 
@@ -48,6 +48,31 @@ const RATING_OPTIONS = [
   { value: 2, emoji: '👍', label: 'Like' },
   { value: 3, emoji: '❤️', label: 'Love' },
 ] as const;
+
+const MEAL_TYPE_OPTIONS: UpdateRecipeDto_mealTypes[] = [
+  'Breakfast',
+  'Brunch',
+  'Snack',
+  'Lunch',
+  'Supper',
+  'Sides',
+  'Dessert',
+  'Appetizer',
+  'Beverage',
+] as const;
+
+function resolveMealTypes(source: Recipe): UpdateRecipeDto_mealTypes[] {
+  if (source.mealTypes && source.mealTypes.length > 0) {
+    return source.mealTypes.filter(Boolean);
+  }
+
+  const category = source.category?.trim();
+  if (category && MEAL_TYPE_OPTIONS.includes(category as UpdateRecipeDto_mealTypes)) {
+    return [category as UpdateRecipeDto_mealTypes];
+  }
+
+  return ['Supper'];
+}
 
 interface RecipeDetailSheetProps {
   recipeId: string;
@@ -71,6 +96,8 @@ export function RecipeDetailSheet({
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
   const [draftIngredients, setDraftIngredients] = useState<string[]>([]);
+  const [draftCuisineType, setDraftCuisineType] = useState('');
+  const [draftMealTypes, setDraftMealTypes] = useState<UpdateRecipeDto_mealTypes[]>([]);
   const [rating, setRating] = useState(0);
   const [isDiscoverable, setIsDiscoverable] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -109,6 +136,8 @@ export function RecipeDetailSheet({
         setDraftName(nextRecipe.name);
         setDraftDescription(nextRecipe.description ?? '');
         setDraftIngredients(nextRecipe.ingredients ?? []);
+        setDraftCuisineType(nextRecipe.cuisineType ?? '');
+        setDraftMealTypes(resolveMealTypes(nextRecipe));
         setRating(nextRecipe.rating ?? 0);
         setIsDiscoverable(nextRecipe.isDiscoverable ?? false);
         setIsEditing(false);
@@ -176,6 +205,8 @@ export function RecipeDetailSheet({
     setDraftName(source.name);
     setDraftDescription(source.description ?? '');
     setDraftIngredients(source.ingredients ?? []);
+    setDraftCuisineType(source.cuisineType ?? '');
+    setDraftMealTypes(resolveMealTypes(source));
     setEditError(null);
   };
 
@@ -211,6 +242,8 @@ export function RecipeDetailSheet({
       name: draftName.trim(),
       description: draftDescription.trim(),
       ingredients: cleanedIngredients,
+      cuisineType: draftCuisineType.trim() || null,
+      mealTypes: draftMealTypes,
     };
 
     setIsSavingRecipe(true);
@@ -220,6 +253,8 @@ export function RecipeDetailSheet({
         name: nextRecipe.name,
         description: nextRecipe.description,
         ingredients: cleanedIngredients,
+        cuisineType: nextRecipe.cuisineType,
+        mealTypes: nextRecipe.mealTypes ?? [],
       });
       setRecipe(nextRecipe);
       setDraftIngredients(cleanedIngredients);
@@ -395,6 +430,7 @@ export function RecipeDetailSheet({
 
   const primaryActionTestId = plannerDayLabel ? 'action-add-to-day' : 'action-cook-this';
   const primaryActionLabel = plannerDayLabel ? `Plan for ${plannerDayLabel}` : 'Cook This';
+  const mealTypesForDisplay = (recipe?.mealTypes ?? []).filter(Boolean);
 
   return (
     <div className="fixed inset-0 z-[130] flex items-end justify-center px-4 pb-4 sm:items-center">
@@ -592,6 +628,75 @@ export function RecipeDetailSheet({
                   {recipe.name}
                 </h2>
               )}
+              {isEditing ? (
+                <div className="grid gap-3">
+                  <label className="grid gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                      {t('recipes.cuisineType', 'Cuisine')}
+                    </span>
+                    <input
+                      data-testid="recipe-edit-cuisine-input"
+                      value={draftCuisineType}
+                      onChange={(event) => setDraftCuisineType(event.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal/10 bg-white text-charcoal focus:border-sage focus:outline-none text-sm transition-all duration-200"
+                    />
+                  </label>
+                  <div className="grid gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                      {t('recipes.mealTypes', 'Meal types')}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {MEAL_TYPE_OPTIONS.map((mealType) => {
+                        const isSelected = draftMealTypes.includes(mealType);
+                        return (
+                          <button
+                            key={mealType}
+                            type="button"
+                            data-testid={`recipe-edit-meal-type-pill-${mealType.toLowerCase()}`}
+                            aria-pressed={isSelected}
+                            onClick={() =>
+                              setDraftMealTypes((current) =>
+                                current.includes(mealType)
+                                  ? current.filter((value) => value !== mealType)
+                                  : [...current, mealType]
+                              )
+                            }
+                            className={
+                              isSelected
+                                ? 'px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-sage text-white shadow-md active:scale-95'
+                                : 'px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-white border border-charcoal/10 text-charcoal/60 hover:bg-cream/20 active:scale-95'
+                            }
+                          >
+                            {mealType}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                (recipe.cuisineType || mealTypesForDisplay.length > 0) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {recipe.cuisineType && (
+                      <span
+                        data-testid="recipe-detail-cuisine-badge"
+                        className="inline-flex items-center gap-1 rounded-full bg-ochre/10 text-ochre px-3 py-1.5 shadow-sm text-[11px] font-black uppercase tracking-widest"
+                      >
+                        {recipe.cuisineType}
+                      </span>
+                    )}
+                    {mealTypesForDisplay.map((mealType) => (
+                      <span
+                        key={mealType}
+                        data-testid={`recipe-detail-meal-type-${mealType.toLowerCase()}`}
+                        className="rounded-full bg-white border border-sage/30 text-sage/80 px-3 py-1 text-xs font-bold uppercase"
+                      >
+                        {mealType}
+                      </span>
+                    ))}
+                  </div>
+                )
+              )}
               <div className="flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-widest text-charcoal/55">
                 <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 shadow-sm">
                   <Clock size={12} />{' '}
@@ -765,7 +870,9 @@ export function RecipeDetailSheet({
                   type="button"
                   data-testid="recipe-save-edits"
                   onClick={() => void handleSaveRecipeFields()}
-                  disabled={isSavingRecipe || draftName.trim().length === 0}
+                  disabled={
+                    isSavingRecipe || draftName.trim().length === 0 || draftMealTypes.length === 0
+                  }
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
                 >
                   <Save size={16} />

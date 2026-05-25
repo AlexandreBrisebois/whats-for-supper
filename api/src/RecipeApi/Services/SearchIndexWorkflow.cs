@@ -176,6 +176,10 @@ public class SearchIndexWorkflow(
             parts.Add($"Notes: {recipe.Notes}.");
         if (!string.IsNullOrWhiteSpace(recipe.Category))
             parts.Add($"Category: {recipe.Category}.");
+        if (!string.IsNullOrWhiteSpace(recipe.CuisineType))
+            parts.Add($"Cuisine: {recipe.CuisineType}.");
+        if (recipe.MealTypes is { Length: > 0 })
+            parts.Add($"Meal types: {string.Join(", ", recipe.MealTypes)}.");
         if (!string.IsNullOrWhiteSpace(recipe.DietaryProfile))
             parts.Add($"Dietary: {recipe.DietaryProfile}.");
         if (!string.IsNullOrWhiteSpace(recipe.TotalTime))

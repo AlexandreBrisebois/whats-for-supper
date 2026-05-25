@@ -126,6 +126,20 @@ describe('RecipeStackCard — rendering', () => {
     render(<RecipeStackCard {...defaultProps} totalTime="PT30M" />);
     expect(screen.getByText(/READY IN 30 MINS/i)).toBeTruthy();
   });
+
+  it('renders cuisine and meal-type badges cluster above description', () => {
+    render(
+      <RecipeStackCard
+        {...defaultProps}
+        category="Supper"
+        cuisineType="Italian"
+        mealTypes={['Supper', 'Lunch']}
+      />
+    );
+    expect(screen.getByTestId('recipe-stack-cuisine-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('recipe-stack-meal-type-supper')).toBeInTheDocument();
+    expect(screen.getByTestId('recipe-stack-meal-type-lunch')).toBeInTheDocument();
+  });
 });
 
 describe('RecipeStackCard — swipe indicators', () => {

@@ -8,6 +8,7 @@ import type {
   RecipeDto,
   RecipeShareBundleDto,
   RecipeShareInfoDto_bundleSource,
+  UpdateRecipeDto_mealTypes,
   RecommendationResultDto,
   RecipeSearchRequestDto,
   RecipeSearchResponseDto,
@@ -35,6 +36,8 @@ export interface Recipe {
   finishedDishIndex: number;
   sourceUrl?: string | null;
   isReady: boolean;
+  cuisineType?: string | null;
+  mealTypes?: UpdateRecipeDto_mealTypes[] | null;
 }
 
 export type RecommendationResult = {
@@ -132,6 +135,8 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     finishedDishIndex: dto.finishedDishIndex ?? -1,
     sourceUrl: dto.sourceUrl ?? null,
     isReady: dto.isReady ?? false,
+    cuisineType: dto.cuisineType ?? null,
+    mealTypes: dto.mealTypes ?? null,
   };
 }
 
@@ -503,6 +508,8 @@ export async function updateRecipe(
     notes?: string;
     rating?: number;
     isDiscoverable?: boolean | null;
+    cuisineType?: string | null;
+    mealTypes?: UpdateRecipeDto_mealTypes[] | null;
   }
 ): Promise<void> {
   await apiClient.api.recipes.byId(id as any).patch({
@@ -513,6 +520,8 @@ export async function updateRecipe(
     notes: updates.notes,
     rating: updates.rating,
     isDiscoverable: updates.isDiscoverable,
+    cuisineType: updates.cuisineType,
+    mealTypes: updates.mealTypes,
   });
 }
 

@@ -2,12 +2,12 @@
 
 ## Wave 1: DB Schema, DTOs & Client Seams
 
-### [ ] 1.1. Backend - Update DTOs & OpenAPI Spec (Red) - [Agent]
+### [x] 1.1. Backend - Update DTOs & OpenAPI Spec (Red) - [Agent]
 * Update DTOs `RecipeDto`, `UpdateRecipeDto`, and `ImportedRecipeDto` in `specs/openapi.yaml`. Remove `category` from the update DTO, and add `cuisineType` (string) and `mealTypes` (string array with enum values: `["Breakfast", "Brunch", "Snack", "Lunch", "Supper", "Sides", "Dessert", "Appetizer", "Beverage"]`).
 * Add C# tests verifying that serialization/deserialization of these DTOs fails/compiles according to the spec (Red test).
 * _Requirements: AC 1.3, AC 1.4_
 
-### [ ] 1.2. Backend - DB Schema & Entity Update (Green) - [Agent / Human]
+### [x] 1.2. Backend - DB Schema & Entity Update (Green) - [Agent / Human]
 * **[Agent]** Modify `api/database/schema.sql` to add `cuisine_type text` and `meal_types text[]` columns, create index `idx_recipes_cuisine_type`, and update `vw_discovery_recipes` view.
 * **[Agent]** Update C# classes: `Recipe.cs`, `RecipeInfo.cs`, `DiscoveryRecipe.cs` with `CuisineType` and `MealTypes` properties.
 * **[Agent]** Update EF mappings in `RecipeDbContext.cs` to map `CuisineType` and `MealTypes` to the new database columns.
@@ -23,7 +23,9 @@
 
   CREATE INDEX IF NOT EXISTS idx_recipes_cuisine_type ON recipes (cuisine_type) WHERE (cuisine_type IS NOT NULL);
 
-  CREATE OR REPLACE VIEW vw_discovery_recipes AS
+  DROP VIEW IF EXISTS vw_discovery_recipes;
+
+  CREATE VIEW vw_discovery_recipes AS
   SELECT 
     r.id, 
     r.name, 
@@ -60,13 +62,13 @@
 
 ## Wave 2: Synchronous Categorization & Workflow Processor
 
-### [ ] 2.1. Backend - CategorizeRecipe Integration Tests (Red) - [Agent]
+### [x] 2.1. Backend - CategorizeRecipe Integration Tests (Red) - [Agent]
 * Update `WorkflowStandardizationIntegrationTests.cs` and `GotoSynthesisIntegrationTests.cs` to mock the LLM response and assert that the workflow categorizes the recipe, saving `cuisine_type`, `meal_types`, and `category` as expected.
 * Assert that the `"Sides"` heuristic identifies a side dish from the name/description using the exact word boundaries keywords (`\b(side|side-dish|accompagnement|accompagnements|gravy|dressing|condiment|dip|salsa|vinaigrette|pesto)\b`) and does not false positive on main dishes like "Chicken with Pesto" or "Salmon and Salsa".
 * Run tests and confirm they fail with compilation errors or "CategorizeRecipe processor not registered" (Red).
 * _Requirements: AC 2.1, AC 2.2, AC 2.3, AC 2.4, AC 2.5, AC 2.6_
 
-### [ ] 2.2. Backend - CategorizeRecipe Processor (Green) - [Agent]
+### [x] 2.2. Backend - CategorizeRecipe Processor (Green) - [Agent]
 * Implement `CategorizeRecipeProcessor.cs` (workflow task `categorize_recipe`):
   - Calls LLM to categorize the recipe. Prompt must supply common cuisines (`Italian, French-Canadian, Canadian, French, American, Mexican, Spanish, Greek, Mediterranean, Middle-Eastern, Indian, Chinese, Japanese, Korean, Thai, Vietnamese, Caribbean, Latin American`).
   - Maps `"Dinner"` &rarr; `"Supper"`.
@@ -82,7 +84,7 @@
 
 ## Wave 3: Querying, Backup/Restore & SQL Data Migration
 
-### [ ] 3.1. Backend - Service & Backup Integration Tests (Red) - [Agent]
+### [x] 3.1. Backend - Service & Backup Integration Tests (Red) - [Agent]
 * Update unit/integration tests for `RecipeService.cs`, `DiscoveryService.cs`, `ManagementService.cs`, and `GroceryRecomputeServiceTests.cs`.
 * Assert that `UpdateRecipe` correctly updates `cuisine_type` and `meal_types` in the database, indexes them, and writes them to the `recipe.info` backup file.
 * Assert that `UpdateRecipe` falls back to `category = "Supper"` if it receives an empty or null `mealTypes` parameter.
@@ -91,7 +93,7 @@
 * Confirm that these tests fail (Red).
 * _Requirements: AC 3.1, AC 3.2, AC 4.6, AC 5.5_
 
-### [ ] 3.2. Backend - Service, Search & Backup Updates (Green) - [Agent]
+### [x] 3.2. Backend - Service, Search & Backup Updates (Green) - [Agent]
 * Update `RecipeService.cs`:
   - `MapToDto`: copy cuisine and meal types to DTOs.
   - `UpdateRecipe`: parse and map cuisine/meal types updates from `UpdateRecipeDto` to the recipe entity. Validate input: if `mealTypes` is empty/null, fallback `category` to `"Supper"`. Trigger search reindexing.
@@ -105,7 +107,7 @@
 * Run tests and confirm they pass (Green).
 * _Requirements: AC 3.1, AC 3.2, AC 4.6, AC 5.5_
 
-### [ ] 3.3. Database - Execute SQL Data Migration (Green) - [Human]
+### [x] 3.3. Database - Execute SQL Data Migration (Green) - [Human]
 * **[Human]** Manually execute the following SQL migration script on the deployed PostgreSQL database to map legacy JSONB data to the new columns:
   ```sql
   -- 1. Extract cuisine_type and map meal_types
@@ -149,7 +151,7 @@
 
 ## Wave 4: Frontend UI Components & Discovery Pinning
 
-### [ ] 4.1. PWA - Detail Sheet, Cards & Discovery Tests (Red) - [Agent]
+### [x] 4.1. PWA - Detail Sheet, Cards & Discovery Tests (Red) - [Agent]
 * Create/modify `RecipeDetailSheet.test.tsx` and Playwright E2E tests `discovery.spec.ts`.
 * Assert that cuisine and meal type badges are grouped together above the description in view mode.
 * Assert that edit mode displays the cuisine input and meal types toggle pill board above the description, and saving includes them in the PATCH request.
@@ -159,7 +161,7 @@
 * Confirm that these tests fail (Red).
 * _Requirements: AC 4.1, AC 4.2, AC 4.3, AC 4.4, AC 4.5, AC 5.1, AC 5.2, AC 5.3, AC 5.4_
 
-### [ ] 4.2. PWA - Client & UI Implementation (Green) - [Agent]
+### [x] 4.2. PWA - Client & UI Implementation (Green) - [Agent]
 * Update `recipes.ts` interface and update client method.
 * Implement `RecipeDetailSheet.tsx` View and Edit modes (metadata cluster and pill selector above description). Enable UI validation: disable Save if `draftMealTypes.length === 0`.
 * Clean up `RecipeStackCard.tsx`, `DiscoveryCard.tsx`, and `browse-all-stack/page.tsx` to handle the new `cuisineType` and `mealTypes` badges above the description and remove any category display bugs.

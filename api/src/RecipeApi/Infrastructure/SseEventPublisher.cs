@@ -54,7 +54,4 @@ public class SseEventPublisher : IScheduleEventPublisher
 
     public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("grocery_updated", new { weekOffset, groceryState }, excludeConnectionId);
-
-    public Task PublishDiscoveryNudgeAsync(string? nextFoodGroup, string reason, string? excludeConnectionId = null)
-        => _manager.BroadcastAsync("discovery_nudge", new { nextFoodGroup, reason }, excludeConnectionId);
 }

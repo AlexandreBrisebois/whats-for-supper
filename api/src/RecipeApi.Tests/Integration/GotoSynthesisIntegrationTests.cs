@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -239,5 +240,80 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         var recipe = await _db.Recipes.FindAsync(recipeId);
         Assert.Equal(5, recipe!.ImageCount);
         Assert.Equal(originalUpdatedAt, recipe.UpdatedAt);
+    }
+
+    [Theory]
+    [InlineData("Garlic Bread Side", "Perfect accompaniment for pasta", true)]
+    [InlineData("Homemade Pesto", "Fresh basil condiment", true)]
+    [InlineData("Pestology research notes", "This is not a main course", false)]
+    [InlineData("Chicken with Pesto", "Grilled chicken breast with pesto sauce", false)]
+    [InlineData("Salmon and Salsa", "Fresh salmon filet served with mango salsa", false)]
+    [InlineData("Pork with apple gravy", "Juicy pork chop with apple gravy", false)]
+    [InlineData("Beef steak dip", "Steak with cheese dip", false)]
+    public async Task CategorizeRecipe_SidesHeuristic_WorksAsExpected(string name, string description, bool expectedSides)
+    {
+        // Arrange
+        var recipeId = Guid.NewGuid();
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Name = name,
+            Description = description,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.Recipes.Add(recipe);
+        await _db.SaveChangesAsync();
+
+        var chatClientMock = new Mock<IChatClient>();
+        var chatResponseText = """
+        {
+          "cuisineType": "Canadian",
+          "mealTypes": ["Dinner"],
+          "primaryMealType": "Dinner"
+        }
+        """;
+        chatClientMock
+            .Setup(c => c.GetResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(),
+                It.IsAny<ChatOptions?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, chatResponseText)));
+
+        var healthPublisherMock = new Mock<IHealthEventPublisher>();
+
+        var processor = new CategorizeRecipeProcessor(
+            _db,
+            chatClientMock.Object,
+            healthPublisherMock.Object,
+            NullLogger<CategorizeRecipeProcessor>.Instance
+        );
+
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            Payload = JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
+        };
+
+        // Act
+        await processor.ExecuteAsync(task, CancellationToken.None);
+
+        // Assert
+        var updatedRecipe = await _db.Recipes.FindAsync(recipeId);
+        Assert.NotNull(updatedRecipe);
+
+        if (expectedSides)
+        {
+            Assert.Equal("Sides", updatedRecipe.Category);
+            Assert.NotNull(updatedRecipe.MealTypes);
+            Assert.Contains("Sides", updatedRecipe.MealTypes);
+        }
+        else
+        {
+            Assert.Equal("Supper", updatedRecipe.Category); // mapped from Dinner
+            Assert.NotNull(updatedRecipe.MealTypes);
+            Assert.Contains("Supper", updatedRecipe.MealTypes);
+            Assert.DoesNotContain("Sides", updatedRecipe.MealTypes);
+        }
     }
 }

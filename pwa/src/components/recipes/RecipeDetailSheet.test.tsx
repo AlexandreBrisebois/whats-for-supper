@@ -65,6 +65,8 @@ describe('RecipeDetailSheet', () => {
       finishedDishIndex: 0,
       sourceUrl: 'https://example.com/shareable-pasta',
       isReady: true,
+      cuisineType: 'Italian',
+      mealTypes: ['Supper', 'Lunch'],
     });
     mockGetRecipeShareBundle.mockResolvedValue({
       version: '1.0',
@@ -271,5 +273,96 @@ describe('RecipeDetailSheet', () => {
 
     expect(await screen.findByTestId('time-cook-btn')).toBeVisible();
     expect(screen.getByTestId('time-cook-btn')).toHaveTextContent(/STEPS/i);
+  });
+
+  it('shows cuisine and meal-type badges cluster above description in view mode', async () => {
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByTestId('recipe-detail-cuisine-badge')).toBeVisible();
+    expect(screen.getByTestId('recipe-detail-meal-type-supper')).toBeVisible();
+    expect(screen.getByTestId('recipe-detail-meal-type-lunch')).toBeVisible();
+  });
+
+  it('shows cuisine input and meal-type pill board in edit mode above description', async () => {
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+
+    expect(await screen.findByTestId('recipe-edit-cuisine-input')).toBeVisible();
+    expect(screen.getByTestId('recipe-edit-meal-type-pill-supper')).toBeVisible();
+    expect(screen.getByTestId('recipe-edit-meal-type-pill-lunch')).toBeVisible();
+  });
+
+  it('disables save when no meal types are selected in edit mode', async () => {
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+
+    fireEvent.click(await screen.findByTestId('recipe-edit-meal-type-pill-supper'));
+    fireEvent.click(await screen.findByTestId('recipe-edit-meal-type-pill-lunch'));
+
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+  });
+
+  it('sends cuisineType and mealTypes in PATCH on save', async () => {
+    mockUpdateRecipe.mockResolvedValue(undefined);
+
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+
+    fireEvent.change(await screen.findByTestId('recipe-edit-cuisine-input'), {
+      target: { value: 'Greek' },
+    });
+    fireEvent.click(screen.getByTestId('recipe-edit-meal-type-pill-lunch'));
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+
+    await waitFor(() => {
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(
+        '550e8400-e29b-41d4-a716-446655440111',
+        expect.objectContaining({
+          cuisineType: 'Greek',
+          mealTypes: ['Supper'],
+        })
+      );
+    });
   });
 });

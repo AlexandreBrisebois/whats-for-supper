@@ -230,79 +230,8 @@ public class GroceryRecomputeService(
             "Recomputed grocery_items for week starting {Monday}: {Count} line items",
             monday, grouped.Count);
 
-        // Emit SSE nudge if a group newly reached its target
-        if (publisher != null && previousSummary != null)
-        {
-            if (DidGroupReachTarget(previousSummary, newSummary))
-            {
-                var nextFoodGroup = FindNextUnderrepresentedGroup(newSummary);
-                var reason = newSummary.IsBalanced
-                    ? "Week is now balanced!"
-                    : $"Group reached target. Next focus: {nextFoodGroup}";
-                await publisher.PublishDiscoveryNudgeAsync(nextFoodGroup, reason);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Determines if any food group newly reached its target.
-    /// </summary>
-    private static bool DidGroupReachTarget(WeeklyBalanceSummary previous, WeeklyBalanceSummary current)
-    {
-        // Check if isBalanced changed from false to true
-        if (!previous.IsBalanced && current.IsBalanced)
-            return true;
-
-        // Check if any individual group reached its target
-        if (previous.ProteinDays < 3 && current.ProteinDays >= 3)
-            return true;
-        if (previous.VeggieDays < 4 && current.VeggieDays >= 4)
-            return true;
-        if (previous.GrainDays < 2 && current.GrainDays >= 2)
-            return true;
-        if (previous.PlantProteinDays < 1 && current.PlantProteinDays >= 1)
-            return true;
-
-        return false;
-    }
-
-    /// <summary>
-    /// Finds the food group furthest below its target (most under-represented).
-    /// Returns null if all targets are met.
-    /// </summary>
-    private static string? FindNextUnderrepresentedGroup(WeeklyBalanceSummary summary)
-    {
-        if (summary.IsBalanced)
-            return null;
-
-        var gaps = new List<(string Group, double Gap)>();
-
-        if (summary.ProteinDays < 3)
-            gaps.Add(("ProteinFoods", 3.0 - summary.ProteinDays));
-        if (summary.VeggieDays < 4)
-            gaps.Add(("VegetablesAndFruits", 4.0 - summary.VeggieDays));
-        if (summary.GrainDays < 2)
-            gaps.Add(("WholeGrains", 2.0 - summary.GrainDays));
-        if (summary.PlantProteinDays < 1)
-            gaps.Add(("PlantProtein", 1.0 - summary.PlantProteinDays));
-
-        if (gaps.Count == 0)
-            return null;
-
-        // Return the group with the largest gap (as a fraction of its target)
-        var targets = new Dictionary<string, double>
-        {
-            ["ProteinFoods"] = 3.0,
-            ["VegetablesAndFruits"] = 4.0,
-            ["WholeGrains"] = 2.0,
-            ["PlantProtein"] = 1.0,
-        };
-
-        var ranked = gaps
-            .OrderByDescending(g => g.Gap / targets[g.Group])
-            .First();
-
-        return ranked.Group;
+        _ = publisher;
+        _ = previousSummary;
     }
 
     /// <summary>

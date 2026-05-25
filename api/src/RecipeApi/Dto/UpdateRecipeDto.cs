@@ -30,4 +30,10 @@ public class UpdateRecipeDto
 
     [JsonPropertyName("isDiscoverable")]
     public bool? IsDiscoverable { get; set; }
+
+    [JsonPropertyName("cuisineType")]
+    public string? CuisineType { get; set; }
+
+    [JsonPropertyName("mealTypes")]
+    public string[]? MealTypes { get; set; }
 }

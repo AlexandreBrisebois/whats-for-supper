@@ -43,6 +43,12 @@ public class ImportedRecipeDto
     [JsonPropertyName("category")]
     public string? Category { get; set; }
 
+    [JsonPropertyName("cuisineType")]
+    public string? CuisineType { get; set; }
+
+    [JsonPropertyName("mealTypes")]
+    public string[]? MealTypes { get; set; }
+
     [JsonPropertyName("isSynthesized")]
     public bool IsSynthesized { get; set; }
 }

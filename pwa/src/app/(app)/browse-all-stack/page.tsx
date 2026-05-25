@@ -719,6 +719,8 @@ export default function BrowseAllStackPage() {
                       imageUrl={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
                       totalTime={recipe.totalTime || ''}
                       category={recipe.category || ''}
+                      cuisineType={recipe.cuisineType ?? null}
+                      mealTypes={recipe.mealTypes ?? null}
                       isFront={i === 0}
                       stackIndex={i}
                       onSwipeRight={handleSwipeRight}

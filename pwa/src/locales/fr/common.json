@@ -321,6 +321,8 @@
     "viewSteps": "Voir les étapes",
     "currentGoto": "Recette GOTO actuelle",
     "detailTitle": "Détail de la recette",
+    "cuisineType": "Cuisine",
+    "mealTypes": "Types de repas",
     "description": "Description",
     "editFailed": "Impossible d'enregistrer les changements. Réessayez.",
     "findSimilar": "Trouver similaire",

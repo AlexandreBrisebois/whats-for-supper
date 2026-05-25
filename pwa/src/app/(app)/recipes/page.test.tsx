@@ -605,11 +605,15 @@ describe('RecipesPage', () => {
     fireEvent.click(screen.getByTestId('recipe-save-edits'));
 
     await waitFor(() => {
-      expect(mocks.updateRecipe).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111', {
-        name: 'Chicken Soup Deluxe',
-        description: 'A warmer soup for the weeknight table.',
-        ingredients: ['Chicken', 'Rich chicken broth', 'Carrots', 'Parsley'],
-      });
+      expect(mocks.updateRecipe).toHaveBeenCalledWith(
+        '11111111-1111-1111-1111-111111111111',
+        expect.objectContaining({
+          name: 'Chicken Soup Deluxe',
+          description: 'A warmer soup for the weeknight table.',
+          ingredients: ['Chicken', 'Rich chicken broth', 'Carrots', 'Parsley'],
+          mealTypes: ['Supper'],
+        })
+      );
     });
 
     expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup Deluxe');

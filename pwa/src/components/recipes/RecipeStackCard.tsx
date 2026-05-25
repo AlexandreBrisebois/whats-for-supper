@@ -26,6 +26,8 @@ interface RecipeStackCardProps {
   imageUrl: string;
   totalTime: string;
   category: string;
+  cuisineType?: string | null;
+  mealTypes?: string[] | null;
   isFront: boolean;
   stackIndex: number;
   onSwipeRight: () => void; // Navigate to previous card
@@ -40,6 +42,8 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   imageUrl,
   totalTime,
   category,
+  cuisineType,
+  mealTypes,
   isFront,
   stackIndex,
   onSwipeRight,
@@ -151,6 +155,8 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
     onTap();
   };
 
+  const visibleMealTypes = (mealTypes ?? []).filter(Boolean);
+
   return (
     <motion.div
       layout
@@ -229,6 +235,30 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-heading mb-3 md:mb-4 leading-tight shrink-0">
             {name}
           </h2>
+
+          {(cuisineType || visibleMealTypes.length > 0) && (
+            <div className="mb-3 md:mb-4 flex flex-wrap items-center gap-2">
+              {cuisineType && (
+                <span
+                  data-testid={isFront ? 'recipe-stack-cuisine-badge' : undefined}
+                  className="inline-flex items-center gap-1 rounded-full bg-ochre/10 text-ochre px-3 py-1.5 shadow-sm text-[11px] font-black uppercase tracking-widest"
+                >
+                  {cuisineType}
+                </span>
+              )}
+              {visibleMealTypes.map((mealType) => (
+                <span
+                  key={mealType}
+                  data-testid={
+                    isFront ? `recipe-stack-meal-type-${mealType.toLowerCase()}` : undefined
+                  }
+                  className="rounded-full bg-white border border-sage/30 text-sage/80 px-3 py-1 text-xs font-bold uppercase"
+                >
+                  {mealType}
+                </span>
+              ))}
+            </div>
+          )}
 
           <div className="flex-1 relative overflow-hidden min-h-0 mb-4 md:mb-6">
             <p className="text-charcoal/60 text-sm md:text-base leading-relaxed">{description}</p>

@@ -34,9 +34,18 @@ const BASE_PROPS = {
   stackIndex: 0,
   totalTime: 'PT30M',
   category: 'Dinner',
+  cuisineType: 'Italian',
+  mealTypes: ['Supper', 'Lunch'],
 };
 
 describe('DiscoveryCard — neutral visual parity', () => {
+  it('renders cuisine and meal-type badges cluster above description', () => {
+    render(<DiscoveryCard {...BASE_PROPS} />);
+    expect(screen.getByTestId('discovery-card-cuisine-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('discovery-card-meal-type-supper')).toBeInTheDocument();
+    expect(screen.getByTestId('discovery-card-meal-type-lunch')).toBeInTheDocument();
+  });
+
   it('does not require vote-specific highlight ring when hasFamilyInterest is true', () => {
     render(<DiscoveryCard {...BASE_PROPS} hasFamilyInterest={true} />);
     expect(screen.getByTestId('discovery-card')).toBeInTheDocument();

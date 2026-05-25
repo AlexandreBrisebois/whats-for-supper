@@ -2105,5 +2105,4 @@ public class CapturingEventPublisher(
     }
 
     public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null) => Task.CompletedTask;
-    public Task PublishDiscoveryNudgeAsync(string? nextFoodGroup, string reason, string? excludeConnectionId = null) => Task.CompletedTask;
 }

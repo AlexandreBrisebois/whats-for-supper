@@ -224,6 +224,81 @@ public class RecipeServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PatchRecipe_WithCuisineTypeAndMealTypes_PersistsFields()
+    {
+        var recipeId = Guid.NewGuid();
+
+        using (var seedScope = _factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            seedDb.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = recipeId,
+                Name = "Original",
+                Category = "Lunch",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var response = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new
+        {
+            cuisineType = "Italian",
+            mealTypes = new[] { "Supper", "Lunch" }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var assertDb = assertScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var recipe = await assertDb.Recipes.FindAsync(recipeId);
+        Assert.NotNull(recipe);
+        Assert.Equal("Italian", recipe!.CuisineType);
+        Assert.NotNull(recipe.MealTypes);
+        Assert.Equal(["Supper", "Lunch"], recipe.MealTypes!);
+    }
+
+    [Fact]
+    public async Task PatchRecipe_WithEmptyMealTypes_FallsBackCategoryToSupper()
+    {
+        var recipeId = Guid.NewGuid();
+
+        using (var seedScope = _factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            seedDb.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = recipeId,
+                Name = "Original",
+                Category = "Lunch",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                ImageCount = 1,
+                IsReady = true,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var response = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new
+        {
+            mealTypes = Array.Empty<string>()
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var assertScope = _factory.Services.CreateScope();
+        var assertDb = assertScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var recipe = await assertDb.Recipes.FindAsync(recipeId);
+        Assert.NotNull(recipe);
+        Assert.Equal("Supper", recipe!.Category);
+    }
+
+    [Fact]
     public async Task GetRecipe_Returns_FinishedDishIndex()
     {
         var recipeId = Guid.NewGuid();

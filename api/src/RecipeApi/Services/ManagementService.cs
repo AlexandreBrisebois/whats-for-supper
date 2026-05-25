@@ -76,6 +76,8 @@ public class ManagementService(
                 existing.LastCookedDate = recipe.LastCookedDate;
                 existing.IsSynthesized = recipe.IsSynthesized;
                 existing.SourceUrl = recipe.SourceUrl;
+                existing.CuisineType = recipe.CuisineType;
+                existing.MealTypes = recipe.MealTypes;
 
                 if (!string.IsNullOrEmpty(recipe.DietaryProfile))
                 {
@@ -103,7 +105,9 @@ public class ManagementService(
                     IsVegetarian = recipe.IsVegetarian,
                     TotalTime = recipe.TotalTime,
                     LastCookedDate = recipe.LastCookedDate,
-                    SourceUrl = recipe.SourceUrl
+                    SourceUrl = recipe.SourceUrl,
+                    CuisineType = recipe.CuisineType,
+                    MealTypes = recipe.MealTypes
                 };
 
                 if (!string.IsNullOrEmpty(recipe.DietaryProfile))
@@ -765,6 +769,8 @@ public class ManagementService(
                             CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
                             UpdatedAt = DateTimeOffset.UtcNow,
                             Category = info.DietaryProfile?.PrimaryFoodGroup ?? info.Category,
+                            CuisineType = info.CuisineType ?? info.DietaryProfile?.CuisineType,
+                            MealTypes = info.MealTypes ?? info.DietaryProfile?.MealTypes?.Select(MapMealType).Where(x => x != null).Cast<string>().Distinct().ToArray(),
                             IsDiscoverable = info.IsDiscoverable,
                             IsHealthyChoice = info.IsHealthyChoice,
                             IsVegetarian = info.IsVegetarian,
@@ -862,14 +868,6 @@ public class ManagementService(
         {
             try
             {
-                var hasImages = await recipeStore.HasOriginalImagesAsync(recipe.Id, ct);
-                if (!hasImages && !recipe.IsSynthesized)
-                {
-                    logger.LogWarning("Skipping recipe {Id} ({Name}) - no images and not synthesized", recipe.Id, recipe.Name ?? "unknown");
-                    result.RecipesSkipped++;
-                    continue;
-                }
-
                 var existing = await db.Recipes.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == recipe.Id, ct);
                 if (existing == null)
                 {
@@ -899,6 +897,8 @@ public class ManagementService(
                     existing.LastCookedDate = recipe.LastCookedDate;
                     existing.SourceUrl = recipe.SourceUrl;
                     existing.DietaryProfile = recipe.DietaryProfile;
+                    existing.CuisineType = recipe.CuisineType;
+                    existing.MealTypes = recipe.MealTypes;
                     existing.IsReady = true;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
@@ -1326,6 +1326,14 @@ public class ManagementService(
             return $"\"{value.Replace("\"", "\"\"")}\"";
         return value;
     }
+
+    private static string? MapMealType(string? mealType) =>
+        mealType switch
+        {
+            null => null,
+            "Dinner" => "Supper",
+            _ => mealType
+        };
 
     private string GetSearchIndexSidecarPath(Guid recipeId)
     {

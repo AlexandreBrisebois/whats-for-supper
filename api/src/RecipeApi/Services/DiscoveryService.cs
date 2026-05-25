@@ -3,7 +3,6 @@ using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
-using System.Text.Json;
 
 namespace RecipeApi.Services;
 
@@ -23,14 +22,7 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
 
         if (!string.IsNullOrEmpty(cuisine))
         {
-            if (_dbContext.Database.IsNpgsql())
-            {
-                query = query.Where(r => r.DietaryProfile != null && EF.Functions.JsonContains(
-                    r.DietaryProfile,
-                    JsonSerializer.Serialize(new { cuisineType = cuisine })));
-            }
-            // Note: In-memory provider used in integration tests does not support JSONB queries.
-            // Filtering is skipped to allow 'AcceptsParameter' tests to pass without crashing.
+            query = query.Where(r => r.CuisineType == cuisine);
         }
 
         // Exclude recipes already voted on by this user

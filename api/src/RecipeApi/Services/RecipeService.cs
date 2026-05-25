@@ -250,6 +250,8 @@ public class RecipeService(
                 SourceUrl = recipe.SourceUrl,
                 SourceName = ExtractSourceName(recipe.RawMetadata),
                 Category = recipe.Category,
+                CuisineType = recipe.CuisineType,
+                MealTypes = recipe.MealTypes,
                 IsSynthesized = recipe.IsSynthesized,
                 Notes = null, // AC 2.3: Scrubbed for sharing
                 Rating = null, // AC 2.3: Scrubbed for sharing
@@ -289,6 +291,8 @@ public class RecipeService(
             RawMetadata = BuildImportedRawMetadata(bundle.Recipe),
             SourceUrl = bundle.Recipe.SourceUrl,
             Category = bundle.Recipe.Category,
+            CuisineType = bundle.Recipe.CuisineType,
+            MealTypes = bundle.Recipe.MealTypes,
             AddedBy = familyMemberId,
             ImageCount = originalCount,
             IsSynthesized = bundle.Recipe.IsSynthesized,
@@ -312,6 +316,8 @@ public class RecipeService(
             AddedBy = familyMemberId,
             SourceUrl = bundle.Recipe.SourceUrl,
             Category = bundle.Recipe.Category,
+            CuisineType = bundle.Recipe.CuisineType,
+            MealTypes = bundle.Recipe.MealTypes,
             TotalTime = recipe.TotalTime,
             IsSynthesized = bundle.Recipe.IsSynthesized,
             CreatedAt = now,
@@ -370,6 +376,18 @@ public class RecipeService(
         if (dto.IsDiscoverable.HasValue)
             recipe.IsDiscoverable = dto.IsDiscoverable.Value;
 
+        if (dto.CuisineType is not null)
+            recipe.CuisineType = dto.CuisineType;
+
+        if (dto.MealTypes is not null)
+        {
+            recipe.MealTypes = dto.MealTypes;
+            if (dto.MealTypes.Length == 0)
+            {
+                recipe.Category = "Supper";
+            }
+        }
+
         if (dto.RecipeInstructions is not null)
         {
             var raw = string.IsNullOrWhiteSpace(recipe.RawMetadata)
@@ -390,6 +408,8 @@ public class RecipeService(
             dto.Notes is not null ||
             dto.Rating.HasValue ||
             dto.IsDiscoverable.HasValue ||
+            dto.CuisineType is not null ||
+            dto.MealTypes is not null ||
             dto.RecipeInstructions is not null)
         {
             try
@@ -684,6 +704,8 @@ public class RecipeService(
             SourceUrl = r.SourceUrl,
             Description = r.Description,
             Category = r.Category,
+            CuisineType = r.CuisineType,
+            MealTypes = r.MealTypes,
             DietaryProfile = DeserializeDietaryProfile(r.DietaryProfile),
             ImageUrl = $"/api/recipes/{r.Id}/hero",
             Images = Enumerable.Range(0, r.ImageCount).ToList(),

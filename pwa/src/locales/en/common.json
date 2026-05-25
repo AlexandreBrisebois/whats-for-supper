@@ -321,6 +321,8 @@
     "viewSteps": "View steps",
     "currentGoto": "Current GOTO recipe",
     "detailTitle": "Recipe detail",
+    "cuisineType": "Cuisine",
+    "mealTypes": "Meal types",
     "description": "Description",
     "editFailed": "Could not save changes. Try again.",
     "findSimilar": "Find Similar",

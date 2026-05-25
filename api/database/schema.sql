@@ -38,6 +38,8 @@ CREATE TABLE recipes (
     raw_metadata jsonb,
     ingredients jsonb,
     dietary_profile jsonb DEFAULT NULL,
+    cuisine_type text,
+    meal_types text[],
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
     last_cooked_date timestamptz,
@@ -164,6 +166,7 @@ CREATE INDEX idx_recipe_votes_recipe_id ON recipe_votes (recipe_id);
 CREATE INDEX idx_recipes_added_by ON recipes (added_by) WHERE (added_by IS NOT NULL);
 CREATE INDEX idx_recipes_created_at_desc ON recipes (created_at DESC);
 CREATE INDEX idx_recipes_discovery_lookup ON recipes (category, id) WHERE (is_discoverable = true);
+CREATE INDEX IF NOT EXISTS idx_recipes_cuisine_type ON recipes (cuisine_type) WHERE (cuisine_type IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_maintenance_commands_status_scheduled ON maintenance_commands (status, scheduled_for, created_at);
 
 CREATE OR REPLACE VIEW vw_recipe_matches AS 
@@ -173,7 +176,7 @@ WHERE vote = 1
 GROUP BY recipe_id;
 
 CREATE OR REPLACE VIEW vw_discovery_recipes AS
-SELECT r.id, r.name, r.category, r.description, r.ingredients, r.image_count, r.total_time, r.is_vegetarian, r.is_healthy_choice, r.last_cooked_date, r.created_at, r.dietary_profile, r.finished_dish_index,
+SELECT r.id, r.name, r.category, r.cuisine_type, r.meal_types, r.description, r.ingredients, r.image_count, r.total_time, r.is_vegetarian, r.is_healthy_choice, r.last_cooked_date, r.created_at, r.dietary_profile, r.finished_dish_index,
 COALESCE(v.vote_count, 0) AS vote_count
 FROM recipes r
 LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id

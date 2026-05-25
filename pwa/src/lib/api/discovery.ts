@@ -8,6 +8,8 @@ export interface DiscoveryRecipe {
   imageUrl: string;
   totalTime: string;
   category: string;
+  cuisineType?: string | null;
+  mealTypes?: string[] | null;
   hasFamilyInterest?: boolean;
 }
 
@@ -19,6 +21,8 @@ function mapToDiscoveryRecipe(dto: RecipeDto): DiscoveryRecipe {
     imageUrl: dto.imageUrl || '',
     totalTime: dto.totalTime || '',
     category: dto.category || '',
+    cuisineType: dto.cuisineType ?? null,
+    mealTypes: dto.mealTypes ?? null,
     hasFamilyInterest: false, // Map this if available in DTO
   };
 }

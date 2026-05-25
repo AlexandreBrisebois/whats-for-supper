@@ -559,25 +559,7 @@ describe('grocery_updated event', () => {
   });
 });
 
-// ── discovery_nudge event ─────────────────────────────────────────────────
-
-describe('discovery_nudge event', () => {
-  it('calls setActiveCategory on discoveryStore with nextFoodGroup', () => {
-    const { source } = setupHook();
-
-    source.emit('discovery_nudge', { nextFoodGroup: 'WholeGrains', reason: 'Balanced week' });
-
-    expect(mockSetActiveCategory).toHaveBeenCalledWith('WholeGrains');
-  });
-
-  it('calls setActiveCategory with null when nextFoodGroup is null', () => {
-    const { source } = setupHook();
-
-    source.emit('discovery_nudge', { nextFoodGroup: null, reason: 'Already balanced' });
-
-    expect(mockSetActiveCategory).toHaveBeenCalledWith(null);
-  });
-});
+// discovery_nudge events are intentionally ignored.
 
 // ── cleanup ──────────────────────────────────────────────────────────────────
 

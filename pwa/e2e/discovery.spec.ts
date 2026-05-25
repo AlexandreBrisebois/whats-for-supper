@@ -48,6 +48,8 @@ test.describe('Discovery Flow', () => {
     await page.route(
       (url) => url.pathname.endsWith('/api/discovery'),
       async (route) => {
+        const requestedCategory = new URL(route.request().url()).searchParams.get('category');
+        expect(requestedCategory).toBe('Supper');
         // The app might call /api/discovery or /api/discovery?category=...
         await route.fulfill({
           status: 200,
@@ -81,7 +83,13 @@ test.describe('Discovery Flow', () => {
     await expect(page.getByTestId('discovery-card').first()).toContainText(/READY IN 30 MINS/i);
   });
 
-  test('should swipe through all categories and show summary', async ({ page }) => {
+  test('requests only the pinned Supper category in discovery', async ({ page }) => {
+    await page.goto('/discovery');
+    await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('discovery-card').first()).toBeVisible();
+  });
+
+  test('should swipe through pinned Supper stack and show summary', async ({ page }) => {
     // Each category returns MOCK_STACK on the first fetch (initial load / loadNextCategory),
     // then [] on subsequent fetches — simulating that all recipes in that category were voted.
     // Without this, the wrap-around in loadNextCategory would re-serve already-visited categories.
@@ -104,8 +112,8 @@ test.describe('Discovery Flow', () => {
 
     await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
 
-    // 3 categories × 2 cards = 6 swipes total
-    for (let i = 0; i < 6; i++) {
+    // Pinned mode only serves Supper: 2 cards total.
+    for (let i = 0; i < 2; i++) {
       const likeBtn = page.getByTestId('like-button');
       await expect(likeBtn).toBeEnabled({ timeout: 5_000 });
       await likeBtn.click();
@@ -246,7 +254,7 @@ test.describe('Discovery Flow', () => {
     await expect(page.getByTestId('refresh-button')).not.toBeVisible();
   });
 
-  test('refresh button should appear only after all categories are exhausted', async ({ page }) => {
+  test('refresh button should appear after pinned Supper stack is exhausted', async ({ page }) => {
     // Same "first-serve only" mock as the summary test — wrap-around must not
     // re-serve already-voted categories and prevent the empty state from appearing.
     const categoryServed = new Set<string>();
@@ -268,8 +276,8 @@ test.describe('Discovery Flow', () => {
 
     await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
 
-    // 3 categories × 2 cards = 6 swipes to exhaust everything
-    for (let i = 0; i < 6; i++) {
+    // Pinned mode only serves Supper: 2 cards to exhaust everything.
+    for (let i = 0; i < 2; i++) {
       const likeBtn = page.getByTestId('like-button');
       await expect(likeBtn).toBeEnabled({ timeout: 5_000 });
       await likeBtn.click();

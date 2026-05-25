@@ -18,10 +18,4 @@ public interface IScheduleEventPublisher
     Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null);
 
     Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null);
-
-    /// <summary>
-    /// Published when a food group reaches its weekly target during plan recomputation.
-    /// Signals the discovery stack to surface recipes from the next under-represented group.
-    /// </summary>
-    Task PublishDiscoveryNudgeAsync(string? nextFoodGroup, string reason, string? excludeConnectionId = null);
 }

@@ -16,6 +16,12 @@ public class DiscoveryRecipe
     [Column("category")]
     public string? Category { get; set; }
 
+    [Column("cuisine_type")]
+    public string? CuisineType { get; set; }
+
+    [Column("meal_types")]
+    public string[]? MealTypes { get; set; }
+
     [Column("description")]
     public string? Description { get; set; }
 
@@ -52,6 +58,8 @@ public class DiscoveryRecipe
         Id = Id,
         Name = Name,
         Category = Category,
+        CuisineType = CuisineType,
+        MealTypes = MealTypes,
         Description = Description,
         ImageCount = ImageCount,
         TotalTime = TotalTime,

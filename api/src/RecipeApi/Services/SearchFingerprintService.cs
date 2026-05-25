@@ -26,12 +26,14 @@ public static class SearchFingerprintService
         var canonical = new Dictionary<string, object?>
         {
             ["category"] = recipe.Category,
+            ["cuisineType"] = recipe.CuisineType,
             ["description"] = recipe.Description,
             ["dietaryProfile"] = recipe.DietaryProfile != null
                 ? JsonSerializer.Deserialize<object>(recipe.DietaryProfile)
                 : null,
             ["ingredients"] = sortedIngredients,
             ["isDiscoverable"] = recipe.IsDiscoverable,
+            ["mealTypes"] = recipe.MealTypes?.OrderBy(m => m, StringComparer.Ordinal).ToArray(),
             ["name"] = recipe.Name,
             ["notes"] = recipe.Notes,
             ["rating"] = (int)recipe.Rating,

@@ -19,6 +19,7 @@ public class ManagementServiceTests : IAsyncLifetime
     private IServiceScope _scope = null!;
     private RecipeDbContext _db = null!;
     private ManagementService _service = null!;
+    private IRecipeStore _recipeStore = null!;
 
     public async Task InitializeAsync()
     {
@@ -26,6 +27,7 @@ public class ManagementServiceTests : IAsyncLifetime
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         _service = _scope.ServiceProvider.GetRequiredService<ManagementService>();
+        _recipeStore = _scope.ServiceProvider.GetRequiredService<IRecipeStore>();
     }
 
     public async Task DisposeAsync()
@@ -509,5 +511,69 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Equal("Meat", categories[0].GrocerySection);
         Assert.Equal(0.99, categories[0].Confidence);
         Assert.Equal("llm", categories[0].Source);
+    }
+
+    [Fact]
+    public async Task BackupAsync_WritesCuisineTypeAndMealTypes_ToRecipeInfo()
+    {
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Metadata Soup",
+            AddedBy = _factory.DefaultFamilyMemberId,
+            ImageCount = 1,
+            IsReady = true,
+            Category = "Supper",
+            CuisineType = "French-Canadian",
+            MealTypes = ["Supper", "Sides"],
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.BackupAsync();
+
+        var info = await _recipeStore.ReadInfoAsync(recipeId);
+        Assert.NotNull(info);
+        Assert.Equal("French-Canadian", info!.CuisineType);
+        Assert.NotNull(info.MealTypes);
+        Assert.Equal(["Supper", "Sides"], info.MealTypes!);
+    }
+
+    [Fact]
+    public async Task RestoreAsync_WithLegacyDietaryProfile_FallsBackCuisineAndMealTypes()
+    {
+        var recipeId = Guid.NewGuid();
+        var memberId = _factory.DefaultFamilyMemberId;
+        var info = new RecipeInfo
+        {
+            Id = recipeId,
+            Name = "Legacy Recipe",
+            AddedBy = memberId,
+            ImageCount = 1,
+            IsSynthesized = false,
+            CreatedAt = DateTimeOffset.UtcNow,
+            DietaryProfile = new RecipeDietaryProfile(
+                PrimaryFoodGroup: "ProteinFoods",
+                SecondaryFoodGroups: [],
+                ProteinSource: "Poultry",
+                CuisineType: "Greek",
+                MealTypes: ["Dinner", "Sides"],
+                PrimaryMealType: "Dinner",
+                WholeGrainConfident: false,
+                Confidence: 0.8,
+                Source: "llm",
+                FopFlags: null)
+        };
+
+        await _recipeStore.WriteInfoAsync(info);
+        await _service.RestoreAsync();
+
+        var restored = await _db.Recipes.FindAsync(recipeId);
+        Assert.NotNull(restored);
+        Assert.Equal("Greek", restored!.CuisineType);
+        Assert.NotNull(restored.MealTypes);
+        Assert.Equal(["Supper", "Sides"], restored.MealTypes!);
     }
 }

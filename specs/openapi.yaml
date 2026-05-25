@@ -57,6 +57,12 @@ components:
 
         totalTime: { type: [string, 'null'] }
         category: { type: [string, 'null'] }
+        cuisineType: { type: [string, 'null'] }
+        mealTypes:
+          type: [array, 'null']
+          items:
+            type: string
+            enum: [Breakfast, Brunch, Snack, Lunch, Supper, Sides, Dessert, Appetizer, Beverage]
         dietaryProfile:
           nullable: true
           oneOf:
@@ -398,6 +404,12 @@ components:
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
         isDiscoverable: { type: [boolean, 'null'] }
+        cuisineType: { type: [string, 'null'] }
+        mealTypes:
+          type: [array, 'null']
+          items:
+            type: string
+            enum: [Breakfast, Brunch, Snack, Lunch, Supper, Sides, Dessert, Appetizer, Beverage]
 
     DescribeRecipeDto:
       type: object
@@ -451,6 +463,12 @@ components:
         sourceName: { type: [string, 'null'] }
         category: { type: [string, 'null'] }
         isSynthesized: { type: boolean }
+        cuisineType: { type: [string, 'null'] }
+        mealTypes:
+          type: [array, 'null']
+          items:
+            type: string
+            enum: [Breakfast, Brunch, Snack, Lunch, Supper, Sides, Dessert, Appetizer, Beverage]
 
     RecipeShareInfoDto:
       type: object

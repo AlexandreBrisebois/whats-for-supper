@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation';
 import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
 
+const PINNED_DISCOVERY_CATEGORY = 'Supper';
+
 export default function DiscoveryPage() {
   const router = useRouter();
   const { setHasPendingCards, setActiveCategory } = useDiscoveryStore();
@@ -35,12 +37,13 @@ export default function DiscoveryPage() {
     setIsLoading(true);
     try {
       const cats = await getCategories();
-      categoriesRef.current = cats;
+      const resolvedCategories = PINNED_DISCOVERY_CATEGORY ? [PINNED_DISCOVERY_CATEGORY] : cats;
+      categoriesRef.current = resolvedCategories;
       categoryIndexRef.current = 0;
 
       let foundNonEmpty = false;
-      for (let i = 0; i < cats.length; i++) {
-        const categoryToLoad = cats[i];
+      for (let i = 0; i < resolvedCategories.length; i++) {
+        const categoryToLoad = resolvedCategories[i];
         const stack = await getDiscoveryStack(categoryToLoad);
         if (stack.length > 0) {
           setActiveCategory(categoryToLoad);
@@ -76,11 +79,12 @@ export default function DiscoveryPage() {
       try {
         const cats = await getCategories();
         if (ignore) return;
-        categoriesRef.current = cats;
+        const resolvedCategories = PINNED_DISCOVERY_CATEGORY ? [PINNED_DISCOVERY_CATEGORY] : cats;
+        categoriesRef.current = resolvedCategories;
 
         // Nudge priority: read activeCategory from store at call-time (not from
         // the closure dep) so we don't re-trigger this effect when we set it below.
-        if (cats.length === 0) {
+        if (resolvedCategories.length === 0) {
           if (!ignore) {
             setActiveCategory(null);
             categoryIndexRef.current = 0;
@@ -89,16 +93,16 @@ export default function DiscoveryPage() {
           }
         } else {
           const storedCategory = useDiscoveryStore.getState().activeCategory;
-          const targetCategory = storedCategory ?? cats[0];
-          const index = cats.indexOf(targetCategory);
+          const targetCategory = storedCategory ?? resolvedCategories[0];
+          const index = resolvedCategories.indexOf(targetCategory);
           const resolvedIndex = index !== -1 ? index : 0;
 
           // Wrap-around scan: start from resolvedIndex, cycle through all
           // categories so earlier ones aren't skipped if a nudge pointed mid-list.
           let foundNonEmpty = false;
-          for (let i = 0; i < cats.length && !ignore; i++) {
-            const tryIndex = (resolvedIndex + i) % cats.length;
-            const categoryToLoad = cats[tryIndex];
+          for (let i = 0; i < resolvedCategories.length && !ignore; i++) {
+            const tryIndex = (resolvedIndex + i) % resolvedCategories.length;
+            const categoryToLoad = resolvedCategories[tryIndex];
             const stack = await getDiscoveryStack(categoryToLoad);
             if (ignore) break;
             if (stack.length > 0) {

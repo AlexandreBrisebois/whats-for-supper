@@ -641,7 +641,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task BalanceScoring_FirstRecompute_DoesNotEmitNudge()
+    public async Task BalanceScoring_FirstRecompute_WritesBalanceSummary()
     {
         // Arrange: mock publisher to capture calls
         var publisherMock = new Mock<IScheduleEventPublisher>();
@@ -683,14 +683,12 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         // Act
         await service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
 
-        // Assert: PublishDiscoveryNudgeAsync should NOT be called on first recompute
-        publisherMock.Verify(
-            p => p.PublishDiscoveryNudgeAsync(It.IsAny<string?>(), It.IsAny<string>()),
-            Times.Never);
+        var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        Assert.False(string.IsNullOrWhiteSpace(plan.BalanceSummary));
     }
 
     [Fact]
-    public async Task BalanceScoring_GroupReachesTarget_EmitsNudge()
+    public async Task BalanceScoring_GroupReachesTarget_RecomputesBalanceSummary()
     {
         // Arrange: create a weekly plan with a previous balance_summary where proteinDays = 2
         var previousSummary = new WeeklyBalanceSummary(
@@ -759,14 +757,12 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         // Act
         await service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
 
-        // Assert: PublishDiscoveryNudgeAsync should be called
-        publisherMock.Verify(
-            p => p.PublishDiscoveryNudgeAsync(It.IsAny<string?>(), It.IsAny<string>()),
-            Times.Once);
+        var updated = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        Assert.False(string.IsNullOrWhiteSpace(updated.BalanceSummary));
     }
 
     [Fact]
-    public async Task BalanceScoring_SummaryUnchanged_DoesNotEmitNudge()
+    public async Task BalanceScoring_SummaryUnchanged_StillPersistsSummary()
     {
         // Arrange: create a weekly plan with a previous balance_summary
         var previousSummary = new WeeklyBalanceSummary(
@@ -834,10 +830,8 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         // Act
         await service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
 
-        // Assert: PublishDiscoveryNudgeAsync should NOT be called
-        publisherMock.Verify(
-            p => p.PublishDiscoveryNudgeAsync(It.IsAny<string?>(), It.IsAny<string>()),
-            Times.Never);
+        var updated = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
+        Assert.False(string.IsNullOrWhiteSpace(updated.BalanceSummary));
     }
 
     [Fact]

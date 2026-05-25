@@ -192,6 +192,27 @@ public class DiscoveryServiceTests
         Assert.Equal(recipe2.Id, results[3].Id); // Cooked today (most recent) is last
     }
 
+    [Fact]
+    public async Task GetRecipesForDiscoveryAsync_WithCuisineFilter_FiltersByCuisineType()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = MakeService(ctx);
+        var memberId = Guid.NewGuid();
+
+        var italian = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, CuisineType = "Italian", Category = "Supper" };
+        var greek = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = true, CuisineType = "Greek", Category = "Supper" };
+        ctx.Recipes.AddRange(italian, greek);
+        ctx.DiscoveryRecipes.AddRange(
+            new DiscoveryRecipe { Id = italian.Id, CuisineType = italian.CuisineType, Category = "Supper" },
+            new DiscoveryRecipe { Id = greek.Id, CuisineType = greek.CuisineType, Category = "Supper" });
+        await ctx.SaveChangesAsync();
+
+        var results = await service.GetRecipesForDiscoveryAsync(memberId, category: "Supper", cuisine: "Italian");
+
+        Assert.Single(results);
+        Assert.Equal(italian.Id, results[0].Id);
+    }
+
     // TODO: Test for filtering planned recipes from discovery
     // When a recipe is already planned for a week, it should not appear in discovery during voting
     // This requires enhancing GetRecipesForDiscoveryAsync to accept a weekOffset parameter

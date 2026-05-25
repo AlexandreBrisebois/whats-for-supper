@@ -25,6 +25,8 @@ interface DiscoveryCardProps {
   stackIndex: number;
   totalTime: string;
   category: string;
+  cuisineType?: string | null;
+  mealTypes?: string[] | null;
   hasFamilyInterest?: boolean;
 }
 
@@ -37,6 +39,8 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   isFront,
   stackIndex,
   totalTime,
+  cuisineType,
+  mealTypes,
   hasFamilyInterest: _hasFamilyInterest,
 }) => {
   const x = useMotionValue(0);
@@ -126,6 +130,8 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
     }
   };
 
+  const visibleMealTypes = (mealTypes ?? []).filter(Boolean);
+
   return (
     <motion.div
       style={{
@@ -190,9 +196,32 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
         </div>
 
         <div className="flex-1 p-8 flex flex-col justify-between">
-          <h2 className="text-2xl font-bold tracking-tight font-heading mb-4 leading-tight">
-            {name}
-          </h2>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight font-heading mb-4 leading-tight">
+              {name}
+            </h2>
+            {(cuisineType || visibleMealTypes.length > 0) && (
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {cuisineType && (
+                  <span
+                    data-testid="discovery-card-cuisine-badge"
+                    className="inline-flex items-center gap-1 rounded-full bg-ochre/10 text-ochre px-3 py-1.5 shadow-sm text-[11px] font-black uppercase tracking-widest"
+                  >
+                    {cuisineType}
+                  </span>
+                )}
+                {visibleMealTypes.map((mealType) => (
+                  <span
+                    key={mealType}
+                    data-testid={`discovery-card-meal-type-${mealType.toLowerCase()}`}
+                    className="rounded-full bg-white border border-sage/30 text-sage/80 px-3 py-1 text-xs font-bold uppercase"
+                  >
+                    {mealType}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
               {tWithVars('common.readyIn', 'READY IN {{time}}', {

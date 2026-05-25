@@ -1486,6 +1486,9 @@ export function deserializeIntoImportedRecipeDto(
     category: (n) => {
       importedRecipeDto.category = n.getStringValue();
     },
+    cuisineType: (n) => {
+      importedRecipeDto.cuisineType = n.getStringValue();
+    },
     description: (n) => {
       importedRecipeDto.description = n.getStringValue();
     },
@@ -1499,6 +1502,11 @@ export function deserializeIntoImportedRecipeDto(
     },
     isSynthesized: (n) => {
       importedRecipeDto.isSynthesized = n.getBooleanValue();
+    },
+    mealTypes: (n) => {
+      importedRecipeDto.mealTypes = n.getCollectionOfEnumValues<ImportedRecipeDto_mealTypes>(
+        ImportedRecipeDto_mealTypesObject
+      );
     },
     name: (n) => {
       importedRecipeDto.name = n.getStringValue();
@@ -1864,6 +1872,9 @@ export function deserializeIntoRecipeDto(
     createdAt: (n) => {
       recipeDto.createdAt = n.getDateValue();
     },
+    cuisineType: (n) => {
+      recipeDto.cuisineType = n.getStringValue();
+    },
     deletedAt: (n) => {
       recipeDto.deletedAt = n.getDateValue();
     },
@@ -1908,6 +1919,10 @@ export function deserializeIntoRecipeDto(
     },
     isVegetarian: (n) => {
       recipeDto.isVegetarian = n.getBooleanValue();
+    },
+    mealTypes: (n) => {
+      recipeDto.mealTypes =
+        n.getCollectionOfEnumValues<RecipeDto_mealTypes>(RecipeDto_mealTypesObject);
     },
     name: (n) => {
       recipeDto.name = n.getStringValue();
@@ -2842,6 +2857,9 @@ export function deserializeIntoUpdateRecipeDto(
   updateRecipeDto: Partial<UpdateRecipeDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    cuisineType: (n) => {
+      updateRecipeDto.cuisineType = n.getStringValue();
+    },
     description: (n) => {
       updateRecipeDto.description = n.getStringValue();
     },
@@ -2850,6 +2868,11 @@ export function deserializeIntoUpdateRecipeDto(
     },
     isDiscoverable: (n) => {
       updateRecipeDto.isDiscoverable = n.getBooleanValue();
+    },
+    mealTypes: (n) => {
+      updateRecipeDto.mealTypes = n.getCollectionOfEnumValues<UpdateRecipeDto_mealTypes>(
+        UpdateRecipeDto_mealTypesObject
+      );
     },
     name: (n) => {
       updateRecipeDto.name = n.getStringValue();
@@ -3259,6 +3282,10 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
    */
   category?: string | null;
   /**
+   * The cuisineType property
+   */
+  cuisineType?: string | null;
+  /**
    * The description property
    */
   description?: string | null;
@@ -3274,6 +3301,10 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
    * The isSynthesized property
    */
   isSynthesized?: boolean | null;
+  /**
+   * The mealTypes property
+   */
+  mealTypes?: ImportedRecipeDto_mealTypes[] | null;
   /**
    * The name property
    */
@@ -3303,6 +3334,8 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
    */
   totalTimeMinutes?: number | null;
 }
+export type ImportedRecipeDto_mealTypes =
+  (typeof ImportedRecipeDto_mealTypesObject)[keyof typeof ImportedRecipeDto_mealTypesObject];
 export interface InventoryCaptureResponse extends AdditionalDataHolder, Parsable {
   /**
    * The confidence property
@@ -3540,6 +3573,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   createdAt?: Date | null;
   /**
+   * The cuisineType property
+   */
+  cuisineType?: string | null;
+  /**
    * The deletedAt property
    */
   deletedAt?: Date | null;
@@ -3592,6 +3629,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   isVegetarian?: boolean | null;
   /**
+   * The mealTypes property
+   */
+  mealTypes?: RecipeDto_mealTypes[] | null;
+  /**
    * The name property
    */
   name?: string | null;
@@ -3622,6 +3663,8 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
 }
 export type RecipeDto_dietaryProfile = RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1;
 export interface RecipeDto_dietaryProfileMember1 extends AdditionalDataHolder, Parsable {}
+export type RecipeDto_mealTypes =
+  (typeof RecipeDto_mealTypesObject)[keyof typeof RecipeDto_mealTypesObject];
 export type RecipeDto_sourceType =
   (typeof RecipeDto_sourceTypeObject)[keyof typeof RecipeDto_sourceTypeObject];
 export interface RecipeImportStatusResponseDto extends AdditionalDataHolder, Parsable {
@@ -4466,6 +4509,7 @@ export function serializeImportedRecipeDto(
     return;
   }
   writer.writeStringValue('category', importedRecipeDto.category);
+  writer.writeStringValue('cuisineType', importedRecipeDto.cuisineType);
   writer.writeStringValue('description', importedRecipeDto.description);
   writer.writeCollectionOfPrimitiveValues<string>('ingredients', importedRecipeDto.ingredients);
   writer.writeCollectionOfObjectValues<HowToSectionDto>(
@@ -4474,6 +4518,11 @@ export function serializeImportedRecipeDto(
     serializeHowToSectionDto
   );
   writer.writeBooleanValue('isSynthesized', importedRecipeDto.isSynthesized);
+  if (importedRecipeDto.mealTypes)
+    writer.writeCollectionOfEnumValues<ImportedRecipeDto_mealTypes>(
+      'mealTypes',
+      importedRecipeDto.mealTypes
+    );
   writer.writeStringValue('name', importedRecipeDto.name);
   writer.writeStringValue('notes', importedRecipeDto.notes);
   writer.writeNumberValue('rating', importedRecipeDto.rating);
@@ -4806,6 +4855,7 @@ export function serializeRecipeDto(
   writer.writeBooleanValue('canReimport', recipeDto.canReimport);
   writer.writeStringValue('category', recipeDto.category);
   writer.writeDateValue('createdAt', recipeDto.createdAt);
+  writer.writeStringValue('cuisineType', recipeDto.cuisineType);
   writer.writeDateValue('deletedAt', recipeDto.deletedAt);
   writer.writeStringValue('description', recipeDto.description);
   writer.writeObjectValue<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>(
@@ -4823,6 +4873,8 @@ export function serializeRecipeDto(
   writer.writeBooleanValue('isHealthyChoice', recipeDto.isHealthyChoice);
   writer.writeBooleanValue('isReady', recipeDto.isReady);
   writer.writeBooleanValue('isVegetarian', recipeDto.isVegetarian);
+  if (recipeDto.mealTypes)
+    writer.writeCollectionOfEnumValues<RecipeDto_mealTypes>('mealTypes', recipeDto.mealTypes);
   writer.writeStringValue('name', recipeDto.name);
   writer.writeStringValue('notes', recipeDto.notes);
   writer.writeNumberValue('rating', recipeDto.rating);
@@ -5771,9 +5823,15 @@ export function serializeUpdateRecipeDto(
   if (!updateRecipeDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeStringValue('cuisineType', updateRecipeDto.cuisineType);
   writer.writeStringValue('description', updateRecipeDto.description);
   writer.writeCollectionOfPrimitiveValues<string>('ingredients', updateRecipeDto.ingredients);
   writer.writeBooleanValue('isDiscoverable', updateRecipeDto.isDiscoverable);
+  if (updateRecipeDto.mealTypes)
+    writer.writeCollectionOfEnumValues<UpdateRecipeDto_mealTypes>(
+      'mealTypes',
+      updateRecipeDto.mealTypes
+    );
   writer.writeStringValue('name', updateRecipeDto.name);
   writer.writeStringValue('notes', updateRecipeDto.notes);
   writer.writeNumberValue('rating', updateRecipeDto.rating);
@@ -6097,6 +6155,10 @@ export interface TopPickDto extends AdditionalDataHolder, Parsable {
 }
 export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
   /**
+   * The cuisineType property
+   */
+  cuisineType?: string | null;
+  /**
    * The description property
    */
   description?: string | null;
@@ -6108,6 +6170,10 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
    * The isDiscoverable property
    */
   isDiscoverable?: boolean | null;
+  /**
+   * The mealTypes property
+   */
+  mealTypes?: UpdateRecipeDto_mealTypes[] | null;
   /**
    * The name property
    */
@@ -6125,6 +6191,8 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
    */
   recipeInstructions?: UntypedNode | null;
 }
+export type UpdateRecipeDto_mealTypes =
+  (typeof UpdateRecipeDto_mealTypesObject)[keyof typeof UpdateRecipeDto_mealTypesObject];
 export interface ValidationDto extends AdditionalDataHolder, Parsable {
   /**
    * 1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
@@ -6311,6 +6379,17 @@ export const HowToSectionDto_TypeObject = {
 export const HowToStepDto_TypeObject = {
   HowToStep: 'HowToStep',
 } as const;
+export const ImportedRecipeDto_mealTypesObject = {
+  Breakfast: 'Breakfast',
+  Brunch: 'Brunch',
+  Snack: 'Snack',
+  Lunch: 'Lunch',
+  Supper: 'Supper',
+  Sides: 'Sides',
+  Dessert: 'Dessert',
+  Appetizer: 'Appetizer',
+  Beverage: 'Beverage',
+} as const;
 export const ManagementTaskStatusResponse_statusObject = {
   Pending: 'Pending',
   Processing: 'Processing',
@@ -6324,6 +6403,17 @@ export const MoveScheduleDto_intentObject = {
 export const PhotoSearchResponse_intentObject = {
   Recipe: 'recipe',
   Inventory: 'inventory',
+} as const;
+export const RecipeDto_mealTypesObject = {
+  Breakfast: 'Breakfast',
+  Brunch: 'Brunch',
+  Snack: 'Snack',
+  Lunch: 'Lunch',
+  Supper: 'Supper',
+  Sides: 'Sides',
+  Dessert: 'Dessert',
+  Appetizer: 'Appetizer',
+  Beverage: 'Beverage',
 } as const;
 export const RecipeDto_sourceTypeObject = {
   Url: 'url',
@@ -6375,6 +6465,17 @@ export const ReclassifyIngredientRequest_grocerySectionObject = {
   Beverages: 'Beverages',
   Deli: 'Deli',
   Grocery: 'Grocery',
+} as const;
+export const UpdateRecipeDto_mealTypesObject = {
+  Breakfast: 'Breakfast',
+  Brunch: 'Brunch',
+  Snack: 'Snack',
+  Lunch: 'Lunch',
+  Supper: 'Supper',
+  Sides: 'Sides',
+  Dessert: 'Dessert',
+  Appetizer: 'Appetizer',
+  Beverage: 'Beverage',
 } as const;
 export const WorkflowInstanceDetailDto_statusObject = {
   Pending: 'Pending',

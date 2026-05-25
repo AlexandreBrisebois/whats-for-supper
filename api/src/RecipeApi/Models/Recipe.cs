@@ -61,6 +61,12 @@ public class Recipe
     [Column("category")]
     public string? Category { get; set; }
 
+    [Column("cuisine_type")]
+    public string? CuisineType { get; set; }
+
+    [Column("meal_types")]
+    public string[]? MealTypes { get; set; }
+
     [Column("is_vegetarian")]
     public bool IsVegetarian { get; set; } = false;
 
