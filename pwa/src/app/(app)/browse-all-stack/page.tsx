@@ -80,6 +80,8 @@ export default function BrowseAllStackPage() {
   const [prefetchFailed, setPrefetchFailed] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [allLibraryTotal, setAllLibraryTotal] = useState<number | null>(null);
+  const allLibraryTotalRef = useRef<number | null>(null);
   // True while we are fetching the last page to wrap backwards
   const [isWrappingToEnd, setIsWrappingToEnd] = useState(false);
 
@@ -117,6 +119,7 @@ export default function BrowseAllStackPage() {
   const fetchLibraryData = useCallback(
     async (page: number, discoverable: boolean, append = false) => {
       const pageSize = browseViewMode === 'list' ? LIST_PAGE_SIZE : STACK_PAGE_SIZE;
+      let summaryTotalForRequest: number | null = null;
       try {
         if (!append) {
           setIsInitialLoading(true);
@@ -137,8 +140,9 @@ export default function BrowseAllStackPage() {
         if (!append) {
           const summaryResult = await apiClient.api.recipes.librarySummary.get();
           const total = summaryResult?.data?.total ?? 0;
-          // summary is still fetched for future library metrics usage
-          void total;
+          summaryTotalForRequest = total;
+          setAllLibraryTotal(total);
+          allLibraryTotalRef.current = total;
         }
 
         // Fetch recipes in explore order with optional filter
@@ -170,12 +174,16 @@ export default function BrowseAllStackPage() {
           setCurrentIndex(0);
         }
 
-        setTotalCount(paginationTotal);
+        const effectiveTotal =
+          discoverable && paginationTotal >= 0
+            ? paginationTotal
+            : (summaryTotalForRequest ?? allLibraryTotalRef.current ?? paginationTotal);
+        setTotalCount(effectiveTotal);
 
         // Update store pagination state
         useBrowseStackStore.setState({
           currentPage: page,
-          hasMorePages: page * pageSize < paginationTotal,
+          hasMorePages: page * pageSize < effectiveTotal,
         });
       } catch (err) {
         console.error('BrowseAllStack: fetch failed', err);
@@ -201,22 +209,30 @@ export default function BrowseAllStackPage() {
     const wrapRequestId = wrapRequestIdRef.current + 1;
     wrapRequestIdRef.current = wrapRequestId;
     const modeAtWrapStart = isDiscoverableOnly;
-    const filteredTotalAtWrapStart = totalCount > 0 ? totalCount : recipes.length;
+    const modeTotalAtWrapStart = modeAtWrapStart
+      ? totalCount > 0
+        ? totalCount
+        : recipes.length
+      : allLibraryTotal && allLibraryTotal > 0
+        ? allLibraryTotal
+        : totalCount > 0
+          ? totalCount
+          : recipes.length;
 
     // If all pages are already in memory, jump instantly.
-    if (!hasMorePages && recipes.length >= filteredTotalAtWrapStart) {
+    if (!hasMorePages && recipes.length >= modeTotalAtWrapStart) {
       setIsEndCard(false);
       setCurrentIndex(recipes.length - 1);
       return;
     }
 
-    if (filteredTotalAtWrapStart <= 0) {
+    if (modeTotalAtWrapStart <= 0) {
       return;
     }
 
     // Otherwise calculate the last page number within the active filter mode.
     const LIMIT = STACK_PAGE_SIZE;
-    const lastPage = Math.max(1, Math.ceil(filteredTotalAtWrapStart / LIMIT));
+    const lastPage = Math.max(1, Math.ceil(modeTotalAtWrapStart / LIMIT));
 
     setIsWrappingToEnd(true);
     setIsEndCard(false);
@@ -270,9 +286,9 @@ export default function BrowseAllStackPage() {
       // Update pagination state so the store knows we're "at" the last page.
       useBrowseStackStore.setState({
         currentPage: targetPage,
-        hasMorePages: merged.length < filteredTotalAtWrapStart,
+        hasMorePages: merged.length < modeTotalAtWrapStart,
       });
-      setTotalCount(filteredTotalAtWrapStart);
+      setTotalCount(modeTotalAtWrapStart);
 
       // Land on the last recipe.
       setCurrentIndex(merged.length - 1);
@@ -289,6 +305,7 @@ export default function BrowseAllStackPage() {
   }, [
     hasMorePages,
     isDiscoverableOnly,
+    allLibraryTotal,
     totalCount,
     recipes,
     setRecipes,

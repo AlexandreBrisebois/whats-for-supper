@@ -239,7 +239,12 @@ function makeDragInfo(offsetX: number, velocityX = 0) {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  mocks.librarySummaryGet.mockReset();
+  mocks.recipesGet.mockReset();
+  mocks.familyPreferencesPut.mockReset();
+  mocks.updateRecipe.mockReset();
+  mocks.push.mockReset();
+  mocks.back.mockReset();
   mocks.resetCaptures();
   useBrowseStackStore.getState().reset();
   useFamilyStore.setState({
@@ -258,7 +263,7 @@ beforeEach(() => {
 
   // Default: 3 recipes, no more pages
   mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(3));
-  mocks.recipesGet.mockResolvedValue(makePageResponse(RECIPE_IDS.slice(0, 3), 3));
+  mocks.recipesGet.mockResolvedValue(makePageResponse(RECIPE_IDS.slice(0, 3), 3, 1));
   mocks.familyPreferencesPut.mockResolvedValue({
     data: {
       id: '11111111-1111-1111-1111-111111111111',
@@ -554,8 +559,8 @@ describe('BrowseAllStack — End Card', () => {
   it('uses active filtered total to wrap to filtered last page', async () => {
     mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(45));
     mocks.recipesGet
-      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 10, 1))
-      .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[5], RECIPE_IDS[6]], 10, 1));
+      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 7), 10, 1))
+      .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[5], RECIPE_IDS[6]], 45, 3));
 
     await act(async () => {
       render(<BrowseAllStackPage />);
@@ -580,7 +585,7 @@ describe('BrowseAllStack — End Card', () => {
     expect(mocks.recipesGet).toHaveBeenCalledWith(
       expect.objectContaining({
         queryParameters: expect.objectContaining({
-          page: 1,
+          page: 3,
           limit: 20,
           discoverableOnly: false,
         }),
@@ -591,7 +596,7 @@ describe('BrowseAllStack — End Card', () => {
   it('falls back to previous page when computed wrap page returns empty', async () => {
     mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(25));
     mocks.recipesGet
-      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 25, 1))
+      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 7), 25, 1))
       .mockResolvedValueOnce(makePageResponse([], 25, 2))
       .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[4], RECIPE_IDS[5]], 25, 1));
 
@@ -646,6 +651,7 @@ describe('BrowseAllStack — list mode', () => {
       ],
       selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
     });
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(15));
     mocks.recipesGet
       .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 15, 1))
       .mockResolvedValueOnce(
@@ -694,6 +700,7 @@ describe('BrowseAllStack — list mode', () => {
       selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
     });
 
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(100));
     const ids = Array.from({ length: 100 }, (_, index) => makeRecipeId(index + 1));
     for (let page = 1; page <= 8; page += 1) {
       const start = (page - 1) * 12;
@@ -754,6 +761,7 @@ describe('BrowseAllStack — list mode', () => {
       selectedFamilyMemberId: '11111111-1111-1111-1111-111111111111',
     });
 
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(25));
     const ids = Array.from({ length: 25 }, (_, index) => makeRecipeId(index + 1));
     mocks.recipesGet
       .mockResolvedValueOnce(makePageResponse(ids.slice(0, 12), 25, 1))

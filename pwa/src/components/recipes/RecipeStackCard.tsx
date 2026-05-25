@@ -118,8 +118,10 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (!isFront) return;
 
-    const threshold = 70;
-    const velocityThreshold = 450;
+    // Keep swipe intent detection tolerant on touch devices where drag constraints
+    // + elasticity can reduce the final reported offset at release.
+    const threshold = 35;
+    const velocityThreshold = 280;
 
     if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
       controls
@@ -168,7 +170,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
       }}
       drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.2}
+      dragElastic={0.45}
       dragMomentum={false}
       animate={controls}
       onDragStart={handleDragStart}
