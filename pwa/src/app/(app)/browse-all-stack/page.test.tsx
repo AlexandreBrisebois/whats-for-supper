@@ -372,7 +372,7 @@ describe('BrowseAllStack — initial card display', () => {
     expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[0]);
   });
 
-  it('renders cuisine and meal-type badges in browse stack cards', async () => {
+  it('does not render cuisine and meal-type badges in browse stack cards', async () => {
     await act(async () => {
       render(<BrowseAllStackPage />);
     });
@@ -381,8 +381,8 @@ describe('BrowseAllStack — initial card display', () => {
       expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('recipe-stack-cuisine-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('recipe-stack-meal-type-supper')).toBeInTheDocument();
+    expect(screen.queryByTestId('recipe-stack-cuisine-badge')).toBeNull();
+    expect(screen.queryByTestId('recipe-stack-meal-type-supper')).toBeNull();
   });
 });
 
@@ -549,6 +549,88 @@ describe('BrowseAllStack — End Card', () => {
     });
 
     expect(screen.queryByTestId('browse-all-end-card')).not.toBeInTheDocument();
+  });
+
+  it('uses active filtered total to wrap to filtered last page', async () => {
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(45));
+    mocks.recipesGet
+      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 10, 1))
+      .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[5], RECIPE_IDS[6]], 10, 1));
+
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
+    });
+
+    const onDragEnd = mocks.getCapturedOnDragEnd();
+    await act(async () => {
+      await onDragEnd!(null, makeDragInfo(100));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute(
+        'data-recipe-id',
+        RECIPE_IDS[6]
+      );
+    });
+
+    expect(mocks.recipesGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({
+          page: 1,
+          limit: 20,
+          discoverableOnly: false,
+        }),
+      })
+    );
+  });
+
+  it('falls back to previous page when computed wrap page returns empty', async () => {
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(25));
+    mocks.recipesGet
+      .mockResolvedValueOnce(makePageResponse(RECIPE_IDS.slice(0, 3), 25, 1))
+      .mockResolvedValueOnce(makePageResponse([], 25, 2))
+      .mockResolvedValueOnce(makePageResponse([RECIPE_IDS[4], RECIPE_IDS[5]], 25, 1));
+
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
+    });
+
+    const onDragEnd = mocks.getCapturedOnDragEnd();
+    await act(async () => {
+      await onDragEnd!(null, makeDragInfo(100));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute(
+        'data-recipe-id',
+        RECIPE_IDS[5]
+      );
+    });
+
+    expect(mocks.recipesGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({
+          page: 2,
+          discoverableOnly: false,
+        }),
+      })
+    );
+    expect(mocks.recipesGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({
+          page: 1,
+          discoverableOnly: false,
+        }),
+      })
+    );
   });
 });
 

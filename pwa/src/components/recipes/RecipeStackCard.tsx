@@ -88,7 +88,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
         scale: 1,
         y: 0,
         opacity: 1,
-        transition: { type: 'spring', stiffness: 100, damping: 15 },
+        transition: { type: 'spring', stiffness: 140, damping: 20 },
       });
     } else {
       controls.start({
@@ -97,7 +97,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
         scale: Math.max(0.8, scale),
         y: yOffset,
         opacity: Math.max(0, opacity),
-        transition: { duration: 0.3 },
+        transition: { duration: 0.25 },
       });
     }
   }, [isFront, stackIndex, controls, scale, yOffset, opacity]);
@@ -118,8 +118,8 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (!isFront) return;
 
-    const threshold = 80;
-    const velocityThreshold = 500;
+    const threshold = 70;
+    const velocityThreshold = 450;
 
     if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
       controls
@@ -127,7 +127,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           x: 500,
           rotate: 20,
           opacity: 0,
-          transition: { duration: 0.3, ease: 'easeOut' },
+          transition: { duration: 0.24, ease: 'easeOut' },
         })
         .then(onSwipeRight);
     } else if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
@@ -136,7 +136,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           x: -500,
           rotate: -20,
           opacity: 0,
-          transition: { duration: 0.3, ease: 'easeOut' },
+          transition: { duration: 0.24, ease: 'easeOut' },
         })
         .then(onSwipeLeft);
     } else {
@@ -144,7 +144,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
       controls.start({
         x: 0,
         rotate: 0,
-        transition: { type: 'spring', stiffness: 100, damping: 15 },
+        transition: { type: 'spring', stiffness: 150, damping: 22 },
       });
     }
   };
@@ -154,8 +154,6 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
     if (didDrag.current) return;
     onTap();
   };
-
-  const visibleMealTypes = (mealTypes ?? []).filter(Boolean);
 
   return (
     <motion.div
@@ -170,7 +168,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
       }}
       drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={1}
+      dragElastic={0.2}
       dragMomentum={false}
       animate={controls}
       onDragStart={handleDragStart}
@@ -235,30 +233,6 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-heading mb-3 md:mb-4 leading-tight shrink-0">
             {name}
           </h2>
-
-          {(cuisineType || visibleMealTypes.length > 0) && (
-            <div className="mb-3 md:mb-4 flex flex-wrap items-center gap-2">
-              {cuisineType && (
-                <span
-                  data-testid={isFront ? 'recipe-stack-cuisine-badge' : undefined}
-                  className="inline-flex items-center gap-1 rounded-full bg-ochre/10 text-ochre px-3 py-1.5 shadow-sm text-[11px] font-black uppercase tracking-widest"
-                >
-                  {cuisineType}
-                </span>
-              )}
-              {visibleMealTypes.map((mealType) => (
-                <span
-                  key={mealType}
-                  data-testid={
-                    isFront ? `recipe-stack-meal-type-${mealType.toLowerCase()}` : undefined
-                  }
-                  className="rounded-full bg-white border border-sage/30 text-sage/80 px-3 py-1 text-xs font-bold uppercase"
-                >
-                  {mealType}
-                </span>
-              ))}
-            </div>
-          )}
 
           <div className="flex-1 relative overflow-hidden min-h-0 mb-4 md:mb-6">
             <p className="text-charcoal/60 text-sm md:text-base leading-relaxed">{description}</p>

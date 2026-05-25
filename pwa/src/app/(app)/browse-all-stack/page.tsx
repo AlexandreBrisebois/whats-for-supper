@@ -96,6 +96,8 @@ export default function BrowseAllStackPage() {
   const prefetchInFlightRef = useRef(false);
   const listScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const listSentinelRef = useRef<HTMLDivElement | null>(null);
+  const wrapRequestIdRef = useRef(0);
+  const wrapPrefetchCooldownRef = useRef(false);
   // Ref to track the page/filter being prefetched to avoid races
   const currentRequestRef = useRef<{
     page: number;
@@ -135,7 +137,8 @@ export default function BrowseAllStackPage() {
         if (!append) {
           const summaryResult = await apiClient.api.recipes.librarySummary.get();
           const total = summaryResult?.data?.total ?? 0;
-          // Note: totalCount in indicator reflects the filtered total from pagination
+          // summary is still fetched for future library metrics usage
+          void total;
         }
 
         // Fetch recipes in explore order with optional filter
@@ -195,30 +198,65 @@ export default function BrowseAllStackPage() {
   // Called when swiping left from card 1 or left from the End Card.
   // ---------------------------------------------------------------------------
   const wrapToLastPage = useCallback(async () => {
+    const wrapRequestId = wrapRequestIdRef.current + 1;
+    wrapRequestIdRef.current = wrapRequestId;
+    const modeAtWrapStart = isDiscoverableOnly;
+    const filteredTotalAtWrapStart = totalCount > 0 ? totalCount : recipes.length;
+
     // If all pages are already in memory, jump instantly.
-    if (!hasMorePages) {
+    if (!hasMorePages && recipes.length >= filteredTotalAtWrapStart) {
       setIsEndCard(false);
       setCurrentIndex(recipes.length - 1);
       return;
     }
 
-    // Otherwise calculate the last page number and fetch it.
+    if (filteredTotalAtWrapStart <= 0) {
+      return;
+    }
+
+    // Otherwise calculate the last page number within the active filter mode.
     const LIMIT = STACK_PAGE_SIZE;
-    const lastPage = Math.ceil(totalCount / LIMIT);
+    const lastPage = Math.max(1, Math.ceil(filteredTotalAtWrapStart / LIMIT));
 
     setIsWrappingToEnd(true);
     setIsEndCard(false);
     try {
-      const result = await apiClient.api.recipes.get({
-        queryParameters: {
-          order: GetOrderQueryParameterTypeObject.Explore,
-          page: lastPage,
-          limit: LIMIT,
-          discoverableOnly: isDiscoverableOnly,
-        },
-      });
+      // If toggles or a newer wrap started, discard this wrap.
+      if (wrapRequestIdRef.current !== wrapRequestId || modeAtWrapStart !== isDiscoverableOnly) {
+        return;
+      }
 
-      const fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
+      let targetPage = lastPage;
+      let fetchedRecipes: RecipeDto[] = [];
+      let attempts = 0;
+      while (targetPage >= 1 && attempts < 3) {
+        const result = await apiClient.api.recipes.get({
+          queryParameters: {
+            order: GetOrderQueryParameterTypeObject.Explore,
+            page: targetPage,
+            limit: LIMIT,
+            // Backward wrap respects the active mode (Discovery vs All).
+            discoverableOnly: modeAtWrapStart,
+          },
+        });
+
+        if (wrapRequestIdRef.current !== wrapRequestId || modeAtWrapStart !== isDiscoverableOnly) {
+          return;
+        }
+
+        fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
+        if (fetchedRecipes.length > 0 || targetPage === 1) {
+          break;
+        }
+
+        targetPage -= 1;
+        attempts += 1;
+      }
+
+      if (fetchedRecipes.length === 0) {
+        setCurrentIndex(Math.max(0, recipes.length - 1));
+        return;
+      }
 
       // Replace the store recipes with page 1 already in memory + this last
       // page so the user can swipe left naturally from here.
@@ -231,24 +269,27 @@ export default function BrowseAllStackPage() {
 
       // Update pagination state so the store knows we're "at" the last page.
       useBrowseStackStore.setState({
-        currentPage: lastPage,
-        hasMorePages: false,
+        currentPage: targetPage,
+        hasMorePages: merged.length < filteredTotalAtWrapStart,
       });
-      setTotalCount(result?.pagination?.total ?? totalCount);
+      setTotalCount(filteredTotalAtWrapStart);
 
       // Land on the last recipe.
       setCurrentIndex(merged.length - 1);
+      wrapPrefetchCooldownRef.current = true;
     } catch (err) {
       console.error('BrowseAllStack: wrapToLastPage failed', err);
       // Fall back gracefully: just land on the last recipe we have.
-      setCurrentIndex(recipes.length - 1);
+      setCurrentIndex(Math.max(0, recipes.length - 1));
     } finally {
-      setIsWrappingToEnd(false);
+      if (wrapRequestIdRef.current === wrapRequestId) {
+        setIsWrappingToEnd(false);
+      }
     }
   }, [
     hasMorePages,
-    totalCount,
     isDiscoverableOnly,
+    totalCount,
     recipes,
     setRecipes,
     setCurrentIndex,
@@ -281,6 +322,10 @@ export default function BrowseAllStackPage() {
       !hasMorePages ||
       prefetchInFlightRef.current
     ) {
+      return;
+    }
+    if (wrapPrefetchCooldownRef.current) {
+      wrapPrefetchCooldownRef.current = false;
       return;
     }
 

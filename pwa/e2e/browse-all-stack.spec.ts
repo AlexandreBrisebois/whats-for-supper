@@ -35,6 +35,7 @@ const RECIPE_3 = builders.recipe({
 });
 
 const THREE_RECIPES = [RECIPE_1, RECIPE_2, RECIPE_3];
+const FIXED_NOW = '2026-05-04T12:00:00Z';
 const LIST_RECIPES = [
   MOCK_IDS.RECIPE_LIST_01,
   MOCK_IDS.RECIPE_LIST_02,
@@ -212,7 +213,7 @@ async function setupBrowseAllStack(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        updatedAt: new Date().toISOString(),
+        updatedAt: FIXED_NOW,
         recipes: pageRecipes,
         pagination: { page: pageNumber, limit, total },
       }),
@@ -367,7 +368,7 @@ test.describe('Browse All Stack — Card Navigation', () => {
     // On first card
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible();
 
-    await swipeLeft(page);
+    await swipeRight(page);
 
     // Should land on the last recipe (RECIPE_CHICKEN is recipe 3 of 3)
     await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CHICKEN}`)).toBeVisible({
@@ -397,6 +398,50 @@ test.describe('Browse All Stack — Card Navigation', () => {
       timeout: 10_000,
     });
     await expect(page.getByTestId('browse-all-end-card')).not.toBeVisible();
+  });
+
+  test('backward wrap stays in Discovery-filtered cards when Discovery mode is active', async ({
+    page,
+  }) => {
+    const filterRecipes = [RECIPE_1];
+    const libraryRecipes = [RECIPE_1, RECIPE_2, RECIPE_3];
+    let sawFilteredWrapRequest = false;
+
+    await setupBrowseAllStack(page, { recipes: libraryRecipes, total: 3 });
+    await page.route('**/api/recipes?**order=explore**', async (route) => {
+      const url = new URL(route.request().url());
+      const pageNumber = Number(url.searchParams.get('page') ?? '1');
+      const limit = Number(url.searchParams.get('limit') ?? '20');
+      const discoverableOnly = url.searchParams.get('discoverableOnly') === 'true';
+
+      const source = discoverableOnly ? filterRecipes : libraryRecipes;
+      if (discoverableOnly) {
+        sawFilteredWrapRequest = true;
+      }
+
+      const start = (pageNumber - 1) * limit;
+      const pageRecipes = source.slice(start, start + limit);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          updatedAt: FIXED_NOW,
+          recipes: pageRecipes,
+          pagination: { page: pageNumber, limit, total: source.length },
+        }),
+      });
+    });
+
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('stack-card-front')).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId('stack-toggle-discoverable').click();
+    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible();
+
+    await swipeRight(page);
+    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible({
+      timeout: 5_000,
+    });
+    expect(sawFilteredWrapRequest).toBeTruthy();
   });
 });
 

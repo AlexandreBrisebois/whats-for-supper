@@ -127,7 +127,7 @@ describe('RecipeStackCard — rendering', () => {
     expect(screen.getByText(/READY IN 30 MINS/i)).toBeTruthy();
   });
 
-  it('renders cuisine and meal-type badges cluster above description', () => {
+  it('does not render cuisine and meal-type badges in stack view card', () => {
     render(
       <RecipeStackCard
         {...defaultProps}
@@ -136,9 +136,9 @@ describe('RecipeStackCard — rendering', () => {
         mealTypes={['Supper', 'Lunch']}
       />
     );
-    expect(screen.getByTestId('recipe-stack-cuisine-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('recipe-stack-meal-type-supper')).toBeInTheDocument();
-    expect(screen.getByTestId('recipe-stack-meal-type-lunch')).toBeInTheDocument();
+    expect(screen.queryByTestId('recipe-stack-cuisine-badge')).toBeNull();
+    expect(screen.queryByTestId('recipe-stack-meal-type-supper')).toBeNull();
+    expect(screen.queryByTestId('recipe-stack-meal-type-lunch')).toBeNull();
   });
 });
 
@@ -167,7 +167,7 @@ describe('RecipeStackCard — swipe indicators', () => {
 });
 
 describe('RecipeStackCard — swipe callbacks', () => {
-  it('calls onSwipeRight when dragged right beyond 80px threshold', async () => {
+  it('calls onSwipeRight when dragged right beyond 70px threshold', async () => {
     const onSwipeRight = vi.fn();
     render(<RecipeStackCard {...defaultProps} onSwipeRight={onSwipeRight} />);
 
@@ -177,7 +177,7 @@ describe('RecipeStackCard — swipe callbacks', () => {
     expect(onSwipeRight).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onSwipeRight when velocity exceeds 500px/s threshold', async () => {
+  it('calls onSwipeRight when velocity exceeds 450px/s threshold', async () => {
     const onSwipeRight = vi.fn();
     render(<RecipeStackCard {...defaultProps} onSwipeRight={onSwipeRight} />);
 
@@ -187,7 +187,7 @@ describe('RecipeStackCard — swipe callbacks', () => {
     expect(onSwipeRight).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onSwipeLeft when dragged left beyond 80px threshold', async () => {
+  it('calls onSwipeLeft when dragged left beyond 70px threshold', async () => {
     const onSwipeLeft = vi.fn();
     render(<RecipeStackCard {...defaultProps} onSwipeLeft={onSwipeLeft} />);
 
@@ -197,7 +197,7 @@ describe('RecipeStackCard — swipe callbacks', () => {
     expect(onSwipeLeft).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onSwipeLeft when velocity exceeds -500px/s threshold', async () => {
+  it('calls onSwipeLeft when velocity exceeds -450px/s threshold', async () => {
     const onSwipeLeft = vi.fn();
     render(<RecipeStackCard {...defaultProps} onSwipeLeft={onSwipeLeft} />);
 
@@ -215,7 +215,7 @@ describe('RecipeStackCard — swipe callbacks', () => {
     );
 
     expect(capturedOnDragEnd).toBeDefined();
-    await capturedOnDragEnd!(null, makeDragInfo(30)); // below 80px threshold
+    await capturedOnDragEnd!(null, makeDragInfo(30)); // below 70px threshold
     expect(onSwipeRight).not.toHaveBeenCalled();
     expect(onSwipeLeft).not.toHaveBeenCalled();
   });
@@ -228,7 +228,7 @@ describe('RecipeStackCard — swipe callbacks', () => {
     );
 
     expect(capturedOnDragEnd).toBeDefined();
-    await capturedOnDragEnd!(null, makeDragInfo(-30)); // below 80px threshold
+    await capturedOnDragEnd!(null, makeDragInfo(-30)); // below 70px threshold
     expect(onSwipeRight).not.toHaveBeenCalled();
     expect(onSwipeLeft).not.toHaveBeenCalled();
   });
