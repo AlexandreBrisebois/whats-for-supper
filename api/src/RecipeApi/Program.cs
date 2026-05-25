@@ -148,8 +148,7 @@ try
             "GenerateDescription",
             "SynthesizeRecipe",
             "WebAcquisition",
-            "CategorizeIngredients",
-            "ClassifyDietaryProfile"
+            "CategorizeIngredients"
         })
         {
             builder.Services.AddScoped<IWorkflowProcessor>(sp => new DemoModeBypassProcessor(
