@@ -58,6 +58,18 @@ const LIST_RECIPES = [
   })
 );
 
+function makeLargeRecipeId(index: number): string {
+  return `${String(index).padStart(8, '0')}-0000-4000-8000-${String(index).padStart(12, '0')}`;
+}
+
+const LARGE_LIBRARY_RECIPES = Array.from({ length: 180 }, (_, index) =>
+  builders.recipe({
+    id: makeLargeRecipeId(index + 1),
+    name: `Large Recipe ${index + 1}`,
+    isDiscoverable: true,
+  })
+);
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -442,6 +454,48 @@ test.describe('Browse All Stack — Card Navigation', () => {
       timeout: 5_000,
     });
     expect(sawFilteredWrapRequest).toBeTruthy();
+  });
+
+  test('large library backward wrap lands on last recipe and forward loops to first without out-of-range page requests', async ({
+    page,
+  }) => {
+    const requestedPages: number[] = [];
+    await setupBrowseAllStack(page, { recipes: LARGE_LIBRARY_RECIPES, total: 180 });
+    await page.route('**/api/recipes?**order=explore**', async (route) => {
+      const url = new URL(route.request().url());
+      const pageNumber = Number(url.searchParams.get('page') ?? '1');
+      const limit = Number(url.searchParams.get('limit') ?? '20');
+      requestedPages.push(pageNumber);
+      const start = (pageNumber - 1) * limit;
+      const pageRecipes = LARGE_LIBRARY_RECIPES.slice(start, start + limit);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          updatedAt: FIXED_NOW,
+          recipes: pageRecipes,
+          pagination: { page: pageNumber, limit, total: LARGE_LIBRARY_RECIPES.length },
+        }),
+      });
+    });
+
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('stack-card-front')).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByTestId(`stack-card-${LARGE_LIBRARY_RECIPES[0].id as string}`)
+    ).toBeVisible();
+
+    await swipeRight(page);
+    await expect(
+      page.getByTestId(`stack-card-${LARGE_LIBRARY_RECIPES[179].id as string}`)
+    ).toBeVisible({ timeout: 10_000 });
+
+    await swipeLeft(page);
+    await expect(
+      page.getByTestId(`stack-card-${LARGE_LIBRARY_RECIPES[0].id as string}`)
+    ).toBeVisible({ timeout: 10_000 });
+
+    expect(requestedPages.every((pageNum) => pageNum >= 1 && pageNum <= 9)).toBeTruthy();
   });
 });
 

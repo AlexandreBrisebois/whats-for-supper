@@ -42,7 +42,7 @@ export async function assignRecipeToEmptySlot(
 export async function findFirstOpenPlannerSlot(
   startWeekOffset = 0,
   startDayIndex = 0,
-  maxWeeksToScan = 12
+  maxWeeksToScan = 520
 ) {
   for (
     let weekOffset = startWeekOffset;

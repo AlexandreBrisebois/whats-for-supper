@@ -215,6 +215,10 @@ function makeRecipeId(index: number) {
   return `${String(index).padStart(8, '0')}-0000-4000-8000-${String(index).padStart(12, '0')}`;
 }
 
+function makeRecipeIds(count: number) {
+  return Array.from({ length: count }, (_, index) => makeRecipeId(index + 1));
+}
+
 function makeSummaryResponse(total: number) {
   return {
     data: {
@@ -636,6 +640,86 @@ describe('BrowseAllStack — End Card', () => {
         }),
       })
     );
+  });
+
+  it('wraps from absolute first to absolute last in a 180 library and next swipe returns to first', async () => {
+    const ids = makeRecipeIds(180);
+    const requestedPages: number[] = [];
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(180));
+    mocks.recipesGet.mockImplementation(async (request: any) => {
+      const page = Number(request?.queryParameters?.page ?? 1);
+      const limit = Number(request?.queryParameters?.limit ?? 20);
+      requestedPages.push(page);
+      const start = (page - 1) * limit;
+      return makePageResponse(ids.slice(start, start + limit), 180, page);
+    });
+
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[0]);
+    });
+
+    const onDragEnd = mocks.getCapturedOnDragEnd();
+    await act(async () => {
+      await onDragEnd!(null, makeDragInfo(120));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[179]);
+    });
+
+    const onDragEndAfterWrap = mocks.getCapturedOnDragEnd();
+    await act(async () => {
+      await onDragEndAfterWrap!(null, makeDragInfo(-120));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[0]);
+    });
+
+    expect(requestedPages.every((page) => page >= 1 && page <= 9)).toBe(true);
+  });
+
+  it('keeps currentIndex within loaded bounds after backward wrap then forward swipe', async () => {
+    const ids = makeRecipeIds(180);
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(180));
+    mocks.recipesGet.mockImplementation(async (request: any) => {
+      const page = Number(request?.queryParameters?.page ?? 1);
+      const limit = Number(request?.queryParameters?.limit ?? 20);
+      const start = (page - 1) * limit;
+      return makePageResponse(ids.slice(start, start + limit), 180, page);
+    });
+
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toBeInTheDocument();
+    });
+
+    const onDragEnd = mocks.getCapturedOnDragEnd();
+    await act(async () => {
+      await onDragEnd!(null, makeDragInfo(120));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[179]);
+    });
+
+    const onDragEndAfterWrap = mocks.getCapturedOnDragEnd();
+    await act(async () => {
+      await onDragEndAfterWrap!(null, makeDragInfo(-120));
+    });
+
+    await waitFor(() => {
+      const state = useBrowseStackStore.getState();
+      expect(state.currentIndex).toBeGreaterThanOrEqual(0);
+      expect(state.currentIndex).toBeLessThan(state.recipes.length);
+    });
   });
 });
 

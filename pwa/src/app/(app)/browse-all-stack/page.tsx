@@ -286,7 +286,7 @@ export default function BrowseAllStackPage() {
       // Update pagination state so the store knows we're "at" the last page.
       useBrowseStackStore.setState({
         currentPage: targetPage,
-        hasMorePages: merged.length < modeTotalAtWrapStart,
+        hasMorePages: false,
       });
       setTotalCount(modeTotalAtWrapStart);
 
@@ -327,6 +327,17 @@ export default function BrowseAllStackPage() {
       reset();
     };
   }, [reset]);
+
+  useEffect(() => {
+    if (recipes.length === 0) return;
+    if (currentIndex < 0) {
+      setCurrentIndex(0);
+      return;
+    }
+    if (currentIndex >= recipes.length) {
+      setCurrentIndex(recipes.length - 1);
+    }
+  }, [currentIndex, recipes.length, setCurrentIndex]);
 
   // ---------------------------------------------------------------------------
   // Pre-fetch next page when remainingCards <= 5 (requirement 5.3)
@@ -435,13 +446,19 @@ export default function BrowseAllStackPage() {
 
     if (isLastCard && hasMorePages && isPrefetching) return;
 
-    if (isLastCard && !hasMorePages) {
+    if (isLastCard) {
       setCurrentIndex(0);
       return;
     }
 
     setCurrentIndex(currentIndex + 1);
-  }, [currentIndex, recipes.length, hasMorePages, isPrefetching, setCurrentIndex]);
+  }, [
+    currentIndex,
+    recipes.length,
+    hasMorePages,
+    isPrefetching,
+    setCurrentIndex,
+  ]);
 
   const handleSwipeRight = useCallback(() => {
     if (currentIndex <= 0) {
