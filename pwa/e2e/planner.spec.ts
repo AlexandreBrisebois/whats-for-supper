@@ -283,7 +283,7 @@ test.describe('Supper Planner', () => {
   test('should trigger Cook Mode from a recipe card and navigate steps', async ({ page }) => {
     // Pin the browser's Date to the same Monday used by currentMonday() (2026-05-04).
     // getTodayString() reads new Date() in the browser, so pinning here makes day-card-0
-    // (Monday) the "today" card and causes start-cook-mode to render.
+    // (Monday) the "today" card.
     const PINNED_DATE = '2026-05-04T12:00:00Z';
     await page.addInitScript((isoDate) => {
       const RealDate = Date;
@@ -307,10 +307,14 @@ test.describe('Supper Planner', () => {
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
 
-    // day-card-0 is Monday 2026-05-04, which matches the pinned "today"
+    // Click recipe title on day-card-0 to open detail sheet
     const todayCard = page.getByTestId('day-card-0');
-    await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible();
-    await todayCard.getByTestId('start-cook-mode').click();
+    await todayCard.getByTestId('edit-recipe-button').click();
+
+    // Click STEPS button to launch Cooks Mode
+    const detailSheet = page.getByTestId('recipe-detail-sheet');
+    await expect(detailSheet).toBeVisible();
+    await detailSheet.getByTestId('time-cook-btn').click();
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
@@ -330,9 +334,7 @@ test.describe('Supper Planner', () => {
     await expect(overlay).not.toBeVisible();
   });
 
-  test('uses fixed date fixtures to show non-today view action and today cook mode only', async ({
-    page,
-  }) => {
+  test('uses fixed date fixtures to verify cards layout and details link', async ({ page }) => {
     const PINNED_DATE = '2026-05-04T12:00:00Z';
     await page.addInitScript((isoDate) => {
       const RealDate = Date;
@@ -358,9 +360,15 @@ test.describe('Supper Planner', () => {
     const todayCard = page.getByTestId('day-card-0');
     const nonTodayCard = page.getByTestId('day-card-1');
 
-    await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible();
+    // Both should render change-recipe-button
+    await expect(todayCard.getByTestId('change-recipe-button')).toBeVisible();
+    await expect(nonTodayCard.getByTestId('change-recipe-button')).toBeVisible();
+
+    // Neither should render start-cook-mode or view-recipe-button
+    await expect(todayCard.getByTestId('start-cook-mode')).toHaveCount(0);
     await expect(todayCard.getByTestId('view-recipe-button')).toHaveCount(0);
-    await expect(nonTodayCard.getByTestId('view-recipe-button')).toBeVisible();
+    await expect(nonTodayCard.getByTestId('start-cook-mode')).toHaveCount(0);
+    await expect(nonTodayCard.getByTestId('view-recipe-button')).toHaveCount(0);
   });
 
   test('should display smart default recipes merged into the 7-day grid', async ({ page }) => {
@@ -393,7 +401,7 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('ask-family-cta')).toBeVisible();
   });
 
-  test('should SHOW Cook Mode button and OPEN even if recipe image is missing', async ({
+  test('should allow launching Cook Mode from detail sheet even if recipe image is missing', async ({
     page,
   }) => {
     // We must use a date that matches the browser's fixed clock (2026-05-04)
@@ -436,13 +444,39 @@ test.describe('Supper Planner', () => {
         });
       }
     );
+    await page.route('**/api/recipes/*', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            recipe: builders.recipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: 'No Image Lasagna',
+              imageUrl: '',
+              description: 'A classic family lasagna.',
+              totalTime: '45 min',
+              rating: 3,
+              ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
+              notes: 'Family favorite.',
+            }),
+          }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
 
     await page.goto('/planner');
 
-    // Find today's card (might not be index 2 depending on the current day)
-    const startCookButton = page.getByTestId('start-cook-mode');
-    await expect(startCookButton).toBeVisible();
-    await startCookButton.click();
+    // Click recipe title to open detail sheet
+    const todayCard = page.getByTestId('day-card-0');
+    await todayCard.getByTestId('edit-recipe-button').click();
+
+    // Launch cooks mode
+    const detailSheet = page.getByTestId('recipe-detail-sheet');
+    await expect(detailSheet).toBeVisible();
+    await detailSheet.getByTestId('time-cook-btn').click();
 
     // Wait for loader to disappear and overlay to appear
     await expect(page.getByTestId('cooks-mode-loading')).not.toBeVisible({ timeout: 10_000 });

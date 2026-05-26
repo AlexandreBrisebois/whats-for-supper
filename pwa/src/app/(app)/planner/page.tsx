@@ -18,6 +18,7 @@ import {
   Sparkles,
   UtensilsCrossed,
   BookOpen,
+  RefreshCw,
 } from 'lucide-react';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useWeekStore } from '@/store/weekStore';
@@ -60,7 +61,6 @@ export default function PlannerPage() {
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [pendingQuickFindDayIndex, setPendingQuickFindDayIndex] = useState<number | null>(null);
   const [successDay, setSuccessDay] = useState<number | null>(null);
-  const [activeCookMode, setActiveCookMode] = useState<UILocalScheduleDay | null>(null);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
   const [showNudgeDialog, setShowNudgeDialog] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
@@ -303,6 +303,35 @@ export default function PlannerPage() {
     if (!date) return;
     setShowPivot(null);
     useWeekStore.getState().removeRecipe(dayIndex, date);
+  };
+
+  const handlePlanLater = async (dayIndex: number) => {
+    const day = schedule[dayIndex];
+    const recipeId = day?.recipe?.id;
+    if (!recipeId || !day?.date) return;
+
+    try {
+      setShowPivot(null);
+      setSelectedDayIndex(null);
+      setPendingQuickFindDayIndex(null);
+
+      await apiClient.api.schedule.move.post({
+        weekOffset: currentWeekOffset,
+        fromIndex: dayIndex,
+        toIndex: 0,
+        targetWeekOffset: currentWeekOffset + 1,
+        intent: 'push',
+        recipeId,
+      });
+
+      await useWeekStore.getState().init(currentWeekOffset);
+
+      if (currentWeekOffset === 0 && day.date === getTodayString()) {
+        await useTodayStore.getState().sync();
+      }
+    } catch (error) {
+      console.error('Failed plan later:', error);
+    }
   };
 
   // Framer Motion calls onReorder on every pointer move during drag (fires on each midpoint
@@ -584,9 +613,6 @@ export default function PlannerPage() {
                       setSelectedDayIndex(index);
                       setShowPivot({ dayIndex: index });
                     }}
-                    onCookMode={() => {
-                      setActiveCookMode(day);
-                    }}
                     onViewRecipe={(recipeId) => {
                       setOpenDetailRecipeId(recipeId);
                     }}
@@ -653,7 +679,17 @@ export default function PlannerPage() {
         }}
         onSearchLibrary={handleSearchPath}
         onRemoveRecipe={handleRemoveRecipe}
-        hasRecipe={!!(showPivot !== null && schedule[showPivot.dayIndex]?.recipe?.id)}
+        onPlanLater={
+          showPivot !== null && schedule[showPivot.dayIndex]?.status !== 3
+            ? () => handlePlanLater(showPivot.dayIndex)
+            : undefined
+        }
+        hasRecipe={
+          !!(
+            showPivot !== null &&
+            (schedule[showPivot.dayIndex]?.recipe?.id || schedule[showPivot.dayIndex]?.status === 3)
+          )
+        }
       />
 
       <AnimatePresence>
@@ -751,29 +787,6 @@ export default function PlannerPage() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {activeCookMode && activeCookMode.recipe && activeCookMode.recipe.id && (
-          <CooksMode
-            recipe={{
-              id: activeCookMode.recipe.id,
-              name: activeCookMode.recipe.name || null,
-              image: activeCookMode.recipe.image || '',
-            }}
-            onClose={() => setActiveCookMode(null)}
-            onCooked={async () => {
-              if (!activeCookMode.date) return;
-              try {
-                await apiClient.api.schedule.day
-                  .byDate(DateOnly.parse(activeCookMode.date)!)
-                  .validate.post({ status: 2 });
-              } catch (err) {
-                console.warn('Failed to mark cooked from planner:', err);
-              }
-            }}
-          />
-        )}
-      </AnimatePresence>
-
       {openDetailRecipeId && (
         <RecipeDetailSheet
           recipeId={openDetailRecipeId}
@@ -808,7 +821,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
   index,
   successDay,
   onPivot,
-  onCookMode,
   onViewRecipe,
   preDragSnapshotRef,
   draggedUiIdRef,
@@ -819,7 +831,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
   index: number;
   successDay: number | null;
   onPivot: () => void;
-  onCookMode: () => void;
   onViewRecipe: (recipeId: string) => void;
   preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
   draggedUiIdRef: React.RefObject<string | null>;
@@ -960,7 +971,9 @@ const PlannerDayCard = memo(function PlannerDayCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onPivot();
+                  if (day.recipe?.id) {
+                    onViewRecipe(day.recipe.id);
+                  }
                 }}
                 className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
                 data-testid="edit-recipe-button"
@@ -999,43 +1012,21 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 </div>
               </button>
               <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
-                {(() => {
-                  const recipeId = day.recipe?.id;
-                  if (day.date === getTodayString() || !recipeId) return null;
-
-                  return (
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewRecipe(recipeId);
-                      }}
-                      className="h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center text-ochre active:scale-90 transition-transform"
-                      data-testid="view-recipe-button"
-                      title={t('planner.viewRecipe', 'View recipe')}
-                      aria-label={t('planner.viewRecipe', 'View recipe')}
-                    >
-                      <BookOpen size={18} />
-                    </motion.button>
-                  );
-                })()}
-                {day.date === getTodayString() && day.recipe && (
+                {day.recipe?.id && (
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onCookMode();
+                      onPivot();
                     }}
-                    className="h-9 w-9 rounded-xl bg-sage/8 flex items-center justify-center text-sage active:scale-90 transition-transform"
-                    data-testid="start-cook-mode"
-                    title="Open cook mode"
-                    aria-label="Open cook mode"
+                    className="h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center text-ochre active:scale-90 transition-transform"
+                    data-testid="change-recipe-button"
+                    title={t('planner.choosePathTitle', 'Change this recipe')}
+                    aria-label={t('planner.choosePathTitle', 'Change this recipe')}
                   >
-                    <UtensilsCrossed size={18} />
+                    <RefreshCw size={18} />
                   </motion.button>
                 )}
                 <div
@@ -1052,28 +1043,43 @@ const PlannerDayCard = memo(function PlannerDayCard({
               </div>
             </div>
           ) : (
-            <button
-              onClick={onPivot}
-              data-testid="plan-meal-button"
-              className="flex items-center w-full min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
-            >
-              <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
-                <Plus
-                  className="text-terracotta/50 group-hover:text-terracotta transition-colors"
-                  size={18}
-                />
-              </div>
-              <div className="flex flex-col justify-center">
-                <span
-                  className={cn(
-                    'font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors',
-                    isWide ? 'text-xs' : 'text-sm'
-                  )}
+            <div className="flex items-stretch w-full">
+              <button
+                onClick={onPivot}
+                data-testid="plan-meal-button"
+                className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
+                  <Plus
+                    className="text-terracotta/50 group-hover:text-terracotta transition-colors"
+                    size={18}
+                  />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <span
+                    className={cn(
+                      'font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors',
+                      isWide ? 'text-xs' : 'text-sm'
+                    )}
+                  >
+                    Plan supper
+                  </span>
+                </div>
+              </button>
+              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
+                <div
+                  onPointerDown={(e) => dragControls.start(e)}
+                  className="h-full min-h-[44px] flex items-center px-2.5 cursor-grab active:cursor-grabbing touch-none select-none group/handle rounded-r-2xl"
+                  aria-label="Drag to reorder"
+                  title="Drag to reorder"
                 >
-                  Plan supper
-                </span>
+                  <GripVertical
+                    className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
+                    size={20}
+                  />
+                </div>
               </div>
-            </button>
+            </div>
           )}
         </div>
       </motion.div>

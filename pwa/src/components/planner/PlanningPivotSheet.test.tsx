@@ -15,6 +15,14 @@ const localeMock = vi.hoisted(() => {
     'planner.quickFindAction': { en: 'Quick replace', fr: 'Remplacement rapide' },
     'planner.searchLibraryAction': { en: 'Search library', fr: 'Chercher dans la bibliothèque' },
     'planner.removeRecipeAction': { en: 'Remove recipe', fr: 'Retirer la recette' },
+    'home.saveForNextWeek': {
+      en: 'Save for Next Week',
+      fr: 'Garder pour la semaine prochaine',
+    },
+    'home.moveFirstSlot': {
+      en: 'Moves to the first open slot',
+      fr: 'Déplace au premier créneau libre',
+    },
   };
 
   return {
@@ -40,7 +48,13 @@ vi.mock('@/locales', () => ({
 
 import { PlanningPivotSheet } from './PlanningPivotSheet';
 
-function renderSheet({ hasRecipe = true }: { hasRecipe?: boolean } = {}) {
+function renderSheet({
+  hasRecipe = true,
+  onPlanLater = vi.fn(),
+}: {
+  hasRecipe?: boolean;
+  onPlanLater?: () => void;
+} = {}) {
   const onClose = vi.fn();
   const props = {
     isOpen: true,
@@ -49,6 +63,7 @@ function renderSheet({ hasRecipe = true }: { hasRecipe?: boolean } = {}) {
     onQuickFind: vi.fn(),
     onSearchLibrary: vi.fn(),
     onRemoveRecipe: vi.fn(),
+    onPlanLater,
     hasRecipe,
   };
 
@@ -119,5 +134,25 @@ describe('PlanningPivotSheet', () => {
     renderSheet({ hasRecipe: false });
 
     expect(screen.queryByTestId('pivot-remove-recipe')).not.toBeInTheDocument();
+  });
+
+  it('renders plan-later option when hasRecipe is true', () => {
+    localeMock.setLanguage('en');
+    const onPlanLater = vi.fn();
+    renderSheet({ hasRecipe: true, onPlanLater });
+
+    const planLaterBtn = screen.getByTestId('pivot-plan-later');
+    expect(planLaterBtn).toBeInTheDocument();
+    expect(screen.getByText('Save for Next Week')).toBeInTheDocument();
+    expect(screen.getByText('Moves to the first open slot')).toBeInTheDocument();
+
+    fireEvent.click(planLaterBtn);
+    expect(onPlanLater).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides plan-later option when hasRecipe is false', () => {
+    renderSheet({ hasRecipe: false });
+
+    expect(screen.queryByTestId('pivot-plan-later')).not.toBeInTheDocument();
   });
 });

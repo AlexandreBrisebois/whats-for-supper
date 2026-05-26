@@ -146,7 +146,25 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 vi.mock('@/components/planner/PlanningPivotSheet', () => ({
-  PlanningPivotSheet: () => null,
+  PlanningPivotSheet: ({
+    isOpen,
+    dayIndex,
+    hasRecipe,
+    onPlanLater,
+  }: {
+    isOpen: boolean;
+    dayIndex: number;
+    hasRecipe: boolean;
+    onPlanLater?: () => void;
+  }) =>
+    isOpen ? (
+      <div
+        data-testid="mock-planning-pivot-sheet"
+        data-day-index={dayIndex}
+        data-has-recipe={hasRecipe ? 'true' : 'false'}
+        data-has-plan-later={onPlanLater ? 'true' : 'false'}
+      />
+    ) : null,
 }));
 
 vi.mock('@/components/planner/QuickFindModal', () => ({
@@ -162,7 +180,13 @@ vi.mock('@/components/planner/CooksMode', () => ({
 }));
 
 vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
-  RecipeDetailSheet: () => null,
+  RecipeDetailSheet: ({ recipeId, onClose }: { recipeId: string; onClose: () => void }) => (
+    <div data-testid="mock-recipe-detail-sheet" data-recipe-id={recipeId}>
+      <button data-testid="mock-recipe-detail-close" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('@/components/planner/GroceryList', () => ({
@@ -346,7 +370,7 @@ describe('PlannerPage voting action row', () => {
     });
   });
 
-  it('shows view recipe on a non-today assigned row', () => {
+  it('shows recipe details sheet when clicking the recipe name', () => {
     mocks.setPlannerState({
       currentWeekOffset: 0,
       activeTab: 'planner',
@@ -370,12 +394,16 @@ describe('PlannerPage voting action row', () => {
 
     render(<PlannerPage />);
 
-    expect(
-      within(screen.getByTestId('day-card-0')).getByTestId('view-recipe-button')
-    ).toBeInTheDocument();
+    const card = screen.getByTestId('day-card-0');
+    const nameBtn = within(card).getByTestId('edit-recipe-button');
+    fireEvent.click(nameBtn);
+
+    const detailSheet = screen.getByTestId('mock-recipe-detail-sheet');
+    expect(detailSheet).toBeInTheDocument();
+    expect(detailSheet.getAttribute('data-recipe-id')).toBe('11111111-1111-1111-1111-111111111111');
   });
 
-  it('hides view recipe and shows cook mode on today assigned row', () => {
+  it('shows planning pivot sheet when clicking the change recipe button', () => {
     mocks.setPlannerState({
       currentWeekOffset: 0,
       activeTab: 'planner',
@@ -385,7 +413,7 @@ describe('PlannerPage voting action row', () => {
     });
     mocks.setWeekState({
       balanceSummary: null,
-      schedule: makeAssignedSchedule('2026-05-10', 6),
+      schedule: makeAssignedSchedule('2026-05-10', 0),
       isLoading: false,
       status: 0,
       groceryItems: [],
@@ -399,8 +427,78 @@ describe('PlannerPage voting action row', () => {
 
     render(<PlannerPage />);
 
-    const todayCard = screen.getByTestId('day-card-6');
-    expect(within(todayCard).queryByTestId('view-recipe-button')).not.toBeInTheDocument();
-    expect(within(todayCard).getByTestId('start-cook-mode')).toBeInTheDocument();
+    const card = screen.getByTestId('day-card-0');
+    const changeBtn = within(card).getByTestId('change-recipe-button');
+    fireEvent.click(changeBtn);
+
+    const pivotSheet = screen.getByTestId('mock-planning-pivot-sheet');
+    expect(pivotSheet).toBeInTheDocument();
+    expect(pivotSheet.getAttribute('data-day-index')).toBe('0');
+  });
+
+  it('does not render start-cook-mode or view-recipe-button on the cards', () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      balanceSummary: null,
+      schedule: makeAssignedSchedule('2026-05-10', 0),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+
+    render(<PlannerPage />);
+
+    expect(screen.queryByTestId('view-recipe-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('start-cook-mode')).not.toBeInTheDocument();
+  });
+
+  it('shows pivot sheet for Ordered In days with remove recipe visible but plan later disabled', () => {
+    const schedule = makeAssignedSchedule('2026-05-10', 0) as any[];
+    schedule[0].status = 3;
+    schedule[0].recipe = null;
+
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      balanceSummary: null,
+      schedule,
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+
+    render(<PlannerPage />);
+
+    const card = screen.getByTestId('day-card-0');
+    const orderedInBtn = within(card).getByTestId('ordered-in-indicator');
+    fireEvent.click(orderedInBtn);
+
+    const pivotSheet = screen.getByTestId('mock-planning-pivot-sheet');
+    expect(pivotSheet).toBeInTheDocument();
+    expect(pivotSheet.getAttribute('data-has-recipe')).toBe('true');
+    expect(pivotSheet.getAttribute('data-has-plan-later')).toBe('false');
   });
 });

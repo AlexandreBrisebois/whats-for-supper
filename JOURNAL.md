@@ -4,6 +4,27 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-05-26] Session — Planner Page Enhancements
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+Implemented planner slot layout and behavior enhancements to separate viewing recipe details from slot management actions, and added a "Plan Later" action to the pivot sheet.
+
+**Key Achievements:**
+1. **Separated Details from Management**: Clicking the recipe name on a planner slot card now opens the detailed recipe drawer instead of the pivot sheet. Added a dedicated `change-recipe-button` (`RefreshCw` icon) next to the drag handle to trigger the pivot sheet.
+2. **"Plan Later" (Save for Next Week)**: Added a "Save for Next Week" option in the `PlanningPivotSheet` grid. When clicked, it moves the recipe to next week's first available slot and clears the current slot.
+3. **Removed Cook's Mode from Card**: Removed direct Cook's Mode buttons from the planner cards, so they are only accessible from the recipe details drawer.
+4. **Ordered In Resiliency**: Supported "Ordered In" slots where the entire card remains clickable to trigger the pivot sheet, and no drag handle or change buttons are rendered.
+5. **E2E and Unit Test Coverage**: Added unit tests for the "Plan Later" pivot sheet option and the planner page card triggers. Updated all planner E2E tests in `planner.spec.ts` to use the new details-to-cooks-mode drawer flow and card layout.
+
+#### Verification
+- `task test:unit` — ✅ Passed.
+- `npx playwright test e2e/planner.spec.ts` — ✅ Passed.
+- `task review` — ✅ Passed.
+
+---
+
 ### [2026-05-16] Session — High-Fidelity Recipe Sharing — Preview UI
 **Status**: COMPLETED ✅
 **Branch**: `main`

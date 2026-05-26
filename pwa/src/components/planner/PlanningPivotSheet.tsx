@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Search, Trash2, ChevronRight, X } from 'lucide-react';
+import { Sparkles, Search, Trash2, ChevronRight, X, RefreshCw } from 'lucide-react';
 import { t } from '@/locales';
 
 interface PlanningPivotSheetProps {
@@ -10,6 +10,7 @@ interface PlanningPivotSheetProps {
   onQuickFind: () => void;
   onSearchLibrary: () => void;
   onRemoveRecipe?: () => void;
+  onPlanLater?: () => void;
   hasRecipe: boolean;
 }
 
@@ -20,6 +21,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
   onQuickFind,
   onSearchLibrary,
   onRemoveRecipe,
+  onPlanLater,
   hasRecipe,
 }) => {
   return (
@@ -69,6 +71,27 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
             </div>
 
             <div className="grid grid-cols-1 gap-4">
+              {hasRecipe && onPlanLater && (
+                <button
+                  onClick={onPlanLater}
+                  data-testid="pivot-plan-later"
+                  className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all text-left group"
+                >
+                  <div className="h-12 w-12 rounded-2xl bg-sage/10 text-sage flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                    <RefreshCw size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-heading text-lg font-black text-charcoal tracking-tight">
+                      {t('home.saveForNextWeek', 'Save for Next Week')}
+                    </h4>
+                    <p className="text-[11px] text-charcoal/40 font-medium">
+                      {t('home.moveFirstSlot', 'Moves to the first open slot')}
+                    </p>
+                  </div>
+                  <ChevronRight size={18} className="text-charcoal/20 flex-shrink-0" />
+                </button>
+              )}
+
               <button
                 onClick={onQuickFind}
                 data-testid="pivot-quick-find"
