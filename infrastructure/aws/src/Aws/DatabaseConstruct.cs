@@ -9,7 +9,7 @@ namespace Aws
     {
         public IDatabaseInstance Database { get; }
 
-        public DatabaseConstruct(Construct scope, string id, IVpc vpc) : base(scope, id)
+        public DatabaseConstruct(Construct scope, string id, IVpc vpc, string databaseName, string username, string password) : base(scope, id)
         {
             var securityGroup = new SecurityGroup(this, "DbSecurityGroup", new SecurityGroupProps
             {
@@ -31,8 +31,8 @@ namespace Aws
                 InstanceType = Amazon.CDK.AWS.EC2.InstanceType.Of(InstanceClass.BURSTABLE4_GRAVITON, InstanceSize.MICRO),
                 AllocatedStorage = 20,
                 MaxAllocatedStorage = 30,
-                DatabaseName = "recipe_app_db",
-                Credentials = Credentials.FromGeneratedSecret("postgres"),
+                DatabaseName = databaseName,
+                Credentials = Credentials.FromPassword(username, SecretValue.UnsafePlainText(password)),
                 SecurityGroups = new[] { securityGroup },
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 DeletionProtection = false

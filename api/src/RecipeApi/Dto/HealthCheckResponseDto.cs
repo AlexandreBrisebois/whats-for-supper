@@ -15,4 +15,16 @@ public class HealthCheckResponseDto
 
     [JsonPropertyName("demoMode")]
     public required bool DemoMode { get; set; }
+
+    [JsonPropertyName("demoModeRawValue")]
+    public required string DemoModeRawValue { get; set; }
+
+    [JsonPropertyName("demoRestoreCronValid")]
+    public required bool DemoRestoreCronValid { get; set; }
+
+    [JsonPropertyName("allowAgentSearch")]
+    public required bool AllowAgentSearch { get; set; }
+
+    [JsonPropertyName("allowPhotoSearch")]
+    public required bool AllowPhotoSearch { get; set; }
 }

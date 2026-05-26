@@ -80,7 +80,16 @@ export const test = base.extend({
           return route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ status: 'Healthy', demoMode: false }),
+            body: JSON.stringify({
+              status: 'Healthy',
+              timestamp: fixedTestDate,
+              checks: {},
+              demoMode: false,
+              demoModeRawValue: 'false',
+              demoRestoreCronValid: true,
+              allowAgentSearch: true,
+              allowPhotoSearch: true,
+            }),
           });
         }
 

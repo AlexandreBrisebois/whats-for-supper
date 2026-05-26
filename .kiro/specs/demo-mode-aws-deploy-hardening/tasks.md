@@ -41,13 +41,13 @@
 
 ## Tasks
 
-- [ ] 1. Contract - Extend management and health demo diagnostics payload
+- [x] 1. Contract - Extend management and health demo diagnostics payload
   - Red: Add/adjust contract tests and schema checks proving new fields are required and typed.
   - Green: Update `specs/openapi.yaml` and generated client models.
   - Verify no drift with `task agent:drift`.
   - _Requirements: AC-2, AC-4, AC-5_
 
-- [ ] 2. API Tests - Add deterministic coverage for demo parsing, cron validity, snapshot readiness
+- [x] 2. API Tests - Add deterministic coverage for demo parsing, cron validity, snapshot readiness
   - Red: Add failing unit/integration tests for:
   - invalid `DEMO_MODE` values warning behavior,
   - invalid cron seeder status,
@@ -55,33 +55,33 @@
   - Green: minimal runtime behavior updates to pass.
   - _Requirements: AC-2, AC-4, AC-5, AC-6_
 
-- [ ] 3. Infrastructure Tests - Enforce AWS DB credential parity
+- [x] 3. Infrastructure Tests - Enforce AWS DB credential parity
   - Red: Add infra-level tests/assertions that fail on username/password source mismatch between RDS, migrator, and API env wiring.
   - Green: consolidate credential source and references.
   - _Requirements: AC-1, AC-6_
 
-- [ ] 4. API Runtime - Expose demo seeder health and diagnostics in management status
+- [x] 4. API Runtime - Expose demo seeder health and diagnostics in management status
   - Red: Integration test that management status surfaces seeder health and error code when cron invalid.
   - Green: Add minimal status plumbing only.
   - _Requirements: AC-2, AC-4_
 
-- [ ] 5. API Runtime - Define and expose demo capabilities for AI-dependent surfaces
+- [x] 5. API Runtime - Define and expose demo capabilities for AI-dependent surfaces
   - Red: Tests covering deterministic capability flags in demo and non-demo modes.
   - Green: Add response fields and mapping logic.
   - _Requirements: AC-3, AC-6_
 
-- [ ] 6. PWA Unit - Gate agent and photo search controls from API capability flags
+- [x] 6. PWA Unit - Gate agent and photo search controls from API capability flags
   - Red: Add failing tests in recipes page unit tests for disabled/gated controls and notices.
   - Green: implement minimal UI gating.
   - Ensure all interactive elements have `data-testid` from design index.
   - _Requirements: AC-3, AC-6_
 
-- [ ] 7. PWA Mock Contract - Update `pwa/e2e/mock-api.ts` for deterministic demo variants
+- [x] 7. PWA Mock Contract - Update `pwa/e2e/mock-api.ts` for deterministic demo variants
   - Red: Add failing E2E setup expectations for new fields and fixed timestamps.
   - Green: implement mocks and fixture wiring.
   - _Requirements: AC-2, AC-3, AC-6_
 
-- [ ] 8. E2E - Demo-mode coherence and no-dead-end flows
+- [x] 8. E2E - Demo-mode coherence and no-dead-end flows
   - Red: Add failing E2E scenarios:
   - demo mode blocks/guides agent feature,
   - photo feature behavior matches chosen policy,
@@ -90,7 +90,7 @@
   - Use fixed date clock and `page.getByTestId(...)` only.
   - _Requirements: AC-3, AC-6_
 
-- [ ] 9. Deployment Verification Checklist - Codify release gate for demo deploy
+- [x] 9. Deployment Verification Checklist - Codify release gate for demo deploy
   - Add checklist to deployment docs:
   - verify `/api/health.demoMode` is true,
   - verify management snapshot readiness,

@@ -47,7 +47,11 @@ public class HealthControllerTests : IAsyncLifetime
         Assert.True(doc.RootElement.TryGetProperty("timestamp", out _), "missing 'timestamp'");
         Assert.True(doc.RootElement.TryGetProperty("checks",    out var checks), "missing 'checks'");
         Assert.True(doc.RootElement.TryGetProperty("demoMode",  out var demoMode), "missing 'demoMode'");
+        Assert.True(doc.RootElement.TryGetProperty("allowAgentSearch", out var allowAgentSearch), "missing 'allowAgentSearch'");
+        Assert.True(doc.RootElement.TryGetProperty("allowPhotoSearch", out var allowPhotoSearch), "missing 'allowPhotoSearch'");
         Assert.False(demoMode.GetBoolean());
+        Assert.True(allowAgentSearch.GetBoolean());
+        Assert.True(allowPhotoSearch.GetBoolean());
 
         Assert.True(checks.TryGetProperty("database", out _), "missing 'checks.database'");
         Assert.True(checks.TryGetProperty("schema",   out _), "missing 'checks.schema'");
@@ -67,6 +71,8 @@ public class HealthControllerTests : IAsyncLifetime
         using var doc = JsonDocument.Parse(json);
 
         Assert.True(doc.RootElement.GetProperty("demoMode").GetBoolean());
+        Assert.False(doc.RootElement.GetProperty("allowAgentSearch").GetBoolean());
+        Assert.False(doc.RootElement.GetProperty("allowPhotoSearch").GetBoolean());
     }
 
     [Fact]

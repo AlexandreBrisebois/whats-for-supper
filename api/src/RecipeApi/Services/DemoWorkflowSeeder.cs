@@ -33,7 +33,20 @@ public class DemoWorkflowSeeder(
             return;
         }
 
-        var scheduledAt = scheduleCalculator.GetNextOccurrence(demoMode.RestoreCronUtc, clock.UtcNow);
+        DateTimeOffset scheduledAt;
+        try
+        {
+            scheduledAt = scheduleCalculator.GetNextOccurrence(demoMode.RestoreCronUtc, clock.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Demo restore seeding skipped due to invalid cron. ErrorCode=INVALID_CRON CronExpression={CronExpression}",
+                demoMode.RestoreCronUtc);
+            return;
+        }
+
         var instance = await orchestrator.TriggerAsync(DemoRestoreWorkflowId, [], scheduledAt);
 
         logger.LogInformation(

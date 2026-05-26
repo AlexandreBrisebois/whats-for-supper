@@ -10,8 +10,23 @@ namespace Aws
 {
     public class MigrationConstruct : Construct
     {
-        public MigrationConstruct(Construct scope, string id, IVpc vpc, Amazon.CDK.AWS.RDS.IDatabaseInstance database) : base(scope, id)
+        public string ConfiguredDatabaseName { get; }
+        public string ConfiguredUsername { get; }
+        public string ConfiguredPassword { get; }
+
+        public MigrationConstruct(
+            Construct scope,
+            string id,
+            IVpc vpc,
+            Amazon.CDK.AWS.RDS.IDatabaseInstance database,
+            string databaseName,
+            string username,
+            string password) : base(scope, id)
         {
+            ConfiguredDatabaseName = databaseName;
+            ConfiguredUsername = username;
+            ConfiguredPassword = password;
+
             // 1. Create an ECS Cluster for one-off tasks
             var cluster = new Cluster(this, "WfsMigrationCluster", new ClusterProps
             {
@@ -33,13 +48,13 @@ namespace Aws
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps { StreamPrefix = "wfs-migration" }),
                 Environment = new Dictionary<string, string>
                 {
-                    { "PGPASSWORD", "whatsforsupper" } // Should be synced with DatabaseConstruct
+                    { "PGPASSWORD", password }
                 },
                 // Reusing the exact command from your NAS docker-compose.nas.yml
                 Command = new[] { 
                     "-h", database.DbInstanceEndpointAddress, 
-                    "-U", "recipe_app", 
-                    "recipe_app_db", 
+                    "-U", username,
+                    databaseName,
                     "-f", "/schema.sql" 
                 }
             });

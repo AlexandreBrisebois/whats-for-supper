@@ -115,4 +115,24 @@ If the first request to the API is slow, this is a standard Lambda cold start. F
 
 ---
 
-*Last Updated: 2026-05-14*
+## ✅ Demo Deployment Verification Checklist
+
+Run this checklist immediately after each Demo deployment:
+
+1. Verify `/api/health` reports `demoMode: true`.
+2. Verify `/api/management/status` reports:
+   - `demoSnapshotReady: true`
+   - `demoSnapshotMissing: false`
+3. Verify `/api/management/status` shows a valid demo restore schedule:
+   - `demoRestoreSeederHealthy: true`
+   - `demoRestoreSeederErrorCode` is empty/null
+4. Verify PWA Demo UX behavior from `/recipes`:
+   - Clicking `demo-agent-search-toggle` shows `demo-ai-notice`
+   - Clicking `demo-photo-search-toggle` shows `demo-photo-notice`
+   - Agent input (`agent-search-input`) and photo capture popup (`inventory-capture-popup`) do not open in demo mode
+
+If any check fails, treat the deployment as non-green and stop promotion.
+
+---
+
+*Last Updated: 2026-05-25*

@@ -690,7 +690,7 @@ components:
     # --- Health ---
     HealthCheckResponse:
       type: object
-      required: [status, timestamp, checks, demoMode]
+      required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid, allowAgentSearch, allowPhotoSearch]
       properties:
         status: { type: string }
         timestamp: { type: string, format: date-time }
@@ -698,10 +698,26 @@ components:
         demoMode:
           type: boolean
           description: True when the API is running in resettable demo/amnesia mode.
+        demoModeRawValue:
+          type: string
+          description: Raw DEMO_MODE environment value read at startup.
+        demoRestoreCronValid:
+          type: boolean
+          description: True when DEMO_RESTORE_CRON_UTC parses as a valid cron schedule.
+        allowAgentSearch:
+          type: boolean
+          description: True when AI-backed agent search interactions are enabled for this runtime.
+        allowPhotoSearch:
+          type: boolean
+          description: True when AI-backed photo search interactions are enabled for this runtime.
       example:
         status: healthy
         timestamp: '2026-05-09T12:00:00Z'
         demoMode: true
+        demoModeRawValue: 'true'
+        demoRestoreCronValid: true
+        allowAgentSearch: false
+        allowPhotoSearch: false
         checks:
           database: { status: healthy }
           schema: { status: healthy }
@@ -709,7 +725,7 @@ components:
     # --- Management ---
     ManagementTaskStatusResponse:
       type: object
-      required: [workflowId, workflowType, status, createdAt, updatedAt]
+      required: [workflowId, workflowType, status, createdAt, updatedAt, demoSnapshotReady, demoSnapshotMissing, demoRestoreSeederHealthy, demoRestoreSeederErrorCode]
       properties:
         workflowId: { type: string, format: uuid }
         workflowType: { type: string }
@@ -717,6 +733,15 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         result: { type: [object, 'null'] }
+        demoSnapshotReady:
+          type: boolean
+        demoSnapshotMissing:
+          type: array
+          items: { type: string }
+        demoRestoreSeederHealthy:
+          type: boolean
+        demoRestoreSeederErrorCode:
+          type: [string, 'null']
 
     ManagementTaskAcceptedResponse:
       type: object

@@ -17,8 +17,18 @@ namespace Aws
         public IFunction LambdaFunction { get; }
         public FunctionUrl FunctionUrl { get; }
         public HttpApi HttpApi { get; }
+        public string ConfiguredPostgresConnectionString { get; }
 
-        public BackendConstruct(Construct scope, string id, IVpc vpc, Amazon.CDK.AWS.EFS.FileSystem fileSystem, AccessPoint accessPoint, IDatabaseInstance database) : base(scope, id)
+        public BackendConstruct(
+            Construct scope,
+            string id,
+            IVpc vpc,
+            Amazon.CDK.AWS.EFS.FileSystem fileSystem,
+            AccessPoint accessPoint,
+            IDatabaseInstance database,
+            string databaseName,
+            string username,
+            string password) : base(scope, id)
         {
             // Extract configuration from CDK Context (passed from GitHub Actions)
             var imageTag = (string)this.Node.TryGetContext("imageTag") ?? "v0.0.0";
@@ -35,6 +45,9 @@ namespace Aws
             var dreamingCron = (string)this.Node.TryGetContext("dreamingCron") ?? "0 3 * * *";
             var allowedOrigins = (string)this.Node.TryGetContext("allowedOrigins") ?? "*";
             var domainName = (string)this.Node.TryGetContext("domainName") ?? "wfs.srvrlss.dev";
+            var postgresConnectionString =
+                $"Host={database.DbInstanceEndpointAddress};Port=5432;Database={databaseName};Username={username};Password={password}";
+            ConfiguredPostgresConnectionString = postgresConnectionString;
 
             LambdaFunction = new DockerImageFunction(this, "WfsApiLambda", new DockerImageFunctionProps
             {
@@ -55,7 +68,7 @@ namespace Aws
                     { "WORKFLOWS_ROOT", "/mnt/data/workflows" },
 
                     // Database
-                    { "POSTGRES_CONNECTION_STRING", $"Host={database.DbInstanceEndpointAddress};Port=5432;Database=recipe_app_db;Username=recipe_app;Password={{password}}" },
+                    { "POSTGRES_CONNECTION_STRING", postgresConnectionString },
                     
                     // Runtime
                     { "ASPNETCORE_ENVIRONMENT", "Production" },

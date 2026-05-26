@@ -11,8 +11,21 @@ namespace RecipeApi.Controllers;
 [ApiController]
 [Route("api/management")]
 [SkipWrapping]
-public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbContext db, IServiceScopeFactory scopeFactory) : ControllerBase
+public class ManagementController(
+    IWorkflowOrchestrator orchestrator,
+    RecipeDbContext db,
+    IServiceScopeFactory scopeFactory,
+    DemoModeOptions demoModeOptions,
+    DataRootResolver dataRootResolver,
+    CronScheduleCalculator scheduleCalculator) : ControllerBase
 {
+    private static readonly string[] RequiredDemoSnapshotFiles =
+    [
+        "manifest.json",
+        "family-members.json",
+        "recipes.json",
+        "recipe-search-documents.json"
+    ];
     /// <summary>
     /// POST /api/management/backup — trigger an asynchronous export.
     /// </summary>
@@ -115,6 +128,8 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
             .OrderByDescending(t => t.UpdatedAt)
             .Select(t => JsonSerializer.Deserialize<object>(t.Result!, JsonDefaults.CamelCase))
             .FirstOrDefault();
+        var missingFiles = GetMissingDemoSnapshotFiles();
+        var cronIsValid = IsCronValid();
 
         var status = new ManagementStatus
         {
@@ -124,9 +139,34 @@ public class ManagementController(IWorkflowOrchestrator orchestrator, RecipeDbCo
             CreatedAt = lastInstance.CreatedAt,
             UpdatedAt = lastInstance.UpdatedAt,
             Result = lastTaskResult,
+            DemoSnapshotReady = missingFiles.Count == 0,
+            DemoSnapshotMissing = missingFiles,
+            DemoRestoreSeederHealthy = cronIsValid,
+            DemoRestoreSeederErrorCode = !cronIsValid ? "INVALID_CRON" : null
         };
 
         return Ok(status);
+    }
+
+    private List<string> GetMissingDemoSnapshotFiles()
+    {
+        var demoRoot = Path.Combine(dataRootResolver.Root, "demo");
+        return RequiredDemoSnapshotFiles
+            .Where(file => !System.IO.File.Exists(Path.Combine(demoRoot, file)))
+            .ToList();
+    }
+
+    private bool IsCronValid()
+    {
+        try
+        {
+            _ = scheduleCalculator.GetNextOccurrence(demoModeOptions.RestoreCronUtc, DateTimeOffset.UtcNow);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
 }

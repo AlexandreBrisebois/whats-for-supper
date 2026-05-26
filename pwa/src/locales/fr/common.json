@@ -295,6 +295,7 @@
     "filterHealthy": "Choix Santé",
     "agentSearch": "Recherche Agent",
     "demoAiNotice": "La traduction sémantique de recherche est désactivée en mode démo",
+    "demoPhotoNotice": "La recherche photo est désactivée en mode démo",
     "inventoryCamera": "Utiliser Caméra",
     "agentSearchPlaceholder": "Décrivez ce qui vous ferait plaisir ce soir…",
     "agentSearchSubmit": "Chercher",

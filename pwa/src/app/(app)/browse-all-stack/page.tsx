@@ -452,13 +452,7 @@ export default function BrowseAllStackPage() {
     }
 
     setCurrentIndex(currentIndex + 1);
-  }, [
-    currentIndex,
-    recipes.length,
-    hasMorePages,
-    isPrefetching,
-    setCurrentIndex,
-  ]);
+  }, [currentIndex, recipes.length, hasMorePages, isPrefetching, setCurrentIndex]);
 
   const handleSwipeRight = useCallback(() => {
     if (currentIndex <= 0) {

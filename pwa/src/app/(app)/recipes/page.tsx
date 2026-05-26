@@ -92,7 +92,10 @@ export default function RecipesPage() {
   const [limit, setLimit] = useState(INITIAL_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [allowAgentSearch, setAllowAgentSearch] = useState<boolean | null>(null);
+  const [allowPhotoSearch, setAllowPhotoSearch] = useState<boolean | null>(null);
   const [showDemoAiNotice, setShowDemoAiNotice] = useState(false);
+  const [showDemoPhotoNotice, setShowDemoPhotoNotice] = useState(false);
   const [pendingRecovery, setPendingRecovery] = useState<{
     slot: PlannerSlot;
     recipe: AssignmentRecipe;
@@ -117,13 +120,28 @@ export default function RecipesPage() {
 
     void (async () => {
       try {
-        const health = (await apiClient.api.health.get()) as { demoMode?: boolean } | undefined;
+        const health = (await apiClient.api.health.get()) as
+          | {
+              demoMode?: boolean;
+              allowAgentSearch?: boolean;
+              allowPhotoSearch?: boolean;
+            }
+          | undefined;
         if (isActive) {
-          setIsDemoMode(Boolean(health?.demoMode));
+          const demoMode = Boolean(health?.demoMode);
+          setIsDemoMode(demoMode);
+          setAllowAgentSearch(
+            typeof health?.allowAgentSearch === 'boolean' ? health.allowAgentSearch : !demoMode
+          );
+          setAllowPhotoSearch(
+            typeof health?.allowPhotoSearch === 'boolean' ? health.allowPhotoSearch : !demoMode
+          );
         }
       } catch {
         if (isActive) {
           setIsDemoMode(false);
+          setAllowAgentSearch(true);
+          setAllowPhotoSearch(true);
         }
       }
     })();
@@ -377,8 +395,12 @@ export default function RecipesPage() {
     void runSearch('', recipeId);
   };
 
+  const isAgentSearchAllowed = isAgentSearchEnabled && allowAgentSearch === true;
+  const isPhotoSearchAllowed = isPhotoSearchEnabled && allowPhotoSearch === true;
+  const isCapabilitiesLoading = allowAgentSearch === null || allowPhotoSearch === null;
+
   const handleAgentSubmit = () => {
-    if (isDemoMode) {
+    if (!isAgentSearchAllowed) {
       setShowDemoAiNotice(true);
       setSearchMode('standard');
       return;
@@ -407,6 +429,11 @@ export default function RecipesPage() {
   };
 
   const handleCameraSubmit = async () => {
+    if (!isPhotoSearchAllowed) {
+      setShowDemoPhotoNotice(true);
+      setSearchMode('standard');
+      return;
+    }
     setIsCameraBusy(false);
     setIsSubmittingPhotos(true);
     try {
@@ -569,9 +596,10 @@ export default function RecipesPage() {
           {isAgentSearchEnabled && (
             <button
               type="button"
-              data-testid="agent-search-trigger"
+              data-testid="demo-agent-search-toggle"
+              disabled={isCapabilitiesLoading}
               onClick={() => {
-                if (isDemoMode) {
+                if (!isAgentSearchAllowed) {
                   setShowDemoAiNotice(true);
                   setSearchMode('standard');
                   return;
@@ -580,7 +608,7 @@ export default function RecipesPage() {
               }}
               className={cn(
                 'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
-                isDemoMode && 'opacity-60',
+                (!isAgentSearchAllowed || isCapabilitiesLoading) && 'opacity-60',
                 searchMode === 'agent'
                   ? 'border-terracotta bg-terracotta text-white'
                   : 'border-charcoal/10 bg-white/70 text-charcoal'
@@ -596,10 +624,19 @@ export default function RecipesPage() {
           {isPhotoSearchEnabled && (
             <button
               type="button"
-              data-testid="inventory-camera-trigger"
-              onClick={() => setSearchMode(searchMode === 'camera' ? 'standard' : 'camera')}
+              data-testid="demo-photo-search-toggle"
+              disabled={isCapabilitiesLoading}
+              onClick={() => {
+                if (!isPhotoSearchAllowed) {
+                  setShowDemoPhotoNotice(true);
+                  setSearchMode('standard');
+                  return;
+                }
+                setSearchMode(searchMode === 'camera' ? 'standard' : 'camera');
+              }}
               className={cn(
                 'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
+                (!isPhotoSearchAllowed || isCapabilitiesLoading) && 'opacity-60',
                 searchMode === 'camera'
                   ? 'border-terracotta bg-terracotta text-white'
                   : 'border-charcoal/10 bg-white/70 text-charcoal'
@@ -621,6 +658,14 @@ export default function RecipesPage() {
           className="rounded-2xl border border-terracotta/20 bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta"
         >
           {t('recipes.demoAiNotice', 'Semantic search translation is disabled in Demo Mode')}
+        </div>
+      )}
+      {showDemoPhotoNotice && (
+        <div
+          data-testid="demo-photo-notice"
+          className="rounded-2xl border border-terracotta/20 bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta"
+        >
+          {t('recipes.demoPhotoNotice', 'Photo search is disabled in Demo Mode')}
         </div>
       )}
 

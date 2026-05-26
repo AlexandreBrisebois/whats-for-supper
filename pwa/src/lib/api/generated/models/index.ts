@@ -1401,6 +1401,12 @@ export function deserializeIntoHealthCheckResponse(
   healthCheckResponse: Partial<HealthCheckResponse> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    allowAgentSearch: (n) => {
+      healthCheckResponse.allowAgentSearch = n.getBooleanValue();
+    },
+    allowPhotoSearch: (n) => {
+      healthCheckResponse.allowPhotoSearch = n.getBooleanValue();
+    },
     checks: (n) => {
       healthCheckResponse.checks = n.getObjectValue<HealthCheckResponse_checks>(
         createHealthCheckResponse_checksFromDiscriminatorValue
@@ -1408,6 +1414,12 @@ export function deserializeIntoHealthCheckResponse(
     },
     demoMode: (n) => {
       healthCheckResponse.demoMode = n.getBooleanValue();
+    },
+    demoModeRawValue: (n) => {
+      healthCheckResponse.demoModeRawValue = n.getStringValue();
+    },
+    demoRestoreCronValid: (n) => {
+      healthCheckResponse.demoRestoreCronValid = n.getBooleanValue();
     },
     status: (n) => {
       healthCheckResponse.status = n.getStringValue();
@@ -1599,6 +1611,18 @@ export function deserializeIntoManagementTaskStatusResponse(
   return {
     createdAt: (n) => {
       managementTaskStatusResponse.createdAt = n.getDateValue();
+    },
+    demoRestoreSeederErrorCode: (n) => {
+      managementTaskStatusResponse.demoRestoreSeederErrorCode = n.getStringValue();
+    },
+    demoRestoreSeederHealthy: (n) => {
+      managementTaskStatusResponse.demoRestoreSeederHealthy = n.getBooleanValue();
+    },
+    demoSnapshotMissing: (n) => {
+      managementTaskStatusResponse.demoSnapshotMissing = n.getCollectionOfPrimitiveValues<string>();
+    },
+    demoSnapshotReady: (n) => {
+      managementTaskStatusResponse.demoSnapshotReady = n.getBooleanValue();
     },
     result: (n) => {
       managementTaskStatusResponse.result = n.getObjectValue<ManagementTaskStatusResponse_result>(
@@ -3231,6 +3255,14 @@ export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
 }
 export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
   /**
+   * True when AI-backed agent search interactions are enabled for this runtime.
+   */
+  allowAgentSearch?: boolean | null;
+  /**
+   * True when AI-backed photo search interactions are enabled for this runtime.
+   */
+  allowPhotoSearch?: boolean | null;
+  /**
    * The checks property
    */
   checks?: HealthCheckResponse_checks | null;
@@ -3238,6 +3270,14 @@ export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
    * True when the API is running in resettable demo/amnesia mode.
    */
   demoMode?: boolean | null;
+  /**
+   * Raw DEMO_MODE environment value read at startup.
+   */
+  demoModeRawValue?: string | null;
+  /**
+   * True when DEMO_RESTORE_CRON_UTC parses as a valid cron schedule.
+   */
+  demoRestoreCronValid?: boolean | null;
   /**
    * The status property
    */
@@ -3371,6 +3411,22 @@ export interface ManagementTaskStatusResponse extends AdditionalDataHolder, Pars
    * The createdAt property
    */
   createdAt?: Date | null;
+  /**
+   * The demoRestoreSeederErrorCode property
+   */
+  demoRestoreSeederErrorCode?: string | null;
+  /**
+   * The demoRestoreSeederHealthy property
+   */
+  demoRestoreSeederHealthy?: boolean | null;
+  /**
+   * The demoSnapshotMissing property
+   */
+  demoSnapshotMissing?: string[] | null;
+  /**
+   * The demoSnapshotReady property
+   */
+  demoSnapshotReady?: boolean | null;
   /**
    * The result property
    */
@@ -4417,12 +4473,16 @@ export function serializeHealthCheckResponse(
   if (!healthCheckResponse || isSerializingDerivedType) {
     return;
   }
+  writer.writeBooleanValue('allowAgentSearch', healthCheckResponse.allowAgentSearch);
+  writer.writeBooleanValue('allowPhotoSearch', healthCheckResponse.allowPhotoSearch);
   writer.writeObjectValue<HealthCheckResponse_checks>(
     'checks',
     healthCheckResponse.checks,
     serializeHealthCheckResponse_checks
   );
   writer.writeBooleanValue('demoMode', healthCheckResponse.demoMode);
+  writer.writeStringValue('demoModeRawValue', healthCheckResponse.demoModeRawValue);
+  writer.writeBooleanValue('demoRestoreCronValid', healthCheckResponse.demoRestoreCronValid);
   writer.writeStringValue('status', healthCheckResponse.status);
   writer.writeDateValue('timestamp', healthCheckResponse.timestamp);
   writer.writeAdditionalData(healthCheckResponse.additionalData);
@@ -4611,6 +4671,19 @@ export function serializeManagementTaskStatusResponse(
     return;
   }
   writer.writeDateValue('createdAt', managementTaskStatusResponse.createdAt);
+  writer.writeStringValue(
+    'demoRestoreSeederErrorCode',
+    managementTaskStatusResponse.demoRestoreSeederErrorCode
+  );
+  writer.writeBooleanValue(
+    'demoRestoreSeederHealthy',
+    managementTaskStatusResponse.demoRestoreSeederHealthy
+  );
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'demoSnapshotMissing',
+    managementTaskStatusResponse.demoSnapshotMissing
+  );
+  writer.writeBooleanValue('demoSnapshotReady', managementTaskStatusResponse.demoSnapshotReady);
   writer.writeObjectValue<ManagementTaskStatusResponse_result>(
     'result',
     managementTaskStatusResponse.result,

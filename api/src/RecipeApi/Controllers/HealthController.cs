@@ -12,7 +12,10 @@ namespace RecipeApi.Controllers;
 [Route("api/health")]
 [SkipWrapping]
 [Microsoft.AspNetCore.Authorization.AllowAnonymous]
-public class HealthController(RecipeDbContext db, DemoModeOptions demoMode) : ControllerBase
+public class HealthController(
+    RecipeDbContext db,
+    DemoModeOptions demoMode,
+    CronScheduleCalculator scheduleCalculator) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Get()
@@ -51,9 +54,26 @@ public class HealthController(RecipeDbContext db, DemoModeOptions demoMode) : Co
             Status = overallHealthy ? "healthy" : "unhealthy",
             Timestamp = DateTimeOffset.UtcNow,
             Checks = checks,
-            DemoMode = demoMode.Enabled
+            DemoMode = demoMode.Enabled,
+            DemoModeRawValue = demoMode.RawValue ?? string.Empty,
+            DemoRestoreCronValid = IsCronValid(demoMode.RestoreCronUtc, scheduleCalculator),
+            AllowAgentSearch = !demoMode.Enabled,
+            AllowPhotoSearch = !demoMode.Enabled
         };
 
         return overallHealthy ? Ok(response) : StatusCode(503, response);
+    }
+
+    private static bool IsCronValid(string cronExpression, CronScheduleCalculator scheduleCalculator)
+    {
+        try
+        {
+            _ = scheduleCalculator.GetNextOccurrence(cronExpression, DateTimeOffset.UtcNow);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

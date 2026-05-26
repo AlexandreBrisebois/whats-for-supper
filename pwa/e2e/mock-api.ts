@@ -19,6 +19,8 @@ import { builders, currentMonday, toDateStr } from '../src/testing/builders';
 
 export { MOCK_IDS, builders, currentMonday, toDateStr };
 
+const FIXED_E2E_TIMESTAMP = '2026-05-04T12:00:00.000Z';
+
 // ---------------------------------------------------------------------------
 // SSE helpers — internal
 // ---------------------------------------------------------------------------
@@ -732,7 +734,17 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ status: 'Idle' }),
+      body: JSON.stringify({
+        workflowId: MOCK_IDS.RECIPE_LASAGNA,
+        workflowType: 'demo-restore',
+        status: 0,
+        createdAt: FIXED_E2E_TIMESTAMP,
+        updatedAt: FIXED_E2E_TIMESTAMP,
+        demoSnapshotReady: true,
+        demoSnapshotMissing: [],
+        demoRestoreSeederHealthy: true,
+        demoRestoreSeederErrorCode: null,
+      }),
     });
   });
 
@@ -745,8 +757,8 @@ export async function setupCommonRoutes(page: Page) {
         id: MOCK_IDS.RECIPE_LASAGNA,
         workflowId: 'recipe-import',
         status: 'Completed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: FIXED_E2E_TIMESTAMP,
+        updatedAt: FIXED_E2E_TIMESTAMP,
         tasks: [],
       }),
     });
@@ -786,9 +798,13 @@ export async function setupCommonRoutes(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({
         status: 'Healthy',
-        timestamp: new Date().toISOString(),
+        timestamp: FIXED_E2E_TIMESTAMP,
         checks: {},
         demoMode: false,
+        demoModeRawValue: 'false',
+        demoRestoreCronValid: true,
+        allowAgentSearch: true,
+        allowPhotoSearch: true,
       }),
     });
   });

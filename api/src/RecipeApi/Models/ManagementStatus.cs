@@ -8,4 +8,8 @@ public class ManagementStatus
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public object? Result { get; set; }
+    public bool DemoSnapshotReady { get; set; }
+    public List<string> DemoSnapshotMissing { get; set; } = [];
+    public bool DemoRestoreSeederHealthy { get; set; }
+    public string? DemoRestoreSeederErrorCode { get; set; }
 }

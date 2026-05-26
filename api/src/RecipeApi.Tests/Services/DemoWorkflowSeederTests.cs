@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
@@ -66,13 +68,33 @@ public class DemoWorkflowSeederTests : IDisposable
         Assert.Single(_db.WorkflowInstances.Where(i => i.WorkflowId == "demo-restore"));
     }
 
-    private DemoWorkflowSeeder CreateSeeder(bool demoMode)
+    [Fact]
+    public async Task SeedAsync_WhenCronInvalid_DoesNotScheduleAndLogsInvalidCronCode()
+    {
+        await SaveDemoRestoreWorkflowAsync();
+        var logger = new Mock<ILogger<DemoWorkflowSeeder>>();
+        var seeder = CreateSeeder(demoMode: true, cron: "invalid", logger.Object);
+
+        await seeder.SeedAsync(CancellationToken.None);
+
+        Assert.Empty(_db.WorkflowInstances.Where(i => i.WorkflowId == "demo-restore"));
+        logger.Verify(
+            l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) => state.ToString()!.Contains("INVALID_CRON")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    private DemoWorkflowSeeder CreateSeeder(bool demoMode, string cron = "0 3 * * *", ILogger<DemoWorkflowSeeder>? logger = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["DEMO_MODE"] = demoMode ? "true" : "false",
-                ["DEMO_RESTORE_CRON_UTC"] = "0 3 * * *"
+                ["DEMO_RESTORE_CRON_UTC"] = cron
             })
             .Build();
         var orchestrator = new WorkflowOrchestrator(new WorkflowRepository(_storage), _db);
@@ -83,7 +105,7 @@ public class DemoWorkflowSeederTests : IDisposable
             new DemoModeOptions(configuration),
             new CronScheduleCalculator(configuration),
             _clock,
-            NullLogger<DemoWorkflowSeeder>.Instance);
+            logger ?? NullLogger<DemoWorkflowSeeder>.Instance);
     }
 
     private async Task SaveDemoRestoreWorkflowAsync()
