@@ -157,10 +157,10 @@ async function setupPlanner(page: Page, locked = false) {
 
   await page.goto('/planner');
   if (locked) {
-    // Cook Mode button only shows on today's card (E2 constraint).
+    // Locked-week readiness: today's card still exposes recipe entry via detail trigger.
     const todayStr = toDateStr(currentMonday());
     await expect(
-      page.locator(`[data-date="${todayStr}"]`).getByTestId('start-cook-mode')
+      page.locator(`[data-date="${todayStr}"]`).getByTestId('edit-recipe-button')
     ).toBeVisible({
       timeout: 10_000,
     });
@@ -202,12 +202,15 @@ test.describe("Planner — Cook's Mode", () => {
   test('opens Cook Mode and navigates steps for a locked week', async ({ page }) => {
     await setupPlanner(page, true);
 
-    // Cook Mode button only shows on today's card (E2 constraint).
-    // Find today's card by data-date attribute rather than positional index.
+    // Current planner contract: open detail sheet from card, then launch Cook Mode from sheet.
     const todayStr = toDateStr(currentMonday());
     const todayCard = page.locator(`[data-date="${todayStr}"]`);
-    await expect(todayCard.getByTestId('start-cook-mode')).toBeVisible({ timeout: 10_000 });
-    await todayCard.getByTestId('start-cook-mode').click();
+    await expect(todayCard.getByTestId('edit-recipe-button')).toBeVisible({ timeout: 10_000 });
+    await todayCard.getByTestId('edit-recipe-button').click();
+
+    const detailSheet = page.getByTestId('recipe-detail-sheet');
+    await expect(detailSheet).toBeVisible();
+    await detailSheet.getByTestId('time-cook-btn').click();
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
@@ -374,7 +377,7 @@ test.describe('Planner — Voting Flow', () => {
       page.locator('[data-testid="planner-action-row"] [data-testid="nudge-family-cta"]')
     ).toBeVisible();
 
-    await page.getByTestId('day-card-0').getByTestId('edit-recipe-button').click();
+    await page.getByTestId('day-card-0').getByTestId('change-recipe-button').click();
     await expect(page.getByTestId('pivot-sheet')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId('pivot-nudge-family')).toHaveCount(0);
   });
