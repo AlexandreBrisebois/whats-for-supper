@@ -37,7 +37,7 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.*" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.*" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.*" />
-    <PackageReference Include="System.ClientModel" Version="1.12.0" />
+    <PackageReference Include="System.ClientModel" Version="1.13.0" />
     <PackageReference Include="Google.GenAI" Version="1.6.1" />
     <!-- OpenTelemetry -->
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
@@ -46,7 +46,7 @@
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
-    <PackageReference Include="YamlDotNet" Version="17.1.0" />
+    <PackageReference Include="YamlDotNet" Version="18.0.0" />
   </ItemGroup>
 
   <!-- Exclude test project files from the main build -->
