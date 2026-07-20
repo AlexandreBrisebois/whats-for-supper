@@ -41,7 +41,7 @@
     "@microsoft/kiota-serialization-multipart": "^1.0.0-preview.100",
     "@microsoft/kiota-serialization-text": "^1.0.0-preview.100",
     "@swc/helpers": "^0.5.21",
-    "axios": "^1.15.2",
+    "axios": "^1.18.0",
     "canvas-confetti": "^1.9.3",
     "framer-motion": "^12.4.7",
     "lucide-react": "^1.14.0",
