@@ -50,7 +50,7 @@ Traefik handles internal routing and SSL termination (if not using Cloudflare).
 | Memory (Baseline) | < 1GB | All containers (excluding Ollama) |
 
 ### 3.1 Optimization Strategies
-- **.NET 10 Native AOT**: Minimal RAM footprint and JIT overhead.
+- **.NET 11 Preview Native AOT**: Minimal RAM footprint and JIT overhead.
 - **pgvector Indexing**: `IVFFlat` index for fast semantic search.
 - **PWA Caching**: Offline-first via Service Worker; Zustand for lightweight state.
 

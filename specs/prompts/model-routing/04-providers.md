@@ -1,6 +1,6 @@
 # Phase 4: Provider Adapters & Normalization (Mocks focus)
 
-You are a senior .NET 10 developer. Your task is to implement the **Provider Adapters** for the Custom Model Router.
+You are a senior .NET 11 developer. Your task is to implement the **Provider Adapters** for the Custom Model Router.
 
 ## Objective
 Create a set of adapters that normalize communications with different AI providers (Azure, OpenAI, Gemini, Ollama, Anthropic). Since we are prioritizing **MOCK-driven development**, you will build the adapters and their supporting infrastructure using mocked backend clients.

@@ -43,7 +43,7 @@ public class RecipeImportService(RecipeDbContext db, IWorkflowOrchestrator orche
         if (db.Database.IsRelational())
         {
             query = db.WorkflowInstances
-                .FromSqlInterpolated($"SELECT * FROM workflow_instances WHERE workflow_id = 'recipe-import' AND parameters::text LIKE {"%" + idString + "%"}");
+                .FromSql($"SELECT * FROM workflow_instances WHERE workflow_id = 'recipe-import' AND parameters::text LIKE {"%" + idString + "%"}");
         }
         else
         {
