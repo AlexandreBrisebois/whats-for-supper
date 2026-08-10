@@ -8,7 +8,7 @@ Load skills on demand only — never globally. A skill is loaded when the active
 | `create-prompt` | [create-prompt/SKILL.md](create-prompt/SKILL.md) | Decomposing a feature into bounded build prompts for Kiro / Antigravity / Claude | Executing an already-written prompt |
 | `database` | [database/SKILL.md](database/SKILL.md) | Adding or modifying PostgreSQL schema or EF Core migrations | No DB schema changes in scope |
 | `death-audit` | [death-audit/SKILL.md](death-audit/SKILL.md) | Eliminating zombie code, dead exports, or stale documentation | Normal feature work |
-| `dotnet-dev` | [dotnet-dev/SKILL.md](dotnet-dev/SKILL.md) | Writing or modifying C# / .NET 10 backend logic | Frontend-only or spec-only changes |
+| `dotnet-dev` | [dotnet-dev/SKILL.md](dotnet-dev/SKILL.md) | Writing or modifying C# / .NET 11 backend logic | Frontend-only or spec-only changes |
 | `nextjs-dev` | [nextjs-dev/SKILL.md](nextjs-dev/SKILL.md) | Writing or modifying Next.js 15 RSC / PWA components | Backend-only or spec-only changes |
 | `nextjs-qa` | [nextjs-qa/SKILL.md](nextjs-qa/SKILL.md) | Writing or fixing Playwright E2E tests | Unit/integration tests only |
 | `openapi-expert` | [openapi-expert/SKILL.md](openapi-expert/SKILL.md) | Editing `specs/openapi.yaml` or regenerating the Kiota client | No spec changes in scope |

@@ -1,6 +1,6 @@
 # Phase 7: Migration & Agent Refactoring
 
-You are a senior .NET 10 developer. Your task is to transition the existing agents in the Recipe API to use the new **Model Router**.
+You are a senior .NET 11 developer. Your task is to transition the existing agents in the Recipe API to use the new **Model Router**.
 
 ## Objective
 Update `RecipeExtractionAgent` and `RecipeHeroAgent` to consume the `IModelRouter` instead of the hardcoded `IChatClient`. Ensure the agents handle routing errors gracefully and benefit from the new provider-neutral abstractions.

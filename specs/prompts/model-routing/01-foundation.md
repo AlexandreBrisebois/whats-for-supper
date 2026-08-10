@@ -1,13 +1,13 @@
 # Phase 1: Foundation & Abstractions (Chat + Embeddings)
 
-You are a senior .NET 10 architect. Your task is to implement the foundational domain models and core interfaces for the new **Custom Model Router**. 
+You are a senior .NET 11 architect. Your task is to implement the foundational domain models and core interfaces for the new **Custom Model Router**.
 
 ## Objective
 Establish the strongly typed contracts that will drive the routing system. These must support both **Chat Completion** (`IChatClient`) and **Embeddings** (`IEmbeddingGenerator`).
 
 ## Design Constraints
 - **Namespace**: `RecipeApi.Infrastructure.ModelRouter.Abstractions` (and related sub-namespaces).
-- **Target**: .NET 10 / C# 14.
+- **Target**: .NET 11 / C# 14.
 - **Abstractions**: Use `Microsoft.Extensions.AI` (e.g., `IChatClient`, `IEmbeddingGenerator`).
 - **Patterns**: Use `record class` for immutable data objects, `required` members, and primary constructors.
 - **TDD**: Write unit tests FIRST.

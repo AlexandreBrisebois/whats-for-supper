@@ -1,6 +1,6 @@
 # Phase 3: Scoring Engine & Routing Strategies
 
-You are a senior .NET 10 developer. Your task is to build the **Scoring Engine** for the Custom Model Router.
+You are a senior .NET 11 developer. Your task is to build the **Scoring Engine** for the Custom Model Router.
 
 ## Objective
 Implement a deterministic, weighted scoring system that evaluates model candidates against a request's constraints and preferences (Cost, Latency, Quality, Locality).

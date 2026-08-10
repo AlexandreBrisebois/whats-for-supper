@@ -8,7 +8,7 @@ Comprehensive guide for local development, service orchestration, and discovery.
 graph TD
     User["User (Browser)"] -- "HTTP :80 (Traefik)" --> Traefik["Traefik (Reverse Proxy)"]
     Traefik -- "Host: pwa..." --> PWA["PWA (Next.js)"]
-    Traefik -- "Host: api..." --> API["API (.NET 10)"]
+    Traefik -- "Host: api..." --> API["API (.NET 11 Preview)"]
     PWA --> DB[("PostgreSQL (pgvector)")]
     API --> DB
 ```

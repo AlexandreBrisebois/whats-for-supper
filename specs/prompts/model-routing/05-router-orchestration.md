@@ -1,6 +1,6 @@
 # Phase 5: Router Orchestration & Resilience
 
-You are a senior .NET 10 developer. Your task is to implement the final **Model Router** orchestrator and add resilience features.
+You are a senior .NET 11 developer. Your task is to implement the final **Model Router** orchestrator and add resilience features.
 
 ## Objective
 Implement the `IModelRouter` (which implements `IChatClient` and `IEmbeddingGenerator`). This class is the primary entry point for the application. It coordinates route selection, execution via adapters, and resilience (failover and circuit breaking).

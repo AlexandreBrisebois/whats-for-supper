@@ -25,7 +25,7 @@ Each task is independently shippable and has a clear seam. Tasks within a group 
   - _Requirements: A2.1, A2.2, A2.3_
   - **Done when:** CTA is a tappable footer button in empty state; image area is clean with no buried link; GOTO state is unchanged
 
-- [ ] A3. Rename "Confirm GOTO" → "Make This Tonight" and fix button hierarchy
+- [x] A3. Rename "Confirm GOTO" → "Make This Tonight" and fix button hierarchy
   - Rename the primary action button label from `"Confirm GOTO"` to `"Make This Tonight"` (UI label only; prop name `onConfirmGoto` stays)
   - When `gotoStatus === "ready"`, render `"Make This Tonight"` as the dominant ochre button
   - When `gotoStatus === "ready"`, render `"Quick Find"` and `"Order In"` as ghost/outline buttons (`border border-indigo/30 bg-transparent` and `border border-charcoal/20 bg-transparent` respectively), visually subordinate

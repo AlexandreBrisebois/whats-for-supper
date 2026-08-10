@@ -4,6 +4,36 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-08-05] Archive Reconciliation — Duplicate Recipe Capture Prevention (completed 2026-05-24)
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+- Added contract and backend filtering by recipe `id`, `name`, and `url`, with GUID preservation for portable recipe imports.
+- Added duplicate detection and recovery across file, URL, describe, photo, and gallery capture paths.
+- Added warning banners, existing-recipe navigation, synthesized-duplicate discard handling, and state reset behavior.
+
+#### Verification
+- PWA unit and E2E coverage was added for the duplicate flows.
+- Contract drift and review gates were completed before the task plan was archived.
+
+---
+
+### [2026-08-05] Archive Reconciliation — High-Fidelity Recipe Sharing (completed 2026-05-24)
+**Status**: COMPLETED ✅
+**Branch**: `main`
+
+#### What was built
+- Preserved structured instructions during export and preview while supporting legacy flat instruction lists.
+- Scrubbed private notes and ratings from share bundles.
+- Hid sharing when a usable hero image is unavailable and aligned E2E mocks with the structured contract.
+- Added `pwa/e2e/sharing-fidelity.spec.ts` for export/import round-trip and privacy-scrubbing coverage.
+
+#### Verification
+- Backend integration, PWA unit, recipe-share E2E, and sharing-fidelity E2E coverage now represent the completed archived task plan.
+
+---
+
 ### [2026-05-26] Session — Planner Page Enhancements
 **Status**: COMPLETED ✅
 **Branch**: `main`
