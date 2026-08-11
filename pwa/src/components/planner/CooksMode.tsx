@@ -241,6 +241,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       </AnimatePresence>
       {/* Large Hero Header */}
       <div
+        data-testid="cooks-mode-hero"
         className="relative h-48 md:h-full w-full md:w-[40%] shrink-0 overflow-hidden cursor-pointer group border-b md:border-b-0 md:border-r border-charcoal/5"
         onClick={() => setShowDetailId(initialRecipe.id)}
       >
@@ -258,38 +259,72 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/50 to-transparent" />
 
-        <div className="absolute bottom-6 left-8 right-20 md:right-8">
+        <div className="absolute bottom-6 left-8 right-8">
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/80 mb-2">
             {t('cook.cooksMode', "Cook's mode")}
           </p>
           <h2
             data-testid="cooks-mode-recipe-name"
-            className="text-xl md:text-3xl font-heading font-black text-white leading-tight mb-4 drop-shadow-md"
+            className="pr-12 text-xl md:text-3xl font-heading font-black text-white leading-tight mb-4 drop-shadow-md"
           >
             {initialRecipe.name || t('cook.untitledRecipe', 'Untitled Recipe')}
           </h2>
 
-          <div className="flex flex-wrap gap-2">
-            {/* Status Pills: Glassmorphic Overlay */}
-            <div className="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-full text-white shadow-xl">
-              <span
-                data-testid="cooks-mode-step-indicator"
-                className="text-[10px] font-black uppercase tracking-widest"
-              >
-                {isPrepStep
-                  ? t('cook.checkAndPrep', 'Check & Prep')
-                  : `${currentStep} / ${steps.length}`}
-              </span>
-            </div>
-            {!isPrepStep && initialRecipe.isHealthyChoice && (
-              <div className="inline-flex items-center bg-sage/20 backdrop-blur-md border border-sage/30 px-3 py-2 rounded-full text-sage shadow-xl">
-                <Sparkles size={12} className="mr-1.5" />
-                <span className="text-[10px] font-black uppercase tracking-widest">HEALTHY</span>
+          <div className="flex items-end justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {/* Status Pills: Glassmorphic Overlay */}
+              <div className="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-full text-white shadow-xl">
+                <span
+                  data-testid="cooks-mode-step-indicator"
+                  className="text-[10px] font-black uppercase tracking-widest"
+                >
+                  {isPrepStep
+                    ? t('cook.checkAndPrep', 'Check & Prep')
+                    : `${currentStep} / ${steps.length}`}
+                </span>
               </div>
-            )}
-            {!isPrepStep && initialRecipe.isVegetarian && (
-              <div className="inline-flex items-center bg-sage/20 backdrop-blur-md border border-sage/30 px-3 py-2 rounded-full text-sage shadow-xl">
-                <span className="text-[10px] font-black uppercase tracking-widest">VEGGIE</span>
+              {!isPrepStep && initialRecipe.isHealthyChoice && (
+                <div className="inline-flex items-center bg-sage/20 backdrop-blur-md border border-sage/30 px-3 py-2 rounded-full text-sage shadow-xl">
+                  <Sparkles size={12} className="mr-1.5" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">HEALTHY</span>
+                </div>
+              )}
+              {!isPrepStep && initialRecipe.isVegetarian && (
+                <div className="inline-flex items-center bg-sage/20 backdrop-blur-md border border-sage/30 px-3 py-2 rounded-full text-sage shadow-xl">
+                  <span className="text-[10px] font-black uppercase tracking-widest">VEGGIE</span>
+                </div>
+              )}
+            </div>
+
+            {!isPrepStep && !isEditing && (
+              <div className="flex shrink-0 items-center gap-2">
+                {recipeDetails?.canReimport && (
+                  <button
+                    type="button"
+                    data-testid="cooks-mode-report-steps"
+                    aria-label="Report issue with steps"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setReportContext('steps');
+                    }}
+                    className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-terracotta/70 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+                  >
+                    <Flag size={20} aria-hidden="true" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  data-testid="cooks-mode-edit-step"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsEditing(true);
+                    setEditingValue(currentStepData.instruction);
+                  }}
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+                  aria-label="Edit step"
+                >
+                  <Pencil size={20} aria-hidden="true" />
+                </button>
               </div>
             )}
           </div>
@@ -338,37 +373,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 className="w-full max-w-4xl"
               >
                 {!isPrepStep && (
-                  <div className="mb-8 flex flex-col items-start justify-between gap-4 border-b border-charcoal/5 pb-6 sm:flex-row sm:items-center">
+                  <div className="mb-8 border-b border-charcoal/5 pb-6">
                     <h3 className="text-2xl md:text-4xl lg:text-5xl font-heading font-black text-charcoal leading-tight">
                       {currentStepData.title}
                     </h3>
-                    {!isEditing && (
-                      <div className="flex shrink-0 items-center gap-2">
-                        {recipeDetails?.canReimport && (
-                          <button
-                            type="button"
-                            data-testid="cooks-mode-report-steps"
-                            aria-label="Report issue with steps"
-                            onClick={() => setReportContext('steps')}
-                            className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-charcoal/5 text-ochre-700 transition hover:bg-charcoal/10 active:scale-90"
-                          >
-                            <Flag size={20} aria-hidden="true" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          data-testid="cooks-mode-edit-step"
-                          onClick={() => {
-                            setIsEditing(true);
-                            setEditingValue(currentStepData.instruction);
-                          }}
-                          className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/50 transition hover:bg-charcoal/10 active:scale-90"
-                          aria-label="Edit step"
-                        >
-                          <Pencil size={20} aria-hidden="true" />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -392,7 +400,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                           data-testid="cooks-mode-report-ingredients"
                           aria-label="Report issue with ingredients"
                           onClick={() => setReportContext('ingredients')}
-                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-ochre-700 transition hover:bg-charcoal/10 active:scale-90"
+                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-terracotta/70 transition hover:bg-charcoal/10 active:scale-90"
                         >
                           <Flag size={20} aria-hidden="true" />
                         </button>

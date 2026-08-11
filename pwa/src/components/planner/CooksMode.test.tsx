@@ -96,7 +96,7 @@ describe('CooksMode', () => {
     fireEvent.click(firstIngredient);
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with ingredients' });
-    expect(reportAction).toHaveClass('h-12', 'w-12');
+    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta/70');
     expect(reportAction).toHaveTextContent('');
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     fireEvent.click(reportAction);
@@ -156,13 +156,16 @@ describe('CooksMode', () => {
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with steps' });
     const editAction = screen.getByRole('button', { name: 'Edit step' });
-    expect(reportAction).toHaveClass('h-12', 'w-12');
+    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta/70');
     expect(editAction).toHaveClass('h-12', 'w-12');
     expect(reportAction).toHaveTextContent('');
     expect(editAction).toHaveTextContent('');
+    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
+    expect(editAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     fireEvent.click(reportAction);
 
+    expect(screen.queryByTestId('recipe-detail-sheet')).toBeNull();
     expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
       'aria-pressed',
       'true'

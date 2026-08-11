@@ -22,7 +22,9 @@ describe('ActionGearMenu', () => {
 
     expect(screen.getByTestId('action-move-to-bin')).toBeDefined();
     expect(screen.getByTestId('action-reimport-recipe')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Report issue' })).toBeVisible();
+    const reportAction = screen.getByRole('button', { name: 'Report issue' });
+    expect(reportAction).toBeVisible();
+    expect(reportAction.querySelector('svg')).toHaveClass('text-terracotta/70');
   });
 
   it('hides reimport if canReimport is false', () => {
