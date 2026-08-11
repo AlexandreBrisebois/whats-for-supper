@@ -105,6 +105,39 @@ test.describe('Recipe Action Pivot', () => {
     await expect(page).toHaveURL(/\/home/);
   });
 
+  test('Discovery flow: "Cook Tonight" reveals recovery when today is occupied', async ({
+    page,
+  }) => {
+    await page.clock.setFixedTime(new Date('2026-05-13T12:00:00Z'));
+    const todayIndex = 2;
+
+    await page.route('**/api/schedule?weekOffset=0', async (route) => {
+      const days = Array.from({ length: 7 }, (_, dayIndex) => ({
+        day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][dayIndex],
+        date: `2026-05-${String(4 + dayIndex).padStart(2, '0')}`,
+        recipe:
+          dayIndex === todayIndex ? builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN }) : null,
+        status: 0,
+      }));
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await page.getByTestId('recipe-search-input').fill('lasagna');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('action-cook-this').click();
+    await page.getByTestId('action-cook-tonight').click();
+
+    await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
+  });
+
   test('Planner flow: shows "Plan for {day}" directly', async ({ page }) => {
     // Go to recipes with planner context (Tuesday index 1)
     await page.goto('/recipes?addToDay=1&weekOffset=0');

@@ -103,7 +103,7 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
 
 ## Group E — VotingNudgeCard on Home
 
-- [ ] E1. Add `VotingNudgeCard` component to `HomeSections.tsx`
+- [x] E1. Add `VotingNudgeCard` component to `HomeSections.tsx`
   - File: `pwa/src/components/home/HomeSections.tsx`
   - Import `X` from `lucide-react` (add to existing import); import `Vote` from `lucide-react` (use `Sparkles` as fallback if `Vote` is unavailable)
   - Add `VotingNudgeCard` component with props: `plannedCount: number`, `onVote: () => void`, `onDismiss: () => void`
@@ -114,7 +114,7 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
   - CTA button: full-width, `bg-ochre text-white`, label "Vote Now →", `data-testid="voting-nudge-vote-now"`
   - Root element: `data-testid="voting-nudge-card"`
 
-- [ ] E2. Add voting nudge state and fetch to `HomeCommandCenter.tsx`
+- [x] E2. Add voting nudge state and fetch to `HomeCommandCenter.tsx`
   - File: `pwa/src/components/home/HomeCommandCenter.tsx`
   - Import `VotingNudgeCard` from `./HomeSections`
   - Add state: `const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null)`
@@ -125,7 +125,7 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
     - Catch block: swallow error silently (no error surfaced per AC8)
     - Use `isMounted` guard to prevent state update after unmount
 
-- [ ] E3. Render `VotingNudgeCard` in `HomeCommandCenter` between tonight card and `QuickCaptureTrigger`
+- [x] E3. Render `VotingNudgeCard` in `HomeCommandCenter` between tonight card and `QuickCaptureTrigger`
   - File: `pwa/src/components/home/HomeCommandCenter.tsx`
   - Inside the `!isLoading` block, after the tonight card section (TonightPivotCard / CookedSuccessCard / TonightMenuCard) and before `<QuickCaptureTrigger />`
   - Condition: `{votingNudge && !votingNudgeDismissed && ( <VotingNudgeCard ... /> )}`
@@ -133,13 +133,13 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
   - `onDismiss`: `() => setVotingNudgeDismissed(true)`
   - `plannedCount`: from `votingNudge.plannedCount`
 
-- [ ] E4. Run `task review` as final gate for Group E
+- [x] E4. Run `task review` as final gate for Group E
 
 ---
 
 ## Group F — weekStore Digital Twin
 
-- [ ] F1. Create `pwa/src/store/weekStore.ts`
+- [x] F1. Create `pwa/src/store/weekStore.ts`
   - New file following the `todayStore` digital-twin pattern
   - State shape: `{ weekOffset, schedule: UILocalScheduleDay[], status: 0|1|2, isLoading, lastSyncedAt, optimisticWriteAt }`
   - Import `UILocalScheduleDay` type from planner page (or extract to a shared types file)
@@ -155,7 +155,7 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
   - Implement `sync()`: fetch `getSchedule(weekOffset)`, apply 10-second optimistic write guard (same as `todayStore`), update `status` always, update `schedule` only if guard allows
   - Export `useWeekStore` (Zustand store)
 
-- [ ] F2. Refactor `pwa/src/app/(app)/planner/page.tsx` to consume `weekStore`
+- [x] F2. Refactor `pwa/src/app/(app)/planner/page.tsx` to consume `weekStore`
   - Import `useWeekStore` from `@/store/weekStore`
   - Replace `const [schedule, setSchedule] = useState<UILocalScheduleDay[]>([])` with `const schedule = useWeekStore(s => s.schedule)`
   - Replace `const [isLoading, setIsLoading] = useState(true)` with `const isLoading = useWeekStore(s => s.isLoading)`
@@ -177,7 +177,7 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
 
 ## Group G — "Ask the Family" CTA Availability
 
-- [ ] G1. Update "Ask the Family" CTA condition in `pwa/src/app/(app)/planner/page.tsx`
+- [x] G1. Update "Ask the Family" CTA condition in `pwa/src/app/(app)/planner/page.tsx`
   - Remove the `plannedCount > 0` guard from the CTA condition
   - Add a `weekIsPast` derived value using `useMemo`: compare `schedule[6].date` (Sunday) to `getTodayString()`; if Sunday < today, `weekIsPast = true`
   - New condition: `{status === 0 && !weekIsPast && ( <Button data-testid="ask-family-cta" ...> )}`
@@ -187,6 +187,6 @@ Tasks are ordered so Group C is implemented alongside Group B (same file, same m
 
 ## Group H — Post-Change Validation (Requirements 5–6)
 
-- [ ] H1. Run `task agent:drift` to validate no schema drift after weekStore changes
-- [ ] H2. Run `task agent:test:impact` to identify and run tests affected by the weekStore refactor
-- [ ] H3. Run `task review` as final gate
+- [x] H1. Run `task agent:drift` to validate no schema drift after weekStore changes
+- [x] H2. Run `task agent:test:impact` to identify and run tests affected by the weekStore refactor
+- [x] H3. Run `task review` as final gate

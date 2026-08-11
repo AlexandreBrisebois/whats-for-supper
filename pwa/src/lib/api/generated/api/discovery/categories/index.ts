@@ -63,7 +63,7 @@ export function deserializeIntoCategoriesGetResponse(
 ): Record<string, (node: ParseNode) => void> {
   return {
     data: (n) => {
-      categoriesGetResponse.data = n.getCollectionOfPrimitiveValues<string>();
+      categoriesGetResponse.data = n.getCollectionOfPrimitiveValues<string>('string');
     },
   };
 }

@@ -1100,7 +1100,7 @@ export function deserializeIntoBulkImportTriggerResponseDto(
 ): Record<string, (node: ParseNode) => void> {
   return {
     instanceIds: (n) => {
-      bulkImportTriggerResponseDto.instanceIds = n.getCollectionOfPrimitiveValues<Guid>();
+      bulkImportTriggerResponseDto.instanceIds = n.getCollectionOfPrimitiveValues<Guid>('string');
     },
     queuedCount: (n) => {
       bulkImportTriggerResponseDto.queuedCount = n.getNumberValue();
@@ -1381,7 +1381,7 @@ export function deserializeIntoGroceryLineItemDto(
       groceryLineItemDto.quantity = n.getNumberValue();
     },
     recipeIds: (n) => {
-      groceryLineItemDto.recipeIds = n.getCollectionOfPrimitiveValues<Guid>();
+      groceryLineItemDto.recipeIds = n.getCollectionOfPrimitiveValues<Guid>('string');
     },
     section: (n) => {
       groceryLineItemDto.section = n.getStringValue();
@@ -1505,7 +1505,7 @@ export function deserializeIntoImportedRecipeDto(
       importedRecipeDto.description = n.getStringValue();
     },
     ingredients: (n) => {
-      importedRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
+      importedRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>('string');
     },
     instructions: (n) => {
       importedRecipeDto.instructions = n.getCollectionOfObjectValues<HowToSectionDto>(
@@ -1557,7 +1557,8 @@ export function deserializeIntoInventoryCaptureResponse(
       inventoryCaptureResponse.confidence = n.getNumberValue();
     },
     inferredIngredients: (n) => {
-      inventoryCaptureResponse.inferredIngredients = n.getCollectionOfPrimitiveValues<string>();
+      inventoryCaptureResponse.inferredIngredients =
+        n.getCollectionOfPrimitiveValues<string>('string');
     },
     snapshotId: (n) => {
       inventoryCaptureResponse.snapshotId = n.getGuidValue();
@@ -1619,7 +1620,8 @@ export function deserializeIntoManagementTaskStatusResponse(
       managementTaskStatusResponse.demoRestoreSeederHealthy = n.getBooleanValue();
     },
     demoSnapshotMissing: (n) => {
-      managementTaskStatusResponse.demoSnapshotMissing = n.getCollectionOfPrimitiveValues<string>();
+      managementTaskStatusResponse.demoSnapshotMissing =
+        n.getCollectionOfPrimitiveValues<string>('string');
     },
     demoSnapshotReady: (n) => {
       managementTaskStatusResponse.demoSnapshotReady = n.getBooleanValue();
@@ -1723,7 +1725,7 @@ export function deserializeIntoPhotoSearchResponse(
       photoSearchResponse.confidence = n.getNumberValue();
     },
     inferredIngredients: (n) => {
-      photoSearchResponse.inferredIngredients = n.getCollectionOfPrimitiveValues<string>();
+      photoSearchResponse.inferredIngredients = n.getCollectionOfPrimitiveValues<string>('string');
     },
     intent: (n) => {
       photoSearchResponse.intent = n.getEnumValue<PhotoSearchResponse_intent>(
@@ -1821,7 +1823,7 @@ export function deserializeIntoRecipeDietaryProfileDto(
         );
     },
     mealTypes: (n) => {
-      recipeDietaryProfileDto.mealTypes = n.getCollectionOfPrimitiveValues<string>();
+      recipeDietaryProfileDto.mealTypes = n.getCollectionOfPrimitiveValues<string>('string');
     },
     primaryFoodGroup: (n) => {
       recipeDietaryProfileDto.primaryFoodGroup = n.getStringValue();
@@ -1833,7 +1835,8 @@ export function deserializeIntoRecipeDietaryProfileDto(
       recipeDietaryProfileDto.proteinSource = n.getStringValue();
     },
     secondaryFoodGroups: (n) => {
-      recipeDietaryProfileDto.secondaryFoodGroups = n.getCollectionOfPrimitiveValues<string>();
+      recipeDietaryProfileDto.secondaryFoodGroups =
+        n.getCollectionOfPrimitiveValues<string>('string');
     },
     source: (n) => {
       recipeDietaryProfileDto.source = n.getStringValue();
@@ -1915,7 +1918,7 @@ export function deserializeIntoRecipeDto(
         );
     },
     finishedDishIndex: (n) => {
-      recipeDto.finishedDishIndex = n.getNumberValue();
+      recipeDto.finishedDishIndex = n.getNumberValue() ?? -1;
     },
     id: (n) => {
       recipeDto.id = n.getGuidValue();
@@ -1924,13 +1927,13 @@ export function deserializeIntoRecipeDto(
       recipeDto.imageCount = n.getNumberValue();
     },
     images: (n) => {
-      recipeDto.images = n.getCollectionOfPrimitiveValues<number>();
+      recipeDto.images = n.getCollectionOfPrimitiveValues<number>('number');
     },
     imageUrl: (n) => {
       recipeDto.imageUrl = n.getStringValue();
     },
     ingredients: (n) => {
-      recipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
+      recipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>('string');
     },
     isDiscoverable: (n) => {
       recipeDto.isDiscoverable = n.getBooleanValue();
@@ -2212,7 +2215,7 @@ export function deserializeIntoRecipeSearchRequestDto(
       );
     },
     limit: (n) => {
-      recipeSearchRequestDto.limit = n.getNumberValue();
+      recipeSearchRequestDto.limit = n.getNumberValue() ?? 5;
     },
     mode: (n) => {
       recipeSearchRequestDto.mode =
@@ -2733,7 +2736,7 @@ export function deserializeIntoScheduleRecipeDto(
       scheduleRecipeDto.image = n.getStringValue();
     },
     ingredients: (n) => {
-      scheduleRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
+      scheduleRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>('string');
     },
     name: (n) => {
       scheduleRecipeDto.name = n.getStringValue();
@@ -2888,7 +2891,7 @@ export function deserializeIntoUpdateRecipeDto(
       updateRecipeDto.description = n.getStringValue();
     },
     ingredients: (n) => {
-      updateRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>();
+      updateRecipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>('string');
     },
     isDiscoverable: (n) => {
       updateRecipeDto.isDiscoverable = n.getBooleanValue();
@@ -2975,7 +2978,7 @@ export function deserializeIntoWeeklyBalanceSummaryDto(
       weeklyBalanceSummaryDto.proteinDays = n.getNumberValue();
     },
     recommendations: (n) => {
-      weeklyBalanceSummaryDto.recommendations = n.getCollectionOfPrimitiveValues<string>();
+      weeklyBalanceSummaryDto.recommendations = n.getCollectionOfPrimitiveValues<string>('string');
     },
     redMeatDays: (n) => {
       weeklyBalanceSummaryDto.redMeatDays = n.getNumberValue();
@@ -3083,7 +3086,7 @@ export function deserializeIntoWorkflowTaskDto(
       workflowTaskDto.createdAt = n.getDateValue();
     },
     dependsOn: (n) => {
-      workflowTaskDto.dependsOn = n.getCollectionOfPrimitiveValues<string>();
+      workflowTaskDto.dependsOn = n.getCollectionOfPrimitiveValues<string>('string');
     },
     errorMessage: (n) => {
       workflowTaskDto.errorMessage = n.getStringValue();
@@ -4936,7 +4939,7 @@ export function serializeRecipeDto(
     recipeDto.dietaryProfile,
     serializeRecipeDto_dietaryProfile
   );
-  writer.writeNumberValue('finishedDishIndex', recipeDto.finishedDishIndex);
+  writer.writeNumberValue('finishedDishIndex', recipeDto.finishedDishIndex ?? -1);
   writer.writeGuidValue('id', recipeDto.id);
   writer.writeNumberValue('imageCount', recipeDto.imageCount);
   writer.writeCollectionOfPrimitiveValues<number>('images', recipeDto.images);
@@ -5206,7 +5209,7 @@ export function serializeRecipeSearchRequestDto(
     recipeSearchRequestDto.filters,
     serializeRecipeSearchFiltersDto
   );
-  writer.writeNumberValue('limit', recipeSearchRequestDto.limit);
+  writer.writeNumberValue('limit', recipeSearchRequestDto.limit ?? 5);
   writer.writeEnumValue<RecipeSearchRequestDto_mode>(
     'mode',
     recipeSearchRequestDto.mode ?? RecipeSearchRequestDto_modeObject.Standard

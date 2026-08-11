@@ -9,16 +9,19 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 
 // ── Store mock ────────────────────────────────────────────────────────────────
 
 let mockGroceryState: Record<string, boolean> = {};
+const mockSetGroceryItemToggle = vi.fn((ingredientName: string, isToggled: boolean) => {
+  mockGroceryState = { ...mockGroceryState, [ingredientName]: isToggled };
+});
 
 vi.mock('@/store/plannerStore', () => ({
   usePlannerStore: () => ({
     groceryState: mockGroceryState,
-    setGroceryItemToggle: vi.fn(),
+    setGroceryItemToggle: mockSetGroceryItemToggle,
     setGroceryState: vi.fn(),
   }),
 }));
@@ -27,6 +30,7 @@ vi.mock('@/store/plannerStore', () => ({
 
 vi.mock('@/lib/api/schedule', () => ({
   useSchedule: () => ({
+    toggleGroceryItem: vi.fn().mockResolvedValue({}),
     updateGroceryState: vi.fn().mockResolvedValue({}),
   }),
 }));
@@ -100,6 +104,58 @@ function renderList() {
 
 beforeEach(() => {
   mockGroceryState = {};
+  mockSetGroceryItemToggle.mockClear();
+});
+
+describe('GroceryList — checked item ordering', () => {
+  const orderedNames = () =>
+    screen.getAllByTestId('grocery-item-label').map((label) => label.textContent);
+
+  it('renders unchecked items before checked items while preserving order within each group', () => {
+    mockGroceryState = { tomato: true, lettuce: false, carrot: true, cucumber: false };
+
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[
+          makeItem('tomato', 'Produce'),
+          makeItem('lettuce', 'Produce'),
+          makeItem('carrot', 'Produce'),
+          makeItem('cucumber', 'Produce'),
+        ]}
+      />
+    );
+
+    expect(orderedNames()).toEqual(['lettuce', 'cucumber', 'tomato', 'carrot']);
+  });
+
+  it('moves an item down when checked and back up when unchecked', async () => {
+    mockGroceryState = { tomato: false, lettuce: false, carrot: true };
+    const items = [
+      makeItem('tomato', 'Produce'),
+      makeItem('lettuce', 'Produce'),
+      makeItem('carrot', 'Produce'),
+    ];
+    const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
+
+    fireEvent.click(
+      screen
+        .getAllByTestId('grocery-item-checkbox')
+        .find((checkbox) => checkbox.getAttribute('data-item-name') === 'tomato')!
+    );
+    rerender(<GroceryList weekOffset={0} items={items} />);
+
+    expect(orderedNames()).toEqual(['lettuce', 'tomato', 'carrot']);
+
+    fireEvent.click(
+      screen
+        .getAllByTestId('grocery-item-checkbox')
+        .find((checkbox) => checkbox.getAttribute('data-item-name') === 'tomato')!
+    );
+    rerender(<GroceryList weekOffset={0} items={items} />);
+
+    expect(orderedNames()).toEqual(['tomato', 'lettuce', 'carrot']);
+  });
 });
 
 describe('GroceryList — section completion UI', () => {
@@ -164,6 +220,39 @@ describe('GroceryList — section completion UI', () => {
 
     expect(screen.queryByTestId('section-complete-icon')).toBeNull();
     expect(screen.queryByTestId('aisle-header-complete')).toBeNull();
+  });
+});
+
+describe('GroceryList — collapsible sections', () => {
+  it('starts expanded and toggles one section without affecting another', () => {
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[makeItem('tomato', 'Produce'), makeItem('rice', 'Pantry')]}
+      />
+    );
+
+    const produceSection = screen.getByTestId('aisle-section-Produce');
+    const pantrySection = screen.getByTestId('aisle-section-Pantry');
+    const produceHeader = within(produceSection).getByRole('button', { name: /Produce/ });
+    const pantryHeader = within(pantrySection).getByRole('button', { name: /Pantry/ });
+
+    expect(produceHeader).toHaveAttribute('aria-expanded', 'true');
+    expect(pantryHeader).toHaveAttribute('aria-expanded', 'true');
+    expect(within(produceSection).getByText('tomato')).toBeInTheDocument();
+    expect(within(pantrySection).getByText('rice')).toBeInTheDocument();
+
+    fireEvent.click(produceHeader);
+
+    expect(produceHeader).toHaveAttribute('aria-expanded', 'false');
+    expect(within(produceSection).getByText('tomato')).not.toBeVisible();
+    expect(pantryHeader).toHaveAttribute('aria-expanded', 'true');
+    expect(within(pantrySection).getByText('rice')).toBeInTheDocument();
+
+    fireEvent.click(produceHeader);
+
+    expect(produceHeader).toHaveAttribute('aria-expanded', 'true');
+    expect(within(produceSection).getByText('tomato')).toBeVisible();
   });
 });
 

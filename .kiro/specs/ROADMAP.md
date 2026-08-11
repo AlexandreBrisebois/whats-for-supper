@@ -1,15 +1,15 @@
 # What's for Supper — Implementation Roadmap
 
-Eight work sessions in dependency order. Each session has a ready-to-use kick-off prompt.
-Sessions 1–4 are independently shippable. Sessions 3 and 6 are the large architectural pieces.
+Historical delivery sessions retained as implementation context. Completed feature specs now live
+under `.kiro/specs/archive/`; current work is tracked in `HANDOVER.md` and the active spec folders.
 
 ---
 
 ## Session 1 — Home Command Center: Visual + State-Sync Fixes
 
-**Spec:** `.kiro/specs/home-command-center-hardening/tasks.md` — Groups A and B
+**Spec:** `.kiro/specs/archive/home-command-center-hardening/tasks.md` — Groups A and B
 **Effort:** Medium
-**Status:** [x] Not started
+**Status:** [x] Complete
 
 **What it fixes:**
 - Empty pivot card shows wrong header ("TONIGHT'S MENU") and a nonsensical prep-time badge
@@ -25,7 +25,7 @@ Sessions 1–4 are independently shippable. Sessions 3 and 6 are the large archi
 ```
 Execute the home-command-center-hardening spec, Groups A and B only.
 
-Spec: .kiro/specs/home-command-center-hardening/tasks.md
+Spec: .kiro/specs/archive/home-command-center-hardening/tasks.md
 Start with task A1 and work through A1 → A2 → A3 → A5, then B1 → B3 → B4 → B5 → B6 → B7 → B8.
 Skip optional tasks (marked with *) for now.
 
@@ -39,9 +39,9 @@ Key constraints:
 
 ## Session 2 — Home Command Center: Cooked State + Cook Mode Scope
 
-**Spec:** `.kiro/specs/home-command-center-hardening/tasks.md` — Group E
+**Spec:** `.kiro/specs/archive/home-command-center-hardening/tasks.md` — Group E
 **Effort:** Small
-**Status:** [X] Not started
+**Status:** [x] Complete
 **Depends on:** Session 1 complete
 
 **What it fixes:**
@@ -52,7 +52,7 @@ Key constraints:
 ```
 Execute the home-command-center-hardening spec, Group E only.
 
-Spec: .kiro/specs/home-command-center-hardening/tasks.md
+Spec: .kiro/specs/archive/home-command-center-hardening/tasks.md
 Tasks: E1 and E2.
 
 E1: Fix CookedSuccessCard dismiss — collapse to compact cooked badge, keep Cook's Mode accessible.
@@ -65,9 +65,9 @@ Run task review when done.
 
 ## Session 3 — Home Command Center: todayStore Digital Twin
 
-**Spec:** `.kiro/specs/home-command-center-hardening/tasks.md` — Group C
+**Spec:** `.kiro/specs/archive/home-command-center-hardening/tasks.md` — Group C
 **Effort:** Large
-**Status:** [x] Not started
+**Status:** [x] Complete
 **Depends on:** Session 1 complete (B3 todayStatus prop must be in place)
 
 **What it fixes:**
@@ -83,7 +83,7 @@ Run task review when done.
 ```
 Execute the home-command-center-hardening spec, Group C only.
 
-Spec: .kiro/specs/home-command-center-hardening/tasks.md
+Spec: .kiro/specs/archive/home-command-center-hardening/tasks.md
 Start with C1 (create todayStore.ts), then C3 (refactor HomeCommandCenter), then C5 (planner integration), then C7 (typecheck + E2E).
 Skip optional PBT tasks (C2, C4, C6) unless time permits.
 
@@ -100,9 +100,9 @@ Run task agent:drift, task agent:test:impact, and task review at C7.
 
 ## Session 4 — Planner: Layout Stability + Quick Find Rotation
 
-**Spec:** `.kiro/specs/planner-voting-ux/requirements.md` — Requirements 1, 2, 3
+**Spec:** `.kiro/specs/archive/planner-voting-ux/requirements.md` — Requirements 1, 2, 3
 **Effort:** Small–Medium
-**Status:** [x] Not started — design + tasks not yet written
+**Status:** [x] Complete
 
 **What it fixes:**
 - `PlannerDayCard` height jumps when vote badge appears/disappears or a long recipe name is added
@@ -117,10 +117,10 @@ Run task agent:drift, task agent:test:impact, and task review at C7.
 ```
 Work on the planner-voting-ux spec, Requirements 1, 2, and 3 only.
 
-Spec: .kiro/specs/planner-voting-ux/requirements.md
+Spec: .kiro/specs/archive/planner-voting-ux/requirements.md
 Flow reference: docs/flows/user-flows/planner-week-lifecycle.md
 
-The design and tasks docs don't exist yet — create them first, then execute.
+The design and task documents are complete and archived with the feature spec.
 
 Req 1 — PlannerDayCard fixed height:
   - Lock card to h-[72px], use visibility:hidden for vote badge slot, line-clamp-1 on recipe name
@@ -143,9 +143,9 @@ Run task agent:reconcile after OpenAPI changes, then task agent:drift, task revi
 
 ## Session 5 — Planner: Voting Nudge Card on Home
 
-**Spec:** `.kiro/specs/planner-voting-ux/requirements.md` — Requirement 4
+**Spec:** `.kiro/specs/archive/planner-voting-ux/requirements.md` — Requirement 4
 **Effort:** Medium
-**Status:** [x] Not started — design + tasks not yet written
+**Status:** [x] Complete
 **Depends on:** Session 1 complete (home page must be stable)
 
 **What it adds:**
@@ -159,10 +159,10 @@ Run task agent:reconcile after OpenAPI changes, then task agent:drift, task revi
 ```
 Work on the planner-voting-ux spec, Requirement 4 only.
 
-Spec: .kiro/specs/planner-voting-ux/requirements.md
+Spec: .kiro/specs/archive/planner-voting-ux/requirements.md
 Flow reference: docs/flows/user-flows/planner-week-lifecycle.md (VotingNudgeCard decision tree)
 
-The design and tasks docs don't exist yet — create them first, then execute.
+The design and task documents are complete and archived with the feature spec.
 
 New component: pwa/src/components/home/HomeSections.tsx — add VotingNudgeCard
 Integration: pwa/src/components/home/HomeCommandCenter.tsx — add useEffect to fetch weekOffset=1 schedule after mount, show VotingNudgeCard below tonight card and above QuickCaptureTrigger
@@ -182,9 +182,9 @@ Run task review when done.
 
 ## Session 6 — Planner: weekStore Digital Twin + Ask the Family Fix
 
-**Spec:** `.kiro/specs/planner-voting-ux/requirements.md` — Requirements 5 and 6
+**Spec:** `.kiro/specs/archive/planner-voting-ux/requirements.md` — Requirements 5 and 6
 **Effort:** Large
-**Status:** [x] Not started — design + tasks not yet written
+**Status:** [x] Complete
 **Depends on:** Session 3 complete (todayStore pattern established)
 
 **What it fixes:**
@@ -205,11 +205,11 @@ Run task review when done.
 ```
 Work on the planner-voting-ux spec, Requirements 5 and 6 only.
 
-Spec: .kiro/specs/planner-voting-ux/requirements.md
+Spec: .kiro/specs/archive/planner-voting-ux/requirements.md
 Flow reference: docs/flows/user-flows/planner-week-lifecycle.md (weekStore state transitions diagram)
 Architecture reference: docs/flows/client-domain-model.md (digital twin pattern)
 
-The design and tasks docs don't exist yet — create them first, then execute.
+The design and task documents are complete and archived with the feature spec.
 
 New file: pwa/src/store/weekStore.ts
 Refactor: pwa/src/app/(app)/planner/page.tsx — consume weekStore instead of local useState + plannerStore booleans
@@ -255,9 +255,9 @@ Run task agent:drift, task agent:test:impact, task review when done.
 
 ## Session 7 — Flow Doc Updates
 
-**Spec:** `.kiro/specs/home-command-center-hardening/tasks.md` — Group D
+**Spec:** `.kiro/specs/archive/home-command-center-hardening/tasks.md` — Group D
 **Effort:** Small
-**Status:** [x] Not started
+**Status:** [x] Complete
 **Depends on:** Sessions 1, 2, 3 complete
 
 **What it updates:**
@@ -268,7 +268,7 @@ Run task agent:drift, task agent:test:impact, task review when done.
 ```
 Execute the home-command-center-hardening spec, Group D only.
 
-Spec: .kiro/specs/home-command-center-hardening/tasks.md
+Spec: .kiro/specs/archive/home-command-center-hardening/tasks.md
 Tasks: D1, D2, D3.
 
 Both flow docs are marked STALE at the top with specific drift items listed.
@@ -286,15 +286,15 @@ Run task review when done.
 
 ## Session 8 — Capture Describe Entry: Remaining Optional Tests
 
-**Spec:** `.kiro/specs/capture-describe-entry/tasks.md`
+**Spec:** `.kiro/specs/archive/capture-describe-entry/tasks.md`
 **Effort:** Small
-**Status:** [ ] Tasks 1–4 and 5.1 complete. Optional E2E tests 5.2–5.4 remain.
+**Status:** [~] Deferred — required work is complete; optional E2E tests 5.2–5.4 remain.
 
 **Kick-off prompt:**
 ```
 Complete the capture-describe-entry spec, remaining optional E2E tests only.
 
-Spec: .kiro/specs/capture-describe-entry/tasks.md
+Spec: .kiro/specs/archive/capture-describe-entry/tasks.md
 Tasks: 5.2, 5.3, 5.4 (all marked optional with *)
 
 File: pwa/e2e/capture-flow.spec.ts
@@ -310,9 +310,9 @@ Run task review when done.
 
 ## Session 9 — Capture: Duplicate Recipe Prevention
 
-**Spec:** `.kiro/specs/capture-duplicate-detection/tasks.md`
+**Spec:** `.kiro/specs/archive/capture-duplicate-detection/tasks.md`
 **Effort:** Medium
-**Status:** [ ] Not started
+**Status:** [x] Complete
 
 **What it adds:**
 - Reuses `GET /api/recipes` with `id`, `name`, and `url` filters for sub-millisecond check speed with zero extra infrastructure.
@@ -324,7 +324,7 @@ Run task review when done.
 ```
 Execute the capture-duplicate-detection spec.
 
-Spec: .kiro/specs/capture-duplicate-detection/tasks.md
+Spec: .kiro/specs/archive/capture-duplicate-detection/tasks.md
 Start with Wave 1 (API seams & backend), Wave 2 (Client gen), Wave 3 (PWA UI), and Wave 4 (Tests).
 ```
 
@@ -334,17 +334,17 @@ Start with Wave 1 (API seams & backend), Wave 2 (Client gen), Wave 3 (PWA UI), a
 
 | # | Session | Spec | Groups/Reqs | Effort | Status |
 |---|---------|------|-------------|--------|--------|
-| 1 | Home visual + state-sync fixes | `home-command-center-hardening` | A, B | Medium | [ ] |
-| 2 | Cooked state + Cook Mode scope | `home-command-center-hardening` | E | Small | [ ] |
-| 3 | todayStore digital twin | `home-command-center-hardening` | C | Large | [ ] |
-| 4 | Planner layout + Quick Find | `planner-voting-ux` | Req 1–3 | Small–Med | [ ] |
-| 5 | Voting nudge card on home | `planner-voting-ux` | Req 4 | Medium | [ ] |
-| 6 | weekStore digital twin | `planner-voting-ux` | Req 5–6 | Large | [ ] |
-| 7 | Flow doc updates | `home-command-center-hardening` | D | Small | [ ] |
-| 8 | Capture optional E2E tests | `capture-describe-entry` | 5.2–5.4 | Small | [ ] |
-| 9 | Duplicate Recipe Prevention | `capture-duplicate-detection` | Req 1–5 | Medium | [ ] |
+| 1 | Home visual + state-sync fixes | `home-command-center-hardening` | A, B | Medium | [x] Complete |
+| 2 | Cooked state + Cook Mode scope | `home-command-center-hardening` | E | Small | [x] Complete |
+| 3 | todayStore digital twin | `home-command-center-hardening` | C | Large | [x] Complete |
+| 4 | Planner layout + Quick Find | `planner-voting-ux` | Req 1–3 | Small–Med | [x] Complete |
+| 5 | Voting nudge card on home | `planner-voting-ux` | Req 4 | Medium | [x] Complete |
+| 6 | weekStore digital twin | `planner-voting-ux` | Req 5–6 | Large | [x] Complete |
+| 7 | Flow doc updates | `home-command-center-hardening` | D | Small | [x] Complete |
+| 8 | Capture optional E2E tests | `capture-describe-entry` | 5.2–5.4 | Small | [~] Deferred |
+| 9 | Duplicate Recipe Prevention | `capture-duplicate-detection` | Req 1–5 | Medium | [x] Complete |
 
-Mark sessions complete by changing `[ ]` to `[x]` as you ship them.
+Active implementation status belongs in `HANDOVER.md`; this table records the historical outcome.
 
 ---
 

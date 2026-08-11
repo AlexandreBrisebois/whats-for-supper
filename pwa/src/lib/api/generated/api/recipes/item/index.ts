@@ -126,7 +126,8 @@ export function deserializeIntoRecipeDetailResponse409Error(
 ): Record<string, (node: ParseNode) => void> {
   return {
     assignedDays: (n) => {
-      recipeDetailResponse409Error.assignedDays = n.getCollectionOfPrimitiveValues<DateOnly>();
+      recipeDetailResponse409Error.assignedDays =
+        n.getCollectionOfPrimitiveValues<DateOnly>('DateOnly');
     },
     errorCode: (n) => {
       recipeDetailResponse409Error.errorCode =

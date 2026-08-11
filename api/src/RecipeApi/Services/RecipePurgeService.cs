@@ -99,11 +99,11 @@ public class RecipePurgeService(
         List<WorkflowInstance> pendingJobs;
 
         // PostgreSQL cannot use LIKE (~~) on jsonb columns without a cast.
-        // We use FromSqlInterpolated for Postgres and fall back to LINQ for InMemory/SQLite.
+        // We use parameterized FromSql for Postgres and fall back to LINQ for InMemory/SQLite.
         if (db.Database.IsRelational())
         {
             pendingJobs = await db.WorkflowInstances
-                .FromSqlInterpolated($"SELECT * FROM workflow_instances WHERE parameters::text LIKE {"%" + recipeIdStr + "%"} AND status = {(int)WorkflowStatus.Pending}")
+                .FromSql($"SELECT * FROM workflow_instances WHERE parameters::text LIKE {"%" + recipeIdStr + "%"} AND status = {(int)WorkflowStatus.Pending}")
                 .ToListAsync();
         }
         else

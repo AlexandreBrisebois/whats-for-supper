@@ -27,7 +27,7 @@ jobs:
         language: [ 'csharp', 'javascript', 'typescript' ]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
@@ -36,9 +36,9 @@ jobs:
 
     - name: Set up .NET (C# only)
       if: matrix.language == 'csharp'
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.x'
+        dotnet-version: '11.0.100-preview.6.26359.118'
 
     - name: Build C# (api only)
       if: matrix.language == 'csharp'
