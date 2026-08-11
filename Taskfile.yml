@@ -1238,7 +1238,7 @@ tasks:
     cmds:
       - |
         echo "=== PROJECT SUMMARY ==="
-        echo "Tech Stack: .NET 10, Next.js 15, Postgres (pgvector)"
+        echo "Tech Stack: .NET 11 Preview, Next.js 16, Postgres (pgvector)"
         echo ""
         echo "Project Map:"
         echo "  API:     api/src/RecipeApi/"

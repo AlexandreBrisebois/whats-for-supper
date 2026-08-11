@@ -1,11 +1,11 @@
 ---
 name: dotnet-dev
-description: Directive-driven guidance for contract-first, TDD backend development using .NET 10 and C# 13.
+description: Directive-driven guidance for contract-first, TDD backend development using .NET 11 Preview and C# 14.
 ---
 
-# Skill: Senior .NET 10 Backend Engineer
+# Skill: Senior .NET 11 Backend Engineer
 
-This skill provides sharp, directive-driven guidance for high-performance backend development using .NET 10 and C# 13.
+This skill provides sharp, directive-driven guidance for high-performance backend development using .NET 11 Preview and C# 14.
 
 ## 1. Required Reading
 Before executing, consult these references to maintain architectural integrity:
@@ -39,7 +39,7 @@ Follow these steps for every backend change:
     - Run `task agent:drift` to catch any C# vs Spec field mismatches.
     - Run `task agent:reconcile` to finalize.
 
-## 4. C# 14 & .NET 10 Standards
+## 4. C# 14 & .NET 11 Standards
 - **Primary Constructors**: Mandatory for dependency injection in classes and structs.
 - **File-Scoped Namespaces**: Mandatory for all files.
 - **Collection Expressions**: Use `[]` for all array/list/span initializations.
@@ -69,7 +69,7 @@ public static class CreateRecipeEndpoint
 ```
 
 ## 5. Data & Persistence
-- **EF Core 10**: Use `DbContext` with Interceptors for auditing (if required).
+- **EF Core 11**: Use `DbContext` with Interceptors for auditing (if required).
 - **PostgreSQL / pgvector**: Use `Npgsql.EntityFrameworkCore.PostgreSQL` for vector search.
 - **Migrations**: 
     - Generate: `task db:migrate:add -- Name` (Runs locally).

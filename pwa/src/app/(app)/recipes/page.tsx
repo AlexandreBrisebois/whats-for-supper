@@ -276,6 +276,7 @@ export default function RecipesPage() {
     const slot = await getPlannerSlot(weekOffsetValue, dayIndexValue);
 
     if (slot?.recipe) {
+      setOpenDetailRecipeId(null);
       setPendingRecovery({
         slot,
         recipe: assignmentRecipe,

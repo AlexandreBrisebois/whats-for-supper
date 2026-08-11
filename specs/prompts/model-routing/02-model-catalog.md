@@ -1,6 +1,6 @@
 # Phase 2: Model Catalog & Capability Profiling
 
-You are a senior .NET 10 engineer. Your task is to implement the **Model Catalog** system for the Custom Model Router.
+You are a senior .NET 11 engineer. Your task is to implement the **Model Catalog** system for the Custom Model Router.
 
 ## Objective
 Implement a robust registry that catalogs available models, their providers, and their specific capabilities. This catalog will be the source of truth for the routing engine.
