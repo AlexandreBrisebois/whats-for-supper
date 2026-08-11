@@ -89,7 +89,7 @@ export function ActionGearMenu({
                   className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
                 >
                   <Flag size={16} className="text-ochre-700" />
-                  {hasImportIssue ? 'Review import issue' : 'Report import issue'}
+                  {hasImportIssue ? 'Update report' : 'Report issue'}
                 </button>
               )}
               {canReimport && (

@@ -96,13 +96,17 @@ describe('CooksMode', () => {
     fireEvent.click(firstIngredient);
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with ingredients' });
-    expect(reportAction).toHaveClass('min-h-11');
+    expect(reportAction).toHaveClass('h-12', 'w-12');
+    expect(reportAction).toHaveTextContent('');
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     fireEvent.click(reportAction);
 
-    expect(screen.getByRole('checkbox', { name: 'Ingredients' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Steps' })).not.toBeChecked();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Steps' }));
+    expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Steps' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
@@ -151,11 +155,19 @@ describe('CooksMode', () => {
     expect(await screen.findByRole('heading', { name: 'Boil Water' })).toBeInTheDocument();
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with steps' });
+    const editAction = screen.getByRole('button', { name: 'Edit step' });
+    expect(reportAction).toHaveClass('h-12', 'w-12');
+    expect(editAction).toHaveClass('h-12', 'w-12');
+    expect(reportAction).toHaveTextContent('');
+    expect(editAction).toHaveTextContent('');
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     fireEvent.click(reportAction);
 
-    expect(screen.getByRole('checkbox', { name: 'Ingredients' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Steps' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Optional note')).toHaveValue('The amounts are unclear');
 
     fireEvent.click(screen.getByRole('button', { name: 'Close review import issue' }));

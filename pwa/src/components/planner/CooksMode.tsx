@@ -350,10 +350,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                             data-testid="cooks-mode-report-steps"
                             aria-label="Report issue with steps"
                             onClick={() => setReportContext('steps')}
-                            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-ochre-200 bg-ochre-50 px-4 text-sm font-bold text-ochre-700 transition hover:bg-ochre-100 active:scale-95"
+                            className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-charcoal/5 text-ochre-700 transition hover:bg-charcoal/10 active:scale-90"
                           >
-                            <Flag size={16} aria-hidden="true" />
-                            <span>Report issue</span>
+                            <Flag size={20} aria-hidden="true" />
                           </button>
                         )}
                         <button
@@ -363,10 +362,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                             setIsEditing(true);
                             setEditingValue(currentStepData.instruction);
                           }}
-                          className="p-4 rounded-full bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10 active:scale-90 transition-all"
-                          aria-label={t('common.edit', 'Edit')}
+                          className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/50 transition hover:bg-charcoal/10 active:scale-90"
+                          aria-label="Edit step"
                         >
-                          <Pencil size={24} />
+                          <Pencil size={20} aria-hidden="true" />
                         </button>
                       </div>
                     )}
@@ -393,10 +392,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                           data-testid="cooks-mode-report-ingredients"
                           aria-label="Report issue with ingredients"
                           onClick={() => setReportContext('ingredients')}
-                          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-ochre-200 bg-ochre-50 px-4 text-sm font-bold text-ochre-700 transition hover:bg-ochre-100 active:scale-95"
+                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-ochre-700 transition hover:bg-charcoal/10 active:scale-90"
                         >
-                          <Flag size={16} aria-hidden="true" />
-                          <span>Report issue</span>
+                          <Flag size={20} aria-hidden="true" />
                         </button>
                       )}
                     </div>

@@ -28,13 +28,18 @@ describe('RecipeImportIssueSheet', () => {
 
     expect(screen.getByRole('dialog', { name: 'Report import issue' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Close report import issue' })).toHaveFocus();
-    expect(screen.getByRole('checkbox', { name: 'Ingredients' })).not.toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Steps' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     expect(screen.queryByLabelText('Optional note')).toBeNull();
 
     fireEvent.click(screen.getByText('Add a note'));
-    expect(screen.getByLabelText('Optional note')).toHaveAttribute('maxLength', '500');
+    const note = screen.getByLabelText('Optional note');
+    expect(note).toHaveAttribute('maxLength', '500');
+    expect(note).toHaveClass('px-4', 'py-3', 'resize-none');
   });
 
   it('supports one or both reasons and submits a trimmed optional note', async () => {
@@ -48,8 +53,8 @@ describe('RecipeImportIssueSheet', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Ingredients' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Steps' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ingredients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Steps' }));
     fireEvent.click(screen.getByText('Add a note'));
     fireEvent.change(screen.getByLabelText('Optional note'), {
       target: { value: '  Missing detail  ' },
@@ -76,8 +81,11 @@ describe('RecipeImportIssueSheet', () => {
     );
 
     expect(screen.getByRole('dialog', { name: 'Review import issue' })).toBeVisible();
-    expect(screen.getByRole('checkbox', { name: 'Ingredients' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Steps' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByLabelText('Optional note')).toHaveValue('Amounts are missing');
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
 

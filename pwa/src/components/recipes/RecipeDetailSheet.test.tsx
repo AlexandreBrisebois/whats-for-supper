@@ -129,8 +129,8 @@ describe('RecipeDetailSheet', () => {
 
     await screen.findByTestId('recipe-detail-sheet');
     fireEvent.click(screen.getByTestId('action-gear-menu'));
-    fireEvent.click(screen.getByRole('button', { name: 'Report import issue' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Ingredients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Report issue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ingredients' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
@@ -141,7 +141,7 @@ describe('RecipeDetailSheet', () => {
     );
     expect(await screen.findByLabelText('Import issue status: Reported')).toBeVisible();
     fireEvent.click(screen.getByTestId('action-gear-menu'));
-    expect(screen.getByRole('button', { name: 'Review import issue' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Update report' })).toBeVisible();
   });
 
   it('applies the idempotent resolve response, closes the report sheet, and toasts success', async () => {
@@ -163,7 +163,7 @@ describe('RecipeDetailSheet', () => {
 
     await screen.findByLabelText('Import issue status: Ready to review');
     fireEvent.click(screen.getByTestId('action-gear-menu'));
-    fireEvent.click(screen.getByRole('button', { name: 'Review import issue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Update report' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
 
     await waitFor(() =>

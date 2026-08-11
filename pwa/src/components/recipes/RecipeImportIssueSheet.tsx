@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 import type {
   RecipeImportIssue,
   RecipeImportIssueDraft,
@@ -135,23 +135,28 @@ export function RecipeImportIssueSheet({
           </button>
         </div>
 
-        <fieldset className="mt-6 space-y-3">
+        <fieldset className="mt-6 grid grid-cols-2 gap-3">
           <legend className="sr-only">Issue reasons</legend>
-          {(['ingredients', 'steps'] as const).map((reason) => (
-            <label
-              key={reason}
-              className="flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border border-charcoal/10 bg-white px-4 py-3 font-bold text-charcoal"
-            >
-              <input
-                type="checkbox"
+          {(['ingredients', 'steps'] as const).map((reason) => {
+            const selected = reasons.includes(reason);
+            return (
+              <button
+                key={reason}
+                type="button"
                 data-testid={`import-issue-reason-${reason}`}
-                checked={reasons.includes(reason)}
-                onChange={() => toggleReason(reason)}
-                className="rounded border-charcoal/30 text-terracotta focus:ring-terracotta"
-              />
-              {reason === 'ingredients' ? 'Ingredients' : 'Steps'}
-            </label>
-          ))}
+                aria-pressed={selected}
+                onClick={() => toggleReason(reason)}
+                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
+                  selected
+                    ? 'border-terracotta-600 bg-terracotta-600 text-white'
+                    : 'border-charcoal/10 bg-white text-charcoal'
+                }`}
+              >
+                {selected && <Check size={16} strokeWidth={3} aria-hidden="true" />}
+                {reason === 'ingredients' ? 'Ingredients' : 'Steps'}
+              </button>
+            );
+          })}
         </fieldset>
 
         <button
@@ -165,14 +170,19 @@ export function RecipeImportIssueSheet({
           a note
         </button>
         {noteOpen && (
-          <textarea
-            data-testid="import-issue-note"
-            aria-label="Optional note"
-            maxLength={500}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            className="mt-2 min-h-24 w-full rounded-2xl border-charcoal/15 bg-white text-charcoal"
-          />
+          <div className="mt-2">
+            <label htmlFor="import-issue-note" className="text-sm font-bold text-charcoal/75">
+              Optional note
+            </label>
+            <textarea
+              id="import-issue-note"
+              data-testid="import-issue-note"
+              maxLength={500}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-charcoal/15 bg-white px-4 py-3 text-charcoal outline-none transition focus:border-terracotta/30 focus:ring-4 focus:ring-terracotta/10"
+            />
+          </div>
         )}
 
         {error && (

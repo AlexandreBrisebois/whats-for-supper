@@ -185,18 +185,18 @@ test.describe('Recipe import issue reporting', () => {
     await openRecipeDetail(page);
 
     await page.getByTestId('action-gear-menu').click();
-    await expect(page.getByTestId('action-report-import-issue')).toHaveText('Report import issue');
+    await expect(page.getByTestId('action-report-import-issue')).toHaveText('Report issue');
     await page.getByTestId('action-report-import-issue').click();
-    await page.getByTestId('import-issue-reason-ingredients').check();
+    await page.getByTestId('import-issue-reason-ingredients').click();
     await page.getByTestId('import-issue-save').click();
 
     await expect(page.getByTestId('recipe-import-issue-status-reported')).toBeVisible();
     expect(state.recipe.importIssue?.reasons).toEqual([RecipeImportIssueReasonObject.Ingredients]);
 
     await page.getByTestId('action-gear-menu').click();
-    await expect(page.getByTestId('action-report-import-issue')).toHaveText('Review import issue');
+    await expect(page.getByTestId('action-report-import-issue')).toHaveText('Update report');
     await page.getByTestId('action-report-import-issue').click();
-    await page.getByTestId('import-issue-reason-steps').check();
+    await page.getByTestId('import-issue-reason-steps').click();
     await page.getByTestId('import-issue-note-disclosure').click();
     await page
       .getByTestId('import-issue-note')
@@ -243,8 +243,14 @@ test.describe('Recipe import issue reporting', () => {
     const stepText = await page.getByTestId('cooks-mode-step-text').textContent();
 
     await page.getByTestId('cooks-mode-report-steps').click();
-    await expect(page.getByTestId('import-issue-reason-ingredients')).toBeChecked();
-    await expect(page.getByTestId('import-issue-reason-steps')).toBeChecked();
+    await expect(page.getByTestId('import-issue-reason-ingredients')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    await expect(page.getByTestId('import-issue-reason-steps')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     await expect(page.getByTestId('import-issue-note')).toHaveValue('Keep this note.');
     await page.getByTestId('import-issue-save').click();
 

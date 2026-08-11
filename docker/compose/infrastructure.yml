@@ -45,6 +45,9 @@ services:
     restart: "no"
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:-secure_dev_password}
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-recipe_app}
+      POSTGRES_DB: ${POSTGRES_DB:-recipe_app_db}
     command: >
       -h postgres
       -U ${POSTGRES_USER:-recipe_app}

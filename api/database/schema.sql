@@ -64,9 +64,12 @@ CREATE TABLE IF NOT EXISTS recipe_import_reports (
     last_attempt_at timestamptz,
     reimported_at timestamptz,
     last_error varchar(2000),
-    CONSTRAINT recipe_import_reports_reasons_nonempty_check CHECK (cardinality(reasons) > 0),
-    CONSTRAINT recipe_import_reports_reasons_allowed_check CHECK (reasons <@ ARRAY['ingredients', 'steps']::text[]),
-    CONSTRAINT recipe_import_reports_reasons_unique_check CHECK (cardinality(reasons) = (CASE WHEN reasons @> ARRAY['ingredients']::text[] THEN 1 ELSE 0 END + CASE WHEN reasons @> ARRAY['steps']::text[] THEN 1 ELSE 0 END)),
+    CONSTRAINT recipe_import_reports_reasons_check CHECK (
+        cardinality(reasons) > 0
+        AND reasons <@ ARRAY['ingredients', 'steps']::text[]
+        AND cardinality(array_positions(reasons, 'ingredients'::text)) <= 1
+        AND cardinality(array_positions(reasons, 'steps'::text)) <= 1
+    ),
     CONSTRAINT recipe_import_reports_status_check CHECK (status IN ('reported', 'reimporting', 'reimport_failed', 'ready_to_review'))
 );
 

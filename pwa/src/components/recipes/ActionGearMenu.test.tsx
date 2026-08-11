@@ -22,7 +22,7 @@ describe('ActionGearMenu', () => {
 
     expect(screen.getByTestId('action-move-to-bin')).toBeDefined();
     expect(screen.getByTestId('action-reimport-recipe')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Report import issue' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Report issue' })).toBeVisible();
   });
 
   it('hides reimport if canReimport is false', () => {
@@ -31,14 +31,14 @@ describe('ActionGearMenu', () => {
 
     expect(screen.getByTestId('action-move-to-bin')).toBeDefined();
     expect(screen.queryByTestId('action-reimport-recipe')).toBeNull();
-    expect(screen.queryByRole('button', { name: /import issue/i })).toBeNull();
+    expect(screen.queryByTestId('action-report-import-issue')).toBeNull();
   });
 
-  it('labels an existing issue for review', () => {
+  it('labels an existing issue for update', () => {
     render(<ActionGearMenu {...defaultProps} hasImportIssue />);
     fireEvent.click(screen.getByTestId('action-gear-menu'));
 
-    expect(screen.getByRole('button', { name: 'Review import issue' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Update report' })).toBeVisible();
   });
 
   it('calls onReimport and closes menu when reimport is clicked', () => {
