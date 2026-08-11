@@ -207,6 +207,11 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                   const aisleItems = grouped[aisle] || [];
                   if (aisleItems.length === 0) return null;
 
+                  const displayedItems = [
+                    ...aisleItems.filter((item) => !groceryState[item.displayName ?? '']),
+                    ...aisleItems.filter((item) => groceryState[item.displayName ?? '']),
+                  ];
+
                   const checkedCount = aisleItems.filter(
                     (item) => groceryState[item.displayName ?? '']
                   ).length;
@@ -274,7 +279,7 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
 
                       {/* Items */}
                       <div className="divide-y divide-charcoal/5 p-4 space-y-2">
-                        {aisleItems.map((item) => {
+                        {displayedItems.map((item) => {
                           const key = item.displayName ?? '';
                           const quantityHint = formatQuantityHint(item.quantity, item.unitText);
                           const isChecked = groceryState[key] ?? false;

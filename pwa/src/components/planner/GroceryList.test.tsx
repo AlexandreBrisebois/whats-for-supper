@@ -14,11 +14,14 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 // ── Store mock ────────────────────────────────────────────────────────────────
 
 let mockGroceryState: Record<string, boolean> = {};
+const mockSetGroceryItemToggle = vi.fn((ingredientName: string, isToggled: boolean) => {
+  mockGroceryState = { ...mockGroceryState, [ingredientName]: isToggled };
+});
 
 vi.mock('@/store/plannerStore', () => ({
   usePlannerStore: () => ({
     groceryState: mockGroceryState,
-    setGroceryItemToggle: vi.fn(),
+    setGroceryItemToggle: mockSetGroceryItemToggle,
     setGroceryState: vi.fn(),
   }),
 }));
@@ -27,6 +30,7 @@ vi.mock('@/store/plannerStore', () => ({
 
 vi.mock('@/lib/api/schedule', () => ({
   useSchedule: () => ({
+    toggleGroceryItem: vi.fn().mockResolvedValue({}),
     updateGroceryState: vi.fn().mockResolvedValue({}),
   }),
 }));
@@ -100,6 +104,58 @@ function renderList() {
 
 beforeEach(() => {
   mockGroceryState = {};
+  mockSetGroceryItemToggle.mockClear();
+});
+
+describe('GroceryList — checked item ordering', () => {
+  const orderedNames = () =>
+    screen.getAllByTestId('grocery-item-label').map((label) => label.textContent);
+
+  it('renders unchecked items before checked items while preserving order within each group', () => {
+    mockGroceryState = { tomato: true, lettuce: false, carrot: true, cucumber: false };
+
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[
+          makeItem('tomato', 'Produce'),
+          makeItem('lettuce', 'Produce'),
+          makeItem('carrot', 'Produce'),
+          makeItem('cucumber', 'Produce'),
+        ]}
+      />
+    );
+
+    expect(orderedNames()).toEqual(['lettuce', 'cucumber', 'tomato', 'carrot']);
+  });
+
+  it('moves an item down when checked and back up when unchecked', async () => {
+    mockGroceryState = { tomato: false, lettuce: false, carrot: true };
+    const items = [
+      makeItem('tomato', 'Produce'),
+      makeItem('lettuce', 'Produce'),
+      makeItem('carrot', 'Produce'),
+    ];
+    const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
+
+    fireEvent.click(
+      screen
+        .getAllByTestId('grocery-item-checkbox')
+        .find((checkbox) => checkbox.getAttribute('data-item-name') === 'tomato')!
+    );
+    rerender(<GroceryList weekOffset={0} items={items} />);
+
+    expect(orderedNames()).toEqual(['lettuce', 'tomato', 'carrot']);
+
+    fireEvent.click(
+      screen
+        .getAllByTestId('grocery-item-checkbox')
+        .find((checkbox) => checkbox.getAttribute('data-item-name') === 'tomato')!
+    );
+    rerender(<GroceryList weekOffset={0} items={items} />);
+
+    expect(orderedNames()).toEqual(['tomato', 'lettuce', 'carrot']);
+  });
 });
 
 describe('GroceryList — section completion UI', () => {
