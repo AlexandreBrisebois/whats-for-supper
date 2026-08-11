@@ -73,6 +73,15 @@ beforeEach(() => {
 // ─── applySnapshot ────────────────────────────────────────────────────────────
 
 describe('weekStore — applySnapshot', () => {
+  it('ignores a snapshot for a different week', () => {
+    const nextWeekDay = makeDay({ date: '2025-01-13' });
+    useWeekStore.setState({ weekOffset: 1, schedule: [nextWeekDay] });
+
+    useWeekStore.getState().applySnapshot(makeScheduleDays([{ date: '2025-01-06' }]));
+
+    expect(useWeekStore.getState().schedule).toEqual([nextWeekDay]);
+  });
+
   it('updates schedule from server snapshot', () => {
     const recipe = { id: 'r1', name: 'Pasta', image: '/img/r1', voteCount: 0 };
     const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe }]);
@@ -509,6 +518,28 @@ describe('weekStore — closeVoting', () => {
 });
 
 describe('weekStore — active voting week smart-defaults regression (red)', () => {
+  it('ignores an older init response after navigation to another week', async () => {
+    const mockedGetSchedule = vi.mocked(getSchedule);
+    let resolveCurrentWeek!: (value: ReturnType<typeof makeScheduleDays>) => void;
+    const currentWeekResponse = new Promise<ReturnType<typeof makeScheduleDays>>((resolve) => {
+      resolveCurrentWeek = resolve;
+    });
+    const nextWeekSchedule = makeScheduleDays([{ date: '2025-01-13' }]);
+    nextWeekSchedule.weekOffset = 1;
+
+    mockedGetSchedule
+      .mockReturnValueOnce(currentWeekResponse as any)
+      .mockResolvedValueOnce(nextWeekSchedule as any);
+
+    const currentWeekInit = useWeekStore.getState().init(0);
+    await useWeekStore.getState().init(1);
+    resolveCurrentWeek(makeScheduleDays([{ date: '2025-01-06' }]));
+    await currentWeekInit;
+
+    expect(useWeekStore.getState().weekOffset).toBe(1);
+    expect(useWeekStore.getState().schedule[0]?.date).toBe('2025-01-13');
+  });
+
   it('init(1) with status=1 requests getSmartDefaults(1), not getSmartDefaults(0)', async () => {
     const mockedGetSchedule = vi.mocked(getSchedule);
     const mockedGetSmartDefaults = vi.mocked(getSmartDefaults);
