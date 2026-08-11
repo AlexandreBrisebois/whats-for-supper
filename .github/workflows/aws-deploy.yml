@@ -28,7 +28,7 @@ jobs:
           dotnet-version: '11.0.100-preview.6.26359.118'
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
 
