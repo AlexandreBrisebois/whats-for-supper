@@ -12,6 +12,8 @@ import {
 import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
+import { RecipeImportIssueBadge } from './RecipeImportIssueBadge';
+import type { RecipeImportIssueStatus } from '@/lib/api/recipes';
 
 // ---------------------------------------------------------------------------
 // RecipeStackCard
@@ -28,6 +30,7 @@ interface RecipeStackCardProps {
   category: string;
   cuisineType?: string | null;
   mealTypes?: string[] | null;
+  importIssueStatus?: RecipeImportIssueStatus | null;
   isFront: boolean;
   stackIndex: number;
   onSwipeRight: () => void; // Navigate to previous card
@@ -44,6 +47,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   category,
   cuisineType,
   mealTypes,
+  importIssueStatus,
   isFront,
   stackIndex,
   onSwipeRight,
@@ -194,6 +198,12 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
             alt={name}
             className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />
+
+          {importIssueStatus && (
+            <div className="absolute left-5 top-5 z-30">
+              <RecipeImportIssueBadge status={importIssueStatus} />
+            </div>
+          )}
 
           {/* Swipe direction indicators — Ghost style aligned with Discovery voting */}
           {isFront && (

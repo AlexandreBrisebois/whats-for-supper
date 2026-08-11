@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
@@ -42,6 +43,7 @@ public class ManagementServiceTests : IAsyncLifetime
         .GetRequiredService<DataRootResolver>().Root;
 
     private string CsvPath => Path.Combine(DataRoot, "ingredient-categories.csv");
+    private string ImportReportsPath => Path.Combine(DataRoot, "recipe-import-reports.json");
     private string ReportsRoot => Path.Combine(DataRoot, "reports");
     private string DemoRoot => Path.Combine(DataRoot, "demo");
 
@@ -58,6 +60,131 @@ public class ManagementServiceTests : IAsyncLifetime
         var lines = await File.ReadAllLinesAsync(CsvPath);
         Assert.Single(lines);
         Assert.Equal("normalized_key,grocery_section,confidence,source,created_at", lines[0]);
+    }
+
+    [Fact]
+    public async Task BackupRestoreRoundTrip_PreservesRecipeImportReport()
+    {
+        var recipeId = Guid.NewGuid();
+        var memberId = _factory.DefaultFamilyMemberId;
+        var createdAt = DateTimeOffset.UtcNow.AddDays(-2);
+        var updatedAt = DateTimeOffset.UtcNow.AddDays(-1);
+        var reimportedAt = DateTimeOffset.UtcNow.AddHours(-2);
+
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Reported Soup",
+            AddedBy = memberId,
+            ImageCount = 1,
+            IsReady = true,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt
+        });
+        _db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = recipeId,
+            Reasons = ["ingredients", "steps"],
+            Note = "The quantities and method need review.",
+            Status = RecipeImportReportStatus.ReadyToReview,
+            ReportedBy = memberId,
+            UpdatedBy = memberId,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt,
+            LastWorkflowInstanceId = Guid.NewGuid(),
+            LastAttemptAt = updatedAt.AddMinutes(-10),
+            ReimportedAt = reimportedAt
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.BackupAsync();
+
+        _db.RecipeImportReports.RemoveRange(_db.RecipeImportReports);
+        await _db.SaveChangesAsync();
+        await _service.RestoreAsync();
+
+        var restored = await _db.RecipeImportReports.SingleAsync();
+        Assert.Equal(recipeId, restored.RecipeId);
+        Assert.Equal(["ingredients", "steps"], restored.Reasons);
+        Assert.Equal("The quantities and method need review.", restored.Note);
+        Assert.Equal(RecipeImportReportStatus.ReadyToReview, restored.Status);
+        Assert.Equal(memberId, restored.ReportedBy);
+        Assert.Equal(memberId, restored.UpdatedBy);
+        Assert.Equal(createdAt, restored.CreatedAt);
+        Assert.Equal(updatedAt, restored.UpdatedAt);
+        Assert.Equal(reimportedAt, restored.ReimportedAt);
+    }
+
+    [Fact]
+    public async Task BackupAsync_AfterReportsAreResolved_OverwritesArtifactWithEmptyArray()
+    {
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Resolved Soup",
+            AddedBy = _factory.DefaultFamilyMemberId,
+            ImageCount = 1,
+            IsReady = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        _db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = recipeId,
+            Reasons = ["ingredients"],
+            Status = RecipeImportReportStatus.Reported
+        });
+        await _db.SaveChangesAsync();
+        await _service.BackupAsync();
+
+        _db.RecipeImportReports.RemoveRange(_db.RecipeImportReports);
+        await _db.SaveChangesAsync();
+        await _service.BackupAsync();
+
+        Assert.True(File.Exists(ImportReportsPath));
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(ImportReportsPath));
+        Assert.Equal(JsonValueKind.Array, document.RootElement.ValueKind);
+        Assert.Equal(0, document.RootElement.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task RestoreAsync_NormalizesInterruptedRecipeImportReportToReported()
+    {
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Interrupted Soup",
+            AddedBy = _factory.DefaultFamilyMemberId,
+            ImageCount = 1,
+            IsReady = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        _db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = recipeId,
+            Reasons = ["steps"],
+            Status = RecipeImportReportStatus.Reimporting,
+            LastWorkflowInstanceId = Guid.NewGuid(),
+            LastAttemptAt = DateTimeOffset.UtcNow,
+            ReimportedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            LastError = "Interrupted workflow"
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.BackupAsync();
+        _db.RecipeImportReports.RemoveRange(_db.RecipeImportReports);
+        await _db.SaveChangesAsync();
+        await _service.RestoreAsync();
+
+        var restored = await _db.RecipeImportReports.SingleAsync();
+        Assert.Equal(RecipeImportReportStatus.Reported, restored.Status);
+        Assert.Null(restored.LastWorkflowInstanceId);
+        Assert.Null(restored.LastAttemptAt);
+        Assert.Null(restored.ReimportedAt);
+        Assert.Null(restored.LastError);
     }
 
     [Fact]
@@ -136,12 +263,18 @@ public class ManagementServiceTests : IAsyncLifetime
             EmbeddingModel = "test",
             IndexStatus = "ready"
         });
+        _db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = recipe.Id,
+            Reasons = ["ingredients"],
+            Status = RecipeImportReportStatus.Reported
+        });
         await _db.SaveChangesAsync();
         await _service.CaptureDemoStateAsync(CancellationToken.None);
 
         var intruder = new FamilyMember { Name = "Temporary Visitor" };
         _db.FamilyMembers.Add(intruder);
-        _db.Recipes.Remove(recipe);
+        recipe.Name = "Mutated Soup";
         _db.RecipeSearchDocuments.RemoveRange(_db.RecipeSearchDocuments);
         _db.RecipeVotes.Add(new RecipeVote
         {
@@ -168,6 +301,7 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Empty(_db.RecipeVotes);
         Assert.Empty(_db.WeeklyPlans);
         Assert.Empty(_db.CalendarEvents);
+        Assert.Empty(_db.RecipeImportReports);
     }
 
     [Fact]

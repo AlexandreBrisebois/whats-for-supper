@@ -22,6 +22,12 @@ public class RecipeSearchFiltersDto
     [JsonPropertyName("healthyOnly")]
     public bool? HealthyOnly { get; set; }
 
+    [JsonPropertyName("reportedOnly")]
+    public bool? ReportedOnly { get; set; }
+
+    [JsonPropertyName("readyToReviewOnly")]
+    public bool? ReadyToReviewOnly { get; set; }
+
     [JsonPropertyName("discoverableOnly")]
     public bool? DiscoverableOnly { get; set; }
 }

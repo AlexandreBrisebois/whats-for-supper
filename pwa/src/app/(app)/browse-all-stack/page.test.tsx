@@ -393,6 +393,26 @@ describe('BrowseAllStack — initial card display', () => {
     expect(screen.queryByTestId('recipe-stack-cuisine-badge')).toBeNull();
     expect(screen.queryByTestId('recipe-stack-meal-type-supper')).toBeNull();
   });
+
+  it('shows import-review badges on Browse All cards without review filter controls', async () => {
+    mocks.recipesGet.mockResolvedValue({
+      recipes: [
+        {
+          ...makeRecipe(RECIPE_IDS[0], 0),
+          importIssue: { reasons: ['ingredients'], note: null, status: 'reported' },
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 1 },
+    });
+
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+
+    expect(await screen.findByLabelText('Import issue status: Reported')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ready to review' })).not.toBeInTheDocument();
+  });
 });
 
 describe('BrowseAllStack — swipe navigation', () => {

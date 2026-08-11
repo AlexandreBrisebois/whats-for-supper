@@ -134,26 +134,46 @@ public partial class RecipeSearchService(
         // 4. Map & Limit
         var finalCandidates = candidates
             .OrderByDescending(candidate => candidate.Score)
-            .ThenByDescending(candidate => candidate.Recipe.CreatedAt);
+            .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
+            .ToList();
 
         if (dto.Filters?.NotCookedInLongTime == true)
         {
             // If explicitly looking for recipes that have been away longest, prioritize by LastCookedDate ASC.
             finalCandidates = candidates
                 .OrderByDescending(c => c.Score)
-                .ThenBy(c => c.Recipe.LastCookedDate);
+                .ThenBy(c => c.Recipe.LastCookedDate)
+                .ToList();
         }
 
-        var topPick = finalCandidates.FirstOrDefault();
-        var resultsList = finalCandidates.Skip(topPick != null ? 1 : 0).ToList();
+        var candidateIds = finalCandidates.Select(candidate => candidate.Recipe.Id).ToList();
+        var reportStatuses = candidateIds.Count == 0
+            ? new Dictionary<Guid, RecipeImportReportStatus>()
+            : await db.RecipeImportReports
+                .AsNoTracking()
+                .Where(report => candidateIds.Contains(report.RecipeId))
+                .ToDictionaryAsync(report => report.RecipeId, report => report.Status, ct);
+
+        var reviewFilterActive = appliedFilters.ReportedOnly == true || appliedFilters.ReadyToReviewOnly == true;
+        var promotionCandidates = reviewFilterActive
+            ? []
+            : finalCandidates
+                .Where(candidate => !reportStatuses.ContainsKey(candidate.Recipe.Id))
+                .ToList();
+        var topPick = promotionCandidates.FirstOrDefault();
+        var resultsList = finalCandidates
+            .Where(candidate => candidate.Recipe.Id != topPick?.Recipe.Id)
+            .ToList();
 
         // 3.5 RAG Pass (Agent Mode Only)
         // If in Agent mode and we have candidates, let the LLM pick the best one and explain why.
-        RecipeSearchResultDto? finalTopPick = topPick != null ? MapResult(topPick) : null;
-        if (searchMode == "agent" && agentTranslator != null && resultsList.Count > 0 && !string.IsNullOrWhiteSpace(dto.OriginalQuery))
+        RecipeSearchResultDto? finalTopPick = topPick != null ? MapResult(topPick, reportStatuses) : null;
+        if (searchMode == "agent" && agentTranslator != null && promotionCandidates.Count > 1 && !string.IsNullOrWhiteSpace(dto.OriginalQuery))
         {
-            var candidatesToRerank = resultsList.Take(5).Select(MapResult).ToList();
-            if (finalTopPick != null) candidatesToRerank.Insert(0, finalTopPick);
+            var candidatesToRerank = promotionCandidates
+                .Take(6)
+                .Select(candidate => MapResult(candidate, reportStatuses))
+                .ToList();
 
             // Fetch current week context for better variety/RAG recommendations
             var weekContext = new List<string>();
@@ -170,16 +190,13 @@ public partial class RecipeSearchService(
             if (selectedId.HasValue)
             {
                 // Re-shuffle to put the LLM-selected recipe at the top
-                var allFound = resultsList.ToList();
-                if (topPick != null) allFound.Insert(0, topPick);
-
-                var selected = allFound.FirstOrDefault(c => c.Recipe.Id == selectedId.Value);
+                var selected = promotionCandidates.FirstOrDefault(c => c.Recipe.Id == selectedId.Value);
                 if (selected != null)
                 {
-                    finalTopPick = MapResult(selected);
+                    finalTopPick = MapResult(selected, reportStatuses);
                     finalTopPick.PlannerFitNote = reason; // Use the AI reason as the note
 
-                    resultsList = allFound
+                    resultsList = finalCandidates
                         .Where(c => c.Recipe.Id != selectedId.Value)
                         .ToList();
                 }
@@ -188,7 +205,7 @@ public partial class RecipeSearchService(
 
         var results = resultsList
             .Take(limit)
-            .Select(MapResult)
+            .Select(candidate => MapResult(candidate, reportStatuses))
             .ToList();
 
         if (dto.WeekOffset is not null && results.Count > 0 && string.IsNullOrWhiteSpace(results[0].PlannerFitNote))
@@ -544,7 +561,9 @@ public partial class RecipeSearchService(
         return (monday, sunday);
     }
 
-    private static RecipeSearchResultDto MapResult(RankedRecipe candidate)
+    private static RecipeSearchResultDto MapResult(
+        RankedRecipe candidate,
+        IReadOnlyDictionary<Guid, RecipeImportReportStatus> reportStatuses)
     {
         var recipe = candidate.Recipe;
         return new RecipeSearchResultDto
@@ -559,7 +578,10 @@ public partial class RecipeSearchService(
             IsDiscoverable = recipe.IsDiscoverable,
             Notes = recipe.Notes,
             Reasons = candidate.Reasons,
-            PlannerFitNote = candidate.PlannerFitNote
+            PlannerFitNote = candidate.PlannerFitNote,
+            ImportIssueStatus = reportStatuses.TryGetValue(recipe.Id, out var status)
+                ? status == RecipeImportReportStatus.ReadyToReview ? "readyToReview" : "reported"
+                : null
         };
     }
 
@@ -855,6 +877,17 @@ public partial class RecipeSearchService(
         if (filters.HealthyOnly == true)
         {
             query = query.Where(r => r.IsHealthyChoice);
+        }
+
+        if (filters.ReadyToReviewOnly == true)
+        {
+            query = query.Where(recipe => db.RecipeImportReports.Any(report =>
+                report.RecipeId == recipe.Id &&
+                report.Status == RecipeImportReportStatus.ReadyToReview));
+        }
+        else if (filters.ReportedOnly == true)
+        {
+            query = query.Where(recipe => db.RecipeImportReports.Any(report => report.RecipeId == recipe.Id));
         }
 
         return query;

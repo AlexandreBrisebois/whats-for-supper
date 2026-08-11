@@ -11,12 +11,20 @@ import {
   Sparkles,
   Pencil,
   Check,
+  Flag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { getRecipe, updateRecipe, Recipe } from '@/lib/api/recipes';
+import {
+  getRecipe,
+  resolveRecipeImportIssue,
+  saveRecipeImportIssue,
+  updateRecipe,
+} from '@/lib/api/recipes';
+import type { Recipe, RecipeImportIssueDraft, RecipeImportIssueReason } from '@/lib/api/recipes';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { RecipeImportIssueSheet } from '@/components/recipes/RecipeImportIssueSheet';
 import { t } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { getImageUrl } from '@/lib/imageUtils';
@@ -67,6 +75,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [gathered, setGathered] = useState<Record<string, boolean>>({});
   const [showCelebration, setShowCelebration] = useState(false);
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
+  const [reportContext, setReportContext] = useState<RecipeImportIssueReason | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingValue, setEditingValue] = useState('');
   const { cookProgress, setCookProgress } = usePlannerStore();
@@ -177,6 +186,20 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditingValue(currentStepData.instruction);
+  };
+
+  const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
+    if (!recipeDetails) return;
+    const updated = await saveRecipeImportIssue(recipeDetails.id, draft);
+    setRecipeDetails(updated);
+    setReportContext(null);
+  };
+
+  const handleResolveImportIssue = async () => {
+    if (!recipeDetails) return;
+    const updated = await resolveRecipeImportIssue(recipeDetails.id);
+    setRecipeDetails(updated);
+    setReportContext(null);
   };
 
   if (isLoading) {
@@ -315,39 +338,67 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 className="w-full max-w-4xl"
               >
                 {!isPrepStep && (
-                  <div className="flex items-center justify-between mb-8 gap-4 border-b border-charcoal/5 pb-6">
+                  <div className="mb-8 flex flex-col items-start justify-between gap-4 border-b border-charcoal/5 pb-6 sm:flex-row sm:items-center">
                     <h3 className="text-2xl md:text-4xl lg:text-5xl font-heading font-black text-charcoal leading-tight">
                       {currentStepData.title}
                     </h3>
                     {!isEditing && (
-                      <button
-                        type="button"
-                        data-testid="cooks-mode-edit-step"
-                        onClick={() => {
-                          setIsEditing(true);
-                          setEditingValue(currentStepData.instruction);
-                        }}
-                        className="p-4 rounded-full bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10 active:scale-90 transition-all"
-                        aria-label={t('common.edit', 'Edit')}
-                      >
-                        <Pencil size={24} />
-                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {recipeDetails?.canReimport && (
+                          <button
+                            type="button"
+                            data-testid="cooks-mode-report-steps"
+                            aria-label="Report issue with steps"
+                            onClick={() => setReportContext('steps')}
+                            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-ochre-200 bg-ochre-50 px-4 text-sm font-bold text-ochre-700 transition hover:bg-ochre-100 active:scale-95"
+                          >
+                            <Flag size={16} aria-hidden="true" />
+                            <span>Report issue</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          data-testid="cooks-mode-edit-step"
+                          onClick={() => {
+                            setIsEditing(true);
+                            setEditingValue(currentStepData.instruction);
+                          }}
+                          className="p-4 rounded-full bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10 active:scale-90 transition-all"
+                          aria-label={t('common.edit', 'Edit')}
+                        >
+                          <Pencil size={24} />
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
 
                 {isPrepStep ? (
                   <div className="space-y-10">
-                    <div className="flex flex-col gap-2">
-                      <h3 className="text-3xl md:text-4xl lg:text-5xl font-heading font-black text-charcoal leading-tight">
-                        {t('cook.checkAndPrep', 'Check & Prep')}
-                      </h3>
-                      <p className="text-xl md:text-2xl font-medium text-charcoal/50 leading-relaxed max-w-lg">
-                        {t(
-                          'cook.ingredientsReady',
-                          'Check off your ingredients before you start cooking.'
-                        )}
-                      </p>
+                    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-3xl md:text-4xl lg:text-5xl font-heading font-black text-charcoal leading-tight">
+                          {t('cook.checkAndPrep', 'Check & Prep')}
+                        </h3>
+                        <p className="text-xl md:text-2xl font-medium text-charcoal/50 leading-relaxed max-w-lg">
+                          {t(
+                            'cook.ingredientsReady',
+                            'Check off your ingredients before you start cooking.'
+                          )}
+                        </p>
+                      </div>
+                      {recipeDetails?.canReimport && (
+                        <button
+                          type="button"
+                          data-testid="cooks-mode-report-ingredients"
+                          aria-label="Report issue with ingredients"
+                          onClick={() => setReportContext('ingredients')}
+                          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-ochre-200 bg-ochre-50 px-4 text-sm font-bold text-ochre-700 transition hover:bg-ochre-100 active:scale-95"
+                        >
+                          <Flag size={16} aria-hidden="true" />
+                          <span>Report issue</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Ingredients Grid */}
@@ -461,7 +512,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         </div>
 
         {/* Controls */}
-        <div className="p-6 md:p-8 grid grid-cols-[1fr_1.5fr] gap-4 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0">
+        <div
+          data-testid="cooks-mode-controls"
+          className="p-6 md:p-8 grid grid-cols-[1fr_1.5fr] gap-4 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0"
+        >
           <Button
             variant="secondary"
             disabled={currentStep === 0}
@@ -500,6 +554,15 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             onClose();
             router.push(`/recipes?similarTo=${id}`);
           }}
+        />
+      )}
+      {reportContext && recipeDetails && (
+        <RecipeImportIssueSheet
+          issue={recipeDetails.importIssue ?? null}
+          contextualReason={reportContext}
+          onClose={() => setReportContext(null)}
+          onSave={handleSaveImportIssue}
+          onResolve={handleResolveImportIssue}
         />
       )}
     </motion.div>

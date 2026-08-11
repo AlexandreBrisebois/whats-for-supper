@@ -9,8 +9,9 @@ A registry of custom scripts and tools designed to optimize agent efficiency.
 | `api_tools.py` | Multi-purpose tool for API Discovery and Parity Reconciliation. | `task agent:api` or `task agent:reconcile` |
 | `slice.py` | Vertical Slice Viewer for full-stack route context. | `task agent:slice -- /api/route` |
 | `drift.py` | Schema Drift Fuzzer (Contract vs. Backend DTOs). | `task agent:drift` |
-| `test_ops.py` | Brittle Selector Guard & Impact-Aware Runner. | `task agent:audit` or `task agent:test:impact` |
-| `run-e2e-ci.sh` | Runs full E2E suite in a stable environment. | `task test:pwa:ci` |
+| `test_ops.py` | Explainable, cache-aware impact runner with untracked-file coverage. | `task agent:test:impact` |
+| `kiota_client.py` | Runtime-safe Kiota generation and drift checking with a one-shot timeout. | `task gen:client` or `task gen:client:check` |
+| `run-e2e-ci.sh` | Runs full E2E suite in a stable environment. | `task test:e2e:ci` |
 
 ---
 
@@ -70,8 +71,13 @@ Use the output to understand the full contract ↔ backend ↔ client chain befo
 - **Source**: [scripts/agent/test_ops.py](file:///Users/alex/Code/whats-for-supper/scripts/agent/test_ops.py)
 - **Problem Solved**: High maintenance cost of brittle CSS selectors and slow E2E feedback loops.
 - **Modes**:
-    - `--audit`: Flags locators not using `data-testid`.
-    - `--impact`: Runs only tests affected by recent `git` changes.
+    - `--impact`: Explains and runs tests affected by tracked and untracked changes.
+    - `--all`: Runs every E2E test explicitly.
+- **Cache**: Successful local impact runs are reused only when changed-file contents, selected tests, and test configuration produce the same digest. Set `WFS_DISABLE_TEST_CACHE=1` to force a run. CI never reuses this cache.
+
+### kiota_client.py
+- **Problem Solved**: Hidden overwrite prompts and incompatible runtime roll-forward made Kiota appear to hang.
+- **Behavior**: Resolves the manifest-pinned Kiota DLL, removes global runtime roll-forward, always uses `--clean-output`, preserves progress output, and stops once after `WFS_KIOTA_TIMEOUT_SECONDS` (default 20 seconds).
 
 ### run-e2e-ci.sh
 - **Source**: [scripts/run-e2e-ci.sh](file:///Users/alex/Code/whats-for-supper/scripts/run-e2e-ci.sh)

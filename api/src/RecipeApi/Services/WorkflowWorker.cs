@@ -416,6 +416,8 @@ public class WorkflowWorker(
                     instance.UpdatedAt = DateTimeOffset.UtcNow;
                     await db.SaveChangesAsync(ct);
 
+                    await RecordImportReportFailureAsync(instance, task, ct);
+
                     // Publish recipe_failed SSE event — all retries exhausted, workflow is fatally failed.
                     // This fires on the fatal path only.
                     await PublishRecipeFailedEventAsync(instance, task, db, ct);
@@ -551,23 +553,7 @@ public class WorkflowWorker(
         {
             // Resolve the recipe ID from the workflow instance's parameters.
             // Workflow instances store the recipe ID in their Parameters JSON.
-            Guid? recipeId = null;
-            if (!string.IsNullOrEmpty(instance.Parameters))
-            {
-                try
-                {
-                    using var doc = JsonDocument.Parse(instance.Parameters);
-                    if (doc.RootElement.TryGetProperty("recipeId", out var idProp) ||
-                        doc.RootElement.TryGetProperty("RecipeId", out idProp))
-                    {
-                        recipeId = idProp.GetGuid();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Could not parse recipeId from workflow instance {InstanceId} parameters", instance.Id);
-                }
-            }
+            var recipeId = TryGetRecipeId(instance);
 
             if (recipeId is null)
             {
@@ -608,6 +594,61 @@ public class WorkflowWorker(
             // Publishing failure must never crash the worker — log and continue
             logger.LogError(ex, "Failed to publish recipe_failed SSE event for workflow instance {InstanceId}", instance.Id);
         }
+    }
+
+    private async Task RecordImportReportFailureAsync(
+        WorkflowInstance instance,
+        WorkflowTask failedTask,
+        CancellationToken ct)
+    {
+        if (instance.WorkflowId is not ("recipe-import" or "url-import")) return;
+
+        var recipeId = TryGetRecipeId(instance);
+        if (recipeId is null) return;
+
+        try
+        {
+            using var failureScope = scopeFactory.CreateScope();
+            var reportService = failureScope.ServiceProvider.GetService<RecipeImportReportService>();
+            if (reportService is null) return;
+
+            await reportService.MarkFailedAsync(
+                recipeId.Value,
+                instance.Id,
+                failedTask.TaskName,
+                failedTask.ErrorMessage ?? "Unknown error");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to record import-report diagnostics for workflow instance {InstanceId}. This is non-fatal.",
+                instance.Id);
+        }
+    }
+
+    private Guid? TryGetRecipeId(WorkflowInstance instance)
+    {
+        if (string.IsNullOrEmpty(instance.Parameters)) return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(instance.Parameters);
+            if (document.RootElement.TryGetProperty("recipeId", out var idProperty)
+                || document.RootElement.TryGetProperty("RecipeId", out idProperty))
+            {
+                return idProperty.GetGuid();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Could not parse recipeId from workflow instance {InstanceId} parameters",
+                instance.Id);
+        }
+
+        return null;
     }
 
     public override void Dispose()

@@ -5,8 +5,10 @@ import { ActionGearMenu } from './ActionGearMenu';
 describe('ActionGearMenu', () => {
   const defaultProps = {
     canReimport: true,
+    hasImportIssue: false,
     onMoveToBin: vi.fn(),
     onReimport: vi.fn(),
+    onReportImportIssue: vi.fn(),
   };
 
   it('renders the gear icon button', () => {
@@ -20,6 +22,7 @@ describe('ActionGearMenu', () => {
 
     expect(screen.getByTestId('action-move-to-bin')).toBeDefined();
     expect(screen.getByTestId('action-reimport-recipe')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Report import issue' })).toBeVisible();
   });
 
   it('hides reimport if canReimport is false', () => {
@@ -28,6 +31,14 @@ describe('ActionGearMenu', () => {
 
     expect(screen.getByTestId('action-move-to-bin')).toBeDefined();
     expect(screen.queryByTestId('action-reimport-recipe')).toBeNull();
+    expect(screen.queryByRole('button', { name: /import issue/i })).toBeNull();
+  });
+
+  it('labels an existing issue for review', () => {
+    render(<ActionGearMenu {...defaultProps} hasImportIssue />);
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+
+    expect(screen.getByRole('button', { name: 'Review import issue' })).toBeVisible();
   });
 
   it('calls onReimport and closes menu when reimport is clicked', () => {

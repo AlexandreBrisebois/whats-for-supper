@@ -26,8 +26,9 @@ Bind tightly to the execution harness and do not bypass it. Prefer `task` comman
 - **`task agent:drift`**: Pick this to check for schema drift before finalizing any feature or logic change.
 - **`task agent:slice -- <route>`**: Pick this to load targeted context for a vertical slice (Contract ↔ Backend ↔ Client) during planning or debugging.
 - **`task agent:test:impact`**: Pick this for rapid, targeted validation of tests affected by your active changes. Use this first before running the full suite.
+- **`task agent:finish`**: Run this once for final completion; do not repeat its impact, drift, or review children separately.
 - **`task test`**: Pick this for full test suite verification when a broader validation loop is required.
-- **task review**: Pick this as a final step before declaring work ready for merge.
+- **`task review`**: Use separately only to diagnose its portion of a failed `task agent:finish` run.
 - **Multi-Layer Testing**: When a contract is touched, you MUST run unit tests on BOTH sides of the seam (API and PWA) before completion.
 
 **Never**:

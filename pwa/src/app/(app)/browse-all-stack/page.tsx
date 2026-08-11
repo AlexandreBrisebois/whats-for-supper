@@ -8,6 +8,7 @@ import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { RecipeImportIssueBadge } from '@/components/recipes/RecipeImportIssueBadge';
 import { RecycleBinSheet } from '@/components/recipes/RecycleBinSheet';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { useBrowseStackStore } from '@/store/browseStackStore';
@@ -741,13 +742,18 @@ export default function BrowseAllStackPage() {
                   onClick={() => handleCardTap(recipe.id!)}
                   className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
                 >
-                  <div className="aspect-[4/3] bg-sage/10 overflow-hidden">
+                  <div className="relative aspect-[4/3] bg-sage/10 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
                       alt=""
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                     />
+                    {recipe.importIssue?.status && (
+                      <div className="absolute left-2 top-2">
+                        <RecipeImportIssueBadge status={recipe.importIssue.status} />
+                      </div>
+                    )}
                   </div>
                   <div className="p-3">
                     <p className="line-clamp-2 text-sm font-black leading-tight text-charcoal">
@@ -794,6 +800,7 @@ export default function BrowseAllStackPage() {
                       category={recipe.category || ''}
                       cuisineType={recipe.cuisineType ?? null}
                       mealTypes={recipe.mealTypes ?? null}
+                      importIssueStatus={recipe.importIssue?.status ?? null}
                       isFront={i === 0}
                       stackIndex={i}
                       onSwipeRight={handleSwipeRight}

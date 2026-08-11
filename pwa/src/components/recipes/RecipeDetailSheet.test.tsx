@@ -8,8 +8,12 @@ const mockDownloadRecipeBundleFile = vi.fn();
 const mockUpdateRecipe = vi.fn();
 const mockDeleteRecipe = vi.fn();
 const mockReimportRecipe = vi.fn();
+const mockGetRecipeImportStatus = vi.fn();
 const mockUploadRecipeOriginal = vi.fn();
 const mockRegenerateHero = vi.fn();
+const mockSaveRecipeImportIssue = vi.fn();
+const mockResolveRecipeImportIssue = vi.fn();
+const mockAddToast = vi.fn();
 
 vi.mock('@/lib/api/recipes', () => ({
   getRecipe: (...args: unknown[]) => mockGetRecipe(...args),
@@ -18,8 +22,11 @@ vi.mock('@/lib/api/recipes', () => ({
   updateRecipe: (...args: unknown[]) => mockUpdateRecipe(...args),
   deleteRecipe: (...args: unknown[]) => mockDeleteRecipe(...args),
   reimportRecipe: (...args: unknown[]) => mockReimportRecipe(...args),
+  getRecipeImportStatus: (...args: unknown[]) => mockGetRecipeImportStatus(...args),
   uploadRecipeOriginal: (...args: unknown[]) => mockUploadRecipeOriginal(...args),
   regenerateHero: (...args: unknown[]) => mockRegenerateHero(...args),
+  saveRecipeImportIssue: (...args: unknown[]) => mockSaveRecipeImportIssue(...args),
+  resolveRecipeImportIssue: (...args: unknown[]) => mockResolveRecipeImportIssue(...args),
 }));
 
 vi.mock('@/locales', () => ({
@@ -29,7 +36,7 @@ vi.mock('@/locales', () => ({
 
 vi.mock('@/store/uiStore', () => ({
   useUiStore: (selector: (state: { addToast: (...args: unknown[]) => void }) => unknown) =>
-    selector({ addToast: vi.fn() }),
+    selector({ addToast: mockAddToast }),
 }));
 
 vi.mock('@/store/familyStore', () => ({
@@ -85,6 +92,9 @@ describe('RecipeDetailSheet', () => {
       originals: [],
     });
     mockDownloadRecipeBundleFile.mockResolvedValue(undefined);
+    mockReimportRecipe.mockResolvedValue({
+      importId: '550e8400-e29b-41d4-a716-446655440222',
+    });
   });
 
   it('renders Share in the visible action slot while keeping View Original separate', async () => {
@@ -100,6 +110,101 @@ describe('RecipeDetailSheet', () => {
 
     expect(await screen.findByTestId('recipe-share-btn')).toBeVisible();
     expect(screen.getByTestId('action-view-original')).toBeVisible();
+  });
+
+  it('uses the authoritative save response to switch from report to review mode', async () => {
+    mockSaveRecipeImportIssue.mockResolvedValue({
+      ...(await mockGetRecipe()),
+      importIssue: { reasons: ['ingredients'], note: null, status: 'reported' },
+    });
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Report import issue' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ingredients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(mockSaveRecipeImportIssue).toHaveBeenCalledWith(
+        '550e8400-e29b-41d4-a716-446655440111',
+        { reasons: ['ingredients'], note: null }
+      )
+    );
+    expect(await screen.findByLabelText('Import issue status: Reported')).toBeVisible();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getByRole('button', { name: 'Review import issue' })).toBeVisible();
+  });
+
+  it('applies the idempotent resolve response, closes the report sheet, and toasts success', async () => {
+    const recipeWithIssue = {
+      ...(await mockGetRecipe()),
+      importIssue: { reasons: ['steps'], note: null, status: 'readyToReview' },
+    };
+    mockGetRecipe.mockResolvedValue(recipeWithIssue);
+    mockResolveRecipeImportIssue.mockResolvedValue({ ...recipeWithIssue, importIssue: null });
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByLabelText('Import issue status: Ready to review');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Review import issue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
+
+    await waitFor(() =>
+      expect(mockResolveRecipeImportIssue).toHaveBeenCalledWith(recipeWithIssue.id)
+    );
+    expect(screen.queryByRole('dialog', { name: 'Review import issue' })).toBeNull();
+    expect(screen.queryByLabelText(/Import issue status/)).toBeNull();
+    expect(mockAddToast).toHaveBeenCalledWith({ type: 'success', message: 'Marked as resolved' });
+  });
+
+  it('polls a manual re-import to completion and refetches authoritative detail', async () => {
+    const initialRecipe = await mockGetRecipe();
+    const refreshedRecipe = {
+      ...initialRecipe,
+      importIssue: { reasons: ['ingredients'], note: null, status: 'readyToReview' },
+    };
+    mockGetRecipe.mockReset();
+    mockGetRecipe.mockResolvedValue(refreshedRecipe).mockResolvedValueOnce(initialRecipe);
+    mockGetRecipeImportStatus
+      .mockResolvedValueOnce({ status: 'Processing', errorMessage: null })
+      .mockResolvedValueOnce({ status: 'Completed', errorMessage: null });
+
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByTestId('action-reimport-recipe'));
+
+    await waitFor(() => expect(mockGetRecipeImportStatus).toHaveBeenCalledTimes(2), {
+      timeout: 4000,
+    });
+    await waitFor(() => expect(mockGetRecipe).toHaveBeenCalledTimes(2));
+    expect(await screen.findByLabelText('Import issue status: Ready to review')).toBeVisible();
   });
 
   it('hides the share button if the recipe has no hero image', async () => {

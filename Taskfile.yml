@@ -10,9 +10,6 @@ shell:
 set: [pipefail]
 shopt: [globstar]
 
-env:
-  DOTNET_ROLL_FORWARD: Major
-
 vars:
   API_PORT: '5050'
   PWA_PORT: '3000'
@@ -308,16 +305,11 @@ tasks:
   gen:client:
     desc: "🔄 Regenerate Kiota API client from specs/openapi.yaml"
     summary: |
-      Regenerates the Kiota TypeScript API client.
-
-      Agent note: this command can hang in the Codex sandbox while `dotnet kiota`
-      runs. If it stays quiet for more than about a minute, stop and ask Alex to
-      run `task gen:client` locally, then continue after the generated files are
-      present.
+      Regenerates the Kiota TypeScript API client using the tool's compatible
+      runtime, non-interactive clean output, and a one-shot timeout.
     dir: pwa
     cmds:
       - npm run api:generate
-      - npx prettier --config .prettierrc.json --write "src/lib/api/generated/**/*.ts"
 
   gen:client:sync:
     desc: "🔄 Regenerate Kiota client and stage changes (for local development)"
@@ -329,38 +321,8 @@ tasks:
 
   gen:client:check:
     desc: "🔍 Verify Kiota client is up to date (non-destructive check)"
-    dir: pwa
     cmds:
-      - |
-        # Use a temporary directory for the check to avoid dirtying the workspace
-        CHECK_DIR=$(mktemp -d)
-        trap 'rm -rf "$CHECK_DIR"' EXIT
-        
-        echo "⏳ Checking Kiota client drift..."
-        
-        # 1. Generate into the temporary directory
-        # We need to use the full path to the spec because we are in 'pwa' dir
-        dotnet kiota generate -l typescript -c ApiClient -o "$CHECK_DIR" -d ../specs/openapi.yaml > /dev/null 2>&1
-        
-        # 2. Fix imports in the temporary directory
-        KIOTA_TARGET_DIR="$CHECK_DIR" node scripts/fix-kiota-imports.js > /dev/null 2>&1
-        
-        # 3. Format the temporary directory using the project's prettier config
-        # This ensures we are comparing formatted code to formatted code
-        npx prettier --config .prettierrc.json --write "$CHECK_DIR/**/*.ts" > /dev/null 2>&1
-        
-        # 4. Compare the temporary directory with the actual generated client
-        # We exclude the lock file from comparison because it contains relative paths that depend on the output directory
-        if ! diff -r -x "kiota-lock.json" -x ".kiota.log" "$CHECK_DIR" src/lib/api/generated > /dev/null 2>&1; then
-          echo ""
-          echo "❌ Kiota client is out of date with specs/openapi.yaml."
-          echo "👉 Run 'task gen:client' to update it locally."
-          echo ""
-          # Show which files are different
-          diff -r -x "kiota-lock.json" -x ".kiota.log" --brief "$CHECK_DIR" src/lib/api/generated | sed 's|^|  |'
-          exit 1
-        fi
-        echo "✅ Kiota client is up to date"
+      - python3 scripts/agent/kiota_client.py check
 
   # ============================================================================
   # ASSET GENERATION
@@ -1179,6 +1141,7 @@ tasks:
       - lint
       - typecheck
       - test:unit
+      - test:agent
       - agent:test:impact
 
   review:
@@ -1208,6 +1171,7 @@ tasks:
       - lint
       - typecheck
       - test:unit
+      - test:agent
       - test:api
 
   ship:
@@ -1323,6 +1287,18 @@ tasks:
     desc: "🤖 Impact-Aware Test Runner (Only run tests affected by git changes)"
     cmds:
       - python3 scripts/agent/test_ops.py --impact
+
+  agent:finish:
+    desc: "🤖 Single completion gate — impact tests, drift checks, then review"
+    cmds:
+      - task: agent:test:impact
+      - task: agent:drift
+      - task: review
+
+  test:agent:
+    desc: "🤖 Unit tests for the repository agent harness"
+    cmds:
+      - python3 -m unittest discover -s scripts/agent/tests -p "test_*.py"
 
   # ============================================================================
   # AUTH

@@ -1,5 +1,9 @@
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using RecipeApi.Data;
 using RecipeApi.Models;
+using RecipeApi.Tests.Infrastructure;
 using Xunit;
 
 namespace RecipeApi.Tests.Integration;
@@ -52,6 +56,45 @@ public class SchemaIntegrityTests
         Assert.Contains("is_vegetarian", tableDefinition);
         Assert.Contains("primary_food_group", tableDefinition);
         Assert.Contains("version", tableDefinition);
+    }
+
+    [Fact]
+    public void RecipeImportReports_Schema_Enforces_ActiveRowAndPrivacyConstraints()
+    {
+        var tableDefinition = GetTableDefinition("recipe_import_reports");
+
+        Assert.Contains("recipe_id uuid PRIMARY KEY", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("REFERENCES recipes(id) ON DELETE CASCADE", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("reasons text[]", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("note varchar(500)", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("last_error varchar(2000)", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("reported_by uuid", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ON DELETE SET NULL", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ready_to_review", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("cardinality(reasons) > 0", tableDefinition, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RecipeImportReport_Model_UsesCascadeAndNullableMemberReferences()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var entity = db.Model.FindEntityType(typeof(RecipeImportReport));
+
+        Assert.NotNull(entity);
+        var recipeFk = entity!.GetForeignKeys().Single(fk => fk.PrincipalEntityType.ClrType == typeof(Recipe));
+        Assert.Equal(DeleteBehavior.Cascade, recipeFk.DeleteBehavior);
+
+        var memberFks = entity.GetForeignKeys()
+            .Where(fk => fk.PrincipalEntityType.ClrType == typeof(FamilyMember))
+            .ToList();
+        Assert.Equal(2, memberFks.Count);
+        Assert.All(memberFks, fk =>
+        {
+            Assert.False(fk.IsRequired);
+            Assert.Equal(DeleteBehavior.SetNull, fk.DeleteBehavior);
+        });
     }
 
     private string GetTableDefinition(string tableName)

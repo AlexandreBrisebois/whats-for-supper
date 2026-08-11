@@ -68,6 +68,9 @@ public class RecipeDto
     [JsonPropertyName("canReimport")]
     public required bool CanReimport { get; set; }
 
+    [JsonPropertyName("importIssue")]
+    public RecipeImportIssueDto? ImportIssue { get; set; }
+
     [JsonPropertyName("imageCount")]
     public required int ImageCount { get; set; }
 

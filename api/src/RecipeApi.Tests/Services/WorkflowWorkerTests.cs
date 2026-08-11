@@ -1590,8 +1590,11 @@ public class WorkflowWorkerTests : IAsyncLifetime
     /// When a workflow instance reaches WorkflowStatus.Failed (all retries exhausted),
     /// the worker MUST publish a recipe_failed SSE event with the recipe's partial data.
     /// </summary>
-    [Fact]
-    public async Task WorkflowFatalFailure_PublishesRecipeFailedEvent()
+    [Theory]
+    [InlineData("recipe-import")]
+    [InlineData("url-import")]
+    public async Task WorkflowFatalFailure_RecordsImportReportAndPublishesRecipeFailedEvent(
+        string workflowId)
     {
         // Arrange
         var services = new ServiceCollection();
@@ -1613,6 +1616,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var dbName = $"FatalPublishesRecipeFailedTest_{Guid.NewGuid():N}";
         services.AddDbContext<RecipeDbContext>(opts =>
             opts.UseInMemoryDatabase(dbName));
+        services.AddScoped<RecipeImportReportService>();
 
         // Fatal exception — not transient, not 429 — exhausts retries immediately
         services.AddScoped<IWorkflowProcessor>(sp =>
@@ -1660,12 +1664,11 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.Recipes.Add(recipe);
-
         // Instance with Parameters containing the recipeId (matches production TriggerAsync pattern)
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
-            WorkflowId = "recipe-import",
+            WorkflowId = workflowId,
             Status = WorkflowStatus.Processing,
             Parameters = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
             {
@@ -1675,6 +1678,14 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowInstances.Add(instance);
+        db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = recipeId,
+            Reasons = ["ingredients"],
+            Status = RecipeImportReportStatus.Reimporting,
+            LastWorkflowInstanceId = instance.Id,
+            LastAttemptAt = now
+        });
 
         // Task with RetryCount already at max — next failure is fatal
         var task = new WorkflowTask
@@ -1710,6 +1721,11 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Contains("AI pipeline exploded", evt.ErrorMessage);
         Assert.Equal("ExtractRecipe", evt.FailedStep);
         Assert.NotNull(evt.PartialData);
+
+        var report = await queryDb.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
+        Assert.Equal(RecipeImportReportStatus.ReimportFailed, report.Status);
+        Assert.Contains("ExtractRecipe", report.LastError);
+        Assert.Contains("AI pipeline exploded", report.LastError);
 
         // Cleanup
         testWorker.Dispose();

@@ -1,21 +1,25 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Settings, Trash2, RefreshCw, Pencil } from 'lucide-react';
+import { Settings, Trash2, RefreshCw, Pencil, Flag } from 'lucide-react';
 import { t } from '@/locales';
 
 interface ActionGearMenuProps {
   canReimport: boolean;
+  hasImportIssue: boolean;
   onEdit?: () => void;
   onMoveToBin: () => void;
   onReimport: () => void;
+  onReportImportIssue: () => void;
 }
 
 export function ActionGearMenu({
   canReimport,
+  hasImportIssue,
   onEdit,
   onMoveToBin,
   onReimport,
+  onReportImportIssue,
 }: ActionGearMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -72,6 +76,20 @@ export function ActionGearMenu({
                 >
                   <Pencil size={16} className="text-terracotta/70" />
                   {t('common.edit', 'Edit')}
+                </button>
+              )}
+              {canReimport && (
+                <button
+                  type="button"
+                  data-testid="action-report-import-issue"
+                  onClick={() => {
+                    onReportImportIssue();
+                    setIsOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
+                >
+                  <Flag size={16} className="text-ochre-700" />
+                  {hasImportIssue ? 'Review import issue' : 'Report import issue'}
                 </button>
               )}
               {canReimport && (

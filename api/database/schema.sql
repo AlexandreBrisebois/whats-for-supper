@@ -51,6 +51,25 @@ CREATE TABLE recipes (
     CONSTRAINT recipes_rating_check CHECK (rating >= 0 AND rating <= 3)
 );
 
+CREATE TABLE IF NOT EXISTS recipe_import_reports (
+    recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
+    reasons text[] NOT NULL,
+    note varchar(500),
+    status text NOT NULL DEFAULT 'reported',
+    reported_by uuid REFERENCES family_members(id) ON DELETE SET NULL,
+    updated_by uuid REFERENCES family_members(id) ON DELETE SET NULL,
+    created_at timestamptz DEFAULT now() NOT NULL,
+    updated_at timestamptz DEFAULT now() NOT NULL,
+    last_workflow_instance_id uuid,
+    last_attempt_at timestamptz,
+    reimported_at timestamptz,
+    last_error varchar(2000),
+    CONSTRAINT recipe_import_reports_reasons_nonempty_check CHECK (cardinality(reasons) > 0),
+    CONSTRAINT recipe_import_reports_reasons_allowed_check CHECK (reasons <@ ARRAY['ingredients', 'steps']::text[]),
+    CONSTRAINT recipe_import_reports_reasons_unique_check CHECK (cardinality(reasons) = (CASE WHEN reasons @> ARRAY['ingredients']::text[] THEN 1 ELSE 0 END + CASE WHEN reasons @> ARRAY['steps']::text[] THEN 1 ELSE 0 END)),
+    CONSTRAINT recipe_import_reports_status_check CHECK (status IN ('reported', 'reimporting', 'reimport_failed', 'ready_to_review'))
+);
+
 CREATE TABLE IF NOT EXISTS recipe_search_documents (
     recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
     document_text text NOT NULL,
@@ -166,6 +185,7 @@ CREATE INDEX idx_recipe_votes_recipe_id ON recipe_votes (recipe_id);
 CREATE INDEX idx_recipes_added_by ON recipes (added_by) WHERE (added_by IS NOT NULL);
 CREATE INDEX idx_recipes_created_at_desc ON recipes (created_at DESC);
 CREATE INDEX idx_recipes_discovery_lookup ON recipes (category, id) WHERE (is_discoverable = true);
+CREATE INDEX idx_recipe_import_reports_status ON recipe_import_reports (status);
 CREATE INDEX IF NOT EXISTS idx_recipes_cuisine_type ON recipes (cuisine_type) WHERE (cuisine_type IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_maintenance_commands_status_scheduled ON maintenance_commands (status, scheduled_for, created_at);
 

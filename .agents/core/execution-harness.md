@@ -16,8 +16,10 @@ Use the following canonical commands to perform regular operational duties safel
 - **`task dev:kill`**: Run this manually if you encounter "port already in use" errors or strange flakiness.
 - **`task test:kill`**: Run this manually to clear zombie Playwright workers.
 - **`task agent:test:impact`**: Run this to execute only the tests affected by your recent git changes.
+- **`task agent:finish`**: Run this once for final completion. It owns impact → drift → review ordering and safely reuses an unchanged successful impact result.
 - **`task agent:audit AREA=<keyword>`**: Run this to identify tests, analyze migration candidates, and detect brittle selectors for a specific feature area.
 - **`task review`**: Run this for a full pre-commit review. Like `gate`, it clears lingerng processes before starting.
+- **Timeout handling**: A harness child that reports a timeout has already been stopped. Do not retry it automatically. Use its diagnostic to correct permissions/runtime or ask for one focused user action.
 
 ## 4. Agent Toolbox
 Each `task` command in Section 3 is backed by a script in `scripts/agent/`. Before debugging a failure or extending a workflow, consult the toolbox to understand what each script does, what problem it solves, and what modes it supports.
@@ -39,11 +41,10 @@ Before starting a new feature or refactoring:
 
 ## 7. Completion workflow
 Before concluding any implementation phase:
-1. Verify contract integrity (`task agent:drift`).
-2. Run high-speed validation (`task gate`).
-3. Ensure the codebase passes the full project review (`task review`).
-4. Run a final `task agent:audit` to ensure no new brittle selectors were introduced.
-5. Do not declare work complete until these validation steps succeed.
+1. Use `task gate` during implementation when broad validation is warranted.
+2. Run `task agent:finish` exactly once on the final worktree state.
+3. Run a final `task agent:audit` when the task changes E2E selectors.
+4. Do not declare work complete until the applicable validation steps succeed.
 
 ## 7. Session state files
 

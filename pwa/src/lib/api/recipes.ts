@@ -13,6 +13,9 @@ import type {
   RecipeSearchRequestDto,
   RecipeSearchResponseDto,
   RecipeSearchResultDto,
+  RecipeImportIssueDto,
+  RecipeImportIssueReason,
+  RecipeImportIssueStatus,
   SharedImageDto,
 } from './generated/models/index';
 
@@ -38,6 +41,23 @@ export interface Recipe {
   isReady: boolean;
   cuisineType?: string | null;
   mealTypes?: UpdateRecipeDto_mealTypes[] | null;
+  importIssue?: RecipeImportIssue | null;
+}
+
+export type { RecipeImportIssueReason, RecipeImportIssueStatus };
+export interface RecipeImportIssue {
+  reasons: RecipeImportIssueReason[];
+  note: string | null;
+  status: RecipeImportIssueStatus;
+}
+export interface RecipeImportIssueDraft {
+  reasons: RecipeImportIssueReason[];
+  note: string | null;
+}
+
+function mapImportIssue(issue: RecipeImportIssueDto | null | undefined): RecipeImportIssue | null {
+  if (!issue?.status) return null;
+  return { reasons: issue.reasons ?? [], note: issue.note ?? null, status: issue.status };
 }
 
 export type RecommendationResult = {
@@ -68,6 +88,7 @@ export type RecipeSearchResult = {
   notes: string | null;
   reasons: Array<{ source: string; label: string }>;
   plannerFitNote: string | null;
+  importIssueStatus: RecipeImportIssueStatus | null;
 };
 
 export type RecipeSearchResponse = {
@@ -137,6 +158,7 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     isReady: dto.isReady ?? false,
     cuisineType: dto.cuisineType ?? null,
     mealTypes: dto.mealTypes ?? null,
+    importIssue: mapImportIssue(dto.importIssue),
   };
 }
 
@@ -155,6 +177,8 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
     'reasons'
   );
   const plannerFitNote = (readField<string | null>(dto, 'plannerFitNote') ?? null) as string | null;
+  const importIssueStatus = (readField<RecipeImportIssueStatus | null>(dto, 'importIssueStatus') ??
+    null) as RecipeImportIssueStatus | null;
 
   // Kiota currently deserializes nullable union topPick into an empty marker object.
   // Treat that shape as null so the page can show the real empty state.
@@ -175,6 +199,7 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
       label: reason?.label || '',
     })),
     plannerFitNote,
+    importIssueStatus,
   };
 }
 
@@ -193,6 +218,21 @@ export async function getRecipes(
 
 export async function getRecipe(id: string): Promise<Recipe> {
   const result = await apiClient.api.recipes.byId(id as any).get();
+  if (!result?.recipe) throw new Error('Recipe not found');
+  return mapToRecipe(result.recipe);
+}
+
+export async function saveRecipeImportIssue(
+  id: string,
+  draft: RecipeImportIssueDraft
+): Promise<Recipe> {
+  const result = await apiClient.api.recipes.byId(id as any).importReport.put(draft);
+  if (!result?.recipe) throw new Error('Recipe not found');
+  return mapToRecipe(result.recipe);
+}
+
+export async function resolveRecipeImportIssue(id: string): Promise<Recipe> {
+  const result = await apiClient.api.recipes.byId(id as any).importReport.delete();
   if (!result?.recipe) throw new Error('Recipe not found');
   return mapToRecipe(result.recipe);
 }
@@ -223,8 +263,28 @@ export async function deleteRecipe(id: string): Promise<void> {
   await apiClient.api.recipes.byId(id as any).delete();
 }
 
-export async function reimportRecipe(id: string): Promise<void> {
-  await apiClient.api.recipes.byId(id as any).importEscaped.post();
+export interface RecipeImportAttempt {
+  importId: string;
+}
+
+export interface RecipeImportStatus {
+  status: string;
+  errorMessage: string | null;
+}
+
+export async function reimportRecipe(id: string): Promise<RecipeImportAttempt> {
+  const result = await apiClient.api.recipes.byId(id as any).importEscaped.post();
+  if (!result?.importId) throw new Error('Import attempt was not returned');
+  return { importId: String(result.importId) };
+}
+
+export async function getRecipeImportStatus(id: string): Promise<RecipeImportStatus> {
+  const result = await apiClient.api.recipes.byId(id as any).importEscaped.get();
+  if (!result?.status) throw new Error('Import status was not returned');
+  return {
+    status: result.status,
+    errorMessage: result.errorMessage ?? null,
+  };
 }
 
 export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id: string }> {
