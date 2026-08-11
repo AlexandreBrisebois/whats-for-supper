@@ -966,60 +966,62 @@ export function RecipeDetailSheet({
               </div>
             )}
 
-            <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-5">
-              {!showActionPivot ? (
+            {!isEditing && (
+              <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-5">
+                {!showActionPivot ? (
+                  <button
+                    type="button"
+                    data-testid={primaryActionTestId}
+                    onClick={() =>
+                      plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
+                    }
+                    disabled={isSavingAction}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  >
+                    {!plannerDayLabel && <UtensilsCrossed size={18} />}
+                    <span>{primaryActionLabel}</span>
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      data-testid="action-cook-tonight"
+                      onClick={() => void handleUseRecipe()}
+                      disabled={isSavingAction}
+                      className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                    >
+                      <UtensilsCrossed size={18} />
+                      <span>Cook Tonight</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="action-plan-later"
+                      onClick={() => void handlePlanForLater()}
+                      disabled={isSavingAction}
+                      className="flex-1 inline-flex min-h-12 items-center justify-center rounded-full bg-ochre px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-ochre/90 disabled:opacity-60"
+                    >
+                      Plan for Later
+                    </button>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  data-testid={primaryActionTestId}
-                  onClick={() =>
-                    plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
-                  }
-                  disabled={isSavingAction}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  data-testid="action-find-similar"
+                  onClick={() => onFindSimilar(recipe.id)}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm transition hover:bg-charcoal/5"
                 >
-                  {!plannerDayLabel && <UtensilsCrossed size={18} />}
-                  <span>{primaryActionLabel}</span>
+                  <Search size={16} />
+                  {t('recipes.findSimilar', 'Find Similar')}
                 </button>
-              ) : (
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    data-testid="action-cook-tonight"
-                    onClick={() => void handleUseRecipe()}
-                    disabled={isSavingAction}
-                    className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
-                  >
-                    <UtensilsCrossed size={18} />
-                    <span>Cook Tonight</span>
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="action-plan-later"
-                    onClick={() => void handlePlanForLater()}
-                    disabled={isSavingAction}
-                    className="flex-1 inline-flex min-h-12 items-center justify-center rounded-full bg-ochre px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-ochre/90 disabled:opacity-60"
-                  >
-                    Plan for Later
-                  </button>
-                </div>
-              )}
 
-              <button
-                type="button"
-                data-testid="action-find-similar"
-                onClick={() => onFindSimilar(recipe.id)}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm transition hover:bg-charcoal/5"
-              >
-                <Search size={16} />
-                {t('recipes.findSimilar', 'Find Similar')}
-              </button>
-
-              <DiscoveryToggleCard
-                isDiscoverable={isDiscoverable}
-                onToggle={handleToggleDiscovery}
-                isLoading={isUpdatingDiscovery}
-              />
-            </div>
+                <DiscoveryToggleCard
+                  isDiscoverable={isDiscoverable}
+                  onToggle={handleToggleDiscovery}
+                  isLoading={isUpdatingDiscovery}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

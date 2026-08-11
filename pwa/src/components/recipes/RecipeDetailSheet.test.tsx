@@ -302,6 +302,37 @@ describe('RecipeDetailSheet', () => {
     expect(await screen.findByTestId('action-edit-recipe')).toBeVisible();
   });
 
+  it('shows only edit actions while editing and restores viewing actions on cancel', async () => {
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByTestId('action-cook-this')).toBeVisible();
+    expect(screen.getByTestId('action-find-similar')).toBeVisible();
+    expect(screen.getByTestId('action-toggle-discovery')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+
+    expect(screen.getByTestId('recipe-save-edits')).toBeVisible();
+    expect(screen.getByTestId('recipe-cancel-edits')).toBeVisible();
+    expect(screen.queryByTestId('action-cook-this')).toBeNull();
+    expect(screen.queryByTestId('action-find-similar')).toBeNull();
+    expect(screen.queryByTestId('action-toggle-discovery')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
+
+    expect(screen.getByTestId('action-cook-this')).toBeVisible();
+    expect(screen.getByTestId('action-find-similar')).toBeVisible();
+    expect(screen.getByTestId('action-toggle-discovery')).toBeVisible();
+  });
+
   it('shows recipe-share-error when export fails', async () => {
     mockGetRecipeShareBundle.mockRejectedValue(new Error('share failed'));
 
