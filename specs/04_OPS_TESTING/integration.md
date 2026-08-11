@@ -7,12 +7,12 @@ This document defines how "What's For Supper" integrates with external services 
 ```
 [Next.js PWA]
     ↕ HTTP (REST)
-[Recipe API (.NET 10)]
+[Recipe API (.NET 11 Preview)]
     ├── Writes → [NAS Filesystem] (recipe images, recipe.info)
     ├── Writes → [PostgreSQL] (recipe metadata, family data, schedule)
     └── Inserts → [PostgreSQL: recipe_imports]
 
-[Import Worker (.NET 10)]
+[Import Worker (.NET 11 Preview)]
     ├── Polls ← [PostgreSQL: recipe_imports]
     ├── Reads ← [NAS Filesystem] (originals/)
     ├── Calls → [Ollama/Gemma] (Pass 1: OCR + Schema.org)

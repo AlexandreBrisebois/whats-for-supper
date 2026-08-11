@@ -56,7 +56,7 @@ Ensure the full round-trip preserves all supported data.
 - [x] 11. **Backend - Import Restoration**
   - Update `RecipeService.ImportRecipeShareBundle` to restore `Notes` and `Rating` from the DTO.
   - _Requirements: AC 3.2_
-- [ ] 12. **E2E - Round-trip Validation**
+- [x] 12. **E2E - Round-trip Validation**
   - Create `pwa/e2e/sharing-fidelity.spec.ts` to test Export -> Upload -> Import flow.
   - _Requirements: All ACs_
 

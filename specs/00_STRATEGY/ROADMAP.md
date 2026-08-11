@@ -9,11 +9,11 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 | **0 — MVP** | Recipe capture end-to-end | Next.js + C# + PostgreSQL (no Redis, no AI) | ✅ Done |
 | **1 — Import** | AI processing pipeline | DB Polling + Gemma + Gemini + Branding | 🏃 Active |
 | **2 — Family** | Identity & Pulse | FamilyMembers, Activity Feed, Approvals | 📝 Planned |
-| **3 — Discovery** | Express Planning | Smart Pivot, Swipe Voting, Vector Search | ✅ Done |
-| **4 — Planner** | Kitchen & Cook's Mode | Weekly list, Cook's Mode, Calendar Sync | ✅ Done |
+| **3 — Discovery** | Express Planning | Smart Pivot, Swipe Voting, Vector Search | 🏃 Active |
+| **4 — Planner** | Kitchen & Cook's Mode | Weekly list, Cook's Mode, Calendar Sync | 🏃 Active |
 | **5 — Agents** | Suggestion Engine | Diet Agent, Shopping Lists | 🏃 Active |
 | **6 — Polish** | Resilience | Offline-first, Performance, Final Aesthetics | 📝 Planned |
-| **7 — Ops** | Production Ready | Cloudflare Tunnel, Monitoring, Cleanup | 📝 Planned |
+| **7 — Ops** | Production Ready | Platform modernization, monitoring, cleanup | 🏃 Active |
 | **9 — Workflows** | Extensions & Bulk | Bulk triggers, Dashboard, Retry UI | 🏃 Active |
 | **15 — Storage** | Cloud-Ready | Repository pattern, Blob Storage | 🏃 Active |
 
@@ -70,19 +70,19 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 - [x] **One-Tap Pivot Execution**: Connect "Quick Fix" chips to the Schedule API.
 
 ### PWA Integrations (API-Sync)
-- [ ] **Recipe Details**: Implement detailed recipe view with inline `PATCH` editing.
+- [x] **Recipe Details**: Implement detailed recipe view with inline `PATCH` editing.
 - [x] **AI Hero Visualization**: Use the AI-generated hero images (`/api/recipes/{id}/hero`).
 - [ ] **Processing Feedback**: Add visual indicators for recipes in the AI pipeline.
 
 ### Implementation Checklist
 - [x] **Tonight Pivot Card**: Purposeful fallback card (implemented as `TonightPivotCard`).
 - [x] **Home Integration**: Conditional display on `home/page.tsx`.
-- [ ] **Vector Search API**: Backend support for agentic natural language queries.
+- [x] **Vector Search API**: Backend support for hybrid semantic and lexical queries.
 - [x] **Swipe Logic**: Right-swipe triggers immediate planning (`TODAY`).
 
 ---
 
-## Phase 4 — Planner: The Kitchen & Cook's Mode
+## Phase 4 — Planner: The Kitchen & Cook's Mode [ACTIVE]
 
 **Goal**: Family has a shared meal plan synced with real calendars. Focused on **Supper** (Family Dinner) as the primary coordination event, with support for other slots as future extensions.
 
@@ -105,8 +105,13 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 **Goal**: AI suggests meals, infers dietary metadata, and generates section-categorized shopping lists.
 
 ### Additions
-- [ ] **DietAgent**: Specialized agent to infer `isVegetarian` and `isHealthyChoice` from recipe data.
-- [ ] **Shopping Lists**: Automatic generation of grocery lists from the weekly plan.
+- [ ] **CNF Data Ingestion**: Import provider nutrition data, nutrient lookup, unit weights, and bilingual aliases.
+- [ ] **Family Health Profiles**: Add contract-first profile CRUD and non-blocking discovery/planner warnings.
+- [ ] **CNF Search Augmentation**: Add provider-backed aliases, pantry matching, nutrition filters, grocery reconciliation, and explainable nudges.
+- [ ] **Dietitian Agent Phase 2**: Add week-balance scoring and health-guidance-gated recommendations.
+
+Active task plans live under `.kiro/specs/cnf/`; their orchestration order is defined in
+`.kiro/specs/cnf/cnf-health-orchestration/tasks.md`.
 
 ---
 
@@ -116,11 +121,12 @@ This is the **Single Source of Truth** for project phases, status, and strategic
 
 ---
 
-## Phase 7 — Operations & Infrastructure
+## Phase 7 — Operations & Infrastructure [ACTIVE]
 
 **Goal**: Production-ready stability and secure access.
 
 ### Additions
+- [ ] **.NET 11 Preview Migration**: Align the SDK, API/test target frameworks, packages, CI, Docker, tooling, and documentation on Preview 6; complete all validation required by ADR 043.
 - **Secure External Access (Cloudflare Tunnel)**.
 - **Dashboard & Monitoring**: Traefik Dashboard.
 - **Orphaned File Cleanup**: Active scan for recipe directories with no DB record.

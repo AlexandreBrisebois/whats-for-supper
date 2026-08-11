@@ -1,4 +1,4 @@
-# Build Prompt: Future-Proof Custom Model Router for .NET 10
+# Build Prompt: Future-Proof Custom Model Router for .NET 11
 
 This document defines the requirements and phased implementation plan for a production-ready custom model router in the Recipe API.
 
@@ -60,4 +60,3 @@ The implementation is divided into several chunks, each with its own execution p
 - **Root Path**: `/Users/alex/Code/whats-for-supper/api/src/RecipeApi`
 - **Abstraction**: `Microsoft.Extensions.AI.IChatClient`
 - **Registry**: `IModelCatalog`
-

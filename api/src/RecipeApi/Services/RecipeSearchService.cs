@@ -682,7 +682,7 @@ public partial class RecipeSearchService(
         var queryVectorJson = JsonSerializer.Serialize(queryVector);
 
         var vectorCandidates = await db.RecipeSearchDocuments
-            .FromSqlInterpolated($@"
+            .FromSql($@"
                 SELECT * FROM recipe_search_documents
                 WHERE embedding IS NOT NULL
                 AND embedding <=> ({queryVectorJson})::vector < {1.0 - SimilarityThreshold}
@@ -720,7 +720,7 @@ public partial class RecipeSearchService(
         }
 
         var candidates = await db.RecipeSearchDocuments
-            .FromSqlInterpolated($@"
+            .FromSql($@"
                 SELECT * FROM recipe_search_documents
                 WHERE recipe_id != {similarToId}
                 AND embedding IS NOT NULL

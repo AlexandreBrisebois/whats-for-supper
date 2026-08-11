@@ -12,7 +12,7 @@ public class SchemaIntegrityTests
     {
         var projectDir = Directory.GetCurrentDirectory();
         // Go up until we find the root directory that contains api/database/schema.sql
-        // From bin/Debug/net10.0, we need to go up about 6 levels.
+        // From bin/Debug/net11.0, we need to go up about 6 levels.
         var root = projectDir;
         for (int i = 0; i < 10; i++)
         {

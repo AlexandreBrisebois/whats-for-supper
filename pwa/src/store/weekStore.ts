@@ -176,6 +176,8 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     try {
       const scheduleData = await getSchedule(weekOffset);
 
+      if (get().weekOffset !== weekOffset) return;
+
       if (!scheduleData) {
         set({ isLoading: false });
         return;
@@ -189,6 +191,8 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       // When status === 0 (draft), the planner starts blank and mom controls it.
       // When status === 1 (voting open), the family's votes surface as pending suggestions.
       const defaultsData = status === 1 ? await getSmartDefaults(weekOffset) : null;
+
+      if (get().weekOffset !== weekOffset) return;
 
       const mergedDays = buildScheduleDays(scheduleData, defaultsData ?? undefined, get().schedule);
 
@@ -452,6 +456,8 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       }
       return;
     }
+
+    if ((schedule.weekOffset ?? 0) !== get().weekOffset) return;
 
     // Another family member's update — only apply when we have no unconfirmed
     // moves in flight. This replaces the wall-clock window entirely.

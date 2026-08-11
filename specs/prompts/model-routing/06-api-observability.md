@@ -1,6 +1,6 @@
 # Phase 6: API Integration & Observability
 
-You are a senior .NET 10 developer. Your task is to integrate the **Model Router** into the Recipe API and implement first-class observability.
+You are a senior .NET 11 developer. Your task is to integrate the **Model Router** into the Recipe API and implement first-class observability.
 
 ## Objective
 Finalize the integration by updating `Program.cs`, implementing the configuration schema in `appsettings.json`, and adding OpenTelemetry instrumentation to track routing decisions and performance.
