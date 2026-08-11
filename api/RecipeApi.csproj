@@ -39,7 +39,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.*" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.*" />
     <PackageReference Include="System.ClientModel" Version="1.15.0" />
-    <PackageReference Include="Google.GenAI" Version="1.16.0" />
+    <PackageReference Include="Google.GenAI" Version="1.17.0" />
     <!-- OpenTelemetry -->
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
