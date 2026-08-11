@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, Circle, ShoppingCart, Tag } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, Circle, ShoppingCart, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -54,6 +54,7 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
   const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
   const [reclassifyOpen, setReclassifyOpen] = useState<string | null>(null);
   const [reclassifyErrors, setReclassifyErrors] = useState<Set<string>>(new Set());
+  const [collapsedAisles, setCollapsedAisles] = useState<Set<GrocerySection>>(new Set());
   const grouped = useMemo(() => {
     const result: Partial<Record<GrocerySection, GroceryLineItemDto[]>> = {};
     for (const item of items) {
@@ -125,6 +126,15 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
         });
       }, 3000);
     }
+  };
+
+  const toggleAisle = (aisle: GrocerySection) => {
+    setCollapsedAisles((current) => {
+      const next = new Set(current);
+      if (next.has(aisle)) next.delete(aisle);
+      else next.add(aisle);
+      return next;
+    });
   };
 
   return (
@@ -207,9 +217,16 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                   const aisleItems = grouped[aisle] || [];
                   if (aisleItems.length === 0) return null;
 
+                  const displayedItems = [
+                    ...aisleItems.filter((item) => !groceryState[item.displayName ?? '']),
+                    ...aisleItems.filter((item) => groceryState[item.displayName ?? '']),
+                  ];
+
                   const checkedCount = aisleItems.filter(
                     (item) => groceryState[item.displayName ?? '']
                   ).length;
+                  const isCollapsed = collapsedAisles.has(aisle);
+                  const itemsRegionId = `aisle-items-${aisle.replace(/\s+/g, '-').toLowerCase()}`;
 
                   return (
                     <motion.div
@@ -225,15 +242,19 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                         const isComplete =
                           aisleItems.length > 0 && checkedCount === aisleItems.length;
                         return (
-                          <div
+                          <button
+                            type="button"
+                            onClick={() => toggleAisle(aisle)}
                             className={`px-6 py-4 border-b border-charcoal/5 ${
                               isComplete
                                 ? 'bg-sage/20'
                                 : 'bg-gradient-to-r from-charcoal/2 to-transparent'
-                            }`}
+                            } w-full text-left`}
                             data-testid={
                               isComplete ? 'aisle-header-complete' : 'aisle-header-incomplete'
                             }
+                            aria-expanded={!isCollapsed}
+                            aria-controls={itemsRegionId}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
@@ -254,27 +275,42 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                                   </p>
                                 </div>
                               </div>
-                              <div className="h-8 w-8 rounded-full bg-sage/10 flex items-center justify-center">
-                                {isComplete ? (
-                                  <CheckCircle2
-                                    size={18}
-                                    className="text-sage"
-                                    data-testid="section-complete-icon"
-                                  />
-                                ) : (
-                                  <span className="text-xs font-black text-sage">
-                                    {Math.round((checkedCount / aisleItems.length) * 100)}%
-                                  </span>
-                                )}
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-full bg-sage/10 flex items-center justify-center">
+                                  {isComplete ? (
+                                    <CheckCircle2
+                                      size={18}
+                                      className="text-sage"
+                                      data-testid="section-complete-icon"
+                                    />
+                                  ) : (
+                                    <span className="text-xs font-black text-sage">
+                                      {Math.round((checkedCount / aisleItems.length) * 100)}%
+                                    </span>
+                                  )}
+                                </div>
+                                <ChevronDown
+                                  size={18}
+                                  className={cn(
+                                    'text-charcoal/40 transition-transform',
+                                    isCollapsed && '-rotate-90'
+                                  )}
+                                  aria-hidden="true"
+                                />
                               </div>
                             </div>
-                          </div>
+                          </button>
                         );
                       })()}
 
                       {/* Items */}
-                      <div className="divide-y divide-charcoal/5 p-4 space-y-2">
-                        {aisleItems.map((item) => {
+                      <div
+                        id={itemsRegionId}
+                        className="divide-y divide-charcoal/5 p-4 space-y-2"
+                        hidden={isCollapsed}
+                        aria-hidden={isCollapsed}
+                      >
+                        {displayedItems.map((item) => {
                           const key = item.displayName ?? '';
                           const quantityHint = formatQuantityHint(item.quantity, item.unitText);
                           const isChecked = groceryState[key] ?? false;
