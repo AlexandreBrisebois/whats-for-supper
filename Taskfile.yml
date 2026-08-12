@@ -1163,6 +1163,7 @@ tasks:
       - task: gen:client:check
       - task: agent:drift:schemas
       - task: agent:drift:mocks
+      - task: agent:reconcile
 
   review:validate:
     desc: "Parallel quality checks (lint + typecheck + unit tests + API tests)"
