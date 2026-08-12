@@ -14,6 +14,7 @@ public class RecipeController(
     AgentSearchTranslationService agentSearchTranslationService,
     ImageService imageService,
     RecipeImportService importService,
+    RecipeImportReportService importReportService,
     RecipeImportBulkService bulkImportService,
     RecipePurgeService recipePurgeService,
     ILogger<RecipeController> logger) : ControllerBase
@@ -109,6 +110,38 @@ public class RecipeController(
     {
         var result = await recipeService.UpdateRecipe(id, dto);
         return Ok(result);
+    }
+
+    [HttpPut("{id:guid}/import-report")]
+    [SkipWrapping]
+    public async Task<IActionResult> PutImportReport(
+        Guid id,
+        [FromBody] RecipeImportIssueRequest request,
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
+    {
+        if (familyMemberId is null)
+            return BadRequest(new { status = StatusCodes.Status400BadRequest, message = "X-Family-Member-Id header is required." });
+
+        try
+        {
+            return Ok(await importReportService.UpsertAsync(id, familyMemberId.Value, request));
+        }
+        catch (RecipeImportReportIneligibleException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:guid}/import-report")]
+    [SkipWrapping]
+    public async Task<IActionResult> DeleteImportReport(
+        Guid id,
+        [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
+    {
+        if (familyMemberId is null)
+            return BadRequest(new { status = StatusCodes.Status400BadRequest, message = "X-Family-Member-Id header is required." });
+
+        return Ok(await importReportService.DeleteAsync(id, familyMemberId.Value));
     }
 
     /// <summary>

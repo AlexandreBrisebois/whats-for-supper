@@ -13,6 +13,7 @@ import {
   BookOpen,
   Dices,
   Trash2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api/api-client';
@@ -24,6 +25,8 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { RecipeImportIssueBadge } from '@/components/recipes/RecipeImportIssueBadge';
+import { RecipeFiltersSheet, RECIPE_FILTER_OPTIONS } from '@/components/recipes/RecipeFiltersSheet';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import {
   assignRecipeToEmptySlot,
@@ -89,6 +92,7 @@ export default function RecipesPage() {
     searchParams.get('similarTo')
   );
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [limit, setLimit] = useState(INITIAL_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -474,9 +478,18 @@ export default function RecipesPage() {
     void runSearch(query, similarToRecipeId, next);
   };
 
+  const handleApplyFilters = (filters: RecipeSearchFiltersDto) => {
+    setActiveFilters(filters);
+    setIsFiltersOpen(false);
+    void runSearch(query, similarToRecipeId, filters);
+  };
+
   const { topPick, results } = data ?? { topPick: null, results: [] };
-  const showEmptyState = !isLoading && topPick == null && results.length === 0;
   const hasActiveFilters = Object.keys(activeFilters).length > 0;
+  const activeFilterCount = Object.values(activeFilters).filter(Boolean).length;
+  const hasReviewFilters = Boolean(activeFilters.reportedOnly || activeFilters.readyToReviewOnly);
+  const displayedTopPick = hasReviewFilters ? null : topPick;
+  const showEmptyState = !isLoading && displayedTopPick == null && results.length === 0;
   const hasMoreResults = data !== null && results.length >= limit;
 
   const handleShowMore = useCallback(async () => {
@@ -522,10 +535,15 @@ export default function RecipesPage() {
         return currentData;
       }
 
-      const nextTopPickIndex = Math.floor(Math.random() * currentData.results.length);
-      const nextTopPick = currentData.results[nextTopPickIndex];
+      const eligibleResults = currentData.results.filter((recipe) => !recipe.importIssueStatus);
+      if (eligibleResults.length === 0) {
+        return currentData;
+      }
+
+      const nextTopPickIndex = Math.floor(Math.random() * eligibleResults.length);
+      const nextTopPick = eligibleResults[nextTopPickIndex];
       const previousTopPick = currentData.topPick;
-      const nextResults = currentData.results.filter((_, index) => index !== nextTopPickIndex);
+      const nextResults = currentData.results.filter((recipe) => recipe.id !== nextTopPick.id);
 
       if (previousTopPick) {
         nextResults.unshift(previousTopPick);
@@ -867,46 +885,30 @@ export default function RecipesPage() {
         </motion.div>
       )}
 
-      {/* Filter pills */}
-      <div className="flex flex-col gap-2 px-1">
+      {/* Mobile filters */}
+      <div className="px-1 md:hidden">
+        <button
+          type="button"
+          data-testid="mobile-filters-button"
+          aria-label={`Filters, ${activeFilterCount} active`}
+          onClick={() => setIsFiltersOpen(true)}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
+        >
+          <SlidersHorizontal size={16} aria-hidden="true" />
+          {t('recipes.filters', 'Filters')}
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-terracotta/10 px-1.5 text-xs text-terracotta">
+            {activeFilterCount}
+          </span>
+        </button>
+      </div>
+
+      {/* Desktop inline filters */}
+      <div data-testid="desktop-recipe-filters" className="hidden flex-col gap-2 px-1 md:flex">
         <p className="text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40">
           {t('recipes.filterBy', 'Filter by')}
         </p>
         <div className="flex flex-wrap gap-2">
-          {(
-            [
-              {
-                key: 'newRecipes',
-                label: t('recipes.filterNew', 'New'),
-                testId: 'filter-new-recipes',
-              },
-              {
-                key: 'neverCooked',
-                label: t('recipes.filterNeverTried', 'Never Tried'),
-                testId: 'filter-never-tried',
-              },
-              {
-                key: 'familyFavorite',
-                label: t('recipes.filterFamilyFavorite', 'Family Favorite'),
-                testId: 'filter-family-favorite',
-              },
-              {
-                key: 'quickOnly',
-                label: t('recipes.filterQuick', 'Quick'),
-                testId: 'filter-quick',
-              },
-              {
-                key: 'notCookedInLongTime',
-                label: t('recipes.filterNotCookedLong', "It's Been a While"),
-                testId: 'filter-not-cooked-long-time',
-              },
-              {
-                key: 'healthyOnly',
-                label: t('recipes.filterHealthy', 'Healthy Choice'),
-                testId: 'filter-healthy',
-              },
-            ] as { key: keyof RecipeSearchFiltersDto; label: string; testId: string }[]
-          ).map(({ key, label, testId }) => {
+          {RECIPE_FILTER_OPTIONS.map(({ key, labelKey, fallback, testId }) => {
             const isActive = !!activeFilters[key];
             return (
               <button
@@ -921,7 +923,7 @@ export default function RecipesPage() {
                     : 'border-charcoal/10 bg-white/70 text-charcoal'
                 )}
               >
-                {label}
+                {t(labelKey, fallback)}
               </button>
             );
           })}
@@ -950,7 +952,7 @@ export default function RecipesPage() {
             <div className="flex gap-3 flex-wrap justify-center">
               <button
                 type="button"
-                onClick={() => void runSearch('')}
+                onClick={() => handleApplyFilters({})}
                 className="inline-flex rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white shadow-sm"
               >
                 {t('recipes.clearFilters', 'Clear Filters')}
@@ -973,17 +975,19 @@ export default function RecipesPage() {
               className="flex items-center justify-between px-1"
             >
               <h2 className="font-heading text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-                {t('recipes.recommendations', 'Top Picks')}
+                {hasReviewFilters
+                  ? t('recipes.results', 'Results')
+                  : t('recipes.recommendations', 'Top Picks')}
               </h2>
             </motion.div>
 
             {/* Top Pick Hero */}
-            {topPick && (
+            {displayedTopPick && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
-                onClick={() => handleOpenRecipe(topPick.id)}
+                onClick={() => handleOpenRecipe(displayedTopPick.id)}
                 data-testid="recipe-card-top-pick"
                 className={cn(
                   'relative group cursor-pointer active:scale-[0.98] transition-all',
@@ -1011,8 +1015,8 @@ export default function RecipesPage() {
                 <div className="relative w-full aspect-[16/10] min-h-[240px] rounded-[2.5rem] overflow-hidden shadow-2xl glass-solar border border-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={getImageUrl(topPick.imageUrl) || '/placeholder-recipe.jpg'}
-                    alt={topPick.name}
+                    src={getImageUrl(displayedTopPick.imageUrl) || '/placeholder-recipe.jpg'}
+                    alt={displayedTopPick.name}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent opacity-90" />
@@ -1022,14 +1026,14 @@ export default function RecipesPage() {
                       <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
                         <Clock size={10} />{' '}
                         {tWithVars('common.readyIn', 'READY IN {{time}}', {
-                          time: formatRecipeTime(topPick.totalTime),
+                          time: formatRecipeTime(displayedTopPick.totalTime),
                         })}
                       </span>
                     </div>
                     <h3 className="text-3xl font-black tracking-tighter leading-none mb-1">
-                      {topPick.name}
+                      {displayedTopPick.name}
                     </h3>
-                    {topPick.plannerFitNote && (
+                    {displayedTopPick.plannerFitNote && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1041,14 +1045,14 @@ export default function RecipesPage() {
                             <Sparkles size={16} className="text-ochre animate-pulse" />
                           </div>
                           <p className="text-white font-bold text-sm leading-snug tracking-tight">
-                            {topPick.plannerFitNote}
+                            {displayedTopPick.plannerFitNote}
                           </p>
                         </div>
                       </motion.div>
                     )}
-                    {!topPick.plannerFitNote && topPick.reasons.length > 0 && (
+                    {!displayedTopPick.plannerFitNote && displayedTopPick.reasons.length > 0 && (
                       <p className="text-white/70 text-sm font-medium line-clamp-2 max-w-[90%] leading-snug">
-                        {topPick.reasons[0].label}
+                        {displayedTopPick.reasons[0].label}
                       </p>
                     )}
                   </div>
@@ -1078,6 +1082,11 @@ export default function RecipesPage() {
                       alt={recipe.name}
                       className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
+                    {recipe.importIssueStatus && (
+                      <div className="absolute left-3 top-3">
+                        <RecipeImportIssueBadge status={recipe.importIssueStatus} />
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1 px-1.5 pb-1">
                     <span className="text-[9px] font-black uppercase tracking-widest text-charcoal/30 flex items-center gap-1">
@@ -1113,6 +1122,14 @@ export default function RecipesPage() {
         {openDetailRecipeId}
         {similarToRecipeId}
       </div>
+
+      {isFiltersOpen && (
+        <RecipeFiltersSheet
+          activeFilters={activeFilters}
+          onApply={handleApplyFilters}
+          onClose={() => setIsFiltersOpen(false)}
+        />
+      )}
 
       {openDetailRecipeId && (
         <RecipeDetailSheet

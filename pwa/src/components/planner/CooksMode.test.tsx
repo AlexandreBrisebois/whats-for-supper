@@ -38,10 +38,14 @@ vi.mock('@/lib/imageUtils', () => ({
 
 const getRecipeMock = vi.fn();
 const updateRecipeMock = vi.fn();
+const saveRecipeImportIssueMock = vi.fn();
+const resolveRecipeImportIssueMock = vi.fn();
 
 vi.mock('@/lib/api/recipes', () => ({
   getRecipe: (...args: any[]) => getRecipeMock(...args),
   updateRecipe: (...args: any[]) => updateRecipeMock(...args),
+  saveRecipeImportIssue: (...args: any[]) => saveRecipeImportIssueMock(...args),
+  resolveRecipeImportIssue: (...args: any[]) => resolveRecipeImportIssueMock(...args),
 }));
 
 vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
@@ -57,7 +61,155 @@ describe('CooksMode', () => {
   beforeEach(() => {
     getRecipeMock.mockReset();
     updateRecipeMock.mockReset();
+    saveRecipeImportIssueMock.mockReset();
+    resolveRecipeImportIssueMock.mockReset();
     usePlannerStore.setState({ cookProgress: {} });
+  });
+
+  it('reports Ingredients from Check & Prep without losing checked ingredients or cook progress', async () => {
+    const recipe = {
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      canReimport: true,
+      importIssue: null,
+      ingredients: ['Pasta', 'Tomatoes'],
+      recipeInstructions: [{ name: 'Boil Water', text: 'Boil the water.' }],
+    };
+    getRecipeMock.mockResolvedValue(recipe);
+    saveRecipeImportIssueMock.mockResolvedValue({
+      ...recipe,
+      importIssue: {
+        reasons: ['ingredients', 'steps'],
+        note: null,
+        status: 'reported',
+      },
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    const firstIngredient = (await screen.findAllByTestId('ingredient-toggle'))[0];
+    fireEvent.click(firstIngredient);
+
+    const reportAction = screen.getByRole('button', { name: 'Report issue with ingredients' });
+    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta/70');
+    expect(reportAction).toHaveTextContent('');
+    expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
+    fireEvent.click(reportAction);
+
+    expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Steps' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(saveRecipeImportIssueMock).toHaveBeenCalledWith('recipe-1', {
+        reasons: ['ingredients', 'steps'],
+        note: null,
+      })
+    );
+    expect(screen.queryByRole('dialog', { name: 'Report import issue' })).toBeNull();
+    expect(firstIngredient).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('heading', { name: 'Check & Prep' })).toBeInTheDocument();
+    expect(usePlannerStore.getState().cookProgress['recipe-1']).toBeUndefined();
+  });
+
+  it('merges Steps into an existing issue and preserves its reasons, note, and active step', async () => {
+    const recipe = {
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      canReimport: true,
+      ingredients: ['Pasta'],
+      recipeInstructions: [{ name: 'Boil Water', text: 'Boil the water.' }],
+      importIssue: {
+        reasons: ['ingredients'],
+        note: 'The amounts are unclear',
+        status: 'reported',
+      },
+    };
+    getRecipeMock.mockResolvedValue(recipe);
+    saveRecipeImportIssueMock.mockResolvedValue({
+      ...recipe,
+      importIssue: {
+        reasons: ['ingredients', 'steps'],
+        note: 'The amounts are unclear',
+        status: 'reported',
+      },
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+    expect(await screen.findByRole('heading', { name: 'Boil Water' })).toBeInTheDocument();
+
+    const reportAction = screen.getByRole('button', { name: 'Report issue with steps' });
+    const editAction = screen.getByRole('button', { name: 'Edit step' });
+    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta/70');
+    expect(editAction).toHaveClass('h-12', 'w-12');
+    expect(reportAction).toHaveTextContent('');
+    expect(editAction).toHaveTextContent('');
+    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
+    expect(editAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
+    expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
+    fireEvent.click(reportAction);
+
+    expect(screen.queryByTestId('recipe-detail-sheet')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Optional note')).toHaveValue('The amounts are unclear');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close review import issue' }));
+    expect(screen.queryByRole('dialog', { name: 'Review import issue' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Boil Water' })).toBeInTheDocument();
+    expect(usePlannerStore.getState().cookProgress['recipe-1']).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Report issue with steps' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(saveRecipeImportIssueMock).toHaveBeenCalledWith('recipe-1', {
+        reasons: ['ingredients', 'steps'],
+        note: 'The amounts are unclear',
+      })
+    );
+    expect(screen.queryByRole('dialog', { name: 'Review import issue' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Boil Water' })).toBeInTheDocument();
+    expect(usePlannerStore.getState().cookProgress['recipe-1']).toBe(1);
+  });
+
+  it('does not offer contextual reporting for an ineligible recipe', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Synthesized Pasta',
+      canReimport: false,
+      ingredients: ['Pasta'],
+      recipeInstructions: [{ name: 'Step 1', text: 'Cook pasta.' }],
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Synthesized Pasta', image: '/img/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    await screen.findByRole('heading', { name: 'Check & Prep' });
+    expect(screen.queryByRole('button', { name: /Report issue with/ })).toBeNull();
   });
 
   it("keeps check and prep focused on ingredients, then starts recipe content at step 1 after Let's Cook", async () => {

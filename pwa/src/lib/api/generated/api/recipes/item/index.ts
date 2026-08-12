@@ -21,6 +21,11 @@ import {
 } from './importEscaped/index';
 // @ts-ignore
 import {
+  ImportReportRequestBuilderRequestsMetadata,
+  type ImportReportRequestBuilder,
+} from './importReport/index';
+// @ts-ignore
+import {
   OriginalRequestBuilderNavigationMetadata,
   type OriginalRequestBuilder,
 } from './original/index';
@@ -152,6 +157,10 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * The import property
    */
   get importEscaped(): ImportRequestBuilder;
+  /**
+   * The importReport property
+   */
+  get importReport(): ImportReportRequestBuilder;
   /**
    * The original property
    */
@@ -335,6 +344,9 @@ export const ItemRequestBuilderNavigationMetadata: Record<
   },
   importEscaped: {
     requestsMetadata: ImportRequestBuilderRequestsMetadata,
+  },
+  importReport: {
+    requestsMetadata: ImportReportRequestBuilderRequestsMetadata,
   },
   original: {
     navigationMetadata: OriginalRequestBuilderNavigationMetadata,

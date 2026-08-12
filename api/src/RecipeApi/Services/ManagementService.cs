@@ -37,6 +37,7 @@ public class ManagementService(
 
     private string DemoRoot => Path.Combine(DataRoot, "demo");
     private string ActiveRecipesRoot => recipesRoot.Root;
+    private string RecipeImportReportsBackupPath => Path.Combine(DataRoot, "recipe-import-reports.json");
 
     public async Task<object> BackupAsync()
     {
@@ -211,6 +212,22 @@ public class ManagementService(
         }
 
         logger.LogInformation("Backed up {Count} search index sidecars", sidecarCount);
+
+        // 7. Backup active recipe import reports. Always overwrite the artifact,
+        // including with an empty array, so resolved reports cannot be resurrected
+        // from a stale backup during disaster recovery.
+        var importReports = (await db.RecipeImportReports
+                .AsNoTracking()
+                .OrderBy(report => report.RecipeId)
+                .ToListAsync())
+            .Select(RecipeImportReportBackup.FromEntity)
+            .ToList();
+        await WriteJsonAsync(RecipeImportReportsBackupPath, importReports, CancellationToken.None);
+        logger.LogInformation(
+            "Backed up {Count} recipe import reports to {Path}",
+            importReports.Count,
+            RecipeImportReportsBackupPath);
+
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
     }
@@ -264,6 +281,7 @@ public class ManagementService(
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         try
         {
+            db.RecipeImportReports.RemoveRange(db.RecipeImportReports);
             db.RecipeVotes.RemoveRange(db.RecipeVotes);
             db.WeeklyPlans.RemoveRange(db.WeeklyPlans);
             db.CalendarEvents.RemoveRange(db.CalendarEvents);
@@ -913,6 +931,11 @@ public class ManagementService(
 
         await db.SaveChangesAsync(ct);
 
+        // 4a. Restore active recipe import reports after their recipe and member
+        // dependencies exist. Workflow rows are intentionally not backed up, so an
+        // interrupted re-import returns to the actionable Reported state.
+        await RestoreRecipeImportReportsAsync(ct);
+
         // 4b. Restore search index sidecars
         var configuredModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "text-embedding-3-small";
         foreach (var recipe in recipesToRestore)
@@ -1362,6 +1385,85 @@ public class ManagementService(
         await db.SaveChangesAsync(ct);
     }
 
+    private async Task RestoreRecipeImportReportsAsync(CancellationToken ct)
+    {
+        if (!File.Exists(RecipeImportReportsBackupPath))
+        {
+            logger.LogInformation(
+                "Recipe import report backup not found at {Path}; skipping for legacy backup compatibility",
+                RecipeImportReportsBackupPath);
+            return;
+        }
+
+        List<RecipeImportReportBackup> reports;
+        try
+        {
+            reports = await ReadJsonAsync<List<RecipeImportReportBackup>>(
+                RecipeImportReportsBackupPath,
+                ct) ?? [];
+        }
+        catch (Exception ex) when (ex is JsonException or IOException)
+        {
+            logger.LogError(
+                ex,
+                "Failed to read recipe import report backup at {Path}; skipping",
+                RecipeImportReportsBackupPath);
+            return;
+        }
+
+        var recipeIds = await db.Recipes
+            .IgnoreQueryFilters()
+            .Select(recipe => recipe.Id)
+            .ToHashSetAsync(ct);
+        var memberIds = await db.FamilyMembers
+            .Select(member => member.Id)
+            .ToHashSetAsync(ct);
+
+        var restoredCount = 0;
+        foreach (var backup in reports)
+        {
+            if (ct.IsCancellationRequested) break;
+            if (!recipeIds.Contains(backup.RecipeId))
+            {
+                logger.LogWarning(
+                    "Skipping recipe import report for missing recipe {RecipeId}",
+                    backup.RecipeId);
+                continue;
+            }
+
+            var interrupted = backup.Status == RecipeImportReportStatus.Reimporting;
+            var existing = await db.RecipeImportReports.FindAsync([backup.RecipeId], ct);
+            if (existing is null)
+            {
+                existing = new RecipeImportReport { RecipeId = backup.RecipeId };
+                db.RecipeImportReports.Add(existing);
+            }
+
+            existing.Reasons = backup.Reasons;
+            existing.Note = backup.Note;
+            existing.Status = interrupted ? RecipeImportReportStatus.Reported : backup.Status;
+            existing.ReportedBy = backup.ReportedBy is Guid reportedBy && memberIds.Contains(reportedBy)
+                ? reportedBy
+                : null;
+            existing.UpdatedBy = backup.UpdatedBy is Guid updatedBy && memberIds.Contains(updatedBy)
+                ? updatedBy
+                : null;
+            existing.CreatedAt = backup.CreatedAt;
+            existing.UpdatedAt = backup.UpdatedAt;
+            existing.LastWorkflowInstanceId = interrupted ? null : backup.LastWorkflowInstanceId;
+            existing.LastAttemptAt = interrupted ? null : backup.LastAttemptAt;
+            existing.ReimportedAt = interrupted ? null : backup.ReimportedAt;
+            existing.LastError = interrupted ? null : backup.LastError;
+            restoredCount++;
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "Restored {Count} recipe import reports from {Path}",
+            restoredCount,
+            RecipeImportReportsBackupPath);
+    }
+
     private async Task<int> MergeFamilyMembersAsync(List<FamilyMember> sourceMembers)
     {
         var membersPath = Path.Combine(DataRoot, "family-members.json");
@@ -1389,5 +1491,34 @@ public class ManagementService(
             logger.LogInformation("Merged {Count} family members into {Path}", addedCount, membersPath);
         }
         return addedCount;
+    }
+
+    private sealed record RecipeImportReportBackup(
+        Guid RecipeId,
+        string[] Reasons,
+        string? Note,
+        RecipeImportReportStatus Status,
+        Guid? ReportedBy,
+        Guid? UpdatedBy,
+        DateTimeOffset CreatedAt,
+        DateTimeOffset UpdatedAt,
+        Guid? LastWorkflowInstanceId,
+        DateTimeOffset? LastAttemptAt,
+        DateTimeOffset? ReimportedAt,
+        string? LastError)
+    {
+        public static RecipeImportReportBackup FromEntity(RecipeImportReport report) => new(
+            report.RecipeId,
+            report.Reasons,
+            report.Note,
+            report.Status,
+            report.ReportedBy,
+            report.UpdatedBy,
+            report.CreatedAt,
+            report.UpdatedAt,
+            report.LastWorkflowInstanceId,
+            report.LastAttemptAt,
+            report.ReimportedAt,
+            report.LastError);
     }
 }

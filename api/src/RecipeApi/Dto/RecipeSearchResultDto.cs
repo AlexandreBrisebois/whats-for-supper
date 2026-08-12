@@ -36,4 +36,7 @@ public class RecipeSearchResultDto
 
     [JsonPropertyName("plannerFitNote")]
     public string? PlannerFitNote { get; set; }
+
+    [JsonPropertyName("importIssueStatus")]
+    public string? ImportIssueStatus { get; set; }
 }

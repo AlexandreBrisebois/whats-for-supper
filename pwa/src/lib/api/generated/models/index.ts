@@ -522,6 +522,28 @@ export function createRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeImportIssueDto}
+ */
+// @ts-ignore
+export function createRecipeImportIssueDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeImportIssueDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeImportIssueRequest}
+ */
+// @ts-ignore
+export function createRecipeImportIssueRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeImportIssueRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeImportStatusResponseDto}
  */
 // @ts-ignore
@@ -1932,6 +1954,11 @@ export function deserializeIntoRecipeDto(
     imageUrl: (n) => {
       recipeDto.imageUrl = n.getStringValue();
     },
+    importIssue: (n) => {
+      recipeDto.importIssue = n.getObjectValue<RecipeImportIssueDto>(
+        createRecipeImportIssueDtoFromDiscriminatorValue
+      );
+    },
     ingredients: (n) => {
       recipeDto.ingredients = n.getCollectionOfPrimitiveValues<string>('string');
     },
@@ -2004,6 +2031,51 @@ export function deserializeIntoRecipeDto_dietaryProfileMember1(
   recipeDto_dietaryProfileMember1: Partial<RecipeDto_dietaryProfileMember1> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeImportIssueDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeImportIssueDto(
+  recipeImportIssueDto: Partial<RecipeImportIssueDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    note: (n) => {
+      recipeImportIssueDto.note = n.getStringValue();
+    },
+    reasons: (n) => {
+      recipeImportIssueDto.reasons = n.getCollectionOfEnumValues<RecipeImportIssueReason>(
+        RecipeImportIssueReasonObject
+      );
+    },
+    status: (n) => {
+      recipeImportIssueDto.status = n.getEnumValue<RecipeImportIssueStatus>(
+        RecipeImportIssueStatusObject
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeImportIssueRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeImportIssueRequest(
+  recipeImportIssueRequest: Partial<RecipeImportIssueRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    note: (n) => {
+      recipeImportIssueRequest.note = n.getStringValue();
+    },
+    reasons: (n) => {
+      recipeImportIssueRequest.reasons = n.getCollectionOfEnumValues<RecipeImportIssueReason>(
+        RecipeImportIssueReasonObject
+      );
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -2162,6 +2234,9 @@ export function deserializeIntoRecipeSearchFiltersDto(
     familyFavorite: (n) => {
       recipeSearchFiltersDto.familyFavorite = n.getBooleanValue();
     },
+    healthyOnly: (n) => {
+      recipeSearchFiltersDto.healthyOnly = n.getBooleanValue();
+    },
     neverCooked: (n) => {
       recipeSearchFiltersDto.neverCooked = n.getBooleanValue();
     },
@@ -2173,6 +2248,12 @@ export function deserializeIntoRecipeSearchFiltersDto(
     },
     quickOnly: (n) => {
       recipeSearchFiltersDto.quickOnly = n.getBooleanValue();
+    },
+    readyToReviewOnly: (n) => {
+      recipeSearchFiltersDto.readyToReviewOnly = n.getBooleanValue();
+    },
+    reportedOnly: (n) => {
+      recipeSearchFiltersDto.reportedOnly = n.getBooleanValue();
     },
   };
 }
@@ -2323,6 +2404,11 @@ export function deserializeIntoRecipeSearchResultDto(
     },
     imageUrl: (n) => {
       recipeSearchResultDto.imageUrl = n.getStringValue();
+    },
+    importIssueStatus: (n) => {
+      recipeSearchResultDto.importIssueStatus = n.getEnumValue<RecipeImportIssueStatus>(
+        RecipeImportIssueStatusObject
+      );
     },
     isDiscoverable: (n) => {
       recipeSearchResultDto.isDiscoverable = n.getBooleanValue();
@@ -3668,6 +3754,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   imageUrl?: string | null;
   /**
+   * The importIssue property
+   */
+  importIssue?: RecipeImportIssueDto | null;
+  /**
    * The ingredients property
    */
   ingredients?: string[] | null;
@@ -3726,6 +3816,34 @@ export type RecipeDto_mealTypes =
   (typeof RecipeDto_mealTypesObject)[keyof typeof RecipeDto_mealTypesObject];
 export type RecipeDto_sourceType =
   (typeof RecipeDto_sourceTypeObject)[keyof typeof RecipeDto_sourceTypeObject];
+export interface RecipeImportIssueDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The note property
+   */
+  note?: string | null;
+  /**
+   * The reasons property
+   */
+  reasons?: RecipeImportIssueReason[] | null;
+  /**
+   * The status property
+   */
+  status?: RecipeImportIssueStatus | null;
+}
+export type RecipeImportIssueReason =
+  (typeof RecipeImportIssueReasonObject)[keyof typeof RecipeImportIssueReasonObject];
+export interface RecipeImportIssueRequest extends AdditionalDataHolder, Parsable {
+  /**
+   * The note property
+   */
+  note?: string | null;
+  /**
+   * The reasons property
+   */
+  reasons?: RecipeImportIssueReason[] | null;
+}
+export type RecipeImportIssueStatus =
+  (typeof RecipeImportIssueStatusObject)[keyof typeof RecipeImportIssueStatusObject];
 export interface RecipeImportStatusResponseDto extends AdditionalDataHolder, Parsable {
   /**
    * The errorMessage property
@@ -3818,6 +3936,10 @@ export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
    */
   familyFavorite?: boolean | null;
   /**
+   * The healthyOnly property
+   */
+  healthyOnly?: boolean | null;
+  /**
    * The neverCooked property
    */
   neverCooked?: boolean | null;
@@ -3833,6 +3955,14 @@ export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
    * The quickOnly property
    */
   quickOnly?: boolean | null;
+  /**
+   * The readyToReviewOnly property
+   */
+  readyToReviewOnly?: boolean | null;
+  /**
+   * The reportedOnly property
+   */
+  reportedOnly?: boolean | null;
 }
 export interface RecipeSearchReasonDto extends AdditionalDataHolder, Parsable {
   /**
@@ -3921,6 +4051,10 @@ export interface RecipeSearchResultDto extends AdditionalDataHolder, Parsable {
    * The imageUrl property
    */
   imageUrl?: string | null;
+  /**
+   * The importIssueStatus property
+   */
+  importIssueStatus?: RecipeImportIssueStatus | null;
   /**
    * The isDiscoverable property
    */
@@ -4944,6 +5078,11 @@ export function serializeRecipeDto(
   writer.writeNumberValue('imageCount', recipeDto.imageCount);
   writer.writeCollectionOfPrimitiveValues<number>('images', recipeDto.images);
   writer.writeStringValue('imageUrl', recipeDto.imageUrl);
+  writer.writeObjectValue<RecipeImportIssueDto>(
+    'importIssue',
+    recipeDto.importIssue,
+    serializeRecipeImportIssueDto
+  );
   writer.writeCollectionOfPrimitiveValues<string>('ingredients', recipeDto.ingredients);
   writer.writeBooleanValue('isDiscoverable', recipeDto.isDiscoverable);
   writer.writeBooleanValue('isHealthyChoice', recipeDto.isHealthyChoice);
@@ -4997,6 +5136,53 @@ export function serializeRecipeDto_dietaryProfileMember1(
     return;
   }
   writer.writeAdditionalData(recipeDto_dietaryProfileMember1.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeImportIssueDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeImportIssueDto(
+  writer: SerializationWriter,
+  recipeImportIssueDto: Partial<RecipeImportIssueDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeImportIssueDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('note', recipeImportIssueDto.note);
+  if (recipeImportIssueDto.reasons)
+    writer.writeCollectionOfEnumValues<RecipeImportIssueReason>(
+      'reasons',
+      recipeImportIssueDto.reasons
+    );
+  writer.writeEnumValue<RecipeImportIssueStatus>('status', recipeImportIssueDto.status);
+  writer.writeAdditionalData(recipeImportIssueDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeImportIssueRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeImportIssueRequest(
+  writer: SerializationWriter,
+  recipeImportIssueRequest: Partial<RecipeImportIssueRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeImportIssueRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('note', recipeImportIssueRequest.note);
+  if (recipeImportIssueRequest.reasons)
+    writer.writeCollectionOfEnumValues<RecipeImportIssueReason>(
+      'reasons',
+      recipeImportIssueRequest.reasons
+    );
+  writer.writeAdditionalData(recipeImportIssueRequest.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5163,10 +5349,13 @@ export function serializeRecipeSearchFiltersDto(
   }
   writer.writeBooleanValue('discoverableOnly', recipeSearchFiltersDto.discoverableOnly);
   writer.writeBooleanValue('familyFavorite', recipeSearchFiltersDto.familyFavorite);
+  writer.writeBooleanValue('healthyOnly', recipeSearchFiltersDto.healthyOnly);
   writer.writeBooleanValue('neverCooked', recipeSearchFiltersDto.neverCooked);
   writer.writeBooleanValue('newRecipes', recipeSearchFiltersDto.newRecipes);
   writer.writeBooleanValue('notCookedInLongTime', recipeSearchFiltersDto.notCookedInLongTime);
   writer.writeBooleanValue('quickOnly', recipeSearchFiltersDto.quickOnly);
+  writer.writeBooleanValue('readyToReviewOnly', recipeSearchFiltersDto.readyToReviewOnly);
+  writer.writeBooleanValue('reportedOnly', recipeSearchFiltersDto.reportedOnly);
   writer.writeAdditionalData(recipeSearchFiltersDto.additionalData);
 }
 /**
@@ -5318,6 +5507,10 @@ export function serializeRecipeSearchResultDto(
   }
   writer.writeGuidValue('id', recipeSearchResultDto.id);
   writer.writeStringValue('imageUrl', recipeSearchResultDto.imageUrl);
+  writer.writeEnumValue<RecipeImportIssueStatus>(
+    'importIssueStatus',
+    recipeSearchResultDto.importIssueStatus
+  );
   writer.writeBooleanValue('isDiscoverable', recipeSearchResultDto.isDiscoverable);
   writer.writeStringValue('name', recipeSearchResultDto.name);
   writer.writeStringValue('notes', recipeSearchResultDto.notes);
@@ -6495,6 +6688,14 @@ export const RecipeDto_sourceTypeObject = {
   Url: 'url',
   Photos: 'photos',
   Synthesized: 'synthesized',
+} as const;
+export const RecipeImportIssueReasonObject = {
+  Ingredients: 'ingredients',
+  Steps: 'steps',
+} as const;
+export const RecipeImportIssueStatusObject = {
+  Reported: 'reported',
+  ReadyToReview: 'readyToReview',
 } as const;
 export const RecipeSearchReasonDto_sourceObject = {
   NameMatch: 'name-match',

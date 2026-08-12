@@ -70,16 +70,15 @@ Bind to the execution harness defined in `.agents/core/execution-harness.md`. Us
 | Check for schema drift | `task agent:drift` |
 | Understand a feature's full data flow | `task agent:slice -- <route>` |
 | Validate only what your changes affect | `task agent:test:impact` |
+| Complete a task once | `task agent:finish` |
 | Run the full test suite | `task test` |
 | Final pre-merge review | `task review` |
 
 ## 8. Completion gate
 
-Do not declare work complete until all of the following pass:
-
-1. `task agent:drift` — zero schema drift confirmed.
-2. `task agent:test:impact` — targeted tests pass for the affected changes.
-3. `task review` — formatting, linting, type-checking, and tests pass.
+Run `task agent:finish` once on the final worktree. It owns impact, drift, and
+review ordering. Run a child target separately only to diagnose a failure that
+`agent:finish` reports.
 
 When impact is uncertain or changes are broad, escalate to a full test run (`task test`) before considering the work complete.
 

@@ -43,12 +43,17 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     private readonly string _dbName = $"TestDb_{Guid.NewGuid():N}";
     private readonly string _dataRoot = Path.Combine(Path.GetTempPath(), $"wfs-test-{Guid.NewGuid():N}");
     private readonly bool _enableAuth;
+    private readonly IChatClient? _chatClient;
     private readonly Dictionary<string, string?> _configurationOverrides = [];
 
     private ISearchTelemetry? _telemetry;
-    private TestWebApplicationFactory(bool enableAuth = false, Dictionary<string, string?>? configurationOverrides = null)
+    private TestWebApplicationFactory(
+        bool enableAuth = false,
+        Dictionary<string, string?>? configurationOverrides = null,
+        IChatClient? chatClient = null)
     {
         _enableAuth = enableAuth;
+        _chatClient = chatClient;
         if (configurationOverrides is not null)
         {
             _configurationOverrides = configurationOverrides;
@@ -66,6 +71,13 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     public static async Task<TestWebApplicationFactory> CreateAsync(Dictionary<string, string?> configurationOverrides)
     {
         var factory = new TestWebApplicationFactory(enableAuth: false, configurationOverrides);
+        await factory.StartAsync();
+        return factory;
+    }
+
+    public static async Task<TestWebApplicationFactory> CreateAsync(IChatClient chatClient)
+    {
+        var factory = new TestWebApplicationFactory(enableAuth: false, chatClient: chatClient);
         await factory.StartAsync();
         return factory;
     }
@@ -167,8 +179,9 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
 
         // Stub IChatClient so AgentSearchTranslationService and InventoryCaptureService can be resolved in tests.
         // The default stub inspects the prompt and returns shape-correct payloads for each test path.
-        builder.Services.AddSingleton<IChatClient>(new StubChatClient(null));
+        builder.Services.AddSingleton<IChatClient>(_chatClient ?? new StubChatClient(null));
         builder.Services.AddScoped<RecipeImportService>();
+        builder.Services.AddScoped<RecipeImportReportService>();
         builder.Services.AddScoped<RecipeImportBulkService>();
         builder.Services.AddScoped<SettingsService>();
         builder.Services.AddSingleton<IClock, SystemClock>();

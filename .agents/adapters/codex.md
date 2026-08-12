@@ -40,11 +40,11 @@ Before writing any code, Codex must bound the task, prefer the smallest sufficie
 | Validate tests affected by your changes | `task agent:test:impact` |
 | Run the full test suite | `task test` |
 | Final pre-merge check | `task review` |
+| Complete a task once | `task agent:finish` |
 
-5. **Completion gates.** Work is not done until:
-   - `task agent:drift` passes — zero schema drift.
-   - `task agent:test:impact` passes — targeted tests green.
-   - `task review` passes — lint, types, and tests clean.
+5. **Completion gate.** Run `task agent:finish` once on the final worktree. It
+   owns impact, drift, and review ordering. Run child targets separately only
+   to diagnose a failure reported by that command.
 
    When impact is unclear or changes are broad, run `task test` before declaring the work done.
 

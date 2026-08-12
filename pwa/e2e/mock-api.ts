@@ -1,6 +1,9 @@
 import { type Page } from '@playwright/test';
 import {
   type RecipeDto,
+  type RecipeImportIssueDto,
+  type RecipeImportIssueRequest,
+  RecipeImportIssueStatusObject,
   type RecipeShareBundleDto,
   RecipeDto_sourceType,
   RecipeDto_sourceTypeObject,
@@ -86,6 +89,8 @@ export async function mockSseWithConnectedSchedule(
  * Setup common API routes with sane defaults.
  */
 export async function setupCommonRoutes(page: Page) {
+  let activeImportIssue: RecipeImportIssueDto | null = null;
+
   // GET /api/family
   await page.route('**/api/family', async (route) => {
     if (route.request().method() === 'GET') {
@@ -513,6 +518,37 @@ export async function setupCommonRoutes(page: Page) {
         body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
       });
     }
+  });
+
+  // PUT/DELETE /api/recipes/{id}/import-report — registered after the recipe wildcard for priority
+  await page.route('**/api/recipes/*/import-report', async (route) => {
+    const request = route.request();
+    const method = request.method();
+    const id =
+      request.url().match(/\/recipes\/([0-9a-f-]+)\/import-report/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
+
+    if (method === 'PUT') {
+      const body = request.postDataJSON() as RecipeImportIssueRequest;
+      activeImportIssue = {
+        reasons: body.reasons ?? [],
+        note: body.note ?? null,
+        status: RecipeImportIssueStatusObject.Reported,
+      };
+    } else if (method === 'DELETE') {
+      activeImportIssue = null;
+    } else {
+      await route.fallback();
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        updatedAt: FIXED_E2E_TIMESTAMP,
+        recipe: builders.recipe({ id, importIssue: activeImportIssue }),
+      }),
+    });
   });
 
   // POST /api/recipes/import-bundle — registered AFTER **/api/recipes/* so LIFO gives it priority

@@ -82,6 +82,7 @@ Do not start the next task. Do not fix things you notice in adjacent files unles
 | Run PWA unit tests | `task test:unit` |
 | Full suite | `task test` |
 | Final pre-merge check | `task review` |
+| Complete the selected task | `task agent:finish` |
 
 Never run `dotnet test`, `npm test`, or any build tool directly.
 
@@ -122,10 +123,8 @@ The task definition in `tasks.md` is the approved implementation plan — do not
 
 Do not refactor, rename, or clean up anything not required by this task. If you notice something adjacent that should be fixed, note it at the end — do not act on it.
 
-Completion gate (run in this order):
-1. `task agent:test:impact`
-2. `task agent:drift`
-3. `task review`
+Completion gate: run `task agent:finish` once. It owns impact tests, drift checks,
+and review ordering, and reuses an unchanged successful impact result safely.
 
 ### If Codex
 
@@ -135,10 +134,8 @@ The task definition in `tasks.md` is your bounded scope. The definition of done 
 
 If you encounter an `AGENTS.md` in a subdirectory, treat it as a narrower refinement — not an override of core doctrine.
 
-Completion gate (run in this order):
-1. `task agent:test:impact`
-2. `task agent:drift`
-3. `task review`
+Completion gate: run `task agent:finish` once. Do not repeat its child targets
+separately unless diagnosing a reported failure.
 
 ### If Gemini Flash
 
@@ -148,9 +145,8 @@ Proactively read every file listed under "Read before starting" using your file-
 
 Do not recall constant values, enum names, or field names from training data. Read them from the actual files.
 
-Completion gate (run in this order):
-1. `task agent:drift`
-2. `task review`
+Completion gate: run `task agent:finish` once. Do not retry a timed-out child
+command automatically; report the harness diagnostic.
 
 ---
 
@@ -160,8 +156,7 @@ The task is complete when ALL of the following are true:
 
 - [ ] Every test listed in the task is written and passes
 - [ ] Implementation is complete per the task's step-by-step
-- [ ] `task agent:drift` passes with zero drift
-- [ ] `task review` passes
+- [ ] `task agent:finish` passes
 - [ ] The task checkbox in `tasks.md` is marked `[x]`
 - [ ] No files were modified outside the task's stated scope
 

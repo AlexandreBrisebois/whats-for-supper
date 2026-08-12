@@ -5,7 +5,10 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class RecipeImportService(RecipeDbContext db, IWorkflowOrchestrator orchestrator)
+public class RecipeImportService(
+    RecipeDbContext db,
+    IWorkflowOrchestrator orchestrator,
+    RecipeImportReportService reportService)
 {
     public async Task<Guid> TriggerImport(Guid recipeId)
     {
@@ -31,6 +34,7 @@ public class RecipeImportService(RecipeDbContext db, IWorkflowOrchestrator orche
         }
 
         var instance = await orchestrator.TriggerAsync(workflowId, parameters);
+        await reportService.MarkAttemptStartedAsync(recipeId, instance.Id);
         return instance.Id;
     }
 
@@ -43,12 +47,15 @@ public class RecipeImportService(RecipeDbContext db, IWorkflowOrchestrator orche
         if (db.Database.IsRelational())
         {
             query = db.WorkflowInstances
-                .FromSql($"SELECT * FROM workflow_instances WHERE workflow_id = 'recipe-import' AND parameters::text LIKE {"%" + idString + "%"}");
+                .FromSql($"SELECT * FROM workflow_instances WHERE workflow_id IN ('recipe-import', 'url-import') AND parameters::text LIKE {"%" + idString + "%"}");
         }
         else
         {
             query = db.WorkflowInstances
-                .Where(i => i.WorkflowId == "recipe-import" && i.Parameters != null && i.Parameters.Contains(idString));
+                .Where(i =>
+                    (i.WorkflowId == "recipe-import" || i.WorkflowId == "url-import")
+                    && i.Parameters != null
+                    && i.Parameters.Contains(idString));
         }
 
         var instance = await query

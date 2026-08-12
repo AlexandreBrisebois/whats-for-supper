@@ -26,8 +26,12 @@ import {
   updateRecipe,
   deleteRecipe,
   reimportRecipe,
+  getRecipeImportStatus,
   uploadRecipeOriginal,
   regenerateHero,
+  saveRecipeImportIssue,
+  resolveRecipeImportIssue,
+  type RecipeImportIssueDraft,
   type Recipe,
 } from '@/lib/api/recipes';
 import { t, tWithVars } from '@/locales';
@@ -36,12 +40,15 @@ import { useUiStore } from '@/store/uiStore';
 import { useFamilyStore } from '@/store/familyStore';
 import { getImageUrl } from '@/lib/imageUtils';
 import { ActionGearMenu } from './ActionGearMenu';
+import { RecipeImportIssueBadge } from './RecipeImportIssueBadge';
+import { RecipeImportIssueSheet } from './RecipeImportIssueSheet';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
 import { OriginalPhotosViewer } from './OriginalPhotosViewer';
 import { CooksMode } from '../planner/CooksMode';
 import type { GoToListDto, UpdateRecipeDto_mealTypes } from '@/lib/api/generated/models/index';
 
 const GOTO_KEY = 'family_goto';
+const IMPORT_STATUS_POLL_INTERVAL_MS = 1000;
 
 const RATING_OPTIONS = [
   { value: 1, emoji: '👎', label: 'Dislike' },
@@ -113,12 +120,15 @@ export function RecipeDetailSheet({
   const [isSharingRecipe, setIsSharingRecipe] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [showCooksMode, setShowCooksMode] = useState(false);
+  const [showImportIssueSheet, setShowImportIssueSheet] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
   const familySettings = useFamilyStore((state) => state.familySettings);
   const loadGoTo = useFamilyStore((state) => state.loadGoTo);
   const saveGoTo = useFamilyStore((state) => state.saveGoTo);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const importPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const watchedImportIdRef = useRef<string | null>(null);
 
   const currentGotos = (familySettings[GOTO_KEY] as GoToListDto)?.items ?? [];
   const isCurrentGoto = currentGotos.some((g) => g.recipeId === recipe?.id);
@@ -154,6 +164,13 @@ export function RecipeDetailSheet({
 
     return () => {
       isActive = false;
+    };
+  }, [recipeId]);
+
+  useEffect(() => {
+    return () => {
+      watchedImportIdRef.current = null;
+      if (importPollTimerRef.current) clearTimeout(importPollTimerRef.current);
     };
   }, [recipeId]);
 
@@ -300,10 +317,40 @@ export function RecipeDetailSheet({
     }
   };
 
+  const pollImportUntilTerminal = async (targetRecipeId: string, importId: string) => {
+    if (watchedImportIdRef.current !== importId) return;
+
+    try {
+      const result = await getRecipeImportStatus(targetRecipeId);
+      if (watchedImportIdRef.current !== importId) return;
+
+      const status = result.status.toLowerCase();
+      if (status === 'completed' || status === 'failed' || status === 'paused') {
+        const refreshedRecipe = await getRecipe(targetRecipeId);
+        if (watchedImportIdRef.current !== importId) return;
+        setRecipe(refreshedRecipe);
+        watchedImportIdRef.current = null;
+        importPollTimerRef.current = null;
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to check recipe import status', error);
+    }
+
+    if (watchedImportIdRef.current === importId) {
+      importPollTimerRef.current = setTimeout(() => {
+        void pollImportUntilTerminal(targetRecipeId, importId);
+      }, IMPORT_STATUS_POLL_INTERVAL_MS);
+    }
+  };
+
   const handleReimport = async () => {
     if (!recipe) return;
     try {
-      await reimportRecipe(recipe.id);
+      const attempt = await reimportRecipe(recipe.id);
+      watchedImportIdRef.current = attempt.importId;
+      if (importPollTimerRef.current) clearTimeout(importPollTimerRef.current);
+      void pollImportUntilTerminal(recipe.id, attempt.importId);
       addToast({
         type: 'success',
         message: t('recipes.reimportStarted', 'Reimport started...'),
@@ -315,6 +362,25 @@ export function RecipeDetailSheet({
         message: t('recipes.reimportFailed', 'Failed to start reimport'),
       });
     }
+  };
+
+  const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
+    if (!recipe) return;
+    const updated = await saveRecipeImportIssue(recipe.id, draft);
+    setRecipe(updated);
+    setShowImportIssueSheet(false);
+    addToast({
+      type: 'success',
+      message: recipe.importIssue ? 'Changes saved' : 'Marked for review',
+    });
+  };
+
+  const handleResolveImportIssue = async () => {
+    if (!recipe) return;
+    const updated = await resolveRecipeImportIssue(recipe.id);
+    setRecipe(updated);
+    setShowImportIssueSheet(false);
+    addToast({ type: 'success', message: 'Marked as resolved' });
   };
 
   const handleHeroCameraClick = () => {
@@ -451,6 +517,11 @@ export function RecipeDetailSheet({
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-terracotta/70">
               {t('recipes.detailTitle', 'Recipe detail')}
             </p>
+            {recipe?.importIssue && (
+              <div className="mt-2">
+                <RecipeImportIssueBadge status={recipe.importIssue.status} />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {!isLoading && recipe && !isEditing && (
@@ -506,12 +577,14 @@ export function RecipeDetailSheet({
             {!isLoading && recipe && !isEditing && (
               <ActionGearMenu
                 canReimport={recipe.canReimport}
+                hasImportIssue={Boolean(recipe.importIssue)}
                 onEdit={() => {
                   resetDrafts(recipe);
                   setIsEditing(true);
                 }}
                 onMoveToBin={() => void handleMoveToBin()}
                 onReimport={() => void handleReimport()}
+                onReportImportIssue={() => setShowImportIssueSheet(true)}
               />
             )}
             <button
@@ -893,60 +966,62 @@ export function RecipeDetailSheet({
               </div>
             )}
 
-            <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-5">
-              {!showActionPivot ? (
+            {!isEditing && (
+              <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-5">
+                {!showActionPivot ? (
+                  <button
+                    type="button"
+                    data-testid={primaryActionTestId}
+                    onClick={() =>
+                      plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
+                    }
+                    disabled={isSavingAction}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  >
+                    {!plannerDayLabel && <UtensilsCrossed size={18} />}
+                    <span>{primaryActionLabel}</span>
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      data-testid="action-cook-tonight"
+                      onClick={() => void handleUseRecipe()}
+                      disabled={isSavingAction}
+                      className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                    >
+                      <UtensilsCrossed size={18} />
+                      <span>Cook Tonight</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="action-plan-later"
+                      onClick={() => void handlePlanForLater()}
+                      disabled={isSavingAction}
+                      className="flex-1 inline-flex min-h-12 items-center justify-center rounded-full bg-ochre px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-ochre/90 disabled:opacity-60"
+                    >
+                      Plan for Later
+                    </button>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  data-testid={primaryActionTestId}
-                  onClick={() =>
-                    plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
-                  }
-                  disabled={isSavingAction}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  data-testid="action-find-similar"
+                  onClick={() => onFindSimilar(recipe.id)}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm transition hover:bg-charcoal/5"
                 >
-                  {!plannerDayLabel && <UtensilsCrossed size={18} />}
-                  <span>{primaryActionLabel}</span>
+                  <Search size={16} />
+                  {t('recipes.findSimilar', 'Find Similar')}
                 </button>
-              ) : (
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    data-testid="action-cook-tonight"
-                    onClick={() => void handleUseRecipe()}
-                    disabled={isSavingAction}
-                    className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
-                  >
-                    <UtensilsCrossed size={18} />
-                    <span>Cook Tonight</span>
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="action-plan-later"
-                    onClick={() => void handlePlanForLater()}
-                    disabled={isSavingAction}
-                    className="flex-1 inline-flex min-h-12 items-center justify-center rounded-full bg-ochre px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-ochre/90 disabled:opacity-60"
-                  >
-                    Plan for Later
-                  </button>
-                </div>
-              )}
 
-              <button
-                type="button"
-                data-testid="action-find-similar"
-                onClick={() => onFindSimilar(recipe.id)}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-5 py-3 text-sm font-black text-charcoal shadow-sm transition hover:bg-charcoal/5"
-              >
-                <Search size={16} />
-                {t('recipes.findSimilar', 'Find Similar')}
-              </button>
-
-              <DiscoveryToggleCard
-                isDiscoverable={isDiscoverable}
-                onToggle={handleToggleDiscovery}
-                isLoading={isUpdatingDiscovery}
-              />
-            </div>
+                <DiscoveryToggleCard
+                  isDiscoverable={isDiscoverable}
+                  onToggle={handleToggleDiscovery}
+                  isLoading={isUpdatingDiscovery}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -971,6 +1046,14 @@ export function RecipeDetailSheet({
           />
         )}
       </AnimatePresence>
+      {showImportIssueSheet && recipe && (
+        <RecipeImportIssueSheet
+          issue={recipe.importIssue ?? null}
+          onClose={() => setShowImportIssueSheet(false)}
+          onSave={handleSaveImportIssue}
+          onResolve={handleResolveImportIssue}
+        />
+      )}
     </div>
   );
 }

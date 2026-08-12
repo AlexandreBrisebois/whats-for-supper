@@ -9,6 +9,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
 {
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
+    public DbSet<RecipeImportReport> RecipeImportReports => Set<RecipeImportReport>();
     public DbSet<WorkflowInstance> WorkflowInstances => Set<WorkflowInstance>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
     public DbSet<RecipeVote> RecipeVotes => Set<RecipeVote>();
@@ -79,6 +80,44 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.HasIndex(e => new { e.Category, e.Id })
                   .HasFilter("is_discoverable = TRUE")
                   .HasDatabaseName("idx_recipes_discovery_lookup");
+        });
+
+        modelBuilder.Entity<RecipeImportReport>(entity =>
+        {
+            entity.HasKey(e => e.RecipeId);
+            entity.Property(e => e.Reasons).HasColumnType("text[]");
+            entity.Property(e => e.Status)
+                  .HasConversion(
+                      status => ToDatabaseStatus(status),
+                      value => FromDatabaseStatus(value));
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(e => e.Recipe)
+                  .WithOne()
+                  .HasForeignKey<RecipeImportReport>(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Reporter)
+                  .WithMany()
+                  .HasForeignKey(e => e.ReportedBy)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Updater)
+                  .WithMany()
+                  .HasForeignKey(e => e.UpdatedBy)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => e.Status)
+                  .HasDatabaseName("idx_recipe_import_reports_status");
+            entity.ToTable("recipe_import_reports", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_recipe_import_reports_reasons_nonempty",
+                    "cardinality(reasons) > 0");
+                table.HasCheckConstraint(
+                    "CK_recipe_import_reports_reasons_allowed_unique",
+                    "reasons <@ ARRAY['ingredients', 'steps']::text[] AND cardinality(reasons) = (CASE WHEN reasons @> ARRAY['ingredients']::text[] THEN 1 ELSE 0 END + CASE WHEN reasons @> ARRAY['steps']::text[] THEN 1 ELSE 0 END)");
+                table.HasCheckConstraint(
+                    "CK_recipe_import_reports_status",
+                    "status IN ('reported', 'reimporting', 'reimport_failed', 'ready_to_review')");
+            });
         });
 
         modelBuilder.Entity<RecipeVote>(entity =>
@@ -274,4 +313,22 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         optionsBuilder.ConfigureWarnings(w =>
             w.Log(RelationalEventId.PendingModelChangesWarning));
     }
+
+    private static string ToDatabaseStatus(RecipeImportReportStatus status) => status switch
+    {
+        RecipeImportReportStatus.Reported => "reported",
+        RecipeImportReportStatus.Reimporting => "reimporting",
+        RecipeImportReportStatus.ReimportFailed => "reimport_failed",
+        RecipeImportReportStatus.ReadyToReview => "ready_to_review",
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
+    };
+
+    private static RecipeImportReportStatus FromDatabaseStatus(string value) => value switch
+    {
+        "reported" => RecipeImportReportStatus.Reported,
+        "reimporting" => RecipeImportReportStatus.Reimporting,
+        "reimport_failed" => RecipeImportReportStatus.ReimportFailed,
+        "ready_to_review" => RecipeImportReportStatus.ReadyToReview,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null)
+    };
 }

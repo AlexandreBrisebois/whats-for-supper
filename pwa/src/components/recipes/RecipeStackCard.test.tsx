@@ -140,6 +140,19 @@ describe('RecipeStackCard — rendering', () => {
     expect(screen.queryByTestId('recipe-stack-meal-type-supper')).toBeNull();
     expect(screen.queryByTestId('recipe-stack-meal-type-lunch')).toBeNull();
   });
+
+  it('shows no import-review badge without an active issue', () => {
+    render(<RecipeStackCard {...defaultProps} />);
+    expect(screen.queryByLabelText(/Import issue status:/)).toBeNull();
+  });
+
+  it('shows accessible Reported and Ready to review badges', () => {
+    const { rerender } = render(<RecipeStackCard {...defaultProps} importIssueStatus="reported" />);
+    expect(screen.getByLabelText('Import issue status: Reported')).toBeTruthy();
+
+    rerender(<RecipeStackCard {...defaultProps} importIssueStatus="readyToReview" />);
+    expect(screen.getByLabelText('Import issue status: Ready to review')).toBeTruthy();
+  });
 });
 
 describe('RecipeStackCard — swipe indicators', () => {

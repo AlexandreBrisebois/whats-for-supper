@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { useFamilyStore } from '@/store/familyStore';
 
@@ -320,6 +320,40 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Chicken Pasta');
     expect(mocks.searchRecipes.mock.calls.length).toBe(callsBefore);
     expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
+  });
+
+  it('top-pick-feeling-lucky never promotes a recipe with an active import report', async () => {
+    mocks.searchRecipes.mockResolvedValue(
+      makeSearchResponse({
+        results: [
+          {
+            ...makeSearchResult(2),
+            name: 'Reported Chicken',
+            importIssueStatus: 'reported',
+          },
+          {
+            ...makeSearchResult(3),
+            name: 'Eligible Chicken',
+            importIssueStatus: null,
+          },
+        ],
+      })
+    );
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+
+    await act(async () => {
+      render(<RecipesPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('top-pick-feeling-lucky'));
+
+    expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Eligible Chicken');
+    expect(screen.getByText('Reported Chicken')).toBeInTheDocument();
+    randomSpy.mockRestore();
   });
 
   it('loads more search results from an infinite-scroll sentinel instead of a manual button', async () => {
@@ -775,6 +809,145 @@ describe('RecipesPage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('filter-no-results')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('responsive import-review filters and card status', () => {
+    it('shows Reported and Ready to review badges only on matching result cards', async () => {
+      mocks.searchRecipes.mockResolvedValue(
+        makeSearchResponse({
+          topPick: null,
+          results: [
+            { ...makeSearchResult(2), name: 'No Issue', importIssueStatus: null },
+            { ...makeSearchResult(3), name: 'Needs Fixing', importIssueStatus: 'reported' },
+            {
+              ...makeSearchResult(4),
+              name: 'Check This One',
+              importIssueStatus: 'readyToReview',
+            },
+          ],
+        })
+      );
+
+      await act(async () => {
+        render(<RecipesPage />);
+      });
+
+      const noIssueCard = await screen.findByTestId(`recipe-card-${makeSearchResult(2).id}`);
+      const reportedCard = screen.getByTestId(`recipe-card-${makeSearchResult(3).id}`);
+      const readyCard = screen.getByTestId(`recipe-card-${makeSearchResult(4).id}`);
+
+      expect(within(noIssueCard).queryByLabelText(/Import issue status:/)).not.toBeInTheDocument();
+      expect(
+        within(reportedCard).getByLabelText('Import issue status: Reported')
+      ).toBeInTheDocument();
+      expect(
+        within(readyCard).getByLabelText('Import issue status: Ready to review')
+      ).toBeInTheDocument();
+    });
+
+    it('keeps desktop inline filters and adds both review options', async () => {
+      await act(async () => {
+        render(<RecipesPage />);
+      });
+
+      const desktopFilters = await screen.findByTestId('desktop-recipe-filters');
+      expect(within(desktopFilters).getByTestId('filter-healthy')).toBeInTheDocument();
+      expect(within(desktopFilters).getByTestId('filter-reported')).toBeInTheDocument();
+      expect(within(desktopFilters).getByTestId('filter-ready-to-review')).toBeInTheDocument();
+
+      fireEvent.click(within(desktopFilters).getByTestId('filter-reported'));
+
+      await waitFor(() => {
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({ filters: { reportedOnly: true } })
+        );
+      });
+    });
+
+    it('uses one mobile Filters button with draft apply, cancel, clear, and active count', async () => {
+      await act(async () => {
+        render(<RecipesPage />);
+      });
+
+      const filtersButton = await screen.findByTestId('mobile-filters-button');
+      expect(screen.getAllByRole('button', { name: /^Filters/ })).toHaveLength(1);
+      expect(filtersButton).toHaveTextContent('Filters');
+      expect(filtersButton).toHaveTextContent('0');
+
+      fireEvent.click(filtersButton);
+      const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+      for (const label of [
+        'New',
+        'Never Tried',
+        'Family Favorite',
+        'Quick',
+        "It's Been a While",
+        'Healthy Choice',
+        'Reported',
+        'Ready to review',
+      ]) {
+        expect(within(dialog).getByRole('button', { name: label })).toBeInTheDocument();
+      }
+
+      const callsBeforeCancel = mocks.searchRecipes.mock.calls.length;
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Reported' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(callsBeforeCancel);
+      expect(filtersButton).toHaveTextContent('0');
+
+      fireEvent.click(filtersButton);
+      const applyDialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+      fireEvent.click(within(applyDialog).getByRole('button', { name: 'Reported' }));
+      fireEvent.click(within(applyDialog).getByRole('button', { name: 'Ready to review' }));
+      fireEvent.click(within(applyDialog).getByRole('button', { name: 'Apply filters' }));
+
+      await waitFor(() => {
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            filters: { reportedOnly: true, readyToReviewOnly: true },
+          })
+        );
+      });
+      expect(filtersButton).toHaveTextContent('2');
+
+      fireEvent.click(filtersButton);
+      const clearDialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+      fireEvent.click(within(clearDialog).getByRole('button', { name: 'Clear filters' }));
+      fireEvent.click(within(clearDialog).getByRole('button', { name: 'Apply filters' }));
+
+      await waitFor(() => {
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({ filters: undefined })
+        );
+      });
+      expect(filtersButton).toHaveTextContent('0');
+    });
+
+    it('omits Top Pick while a review filter is active and renders matches as regular results', async () => {
+      mocks.searchRecipes.mockResolvedValue(
+        makeSearchResponse({
+          topPick: {
+            ...makeSearchResult(1),
+            name: 'Should Not Be Promoted',
+            importIssueStatus: 'reported',
+          },
+          results: [
+            { ...makeSearchResult(2), name: 'Reported Result', importIssueStatus: 'reported' },
+          ],
+        })
+      );
+
+      await act(async () => {
+        render(<RecipesPage />);
+      });
+
+      fireEvent.click(await screen.findByTestId('filter-reported'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('recipe-card-top-pick')).not.toBeInTheDocument();
+      });
+      expect(screen.getByText('Reported Result')).toBeInTheDocument();
     });
   });
 

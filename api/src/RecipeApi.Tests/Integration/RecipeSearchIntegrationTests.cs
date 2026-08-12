@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
@@ -759,6 +760,159 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("id").GetGuid() == lovedNonMatch.Id);
     }
 
+    [Fact]
+    public async Task Search_ReviewFilters_UseReportedSupersetAndReadySubset_WithoutTopPick()
+    {
+        var reported = CreateRecipe("Reported Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var failed = CreateRecipe("Failed Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var ready = CreateRecipe("Ready Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var unreported = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+
+        await SeedRecipeAsync(reported);
+        await SeedRecipeAsync(failed);
+        await SeedRecipeAsync(ready);
+        await SeedRecipeAsync(unreported);
+        await SeedReportAsync(reported.Id, RecipeImportReportStatus.Reported);
+        await SeedReportAsync(failed.Id, RecipeImportReportStatus.ReimportFailed);
+        await SeedReportAsync(ready.Id, RecipeImportReportStatus.ReadyToReview);
+
+        using var reportedDocument = await ReadDataAsync(await PostSearchAsync(new
+        {
+            query = "chicken",
+            filters = new { reportedOnly = true }
+        }));
+        Assert.Equal(JsonValueKind.Null, reportedDocument.RootElement.GetProperty("topPick").ValueKind);
+        Assert.Equal(
+            new[] { failed.Id, ready.Id, reported.Id }.Order(),
+            SearchResultIds(reportedDocument.RootElement).Order());
+
+        using var readyDocument = await ReadDataAsync(await PostSearchAsync(new
+        {
+            query = "chicken",
+            filters = new { readyToReviewOnly = true }
+        }));
+        Assert.Equal(JsonValueKind.Null, readyDocument.RootElement.GetProperty("topPick").ValueKind);
+        Assert.Equal(new[] { ready.Id }, SearchResultIds(readyDocument.RootElement));
+
+        using var bothDocument = await ReadDataAsync(await PostSearchAsync(new
+        {
+            query = "chicken",
+            filters = new { reportedOnly = true, readyToReviewOnly = true }
+        }));
+        Assert.Equal(JsonValueKind.Null, bothDocument.RootElement.GetProperty("topPick").ValueKind);
+        Assert.Equal(new[] { ready.Id }, SearchResultIds(bothDocument.RootElement));
+    }
+
+    [Fact]
+    public async Task Search_ReviewFilter_ComposesWithTextHealthyAndExistingFilters()
+    {
+        var match = CreateRecipe("Healthy Discoverable Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        match.IsHealthyChoice = true;
+        match.IsDiscoverable = true;
+
+        var unhealthy = CreateRecipe("Unhealthy Discoverable Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        unhealthy.IsDiscoverable = true;
+
+        var hidden = CreateRecipe("Healthy Hidden Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        hidden.IsHealthyChoice = true;
+
+        var wrongText = CreateRecipe("Healthy Discoverable Pasta", "Pasta dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        wrongText.IsHealthyChoice = true;
+        wrongText.IsDiscoverable = true;
+        wrongText.Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato" });
+        wrongText.Notes = "Pasta dinner";
+
+        foreach (var recipe in new[] { match, unhealthy, hidden, wrongText })
+        {
+            await SeedRecipeAsync(recipe);
+            await SeedReportAsync(recipe.Id, RecipeImportReportStatus.Reported);
+        }
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new
+        {
+            query = "chicken",
+            filters = new
+            {
+                reportedOnly = true,
+                healthyOnly = true,
+                discoverableOnly = true,
+                quickOnly = true
+            }
+        }));
+
+        Assert.Equal(new[] { match.Id }, SearchResultIds(document.RootElement));
+    }
+
+    [Fact]
+    public async Task Search_ProjectsPublicStatus_KeepsReportedRecipeOrdinaryAndAssigned_ButNeverTopPick()
+    {
+        var reported = CreateRecipe("Best Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        reported.Rating = RecipeRating.Love;
+        var ready = CreateRecipe("Ready Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var ordinary = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+
+        await SeedRecipeAsync(reported);
+        await SeedRecipeAsync(ready);
+        await SeedRecipeAsync(ordinary);
+        await SeedReportAsync(reported.Id, RecipeImportReportStatus.Reimporting);
+        await SeedReportAsync(ready.Id, RecipeImportReportStatus.ReadyToReview);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.CalendarEvents.Add(new CalendarEvent
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = reported.Id,
+                Date = GetMondayForWeekOffset(0),
+                Status = CalendarEventStatus.Planned
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new { query = "chicken" }));
+        var root = document.RootElement;
+        Assert.Equal(ordinary.Id, root.GetProperty("topPick").GetProperty("id").GetGuid());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("topPick").GetProperty("importIssueStatus").ValueKind);
+
+        var results = root.GetProperty("results").EnumerateArray().ToList();
+        var reportedResult = results.Single(result => result.GetProperty("id").GetGuid() == reported.Id);
+        var readyResult = results.Single(result => result.GetProperty("id").GetGuid() == ready.Id);
+        Assert.Equal("reported", reportedResult.GetProperty("importIssueStatus").GetString());
+        Assert.Equal("readyToReview", readyResult.GetProperty("importIssueStatus").GetString());
+        Assert.False(root.GetRawText().Contains("lastError", StringComparison.Ordinal));
+        Assert.False(root.GetRawText().Contains("lastWorkflowInstanceId", StringComparison.Ordinal));
+
+        var schedule = await _factory.Services.GetRequiredService<ScheduleService>().GetScheduleAsync(0);
+        Assert.Contains(schedule.Days, day => day.Recipe?.Id == reported.Id);
+    }
+
+    [Fact]
+    public async Task AgentSearch_CannotPromoteAnActiveReport_EvenWhenAgentSelectsIt()
+    {
+        var reported = CreateRecipe("Reported Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var ordinary = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+
+        await _factory.DisposeAsync();
+        _factory = await TestWebApplicationFactory.CreateAsync(new ReportSelectingChatClient(reported.Id));
+        _client = _factory.CreateClient();
+
+        await SeedRecipeAsync(reported);
+        await SeedRecipeAsync(ordinary);
+        await SeedReportAsync(reported.Id, RecipeImportReportStatus.Reported);
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new
+        {
+            query = "pick the reported chicken",
+            mode = "agent"
+        }));
+
+        Assert.Equal(ordinary.Id, document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
+        Assert.Contains(
+            document.RootElement.GetProperty("results").EnumerateArray(),
+            result => result.GetProperty("id").GetGuid() == reported.Id);
+    }
+
     private async Task<HttpResponseMessage> PostSearchAsync(object payload)
     {
         return await _client.PostAsJsonAsync("/api/recipes/search", payload);
@@ -822,6 +976,27 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         await db.SaveChangesAsync();
     }
+
+    private async Task SeedReportAsync(Guid recipeId, RecipeImportReportStatus status)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = recipeId,
+            Reasons = ["ingredients"],
+            Status = status,
+            ReportedBy = _factory.DefaultFamilyMemberId,
+            UpdatedBy = _factory.DefaultFamilyMemberId
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private static List<Guid> SearchResultIds(JsonElement root) =>
+        root.GetProperty("results")
+            .EnumerateArray()
+            .Select(result => result.GetProperty("id").GetGuid())
+            .ToList();
 
     private async Task SeedWeekAsync(int weekOffset, IReadOnlyList<Guid> assignedRecipeIds, WeeklyBalanceSummary balanceSummary)
     {
@@ -889,5 +1064,30 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var monday = today.AddDays(-(7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7);
         return monday.AddDays(weekOffset * 7);
+    }
+
+    private sealed class ReportSelectingChatClient(Guid reportedRecipeId) : IChatClient
+    {
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            var prompt = string.Join("\n", messages.Select(message => message.Text));
+            var response = prompt.Contains("selectedRecipeId", StringComparison.Ordinal)
+                ? $$"""{"selectedRecipeId":"{{reportedRecipeId}}","reason":"Hostile selection"}"""
+                : """{"query":"chicken","filters":{}}""";
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, response)));
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
     }
 }

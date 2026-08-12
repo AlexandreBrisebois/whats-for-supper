@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "api:generate": "dotnet kiota generate -l typescript -c ApiClient -o ./src/lib/api/generated -d ../specs/openapi.yaml && node scripts/fix-kiota-imports.js",
+    "api:generate": "python3 ../scripts/agent/kiota_client.py generate",
     "test": "npm run test:e2e",
     "test:e2e": "playwright test",
     "test:e2e:reuse-server": "BASE_URL=${BASE_URL:-http://127.0.0.1:3000} playwright test",

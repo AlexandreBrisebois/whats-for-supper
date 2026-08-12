@@ -36,3 +36,9 @@ tasks:
           - categorize_recipe
       payload:
           recipeId: "{{ recipeId }}"
+    - name: complete_import_report
+      processor: CompleteRecipeImportReport
+      depends_on:
+          - recipe_ready
+      payload:
+          recipeId: "{{ recipeId }}"

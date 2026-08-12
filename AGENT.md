@@ -100,6 +100,7 @@ Key commands (see `.agents/core/execution-harness.md` for details):
 - `task agent:drift` -- detect schema drift across contracts, DTOs, mocks, and PWA.
 - `task agent:slice -- <route>` -- load a vertical slice (Contract ↔ Backend ↔ Client).
 - `task agent:test:impact` -- run only tests affected by your changes.
+- `task agent:finish` -- run impact, drift, and review once on the final worktree.
 - `task test` -- run the full test suite.
 - `task review` -- formatting, linting, type‑checking, and tests before merge.
 
@@ -107,10 +108,8 @@ Execution rules:
 
 - Prefer `task` commands over ad‑hoc shell **always**.
 - Do not invent new workflows when a `task` target already exists.
-- A change is *not* complete until:
-  - `task agent:drift` passes,
-  - `task agent:test:impact` (and `task test` when impact is unclear) passes,
-  - `task review` passes.
+- A change is *not* complete until `task agent:finish` passes. When impact is
+  unclear, run `task test` before the completion gate.
 
 For full guidance, see `.agents/core/execution-harness.md`.
 
@@ -244,7 +243,7 @@ When you start a piece of work:
    - Use `task` commands, not raw shell, for build/test/lint/validation.
 
 5. **Validate & record**  
-   - Run drift and impact tests, then `task review`.  
+   - Run `task agent:finish` once on the final worktree.
    - Update the relevant Kiro spec's **Tasks** and **Notes / Decisions** sections as you go.
 
 If at any point you're unsure whether to act or ask: **ask**.  

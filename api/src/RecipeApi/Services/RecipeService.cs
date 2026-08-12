@@ -224,10 +224,17 @@ public class RecipeService(
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
+        var report = await db.RecipeImportReports
+            .AsNoTracking()
+            .SingleOrDefaultAsync(item => item.RecipeId == id);
+
+        var dto = MapToDto(recipe);
+        dto.ImportIssue = RecipeImportReportService.ToPublicDto(report);
+
         return new RecipeDetailResponseDto
         {
             UpdatedAt = DateTimeOffset.UtcNow,
-            Recipe = MapToDto(recipe)
+            Recipe = dto
         };
     }
 
@@ -717,12 +724,15 @@ public class RecipeService(
             CreatedAt = r.CreatedAt,
             DeletedAt = r.DeletedAt,
             SourceType = sourceType,
-            CanReimport = sourceType != "synthesized",
+            CanReimport = CanReimport(r),
             ImageCount = r.ImageCount,
             FinishedDishIndex = r.FinishedDishIndex,
             IsReady = r.IsReady
         };
     }
+
+    public static bool CanReimport(Recipe recipe) =>
+        !string.IsNullOrEmpty(recipe.SourceUrl) || recipe.ImageCount > 0;
 
     /// <summary>
     /// Deserializes the ingredients JSON column, tolerating both string arrays

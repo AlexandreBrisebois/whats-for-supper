@@ -45,6 +45,49 @@ components:
       required: [vote]
 
     # --- Recipes ---
+    RecipeImportIssueReason:
+      type: string
+      enum: [ingredients, steps]
+
+    RecipeImportIssueStatus:
+      type: string
+      enum: [reported, readyToReview]
+
+    RecipeImportIssueRequest:
+      type: object
+      required: [reasons]
+      properties:
+        reasons:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/RecipeImportIssueReason' }
+        note:
+          type: [string, 'null']
+          maxLength: 500
+      example:
+        reasons: [ingredients, steps]
+        note: 'The quantities and final two steps need another pass.'
+
+    RecipeImportIssueDto:
+      type: object
+      required: [reasons, note, status]
+      properties:
+        reasons:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/RecipeImportIssueReason' }
+        note:
+          type: [string, 'null']
+          maxLength: 500
+        status:
+          $ref: '#/components/schemas/RecipeImportIssueStatus'
+      example:
+        reasons: [ingredients, steps]
+        note: 'The quantities and final two steps need another pass.'
+        status: readyToReview
+
     RecipeDto:
       type: object
       required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount, finishedDishIndex, isReady]
@@ -79,6 +122,9 @@ components:
         sourceUrl: { type: [string, 'null'] }
         sourceType: { type: string, enum: [url, photos, synthesized] }
         canReimport: { type: boolean }
+        importIssue:
+          $ref: '#/components/schemas/RecipeImportIssueDto'
+          nullable: true
         imageCount: { type: integer }
         finishedDishIndex: { type: integer, default: -1 }
         addedBy: { type: [string, 'null'], format: uuid }
@@ -150,7 +196,10 @@ components:
         familyFavorite: { type: [boolean, 'null'] }
         quickOnly: { type: [boolean, 'null'] }
         notCookedInLongTime: { type: [boolean, 'null'] }
+        healthyOnly: { type: [boolean, 'null'] }
         discoverableOnly: { type: [boolean, 'null'] }
+        reportedOnly: { type: [boolean, 'null'] }
+        readyToReviewOnly: { type: [boolean, 'null'] }
 
     RecipeSearchReasonDto:
       type: object
@@ -183,6 +232,9 @@ components:
           type: array
           items: { $ref: '#/components/schemas/RecipeSearchReasonDto' }
         plannerFitNote: { type: [string, 'null'] }
+        importIssueStatus:
+          $ref: '#/components/schemas/RecipeImportIssueStatus'
+          nullable: true
 
     RecipeSearchRequestDto:
       type: object
@@ -1609,6 +1661,138 @@ paths:
                   assignedDays:
                     type: array
                     items: { type: string, format: date }
+
+  /api/recipes/{id}/import-report:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Create or update the active import issue for a recipe
+      operationId: putRecipeImportReport
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecipeImportIssueRequest' }
+            examples:
+              ingredients:
+                summary: Report imported ingredients
+                value:
+                  reasons: [ingredients]
+                  note: null
+              ingredientsAndSteps:
+                summary: Update both reasons with a note
+                value:
+                  reasons: [ingredients, steps]
+                  note: 'The quantities and final two steps need another pass.'
+      responses:
+        '200':
+          description: The authoritative recipe detail with its active import issue
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+              example:
+                updatedAt: '2026-08-11T16:00:00Z'
+                recipe:
+                  id: '550e8400-e29b-41d4-a716-446655440003'
+                  name: 'Weeknight Tomato Pasta'
+                  imageUrl: '/api/recipes/550e8400-e29b-41d4-a716-446655440003/hero'
+                  sourceType: url
+                  canReimport: true
+                  imageCount: 0
+                  finishedDishIndex: -1
+                  createdAt: '2026-08-10T16:00:00Z'
+                  isReady: true
+                  importIssue:
+                    reasons: [ingredients, steps]
+                    note: 'The quantities and final two steps need another pass.'
+                    status: readyToReview
+        '400':
+          description: Invalid reasons, duplicate reasons, or note over 500 characters
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer, example: 400 }
+                  message: { type: string }
+              example:
+                status: 400
+                message: 'At least one import issue reason is required.'
+        '404':
+          description: Recipe or family member not found
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer, example: 404 }
+                  message: { type: string }
+              example:
+                status: 404
+                message: 'Recipe 550e8400-e29b-41d4-a716-446655440003 not found.'
+        '409':
+          description: The recipe is not eligible for re-import
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string }
+              example:
+                message: 'Import issues can only be reported for recipes that can be re-imported.'
+    delete:
+      summary: Mark the active recipe import issue as resolved
+      operationId: deleteRecipeImportReport
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: The authoritative recipe detail with importIssue cleared
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+              example:
+                updatedAt: '2026-08-11T16:10:00Z'
+                recipe:
+                  id: '550e8400-e29b-41d4-a716-446655440003'
+                  name: 'Weeknight Tomato Pasta'
+                  imageUrl: '/api/recipes/550e8400-e29b-41d4-a716-446655440003/hero'
+                  sourceType: url
+                  canReimport: true
+                  imageCount: 0
+                  finishedDishIndex: -1
+                  createdAt: '2026-08-10T16:00:00Z'
+                  isReady: true
+                  importIssue: null
+        '400':
+          description: Family member identity is required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example:
+                message: 'X-Family-Member-Id header is required.'
+        '404':
+          description: Recipe or family member not found
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer, example: 404 }
+                  message: { type: string }
+              example:
+                status: 404
+                message: 'Recipe 550e8400-e29b-41d4-a716-446655440003 not found.'
 
   /api/recipes/{id}/share:
     parameters:

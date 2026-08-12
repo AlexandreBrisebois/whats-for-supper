@@ -35,7 +35,7 @@ Do not use Copilot for:
 - **Shared DTO or contract changes** — types shared across the backend, mock API, and PWA must not be changed inline.
 - **Cross-file or cross-module refactors** — global renames, restructuring, or deletion of exports.
 - **Deciding how to run the project** — do not invent shell commands. If a `task` command exists for the operation, that is the only correct invocation. Never suggest running underlying tools (jest, dotnet, eslint) directly when a Taskfile target wraps them.
-- **Drift checks or validation steps** — these require `task agent:drift`, `task agent:test:impact`, and `task review`. A completion tool cannot substitute for them.
+- **Drift checks or validation steps** — these require `task agent:finish`. A completion tool cannot substitute for the harness-owned impact, drift, and review sequence.
 
 ## 5. Behavioral rules
 

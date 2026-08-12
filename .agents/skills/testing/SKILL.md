@@ -30,8 +30,8 @@ Execute these commands from the project root using `task`.
 | :--- | :--- | :--- |
 | **High-Speed Loop** | Fast validation (impacted tests only) during build. | `task gate` |
 | **Frontend Dev Loop** | Comprehensive validation (all tests) before commit. | `task review` |
-| **Backend Verification** | Runs all .NET unit and integration tests. | `task api:test` |
-| **Integrity Gate** | Final CI-parity check for the full PWA suite. | `task test:pwa:ci` |
+| **Backend Verification** | Runs all .NET unit and integration tests. | `task test:api` |
+| **Integrity Gate** | Final task completion orchestration. | `task agent:finish` |
 | **Parity Check** | Validates Spec ↔ Mock ↔ API synchronization. | `task agent:reconcile` |
 
 ## 4. Operational Directives
@@ -41,5 +41,5 @@ Execute these commands from the project root using `task`.
 4.  **Zero Brittle Policy**: Use `data-testid` for all locators. Do not use fragile CSS selectors or volatile text-based matching.
 5.  **Regression Discipline**: Every bug fix must include a regression test that fails without the fix and passes with it.
 6.  **Ghost Protection**: The `gate` and `review` tasks automatically call `task dev:kill` and `task test:kill`. This clears zombie Playwright and dev server instances to ensure a clean, non-flaky execution environment.
-7.  **Impact-Aware Verification**: Prefer `task gate` during the implementation phase to keep the dev loop under 30 seconds. Use `task review` only before the final handover.
-8.  **Asynchronous Monitoring**: If `task gate` or `task review` exceeds the synchronous CLI timeout (120s), do not restart. Instead, use `command_status` to monitor the background execution until completion.
+7.  **Impact-Aware Verification**: Prefer `task gate` during implementation. Run `task agent:finish` once on the final worktree.
+8.  **Asynchronous Monitoring**: Monitor an explicitly running command, but never automatically retry a child that the harness has already timed out and stopped.
