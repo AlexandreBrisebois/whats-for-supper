@@ -525,8 +525,7 @@ export async function setupCommonRoutes(page: Page) {
     const request = route.request();
     const method = request.method();
     const id =
-      request.url().match(/\/recipes\/([0-9a-f-]+)\/import-report/)?.[1] ??
-      MOCK_IDS.RECIPE_LASAGNA;
+      request.url().match(/\/recipes\/([0-9a-f-]+)\/import-report/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
 
     if (method === 'PUT') {
       const body = request.postDataJSON() as RecipeImportIssueRequest;
