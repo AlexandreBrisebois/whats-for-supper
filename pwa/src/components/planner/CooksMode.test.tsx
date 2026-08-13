@@ -98,6 +98,7 @@ describe('CooksMode', () => {
     const reportAction = screen.getByRole('button', { name: 'Report issue with ingredients' });
     expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta/70');
     expect(reportAction).toHaveTextContent('');
+    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     fireEvent.click(reportAction);
 
