@@ -296,35 +296,41 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               )}
             </div>
 
-            {!isPrepStep && !isEditing && (
+            {!isEditing && (!isPrepStep || recipeDetails?.canReimport) && (
               <div className="flex shrink-0 items-center gap-2">
                 {recipeDetails?.canReimport && (
                   <button
                     type="button"
-                    data-testid="cooks-mode-report-steps"
-                    aria-label="Report issue with steps"
+                    data-testid={
+                      isPrepStep ? 'cooks-mode-report-ingredients' : 'cooks-mode-report-steps'
+                    }
+                    aria-label={
+                      isPrepStep ? 'Report issue with ingredients' : 'Report issue with steps'
+                    }
                     onClick={(event) => {
                       event.stopPropagation();
-                      setReportContext('steps');
+                      setReportContext(isPrepStep ? 'ingredients' : 'steps');
                     }}
                     className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-terracotta/70 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
                   >
                     <Flag size={20} aria-hidden="true" />
                   </button>
                 )}
-                <button
-                  type="button"
-                  data-testid="cooks-mode-edit-step"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setIsEditing(true);
-                    setEditingValue(currentStepData.instruction);
-                  }}
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
-                  aria-label="Edit step"
-                >
-                  <Pencil size={20} aria-hidden="true" />
-                </button>
+                {!isPrepStep && (
+                  <button
+                    type="button"
+                    data-testid="cooks-mode-edit-step"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setIsEditing(true);
+                      setEditingValue(currentStepData.instruction);
+                    }}
+                    className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+                    aria-label="Edit step"
+                  >
+                    <Pencil size={20} aria-hidden="true" />
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -394,17 +400,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                           )}
                         </p>
                       </div>
-                      {recipeDetails?.canReimport && (
-                        <button
-                          type="button"
-                          data-testid="cooks-mode-report-ingredients"
-                          aria-label="Report issue with ingredients"
-                          onClick={() => setReportContext('ingredients')}
-                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-terracotta/70 transition hover:bg-charcoal/10 active:scale-90"
-                        >
-                          <Flag size={20} aria-hidden="true" />
-                        </button>
-                      )}
                     </div>
 
                     {/* Ingredients Grid */}
