@@ -138,7 +138,7 @@ export function RecipeImportIssueSheet({
           </button>
         </div>
 
-        <fieldset className="mt-6 grid grid-cols-2 gap-3">
+        <fieldset className="mt-6 grid grid-cols-3 gap-2">
           <legend className="sr-only">Issue reasons</legend>
           {[
             RecipeImportIssueReasonObject.Ingredients,
