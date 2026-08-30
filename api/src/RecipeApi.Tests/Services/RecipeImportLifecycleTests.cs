@@ -131,6 +131,84 @@ public class RecipeImportLifecycleTests
         Assert.Null(succeeded.LastError);
     }
 
+    [Fact]
+    public async Task DuplicateOnlyAttemptStart_IsCompleteNoOp()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var recipe = SeedRecipe(db, imageCount: 1);
+        var originalWorkflow = Guid.NewGuid();
+        var originalAttempt = DateTimeOffset.UtcNow.AddDays(-2);
+        var originalSuccess = DateTimeOffset.UtcNow.AddDays(-1);
+        var originalUpdated = DateTimeOffset.UtcNow.AddHours(-2);
+        SeedReport(db, recipe.Id, ["duplicate"]);
+        var report = db.RecipeImportReports.Local.Single();
+        report.Status = RecipeImportReportStatus.Reported;
+        report.LastWorkflowInstanceId = originalWorkflow;
+        report.LastAttemptAt = originalAttempt;
+        report.ReimportedAt = originalSuccess;
+        report.LastError = "keep me";
+        report.UpdatedAt = originalUpdated;
+        await db.SaveChangesAsync();
+
+        await new RecipeImportReportService(db).MarkAttemptStartedAsync(recipe.Id, Guid.NewGuid());
+
+        report = await db.RecipeImportReports.SingleAsync();
+        Assert.Equal(RecipeImportReportStatus.Reported, report.Status);
+        Assert.Equal(originalWorkflow, report.LastWorkflowInstanceId);
+        Assert.Equal(originalAttempt, report.LastAttemptAt);
+        Assert.Equal(originalSuccess, report.ReimportedAt);
+        Assert.Equal("keep me", report.LastError);
+        Assert.Equal(originalUpdated, report.UpdatedAt);
+    }
+
+    [Theory]
+    [InlineData(false, RecipeImportReportStatus.ReadyToReview)]
+    [InlineData(true, RecipeImportReportStatus.Reported)]
+    public async Task MatchingSuccess_BranchesOnPersistedDuplicateReason(
+        bool includesDuplicate,
+        RecipeImportReportStatus expectedStatus)
+    {
+        await using var db = TestDbContextFactory.Create();
+        var recipe = SeedRecipe(db, imageCount: 1);
+        SeedReport(db, recipe.Id, includesDuplicate
+            ? ["ingredients", "duplicate"]
+            : ["ingredients"]);
+        await db.SaveChangesAsync();
+        var service = new RecipeImportReportService(db);
+        var attempt = Guid.NewGuid();
+
+        await service.MarkAttemptStartedAsync(recipe.Id, attempt);
+        await service.MarkSucceededAsync(recipe.Id, attempt);
+
+        var report = await db.RecipeImportReports.SingleAsync();
+        Assert.Equal(expectedStatus, report.Status);
+        Assert.Equal(includesDuplicate ? 2 : 1, report.Reasons.Length);
+        Assert.NotNull(report.ReimportedAt);
+        Assert.Null(report.LastError);
+    }
+
+    [Fact]
+    public async Task MixedFailureAndStaleCompletion_PreserveExistingGuards()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var recipe = SeedRecipe(db, imageCount: 1);
+        SeedReport(db, recipe.Id, ["steps", "duplicate"]);
+        await db.SaveChangesAsync();
+        var service = new RecipeImportReportService(db);
+        var staleAttempt = Guid.NewGuid();
+        var currentAttempt = Guid.NewGuid();
+
+        await service.MarkAttemptStartedAsync(recipe.Id, staleAttempt);
+        await service.MarkAttemptStartedAsync(recipe.Id, currentAttempt);
+        await service.MarkFailedAsync(recipe.Id, staleAttempt, "stale", "ignored");
+        Assert.Equal(RecipeImportReportStatus.Reimporting, (await db.RecipeImportReports.SingleAsync()).Status);
+
+        await service.MarkFailedAsync(recipe.Id, currentAttempt, "extract", "failed");
+        var failed = await db.RecipeImportReports.SingleAsync();
+        Assert.Equal(RecipeImportReportStatus.ReimportFailed, failed.Status);
+        Assert.Equal(["steps", "duplicate"], failed.Reasons);
+    }
+
     [Theory]
     [InlineData("recipe-import")]
     [InlineData("url-import")]
@@ -189,12 +267,12 @@ public class RecipeImportLifecycleTests
         return recipe;
     }
 
-    private static void SeedReport(RecipeDbContext db, Guid recipeId)
+    private static void SeedReport(RecipeDbContext db, Guid recipeId, string[]? reasons = null)
     {
         db.RecipeImportReports.Add(new RecipeImportReport
         {
             RecipeId = recipeId,
-            Reasons = ["ingredients"],
+            Reasons = reasons ?? ["ingredients"],
             Note = "Check quantities"
         });
     }

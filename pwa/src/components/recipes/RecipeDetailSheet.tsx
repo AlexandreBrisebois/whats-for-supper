@@ -1049,6 +1049,7 @@ export function RecipeDetailSheet({
       {showImportIssueSheet && recipe && (
         <RecipeImportIssueSheet
           issue={recipe.importIssue ?? null}
+          canReportContentIssues={recipe.canReimport}
           onClose={() => setShowImportIssueSheet(false)}
           onSave={handleSaveImportIssue}
           onResolve={handleResolveImportIssue}

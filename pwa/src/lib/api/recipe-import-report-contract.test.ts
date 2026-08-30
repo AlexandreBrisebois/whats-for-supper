@@ -34,6 +34,10 @@ describe('recipe import report contract', () => {
 
   it('generates the public report types and recipe detail projection', () => {
     const generated = readGeneratedModels();
+    expect(generated).toContain('export const RecipeImportIssueReasonObject = {');
+    expect(generated).toContain("Ingredients: 'ingredients'");
+    expect(generated).toContain("Steps: 'steps'");
+    expect(generated).toContain("Duplicate: 'duplicate'");
     expect(interfaceBlock(generated, 'RecipeImportIssueRequest')).toContain(
       'reasons?: RecipeImportIssueReason[] | null;'
     );

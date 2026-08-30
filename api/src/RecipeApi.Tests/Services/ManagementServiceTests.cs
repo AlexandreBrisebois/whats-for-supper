@@ -63,9 +63,10 @@ public class ManagementServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task BackupRestoreRoundTrip_PreservesRecipeImportReport()
+    public async Task BackupRestoreRoundTrip_PreservesDuplicateOnlyAndMixedRecipeImportReports()
     {
         var recipeId = Guid.NewGuid();
+        var duplicateRecipeId = Guid.NewGuid();
         var memberId = _factory.DefaultFamilyMemberId;
         var createdAt = DateTimeOffset.UtcNow.AddDays(-2);
         var updatedAt = DateTimeOffset.UtcNow.AddDays(-1);
@@ -81,10 +82,19 @@ public class ManagementServiceTests : IAsyncLifetime
             CreatedAt = createdAt,
             UpdatedAt = updatedAt
         });
+        _db.Recipes.Add(new Recipe
+        {
+            Id = duplicateRecipeId,
+            Name = "Duplicate Soup",
+            AddedBy = memberId,
+            IsReady = true,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt
+        });
         _db.RecipeImportReports.Add(new RecipeImportReport
         {
             RecipeId = recipeId,
-            Reasons = ["ingredients", "steps"],
+            Reasons = ["ingredients", "duplicate"],
             Note = "The quantities and method need review.",
             Status = RecipeImportReportStatus.ReadyToReview,
             ReportedBy = memberId,
@@ -95,6 +105,17 @@ public class ManagementServiceTests : IAsyncLifetime
             LastAttemptAt = updatedAt.AddMinutes(-10),
             ReimportedAt = reimportedAt
         });
+        _db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = duplicateRecipeId,
+            Reasons = ["duplicate"],
+            Note = "Same recipe as Reported Soup.",
+            Status = RecipeImportReportStatus.Reported,
+            ReportedBy = memberId,
+            UpdatedBy = memberId,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt
+        });
         await _db.SaveChangesAsync();
 
         await _service.BackupAsync();
@@ -103,9 +124,9 @@ public class ManagementServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
         await _service.RestoreAsync();
 
-        var restored = await _db.RecipeImportReports.SingleAsync();
+        var restored = await _db.RecipeImportReports.SingleAsync(report => report.RecipeId == recipeId);
         Assert.Equal(recipeId, restored.RecipeId);
-        Assert.Equal(["ingredients", "steps"], restored.Reasons);
+        Assert.Equal(["ingredients", "duplicate"], restored.Reasons);
         Assert.Equal("The quantities and method need review.", restored.Note);
         Assert.Equal(RecipeImportReportStatus.ReadyToReview, restored.Status);
         Assert.Equal(memberId, restored.ReportedBy);
@@ -113,6 +134,11 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Equal(createdAt, restored.CreatedAt);
         Assert.Equal(updatedAt, restored.UpdatedAt);
         Assert.Equal(reimportedAt, restored.ReimportedAt);
+
+        var duplicateOnly = await _db.RecipeImportReports.SingleAsync(report => report.RecipeId == duplicateRecipeId);
+        Assert.Equal(["duplicate"], duplicateOnly.Reasons);
+        Assert.Equal("Same recipe as Reported Soup.", duplicateOnly.Note);
+        Assert.Equal(RecipeImportReportStatus.Reported, duplicateOnly.Status);
     }
 
     [Fact]

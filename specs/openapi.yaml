@@ -47,7 +47,7 @@ components:
     # --- Recipes ---
     RecipeImportIssueReason:
       type: string
-      enum: [ingredients, steps]
+      enum: [ingredients, steps, duplicate]
 
     RecipeImportIssueStatus:
       type: string
@@ -65,9 +65,11 @@ components:
         note:
           type: [string, 'null']
           maxLength: 500
-      example:
-        reasons: [ingredients, steps]
-        note: 'The quantities and final two steps need another pass.'
+      examples:
+        - reasons: [duplicate]
+          note: 'This is the same recipe as our family lasagna.'
+        - reasons: [ingredients, duplicate]
+          note: 'The ingredient list needs repair, and this recipe is also a duplicate.'
 
     RecipeImportIssueDto:
       type: object
@@ -83,10 +85,13 @@ components:
           maxLength: 500
         status:
           $ref: '#/components/schemas/RecipeImportIssueStatus'
-      example:
-        reasons: [ingredients, steps]
-        note: 'The quantities and final two steps need another pass.'
-        status: readyToReview
+      examples:
+        - reasons: [duplicate]
+          note: 'This is the same recipe as our family lasagna.'
+          status: reported
+        - reasons: [ingredients, duplicate]
+          note: 'The ingredient list needs repair, and this recipe is also a duplicate.'
+          status: reported
 
     RecipeDto:
       type: object

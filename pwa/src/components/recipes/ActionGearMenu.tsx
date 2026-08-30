@@ -78,8 +78,7 @@ export function ActionGearMenu({
                   {t('common.edit', 'Edit')}
                 </button>
               )}
-              {canReimport && (
-                <button
+              <button
                   type="button"
                   data-testid="action-report-import-issue"
                   onClick={() => {
@@ -89,9 +88,8 @@ export function ActionGearMenu({
                   className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
                 >
                   <Flag size={16} className="text-terracotta/70" />
-                  {hasImportIssue ? 'Update report' : 'Report issue'}
-                </button>
-              )}
+                  {hasImportIssue ? 'Review issue' : 'Report issue'}
+              </button>
               {canReimport && (
                 <button
                   type="button"

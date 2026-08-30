@@ -10,7 +10,7 @@ public class RecipeImportReportService(RecipeDbContext db)
 {
     private const int MaxErrorLength = 2000;
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> RecipeLocks = new();
-    private static readonly HashSet<string> AllowedReasons = ["ingredients", "steps"];
+    private static readonly HashSet<string> AllowedReasons = ["ingredients", "steps", "duplicate"];
 
     public async Task<RecipeDetailResponseDto> UpsertAsync(
         Guid recipeId,
@@ -71,7 +71,9 @@ public class RecipeImportReportService(RecipeDbContext db)
         if (db.Database.IsRelational())
         {
             await db.RecipeImportReports
-                .Where(report => report.RecipeId == recipeId)
+                .Where(report =>
+                    report.RecipeId == recipeId
+                    && (report.Reasons.Contains("ingredients") || report.Reasons.Contains("steps")))
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(report => report.Status, RecipeImportReportStatus.Reimporting)
                     .SetProperty(report => report.LastWorkflowInstanceId, workflowInstanceId)
@@ -83,7 +85,8 @@ public class RecipeImportReportService(RecipeDbContext db)
         }
 
         var report = await db.RecipeImportReports.SingleOrDefaultAsync(r => r.RecipeId == recipeId);
-        if (report is null) return;
+        if (report is null
+            || (!report.Reasons.Contains("ingredients") && !report.Reasons.Contains("steps"))) return;
 
         report.Status = RecipeImportReportStatus.Reimporting;
         report.LastWorkflowInstanceId = workflowInstanceId;
@@ -104,7 +107,11 @@ public class RecipeImportReportService(RecipeDbContext db)
                     report.RecipeId == recipeId
                     && report.LastWorkflowInstanceId == workflowInstanceId)
                 .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(report => report.Status, RecipeImportReportStatus.ReadyToReview)
+                    .SetProperty(
+                        report => report.Status,
+                        report => report.Reasons.Contains("duplicate")
+                            ? RecipeImportReportStatus.Reported
+                            : RecipeImportReportStatus.ReadyToReview)
                     .SetProperty(report => report.ReimportedAt, now)
                     .SetProperty(report => report.LastError, (string?)null)
                     .SetProperty(report => report.UpdatedAt, now));
@@ -115,7 +122,9 @@ public class RecipeImportReportService(RecipeDbContext db)
             r.RecipeId == recipeId && r.LastWorkflowInstanceId == workflowInstanceId);
         if (report is null) return;
 
-        report.Status = RecipeImportReportStatus.ReadyToReview;
+        report.Status = report.Reasons.Contains("duplicate")
+            ? RecipeImportReportStatus.Reported
+            : RecipeImportReportStatus.ReadyToReview;
         report.ReimportedAt = now;
         report.LastError = null;
         report.UpdatedAt = now;
@@ -173,12 +182,6 @@ public class RecipeImportReportService(RecipeDbContext db)
         RecipeImportIssueRequest request)
     {
         var recipe = await RequireRecipeAndMemberAsync(recipeId, familyMemberId);
-        if (!RecipeService.CanReimport(recipe))
-        {
-            throw new RecipeImportReportIneligibleException(
-                "Import issues can only be reported for recipes that can be re-imported.");
-        }
-
         var reasons = request.Reasons
             .Select(reason => reason?.Trim().ToLowerInvariant() ?? string.Empty)
             .Order(StringComparer.Ordinal)
@@ -186,9 +189,15 @@ public class RecipeImportReportService(RecipeDbContext db)
         if (reasons.Length == 0)
             throw new ArgumentException("At least one import issue reason is required.");
         if (reasons.Any(reason => !AllowedReasons.Contains(reason)))
-            throw new ArgumentException("Import issue reasons must be ingredients or steps.");
+            throw new ArgumentException("Issue reasons must be ingredients, steps, or duplicate.");
         if (reasons.Distinct(StringComparer.Ordinal).Count() != reasons.Length)
             throw new ArgumentException("Import issue reasons must be unique.");
+        var hasContentReason = reasons.Contains("ingredients") || reasons.Contains("steps");
+        if (hasContentReason && !RecipeService.CanReimport(recipe))
+        {
+            throw new RecipeImportReportIneligibleException(
+                "Ingredient and step issues can only be reported for recipes that can be re-imported.");
+        }
 
         var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
         if (note?.Length > 500)

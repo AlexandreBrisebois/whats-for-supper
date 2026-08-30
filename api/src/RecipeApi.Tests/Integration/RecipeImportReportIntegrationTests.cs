@@ -109,8 +109,65 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
     {
         { new { reasons = Array.Empty<string>() } },
         { new { reasons = new[] { "ingredients", "ingredients" } } },
+        { new { reasons = new[] { "duplicate", "duplicate" } } },
         { new { reasons = new[] { "photos" } } },
         { new { reasons = new[] { "steps" }, note = new string('x', 501) } }
+    };
+
+    [Theory]
+    [MemberData(nameof(ReimportableReasonSets))]
+    public async Task Put_ReimportableRecipe_AcceptsEveryValidReasonSubset(string[] reasons)
+    {
+        var recipeId = await SeedRecipeAsync(imageCount: 1);
+
+        var response = await PutAsync(recipeId, new { reasons });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    public static TheoryData<string[]> ReimportableReasonSets => new()
+    {
+        { new[] { "ingredients" } },
+        { new[] { "steps" } },
+        { new[] { "duplicate" } },
+        { new[] { "ingredients", "steps" } },
+        { new[] { "ingredients", "duplicate" } },
+        { new[] { "steps", "duplicate" } },
+        { new[] { "ingredients", "steps", "duplicate" } }
+    };
+
+    [Fact]
+    public async Task Put_NonReimportableRecipe_AcceptsDuplicateOnly()
+    {
+        var recipeId = await SeedRecipeAsync();
+
+        var response = await PutAsync(recipeId, new { reasons = new[] { "duplicate" } });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("duplicate", json.RootElement.GetProperty("recipe").GetProperty("importIssue")
+            .GetProperty("reasons")[0].GetString());
+    }
+
+    [Theory]
+    [MemberData(nameof(IneligibleContentReasonSets))]
+    public async Task Put_NonReimportableRecipe_RejectsAnyContentReason(string[] reasons)
+    {
+        var recipeId = await SeedRecipeAsync();
+
+        var response = await PutAsync(recipeId, new { reasons });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    public static TheoryData<string[]> IneligibleContentReasonSets => new()
+    {
+        { new[] { "ingredients" } },
+        { new[] { "steps" } },
+        { new[] { "ingredients", "steps" } },
+        { new[] { "ingredients", "duplicate" } },
+        { new[] { "steps", "duplicate" } },
+        { new[] { "ingredients", "steps", "duplicate" } }
     };
 
     [Fact]

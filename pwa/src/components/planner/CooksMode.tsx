@@ -561,6 +561,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         <RecipeImportIssueSheet
           issue={recipeDetails.importIssue ?? null}
           contextualReason={reportContext}
+          canReportContentIssues={recipeDetails.canReimport}
           onClose={() => setReportContext(null)}
           onSave={handleSaveImportIssue}
           onResolve={handleResolveImportIssue}

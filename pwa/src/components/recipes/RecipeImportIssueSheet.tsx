@@ -7,10 +7,12 @@ import type {
   RecipeImportIssueDraft,
   RecipeImportIssueReason,
 } from '@/lib/api/recipes';
+import { RecipeImportIssueReasonObject } from '@/lib/api/generated/models/index';
 
 interface RecipeImportIssueSheetProps {
   issue: RecipeImportIssue | null;
   contextualReason?: RecipeImportIssueReason;
+  canReportContentIssues?: boolean;
   onClose: () => void;
   onSave: (draft: RecipeImportIssueDraft) => Promise<void>;
   onResolve: () => Promise<void>;
@@ -28,6 +30,7 @@ function mergeReasons(
 export function RecipeImportIssueSheet({
   issue,
   contextualReason,
+  canReportContentIssues = true,
   onClose,
   onSave,
   onResolve,
@@ -42,7 +45,7 @@ export function RecipeImportIssueSheet({
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const existing = issue !== null;
-  const title = existing ? 'Review import issue' : 'Report import issue';
+  const title = existing ? 'Review issue' : 'Report issue';
 
   useEffect(() => closeRef.current?.focus(), []);
 
@@ -137,27 +140,46 @@ export function RecipeImportIssueSheet({
 
         <fieldset className="mt-6 grid grid-cols-2 gap-3">
           <legend className="sr-only">Issue reasons</legend>
-          {(['ingredients', 'steps'] as const).map((reason) => {
+          {[
+            RecipeImportIssueReasonObject.Ingredients,
+            RecipeImportIssueReasonObject.Steps,
+            RecipeImportIssueReasonObject.Duplicate,
+          ].map((reason) => {
             const selected = reasons.includes(reason);
+            const isContentReason = reason !== RecipeImportIssueReasonObject.Duplicate;
+            const disabled = isContentReason && !canReportContentIssues && !selected;
             return (
               <button
                 key={reason}
                 type="button"
                 data-testid={`import-issue-reason-${reason}`}
                 aria-pressed={selected}
+                disabled={disabled}
                 onClick={() => toggleReason(reason)}
                 className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
                   selected
                     ? 'border-terracotta-600 bg-terracotta-600 text-white'
-                    : 'border-charcoal/10 bg-white text-charcoal'
+                    : 'border-charcoal/10 bg-white text-charcoal disabled:cursor-not-allowed disabled:opacity-45'
                 }`}
               >
                 {selected && <Check size={16} strokeWidth={3} aria-hidden="true" />}
-                {reason === 'ingredients' ? 'Ingredients' : 'Steps'}
+                {reason === RecipeImportIssueReasonObject.Ingredients
+                  ? 'Ingredients'
+                  : reason === RecipeImportIssueReasonObject.Steps
+                    ? 'Steps'
+                    : 'Duplicate'}
               </button>
             );
           })}
         </fieldset>
+        {!canReportContentIssues && (
+          <p
+            data-testid="import-issue-content-ineligible"
+            className="mt-3 text-sm text-charcoal/60"
+          >
+            Ingredients and steps can only be reported for recipes that can be re-imported.
+          </p>
+        )}
 
         <button
           type="button"
@@ -191,7 +213,11 @@ export function RecipeImportIssueSheet({
           </p>
         )}
         {reasons.length === 0 && (
-          <p className="mt-3 text-sm text-charcoal/60">Choose Ingredients, Steps, or both.</p>
+          <p className="mt-3 text-sm text-charcoal/60">
+            {canReportContentIssues
+              ? 'Choose Ingredients, Steps, Duplicate, or any combination.'
+              : 'Choose Duplicate.'}
+          </p>
         )}
         <button
           type="button"

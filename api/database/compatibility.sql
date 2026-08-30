@@ -27,7 +27,7 @@ BEGIN
         FROM pg_constraint
         WHERE conrelid = 'public.recipe_import_reports'::regclass
           AND conname = 'recipe_import_reports_reasons_check'
-          AND pg_get_constraintdef(oid) NOT LIKE '%array_positions%'
+          AND pg_get_constraintdef(oid) NOT LIKE '%duplicate%'
     ) THEN
         ALTER TABLE public.recipe_import_reports
             DROP CONSTRAINT recipe_import_reports_reasons_check;
@@ -42,9 +42,10 @@ BEGIN
         ALTER TABLE public.recipe_import_reports
             ADD CONSTRAINT recipe_import_reports_reasons_check CHECK (
                 cardinality(reasons) > 0
-                AND reasons <@ ARRAY['ingredients', 'steps']::text[]
+                AND reasons <@ ARRAY['ingredients', 'steps', 'duplicate']::text[]
                 AND cardinality(array_positions(reasons, 'ingredients'::text)) <= 1
                 AND cardinality(array_positions(reasons, 'steps'::text)) <= 1
+                AND cardinality(array_positions(reasons, 'duplicate'::text)) <= 1
             );
     END IF;
 END

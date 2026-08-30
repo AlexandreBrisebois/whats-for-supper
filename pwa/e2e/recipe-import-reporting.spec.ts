@@ -133,11 +133,16 @@ async function installRecipeHarness(
 
       state.importStatusReads += 1;
       if (state.terminalStatus === 'completed' && state.recipe.importIssue) {
+        const hasDuplicate = state.recipe.importIssue.reasons?.includes(
+          RecipeImportIssueReasonObject.Duplicate
+        );
         state.recipe = {
           ...state.recipe,
           importIssue: {
             ...state.recipe.importIssue,
-            status: RecipeImportIssueStatusObject.ReadyToReview,
+            status: hasDuplicate
+              ? RecipeImportIssueStatusObject.Reported
+              : RecipeImportIssueStatusObject.ReadyToReview,
           },
         };
       }
@@ -194,7 +199,7 @@ test.describe('Recipe import issue reporting', () => {
     expect(state.recipe.importIssue?.reasons).toEqual([RecipeImportIssueReasonObject.Ingredients]);
 
     await page.getByTestId('action-gear-menu').click();
-    await expect(page.getByTestId('action-report-import-issue')).toHaveText('Update report');
+    await expect(page.getByTestId('action-report-import-issue')).toHaveText('Review issue');
     await page.getByTestId('action-report-import-issue').click();
     await page.getByTestId('import-issue-reason-steps').click();
     await page.getByTestId('import-issue-note-disclosure').click();
@@ -408,13 +413,13 @@ test.describe('Recipe import issue reporting', () => {
     await expect(page.getByTestId('recipe-card-top-pick')).not.toContainText('Ready Tacos');
   });
 
-  test('hides reporting for synthesized recipes and preserves the Healthy filter contract', async ({
+  test('allows duplicate-only reporting for synthesized recipes and preserves the Healthy filter contract', async ({
     page,
   }) => {
     await authenticate(page);
     await setupCommonRoutes(page);
 
-    const synthesized = builders.recipe({
+    let synthesized = builders.recipe({
       id: MOCK_IDS.RECIPE_GOTO_STUB,
       name: 'Synthesized Healthy Bowl',
       sourceType: RecipeDto_sourceTypeObject.Synthesized,
@@ -442,7 +447,21 @@ test.describe('Recipe import issue reporting', () => {
         }),
       });
     });
-    await page.route(`**/api/recipes/${synthesized.id}`, async (route) => {
+    await page.route(`**/api/recipes/${synthesized.id}**`, async (route) => {
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON() as {
+          reasons: RecipeImportIssueDto['reasons'];
+          note?: string | null;
+        };
+        synthesized = {
+          ...synthesized,
+          importIssue: {
+            reasons: body.reasons,
+            note: body.note ?? null,
+            status: RecipeImportIssueStatusObject.Reported,
+          },
+        };
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -457,7 +476,15 @@ test.describe('Recipe import issue reporting', () => {
 
     await page.getByTestId(`recipe-card-${synthesized.id}`).click();
     await page.getByTestId('action-gear-menu').click();
-    await expect(page.getByTestId('action-report-import-issue')).toHaveCount(0);
+    await page.getByTestId('action-report-import-issue').click();
+    await expect(page.getByTestId('import-issue-reason-ingredients')).toBeDisabled();
+    await expect(page.getByTestId('import-issue-reason-steps')).toBeDisabled();
+    await expect(page.getByTestId('import-issue-content-ineligible')).toBeVisible();
+    await page.getByTestId('import-issue-reason-duplicate').click();
+    await page.getByTestId('import-issue-save').click();
+    await expect.poll(() => synthesized.importIssue?.reasons).toEqual([
+      RecipeImportIssueReasonObject.Duplicate,
+    ]);
     await expect(page.getByTestId('action-reimport-recipe')).toHaveCount(0);
   });
 });

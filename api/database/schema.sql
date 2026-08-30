@@ -66,9 +66,10 @@ CREATE TABLE IF NOT EXISTS recipe_import_reports (
     last_error varchar(2000),
     CONSTRAINT recipe_import_reports_reasons_check CHECK (
         cardinality(reasons) > 0
-        AND reasons <@ ARRAY['ingredients', 'steps']::text[]
+        AND reasons <@ ARRAY['ingredients', 'steps', 'duplicate']::text[]
         AND cardinality(array_positions(reasons, 'ingredients'::text)) <= 1
         AND cardinality(array_positions(reasons, 'steps'::text)) <= 1
+        AND cardinality(array_positions(reasons, 'duplicate'::text)) <= 1
     ),
     CONSTRAINT recipe_import_reports_status_check CHECK (status IN ('reported', 'reimporting', 'reimport_failed', 'ready_to_review'))
 );

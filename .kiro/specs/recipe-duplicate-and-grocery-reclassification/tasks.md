@@ -40,7 +40,7 @@
 
 Workstreams A and B are product-independent. Do not run them with parallel agents unless explicitly authorized; the graph only records file/dependency independence.
 
-## 1. [ ] Duplicate contract and persistence seam
+## 1. [x] Duplicate contract and persistence seam
 
 **Goal:** Make `duplicate` legal and durable across clean installs, existing databases, EF metadata, OpenAPI, and generated clients before runtime logic changes.
 
@@ -77,7 +77,7 @@ Workstreams A and B are product-independent. Do not run them with parallel agent
 
 **Escalate if:** clean-install and compatibility authorities cannot express equivalent constraints, or client generation changes unrelated schemas.
 
-## 2. [ ] Duplicate eligibility and lifecycle behavior
+## 2. [x] Duplicate eligibility and lifecycle behavior
 
 **Depends on:** Slice 1
 
@@ -123,7 +123,7 @@ Workstreams A and B are product-independent. Do not run them with parallel agent
 
 **Escalate if:** the relational bulk-update path cannot branch atomically on the text-array contents or a duplicate-only report is created by re-import rather than explicit reporting.
 
-## 3. [ ] Universal duplicate-reporting UI and mock parity
+## 3. [x] Universal duplicate-reporting UI and mock parity
 
 **Depends on:** Slice 2
 
