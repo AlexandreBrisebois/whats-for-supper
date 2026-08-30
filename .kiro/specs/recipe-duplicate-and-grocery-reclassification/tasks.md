@@ -162,7 +162,7 @@ Workstreams A and B are product-independent. Do not run them with parallel agent
 
 **Escalate if:** universal report visibility conflicts with an authorization rule rather than `canReimport` eligibility.
 
-## 4. [ ] Grocery category regression repair
+## 4. [x] Grocery category regression repair
 
 **Goal:** Restore immediate visible category movement after the existing PATCH succeeds, with deterministic failure and race handling.
 

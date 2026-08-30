@@ -482,9 +482,9 @@ test.describe('Recipe import issue reporting', () => {
     await expect(page.getByTestId('import-issue-content-ineligible')).toBeVisible();
     await page.getByTestId('import-issue-reason-duplicate').click();
     await page.getByTestId('import-issue-save').click();
-    await expect.poll(() => synthesized.importIssue?.reasons).toEqual([
-      RecipeImportIssueReasonObject.Duplicate,
-    ]);
+    await expect
+      .poll(() => synthesized.importIssue?.reasons)
+      .toEqual([RecipeImportIssueReasonObject.Duplicate]);
     await expect(page.getByTestId('action-reimport-recipe')).toHaveCount(0);
   });
 });

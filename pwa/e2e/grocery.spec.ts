@@ -40,6 +40,7 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     'Tomato Sauce': 'Pantry',
     Cheese: 'Dairy & Eggs',
   };
+  const categoryOverrides: Record<string, string> = {};
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setUTCDate(monday.getUTCDate() + i);
@@ -62,6 +63,12 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     (url) => url.pathname === '/api/schedule',
     async (route) => {
       if (route.request().method() === 'GET') {
+        const persistedSectionMap = Object.fromEntries(
+          Object.entries(GROCERY_SECTION_MAP).map(([name, section]) => [
+            name,
+            categoryOverrides[name.toLowerCase().replace(/\s+/g, '_')] ?? section,
+          ])
+        );
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -71,7 +78,7 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
               locked: false,
               status: 0,
               days,
-              groceryItems: builders.groceryItems(GROCERY_INGREDIENTS, GROCERY_SECTION_MAP),
+              groceryItems: builders.groceryItems(GROCERY_INGREDIENTS, persistedSectionMap),
             },
           }),
         });
@@ -80,6 +87,15 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
       }
     }
   );
+
+  await page.route('**/api/ingredients/*/category', async (route) => {
+    const normalizedKey = decodeURIComponent(
+      new URL(route.request().url()).pathname.split('/').at(-2) ?? ''
+    );
+    const body = route.request().postDataJSON() as { grocerySection?: string };
+    if (body.grocerySection) categoryOverrides[normalizedKey] = body.grocerySection;
+    await route.fulfill({ status: 204 });
+  });
 
   await mockSseWithConnectedSchedule(page, {
     weekOffset: 0,
@@ -97,7 +113,29 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
   await page.getByTestId('grocery-tab').click();
   await expect(page.getByTestId('grocery-checklist')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('Your list is empty')).not.toBeVisible();
+
+  return { categoryOverrides };
 }
+
+test.describe('Grocery List — category reclassification', () => {
+  test('successful PATCH moves the item and the next schedule keeps the persisted section', async ({
+    page,
+  }) => {
+    const { categoryOverrides } = await setupGroceryPage(page);
+    await page.getByTestId('aisle-section-Meat').getByTestId('reclassify-btn').click();
+    await page.getByTestId('section-option-Produce').click();
+
+    await expect(page.getByTestId('aisle-section-Meat')).toHaveCount(0);
+    await expect(
+      page.getByTestId('aisle-section-Produce').getByTestId('grocery-item-checkbox')
+    ).toBeVisible();
+    expect(categoryOverrides.beef).toBe('Produce');
+
+    await page.reload();
+    await page.getByTestId('grocery-tab').click();
+    await expect(page.getByTestId('aisle-section-Produce')).toBeVisible();
+  });
+});
 
 test.describe('Grocery List — PATCH failure behaviour', () => {
   test('PATCH failure → single item reverts, no global spinner', async ({ page }) => {

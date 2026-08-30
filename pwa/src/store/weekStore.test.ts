@@ -56,6 +56,7 @@ beforeEach(() => {
   useWeekStore.setState({
     weekOffset: 0,
     schedule: [],
+    groceryItems: [],
     status: 0,
     isLoading: false,
     lastSyncedAt: null,
@@ -67,6 +68,57 @@ beforeEach(() => {
     confirmedMoveSeq: 0,
     isDragActive: false,
     deferredWeekSnapshot: null,
+  });
+});
+
+describe('weekStore — grocery reclassification', () => {
+  it('immutably replaces only the matching item section by normalizedKey', () => {
+    const tomato = {
+      displayName: 'Tomato',
+      normalizedKey: 'tomato',
+      section: 'Produce',
+      quantity: 2,
+      unitText: 'each',
+      recipeIds: ['recipe-1'],
+      additionalData: {},
+    };
+    const rice = {
+      displayName: 'Rice',
+      normalizedKey: 'rice',
+      section: 'Pantry',
+      quantity: 1,
+      unitText: 'bag',
+      recipeIds: ['recipe-2'],
+      additionalData: {},
+    };
+    const previous = [tomato, rice];
+    useWeekStore.setState({ groceryItems: previous });
+
+    useWeekStore.getState().reclassifyGroceryItem('tomato', 'Pantry');
+
+    const next = useWeekStore.getState().groceryItems;
+    expect(next).not.toBe(previous);
+    expect(next).toEqual([{ ...tomato, section: 'Pantry' }, rice]);
+    expect(next[0]).not.toBe(tomato);
+    expect(next[1]).toBe(rice);
+  });
+
+  it('lets an authoritative snapshot overwrite a locally reclassified section', () => {
+    const item = {
+      displayName: 'Tomato',
+      normalizedKey: 'tomato',
+      section: 'Produce',
+      additionalData: {},
+    };
+    useWeekStore.setState({ groceryItems: [item] });
+    useWeekStore.getState().reclassifyGroceryItem('tomato', 'Pantry');
+
+    useWeekStore.getState().applySnapshot({
+      ...makeScheduleDays([]),
+      groceryItems: [{ ...item, section: 'Grocery' }],
+    } as any);
+
+    expect(useWeekStore.getState().groceryItems[0].section).toBe('Grocery');
   });
 });
 

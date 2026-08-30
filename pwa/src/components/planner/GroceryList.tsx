@@ -11,6 +11,7 @@ import { AISLE_ORDER } from '@/lib/grocery/aisleOrder';
 import { useSchedule } from '@/lib/api/schedule';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
 import type { GroceryLineItemDto } from '@/lib/api/generated/models';
+import { useWeekStore } from '@/store/weekStore';
 
 interface GroceryListProps {
   weekOffset: number;
@@ -54,6 +55,8 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
   const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
   const [reclassifyOpen, setReclassifyOpen] = useState<string | null>(null);
   const [reclassifyErrors, setReclassifyErrors] = useState<Set<string>>(new Set());
+  const [pendingReclassifications, setPendingReclassifications] = useState<Set<string>>(new Set());
+  const reclassifyGroceryItem = useWeekStore((state) => state.reclassifyGroceryItem);
   const [collapsedAisles, setCollapsedAisles] = useState<Set<GrocerySection>>(new Set());
   const grouped = useMemo(() => {
     const result: Partial<Record<GrocerySection, GroceryLineItemDto[]>> = {};
@@ -107,24 +110,40 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
   };
 
   const handleReclassify = async (item: GroceryLineItemDto, newSection: GrocerySection) => {
-    setReclassifyOpen(null);
+    const normalizedKey = item.normalizedKey;
+    if (!normalizedKey || pendingReclassifications.has(normalizedKey)) return;
+    if (item.section === newSection) {
+      setReclassifyOpen(null);
+      return;
+    }
+
+    const startingWeek = weekOffset;
+    setPendingReclassifications((prev) => new Set(prev).add(normalizedKey));
     try {
-      await reclassifyIngredient(item.normalizedKey!, newSection);
-      // Optimistic: the SSE stream will push the recomputed list shortly.
-      // No local state change needed beyond closing the picker.
+      await reclassifyIngredient(normalizedKey, newSection);
+      if (useWeekStore.getState().weekOffset === startingWeek) {
+        reclassifyGroceryItem(normalizedKey, newSection);
+      }
+      setReclassifyOpen(null);
     } catch {
       setReclassifyErrors((prev) => {
         const next = new Set(prev);
-        next.add(item.normalizedKey!);
+        next.add(normalizedKey);
         return next;
       });
       setTimeout(() => {
         setReclassifyErrors((prev) => {
           const next = new Set(prev);
-          next.delete(item.normalizedKey!);
+          next.delete(normalizedKey);
           return next;
         });
       }, 3000);
+    } finally {
+      setPendingReclassifications((prev) => {
+        const next = new Set(prev);
+        next.delete(normalizedKey);
+        return next;
+      });
     }
   };
 
@@ -317,6 +336,9 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                           const hasError = errorItems.has(key);
                           const hasReclassifyError = reclassifyErrors.has(item.normalizedKey ?? '');
                           const isPickerOpen = reclassifyOpen === item.normalizedKey;
+                          const isReclassifyPending = pendingReclassifications.has(
+                            item.normalizedKey ?? ''
+                          );
 
                           return (
                             <div key={key} className="relative">
@@ -426,6 +448,7 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                                   aria-label={`Change section for ${key}`}
                                   data-testid="reclassify-btn"
                                   data-item-name={key}
+                                  disabled={isReclassifyPending}
                                 >
                                   <Tag size={14} />
                                   {hasReclassifyError && (
@@ -443,6 +466,8 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                                 <div
                                   className="mx-4 mb-2 flex flex-wrap gap-2 p-3 bg-charcoal/3 rounded-2xl"
                                   data-testid="section-picker"
+                                  data-item-name={key}
+                                  aria-busy={isReclassifyPending}
                                 >
                                   {AISLE_ORDER.map((section) => (
                                     <button
@@ -455,10 +480,14 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                                           : 'bg-white text-charcoal/60 hover:bg-sage/10'
                                       }`}
                                       data-testid={`section-option-${section}`}
+                                      disabled={isReclassifyPending}
                                     >
                                       {section}
                                     </button>
                                   ))}
+                                  {isReclassifyPending && (
+                                    <span data-testid="reclassify-pending" data-item-name={key} />
+                                  )}
                                 </div>
                               )}
                             </div>
