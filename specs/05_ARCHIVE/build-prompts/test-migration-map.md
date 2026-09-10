@@ -1,5 +1,7 @@
 # E2E → Unit Test Migration Map
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Generated: 2026-05-16  
 Methodology: test-audit skill + manual classification against existing unit test coverage.
 

@@ -1,5 +1,7 @@
 # Branding Option 2: Vibrant Discovery (Eureka Energy)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Goal:** Amplify the joy of finding the perfect meal using the higher-energy tones of the Solar Earth palette.
 
 ## Task Overview

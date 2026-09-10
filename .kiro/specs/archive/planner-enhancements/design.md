@@ -1,5 +1,7 @@
 # Planner Page Enhancements - Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## UX Implementation Contract
 - **Hearth Aesthetic**: The change icon button next to the drag handle uses Sage Green or Ochre theme highlights:
   - Background: `bg-ochre/8 text-ochre active:scale-90 transition-transform` (looks matching the Outfit/Inter visual hierarchy).

@@ -1,5 +1,7 @@
 # Bugfix Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 Two Playwright e2e tests are failing due to mock/implementation mismatches in the shared

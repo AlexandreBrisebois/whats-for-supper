@@ -18,6 +18,7 @@ import type {
 } from '@/lib/api/generated/models';
 import type { ScheduleDay } from '@/lib/api/planner';
 import type { ScheduleDays } from '@/lib/api/generated/models';
+import type { GrocerySection } from '@/lib/grocery/aisleMapper';
 
 // Re-export the type so the planner page can import it from here
 export type UILocalScheduleDay = Omit<ScheduleDay, 'recipe'> & {
@@ -76,6 +77,7 @@ export interface WeekState {
   closeVoting: () => Promise<void>;
   lockWeek: () => Promise<void>;
   sync: () => Promise<void>;
+  reclassifyGroceryItem: (normalizedKey: string, section: GrocerySection) => void;
 
   // SSE-driven actions
   applySnapshot: (schedule: ScheduleDays, echoSeq?: number) => void;
@@ -433,6 +435,16 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  reclassifyGroceryItem(normalizedKey, section) {
+    set((state) => ({
+      groceryItems: state.groceryItems.map((item) =>
+        item.normalizedKey === normalizedKey && item.section !== section
+          ? { ...item, section }
+          : item
+      ),
+    }));
   },
 
   // ── applySnapshot ─────────────────────────────────────────────────────────

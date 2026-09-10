@@ -1,5 +1,7 @@
 # Requirements: Discovery Vote Visual Simplification (Older-Phone Smoothness)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Deliver a smoother one-thumb Discovery experience on older phones by removing vote-driven visual churn (green highlight/pulse) while preserving the social value of live voting and ranking behavior.
 

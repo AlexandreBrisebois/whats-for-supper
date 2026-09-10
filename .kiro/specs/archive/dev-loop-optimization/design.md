@@ -1,5 +1,7 @@
 # Design: Dev Loop Optimization & Digital Twin Testing
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## 1. Architectural Overview
 
 The optimization strategy shifts the development loop from a sequential, brittle process to a parallel, impact-aware, and strictly isolated system.

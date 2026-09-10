@@ -1,5 +1,7 @@
 # Session 4: API Testing & Validation
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** `api/src/RecipeApi.Tests/` with comprehensive test suite
 
 **Context needed:** Sessions 1-3 artifacts + Phase 0 spec

@@ -1,5 +1,7 @@
 # Prompt 01: API Discovery Schema & Migration (TDD)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** We are moving away from hardcoded mock data for the Discovery page. We need to evolve the API to support a curated "Inspiration Pool" where family members can vote on recipes.
 
 **Goal:** Implement the database schema changes to support discoverable recipes and family-member voting.

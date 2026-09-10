@@ -1,5 +1,7 @@
 # Session 2: API Foundation & Project Structure
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** `api/` folder with .NET 10 project structure, configs, Dockerfile
 
 **Context needed:** Phase 0 spec + Project structure doc

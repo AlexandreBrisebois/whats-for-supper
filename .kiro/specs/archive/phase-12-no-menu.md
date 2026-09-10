@@ -1,5 +1,7 @@
 # Feature: Phase 12 — No-Menu Home State ("Tonight Pivot")
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 ## Intent
 
 When no meal is planned for tonight, the Home screen currently shows a generic `SmartPivotCard` with quick-fix chips. This feature replaces that empty state with a purposeful `TonightPivotCard` that surfaces a family-configured "GOTO" fallback meal.

@@ -1,4 +1,6 @@
 # Build Prompt 02-backend-settings-persistence.md
+
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
 **Persona**: Sr. .NET Backend Engineer specializing in Vertical Slices.
 
 ## Strict Scope

@@ -141,7 +141,7 @@ describe('RecipeDetailSheet', () => {
     );
     expect(await screen.findByLabelText('Import issue status: Reported')).toBeVisible();
     fireEvent.click(screen.getByTestId('action-gear-menu'));
-    expect(screen.getByRole('button', { name: 'Update report' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Review issue' })).toBeVisible();
   });
 
   it('applies the idempotent resolve response, closes the report sheet, and toasts success', async () => {
@@ -163,13 +163,13 @@ describe('RecipeDetailSheet', () => {
 
     await screen.findByLabelText('Import issue status: Ready to review');
     fireEvent.click(screen.getByTestId('action-gear-menu'));
-    fireEvent.click(screen.getByRole('button', { name: 'Update report' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review issue' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
 
     await waitFor(() =>
       expect(mockResolveRecipeImportIssue).toHaveBeenCalledWith(recipeWithIssue.id)
     );
-    expect(screen.queryByRole('dialog', { name: 'Review import issue' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Review issue' })).toBeNull();
     expect(screen.queryByLabelText(/Import issue status/)).toBeNull();
     expect(mockAddToast).toHaveBeenCalledWith({ type: 'success', message: 'Marked as resolved' });
   });
@@ -377,6 +377,9 @@ describe('RecipeDetailSheet', () => {
 
     await screen.findByTestId('recipe-detail-sheet');
     expect(screen.queryByTestId('action-view-original')).toBeNull();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getByTestId('action-report-import-issue')).toBeVisible();
+    expect(screen.queryByTestId('action-reimport-recipe')).toBeNull();
   });
 
   it('shows action-view-original with ExternalLink icon for url-type recipes', async () => {

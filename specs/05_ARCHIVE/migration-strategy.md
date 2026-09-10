@@ -1,5 +1,7 @@
 # Migration Strategy Specification
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 This document defines the approach for evolving the "What's For Supper" system over time, including database schema migrations, service versioning, and the path from experiment branches to production.
 
 ## 1. Database Schema Migrations

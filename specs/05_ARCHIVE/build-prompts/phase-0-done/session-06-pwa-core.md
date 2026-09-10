@@ -1,5 +1,7 @@
 # Session 6: PWA Core Components & Hooks
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** Core UI components, Zustand stores, API client, reusable hooks
 
 **Context needed:** Sessions 1-5 artifacts + Phase 0 spec + pwa/SRC_STRUCTURE.md

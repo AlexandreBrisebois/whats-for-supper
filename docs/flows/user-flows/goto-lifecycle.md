@@ -1,6 +1,6 @@
 # Flow: GOTO Recipe Lifecycle
 
-**Spec:** `.kiro/specs/00-live-schedule` — Flow 6 / R11 (recipe_ready enriched payload), R15 (honest capture state)
+**Historical spec:** `.kiro/specs/archive/00-live-schedule` — Flow 6 / R11 (recipe_ready enriched payload), R15 (honest capture state)
 **Related docs:** [`no-menu-goto-home-state.md`](./no-menu-goto-home-state.md), [`sse-capture-async-feedback.md`](./sse-capture-async-feedback.md), [`sse-recipe-ready-notification.md`](./sse-recipe-ready-notification.md)
 **Reviewed by:** The Mère-Designer
 

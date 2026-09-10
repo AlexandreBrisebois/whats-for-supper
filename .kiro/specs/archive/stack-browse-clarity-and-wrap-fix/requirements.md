@@ -1,5 +1,7 @@
 # Feature: Stack Browse Clarity and Backward Wrap Fix
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Make Browse All Stack feel calm and dependable for one-thumb use: less visual crowding on cards, smoother swipes, and deterministic backward wrap to the true end of the recipe library.
 

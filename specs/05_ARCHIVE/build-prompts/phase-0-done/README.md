@@ -1,5 +1,7 @@
 # Phase 0: Recipe Acquisition MVP
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 Build the minimal feature set: family member onboarding + recipe capture.
 
 ## Overview
@@ -30,7 +32,7 @@ Phase 0 is the smallest viable product (MVP). Users can:
 ## Key Resources
 
 **Requirements:**
-- `src/specs/phase0-mvp.spec.md` — Full specification
+- `specs/05_ARCHIVE/phase0-mvp.spec.md` — Full specification
 
 **Architecture:**
 - `PROJECT_STRUCTURE.md` — Monorepo organization

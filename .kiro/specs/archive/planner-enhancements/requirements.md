@@ -1,5 +1,7 @@
 # Planner Page Enhancements - Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 To streamline the meal planner page UX by separating primary recipe viewing from recipe management actions, aligning the "plan later" option with home page skipped-recipe recovery vocabulary, and decluttering the planner dashboard by removing immediate cook mode triggers.
 

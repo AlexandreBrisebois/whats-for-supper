@@ -1,5 +1,7 @@
 # Design Document — planner-recipe-actions-clarity
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Scope
 
 This document covers planner-row interaction clarity and pivot copy clarity only.

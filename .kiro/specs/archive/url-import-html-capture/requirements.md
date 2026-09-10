@@ -1,5 +1,7 @@
 # Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 The `url-import-html-capture` feature changes how the `url-import` workflow stores and uses raw HTML during recipe capture. Currently, `WebAcquisitionAgent` embeds the full HTML inside `recipe.json` as a `rawHtml` property, and `RecipeAgent` always uses the photo-tuned `RecipeExtraction` prompt regardless of source. This creates an oversized `recipe.json`, couples the extraction prompt to the wrong input modality for web-sourced recipes, and prevents future reuse of the captured HTML.

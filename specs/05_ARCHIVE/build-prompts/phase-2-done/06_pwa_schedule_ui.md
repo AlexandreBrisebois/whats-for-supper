@@ -1,5 +1,7 @@
 # Prompt 06: PWA Weekly Dashboard UI (TDD)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** The API Schedule endpoints are ready. Now we need to implement the UI for Phase 2: the Weekly Dashboard (Planner page), integrating the "Matches" that the family has agreed upon via Discovery.
 
 **Goal:** Implement the Weekly Planner and recipe selection from "Matches".

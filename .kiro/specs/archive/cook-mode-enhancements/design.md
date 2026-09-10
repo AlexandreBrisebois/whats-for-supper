@@ -1,5 +1,7 @@
 # Cook's Mode Enhancements - Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## 1. API & Persistence
 ### OpenAPI Contract
 Update `UpdateRecipeDto` to include `recipeInstructions`.

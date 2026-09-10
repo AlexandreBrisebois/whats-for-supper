@@ -1,5 +1,7 @@
 # Build Prompt: PWA Search-to-Planner Integration
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Objective
 Connect the Search Library results back to the Weekly Planner to allow adding recipes to specific days.
 

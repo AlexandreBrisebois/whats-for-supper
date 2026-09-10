@@ -1,5 +1,7 @@
 # WORKSTREAM: home-recipe-selection-race-fix
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 Model-Label: SMALL_SAFE
 Why-This-Model: Single file, two missing lines, existing `setCurrentRecipe` pattern already in use, failing E2E tests already written and ready to gate the fix.
 Launch-Targets: Kiro, Antigravity, Claude

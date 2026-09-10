@@ -1,5 +1,7 @@
 # Build Prompt: Outstanding Work — 2026-05-02
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 ## Authority
 
 Follow repo doctrine in order: `specs/openapi.yaml` → this prompt → tests → implementation.  
@@ -35,7 +37,7 @@ This prompt addresses four independent items left outstanding after the 2026-05-
 
 ## Item 2 — Recipe readiness as recipe domain concern
 
-**Full spec:** `specs/05_BUILD_PROMPTS/recipe-readiness-domain-fix.md`  
+**Full spec:** `specs/05_ARCHIVE/recipe-readiness-domain-fix.md`
 **ADR:** `specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md`
 
 Execute phases A → B → C in that file exactly as written. Summary:
@@ -50,7 +52,7 @@ Execute phases A → B → C in that file exactly as written. Summary:
 
 ## Item 3 — Phase 14 remaining phases (UX hardening)
 
-**Full spec:** `.kiro/specs/phase-14-ux-hardening.md`
+**Full spec:** `.kiro/specs/archive/phase-14-ux-hardening.md`
 
 Phases A, B, C, and E are not yet started. Phase D (TonightPivotCard direct landing) is partially done — D3 guard and D4 fetch-always are already applied. Confirm D5 (typecheck) and D6 (Playwright) pass before marking Phase D complete, then proceed in order:
 

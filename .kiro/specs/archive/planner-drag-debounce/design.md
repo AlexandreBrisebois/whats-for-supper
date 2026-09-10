@@ -1,5 +1,7 @@
 # Planner Drag Debounce Bugfix Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Framer Motion's `Reorder.Group` fires `onReorder` on every intermediate drag position, not just on drop. The current `handleReorder` handler in `pwa/src/app/(app)/planner/page.tsx` calls `useWeekStore.getState().moveRecipe(from, to)` on every invocation, and `moveRecipe` immediately fires `POST /api/schedule/move`. Dragging a card across N slots therefore fires N API calls before the user releases.

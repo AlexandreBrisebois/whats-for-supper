@@ -1,5 +1,7 @@
 # Prompt 04: PWA Home — Command Center & Skip Recovery
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. UX Engineer (Mère-Designer alignment).
 
 **Context**:

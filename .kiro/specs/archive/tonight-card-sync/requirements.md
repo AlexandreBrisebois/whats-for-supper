@@ -1,5 +1,7 @@
 # Requirements: Tonight Menu Card Detail Sync
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Problem Statement
 When a recipe is assigned to "today" (via GOTO confirm or Quick Find), the UI responds immediately by showing the card and the hero image. However, the details on the flip side (description, ingredients, total time) remain empty or show default values until a manual page refresh.
 

@@ -1,5 +1,7 @@
 # Task 2: API Trigger & Individual Status Endpoints
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context**: Users need to manually trigger recipe imports and check their status from the PWA.
 
 **Requirements**:

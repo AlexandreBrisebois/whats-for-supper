@@ -1,5 +1,7 @@
 # Design: Stack Browse Clarity and Backward Wrap Fix
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## UX Implementation Contract
 - Remove cuisine/meal badges from stack cards only.
 - Preserve card tap → detail flow unchanged.

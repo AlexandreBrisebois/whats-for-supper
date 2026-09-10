@@ -1,6 +1,6 @@
 # Flow: Discovery Stack — Live SSE Updates
 
-**Spec:** `.kiro/specs/00-live-schedule` — Flows 9, 10 / R12, R13
+**Historical spec:** `.kiro/specs/archive/00-live-schedule` — Flows 9, 10 / R12, R13
 **Triggers:** SSE `fill_the_gap_invalidated` (recipe planned → remove from stack), SSE `vote_updated` (family vote → surface recipe)
 **Reviewed by:** The Mère-Designer
 

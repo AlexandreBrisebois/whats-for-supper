@@ -1,5 +1,7 @@
 # Design: Smart Defaults On Active Voting Week (Regression Fix)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Scope
 Fix planner-store week selection logic so smart defaults load for whichever week is actively open for voting.
 

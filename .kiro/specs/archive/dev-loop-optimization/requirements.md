@@ -1,5 +1,7 @@
 # Requirements: Dev Loop Optimization & Digital Twin Testing
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## 1. Objective
 Accelerate the development loop by modernizing testing infrastructure to support parallel execution, implementing a high-speed "gate" task for active development, and providing utilities to verify the "Digital Twin" architecture.
 

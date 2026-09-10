@@ -1,5 +1,7 @@
 # Demo Mode Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Experience Architecture
 
 The Demo Mode feature provides a repeatable, low-cost showcase environment. It consists of a capture/restore mechanism and a runtime "soft disable" for AI features.

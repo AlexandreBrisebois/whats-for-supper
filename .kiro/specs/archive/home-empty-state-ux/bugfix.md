@@ -1,5 +1,7 @@
 # Bugfix Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 `TonightPivotCard` has three UX bugs that surface together when the user has no meal planned for today **and** no GOTO recipe configured — the pure empty state (`!currentRecipe && !gotoRecipeId`). In this state the card displays a misleading header, a nonsensical prep-time badge, and a call-to-action that is visually buried and not tappable. All three bugs are confined to `pwa/src/components/home/TonightPivotCard.tsx`.

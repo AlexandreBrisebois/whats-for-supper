@@ -1,5 +1,7 @@
 # Build Prompt 08: Workflow Worker - Error Handling & Retries
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Systems Engineer
 **Goal**: Implement the "Binary Retry" strategy for handling transient vs. fatal errors in the workflow pipeline.
 

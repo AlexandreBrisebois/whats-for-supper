@@ -1,6 +1,6 @@
 # Flow: Capture Async Feedback — Honest Queued → Ready States
 
-**Spec:** `.kiro/specs/00-live-schedule` — Flow 12 / R15
+**Historical spec:** `.kiro/specs/archive/00-live-schedule` — Flow 12 / R15
 **Triggers:** Recipe submit (immediate queued state), SSE `recipe_ready` / `recipe_failed` (resolution)
 **Reviewed by:** The Mère-Designer
 

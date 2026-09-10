@@ -100,6 +100,7 @@ describe('CooksMode', () => {
     expect(reportAction).toHaveTextContent('');
     expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
+    expect(screen.queryByTestId('cooks-mode-report-duplicate')).toBeNull();
     fireEvent.click(reportAction);
 
     expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
@@ -116,7 +117,7 @@ describe('CooksMode', () => {
         note: null,
       })
     );
-    expect(screen.queryByRole('dialog', { name: 'Report import issue' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Report issue' })).toBeNull();
     expect(firstIngredient).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('heading', { name: 'Check & Prep' })).toBeInTheDocument();
     expect(usePlannerStore.getState().cookProgress['recipe-1']).toBeUndefined();
@@ -174,8 +175,8 @@ describe('CooksMode', () => {
     expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Optional note')).toHaveValue('The amounts are unclear');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close review import issue' }));
-    expect(screen.queryByRole('dialog', { name: 'Review import issue' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close review issue' }));
+    expect(screen.queryByRole('dialog', { name: 'Review issue' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Boil Water' })).toBeInTheDocument();
     expect(usePlannerStore.getState().cookProgress['recipe-1']).toBe(1);
 
@@ -188,7 +189,7 @@ describe('CooksMode', () => {
         note: 'The amounts are unclear',
       })
     );
-    expect(screen.queryByRole('dialog', { name: 'Review import issue' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Review issue' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Boil Water' })).toBeInTheDocument();
     expect(usePlannerStore.getState().cookProgress['recipe-1']).toBe(1);
   });

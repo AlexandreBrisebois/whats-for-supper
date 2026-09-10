@@ -27,20 +27,20 @@ describe('ActionGearMenu', () => {
     expect(reportAction.querySelector('svg')).toHaveClass('text-terracotta/70');
   });
 
-  it('hides reimport if canReimport is false', () => {
+  it('keeps reporting visible but hides reimport if canReimport is false', () => {
     render(<ActionGearMenu {...defaultProps} canReimport={false} />);
     fireEvent.click(screen.getByTestId('action-gear-menu'));
 
     expect(screen.getByTestId('action-move-to-bin')).toBeDefined();
     expect(screen.queryByTestId('action-reimport-recipe')).toBeNull();
-    expect(screen.queryByTestId('action-report-import-issue')).toBeNull();
+    expect(screen.getByTestId('action-report-import-issue')).toBeVisible();
   });
 
   it('labels an existing issue for update', () => {
     render(<ActionGearMenu {...defaultProps} hasImportIssue />);
     fireEvent.click(screen.getByTestId('action-gear-menu'));
 
-    expect(screen.getByRole('button', { name: 'Update report' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Review issue' })).toBeVisible();
   });
 
   it('calls onReimport and closes menu when reimport is clicked', () => {

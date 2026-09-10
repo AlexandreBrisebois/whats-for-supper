@@ -1,5 +1,7 @@
 # Build Prompt 07: Workflow Worker - Dependency Promotion
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Backend Developer
 **Goal**: Implement the "Self-Promotion" logic that allows a worker to trigger downstream tasks automatically once their dependencies are satisfied.
 

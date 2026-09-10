@@ -10,7 +10,7 @@
 >
 > Historical context (pre-fix race condition) is preserved in the [Historical Race Path](#historical-race-path) section below.
 
-Related specs: [home-command-center-hardening](../../.kiro/specs/home-command-center-hardening/)  
+Historical specs: [home-command-center-hardening](../../../.kiro/specs/archive/home-command-center-hardening)
 ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)
 
 ---

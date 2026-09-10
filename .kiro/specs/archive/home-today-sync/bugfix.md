@@ -1,5 +1,7 @@
 # Bugfix Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 Five regressions were introduced across commits `952d879`, `09aa638`, and `8013319` in the PWA's home-page "today" state management. All bugs stem from the same root structural problem: the home page and the planner share no unified "today" state. The home page derives today's recipe from SSR plus a client-side reconciliation fetch; the planner has its own independent schedule state. Any assignment made in the planner only reaches the home page via `router.refresh()` triggering a new SSR render — which is a race condition.

@@ -80,4 +80,4 @@ Existing GOTO settings values that contain `status: 'ready'` or `status: 'pendin
 - `pwa/src/components/profile/FamilyGOTOSettings.tsx` — remove `status` from `GotoValue`; derive from recipe status fetch
 - `pwa/src/store/familyStore.ts` — `loadSetting` return value for `family_goto` no longer includes `status`
 - `specs/openapi.yaml` — `GET /api/recipes/{id}/status` already exists; no contract changes needed
-- `.kiro/specs/phase-13-goto-synthesis.md` — Phase D4 task assumption (status gating) superseded by this ADR
+- `.kiro/specs/archive/phase-13-goto-synthesis.md` — Phase D4 task assumption (status gating) superseded by this ADR

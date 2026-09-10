@@ -1,5 +1,7 @@
 # Design: Home Recovery Flow Hardening
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Goal
 
 Replace implicit flow control based on component remount timing with explicit parent-owned flow state, while preserving the exact current Home recovery experience.

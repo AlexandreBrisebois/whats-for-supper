@@ -1,5 +1,7 @@
 # Implementation Plan: url-import-html-capture
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Contract-first implementation: data layer and prompt infrastructure are built and tested before agent logic is touched. The key invariant is that `recipe.json` never contains `rawHtml` after this change — `WebAcquisitionAgent` writes `original/content.html` instead, and `RecipeAgent` selects its extraction prompt based solely on which artifacts exist on disk.

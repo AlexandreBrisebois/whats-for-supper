@@ -1,5 +1,7 @@
 # Session 5: PWA Foundation & Project Setup
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** `pwa/` folder with Next.js 15 project, Docker, local dev configuration
 
 **Context needed:** Sessions 1-4 artifacts + Project structure doc + Phase 0 spec

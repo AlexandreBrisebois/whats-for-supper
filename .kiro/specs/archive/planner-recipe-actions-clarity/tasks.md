@@ -1,5 +1,7 @@
 # Tasks — planner-recipe-actions-clarity
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 This task set implements planner action clarity with deterministic tests first.

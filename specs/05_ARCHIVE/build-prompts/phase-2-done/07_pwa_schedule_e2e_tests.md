@@ -1,5 +1,7 @@
 # Prompt 07: Playwright E2E Tests for Planner (TDD)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** The Weekly Planner UI (Phase 2) has been implemented in the PWA, including the integration with Discovery Matches. We now need robust Playwright End-to-End tests to ensure the scheduling and interactions work reliably.
 
 **Goal:** Implement comprehensive E2E tests for the Planner and Discovery-to-Planner transition.

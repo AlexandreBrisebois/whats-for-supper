@@ -1,5 +1,7 @@
 # Session 3: API Endpoints & Database Context
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** Controllers, Services, DTOs, and DbContext with migrations working
 
 **Context needed:** Sessions 1-2 artifacts + Phase 0 spec
@@ -31,7 +33,7 @@ You are implementing the core API endpoints for Phase 0.
 Context:
 - Database migrations from Session 1 are in database/migrations/
 - API project structure from Session 2 is set up
-- Reference: specs/phase0-mvp.spec.md sections 1.3-2.5
+- Reference: specs/05_ARCHIVE/phase0-mvp.spec.md sections 1.3-2.5
 
 Implement:
 

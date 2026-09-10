@@ -1,5 +1,7 @@
 # Design: E2E-to-Unit Migration Strategy
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vertical Slicing Philosophy
 
 To minimize task dependencies and maximize throughput for small models, this plan uses **Vertical Slices** rather than horizontal phases. Each slice represents a complete feature area (e.g., Grocery, Sharing) and contains the full lifecycle of migration:

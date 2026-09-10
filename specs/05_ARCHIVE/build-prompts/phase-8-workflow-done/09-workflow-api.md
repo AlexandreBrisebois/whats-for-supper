@@ -1,5 +1,7 @@
 # Build Prompt 09: Workflow API & Manual Intervention
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: API Developer
 **Goal**: Implement the RESTful endpoints for triggering workflows, monitoring progress, and manually recovering from failures.
 

@@ -1,5 +1,7 @@
 # Design Document: Remove Backend Proxy
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Remove the Next.js `/backend` rewrite rule and replace every `/backend` reference in the codebase with `/api`. After this change the browser calls `/api` directly in all environments — local dev, Docker dev, and production — using the same Traefik `PathPrefix(/api)` routing model that production already uses.

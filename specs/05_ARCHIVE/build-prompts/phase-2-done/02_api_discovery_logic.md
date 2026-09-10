@@ -1,5 +1,7 @@
 # Prompt 02: API Discovery Services & Match Logic (TDD)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** The schema is ready. Now we need the logic to serve recipes for discovery (filtering out what the user has already seen) and to identify "Matches" (recipes with enough positive votes).
 
 **Goal:** Implement the Discovery service, voting endpoints, and difficulty inference logic.

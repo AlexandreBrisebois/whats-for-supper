@@ -1,5 +1,7 @@
 # Build Prompt 06: Workflow Worker - Concurrency & Throttling
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Systems Engineer
 **Goal**: Implement the generic `WorkflowWorker` that handles high-concurrency task pickup with PostgreSQL row-level locking and per-processor throttling.
 

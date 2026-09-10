@@ -1,5 +1,7 @@
 # Build Prompt: Supper Planner Backend Implementation
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Objective
 Implement the backend API endpoints for the Supper Planner as defined in [backend-api.spec.md](../02_BACKEND/backend-api.spec.md) and [meal-planning.md](../01_FRONTEND/FEATURES/meal-planning.md).
 

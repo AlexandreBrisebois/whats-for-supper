@@ -73,6 +73,7 @@ vi.mock('@/locales', () => ({
 import { GroceryList } from './GroceryList';
 import type { GroceryLineItemDto } from '@/lib/api/generated/models';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
+import { useWeekStore } from '@/store/weekStore';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -100,11 +101,23 @@ function renderList() {
   return render(<GroceryList weekOffset={0} items={ITEMS} />);
 }
 
+function StoreBackedGroceryList({ weekOffset = 0 }: { weekOffset?: number }) {
+  const items = useWeekStore((state) => state.groceryItems);
+  return <GroceryList weekOffset={weekOffset} items={items} />;
+}
+
+function renderStoreBacked(items: GroceryLineItemDto[], weekOffset = 0) {
+  useWeekStore.setState({ weekOffset, groceryItems: items });
+  return render(<StoreBackedGroceryList weekOffset={weekOffset} />);
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   mockGroceryState = {};
   mockSetGroceryItemToggle.mockClear();
+  vi.mocked(reclassifyIngredient).mockReset();
+  useWeekStore.setState({ weekOffset: 0, groceryItems: [] });
 });
 
 describe('GroceryList — checked item ordering', () => {
@@ -347,5 +360,88 @@ describe('GroceryList — reclassify affordance', () => {
     });
 
     await screen.findByTestId('reclassify-error');
+    expect(screen.getByTestId('section-picker')).toBeInTheDocument();
+  });
+
+  it('moves the item from its source aisle to its destination after PATCH succeeds', async () => {
+    vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
+    renderStoreBacked([makeItem('Tomato', 'Produce', 'tomato')]);
+
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    await act(async () => fireEvent.click(screen.getByTestId('section-option-Pantry')));
+
+    expect(screen.queryByTestId('aisle-section-Produce')).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('aisle-section-Pantry')).getByText('Tomato')).toBeVisible();
+  });
+
+  it('does not move an item when PATCH fails and allows retry', async () => {
+    vi.mocked(reclassifyIngredient).mockRejectedValue(new Error('Network error'));
+    renderStoreBacked([makeItem('Tomato', 'Produce', 'tomato')]);
+
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    await act(async () => fireEvent.click(screen.getByTestId('section-option-Pantry')));
+
+    expect(within(screen.getByTestId('aisle-section-Produce')).getByText('Tomato')).toBeVisible();
+    expect(screen.queryByTestId('aisle-section-Pantry')).not.toBeInTheDocument();
+    expect(screen.getByTestId('section-picker')).toBeInTheDocument();
+    expect(screen.getByTestId('section-option-Pantry')).not.toBeDisabled();
+  });
+
+  it('does not duplicate an item when its current section is selected', async () => {
+    vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
+    renderStoreBacked([makeItem('Tomato', 'Produce', 'tomato')]);
+
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    await act(async () => fireEvent.click(screen.getByTestId('section-option-Produce')));
+
+    expect(screen.getAllByText('Tomato')).toHaveLength(1);
+    expect(useWeekStore.getState().groceryItems).toHaveLength(1);
+  });
+
+  it('preserves checked state when the item moves sections', async () => {
+    mockGroceryState = { Tomato: true };
+    vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
+    renderStoreBacked([makeItem('Tomato', 'Produce', 'tomato')]);
+
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    await act(async () => fireEvent.click(screen.getByTestId('section-option-Pantry')));
+
+    expect(screen.getByTestId('grocery-item-checkbox')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('prevents a second selection while the item PATCH is pending', async () => {
+    let resolvePatch!: () => void;
+    vi.mocked(reclassifyIngredient).mockImplementation(
+      () => new Promise<void>((resolve) => (resolvePatch = resolve))
+    );
+    renderStoreBacked([makeItem('Tomato', 'Produce', 'tomato')]);
+
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    fireEvent.click(screen.getByTestId('section-option-Pantry'));
+
+    expect(screen.getByTestId('section-picker')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByTestId('section-option-Produce')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('section-option-Produce'));
+    expect(reclassifyIngredient).toHaveBeenCalledTimes(1);
+
+    await act(async () => resolvePatch());
+  });
+
+  it('ignores a successful response after navigation loads another week', async () => {
+    let resolvePatch!: () => void;
+    vi.mocked(reclassifyIngredient).mockImplementation(
+      () => new Promise<void>((resolve) => (resolvePatch = resolve))
+    );
+    renderStoreBacked([makeItem('Tomato', 'Produce', 'tomato')]);
+
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    fireEvent.click(screen.getByTestId('section-option-Pantry'));
+    useWeekStore.setState({
+      weekOffset: 1,
+      groceryItems: [makeItem('Rice', 'Pantry', 'rice')],
+    });
+    await act(async () => resolvePatch());
+
+    expect(useWeekStore.getState().groceryItems).toEqual([makeItem('Rice', 'Pantry', 'rice')]);
   });
 });

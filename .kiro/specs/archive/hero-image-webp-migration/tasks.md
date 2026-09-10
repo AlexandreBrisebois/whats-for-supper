@@ -1,5 +1,7 @@
 # Implementation Plan: Hero Image WebP Migration
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Pure infrastructure change — no contract updates, no PWA changes, no DB migrations. Three files in the API + one new Taskfile task + one-time data migration. All tasks are backend-only and run sequentially.

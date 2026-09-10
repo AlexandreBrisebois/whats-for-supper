@@ -1,5 +1,7 @@
 # Build Prompt 01: Database Reset & Workflow Models
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Backend & Database Engineer
 **Goal**: Establish the "Clean Slate" database schema for the General-Purpose Workflow System by resetting EF migrations and introducing the core Workflow models.
 

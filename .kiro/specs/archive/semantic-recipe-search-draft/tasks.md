@@ -1,5 +1,7 @@
 # Tasks: Semantic Recipe Search
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Each task is a vertical slice. Keep each slice small enough that a smaller model can complete it without inventing missing seams.
 
 **Small-model execution rules:**

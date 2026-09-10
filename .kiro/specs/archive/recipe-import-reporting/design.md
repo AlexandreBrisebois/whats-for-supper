@@ -1,5 +1,7 @@
 # Recipe Import Issue Reporting — Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Design summary
 
 Use one dedicated active-report row per recipe. The row is both the current Mom-visible issue and the future Dreaming work queue. Mom sees only `Reported` or `Ready to review`; workflow processing and failure details remain internal. A successful re-import requests human review, and only `Mark as resolved` removes the row.

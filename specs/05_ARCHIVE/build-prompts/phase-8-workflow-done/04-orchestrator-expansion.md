@@ -1,5 +1,7 @@
 # Build Prompt 04: Workflow Orchestrator - Snapshot Expansion
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Backend Developer
 **Goal**: Implement the "Snapshot at Trigger" logic that converts a validated Workflow Definition into a persistence-ready Instance and Tasks.
 

@@ -1,5 +1,7 @@
 # Dreaming Workflow Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Experience Architecture
 
 The "Dreaming" feature operates as a self-sustaining, recurring workflow. It is orchestrated by the workflow engine, which has been extended to support deferred scheduling and workflow-to-workflow triggering.

@@ -1,6 +1,6 @@
 # Flow: Recipe Search And Library Recovery
 
-**Related spec:** `.kiro/specs/semantic-recipe-search-v2/`
+**Historical spec:** `.kiro/specs/archive/semantic-recipe-search-v2`
 
 This document describes the user experience for:
 - semantic recipe search (standard, agent super-search, and pantry photo search),

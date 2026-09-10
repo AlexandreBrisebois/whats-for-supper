@@ -1,5 +1,7 @@
 # Recipe Import Issue Reporting — Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Purpose
 
 Give Mom a lightweight way to mark a poorly imported recipe, update what needs attention, and confirm that a re-import is now acceptable. The feature must preserve normal recipe use while preventing recipes with an active import issue from being promoted as recommendations.

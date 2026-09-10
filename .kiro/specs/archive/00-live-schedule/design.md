@@ -1,5 +1,7 @@
 # Design — Live Schedule (Server-Sent Events Push Model)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Authority order
 
 `specs/openapi.yaml` → this design → tests → implementation

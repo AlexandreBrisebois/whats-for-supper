@@ -1,5 +1,7 @@
 # Design: Hero Image WebP Migration
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 This is a pure infrastructure change. No API contract changes, no PWA changes, no database migrations. Three files change in the API + one new Taskfile task.

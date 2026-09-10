@@ -113,7 +113,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                     "cardinality(reasons) > 0");
                 table.HasCheckConstraint(
                     "CK_recipe_import_reports_reasons_allowed_unique",
-                    "reasons <@ ARRAY['ingredients', 'steps']::text[] AND cardinality(reasons) = (CASE WHEN reasons @> ARRAY['ingredients']::text[] THEN 1 ELSE 0 END + CASE WHEN reasons @> ARRAY['steps']::text[] THEN 1 ELSE 0 END)");
+                    "reasons <@ ARRAY['ingredients', 'steps', 'duplicate']::text[] AND cardinality(reasons) = (CASE WHEN reasons @> ARRAY['ingredients']::text[] THEN 1 ELSE 0 END + CASE WHEN reasons @> ARRAY['steps']::text[] THEN 1 ELSE 0 END + CASE WHEN reasons @> ARRAY['duplicate']::text[] THEN 1 ELSE 0 END)");
                 table.HasCheckConstraint(
                     "CK_recipe_import_reports_status",
                     "status IN ('reported', 'reimporting', 'reimport_failed', 'ready_to_review')");

@@ -1,5 +1,7 @@
 # Demo Mode Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Demo Mode allows the "What's For Supper" app to be showcased in a controlled, stable, and cost-effective environment. It provides a "frozen" master state that is automatically restored periodically, ensuring every new tester starts with a clean, high-quality library of recipes and family members without the overhead of live AI processing.
 

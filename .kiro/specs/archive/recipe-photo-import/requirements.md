@@ -1,5 +1,7 @@
 # Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 This feature enables a family member to capture a physical recipe — a recipe card, cookbook page, or handwritten note — by taking one or more photos with their phone. The app recognizes the recipe content from the photos using AI extraction and imports it into the recipe library automatically, making it available for meal planning and discovery.

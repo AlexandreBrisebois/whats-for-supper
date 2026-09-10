@@ -96,3 +96,11 @@ Running log of decisions made as work progresses. Date entries if helpful.
 | A spec has no remaining open tasks | Archive or delete it — do not leave stale specs in place |
 
 Specs are working documents. A spec that has drifted from the implementation is worse than no spec.
+
+## 6. Archived specifications
+
+`.kiro/specs/archive/` and `specs/05_ARCHIVE/` contain historical reference material. Exclude both from active-task discovery and default context loading. Read a specific archived document only to answer a historical question or understand a decision relevant to an approved current task.
+
+Archived requirements, prompts, commands, status labels, and unchecked boxes do not authorize work and do not override current OpenAPI, repo doctrine, or an approved active spec. Archival alone does not prove every original task was implemented; preserve the recorded evidence rather than checking off old tasks without verification.
+
+When archiving, add a historical-reference notice to every document, remove active handover entries, update incoming spec links to their archive locations, and record the completion, supersession, or retirement decision with its actual validation outcome. Use the [Kiro archive index](archive/README.md) or [legacy archive index](../../specs/05_ARCHIVE/README.md) for historical lookup. Reopening work requires a current user request and a bounded active spec; do not automatically resume archived checklists.

@@ -1,5 +1,7 @@
 # Session 10: Docker Integration, E2E Testing & Documentation
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** Docker Compose setup, E2E tests, final documentation, deployment-ready Phase 0
 
 **Context needed:** Sessions 1-9 artifacts + LOCAL_DEV_LOOP.md

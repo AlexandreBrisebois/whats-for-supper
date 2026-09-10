@@ -1,5 +1,7 @@
 # Feature: Hero Image WebP Migration
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 
 The Mère-Designer visual identity demands vibrant macro food photography that loads fast on mobile — especially in the card-stack discovery flow where multiple hero images load in sequence. Currently all AI-generated hero images are stored as JPEG (`hero.jpg`), which is 25–35% larger than WebP at equivalent quality. This migration standardises hero image storage to WebP for all new generations and converts existing images via a one-time task command.

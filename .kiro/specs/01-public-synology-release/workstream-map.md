@@ -80,8 +80,8 @@ forbidden:
   - generated Kiota files
   - unrelated PWA components
 required_context:
-  - specs/features/public-synology-release/design.md#3-runtime-configuration-design
-  - specs/features/public-synology-release/requirements.md#r7--runtime-pwa-configuration
+  - .kiro/specs/01-public-synology-release/design.md#3-runtime-configuration-design
+  - .kiro/specs/01-public-synology-release/requirements.md#r7--runtime-pwa-configuration
   - pwa/src/app/layout.tsx root server-layout boundary
   - current NEXT_PUBLIC reads in the listed consumers
 context_injection: WFS_DEFAULT_LOCALE, WFS_AISLE_ORDER, WFS_ENABLE_AGENT_SEARCH, and WFS_ENABLE_PHOTO_SEARCH must take effect after restart without rebuilding; SSR and hydration must receive one validated non-secret object.
@@ -127,10 +127,10 @@ forbidden:
   - live NAS project directories
   - Docker Hub publication
 required_context:
-  - specs/features/public-synology-release/design.md#1-deployment-architecture
-  - specs/features/public-synology-release/design.md#2-compose-design
-  - specs/features/public-synology-release/requirements.md#r3--one-project-and-one-public-port
-  - specs/features/public-synology-release/requirements.md#r5--public-env-contract
+  - .kiro/specs/01-public-synology-release/design.md#1-deployment-architecture
+  - .kiro/specs/01-public-synology-release/design.md#2-compose-design
+  - .kiro/specs/01-public-synology-release/requirements.md#r3--one-project-and-one-public-port
+  - .kiro/specs/01-public-synology-release/requirements.md#r5--public-env-contract
 context_injection: Traefik is the only NAS-published service; LAN routing is host-agnostic; Cloudflare is an optional profile targeting http://traefik:80; data mounts are relative to one Project directory.
 tdd_gate:
   - Add assertions for exact image names, only one published port, required relative mounts, and cloudflare profile behavior.
@@ -174,8 +174,8 @@ forbidden:
   - mutable latest tags
   - real tag, image, or release publication during implementation
 required_context:
-  - specs/features/public-synology-release/design.md#8-release-pipeline-design
-  - specs/features/public-synology-release/requirements.md#r14--release-pipeline
+  - .kiro/specs/01-public-synology-release/design.md#8-release-pipeline-design
+  - .kiro/specs/01-public-synology-release/requirements.md#r14--release-pipeline
   - current .github/workflows/publish.yml private runner and registry assumptions
 context_injection: An annotated exact version tag builds amd64 and arm64, emits SBOM/provenance/checksums and a draft GitHub Release, and awaits protected approval backed by the physical NAS matrix.
 tdd_gate:

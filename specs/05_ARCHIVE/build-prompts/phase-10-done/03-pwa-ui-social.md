@@ -1,5 +1,7 @@
 # Prompt 03: PWA UI — Social Coordination & Pivot Sheet
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Frontend Engineer (Next.js / Framer Motion / Zustand).
 
 **Context**:

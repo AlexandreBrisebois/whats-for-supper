@@ -1,5 +1,7 @@
 # Planner Finalization Consolidation - Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## UX Implementation Contract
 - **Trigger**: The existing "Close Voting" button in the top action row (`data-testid="close-voting-btn"`).
 - **Feedback**: A success toast (using the existing `setShowSuccess` state) should confirm the week is finalized.

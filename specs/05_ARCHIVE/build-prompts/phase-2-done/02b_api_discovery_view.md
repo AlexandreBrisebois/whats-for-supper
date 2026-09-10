@@ -1,5 +1,7 @@
 # Prompt 02b: Optimization - Recipe Match View (SQL)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** The current matchmaking logic remains in C# (`DiscoveryService.IsMatchAsync`). To prepare for the Phase 4 Weekly Planner and improve query performance, we need to move the "50% consensus" calculation into the database.
 
 **Goal:** Implement a PostgreSQL view `vw_recipe_matches` and map it to an EF Core Keyless Entity.

@@ -1,5 +1,7 @@
 # Prompt 05: Schedule API Endpoints (TDD)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** The Schedule Models are in place. Now we need the API endpoints to manage the family's meal schedule, specifically allowing them to plan "Matched" recipes from the discovery pool.
 
 **Goal:** Implement the Schedule service and controller.

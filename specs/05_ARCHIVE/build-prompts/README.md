@@ -1,4 +1,6 @@
-# Build Prompts - Persistent Implementation Instructions
+# Historical Build Prompts
+
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
 
 All implementation prompts for What's For Supper, organized by phase and session.
 
@@ -134,7 +136,7 @@ grep -r "testing" .
 
 These files are referenced by Phase 0 prompts:
 
-- `src/specs/phase0-mvp.spec.md` — Requirements & specification
+- `specs/05_ARCHIVE/phase0-mvp.spec.md` — Requirements & specification
 - `PROJECT_STRUCTURE.md` — Repository architecture
 - `pwa/SRC_STRUCTURE.md` — PWA folder organization
 - `Taskfile.yml` — Development commands

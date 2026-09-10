@@ -1,5 +1,7 @@
 # Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 Remove the Next.js `/backend` rewrite proxy and replace it with a single, consistent routing model where the browser always calls `/api` directly. Production already routes `PathPrefix(/api)` to the API container via Traefik; this change aligns local dev and Docker dev to the same model. The `/backend` proxy was a workaround that is no longer needed and creates an inconsistency between environments. All source references to `/backend` — in code, configuration, environment files, Docker Compose labels, and documentation — must be eliminated.

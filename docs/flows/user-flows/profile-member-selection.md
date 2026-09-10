@@ -1,6 +1,6 @@
 # Flow: "Table's Set!" — Profile Member Selection
 
-**Spec:** `.kiro/specs/00-live-schedule` — R10 (profile page accessibility + dead-end fix)
+**Historical spec:** `.kiro/specs/archive/00-live-schedule` — R10 (profile page accessibility + dead-end fix)
 **Reviewed by:** The Mère-Designer
 
 ---

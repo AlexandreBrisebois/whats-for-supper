@@ -1,5 +1,7 @@
 # Task 6: Global Management & Summary API
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context**: Admins/Users need a high-level view of the import pipeline's health and throughput.
 
 **Requirements**:

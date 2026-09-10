@@ -1,5 +1,7 @@
 # Prompt 03: "Cooked" Button on Tonight Card
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Frontend UX Engineer specializing in meal-validation flows
 
 **Context**:

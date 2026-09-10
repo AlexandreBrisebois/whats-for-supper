@@ -1,5 +1,7 @@
 # Bugfix Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 In Cook's Mode, recipe steps are never displayed — only the ingredients screen (step 0) is shown. This affects recipes launched from both the home page and the planner. The root cause is that `parseRecipeSteps` in `stepParser.ts` receives the unwrapped `recipeInstructions` value from the API, but the function's TypeScript signature only accepts `string[] | Array<{ name?: string; text?: string }>`. When the actual data is a schema.org `HowToSection[]` array (with nested `itemListElement` arrays of `HowToStep` objects), the runtime type-guard `isHowToSection` should match — but the function signature mismatch means TypeScript callers may pass the wrong shape, and the `any`-cast in `mapToRecipe` means the actual runtime value may not be what `parseRecipeSteps` expects. The result is that `parseRecipeSteps` returns an empty array, `getFallbackSteps()` is used, and the user sees only generic placeholder steps — never the real recipe instructions.

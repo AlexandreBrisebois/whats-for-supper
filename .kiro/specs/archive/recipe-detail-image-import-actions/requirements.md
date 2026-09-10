@@ -1,5 +1,7 @@
 # Requirements: Recipe Detail Image And Import Actions
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Enhance the recipe management experience by providing direct "In-Situ" actions for refreshing content and improving visual fidelity. Users can easily re-sync recipes from their original sources (URL or Photos) and personalize the experience by uploading their own "finished dish" photos or forcing a higher-quality hero image regeneration.
 

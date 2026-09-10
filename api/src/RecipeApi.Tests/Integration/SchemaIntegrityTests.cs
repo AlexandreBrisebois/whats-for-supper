@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using RecipeApi.Data;
 using RecipeApi.Models;
 using RecipeApi.Tests.Infrastructure;
@@ -11,6 +13,7 @@ namespace RecipeApi.Tests.Integration;
 public class SchemaIntegrityTests
 {
     private readonly string _schemaContent;
+    private readonly string _compatibilityContent;
 
     public SchemaIntegrityTests()
     {
@@ -31,6 +34,14 @@ public class SchemaIntegrityTests
         }
         
         _schemaContent = File.ReadAllText(schemaPath);
+
+        var compatibilityPath = Path.Combine(root, "api/database/compatibility.sql");
+        if (!File.Exists(compatibilityPath))
+        {
+            throw new FileNotFoundException($"Could not find compatibility.sql at {compatibilityPath}");
+        }
+
+        _compatibilityContent = File.ReadAllText(compatibilityPath);
     }
 
     [Fact]
@@ -75,12 +86,34 @@ public class SchemaIntegrityTests
     }
 
     [Fact]
+    public void RecipeImportReports_Schema_AllowsExactlyThreeUniqueReasons()
+    {
+        var tableDefinition = GetTableDefinition("recipe_import_reports");
+
+        Assert.Contains("reasons <@ ARRAY['ingredients', 'steps', 'duplicate']::text[]", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(Regex.Matches(tableDefinition, "array_positions\\(reasons, 'ingredients'", RegexOptions.IgnoreCase).Cast<Match>());
+        Assert.Single(Regex.Matches(tableDefinition, "array_positions\\(reasons, 'steps'", RegexOptions.IgnoreCase).Cast<Match>());
+        Assert.Single(Regex.Matches(tableDefinition, "array_positions\\(reasons, 'duplicate'", RegexOptions.IgnoreCase).Cast<Match>());
+        Assert.DoesNotMatch(@"reasons\s*<@\s*ARRAY\[[^\]]*(?:unknown|other)", tableDefinition);
+    }
+
+    [Fact]
+    public void RecipeImportReports_Compatibility_ReplacesInstalledTwoReasonConstraint()
+    {
+        Assert.Contains("pg_get_constraintdef(oid) NOT LIKE '%duplicate%'", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("DROP CONSTRAINT recipe_import_reports_reasons_check", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("reasons <@ ARRAY['ingredients', 'steps', 'duplicate']::text[]", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("array_positions(reasons, 'duplicate'::text)", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RecipeImportReport_Model_UsesCascadeAndNullableMemberReferences()
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var entity = db.Model.FindEntityType(typeof(RecipeImportReport));
+        var designTimeModel = db.GetService<IDesignTimeModel>().Model;
+        var entity = designTimeModel.FindEntityType(typeof(RecipeImportReport));
 
         Assert.NotNull(entity);
         var recipeFk = entity!.GetForeignKeys().Single(fk => fk.PrincipalEntityType.ClrType == typeof(Recipe));
@@ -95,6 +128,26 @@ public class SchemaIntegrityTests
             Assert.False(fk.IsRequired);
             Assert.Equal(DeleteBehavior.SetNull, fk.DeleteBehavior);
         });
+    }
+
+    [Fact]
+    public async Task RecipeImportReport_Model_AllowsExactlyThreeUniqueReasons()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var designTimeModel = db.GetService<IDesignTimeModel>().Model;
+        var entity = designTimeModel.FindEntityType(typeof(RecipeImportReport));
+
+        var constraint = entity!.GetCheckConstraints()
+            .Single(check => check.Name == "CK_recipe_import_reports_reasons_allowed_unique");
+        var sql = constraint.Sql;
+
+        Assert.Contains("ARRAY['ingredients', 'steps', 'duplicate']", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CASE WHEN reasons @> ARRAY['ingredients']::text[] THEN 1 ELSE 0 END", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CASE WHEN reasons @> ARRAY['steps']::text[] THEN 1 ELSE 0 END", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CASE WHEN reasons @> ARRAY['duplicate']::text[] THEN 1 ELSE 0 END", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("unknown", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetTableDefinition(string tableName)

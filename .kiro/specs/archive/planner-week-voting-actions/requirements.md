@@ -1,5 +1,7 @@
 # Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 
 Planner week voting is a week-level coordination action. The planner action row must be the single place where Mom opens, reopens, closes, and nudges family voting. The meal-slot pivot must stay focused on the selected slot so the user never has to wonder whether "Ask the family" applies to one dinner or the whole week.

@@ -1,5 +1,7 @@
 # Tasks: e2e-test-failures Bugfix
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Task List
 
 - [x] 1. Fix Bug 1 — reorder route registrations in `pwa/e2e/mock-api.ts`

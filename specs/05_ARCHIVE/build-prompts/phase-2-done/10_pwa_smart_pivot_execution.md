@@ -1,5 +1,7 @@
 # Prompt 10: Smart Pivot Execution & Discovery Pulse Sync
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** The "Smart Pivot" visuals are implemented on the Home page, but the "One-Tap Fix" chips are currently non-functional. Additionally, the Discover button pulse signal needs to be synced with a real backend status.
 
 **Goal:** Turn the Smart Pivot into a functional "crisis-resolver" and stabilize the navigation pulse signal.

@@ -1,5 +1,7 @@
 # Branding Option 1: Solar Earth (Recommended)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Goal:** Pivot the design to a warm, organic, and utility-focused "Command Center" aesthetic.
 
 ## Task Overview

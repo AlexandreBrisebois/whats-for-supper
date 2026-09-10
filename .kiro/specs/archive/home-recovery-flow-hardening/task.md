@@ -1,5 +1,7 @@
 # Tasks: Home Recovery Flow Hardening
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Execution Rules For A Small Model
 
 1. Work one slice at a time. Do not batch slices.
@@ -23,8 +25,8 @@ Required context:
 - `pwa/e2e/home-recipe.spec.ts`
 - `pwa/src/components/home/HomeCommandCenter.tsx`
 - `pwa/src/components/home/SkipRecoveryDialog.tsx`
-- `.kiro/specs/home-recovery-flow-hardening/requirement.md`
-- `.kiro/specs/home-recovery-flow-hardening/design.md`
+- `.kiro/specs/archive/home-recovery-flow-hardening/requirement.md`
+- `.kiro/specs/archive/home-recovery-flow-hardening/design.md`
 
 Change budget:
 - prefer test-only changes
@@ -54,8 +56,8 @@ Required context:
 - `pwa/src/components/home/SkipRecoveryDialog.tsx`
 - `pwa/src/components/home/HomeCommandCenter.tsx`
 - tests updated in Slice 1
-- `.kiro/specs/home-recovery-flow-hardening/requirement.md`
-- `.kiro/specs/home-recovery-flow-hardening/design.md`
+- `.kiro/specs/archive/home-recovery-flow-hardening/requirement.md`
+- `.kiro/specs/archive/home-recovery-flow-hardening/design.md`
 
 Allowed files:
 - `pwa/src/components/home/SkipRecoveryDialog.tsx`
@@ -93,8 +95,8 @@ Required context:
 - `pwa/src/components/home/HomeCommandCenter.tsx`
 - `pwa/src/components/home/SkipRecoveryDialog.tsx`
 - tests from prior slices
-- `.kiro/specs/home-recovery-flow-hardening/requirement.md`
-- `.kiro/specs/home-recovery-flow-hardening/design.md`
+- `.kiro/specs/archive/home-recovery-flow-hardening/requirement.md`
+- `.kiro/specs/archive/home-recovery-flow-hardening/design.md`
 
 Allowed files:
 - `pwa/src/components/home/HomeCommandCenter.tsx`

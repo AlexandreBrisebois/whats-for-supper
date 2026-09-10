@@ -1,5 +1,7 @@
 # Health Service Extraction - Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Decouple health-related logic and persistence from the core WFS transactional flows. Health should behave as an advisory virtual actor that computes guidance asynchronously and provides it through stable adapter seams, ensuring that schedule and recipe writes never block on health recompute.
 

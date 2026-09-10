@@ -1,5 +1,7 @@
 # Prompt 01: Database & API Foundations (The Seams)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Backend Architect specializing in PostgreSQL and OpenAPI.
 
 **Context**: 

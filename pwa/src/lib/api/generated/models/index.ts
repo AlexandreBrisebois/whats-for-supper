@@ -6692,6 +6692,7 @@ export const RecipeDto_sourceTypeObject = {
 export const RecipeImportIssueReasonObject = {
   Ingredients: 'ingredients',
   Steps: 'steps',
+  Duplicate: 'duplicate',
 } as const;
 export const RecipeImportIssueStatusObject = {
   Reported: 'reported',

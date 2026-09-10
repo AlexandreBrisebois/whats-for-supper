@@ -1,5 +1,7 @@
 # Prompt 04: Schedule API Models & DB Context (TDD)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** Now that we have a mechanism for finding "Matches" (recipes liked by multiple family members), we need the backend foundation for Phase 2: The Weekly Dashboard. This involves tracking where recipes are placed on the family's weekly schedule.
 
 **Goal:** Implement the Schedule models and link them to the recipe/match system.

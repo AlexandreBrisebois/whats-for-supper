@@ -11,7 +11,7 @@
 >
 > Historical context (Phase 13 stale-cache model) is preserved in the [Historical Model](#historical-model--phase-13-stale-cache) section below.
 
-Related specs: [phase-12-no-menu.md](../../.kiro/specs/phase-12-no-menu.md), [phase-13-goto-synthesis.md](../../.kiro/specs/phase-13-goto-synthesis.md), [phase-14-ux-hardening.md](../../.kiro/specs/phase-14-ux-hardening.md), [home-command-center-hardening](../../.kiro/specs/home-command-center-hardening/)  
+Historical specs: [phase-12-no-menu.md](../../../.kiro/specs/archive/phase-12-no-menu.md), [phase-13-goto-synthesis.md](../../../.kiro/specs/archive/phase-13-goto-synthesis.md), [phase-14-ux-hardening.md](../../../.kiro/specs/archive/phase-14-ux-hardening.md), [home-command-center-hardening](../../../.kiro/specs/archive/home-command-center-hardening)
 ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)
 
 ---

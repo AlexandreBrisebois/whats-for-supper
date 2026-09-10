@@ -1,5 +1,7 @@
 # Build Prompt: PWA Polish, Feel & Integration
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Objective
 Elevate the "Supper Planner" and "Search" experience to ensure the aesthetic and interactive "feel" is equal or superior to the rest of the "Solar Earth" application. This session requires the **Mère-Designer** skill for a rigorous aesthetic audit.
 

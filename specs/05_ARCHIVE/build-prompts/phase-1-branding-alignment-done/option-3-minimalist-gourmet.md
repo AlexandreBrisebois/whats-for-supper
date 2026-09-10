@@ -1,5 +1,7 @@
 # Branding Option 3: Gourmet Editorial (Solar Minimalism)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Goal:** Create a high-end, editorial-style experience where the food is the hero, framed by the warm, sophisticated canvas of the Solar Earth identity.
 
 ## Task Overview

@@ -1,5 +1,7 @@
 # Design Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Scope
 
 This spec relocates whole-week voting controls from `PlanningPivotSheet` into the planner action row. It is a PWA-only UI ownership cleanup using existing week-store and voting-link behavior.

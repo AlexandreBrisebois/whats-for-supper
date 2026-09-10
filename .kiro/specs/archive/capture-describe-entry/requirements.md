@@ -1,5 +1,7 @@
 # Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 The Capture page (`MinimalCapture.tsx`) currently presents three entry paths — Camera, Gallery, and Describe — via a tab bar at the top of the component. This redesign removes the tab bar entirely and integrates the "Describe It" path as a quiet tertiary option within the existing camera capture box. The camera and gallery paths remain visually and functionally unchanged. The describe form becomes accessible via a new "Or Describe It Instead" link that lives below the "Pick from Gallery" link inside the dashed capture box. This change affects only `pwa/src/components/capture/MinimalCapture.tsx` and introduces no API contract changes.

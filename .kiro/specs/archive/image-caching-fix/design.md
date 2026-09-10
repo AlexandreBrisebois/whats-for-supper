@@ -1,5 +1,7 @@
 # Image Caching Fix — Bugfix Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Two independent, targeted fixes address broken hero image loading and missing cache headers.

@@ -1,5 +1,7 @@
 # Tasks: Recipe Share and Capture
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Implementation Plan
 
 This feature is intentionally scoped to one dependable export/import loop:

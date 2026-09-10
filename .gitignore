@@ -92,3 +92,8 @@ api/appsettings.Development.json
 .vscode/settings.json
 .dotnet/
 docker/docker-compose.nas.yml
+scripts/agent/__pycache__/kiota_client.cpython-314.pyc
+scripts/agent/__pycache__/test_ops.cpython-314.pyc
+scripts/agent/tests/__pycache__/test_kiota_client.cpython-314.pyc
+scripts/agent/tests/__pycache__/test_taskfile_contract_gate.cpython-314.pyc
+scripts/agent/tests/__pycache__/test_test_ops.cpython-314.pyc

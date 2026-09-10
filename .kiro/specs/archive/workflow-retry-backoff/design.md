@@ -1,5 +1,7 @@
 # Design Document: Workflow Retry Backoff
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 The `WorkflowWorker` background service currently retries transient failures using a hardcoded exponential backoff (`2^retryCount` minutes) with a maximum of 3 retries, exhausting all attempts within 14 minutes. This is inadequate for AI image-generation workloads where model overload can persist for hours.

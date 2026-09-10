@@ -1,5 +1,7 @@
 # Requirements Document: Grocery Reclassification & Quantity Rollup
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 Two separate problems motivate this spec.

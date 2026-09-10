@@ -1,5 +1,7 @@
 # Design Document: capture-describe-entry
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 This change refactors `MinimalCapture.tsx` to remove the three-tab navigation bar and replace it with a single, always-visible capture view. The "Describe It" path becomes a quiet tertiary option — a `Describe_Link` button inside the `Capture_Box` — rather than a peer tab. When tapped, the `Describe_Form` slides in below the box without hiding the camera/gallery UI.

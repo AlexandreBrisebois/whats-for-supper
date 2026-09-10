@@ -1,5 +1,7 @@
 # Design Document — planner-voting-ux (Requirements 1–6)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Scope
 
 This document covers the design for Requirements 1–6 of the `planner-voting-ux` spec:

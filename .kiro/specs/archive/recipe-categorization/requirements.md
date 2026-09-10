@@ -1,5 +1,7 @@
 # Feature: Recipe Categorization Refactoring
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Intent
 Extract `cuisineType` and `mealTypes` from the recipe's dietary profile JSONB into first-class columns on the `recipes` table to support viewing and one-thumb editing of these fields on the detailed recipe card. Preserve the `category` column to keep existing code functional, but map it to the recipe's primary meal type to focus Discovery on the `"Supper"` category in the short term. Remove balanced goals/discovery nudges from both backend and frontend as health features will be rebuilt from scratch.
 

@@ -1,5 +1,7 @@
 # Tasks: Grocery Section Categorization
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vertical Slice 1 — Database Schema
 
 - [x] 1.1 Add `ingredient_categories` table to `api/database/schema.sql`

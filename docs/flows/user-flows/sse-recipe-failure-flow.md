@@ -1,6 +1,6 @@
 # Flow: Recipe Processing Failure → Persistent Recovery Banner
 
-**Spec:** `.kiro/specs/00-live-schedule` — Flow 7 / R10
+**Historical spec:** `.kiro/specs/archive/00-live-schedule` — Flow 7 / R10
 **Trigger:** SSE `recipe_failed` event — fires ONLY when a workflow instance reaches `WorkflowStatus.Failed` (all retries exhausted). Does NOT fire on transient 429s, network hiccups, or individual task retries.
 **Reviewed by:** The Mère-Designer
 
