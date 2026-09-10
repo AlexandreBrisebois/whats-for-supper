@@ -9,20 +9,20 @@ The review process is intentionally sequential:
 1. Open one branch in a fresh conversation.
 2. Read only the branch's required context.
 3. Verify claims against specs and code where possible.
-4. Surface one blind spot or dead end.
-5. Offer 2-3 concrete paths.
+4. Report findings, or no findings if warranted. If a consequential unresolved decision remains, surface that issue.
+5. For that decision, offer 2-3 concrete paths.
 6. Recommend the best path and explain why.
-7. Wait for the human decision.
-8. Patch specs only after the human chooses.
+7. Wait for that decision before dependent changes; findings-only review can end without an interview.
+8. Patch specs only within authorization; reuse existing authorization for resolved corrections.
 
 ## Review Protocol
 
 Use these skills and prompts when applicable:
 
-- `shared-understanding`: required for every branch.
+- [Shared specification workflow](../../../../.agents/core/specification-workflow.md): use its review path with the branch style above.
 - `.agents/prompts/mere-designer.md`: required for every branch involving UI, user-facing copy, warnings, settings, health nudges, or cognitive load.
-- `prompt-planner`: useful when branch resolution changes task ordering or ownership.
-- `create-prompt`: useful when a branch needs to produce launch-ready implementation prompts after decisions are made.
+- Use that workflow’s decomposition guidance when branch resolution changes task ordering or ownership.
+- [Execution packet](../../../../.agents/templates/execution-packet.md): use for requested implementation handoffs after decisions; generating one does not authorize execution.
 
 ## Branch Manifest
 

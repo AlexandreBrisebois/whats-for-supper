@@ -30,7 +30,7 @@ Each `task` command in Section 3 is backed by a script in `scripts/agent/`. Befo
 
 - **Strict Isolation**: All E2E tests are isolated via global API mocking. Any unhandled API call will fail the test. Never use `route.continue()` in mocks.
 - **Never bypass the Taskfile**: If a `task` exists for linting, formatting, or testing, never run the underlying tool directly unless debugging a specific failure that requires isolated execution.
-- **Targeted Context Loading**: When loading context to act safely, prioritize targeted commands like `task agent:slice` over recursively reading the file system.
+- For context and scope rules, follow [context loading](context-loading.md).
 - **Destructive Actions**: Never modify schema or core logic without first verifying the impact using `task gate` or `task agent:drift`.
 
 ## 6. Pre-Implementation Audit
@@ -46,13 +46,7 @@ Before concluding any implementation phase:
 3. Run a final `task agent:audit` when the task changes E2E selectors.
 4. Do not declare work complete until the applicable validation steps succeed.
 
-## 7. Session state files
+## 8. Session context
 
-Two files track active and historical work. Load them only when needed — do not load reflexively.
-
-| File | Holds | When to load | Command |
-| :--- | :--- | :--- | :--- |
-| `HANDOVER.md` | Active session state: current objectives, next entry points, recently completed work | At the start of a session to orient yourself, or when resolving ambiguity about in-progress work | `task agent:status` |
-| `JOURNAL.md` | Historical archive: past session logs, ADRs, technical decisions | Only when a current task requires understanding a past decision not visible in the code or spec | Read directly |
-
-**Rule:** If `HANDOVER.md` answers your question, do not open `JOURNAL.md`.
+Session-state loading is owned by [context loading](context-loading.md).
+`task agent:status` remains the explicit command for reading HANDOVER.md.

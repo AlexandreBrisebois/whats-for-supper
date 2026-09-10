@@ -4,7 +4,7 @@
 
 This spec exists to preserve the remaining review intelligence from the coordinated CNF, search, grocery, family-health, and dietitian planning work. It is not a product feature and should not be implemented directly.
 
-Its purpose is to break the large cross-spec review into independent decision branches that can be opened in separate conversations. Each branch should use the `shared-understanding` protocol: review the relevant specs/code, surface one blind spot, offer 2-3 solutions, recommend one, and wait for the human decision before moving on.
+Its purpose is to break the large cross-spec review into independent decision branches that can be opened in separate conversations. When a consequential decision remains, each branch should use the [shared specification workflow](../../../../.agents/core/specification-workflow.md) with this spec’s branch-review style: review the relevant specs/code, surface one blind spot, offer 2-3 solutions, recommend one, and wait for the human decision before moving on.
 
 ## Requirements
 
@@ -17,7 +17,7 @@ Its purpose is to break the large cross-spec review into independent decision br
 1. The spec SHALL list each known cross-spec review branch.
 2. Each branch SHALL name the impacted specs.
 3. Each branch SHALL include a standalone kickoff prompt suitable for a fresh Codex conversation.
-4. Each branch SHALL preserve the review style: one issue at a time, 2-3 solutions, recommended path, then wait for the human decision.
+4. For consequential unresolved decisions, each branch SHALL preserve the review style: one issue at a time, 2-3 solutions, recommended path, then wait for the human decision. A branch may finish with findings only, including no findings, without a forced question or spec patch.
 5. Branches SHALL avoid implementation instructions unless the human explicitly asks to patch specs or code.
 
 ### Requirement 2: Maintain Household-Utility Framing

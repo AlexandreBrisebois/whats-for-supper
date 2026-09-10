@@ -1,0 +1,99 @@
+{
+  "baseline_commit": "13fcddedffa9c2a07b2498afb530e7906394b006",
+  "description": "HM-B candidate identity; not host qualification. HM-A identity file unchanged.",
+  "files": {
+    ".agents/core/specification-workflow.md": {
+      "sha256": "46dcf8e54bbe80204586a6330cd9e6c5f4f9bd3d147387dd8b6ee64061121032",
+      "bytes": 5350
+    },
+    ".agents/prompts/spec-reviewer.md": {
+      "sha256": "674118d932af53a2322fff368045a4978cdf77c94387fcf24810473e72dc6ee1",
+      "bytes": 1125
+    },
+    ".agents/prompts/spec-writer.md": {
+      "sha256": "1f6a5fb198ff88db0675a9e87c5aeddb24a843265912e28adf31620792221307",
+      "bytes": 986
+    },
+    ".agents/skills/README.md": {
+      "sha256": "3555958e6908d429cdd71baee7c395e149f69376407e7c94008a0ea5ffef814b",
+      "bytes": 3098
+    },
+    ".agents/skills/team-orchestration/SKILL.md": {
+      "sha256": "d3c61c4cfc8243718d5b666e64c739899d1dd46fbab28abe5eb64e80a7f7aa42",
+      "bytes": 4091
+    },
+    ".agents/templates/execution-packet.md": {
+      "sha256": "05dfa54c94f4ebc90448b39d6966e0d4c3394fec412c6a75e00068429c3ba3e7",
+      "bytes": 1980
+    },
+    ".kiro/specs/01-public-synology-release/design.md": {
+      "sha256": "0ef56e8d445cfebb994f9ffd38395e5ec14fa51c31021faa8a3aa29a58367e22",
+      "bytes": 13536
+    },
+    ".kiro/specs/01-public-synology-release/workstream-map.md": {
+      "sha256": "b482111875be35125bd073251cb96c7878eb56526d70d72a2c333c0edbdddf06",
+      "bytes": 10981
+    },
+    ".kiro/specs/README.md": {
+      "sha256": "96df7fc8fbde8caf4ec40fbae6ac44eea309d5da8bca97d314bbc29a00e0e517",
+      "bytes": 2146
+    },
+    ".kiro/specs/ROADMAP.md": {
+      "sha256": "ee916d0ed74393829cc9e4fd8eaa75e91549106481a50cd7008b2627d459e459",
+      "bytes": 15589
+    },
+    ".kiro/specs/cnf/cnf-cross-spec-review/design.md": {
+      "sha256": "d8884728253863661c8f0ee2ff809bf594a0922aa64443e08bbc0ce4a038aaa9",
+      "bytes": 14902
+    },
+    ".kiro/specs/cnf/cnf-cross-spec-review/requirements.md": {
+      "sha256": "09c5e6466614c00d9d26fd8110e1b5acaed0aeb093e68c0cf4904b2d091e9a97",
+      "bytes": 3528
+    },
+    ".kiro/specs/cnf/cnf-cross-spec-review/tasks.md": {
+      "sha256": "2dfbf4190390a698f9a6d0b9055d64ba19c6178c55364782f060a48c4592089b",
+      "bytes": 23483
+    },
+    ".kiro/specs/cnf/cnf-data-ingestion/tasks.md": {
+      "sha256": "22cfdfcc5454e344bb709150531e03757b5afec49ebd7dfd0543a710e30db85e",
+      "bytes": 25607
+    },
+    ".kiro/specs/harness-modernization/design.md": {
+      "sha256": "0448e1798ee75b3f762af5990ded6e5a69932c2cd28838065943556e8e89fb2d",
+      "bytes": 9830
+    },
+    ".kiro/specs/harness-modernization/evaluation/check-specification-workflow.py": {
+      "sha256": "f222827bb630b6dce27aa93e6b3d681ad9ba322a51bb8aaea9e26a02dd19d169",
+      "bytes": 4234
+    },
+    ".kiro/specs/harness-modernization/evaluation/validate-package.py": {
+      "sha256": "78aa4ce1ee528cb36a2c04d39c429d436942cc3e99195a0d6f38f65a17909228",
+      "bytes": 9489
+    },
+    ".kiro/specs/harness-modernization/hm-b-invocations.md": {
+      "sha256": "1dc4e830ce9d0ef347c8e6f71c351d1a2e7bde3d5c34ed0aa1993f1425bb7a6a",
+      "bytes": 7105
+    },
+    ".kiro/specs/harness-modernization/hm-b-validation.md": {
+      "sha256": "cf95fe6f1cab03722e3b9cbe3aa33388117ce0f3d0575de69916db6be353d747",
+      "bytes": 5696
+    },
+    ".kiro/specs/harness-modernization/requirements.md": {
+      "sha256": "8f594a0ba582a72544af81e1a234d090ee2544c87e1c39d1d892242cdbabdf7c",
+      "bytes": 5330
+    },
+    ".kiro/specs/harness-modernization/task-graph.yaml": {
+      "sha256": "dab31ebb1edea2d96005cda20302cfc525d0b6423f71305ec3daa822afd3538f",
+      "bytes": 6394
+    },
+    ".kiro/specs/harness-modernization/tasks.md": {
+      "sha256": "8d561b2daeabab6206a200f8e9942f5971a31706e3f93ec8646e4124b1bd8954",
+      "bytes": 7911
+    }
+  },
+  "retired": [
+    ".agents/skills/create-prompt/SKILL.md",
+    ".agents/skills/prompt-planner/SKILL.md",
+    ".agents/skills/shared-understanding/SKILL.md"
+  ]
+}

@@ -1,8 +1,8 @@
 # Tasks: CNF Cross-Spec Review
 
-Use this checklist to launch independent review conversations. Each task includes a kickoff prompt. Paste the prompt into a fresh Codex conversation when you want to work that branch.
+Use this checklist to launch independent review conversations. Each task includes a kickoff prompt. All kickoffs use the [shared specification workflow](../../../../.agents/core/specification-workflow.md): report findings (or no findings) without inventing an issue; apply the options/recommendation/wait steps only when a consequential decision remains. Patch only within existing authorization. Paste the prompt into a fresh Codex conversation when you want to work that branch.
 
-Before patching specs in any branch, wait for the human decision.
+Wait for unresolved consequential decisions before dependent patches; reuse existing authorization for resolved corrections.
 
 ---
 
@@ -13,6 +13,7 @@ Before patching specs in any branch, wait for the human decision.
 Kickoff prompt for follow-up verification:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review branch R0 from .kiro/specs/cnf-cross-spec-review. Verify that allergy semantics are consistent across family-health, CNF search, orchestration, and dietitian specs. Use the Mère-Designer lens. Confirm there are no remaining claims that a warning blocks planning or that absence of a warning means allergy-safe. Surface only one issue if you find one; offer 2-3 fixes and recommend the best.
 ```
 
@@ -31,7 +32,8 @@ Why this matters:
 Kickoff prompt:
 
 ```text
-Use shared-understanding and the Mère-Designer lens. Review R1 in .kiro/specs/cnf-cross-spec-review: health_guidance_enabled ownership and semantics. Required context: .kiro/specs/cnf-data-ingestion/requirements.md, .kiro/specs/cnf-search-augmentation/requirements.md, .kiro/specs/family-health-profiles/requirements.md, .kiro/specs/dietitian-agent-phase2/requirements.md, api/src/RecipeApi/Services/SettingsService.cs, api/src/RecipeApi/Controllers/SettingsController.cs. Surface one blind spot, propose 2-3 solutions, recommend one, and wait for my decision before patching specs.
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
+Use .agents/core/specification-workflow.md (review path) and the Mère-Designer lens. Review R1 in .kiro/specs/cnf-cross-spec-review: health_guidance_enabled ownership and semantics. Required context: .kiro/specs/cnf-data-ingestion/requirements.md, .kiro/specs/cnf-search-augmentation/requirements.md, .kiro/specs/family-health-profiles/requirements.md, .kiro/specs/dietitian-agent-phase2/requirements.md, api/src/RecipeApi/Services/SettingsService.cs, api/src/RecipeApi/Controllers/SettingsController.cs. Surface one blind spot, propose 2-3 solutions, recommend one, and wait for my decision before patching specs.
 ```
 
 ---
@@ -49,6 +51,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R2 in .kiro/specs/cnf-cross-spec-review: FOP thresholds, raw nutrition, and CNF estimates. Required context: .kiro/specs/family-health-profiles/requirements.md, .kiro/specs/family-health-profiles/design.md, .kiro/specs/cnf-data-ingestion/requirements.md, .kiro/specs/cnf-data-ingestion/design.md, api/src/RecipeApi/Services/FopThresholds.cs, api/src/RecipeApi/Utils/NutritionParser.cs. Find the highest-impact inconsistency, give 2-3 solutions, recommend one, and ask me to decide.
 ```
 
@@ -67,6 +70,7 @@ Why this matters:
 Kickoff prompt for follow-up verification:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R3 in .kiro/specs/cnf-cross-spec-review: alias expansion seam duplication. Verify that cnf-data-ingestion Task 8 and cnf-search-augmentation Tasks 2-3 use one public ICnfIngredientAliasExpander seam, with no separate ICnfBilingualQueryExpander public dependency in RecipeSearchService. Surface one remaining ownership/seam issue if you find one, propose 2-3 fixes, recommend one, and wait for my decision.
 ```
 
@@ -85,6 +89,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R4 in .kiro/specs/cnf-cross-spec-review: search contract drift. Required context: specs/openapi.yaml RecipeSearchFiltersDto and RecipeSearchReasonDto, api/src/RecipeApi/Dto/RecipeSearchFiltersDto.cs, api/src/RecipeApi/Dto/RecipeSearchReasonDto.cs, api/src/RecipeApi/Services/RecipeSearchService.cs, .kiro/specs/cnf-search-augmentation/tasks.md Task 1. Verify current drift, propose 2-3 cleanup paths, recommend one, and wait for my decision.
 ```
 
@@ -103,6 +108,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R5 in .kiro/specs/cnf-cross-spec-review: grocery locale source and checked-state preservation. Required context: .kiro/specs/cnf-search-augmentation/requirements.md Requirement 6, .kiro/specs/cnf-search-augmentation/design.md "Active grocery locale" and "Grocery state preservation", pwa/src/components/common/LocaleProvider.tsx, pwa/src/lib/i18n/index.ts, api/src/RecipeApi/Services/GroceryRecomputeService.cs, api/src/RecipeApi/Services/ScheduleService.cs. Surface one dead end, give 2-3 solutions, recommend one, and ask me to decide.
 ```
 
@@ -121,6 +127,7 @@ Why this matters:
 Kickoff prompt for follow-up verification:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R6 in .kiro/specs/cnf-cross-spec-review: meal attendance / family-member presence. Verify that family-health and orchestration specs keep planner warnings member-specific and non-blocking without adding meal-attendance tracking or per-slot participant scoping. Confirm the copy frames warnings as household planning awareness rather than auto-suppressed signals based on who is eating. Surface one remaining ambiguity if you find one, propose 2-3 fixes, recommend one, and wait for my decision.
 ```
 
@@ -139,6 +146,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R7 in .kiro/specs/cnf-cross-spec-review: provider strategy scope. Required context: .kiro/specs/cnf-data-ingestion/requirements.md Requirement 3, .kiro/specs/cnf-data-ingestion/design.md "Provider strategy", .kiro/specs/cnf-search-augmentation/design.md seam inventory, .kiro/specs/dietitian-agent-phase2/requirements.md Requirement 1. Find the right boundary between provider interfaces and CNF-specific tables. Offer 2-3 approaches, recommend one, and wait for my decision.
 ```
 
@@ -157,6 +165,7 @@ Why this matters:
 Kickoff prompt for follow-up verification:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R8 in .kiro/specs/cnf-cross-spec-review: CNF false-positive cache and operator correction. Verify that cnf-data-ingestion defines a supported operator-facing inspect / clear / override path for sticky `ingredient_categories.cnf_food_id` matches, with no requirement to replace `normalized_key` or add a user-facing admin UI. Surface one remaining audit/ownership issue if you find one, propose 2-3 fixes, recommend one, and wait for my decision.
 ```
 
@@ -175,6 +184,7 @@ Why this matters:
 Kickoff prompt for follow-up verification:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R9 in .kiro/specs/cnf-cross-spec-review: unit/yield approximations and confidence propagation. Verify that cnf-data-ingestion owns one shared internal NutritionEstimateMetadata seam derived from provider coverage, approximate unit conversion usage, 100g fallback usage, and default recipe-yield usage. Confirm that cnf-search-augmentation and dietitian-agent-phase2 consume that seam for source/confidence mapping instead of inventing separate heuristics, and that no new OpenAPI DTO fields were added in this branch. Surface one remaining ambiguity if you find one, propose 2-3 fixes, recommend one, and wait for my decision.
 ```
 
@@ -193,6 +203,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R10 in .kiro/specs/cnf-cross-spec-review: health nudge explainability contract. Required context: .kiro/specs/cnf-search-augmentation/requirements.md Requirement 7, .kiro/specs/cnf-search-augmentation/design.md Health nudge explainability, .kiro/specs/dietitian-agent-phase2/requirements.md Requirement 5, specs/openapi.yaml search and schedule schemas. Should source/confidence be internal helpers, response DTO fields, or surface-specific DTOs? Give 2-3 solutions, recommend one, and wait for my decision.
 ```
 
@@ -211,6 +222,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R11 in .kiro/specs/cnf-cross-spec-review: HEFI exactness, naming, and user trust. Required context: .kiro/specs/dietitian-agent-phase2/requirements.md Requirement 2, .kiro/specs/dietitian-agent-phase2/design.md HEFI Scoring, .kiro/specs/cnf-health-orchestration/user-guide.md Dietitian Phase 2, pwa/src/components/planner/BalanceIndicator.tsx if relevant. Offer 2-3 naming/scoring paths, recommend one using the Mère-Designer lens, and wait for my decision.
 ```
 
@@ -229,6 +241,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R12 in .kiro/specs/cnf-cross-spec-review: cross-spec wave ordering after pulled-forward allergy matching. Required context: .kiro/specs/cnf-health-orchestration/design.md, .kiro/specs/cnf-health-orchestration/tasks.md, .kiro/specs/family-health-profiles/tasks.md, .kiro/specs/cnf-data-ingestion/tasks.md, .kiro/specs/cnf-search-augmentation/tasks.md. Identify the next sequencing conflict, give 2-3 ordering solutions, recommend one, and wait for my decision.
 ```
 
@@ -253,6 +266,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R13 in .kiro/specs/cnf-cross-spec-review: DTO shape risks. Required context: specs/openapi.yaml RecipeDto, ScheduleRecipeDto, RecipeSearchFiltersDto, api/src/RecipeApi/Dto/ScheduleDays.cs, api/src/RecipeApi/Dto/RecipeSearchFiltersDto.cs, .kiro/specs/family-health-profiles/tasks.md Tasks 2, 5, 6, .kiro/specs/cnf-search-augmentation/tasks.md Task 1. Surface one contract risk, propose 2-3 fixes, recommend one, and wait for my decision.
 ```
 
@@ -271,6 +285,7 @@ Why this matters:
 Kickoff prompt:
 
 ```text
+Use .agents/core/specification-workflow.md in review mode. Return findings only (including no findings). In the branch instructions below, requests to surface an issue or offer options and wait apply only if evidence reveals a consequential unresolved decision; do not invent one. Patch only when authorized, reusing existing authorization for resolved corrections.
 Review R14 in .kiro/specs/cnf-cross-spec-review: LLM recommendation safety, privacy, and opt-out. Required context: .kiro/specs/dietitian-agent-phase2/requirements.md Requirement 4, .kiro/specs/dietitian-agent-phase2/design.md Weekly Recommendations, .kiro/specs/cnf-data-ingestion/requirements.md Requirement 6, .kiro/specs/cnf-health-orchestration/requirements.md gates. Surface one LLM safety/privacy dead end, give 2-3 solutions, recommend one, and wait for my decision.
 ```
 

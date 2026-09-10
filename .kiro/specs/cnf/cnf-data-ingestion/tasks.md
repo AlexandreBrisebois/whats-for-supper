@@ -4,10 +4,7 @@ Each task is a vertical slice. No task builds a horizontal layer.
 
 **This spec has no LLM dependency and no new workflow dependency.** It can be executed in parallel with `recipe-categorization`. Tasks 1–5 are independent of all other specs. Task 7 requires `recipe-categorization` Task 3 to be complete.
 
-**Before marking any task done:**
-- `task agent:drift` — zero drift confirmed
-- `task agent:test:impact` — targeted tests pass
-- `task review` — full suite passes
+Use the [shared specification workflow](../../../../.agents/core/specification-workflow.md) for planning/review and the [execution harness](../../../../.agents/core/execution-harness.md) for applicable completion checks. Record actual evidence before marking a task done.
 
 ---
 

@@ -1,37 +1,4 @@
-# CLAUDE.md – Claude Profile
+# Claude Code entrypoint
 
-## Scope
-
-This is the Claude Code entrypoint for the "What's For Supper" repository. It applies to Claude acting as an interactive coding agent on this repo — not to chat or review contexts outside it.
-
-## Required reads
-
-Read all of the following before acting. They define the repo's doctrine and Claude-specific behavior. Do not improvise beyond what they authorize.
-
-- [AGENTS.md](AGENTS.md)
-- [.agents/core/mission.md](.agents/core/mission.md)
-- [.agents/core/contract-testing.md](.agents/core/contract-testing.md)
-- [.agents/core/execution-harness.md](.agents/core/execution-harness.md)
-- [.agents/core/context-loading.md](.agents/core/context-loading.md)
-- [.agents/adapters/claude.md](.agents/adapters/claude.md)
-
-## Operating rules
-
-- **Contract first.** Treat `specs/openapi.yaml` as the source of truth. Follow the sequence: Contract (spec) → Tests → Implementation.
-- **Test first.** Write or update tests before writing logic. No exceptions.
-- **Use the Taskfile.** Run `task` commands for all build, test, lint, and agentic operations. Do not bypass them with ad-hoc shell commands when a `task` exists.
-- **Bound the task before acting.** If the task likely spans more than two files, touches the spec or a shared type, or is ambiguous — produce a short, numbered plan and wait for explicit approval before executing.
-- **No cross-cutting changes without an approved plan.** Do not refactor, rename, delete, or restructure anything outside the current task's scope.
-- **Atomic Sync.** Any change to a controller's signature or status code MUST be preceded by an update to `openapi.yaml` and followed by client regeneration (`api:generate`) in the same task.
-- **Multi-Layer Testing.** When a contract is touched, you MUST run unit tests on BOTH sides of the seam (API and PWA).
-- **Do not bypass drift checks or validation.** Run `task agent:finish` once on the final worktree before declaring any work complete.
-
-## When blocked
-
-If requirements are unclear, scope is too broad, or the safest path is uncertain:
-
-- Ask a focused clarifying question, or
-- Propose a bounded, numbered plan, or
-- Decompose the work into smaller steps and confirm the first one before proceeding.
-
-Do not make assumptions that would be risky or hard to reverse. Propose concrete options — do not ask open-ended questions.
+Read [AGENT.md](AGENT.md), then the [Claude adapter](.agents/adapters/claude.md).
+Follow the shared loading rules; this shim adds no separate policy.

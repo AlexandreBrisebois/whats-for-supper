@@ -1,0 +1,186 @@
+version: 1
+tasks:
+- id: HM-0
+  depends_on: []
+  requirements:
+  - HM-R01
+  - HM-R02
+  - HM-R03
+  - HM-R04
+  - HM-R05
+  - HM-R06
+  - HM-R07
+  - HM-R08
+  - HM-R09
+  - HM-R10
+  - HM-R11
+  - HM-R12
+  - HM-R13
+  - HM-R14
+  status: complete
+  effects:
+  - .kiro/specs/harness-modernization/**
+  acceptance:
+  - P0-01
+  - P0-02
+  - P0-03
+  - P0-04
+  - P0-05
+  - P0-06
+  verification:
+  - python3 .kiro/specs/harness-modernization/evaluation/validate-package.py
+  - task test:agent
+  stop: Present package; no harness edits or model runs.
+- id: HM-A
+  depends_on:
+  - HM-0
+  requirements:
+  - HM-R02
+  - HM-R03
+  - HM-R09
+  - HM-R11
+  - HM-R14
+  status: implemented-unqualified
+  effects:
+  - native shims
+  - adapters
+  - AGENT.md
+  - core authority/loading/ontology
+  acceptance:
+  - One rule owner per universal rule; native routes resolvable.
+  - Remove mandatory dependencies on future retired skills before any retirement.
+  - Record baseline loading; essential-context target remains soft.
+  verification:
+  - Static native entrypoint/reference and contradiction checks.
+  - Fresh-session loading probes on primary hosts; unavailable recorded unqualified.
+  stop: Review foundation diff and evidence; do not begin HM-B in the same selected slice.
+- id: HM-B
+  depends_on:
+  - HM-A
+  requirements:
+  - HM-R04
+  - HM-R06
+  - HM-R07
+  - HM-R11
+  status: implemented-unqualified
+  effects:
+  - shared specification workflow
+  - execution packet template
+  - spec writer/reviewer
+  - active specification callers
+  - shared-understanding/prompt-planner/create-prompt retirement
+  - skills registry
+  - caller-only planning reference updates in retained skills, including team-orchestration
+  acceptance:
+  - Repoint all active writer/reviewer and cross-spec procedural callers.
+  - Review can finish findings-only; no forced interview or UI requirements for non-UI work.
+  - Preserve three spec artifacts and clear mandatory versus optional packet content.
+  - Repoint team-orchestration prompt-planner caller before removal, while retaining team-orchestration until HM-C.
+  verification:
+  - Search incoming links and discovery references for three retired skills.
+  - Exercise direct, spec-writer, spec-reviewer and generated-packet invocation cases.
+  stop: Three retirements closed; no implementation-skill retirement yet.
+- id: HM-C
+  depends_on:
+  - HM-B
+  requirements:
+  - HM-R01
+  - HM-R06
+  - HM-R07
+  - HM-R09
+  - HM-R11
+  status: planned
+  effects:
+  - task-executor
+  - surgical
+  - implementation skills and references
+  - investigation/delegation procedures
+  - team-orchestration/tracer/contract-engineer retirement
+  - skills registry
+  acceptance:
+  - Move API design reference and update dotnet caller before contract-engineer removal.
+  - Update surgical and all tracer callers before tracer removal.
+  - Schema apply never silently resets; contract approval precedes tests and implementation.
+  - No stale command/path, auto-contract rewrite or blanket no-spec-change policy remains in touched paths.
+  verification:
+  - Verify documented Taskfile targets and code paths.
+  - Run UI/contract/async/dirty/misleading-output fixtures on candidate when runtime is available.
+  - Review permitted effects and preserved side-effectful mock semantics.
+  stop: Implementation/investigation routes consistent; no completion rewrite beyond required routing.
+- id: HM-D
+  depends_on:
+  - HM-C
+  requirements:
+  - HM-R05
+  - HM-R07
+  - HM-R12
+  - HM-R13
+  status: planned
+  effects:
+  - testing/completion policy
+  - Taskfile relevant targets
+  - scripts/agent and regression tests
+  - nextjs-qa and references
+  - testing/test-audit retirement
+  - skills registry
+  - incidental CI/package/pre-commit command callers only if a migrated interface requires a corresponding update
+  acceptance:
+  - Compare legacy and active audit scripts before retiring legacy support.
+  - Single completion path with change-class checks; formatting precedes final verification.
+  - Cache success only for tested identity; untracked impact and timeout handling retained.
+  - Unavailable live services produce blocked live evidence, never false parity/completion.
+  verification:
+  - task test:agent with new regression cases for cache mutation, unknown impact and evidence boundaries.
+  - Inspect Taskfile ordering and no-mutation final validation.
+  - Unavailable-service and interrupted-task fixtures.
+  stop: Completion and evidence semantics accepted before memory consolidation.
+- id: HM-E
+  depends_on:
+  - HM-D
+  requirements:
+  - HM-R08
+  - HM-R10
+  - HM-R11
+  - HM-R12
+  status: planned
+  effects:
+  - HANDOVER/JOURNAL and repo memory destinations
+  - core completion/context
+  - designer/caveman/mere-designer
+  - death-audit/create-a-skill
+  - session-review retirement
+  - registry and summary/status targets
+  - aws-architect specialist entrypoint and references
+  acceptance:
+  - Relocate verified unique memory; preserve provenance; freeze JOURNAL.
+  - Remove handover-as-authority and automatic summary loading; preserve explicit status.
+  - Exactly ten skills with complete registry and no active retired-skill callers.
+  - Authoring guidance prevents reintroducing duplicate policy or generic compulsory skills.
+  - AWS guidance remains conditional, repository-relevant and free of duplicated universal policy.
+  verification:
+  - Manifest retirement closure and source-to-destination memory ledger.
+  - Fresh versus resumed loading probes; interrupted-task fixture.
+  - No host/global memory changes.
+  stop: Candidate content complete; no automatic adoption.
+- id: HM-Q
+  depends_on:
+  - HM-E
+  requirements:
+  - HM-R14
+  - HM-R02
+  - HM-R05
+  - HM-R13
+  status: planned
+  effects:
+  - isolated evaluation environments
+  - qualification evidence in this specification
+  acceptance:
+  - Eight scenarios x three paired repeats per pinned primary configuration.
+  - No scope/destructive/data-loss/false-completion failure; no task-handling regression.
+  - Real affected WFS gates and host probes pass; missing configuration remains unqualified.
+  - Token and latency reports include unsuccessful attempts and unavailable values.
+  verification:
+  - Evaluation protocol and run-record schema.
+  - Static compatibility checks for other shims.
+  - Review adoption decision and rollback references.
+  stop: Present qualification/adoption recommendation; no deployment or unrelated product work.

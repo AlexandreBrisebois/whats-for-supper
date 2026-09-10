@@ -1,0 +1,810 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Harness paired evaluation run",
+  "description": "One actual run or explicitly not-run slot; no inferred telemetry. See README for scoring and accounting.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pair_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "variant": {
+      "enum": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    "repetition": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "started_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "finished_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "application_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "application_tree_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness_overlay_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fixture_id": {
+          "enum": [
+            "F01",
+            "F02",
+            "F03",
+            "F04",
+            "F05",
+            "F06",
+            "F07",
+            "F08"
+          ]
+        },
+        "fixture_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payloads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "destination": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "state": {
+                "enum": [
+                  "committed",
+                  "tracked-dirty",
+                  "untracked"
+                ]
+              }
+            },
+            "required": [
+              "destination",
+              "sha256",
+              "state"
+            ]
+          }
+        }
+      },
+      "required": [
+        "application_commit",
+        "application_tree_sha256",
+        "harness_commit",
+        "harness_overlay_sha256",
+        "fixture_id",
+        "fixture_version",
+        "payloads"
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "enum": [
+            "codex",
+            "antigravity",
+            "other"
+          ]
+        },
+        "host_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reasoning_effort": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "temperature": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "seed": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "permission_profile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "memory_mode": {
+          "enum": [
+            "absent-disposable-profile",
+            "present-recorded",
+            "unknown"
+          ]
+        },
+        "runtime_versions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "settings_evidence": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "host",
+        "host_version",
+        "model_id",
+        "reasoning_effort",
+        "temperature",
+        "seed",
+        "tools",
+        "permission_profile",
+        "memory_mode",
+        "runtime_versions",
+        "settings_evidence"
+      ]
+    },
+    "initial_state_evidence": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "final_state_evidence": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "transcript_evidence": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "exact_prompt_evidence": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "loading_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "native-trace",
+              "tool-read",
+              "unconfirmed"
+            ]
+          },
+          "occurrences": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "evidence_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "source",
+          "occurrences",
+          "tokens",
+          "evidence_ref"
+        ]
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "command_or_assertion": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "blocked",
+              "not-run",
+              "not-applicable"
+            ]
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "tested_content_sha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limitation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "command_or_assertion",
+          "status",
+          "exit_code",
+          "tested_content_sha256",
+          "evidence_ref",
+          "limitation"
+        ]
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "run_outcome": {
+          "enum": [
+            "pass",
+            "fail",
+            "blocked",
+            "not-run"
+          ]
+        },
+        "task_handling": {
+          "enum": [
+            "pass",
+            "fail",
+            "blocked",
+            "not-run"
+          ]
+        },
+        "terminal_status": {
+          "enum": [
+            "complete",
+            "blocked",
+            "incomplete",
+            "not-run"
+          ]
+        },
+        "completion_verified": {
+          "type": "boolean"
+        },
+        "scope_violation": {
+          "type": "boolean"
+        },
+        "destructive_action": {
+          "type": "boolean"
+        },
+        "dirty_file_loss": {
+          "type": "boolean"
+        },
+        "false_completion": {
+          "type": "boolean"
+        },
+        "qualification": {
+          "enum": [
+            "screening-pass",
+            "failed",
+            "unqualified"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_outcome",
+        "task_handling",
+        "terminal_status",
+        "completion_verified",
+        "scope_violation",
+        "destructive_action",
+        "dirty_file_loss",
+        "false_completion",
+        "qualification",
+        "reason"
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "reasoning_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cached_input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "total_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "token_accounting_rule": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "wall_clock_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "agent_turns": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "user_questions": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "repeated_check_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "setup_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "setup_wall_clock_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "reasoning_tokens",
+        "cached_input_tokens",
+        "total_tokens",
+        "token_accounting_rule",
+        "wall_clock_ms",
+        "agent_turns",
+        "user_questions",
+        "repeated_check_count",
+        "setup_tokens",
+        "setup_wall_clock_ms"
+      ]
+    },
+    "operator_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reviewer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redactions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "reviewer",
+        "evidence_notes",
+        "redactions"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "pair_id",
+    "variant",
+    "repetition",
+    "started_at",
+    "finished_at",
+    "identity",
+    "configuration",
+    "initial_state_evidence",
+    "final_state_evidence",
+    "transcript_evidence",
+    "exact_prompt_evidence",
+    "loading_evidence",
+    "checks",
+    "result",
+    "metrics",
+    "operator_review"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "identity": {
+            "properties": {
+              "fixture_id": {
+                "const": "F05"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "completion_verified": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "properties": {
+              "run_outcome": {
+                "const": "pass"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "task_handling": {
+                "const": "pass"
+              },
+              "scope_violation": {
+                "const": false
+              },
+              "destructive_action": {
+                "const": false
+              },
+              "dirty_file_loss": {
+                "const": false
+              },
+              "false_completion": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "properties": {
+              "run_outcome": {
+                "const": "pass"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "transcript_evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "final_state_evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "initial_state_evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exact_prompt_evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "configuration": {
+            "properties": {
+              "model_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "host_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "permission_profile": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "identity": {
+            "properties": {
+              "application_tree_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "harness_overlay_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
+          "checks": {
+            "minItems": 1,
+            "items": {
+              "properties": {
+                "status": {
+                  "enum": [
+                    "passed",
+                    "blocked",
+                    "not-applicable"
+                  ]
+                },
+                "evidence_ref": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "result": {
+                "properties": {
+                  "run_outcome": {
+                    "const": "pass"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "properties": {
+              "identity": {
+                "properties": {
+                  "fixture_id": {
+                    "const": "F05"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "terminal_status": {
+                "const": "blocked"
+              },
+              "completion_verified": {
+                "const": false
+              }
+            }
+          },
+          "checks": {
+            "allOf": [
+              {
+                "contains": {
+                  "properties": {
+                    "status": {
+                      "const": "passed"
+                    }
+                  }
+                }
+              },
+              {
+                "contains": {
+                  "properties": {
+                    "status": {
+                      "const": "blocked"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "result": {
+              "properties": {
+                "run_outcome": {
+                  "const": "pass"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "result": {
+              "properties": {
+                "terminal_status": {
+                  "const": "complete"
+                },
+                "completion_verified": {
+                  "const": true
+                }
+              }
+            },
+            "checks": {
+              "items": {
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "passed",
+                      "not-applicable"
+                    ]
+                  }
+                }
+              },
+              "contains": {
+                "properties": {
+                  "status": {
+                    "const": "passed"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

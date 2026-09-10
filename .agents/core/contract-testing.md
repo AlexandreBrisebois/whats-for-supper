@@ -2,7 +2,10 @@
 
 ## 1. Contract authority
 - **OpenAPI is Law**: The `specs/openapi.yaml` is the ultimate source of truth.
-- **Order of Authority**: Development must strictly follow this sequence: Contract (Spec) -> Tests -> Implementation.
+- **Development sequence**: Approved contract/spec → tests → implementation.
+- Resolve mismatches against approved intent. A failing test or divergent implementation
+  does not authorize rewriting the contract to match code; obtain authorization for
+  a changed contract when it exceeds the selected scope.
 
 ## 2. Test-first expectations
 - **Test-Driven Development**: You must write or update tests before implementing logic.
