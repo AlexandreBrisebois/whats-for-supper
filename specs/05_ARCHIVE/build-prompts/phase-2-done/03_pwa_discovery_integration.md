@@ -1,5 +1,7 @@
 # Prompt 03: PWA Discovery UI Integration (TDD)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** The API now serves discoverable recipes and handles voting. We need to connect the PWA Discovery Page to these real endpoints, implement category-based variety, and handle empty states gracefully.
 
 **Goal:** Connect `DiscoveryPage` to the API, implement category rotation, and handle the "Out of Invitations" state.

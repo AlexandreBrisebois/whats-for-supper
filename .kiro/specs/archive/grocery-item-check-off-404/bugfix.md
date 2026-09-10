@@ -1,5 +1,7 @@
 # Bugfix Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 When a user checks off an item in the Grocery List UI, the PWA fires a `PATCH /api/schedule/{weekOffset}/grocery` request to persist the updated check state. This request returns **404 Not Found** whenever no `WeeklyPlan` row exists in the database for the target week.

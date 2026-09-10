@@ -1,5 +1,7 @@
 # Build Prompt: Recipe Readiness as a Recipe Domain Concern
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 ## Authority
 
 Follow the repo doctrine in order: `specs/openapi.yaml` → this prompt → tests → implementation.  

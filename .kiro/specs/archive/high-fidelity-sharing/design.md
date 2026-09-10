@@ -1,5 +1,7 @@
 # High Fidelity Recipe Sharing & Portable Format - Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Experience Architecture
 The flow ensures that only "High Fidelity" recipes (those with a hero) enter the sharing loop, while ensuring the underlying file format is robust enough for full library backups.
 

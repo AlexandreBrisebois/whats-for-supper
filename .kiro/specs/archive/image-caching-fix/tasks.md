@@ -1,5 +1,7 @@
 # Implementation Plan
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 - [x] 1. Write bug condition exploration test (API — Bug 2)
   - **Property 1: Bug Condition** - Hero Endpoint Missing Cache-Control Header
   - **CRITICAL**: This test MUST FAIL on unfixed code — failure confirms Bug 2 exists

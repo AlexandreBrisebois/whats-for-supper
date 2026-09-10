@@ -1,5 +1,7 @@
 # Requirements: Recipe Stack Browse
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Pre-Mortem Notes
 
 This document incorporates all decisions from the pre-mortem review conducted before

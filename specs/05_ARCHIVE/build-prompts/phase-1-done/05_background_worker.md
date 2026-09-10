@@ -1,5 +1,7 @@
 # Task 5: Background Worker & Phase 2 Sync (Cleanup Lifecycle)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context**: The worker service coordinates the agents and handles the transition from Disk (Phase 1) to Database (Phase 2).
 
 **Requirements**:

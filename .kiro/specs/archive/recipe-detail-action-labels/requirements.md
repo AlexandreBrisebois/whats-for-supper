@@ -1,5 +1,7 @@
 # Recipe Detail Action Labels Refresh
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Standardize and polish the primary and secondary actions in the `RecipeDetailSheet` to improve clarity, accessibility, and design consistency. By aligning labels with the Mère-Designer standard and introducing the high-fidelity `DiscoveryToggleCard`, we ensure a premium, predictable experience for users planning their meals.
 

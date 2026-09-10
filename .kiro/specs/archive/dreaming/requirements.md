@@ -1,5 +1,7 @@
 # Dreaming Workflow Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 The "Dreaming" workflow is a nightly maintenance routine designed to keep the "What's For Supper" system healthy, lean, and recoverable. It automates the pruning of transient state, ensures database backups are flushed to disk for NAS versioning, and provides human-readable visibility into workflow health.
 

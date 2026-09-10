@@ -1,5 +1,7 @@
 # Tasks: Recipe Detail Action Labels Refresh
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Pre-Build Check
 - [ ] **Verify Move to Bin Location**: Confirm that `Move to Bin` has been relocated to the gear icon at the top of the `RecipeDetailSheet`. If not, do not remove the existing button until the gear icon is implemented.
 

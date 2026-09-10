@@ -1,5 +1,7 @@
 # Implementation Plan — Live Schedule (SSE Push Model)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Work follows the contract-first vertical slice pattern: OpenAPI spec first, then backend, then frontend, then E2E tests. Each group is independently verifiable before moving to the next.

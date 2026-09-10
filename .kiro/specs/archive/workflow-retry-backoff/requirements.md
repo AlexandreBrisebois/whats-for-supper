@@ -1,5 +1,7 @@
 # Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 The `WorkflowWorker` background service currently retries transient failures (AI model overload, HTTP 429 rate-limit) using an aggressive exponential backoff that exhausts all retries within 14 minutes. This is insufficient for AI image-generation workloads where models may be overloaded for hours. This feature replaces the hardcoded retry schedule with a configurable, spread-out schedule that retries over hours and ultimately defers deeply-retried tasks to a quiet overnight window (1 am–5 am UTC) when AI model load is lower and users are unlikely to notice a delay.

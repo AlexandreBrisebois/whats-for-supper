@@ -1,5 +1,7 @@
 # Fix FamilyGOTOSettings Reactivity Bug
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 ## Context
 The `FamilyGOTOSettings` component is responsible for displaying the "Family GOTO" configuration list. When the app is waiting for a GOTO recipe to finish synthesizing, it shows a "Synthesizing GOTO..." spinner. When the synthesis completes, an SSE event (`recipe_ready`) is fired. The `useScheduleStream` hook catches this event and calls `useGotoStore.getState().markReady(recipeId)`.
 

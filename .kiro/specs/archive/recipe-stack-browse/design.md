@@ -1,5 +1,7 @@
 # Design: Recipe Stack Browse
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 The Recipe Stack Browse feature introduces an immersive, full-screen card-browsing experience that lets users flip through their entire recipe library one card at a time. This feature is inspired by the tactile ritual of browsing physical recipe cards and provides a discovery-oriented alternative to search.

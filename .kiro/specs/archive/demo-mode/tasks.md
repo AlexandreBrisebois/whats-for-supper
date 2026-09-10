@@ -1,5 +1,7 @@
 # Implementation Plan: Demo Mode
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 This plan implements Demo Mode, a controlled environment for showing the app. It includes automated database/filesystem resets, AI soft-disables to prevent costs, and UI adjustments for trial users.
 

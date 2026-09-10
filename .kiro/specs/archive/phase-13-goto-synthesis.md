@@ -1,5 +1,7 @@
 # Feature: Phase 13 — GOTO Recipe Synthesis
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 ## Intent
 
 The family GOTO is currently set by picking an existing recipe from the library. This phase adds three new paths — all accessible from a single "Change" bottom sheet in `FamilyGOTOSettings`:

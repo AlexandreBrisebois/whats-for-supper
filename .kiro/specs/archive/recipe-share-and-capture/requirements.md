@@ -1,5 +1,7 @@
 # Requirements: Recipe Share and Capture
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Revision Notes
 
 This revision removes the platform-risky parts of the original draft.

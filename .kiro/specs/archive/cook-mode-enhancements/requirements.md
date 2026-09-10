@@ -1,5 +1,7 @@
 # Cook's Mode Enhancements - Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## 1. Objective
 Enhance the "Cook's Mode" and "Recipe Detail" interfaces to support a high-focus, low-friction cooking experience while maintaining design consistency across the application.
 

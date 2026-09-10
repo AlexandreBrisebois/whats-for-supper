@@ -1,5 +1,7 @@
 # Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 The grocery list in "What's For Supper" currently groups ingredients into five hardcoded sections (Vegetables, Meat, Dairy, Bakery, Pantry) using a static keyword lookup in `pwa/src/lib/grocery/aisleMapper.ts`. The matching logic is brittle: it misses many common ingredients, has no coverage for Frozen, Seafood, Deli, Beverages, or Produce sub-categories, and falls back to "Pantry" for anything it doesn't recognise.

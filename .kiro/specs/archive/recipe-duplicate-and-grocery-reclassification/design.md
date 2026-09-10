@@ -1,5 +1,9 @@
 # Design: Duplicate Recipe Reporting and Grocery Reclassification Repair
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
+> **Complete — archived 2026-09-08 at owner request.** Historical reference only; this spec has no remaining active tasks.
+
 ## Overview
 
 This package contains two independent workstreams that share no production files and may be executed separately after the spec is approved:

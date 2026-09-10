@@ -1,5 +1,7 @@
 # Task 3: Microsoft Agent Framework & Extraction Agent (Gemma4)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context**: We are using the Microsoft Agent Framework (GA 1.0) to coordinate our AI pipeline. Phase 1 is disk-based extraction.
 
 **Requirements**:

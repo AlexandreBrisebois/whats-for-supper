@@ -1,5 +1,7 @@
 # Implementation Plan: capture-describe-entry
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Refactor `pwa/src/components/capture/MinimalCapture.tsx` to remove the three-tab navigation bar and replace it with a single always-visible capture view. The "Describe It" path becomes a quiet tertiary link inside the `Capture_Box`. A new `showDescribe` boolean state controls whether the `Describe_Form` renders below the box. No API changes, no new source files beyond the updated E2E test.

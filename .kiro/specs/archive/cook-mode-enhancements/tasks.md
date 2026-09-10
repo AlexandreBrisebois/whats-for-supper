@@ -1,5 +1,7 @@
 # Cook's Mode Enhancements - Tasks
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Phase 1: The API Seam (B1)
 - [x] **TEST**: Create `RecipeApi.Tests` for `PATCH /api/recipes/{id}` with instructions (RED).
 - [x] **CONTRACT**: Add `recipeInstructions` to `UpdateRecipeDto` in `openapi.yaml`.

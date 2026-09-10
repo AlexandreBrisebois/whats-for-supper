@@ -1,5 +1,7 @@
 # Build Prompt 03: Workflow Orchestrator - YAML & DAG Validation
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Software Architect
 **Goal**: Implement the core logic for loading, parsing, and validating YAML-based workflow definitions.
 

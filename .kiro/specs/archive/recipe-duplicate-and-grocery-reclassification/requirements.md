@@ -1,5 +1,9 @@
 # Requirements: Duplicate Recipe Reporting and Grocery Reclassification Repair
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
+> **Complete — archived 2026-09-08 at owner request.** Historical reference only; this spec has no remaining active tasks.
+
 ## Vision
 
 Give a family two trustworthy correction paths: report that a recipe duplicates another recipe without pretending re-import can fix it, and move a grocery item to the right store section with immediate visible confirmation. Both paths must persist through the existing contract and database seams without adding history, merge tooling, or new background workflows.

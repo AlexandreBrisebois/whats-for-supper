@@ -1,5 +1,7 @@
 # Tasks Document: Duplicate Recipe Capture Prevention
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 This tasks document outlines the sequential waves of work required to implement duplicate recipe detection in the WFS PWA.
 
 ## Wave 1: API Seams & Backend Filter Implementation (TDD)

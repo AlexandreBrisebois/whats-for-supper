@@ -1,5 +1,7 @@
 # Design: Recipe Categorization Refactoring
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## UX Implementation Contract
 * **One-Thumb Operation**: The meal types editor MUST use large toggleable pill buttons (height $\ge$ 44px, horizontal padding $\ge$ 16px) instead of checkboxes or select dropdowns.
 * **Proximity Rule**: Metadata (Cuisine and Meal Types) must form a single visual cluster above the description.

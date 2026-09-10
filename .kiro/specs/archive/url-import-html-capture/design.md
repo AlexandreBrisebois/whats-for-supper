@@ -1,5 +1,7 @@
 # Design Document — url-import-html-capture
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 This feature changes how the `url-import` workflow stores and uses raw HTML during recipe capture. The current implementation embeds the full HTML inside `recipe.json` as a `rawHtml` property, which inflates the file, couples the extraction prompt to the wrong input modality, and prevents reuse of the captured HTML by other processors.

@@ -1,5 +1,7 @@
 # Tasks: E2E Test Audit & Migration (Vertical Slices)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Wave 0: Infrastructure & Tracer (Pattern Setter)
 _Goal: Establish the shared fixture architecture and complete the first migration._
 

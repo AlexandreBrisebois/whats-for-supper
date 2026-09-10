@@ -1,8 +1,10 @@
 # Flow: Planner Week Lifecycle
 
+> **Historical flow.** Superseded by [Week Lifecycle — SSE-Aware](../data-flows/week-lifecycle.md). The current/target distinctions below describe the original plan.
+
 Documents the full lifecycle of a week plan — from empty draft through family voting, smart defaults, locking, and the home page voting nudge. Covers both the current implementation and the target state after `planner-voting-ux` spec is implemented.
 
-Related spec: [`.kiro/specs/planner-voting-ux/requirements.md`](../../.kiro/specs/planner-voting-ux/requirements.md)
+Historical spec: [`.kiro/specs/archive/planner-voting-ux/requirements.md`](../../../.kiro/specs/archive/planner-voting-ux/requirements.md)
 Digital twin pattern: [`docs/flows/client-domain-model.md`](../client-domain-model.md)
 
 ---

@@ -1,5 +1,7 @@
 # E2E-to-Unit Test Migration Audit
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Optimize the testing lifecycle of "What's For Supper" by reducing reliance on slow, non-deterministic Playwright E2E tests for logic verification. We aim to move "Logic-Heavy" and "Component-Internal" assertions to Vitest unit/component tests, reserving E2E for critical user journeys and cross-system "seams" (UI <-> API).
 

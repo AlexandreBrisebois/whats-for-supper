@@ -1,5 +1,7 @@
 # Phase 0 MVP Specification — [STATUS: COMPLETED ✅]
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 > [!NOTE]
 > This stage of the project is complete. The architecture has transitioned to Phase 1 (Import & Branding) with a focus on modular workers and AI integration. Stale logic from this phase (like Redis conditional checks) has been superseded by the `recipe_imports` polling pipeline.
 

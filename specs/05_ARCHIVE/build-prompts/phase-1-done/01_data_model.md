@@ -1,5 +1,7 @@
 # Task 1: Recipe Import Data Model & Infrastructure
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context**: We are implementing a CQRS-inspired recipe import pipeline. This task focused on the data layer.
 
 **Requirements**:

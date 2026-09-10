@@ -4,6 +4,23 @@ This file contains the historical session logs and technical archives for the "W
 
 ---
 
+### [2026-09-09] Archived specification clarity audit — complete
+
+- Reviewed 212 existing Markdown documents across `.kiro/specs/archive/` and `specs/05_ARCHIVE/`, plus Kiro archive metadata. Added historical-reference notices, archive inventories, and scoped agent guidance; excluded archives from active spec discovery guidance.
+- Repaired resolvable archived-spec references, identified historical examples in the spec-writer prompt, marked incoming flow references as historical, and linked the superseded planner flow to its SSE-aware replacement. Changed only the stale dev-loop metadata status to `Archived`.
+- Preserved historical task checkboxes and validation evidence. This audit does not certify implementation of every archived requirement or reopen unfinished historical tasks.
+- Validation: all 212 notices and checkbox histories checked; 138 archive/index links resolved; metadata parsed successfully; `git diff --check` passed. Documentation-only audit; no application test suite or Docker operations required.
+
+### [2026-09-08] Duplicate reporting and grocery reclassification — complete and archived
+
+- Added missing mixed-report/manual-resolution and grocery failure/retry E2E coverage, all duplicate reason combinations in component tests, and five PostgreSQL lifecycle/constraint-repair cases using isolated databases.
+- Fixed test mocks for synthesized-report deletion and consistent grocery categories across GET/SSE snapshots. No production code, contract, or schema changes were needed.
+- Passed: API 671/4 skipped (including PostgreSQL), PWA unit 507/4 skipped, production E2E 173/6 skipped, generated-client/schema checks, audits, `task gate`, and recovered `task review`.
+- The single `agent:finish` invocation passed impact/drift but failed its API child after cleanup killed Docker's forwarding process on port 9001. Docker and the disposable database were restored; `task review PWA_PORT=55436` then passed with the Docker application ports released. The owner subsequently confirmed completion and requested archival; slice 5 is checked and no retry remains an active task. This acceptance does not change the recorded initial gate outcome.
+- The disposable database container was removed; Docker API/PWA were restored. Removed the active retry entry from `HANDOVER.md`. The completed spec is preserved in [.kiro/specs/archive/recipe-duplicate-and-grocery-reclassification](.kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/tasks.md). Harness cleanup repair is outside this completed spec.
+
+---
+
 ### [2026-08-05] Archive Reconciliation — Duplicate Recipe Capture Prevention (completed 2026-05-24)
 **Status**: COMPLETED ✅
 **Branch**: `main`

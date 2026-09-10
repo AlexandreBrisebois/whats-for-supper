@@ -1,5 +1,7 @@
 # Feature: Phase 14 — UX Hardening
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 ## Intent
 
 A set of focused UX fixes identified after Phase 12/13 went live. No new features — every task corrects something that is broken, confusing, or missing from the current experience.

@@ -1,5 +1,7 @@
 # workflow-429-retry Bugfix Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 `WorkflowWorker.ProcessTaskAsync` has two catch blocks. When an AI processor throws a 429

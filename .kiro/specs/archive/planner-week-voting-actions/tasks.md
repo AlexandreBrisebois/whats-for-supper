@@ -1,5 +1,7 @@
 # Tasks — planner-week-voting-actions
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 This is a PWA-only cleanup. No contract, DB, or generated client work is expected.

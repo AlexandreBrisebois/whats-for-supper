@@ -1,5 +1,7 @@
 # Prompt 02c: Optimization - Partial Discovery Index (SQL)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context:** The discovery system is operational, but we want to ensure it stays performant as the recipe library grows. Since "Discoverable" recipes are a subset of the total library, a standard index on the `IsDiscoverable` column is less efficient than a **Partial Index**.
 
 **Goal:** Implement a PostgreSQL Partial Index in `RecipeDbContext` and remove redundant indexes.

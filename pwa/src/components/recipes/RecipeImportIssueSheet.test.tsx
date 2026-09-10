@@ -47,7 +47,16 @@ describe('RecipeImportIssueSheet', () => {
     expect(note).toHaveClass('px-4', 'py-3', 'resize-none');
   });
 
-  it('supports duplicate-only and mixed reports', async () => {
+  it.each([
+    [RecipeImportIssueReasonObject.Duplicate],
+    [RecipeImportIssueReasonObject.Duplicate, RecipeImportIssueReasonObject.Ingredients],
+    [RecipeImportIssueReasonObject.Duplicate, RecipeImportIssueReasonObject.Steps],
+    [
+      RecipeImportIssueReasonObject.Duplicate,
+      RecipeImportIssueReasonObject.Ingredients,
+      RecipeImportIssueReasonObject.Steps,
+    ],
+  ])('saves the selected duplicate reason combination: %j', async (...reasons) => {
     onSave.mockResolvedValue(undefined);
     render(
       <RecipeImportIssueSheet
@@ -58,14 +67,21 @@ describe('RecipeImportIssueSheet', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('import-issue-reason-duplicate'));
+    for (const reason of reasons) {
+      fireEvent.click(screen.getByTestId(`import-issue-reason-${reason}`));
+      expect(screen.getByTestId(`import-issue-reason-${reason}`)).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+    }
     fireEvent.click(screen.getByTestId('import-issue-save'));
     await waitFor(() =>
       expect(onSave).toHaveBeenCalledWith({
-        reasons: [RecipeImportIssueReasonObject.Duplicate],
+        reasons: expect.arrayContaining(reasons),
         note: null,
       })
     );
+    expect(onSave.mock.calls[0][0].reasons).toHaveLength(reasons.length);
   });
 
   it('keeps duplicate available while explaining content ineligibility', () => {

@@ -1,5 +1,7 @@
 # E2E Route Handler Regression — Bugfix Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Five E2E tests regressed after commit f0da597 due to three independent root causes in the test

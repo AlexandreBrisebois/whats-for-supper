@@ -1,5 +1,7 @@
 # Prompt 05: Hearth Secret Authentication (No-Password Auth Layer)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Security/Auth Engineer specializing in token-based auth and middleware
 
 **Context**:

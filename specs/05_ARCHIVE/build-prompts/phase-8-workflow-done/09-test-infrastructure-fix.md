@@ -1,5 +1,7 @@
 # Build Prompt 09: Workflow Tests - Fix In-Memory Database Context Sharing
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Systems Engineer / Test Infrastructure Specialist  
 **Goal**: Fix EF Core in-memory database context lifecycle issues preventing WorkflowWorker tests from executing tasks.
 

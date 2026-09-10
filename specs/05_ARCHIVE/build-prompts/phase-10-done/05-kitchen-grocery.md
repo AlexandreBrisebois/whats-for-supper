@@ -1,5 +1,7 @@
 # Prompt 05: Kitchen & Grocery — High Fidelity Hardening
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Full-Stack Engineer specializing in Data Parsing and Offline-First UX.
 
 **Context**:

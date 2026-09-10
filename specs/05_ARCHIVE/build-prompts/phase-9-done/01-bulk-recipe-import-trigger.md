@@ -1,5 +1,7 @@
 # Build Prompt: Bulk Recipe Import Trigger
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: API Developer  
 **Goal**: Add a `POST /api/workflows/recipe-import/bulk-trigger` endpoint that queries all unimported recipes from the database and queues a `recipe-import` workflow instance for each one.
 

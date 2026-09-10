@@ -1,5 +1,7 @@
 # Implementation Plan
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 - [x] 1. Write bug condition exploration tests
   - **Property 1: Bug Condition** - 429 Exceptions Permanently Fail Instead of Retrying
   - **CRITICAL**: These tests MUST FAIL on unfixed code — failure confirms the bug exists

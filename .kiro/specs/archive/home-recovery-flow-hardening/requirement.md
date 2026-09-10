@@ -1,5 +1,7 @@
 # Home Recovery Flow Hardening
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Intent
 
 Harden the Home skip-recovery flow so its state is explicit and parent-owned instead of depending on dialog remount timing. The user experience must remain exactly the same.

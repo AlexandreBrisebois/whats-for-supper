@@ -1,5 +1,7 @@
 # Implementation Plan: home-command-center-hardening
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Four groups of work, executed in dependency order. Groups A and B are independent visual and state-sync fixes that can ship without the store. Group C introduces `todayStore` and refactors `HomeCommandCenter` to consume it, eliminating the race conditions at their root. Group D updates documentation to reflect the corrected implementation.

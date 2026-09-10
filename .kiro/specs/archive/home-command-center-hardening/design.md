@@ -1,5 +1,7 @@
 # Design Document — home-command-center-hardening
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 This spec consolidates three bodies of work that share a single root cause: the home page's "today" state is scattered across SSR props and client-side `useState` with no shared layer, and `router.refresh()` is the only bridge between them. The result is race conditions, stale renders, and a UI that lags on every tap.

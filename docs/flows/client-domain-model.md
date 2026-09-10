@@ -4,7 +4,7 @@ The `todayStore` is a Zustand store that acts as a **digital twin** of the serve
 
 This is not a service worker, not an offline cache, and not related to `pwa-caching`. It is a Zustand store with optimistic-first mutations and background reconciliation.
 
-Related spec: [`.kiro/specs/home-command-center-hardening/requirements.md`](../../.kiro/specs/home-command-center-hardening/requirements.md)
+Historical spec: [`.kiro/specs/archive/home-command-center-hardening/requirements.md`](../../.kiro/specs/archive/home-command-center-hardening/requirements.md)
 
 ---
 

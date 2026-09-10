@@ -1,5 +1,7 @@
 # Requirements — Live Schedule (Server-Sent Events Push Model)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Mission Alignment
 
 The WFS mission is to deliver a premium, high-performance meal planning PWA for the whole family. A core part of that experience is that every family member always sees the same state — when Alex assigns a recipe on the planner, Jordan's home page updates immediately. When a meal is marked cooked, everyone transitions together.

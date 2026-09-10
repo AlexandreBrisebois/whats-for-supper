@@ -1,5 +1,9 @@
 # Tasks: Duplicate Recipe Reporting and Grocery Reclassification Repair
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
+> **Complete — archived 2026-09-08 at owner request.** Historical reference only; this spec has no remaining active tasks.
+
 ## Execution contract
 
 - Execute one numbered slice at a time.
@@ -199,7 +203,7 @@ Workstreams A and B are product-independent. Do not run them with parallel agent
 
 **Escalate if:** the focused API integration test shows the PATCH fails to persist/recompute, or `normalizedKey` is absent in a real schedule response.
 
-## 5. [ ] End-to-end closure and integrity review
+## 5. [x] End-to-end closure and integrity review
 
 **Depends on:** Slices 2, 3, and 4
 
@@ -237,15 +241,26 @@ Workstreams A and B are product-independent. Do not run them with parallel agent
 
 **Escalate if:** validation reveals a contract or persistence dependency not listed in the seam inventories, or required E2E execution is blocked by the local-server environment.
 
-## First-batch execution prompts
+### Slice 5 execution notes — 2026-09-08
+
+- Added E2E coverage for mixed-report completion remaining Reported, manual duplicate resolution, mobile reason targets, and grocery category failure/retry with persisted reconciliation. Expanded component coverage to every reason combination containing Duplicate.
+- Corrected only test support: the synthesized-recipe mock now handles report deletion, and grocery GET/SSE snapshots use the same current category overrides. Production behavior, contracts, and SQL authorities required no changes.
+- Added `RecipeImportReportPostgresTests` for the relational lifecycle branch, missing-report no-ops, and replacing an installed two-reason constraint (including idempotency and invalid-array rejection). Each case creates and drops a uniquely named database using the canonical `schema.sql`.
+- Run PostgreSQL coverage with `WFS_TEST_POSTGRES_CONNECTION='<test-server connection string>' task test:api`; the supplied account needs database-creation permission and the server needs pgvector. These tests explicitly skip when the variable is absent. This session uses a disposable loopback-only PostgreSQL 18/pgvector container, separate from application data.
+- Verification: 671 API tests passed (including all five PostgreSQL cases), 4 manual tests skipped; 507 PWA unit tests passed, 4 existing skips; production E2E passed 173 tests with 6 existing skips. Generated-client, schema-drift, and `task gate` passed.
+- The initial `task agent:finish` passed impact and drift but failed API verification because the earlier cleanup killed Docker's port-forwarder on API port 9001. Docker was restored and the failed review stage passed via `task review PWA_PORT=55436`, with both Docker application containers temporarily stopped and PostgreSQL coverage enabled. The owner subsequently confirmed the spec complete and requested archival on 2026-09-08. Closure is accepted on the recorded validation and recovered review; no further gate retry is an active task. The initial full-gate failure remains part of the historical evidence.
+- Production E2E command: `CI=1 NEXT_PUBLIC_ENVIRONMENT=test NEXT_PUBLIC_ENABLE_AGENT_SEARCH=true NEXT_PUBLIC_ENABLE_PHOTO_SEARCH=true PLAYWRIGHT_HTML_OPEN=never task test:e2e:ci`. The search flags must be present at build time. Port 3000 must be free so Playwright tests the working-tree build instead of reusing the Docker PWA. Before running cleanup gates alongside Docker-backed tests, release the Docker application port mappings on 9001 and 3000; `dev:kill` uses unfiltered `lsof` and can otherwise kill Docker Desktop itself.
+- Audits found no brittle-selector errors; existing logic-heavy E2E migration suggestions remain outside this closure slice.
+
+## Historical first-batch execution prompts (completed)
 
 ```yaml
 - id: duplicate-report-contract-persistence
   title: Add duplicate to the recipe report contract and persistence authorities
   model_fit: MEDIUM
   required_context:
-    - .kiro/specs/recipe-duplicate-and-grocery-reclassification/requirements.md
-    - .kiro/specs/recipe-duplicate-and-grocery-reclassification/design.md
+    - .kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/requirements.md
+    - .kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/design.md
   slice: 1
   tests_first: true
   stop_after_slice: true
@@ -254,8 +269,8 @@ Workstreams A and B are product-independent. Do not run them with parallel agent
   title: Restore immediate grocery item movement after category selection
   model_fit: SMALL_SAFE
   required_context:
-    - .kiro/specs/recipe-duplicate-and-grocery-reclassification/requirements.md
-    - .kiro/specs/recipe-duplicate-and-grocery-reclassification/design.md
+    - .kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/requirements.md
+    - .kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/design.md
   slice: 4
   tests_first: true
   stop_after_slice: true

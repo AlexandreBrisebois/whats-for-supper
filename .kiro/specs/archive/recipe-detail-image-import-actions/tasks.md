@@ -1,5 +1,7 @@
 # Tasks: Recipe Detail Image And Import Actions
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Implementation Plan
 
 This spec adds secondary recipe actions (Delete, Reimport) into a gear menu and overlays media controls (Camera, Regenerate) on the hero image in Edit Mode.

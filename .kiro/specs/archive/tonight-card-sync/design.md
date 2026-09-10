@@ -1,5 +1,7 @@
 # Design: Tonight Menu Card Detail Sync
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Strategy: Dual-Path Hydration
 
 To solve the "missing details" bug while preserving the 20-second "optimistic guard," we will implement two parallel hydration paths:

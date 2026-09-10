@@ -1,5 +1,7 @@
 # Today Slot Persistence — Bugfix Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Four related gaps in the "today's slot" persistence story. Three are missing or stub E2E tests that leave real user flows unverified; one is a UI rendering omission in `PlannerDayCard` that causes the "Ordered In" state to be invisible in the planner.

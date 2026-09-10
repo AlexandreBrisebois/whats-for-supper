@@ -1,5 +1,7 @@
 # Planner Voting Follow-Ups
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](README.md).
+
 ## Context
 
 These notes capture UX questions around the "Plan next week" / family voting flow when a parent is manually planning across weeks.

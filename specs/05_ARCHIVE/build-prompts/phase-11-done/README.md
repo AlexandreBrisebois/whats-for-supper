@@ -1,5 +1,7 @@
 # Phase 11 — Closing Spec Gaps & Polish
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Status**: Ready for execution (6 independent prompts)
 
 This phase addresses the gaps identified from Phase 10 gap analysis. Each prompt is self-contained and can be executed in a separate session. Order is recommended (earlier prompts have no dependencies; later ones build on auth infrastructure).

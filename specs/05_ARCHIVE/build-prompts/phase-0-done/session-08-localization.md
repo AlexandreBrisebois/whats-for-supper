@@ -1,5 +1,7 @@
 # Session 8: Localization & Hint System Scaffold
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** i18n setup with English/French, hint overlay component, tour management
 
 **Context needed:** Sessions 1-7 artifacts + Phase 0 spec section 2.2 (UX flows)

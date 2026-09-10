@@ -1,5 +1,7 @@
 # Phase: Branding Alignment - README
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 This phase focuses on pivoting the brand identity of the "What's for Supper" PWA to better suit the needs of a busy household. 
 
 We have identified three distinct design directions. You can execute any of these in a clean session to see the results.

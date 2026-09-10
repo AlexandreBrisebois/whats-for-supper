@@ -1,5 +1,7 @@
 # Session 9: Recipe Capture Flow & Image Handling
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** `/capture` page with camera integration, image review, rating, submission
 
 **Context needed:** Sessions 1-8 artifacts + Phase 0 spec section 2.3 (Recipe capture)

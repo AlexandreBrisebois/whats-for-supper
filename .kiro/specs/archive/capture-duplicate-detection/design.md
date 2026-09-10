@@ -1,5 +1,7 @@
 # Design Document: Duplicate Recipe Capture Prevention
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## UX/UI Design & Aesthetic Contract
 
 All duplicate banners and actions will follow the **Solar Earth** design tokens.

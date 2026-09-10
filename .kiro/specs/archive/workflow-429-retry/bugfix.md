@@ -1,5 +1,7 @@
 # Bugfix Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 When an AI model API (Gemini via `IChatClient` or the Google GenAI SDK) returns a 429 "This model is currently experiencing high demand" rate-limit error, the `WorkflowWorker` permanently fails the task and pauses the workflow instance. This is incorrect: a 429 is a transient, recoverable condition that should trigger the existing exponential-backoff retry mechanism, not a fatal failure.

@@ -1,5 +1,7 @@
 # Task 4: Hero Agent (Gemini Image Pro 3.1)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Context**: The second step of Phase 1 identifies the best photo and creates a high-quality thumbnail using Cloud AI.
 
 **Requirements**:

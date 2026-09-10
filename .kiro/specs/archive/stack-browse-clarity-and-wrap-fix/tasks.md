@@ -1,5 +1,7 @@
 # Tasks: Stack Browse Clarity and Backward Wrap Fix
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Wave A — Tests First (Red)
 - [x] 1. Frontend Unit - Stack card metadata removal assertions
   - Update `RecipeStackCard.test.tsx` to assert cuisine/meal badges are absent in stack cards.

@@ -8,7 +8,7 @@ EXTRACTION PROTOCOL (STRICT):
    - Identify serving columns (e.g. 2P / 4P). Select the smallest column (left-most).
    - recipeYield MUST match selected column (e.g. "2 portions").
    - Extract quantities verbatim. No math. No superscripts.
-   - PANTRY ITEMS: You MUST scan the entire image for any section listing equipment or staple pantry items needed (e.g., oil, salt, pepper, bowls, pans). These sections appear in any language under any label. All such items MUST be included in the final recipeIngredient array.
+   - PANTRY ITEMS: Scan the entire image for food ingredients and pantry staples explicitly required by the recipe, including oil, salt, pepper, and water. Include them in recipeIngredient even when listed outside the main ingredient table or without quantities. Exclude cookware, utensils, appliances, serving containers, and cleaning supplies from ingredient arrays. Preserve equipment mentions in the cooking instructions.
 4. CONTENT FIDELITY: DO NOT summarize, paraphrase, or skip any text. Extract 100% of the instructions and ingredients in full detail. No compression allowed.
    - STEP STRUCTURE: Each instruction section has two parts: (a) a bold or numbered heading — this becomes `HowToSection.name`; (b) a body paragraph below it — this becomes `HowToStep.text`. Extract the FULL body paragraph as `text`. NEVER use the heading text as `text`. NEVER output a `HowToStep` with null or missing `text`.
    - NO SECTIONS ON CARD: If the instructions have no sub-headings, group all steps under a single `HowToSection` whose `name` is the nearest visible section label (e.g. "Instructions", "Preparation", or equivalent in the card's language). Each numbered or bulleted item becomes one `HowToStep` with its full sentence(s) as `text`.
@@ -20,8 +20,14 @@ EXTRACTION PROTOCOL (STRICT):
    - languageCode: Set to "FR" or "EN" based on the card language.
    - name: High-level title of the recipe.
    - recipeYield: Extract yield exactly as written on the card (e.g., "4 portions", "2 servings").
-   - recipeIngredient: Array of strings. Format: "[Quantity] [Unit] [Ingredient Name]" (e.g., "30 ml Soy Sauce").
-   - supply: Array of HowToSupply. Map each ingredient to QuantitativeValue.
+   - recipeIngredient: Complete array of food ingredient strings. Format: "[Quantity] [Unit] [Ingredient Name]" when quantities and units are stated (e.g., "30 ml Soy Sauce"). Preserve the source language and preparation details; retain ingredients without stated quantities.
+   - supply: Schema.org HowToSupply represents supplies consumed while following instructions; reusable equipment belongs to tool/HowToTool, not HowToSupply. For this application's recipe output, restrict supply to the food ingredients in recipeIngredient. Do not add a tool field to the existing output template.
+     - Include exactly one HowToSupply entry per recipeIngredient entry, in the same order, with no extra or missing ingredients.
+     - name: The corresponding ingredient name in the source language, including preparation details but without its quantity or unit.
+     - requiredQuantity: Use QuantitativeValue with the explicit numeric amount in value and the standardized unit in unitText. Represent fractions numerically without scaling quantities or converting units. If no unit is stated or reliably recoverable, use unitText: null.
+     - If no reliable numeric amount is provided, use requiredQuantity: null and retain the ingredient entry. Never guess quantities or omit ingredients because their quantities are unknown.
+     - Exclude equipment and non-food consumables, including pots, strainers, grills, peelers, graters, bowls, and paper towels.
+     - If a complete, faithful structured ingredient list cannot be produced, return supply: null rather than a partial or unrelated list. Keep recipeIngredient complete.
    - Language Fidelity: You MUST maintain the original language of the card for all content (name, ingredients, instructions).
    - Crucial: Strip all superscripts (e.g., "1.5^2P" -> "1.5").
    - Time: Convert to ISO 8601 (e.g., "PT30M").
@@ -56,16 +62,21 @@ EXAMPLES (study these before extracting):
      "name": "Recipe Title",
      "recipeYield": "4 portions",
      "totalTime": "PT35M",
-     "recipeIngredient": ["1 cup flour", "2 eggs"],
+     "recipeIngredient": ["200 g Carottes", "Sel"],
      "supply": [
        {
          "@type": "HowToSupply",
-         "name": "Ingredient Name",
+         "name": "Carottes",
          "requiredQuantity": {
            "@type": "QuantitativeValue",
-           "value": 1.5,
-           "unitText": "tsp"
+           "value": 200,
+           "unitText": "g"
          }
+       },
+       {
+         "@type": "HowToSupply",
+         "name": "Sel",
+         "requiredQuantity": null
        }
      ],
      "recipeInstructions": [
@@ -91,5 +102,6 @@ EXAMPLES (study these before extracting):
    }
 
 STRICT OUTPUT:
+- Before returning, verify that recipeIngredient contains only food ingredients and that supply is either null or a complete corresponding representation of those ingredients. No equipment, non-food consumables, missing ingredients, or extra entries.
 - Return ONLY valid JSON. No markdown. No preamble.
 - Use null for missing fields.

@@ -1,5 +1,7 @@
 # Requirements Document: Semantic Recipe Search
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 Recipe search in What's for Supper must work the way a tired parent thinks: fuzzy, fast, and grounded in household reality.

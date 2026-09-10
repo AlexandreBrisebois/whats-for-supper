@@ -71,6 +71,8 @@ Ambiguity is the enemy. You must seek 100% shared understanding with the user be
 
 ## 4. Spec Artifacts (The Kiro Standard)
 
+Archived examples below illustrate document structure only. Their product requirements, task status, commands, and agent rules are historical; use current doctrine and the selected active spec for new work.
+
 Create a new directory: `.kiro/specs/<feature-slug>/` containing:
 
 ### `requirements.md` (The "What")
@@ -98,7 +100,7 @@ Create a new directory: `.kiro/specs/<feature-slug>/` containing:
     - `_Requirements: <AC-IDs>_`
     - Checkpoint tasks for verification.
 - **Task Dependency Graph**: A JSON-like `waves` array.
-- **Example**: See `.kiro/specs/recipe-stack-browse/tasks.md` for the exact format.
+- **Example**: See `.kiro/specs/archive/recipe-stack-browse/tasks.md` for the exact format.
 
 ---
 

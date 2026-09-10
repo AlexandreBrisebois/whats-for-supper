@@ -1,5 +1,7 @@
 # High Fidelity Recipe Sharing & Portable Format - Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Transform the `.recipe` bundle from a simple sharing format into a high-fidelity portable data standard that supports structured instructions, preserves personal metadata (optionally), and enables robust long-term backups.
 

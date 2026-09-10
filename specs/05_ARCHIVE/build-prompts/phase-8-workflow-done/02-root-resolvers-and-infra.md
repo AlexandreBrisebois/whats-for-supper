@@ -1,5 +1,7 @@
 # Build Prompt 02: Infrastructure & Root Resolvers
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Infrastructure & DevOps Specialist
 **Goal**: Align the application's directory resolution logic with the new `/data` root architecture and update the Docker orchestration to match.
 

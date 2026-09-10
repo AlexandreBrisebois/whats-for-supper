@@ -1,5 +1,7 @@
 # Design Document: Semantic Recipe Search
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Semantic recipe search should feel like a calm command palette for supper, not a search engine.

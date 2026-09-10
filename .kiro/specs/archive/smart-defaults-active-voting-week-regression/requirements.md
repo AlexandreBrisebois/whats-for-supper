@@ -1,5 +1,7 @@
 # Requirements: Smart Defaults On Active Voting Week (Regression Fix)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 When a family opens voting for any week, the planner for that same week must load smart defaults derived from discovery votes. Users must never lose pending suggestions simply because voting is open on a non-zero `weekOffset`.
 

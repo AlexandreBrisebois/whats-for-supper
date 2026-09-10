@@ -1,5 +1,7 @@
 # Design Document: Grocery Section Categorization
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 This feature replaces the brittle, client-side five-section keyword mapper with a two-phase, server-authoritative categorization engine. The result is a pre-computed, pre-aggregated grocery list stored on the `weekly_plans` row and served directly to the client — no client-side normalization, no index lookups at load time.

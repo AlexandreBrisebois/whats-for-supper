@@ -1,4 +1,6 @@
 # Build Prompt 06-e2e-hardening.md
+
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
 **Persona**: QA Automation Engineer (Playwright).
 
 ## Strict Scope

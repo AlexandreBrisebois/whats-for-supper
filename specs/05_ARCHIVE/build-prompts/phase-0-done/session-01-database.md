@@ -1,5 +1,7 @@
 # Session 1: Database Schema & Migrations
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** `database/migrations/` folder with SQL files
 
 **Context needed:** Just the Phase 0 spec
@@ -24,7 +26,7 @@ Task: Create Phase 0 database schema and migrations
 You are building the database foundation for Phase 0 MVP of "What's For Supper".
 
 Read these requirements:
-- Phase 0 spec: src/specs/phase0-mvp.spec.md (section 1.3: PostgreSQL Schema)
+- Phase 0 spec: specs/05_ARCHIVE/phase0-mvp.spec.md (section 1.3: PostgreSQL Schema)
 - Use PostgreSQL 17 with pgvector extension
 - Create two tables: family_members and recipes
 - Add required indexes for performance

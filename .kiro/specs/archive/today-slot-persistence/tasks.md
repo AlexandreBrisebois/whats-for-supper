@@ -1,5 +1,7 @@
 # Implementation Plan
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Work is ordered by dependency and risk. Backend service tests come first because they verify real persistence logic against an in-memory database — the same pattern already used in `ScheduleIntegrationTests.cs`. The backend bug fix follows. Then the UI fix. Then the E2E tests that verify the full flows.

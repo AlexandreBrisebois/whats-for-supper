@@ -1,4 +1,6 @@
 # Build Prompt 05-integration-and-settings.md
+
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
 **Persona**: Product Engineer (Full-stack PWA).
 
 ## Strict Scope

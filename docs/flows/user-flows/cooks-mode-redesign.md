@@ -1,6 +1,6 @@
 # Flow: Cook's Mode — Redesign Brief
 
-**Spec:** `.kiro/specs/00-live-schedule` — Group N tasks
+**Historical spec:** `.kiro/specs/archive/00-live-schedule` — Group N tasks
 **Reviewed by:** The Mère-Designer
 **Context:** Cook's Mode is a full-screen overlay walked by a parent in an active kitchen. Wet hands. Limited attention. Children nearby. Every interaction must be decisive and require zero reading.
 

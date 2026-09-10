@@ -1,5 +1,7 @@
 # Implementation Plan: Remove Backend Proxy
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Remove the Next.js `/backend` rewrite and replace every `/backend` reference with `/api`. The proxy must remain functional until all callers have been migrated — `next.config.js` is the last file touched among source changes. The sequence is: CORS → source code → env/config → Docker Compose → remove rewrite → comments/docs → ADR → validation.

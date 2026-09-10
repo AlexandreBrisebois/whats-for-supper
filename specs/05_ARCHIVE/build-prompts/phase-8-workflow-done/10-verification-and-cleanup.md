@@ -1,5 +1,7 @@
 # Build Prompt 10: E2E Verification & Legacy Cleanup
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: QA & Systems Engineer
 **Goal**: Finalize the migration by verifying the complete "Recipe Import" workflow end-to-end and removing the deprecated code.
 

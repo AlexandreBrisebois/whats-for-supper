@@ -1,5 +1,7 @@
 # Recipe Import Issue Reporting — Tasks
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Execution contract
 
 - Execute one numbered slice at a time with the repository task executor.
@@ -375,8 +377,8 @@ constraints:
   - No workflow integration yet.
   - Internal workflow/error fields never enter the public contract.
 references:
-  - .kiro/specs/recipe-import-reporting/requirements.md
-  - .kiro/specs/recipe-import-reporting/design.md
+  - .kiro/specs/archive/recipe-import-reporting/requirements.md
+  - .kiro/specs/archive/recipe-import-reporting/design.md
 validation:
   - task gen:client:check
   - task agent:drift:schemas

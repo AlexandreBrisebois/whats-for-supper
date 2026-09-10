@@ -1,5 +1,7 @@
 # Prompt 04: Cross-Week Move in Skip Recovery
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Full-Stack Engineer specializing in date/week logic
 
 **Context**:

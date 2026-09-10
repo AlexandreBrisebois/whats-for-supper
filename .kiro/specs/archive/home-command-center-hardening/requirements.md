@@ -1,5 +1,7 @@
 # Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 `HomeCommandCenter` and `TonightPivotCard` have accumulated three visual bugs, five state-sync regressions, and a structural root cause — the home page owns "today's state" as scattered local `useState`, with no shared layer between the home page and the planner. This spec consolidates all three bodies of work: the visual fixes from `home-empty-state-ux`, the state-sync fixes from `home-today-sync`, and the new `todayStore` Zustand domain store that eliminates the race conditions at their root. The outcome is a snappy, correct home page that never waits on a network round-trip for a user-visible state change, and a single source of truth for "today's schedule day" that both the home page and the planner can read from.
@@ -34,7 +36,7 @@ See `docs/flows/client-domain-model.md` (Group D) for the architecture diagram.
 
 ### Group A — Visual Fixes
 
-*Detail: `.kiro/specs/home-empty-state-ux/bugfix.md`*
+*Detail: `.kiro/specs/archive/home-empty-state-ux/bugfix.md`*
 
 #### Requirement A1: Empty-state header and badge
 
@@ -70,7 +72,7 @@ See `docs/flows/client-domain-model.md` (Group D) for the architecture diagram.
 
 ### Group B — State-Sync Fixes
 
-*Detail: `.kiro/specs/home-today-sync/bugfix.md`*
+*Detail: `.kiro/specs/archive/home-today-sync/bugfix.md`*
 
 #### Requirement B1: isScheduleRecipe null-id guard
 
@@ -262,5 +264,5 @@ This constraint applies to every action handler in `HomeCommandCenter` and every
 
 ## References
 
-- `.kiro/specs/home-empty-state-ux/bugfix.md` — Group A detail (bug conditions, expected/unchanged behaviour, regression prevention)
-- `.kiro/specs/home-today-sync/bugfix.md` — Group B detail (bug conditions, fix-checking properties, preservation properties, PWA snappiness constraint)
+- `.kiro/specs/archive/home-empty-state-ux/bugfix.md` — Group A detail (bug conditions, expected/unchanged behaviour, regression prevention)
+- `.kiro/specs/archive/home-today-sync/bugfix.md` — Group B detail (bug conditions, fix-checking properties, preservation properties, PWA snappiness constraint)

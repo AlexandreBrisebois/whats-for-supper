@@ -1,5 +1,7 @@
 # Tasks: Dev Loop Optimization & Digital Twin Testing
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Phase 1: Security & Targeted Verification (Completed)
 - [x] Fix `scripts/agent/test_ops.py` paths and mapping logic
 - [x] Implement Global API Blocker in `pwa/e2e/fixtures.ts`

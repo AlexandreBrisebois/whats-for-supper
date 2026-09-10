@@ -1,5 +1,7 @@
 # Requirements Document: Duplicate Recipe Capture Prevention
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 The goal of this feature is to prevent users from importing or creating duplicate recipes in the library. When a user captures a recipe using any of the available capture modes—recipe file import, URL capture, describe text entry, or photo/gallery capture—the PWA will verify if a matching recipe (case-insensitive name, URL, or exact GUID) already exists in the active (non-soft-deleted) library.

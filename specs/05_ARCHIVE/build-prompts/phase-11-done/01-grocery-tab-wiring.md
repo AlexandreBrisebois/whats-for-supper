@@ -1,5 +1,7 @@
 # Prompt 01: Grocery Tab Wiring (Quick Seam Fix)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Frontend Integration Engineer
 
 **Context**:

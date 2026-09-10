@@ -1,5 +1,7 @@
 # e2e-test-failures Bugfix Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Two Playwright e2e tests are failing due to mock infrastructure bugs — no production code is

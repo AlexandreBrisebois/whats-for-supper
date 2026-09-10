@@ -1,5 +1,7 @@
 # Bugfix Requirements Document
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Introduction
 
 When a user drags a meal card to reorder it in the planner, the app fires a `POST /api/schedule/move` API call for every intermediate position the card passes through during the drag gesture. On a 7-day planner, dragging from slot 1 to slot 7 can trigger up to 6 API calls before the user releases. This causes excessive backend traffic, potential race conditions between in-flight requests, and visible UI jank as the optimistic state is repeatedly overwritten mid-drag.

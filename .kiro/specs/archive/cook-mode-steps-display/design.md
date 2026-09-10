@@ -1,5 +1,7 @@
 # Cook Mode Steps Display Bugfix Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Cook's Mode never shows real recipe steps for recipes stored with schema.org `HowToSection` / `HowToStep` instructions. The user sees only the ingredients screen (step 0) followed by generic placeholder steps.

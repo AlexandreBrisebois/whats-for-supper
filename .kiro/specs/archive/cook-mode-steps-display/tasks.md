@@ -1,5 +1,7 @@
 # Implementation Plan
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 - [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - HowToSection[] type representation gap
   - **CRITICAL**: This task documents the type-level bug — the `as any` cast in the original test was a workaround for an inaccurate type declaration

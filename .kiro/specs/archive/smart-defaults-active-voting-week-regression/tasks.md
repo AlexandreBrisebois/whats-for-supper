@@ -1,5 +1,7 @@
 # Tasks: Smart Defaults On Active Voting Week (Regression Fix)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Implementation Plan
 
 - Wave 1 establishes failing tests (Red) for all impacted weekStore paths.

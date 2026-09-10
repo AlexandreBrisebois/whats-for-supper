@@ -1,5 +1,7 @@
 # Design: Discovery Vote Visual Simplification (Older-Phone Smoothness)
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Summary
 This change removes vote-driven green highlight and pulse visuals from Discovery cards to reduce perceived jitter and GPU churn on older phones, while preserving vote-driven ranking and live SSE vote updates.
 

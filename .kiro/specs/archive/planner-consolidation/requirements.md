@@ -1,5 +1,7 @@
 # Planner Finalization Consolidation - Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Vision
 Simplify the Planner lifecycle by removing the redundant "Plan Next Week" button and merging its "Commit Suggestions" intelligence into the top-level "Close Voting" action. This ensures that closing voting is a definitive "Lock and Commit" event, reducing UI clutter and manual steps for the user.
 

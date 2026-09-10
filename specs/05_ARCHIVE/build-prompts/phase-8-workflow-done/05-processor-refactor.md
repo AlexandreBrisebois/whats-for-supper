@@ -1,5 +1,7 @@
 # Build Prompt 05: Processor Interface & Agent Refactor
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Persona**: Sr. Software Engineer
 **Goal**: Standardize the AI Agents into a unified `IWorkflowProcessor` interface to enable dynamic execution by the worker.
 

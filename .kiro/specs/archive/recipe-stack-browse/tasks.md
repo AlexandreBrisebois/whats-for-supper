@@ -1,5 +1,7 @@
 # Implementation Plan: Recipe Stack Browse
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 This plan implements the Recipe Stack Browse feature, which provides an immersive full-screen card-browsing experience for users to flip through their entire recipe library. The implementation follows a contract-first approach, building from API contracts through backend implementation to frontend components.

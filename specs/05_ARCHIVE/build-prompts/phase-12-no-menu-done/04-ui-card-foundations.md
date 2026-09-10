@@ -1,4 +1,6 @@
 # Build Prompt 04-ui-card-foundations.md
+
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
 **Persona**: Sr. UI Engineer (Next.js, Tailwind, Framer Motion).
 
 ## Strict Scope

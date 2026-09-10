@@ -1,5 +1,7 @@
 # Dreaming Workflow Implementation Tasks
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Build this spec in phases with a fresh agent context for each phase. Each phase should load only this spec, the active phase, and the directly impacted workflow/API files. Do not carry implementation context from one phase into the next except through committed code, updated spec notes, and the phase handoff summary.
 
 ## Phase 1: Engine Scheduling Primitive (Backend)

@@ -1,6 +1,6 @@
 # Data Flow: Recipe Search Index And Recovery
 
-**Related spec:** `.kiro/specs/semantic-recipe-search-v2/`
+**Historical spec:** `.kiro/specs/archive/semantic-recipe-search-v2`
 
 This document defines the data flow for:
 - hybrid recipe search (lexical + vector),

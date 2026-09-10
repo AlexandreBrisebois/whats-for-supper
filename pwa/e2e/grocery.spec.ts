@@ -41,6 +41,16 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     Cheese: 'Dairy & Eggs',
   };
   const categoryOverrides: Record<string, string> = {};
+  const currentGroceryItems = () =>
+    builders.groceryItems(
+      GROCERY_INGREDIENTS,
+      Object.fromEntries(
+        Object.entries(GROCERY_SECTION_MAP).map(([name, section]) => [
+          name,
+          categoryOverrides[name.toLowerCase().replace(/\s+/g, '_')] ?? section,
+        ])
+      )
+    );
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setUTCDate(monday.getUTCDate() + i);
@@ -63,12 +73,6 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     (url) => url.pathname === '/api/schedule',
     async (route) => {
       if (route.request().method() === 'GET') {
-        const persistedSectionMap = Object.fromEntries(
-          Object.entries(GROCERY_SECTION_MAP).map(([name, section]) => [
-            name,
-            categoryOverrides[name.toLowerCase().replace(/\s+/g, '_')] ?? section,
-          ])
-        );
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -78,12 +82,12 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
               locked: false,
               status: 0,
               days,
-              groceryItems: builders.groceryItems(GROCERY_INGREDIENTS, persistedSectionMap),
+              groceryItems: currentGroceryItems(),
             },
           }),
         });
       } else {
-        await route.continue();
+        await route.fallback();
       }
     }
   );
@@ -102,7 +106,9 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     locked: false,
     status: 0,
     days,
-    groceryItems: builders.groceryItems(GROCERY_INGREDIENTS, GROCERY_SECTION_MAP),
+    get groceryItems() {
+      return currentGroceryItems();
+    },
     groceryState: { additionalData: {} },
   } as any);
 
@@ -112,12 +118,52 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
   // Switch to the grocery tab
   await page.getByTestId('grocery-tab').click();
   await expect(page.getByTestId('grocery-checklist')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('Your list is empty')).not.toBeVisible();
+  await expect(page.getByTestId('aisle-section-Meat')).toBeVisible();
 
   return { categoryOverrides };
 }
 
 test.describe('Grocery List — category reclassification', () => {
+  test('failed category PATCH preserves the item and a successful retry survives reconciliation', async ({
+    page,
+  }) => {
+    const { categoryOverrides } = await setupGroceryPage(page);
+    let attempts = 0;
+    await page.route('**/api/ingredients/beef/category', async (route) => {
+      attempts += 1;
+      if (attempts === 1) {
+        await route.fulfill({ status: 500 });
+      } else {
+        await route.fallback();
+      }
+    });
+    const source = page.getByTestId('aisle-section-Meat');
+    await source.getByTestId('reclassify-btn').click();
+    await page.getByTestId('section-option-Produce').click();
+    await expect(source.getByTestId('reclassify-error')).toBeVisible();
+    await expect(source.getByTestId('grocery-item-checkbox')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+    await expect(page.getByTestId('aisle-section-Produce')).toHaveCount(0);
+    expect(categoryOverrides.beef).toBeUndefined();
+    await expect(page.getByTestId('section-option-Produce')).toBeEnabled();
+    await page.getByTestId('section-option-Produce').click();
+    await expect(source).toHaveCount(0);
+    await expect(
+      page.getByTestId('aisle-section-Produce').getByTestId('grocery-item-checkbox')
+    ).toHaveAttribute('aria-checked', 'false');
+    expect(attempts).toBe(2);
+    expect(categoryOverrides.beef).toBe('Produce');
+
+    await page.reload();
+    await page.getByTestId('grocery-tab').click();
+    await expect(
+      page.getByTestId('aisle-section-Produce').getByTestId('grocery-item-checkbox')
+    ).toBeVisible();
+    await expect(source).toHaveCount(0);
+  });
+
   test('successful PATCH moves the item and the next schedule keeps the persisted section', async ({
     page,
   }) => {

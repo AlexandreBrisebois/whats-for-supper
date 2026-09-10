@@ -1,5 +1,7 @@
 # Tasks: Health Service Extraction
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Wave 1: Infrastructure & Persistence
 - [x] Task 1.1: Define `HealthEvent` model and `health_events` table for the outbox pattern.
 - [x] Task 1.2: Define `HealthRecipeProfile` and `HealthWeekSummary` models with corresponding tables.

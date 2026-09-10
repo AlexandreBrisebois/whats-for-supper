@@ -1,5 +1,7 @@
 # Tasks: Recipe Categorization Refactoring
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Wave 1: DB Schema, DTOs & Client Seams
 
 ### [x] 1.1. Backend - Update DTOs & OpenAPI Spec (Red) - [Agent]

@@ -1,5 +1,7 @@
 # Session 7: Onboarding Flow & Identity Selection
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../../README.md).
+
 **Artifact:** `/onboarding` page with family selection, hint system scaffold, routing
 
 **Context needed:** Sessions 1-6 artifacts + Phase 0 spec sections 1.3-1.4

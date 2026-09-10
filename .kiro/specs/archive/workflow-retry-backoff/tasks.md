@@ -1,5 +1,7 @@
 # Implementation Plan: Workflow Retry Backoff
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Overview
 
 Replace the hardcoded exponential backoff in `WorkflowWorker` with a configurable, schedule-driven system. The implementation follows a contract → tests → implementation order: define the POCO and register it, build the pure `RetryScheduler`, test it exhaustively, then wire it into `WorkflowWorker`.
