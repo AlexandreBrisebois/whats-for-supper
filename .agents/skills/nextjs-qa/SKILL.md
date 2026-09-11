@@ -1,70 +1,35 @@
 ---
 name: nextjs-qa
-description: Next.js QA Specialist. Use when tests fail, diagnosing hydration mismatches, debugging UI state, fixing E2E flakiness, or investigating CI/Integrity Gate failures. Do NOT use for building new features.
+description: Diagnose Next.js test failures, hydration/UI state bugs and E2E flakiness. Use for bounded QA and test maintenance, not new feature implementation.
 ---
 
-# Skill: Next.js QA (The Investigator)
+# Next.js QA
 
-You are the Next.js Testing Specialist. Your mission is to diagnose bugs, correct behavior, stabilize E2E tests, and enforce the Integrity Gate. 
+Follow [contract/testing](../../core/contract-testing.md) and the selected scope.
+Diagnose the observed failure before changing approved tests or application behavior.
+A failed test does not by itself distinguish a product defect from stale expectations,
+mock state, missing runtime/service or permissions. Reuse supplied authorization;
+clarify only consequential unknowns, without a mandatory interview or file-count stop.
 
-**Scope:** You *verify and debug*. You do not build features from scratch to spec (that is `nextjs-dev`).
+1. Read the failing test, output and affected DOM/network/state path. Reproduce with
+   `task test:unit` or `task test:e2e -- <spec>` as appropriate; inspect command effects
+   and use isolated resources. Do not retry a harness child already timed out/stopped.
+2. Diagnose locator, data, hydration, contract and environment evidence. Load only the
+   relevant [locator](locators-and-stability.md), [hydration](debugging-hydration.md)
+   or [mocking](mocking-strategy.md) reference. Do not infer a race solely from CI failure.
+3. Derive a regression from approved intent before implementing the smallest fix.
+   Trace affected seams; a mismatch does not authorize rewriting the contract.
+4. Prepare formatting/generation and finish through the shared
+   [execution harness](../../core/execution-harness.md). Record actual results and
+   blocked checks. A static audit never proves live service/database availability.
 
-## Philosophy
+Use testid-first interactions; retain semantic accessibility assertions for role,
+name, state and labeling. Assert optimistic and reconciled store behavior separately.
+Preserve shared schema-compliant builders and network boundary mocks.
 
-**Trust the trace, not your assumptions.** QA is about early detection and correction. If a test fails, you must understand *why* before changing code.
-
-**Surgical Precision (The Scalpel vs. Sledgehammer).** Always seek the smallest possible change that resolves the issue. If a fix requires touching more than 3 files or 50 lines, stop and justify it to the user. Do not refactor while fixing; stay laser-focused on the resolution.
-
-See [debugging-hydration.md](debugging-hydration.md) for dealing with race conditions, [locators-and-stability.md](locators-and-stability.md) for fixing brittle tests, and [mocking-strategy.md](mocking-strategy.md) for understanding the Playwright network boundary.
-
-## Anti-Patterns
-
-*   **Anti-Pattern (Guessing and Checking):** Blindly changing `getByTestId` strings without reading the DOM state in the failure log.
-*   **Anti-Pattern (Ignoring Hydration):** Clicking elements immediately before React has fully attached event listeners, causing flaky timeouts.
-*   **Anti-Pattern (Test Modification to Hide Bugs):** Changing the test assertions to match broken code, rather than fixing the code to match the spec.
-
-## Workflow: The Debugging Loop
-
-When invoked to investigate a failure or bug, follow this strict loop:
-
-### 1. Reproduce & Isolate
-**Context Discipline**: Do not perform broad searches. Targeted file reads only. If you need to expand context (e.g., to see a shared hook), state what you are seeking and why before reading the file.
-
-1.  **Unit Failures**: If a logic test fails, run `task test:unit` to identify the broken utility or component hook.
-2.  **E2E Failures**: Run the specific failing Playwright test locally: `npx playwright test pwa/e2e/path/to/test.spec.ts`.
-3.  If the test passes locally but fails in CI, you are likely dealing with a hydration race condition or a dirty mock state. Run the Integrity Gate locally: `task test:pwa:ci`.
-
-### 2. Diagnose
-1.  Analyze the Playwright error output.
-2.  Is it a locator failure? (See `locators-and-stability.md`).
-3.  Is it a timeout? Check if an API call failed or hydration stalled (See `debugging-hydration.md`).
-4.  Is the Contract wrong? Ensure the mock API (Playwright mocks) matches `specs/openapi.yaml`.
-
-### 3. Correct
-**The Surgical Interview**: Before touching code, build 100% shared understanding with the user. Ask: What changed? Is the test valid? Did we forget the seam?
-
-**Pre-mortem**: Before applying any fix, state what could possibly break (e.g., side effects in related components, shared state) and how you are mitigating it.
-
-1.  Fix the brittle selector, adjust the wait state, or fix the React implementation if the behavior is objectively wrong.
-2.  Ensure you have isolated the root cause.
-
-### 4. Verify
-1.  Re-run the isolated test.
-2.  Run `task test:pwa:ci` to pass the Tier 2 Integrity Gate.
-
-## Test Maintenance & Pruning
-When debugging or fixing E2E tests, actively look for "Zombie Code":
-1.  **Intentional Regressions:** If a behavior is changed by design, update the E2E test to perfectly match the OpenAPI spec before changing the implementation.
-2.  **Death Audit:** Regularly use the `death-audit` skill on the `pwa/e2e/` directory. Delete any test suites or locators for features that no longer exist in the contract.
-3.  **Local Isolation:** Use `npm run mock-api` to ensure you are testing against a clean state before declaring a test flaky.
-
-## Resolution Checklist
-
-```
-[ ] Root cause of the failure was identified (not guessed).
-[ ] Surgical goals met (minimal code changes, no bloat).
-[ ] Pre-mortem completed (identified potential side effects).
-[ ] Interactive elements use stable data-testid locators.
-[ ] Race conditions/hydration errors have been mitigated.
-[ ] Tier 2 Integrity Gate (`task test:pwa:ci`) passes 100%.
-```
+`task agent:audit AREA=<keyword>` optionally discovers PWA unit/E2E and API coverage,
+logic/mock-heavy candidates and selector heuristics. Confirm findings against the
+actual test; semantic accessibility assertions are not brittle interactions. Within
+an authorized test migration, move pure logic to unit tests using shared builders and
+retain E2E seam coverage. Record unrelated findings without refactoring or deleting
+suites. Do not cascade into death-audit or invent a separate mock server command.

@@ -89,7 +89,7 @@ tasks:
   - HM-R07
   - HM-R09
   - HM-R11
-  status: planned
+  status: implemented-unqualified
   effects:
   - task-executor
   - surgical
@@ -115,7 +115,7 @@ tasks:
   - HM-R07
   - HM-R12
   - HM-R13
-  status: planned
+  status: implemented-verification-blocked
   effects:
   - testing/completion policy
   - Taskfile relevant targets

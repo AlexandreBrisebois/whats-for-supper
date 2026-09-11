@@ -232,7 +232,6 @@ def reconcile():
     spec_endpoints = get_spec_endpoints(spec)
     mock_endpoints = get_mock_endpoints(spec)
     real_endpoints = get_real_endpoints()
-    api_reachable = is_api_reachable()
 
     # Core filter: only care about things in SPEC or MOCK, or core /api/ routes
     all_raw_paths = set([e['path'] for e in spec_endpoints + mock_endpoints + real_endpoints])
@@ -249,7 +248,7 @@ def reconcile():
     
     all_paths = sorted(list(set(filtered_paths)))
     
-    print(f"{'METHOD':<8} {'ENDPOINT':<45} | {'SPEC':<6} | {'MOCK':<6} | {'REAL':<6}")
+    print(f"{'METHOD':<8} {'ENDPOINT':<45} | {'SPEC':<6} | {'MOCK':<6} | {'SOURCE':<6}")
     print("-" * 85)
 
     issues = 0
@@ -268,12 +267,12 @@ def reconcile():
             status_real = "✅" if in_real else "❌"
             
             # If it's in SPEC, it MUST be in MOCK.
-            # It MUST also be in REAL — but only when the API is reachable.
+            # Controller source coverage is static and independent of service availability.
             # If it's in MOCK, it SHOULD be in SPEC.
             is_issue = False
             if in_spec and not in_mock:
                 is_issue = True
-            elif in_spec and not in_real and api_reachable:
+            elif in_spec and not in_real:
                 is_issue = True
             elif in_mock and not in_spec:
                 is_issue = True
@@ -286,7 +285,7 @@ def reconcile():
 
     print("-" * 85)
     if issues == 0:
-        print("🎉 Perfect Parity for core endpoints!")
+        print("passed: static core route/mock coverage only; live API/database not checked.")
     else:
         print(f"⚠️ Found {issues} reconciliation issues that need attention.")
         sys.exit(1)

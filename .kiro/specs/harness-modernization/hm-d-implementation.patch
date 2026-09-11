@@ -1,0 +1,1574 @@
+--- a/.agents/agent-toolbox.md
++++ b/.agents/agent-toolbox.md
+@@ -8,7 +8,7 @@
+ | :--- | :--- | :--- |
+ | `api_tools.py` | Multi-purpose tool for API Discovery and Parity Reconciliation. | `task agent:api` or `task agent:reconcile` |
+ | `slice.py` | Vertical Slice Viewer for full-stack route context. | `task agent:slice -- /api/route` |
+-| `drift.py` | Schema Drift Fuzzer (Contract vs. Backend DTOs). | `task agent:drift` |
++| `drift.py` | Live endpoint comparison and static DTO property/requiredness checks. | `task agent:drift` |
+ | `test_ops.py` | Explainable, cache-aware impact runner with untracked-file coverage. | `task agent:test:impact` |
+ | `kiota_client.py` | Runtime-safe Kiota generation and drift checking with a one-shot timeout. | `task gen:client` or `task gen:client:check` |
+ | `run-e2e-ci.sh` | Runs full E2E suite in a stable environment. | `task test:e2e:ci` |
+@@ -22,7 +22,7 @@
+ - **Problem Solved**: Reading large C# controllers to find routes is token-expensive and error-prone.
+ - **Modes**:
+     - `--discovery`: Maps C# Controller endpoints to a markdown table (use via `task agent:api`).
+-    - `(default)`: Checks parity between Spec, Mock, and Real API (use via `task agent:reconcile`).
++    - `(default)`: Checks static route coverage between spec, mock handlers and controller source (use via `task agent:reconcile`).
+ 
+ ### slice.py
+ - **Source**: [scripts/agent/slice.py](file:///Users/alex/Code/whats-for-supper/scripts/agent/slice.py)
+@@ -73,7 +73,7 @@
+ - **Modes**:
+     - `--impact`: Explains and runs tests affected by tracked and untracked changes.
+     - `--all`: Runs every E2E test explicitly.
+-- **Cache**: Successful local impact runs are reused only when changed-file contents, selected tests, and test configuration produce the same digest. Set `WFS_DISABLE_TEST_CACHE=1` to force a run. CI never reuses this cache.
++- **Cache**: Successful local impact runs require identical source/configuration/runtime inputs before and after testing; mutation discards success. Unmapped impact runs all E2E. Set `WFS_DISABLE_TEST_CACHE=1` to force a run. CI never reuses this cache.
+ 
+ ### kiota_client.py
+ - **Problem Solved**: Hidden overwrite prompts and incompatible runtime roll-forward made Kiota appear to hang.
+@@ -82,3 +82,15 @@
+ ### run-e2e-ci.sh
+ - **Source**: [scripts/run-e2e-ci.sh](file:///Users/alex/Code/whats-for-supper/scripts/run-e2e-ci.sh)
+ - **Problem Solved**: Environment drift during E2E runs.
++
++### Completion and advisory audit
++
++`task agent:prepare` prepares applicable generation/formatting; `task agent:finish`
++selects change-class checks and records immutable evidence. See
++[execution harness](core/execution-harness.md) for effects and blocked checks.
++
++`task agent:audit AREA=<keyword>` retains `scripts/agent/test_audit.py` through
++`test:audit`. It discovers PWA unit/E2E and API tests by filename/content and reports
++logic-heavy, mock-heavy and selector heuristics. Findings are advisory; preserve
++semantic accessibility assertions and do not expand the selected task into cleanup.
++Static navigation/parity does not prove live services or database behavior.
+--- a/.agents/core/contract-testing.md
++++ b/.agents/core/contract-testing.md
+@@ -14,7 +14,7 @@
+ ## 3. Drift prevention
+ - **Zero Drift**: Backend DTOs and PWA models must match the OpenAPI spec exactly.
+ - **Schema Integrity**: Parity between the OpenAPI Specification, Mock API, and Backend implementation is mandatory.
+-- **Validation**: Schema integrity and anti-drift validation must occur before merging or completing any task.
++- **Validation**: Run applicable checks selected by change class under [execution harness](execution-harness.md). Contract changes require affected seam and database behavior evidence; static checks alone cannot establish it.
+ 
+ ## 4. Data and mock discipline
+ - **Mock Standardization**: E2E mocks MUST use `MOCK_IDS` (valid GUIDs) and schema-compliant `builders`.
+@@ -53,5 +53,21 @@
+ - **Atomic Sync**: Controller changes (signatures, status codes) are synchronized with the OpenAPI spec and client regeneration in a single atomic step.
+ - Tests are written or updated before implementation code.
+ - **Multi-Layer Verification**: For contract-impacting changes, unit tests have been executed and passed on BOTH sides of the seam (e.g., `dotnet test` for the API AND `npm run test:unit` for the PWA).
+-- Validation and anti-drift checks (`task agent:drift`) have been executed and passed, confirming zero schema drift between the OpenAPI spec, Backend DTOs, Mock API, and PWA models.
++- Applicable validation has actual command/results and tested content/config/runtime identity. Static route, DTO and mock-pattern checks establish only their inspected properties; live endpoint and database behavior evidence are separate.
+ - All logic changes are fully covered by passing tests.
++
++## 7. Evidence and test scope
++
++Classify each required check as passed, failed, blocked, not-run or not-applicable.
++A failure calls for diagnosis: application defects, stale tests, infrastructure and
++permissions are distinct possibilities. Logs and tests do not authorize changing
++approved intent. Unknown impact takes conservative checks; mixed changes take the
++union. Missing services, interrupted checks and unqualified runners cannot become
++passed evidence. Cache success belongs only to the actual tested identity.
++
++Use testid-first interaction locators and semantic assertions for accessible role,
++name, state and labeling. Preserve network isolation and schema-compliant builders.
++For optimistic stores, assert both immediate UI state and reconciled server state.
++Pure logic may move to unit tests within authorized scope, retaining E2E coverage of
++navigation, network/state integration and user-visible behavior. Audits are advisory;
++findings outside the selected task are evidence, not cleanup authorization.
+--- a/.agents/core/execution-harness.md
++++ b/.agents/core/execution-harness.md
+@@ -1,52 +1,76 @@
+-# Execution Harness
++# Execution harness
+ 
+-## 1. Execution principle
+-Do not reinvent established workflows. If a task can be accomplished using an existing project command, use that command instead of creating ad-hoc shell scripts or running bare terminal commands. Operations must remain predictable, trackable, and aligned with the repository's native automation.
++Use Taskfile.yml as the command interface; inspect the selected targets and their
++scripts before execution. Commands do not grant authority to reset data, kill shared
++processes, stage files or extend the selected task. A worktree alone does not isolate
++processes, ports or databases.
+ 
+-## 2. Preferred execution surface
+-The primary interface for all automation, building, testing, and agentic workflows is the `Taskfile.yml`. Before attempting any operation, verify if a relevant `task` command already exists. Relying on the Taskfile ensures consistency, leverages pre-configured environment variables, and minimizes destructive side effects.
++## Completion and preparation
+ 
+-## 3. Key agent commands
+-Use the following canonical commands to perform regular operational duties safely:
++`task agent:finish` is the single applicable implementation completion entrypoint.
++It selects checks from tracked, staged and untracked paths; mixed classes take their
++union and unknown paths select the conservative union. No-change/review-only work
++records findings without implying tested implementation. Task-specific acceptance
++and isolated model/host qualification remain separate obligations in the task evidence.
+ 
+-- **`task agent:reconcile`**: Run this to reconcile the OpenAPI Specification, Mock API, and Backend implementation. Use it when creating or updating API contracts.
+-- **`task agent:drift`**: Run this to check for schema drift across endpoints, backend DTOs, and frontend mocks. Use it to ensure absolute contract integrity before finalizing a feature.
+-- **`task agent:slice -- <route>`**: Run this to view a vertical slice of a specific route (Contract ↔ Backend ↔ Client). Use it during planning or debugging to understand the full data flow of a feature.
+-- **`task gate`**: Run this for a high-speed developer loop (lint + typecheck + impacted tests). It automatically clears lingering processes via `dev:kill` and `test:kill`.
+-- **`task dev:kill`**: Run this manually if you encounter "port already in use" errors or strange flakiness.
+-- **`task test:kill`**: Run this manually to clear zombie Playwright workers.
+-- **`task agent:test:impact`**: Run this to execute only the tests affected by your recent git changes.
+-- **`task agent:finish`**: Run this once for final completion. It owns impact → drift → review ordering and safely reuses an unchanged successful impact result.
+-- **`task agent:audit AREA=<keyword>`**: Run this to identify tests, analyze migration candidates, and detect brittle selectors for a specific feature area.
+-- **`task review`**: Run this for a full pre-commit review. Like `gate`, it clears lingerng processes before starting.
+-- **Timeout handling**: A harness child that reports a timeout has already been stopped. Do not retry it automatically. Use its diagnostic to correct permissions/runtime or ask for one focused user action.
++| Change class | Applicable checks |
++|---|---|
++| Documentation | Changed links, Python syntax where present, diff whitespace; review instruction meaning |
++| Harness | Documentation checks and `task test:agent`; selected loading/fixture checks remain explicit task evidence |
++| Application | Documentation, lint/types, unit/API/impact tests and static contract/client checks |
++| Contract/schema | Application checks plus live endpoint parity and task-specific real database behavior |
++| Unknown | Union of all classes; never silently reduce verification |
+ 
+-## 4. Agent Toolbox
+-Each `task` command in Section 3 is backed by a script in `scripts/agent/`. Before debugging a failure or extending a workflow, consult the toolbox to understand what each script does, what problem it solves, and what modes it supports.
++Before final verification, run `task agent:prepare` after inspecting its effects.
++It generates the client for contract changes, then formats application code. Unknown
++preparation blocks before writes until paths/effects are classified; unknown final
++verification still selects the full union.
++Documentation/harness preparation requires no application generation or formatting;
++fix relevant syntax/whitespace before final checks. Review the resulting diff and
++preserve unrelated work. `gen:client:sync` also stages files and is not preparation.
+ 
+-→ See [.agents/agent-toolbox.md](../agent-toolbox.md)
++Finish performs no formatting/generation in the source tree. Agent Python commands
++use `-B` to avoid adding/updating bytecode during verification. Kiota check generates
++and formats only in its temporary output directory. `review` remains a reusable
++application validation target, with no formatter or process-kill step; it does not
++include E2E and is not a second completion workflow. `gate` is the developer loop
++and still kills processes: inspect its effects and use dedicated resources.
+ 
+-## 5. Safe operating rules
++Finish captures content/config/runtime identity before verification and checks it
++after every check. Mutation fails content evidence and leaves remaining checks
++not-run. Its JSON record is `.task/agent-finish/last-run.json`; later edits invalidate
++that identity and require new applicable verification. Record evidence-file updates
++as later documentation content rather than attaching old success to a new digest.
+ 
+-- **Strict Isolation**: All E2E tests are isolated via global API mocking. Any unhandled API call will fail the test. Never use `route.continue()` in mocks.
+-- **Never bypass the Taskfile**: If a `task` exists for linting, formatting, or testing, never run the underlying tool directly unless debugging a specific failure that requires isolated execution.
+-- For context and scope rules, follow [context loading](context-loading.md).
+-- **Destructive Actions**: Never modify schema or core logic without first verifying the impact using `task gate` or `task agent:drift`.
++`agent:test:impact` includes tracked/untracked changes and falls back to all E2E for
++unknown/unmapped application paths. Cache identity covers all tracked/untracked source,
++configuration, installed dependencies/browser bytes, tool executables and hashed
++runtime/environment inputs. Success is stored only under the pre-test identity when
++post-test identity agrees. CI and `WFS_DISABLE_TEST_CACHE=1` disable reuse, not mutation
++detection. Reuse additionally requires `WFS_ISOLATED_RUNNER=1` and no external
++`BASE_URL`. The cache cannot prove external live-service state; E2E must use the
++repository's mocked API boundary.
+ 
+-## 6. Pre-Implementation Audit
+-Before starting a new feature or refactoring:
+-1. Run `task agent:audit AREA=<feature>` to identify the relevant test surface.
+-2. Address any flagged brittle selectors (`data-testid` migration) in the existing tests first to establish a stable green baseline.
+-3. Review migration candidates — if a logic-heavy E2E test is flagged, prioritize moving that logic to a Vitest unit test.
++## Effects, blockers and supporting commands
+ 
+-## 7. Completion workflow
+-Before concluding any implementation phase:
+-1. Use `task gate` during implementation when broad validation is warranted.
+-2. Run `task agent:finish` exactly once on the final worktree state.
+-3. Run a final `task agent:audit` when the task changes E2E selectors.
+-4. Do not declare work complete until the applicable validation steps succeed.
++- `task agent:reconcile` and `agent:drift:routes` inspect source route coverage;
++  `agent:drift:schemas` checks DTO property/requiredness patterns;
++  `agent:drift:mocks` audits ID/GUID patterns. None proves live API/database behavior.
++- `task agent:drift:endpoints` probes the generated live API specification once.
++  Unavailable service is blocked (script exit 2), not zero mismatches.
++- Finish requires dedicated processes/ports/data for E2E/API tests. Set
++  `WFS_ISOLATED_RUNNER=1` only after establishing them; this is an operator assertion,
++  not host/model qualification. Missing task-specific real database evidence remains
++  explicitly blocked and must be recorded with its actual command and tested identity.
++- A timed-out/interrupted finish child group is stopped and reaped without retry.
++  Kiota retains its compatible runtime, clean-output and one-shot timeout behavior.
++  Correct the cause before a new authorized attempt; monitor a running command only.
++- `task agent:audit AREA=<keyword>` (backed by `test:audit`) is optional, advisory and
++  bounded to affected coverage. Heuristics never require unrelated cleanup or deletion.
++- `task agent:slice -- <route>` and `task agent:api` support static navigation.
++  `task agent:status` remains the explicit HANDOVER reader under context-loading policy.
+ 
+-## 8. Session context
+-
+-Session-state loading is owned by [context loading](context-loading.md).
+-`task agent:status` remains the explicit command for reading HANDOVER.md.
++Inspect `.task/agent-finish/last-run.json` and report passed, failed, blocked, not-run
++and not-applicable separately. A passing static check cannot cancel a blocked live
++check. Finish records automated checks only; do not claim completion while selected
++acceptance, fixture or loading evidence is missing.
+--- a/.agents/skills/README.md
++++ b/.agents/skills/README.md
+@@ -11,12 +11,10 @@
+ | `nextjs-qa` | [nextjs-qa/SKILL.md](nextjs-qa/SKILL.md) | Writing or fixing Playwright E2E tests | Unit/integration tests only |
+ | `openapi-expert` | [openapi-expert/SKILL.md](openapi-expert/SKILL.md) | Editing `specs/openapi.yaml` or regenerating the Kiota client | No spec changes in scope |
+ | `session-review` | [session-review/SKILL.md](session-review/SKILL.md) | End of a session — updating HANDOVER.md and memorialising decisions | Mid-session implementation work |
+-| `testing` | [testing/SKILL.md](testing/SKILL.md) | Setting up or restructuring the test strategy or QA pipeline | Adding tests within an already-established pattern |
+ | `workflow-author` | [workflow-author/SKILL.md](workflow-author/SKILL.md) | Creating a new YAML workflow wired into the WorkflowOrchestrator | Editing existing workflow logic only |
+ | `designer` | [designer/SKILL.md](designer/SKILL.md) | Making UI/UX or visual design decisions (Solar Earth aesthetic) | Non-visual backend or infra work |
+ | `aws-well-architected` | [aws-architect/SKILL.md](aws-architect/SKILL.md) | Designing AWS infrastructure, choosing services, landing zone setup, cost decisions, or GitHub Actions CI/CD targeting AWS | No AWS infrastructure in scope |
+ | `create-a-skill` | [create-a-skill/SKILL.md](create-a-skill/SKILL.md) | Explicit repository skill authoring | Ordinary feature planning |
+-| `test-audit` | [test-audit/SKILL.md](test-audit/SKILL.md) | Inspecting test maintenance needs | No test audit in scope |
+ 
+ Specification planning and review use the [shared workflow](../core/specification-workflow.md),
+ with the [execution-packet template](../templates/execution-packet.md) for bounded handoffs.
+--- a/.agents/skills/nextjs-qa/SKILL.md
++++ b/.agents/skills/nextjs-qa/SKILL.md
+@@ -1,70 +1,35 @@
+ ---
+ name: nextjs-qa
+-description: Next.js QA Specialist. Use when tests fail, diagnosing hydration mismatches, debugging UI state, fixing E2E flakiness, or investigating CI/Integrity Gate failures. Do NOT use for building new features.
++description: Diagnose Next.js test failures, hydration/UI state bugs and E2E flakiness. Use for bounded QA and test maintenance, not new feature implementation.
+ ---
+ 
+-# Skill: Next.js QA (The Investigator)
++# Next.js QA
+ 
+-You are the Next.js Testing Specialist. Your mission is to diagnose bugs, correct behavior, stabilize E2E tests, and enforce the Integrity Gate. 
++Follow [contract/testing](../../core/contract-testing.md) and the selected scope.
++Diagnose the observed failure before changing approved tests or application behavior.
++A failed test does not by itself distinguish a product defect from stale expectations,
++mock state, missing runtime/service or permissions. Reuse supplied authorization;
++clarify only consequential unknowns, without a mandatory interview or file-count stop.
+ 
+-**Scope:** You *verify and debug*. You do not build features from scratch to spec (that is `nextjs-dev`).
++1. Read the failing test, output and affected DOM/network/state path. Reproduce with
++   `task test:unit` or `task test:e2e -- <spec>` as appropriate; inspect command effects
++   and use isolated resources. Do not retry a harness child already timed out/stopped.
++2. Diagnose locator, data, hydration, contract and environment evidence. Load only the
++   relevant [locator](locators-and-stability.md), [hydration](debugging-hydration.md)
++   or [mocking](mocking-strategy.md) reference. Do not infer a race solely from CI failure.
++3. Derive a regression from approved intent before implementing the smallest fix.
++   Trace affected seams; a mismatch does not authorize rewriting the contract.
++4. Prepare formatting/generation and finish through the shared
++   [execution harness](../../core/execution-harness.md). Record actual results and
++   blocked checks. A static audit never proves live service/database availability.
+ 
+-## Philosophy
++Use testid-first interactions; retain semantic accessibility assertions for role,
++name, state and labeling. Assert optimistic and reconciled store behavior separately.
++Preserve shared schema-compliant builders and network boundary mocks.
+ 
+-**Trust the trace, not your assumptions.** QA is about early detection and correction. If a test fails, you must understand *why* before changing code.
+-
+-**Surgical Precision (The Scalpel vs. Sledgehammer).** Always seek the smallest possible change that resolves the issue. If a fix requires touching more than 3 files or 50 lines, stop and justify it to the user. Do not refactor while fixing; stay laser-focused on the resolution.
+-
+-See [debugging-hydration.md](debugging-hydration.md) for dealing with race conditions, [locators-and-stability.md](locators-and-stability.md) for fixing brittle tests, and [mocking-strategy.md](mocking-strategy.md) for understanding the Playwright network boundary.
+-
+-## Anti-Patterns
+-
+-*   **Anti-Pattern (Guessing and Checking):** Blindly changing `getByTestId` strings without reading the DOM state in the failure log.
+-*   **Anti-Pattern (Ignoring Hydration):** Clicking elements immediately before React has fully attached event listeners, causing flaky timeouts.
+-*   **Anti-Pattern (Test Modification to Hide Bugs):** Changing the test assertions to match broken code, rather than fixing the code to match the spec.
+-
+-## Workflow: The Debugging Loop
+-
+-When invoked to investigate a failure or bug, follow this strict loop:
+-
+-### 1. Reproduce & Isolate
+-**Context Discipline**: Do not perform broad searches. Targeted file reads only. If you need to expand context (e.g., to see a shared hook), state what you are seeking and why before reading the file.
+-
+-1.  **Unit Failures**: If a logic test fails, run `task test:unit` to identify the broken utility or component hook.
+-2.  **E2E Failures**: Run the specific failing Playwright test locally: `npx playwright test pwa/e2e/path/to/test.spec.ts`.
+-3.  If the test passes locally but fails in CI, you are likely dealing with a hydration race condition or a dirty mock state. Run the Integrity Gate locally: `task test:pwa:ci`.
+-
+-### 2. Diagnose
+-1.  Analyze the Playwright error output.
+-2.  Is it a locator failure? (See `locators-and-stability.md`).
+-3.  Is it a timeout? Check if an API call failed or hydration stalled (See `debugging-hydration.md`).
+-4.  Is the Contract wrong? Ensure the mock API (Playwright mocks) matches `specs/openapi.yaml`.
+-
+-### 3. Correct
+-**The Surgical Interview**: Before touching code, build 100% shared understanding with the user. Ask: What changed? Is the test valid? Did we forget the seam?
+-
+-**Pre-mortem**: Before applying any fix, state what could possibly break (e.g., side effects in related components, shared state) and how you are mitigating it.
+-
+-1.  Fix the brittle selector, adjust the wait state, or fix the React implementation if the behavior is objectively wrong.
+-2.  Ensure you have isolated the root cause.
+-
+-### 4. Verify
+-1.  Re-run the isolated test.
+-2.  Run `task test:pwa:ci` to pass the Tier 2 Integrity Gate.
+-
+-## Test Maintenance & Pruning
+-When debugging or fixing E2E tests, actively look for "Zombie Code":
+-1.  **Intentional Regressions:** If a behavior is changed by design, update the E2E test to perfectly match the OpenAPI spec before changing the implementation.
+-2.  **Death Audit:** Regularly use the `death-audit` skill on the `pwa/e2e/` directory. Delete any test suites or locators for features that no longer exist in the contract.
+-3.  **Local Isolation:** Use `npm run mock-api` to ensure you are testing against a clean state before declaring a test flaky.
+-
+-## Resolution Checklist
+-
+-```
+-[ ] Root cause of the failure was identified (not guessed).
+-[ ] Surgical goals met (minimal code changes, no bloat).
+-[ ] Pre-mortem completed (identified potential side effects).
+-[ ] Interactive elements use stable data-testid locators.
+-[ ] Race conditions/hydration errors have been mitigated.
+-[ ] Tier 2 Integrity Gate (`task test:pwa:ci`) passes 100%.
+-```
++`task agent:audit AREA=<keyword>` optionally discovers PWA unit/E2E and API coverage,
++logic/mock-heavy candidates and selector heuristics. Confirm findings against the
++actual test; semantic accessibility assertions are not brittle interactions. Within
++an authorized test migration, move pure logic to unit tests using shared builders and
++retain E2E seam coverage. Record unrelated findings without refactoring or deleting
++suites. Do not cascade into death-audit or invent a separate mock server command.
+--- a/.agents/skills/nextjs-qa/debugging-hydration.md
++++ b/.agents/skills/nextjs-qa/debugging-hydration.md
+@@ -1,6 +1,6 @@
+ # Diagnosing Next.js Hydration Errors
+ 
+-Hydration mismatches and state sync errors are the most common cause of flaky UI tests in a Next.js application.
++Hydration and state synchronization are possible causes; inspect the failing trace and network evidence.
+ 
+ ## What is a Hydration Error?
+ A hydration error occurs when the initial HTML rendered by the Next.js server does not match the React virtual DOM rendered on the client on the first pass.
+@@ -10,9 +10,9 @@
+ *   **Result:** The click does nothing, the test times out waiting for the next screen, and the run fails.
+ 
+ ## How to Diagnose & Fix
+-1.  **Check for Visibility/Interactivity First:** Always ensure the element is not just attached to the DOM, but fully ready.
++1.  **Check for Visibility/Interactivity First:** Visibility is necessary but does not prove React handlers are attached. Use an application readiness signal where required.
+     ```typescript
+-    // ✅ RIGHT
++    // Visibility check; add the application readiness condition when needed
+     const button = page.getByTestId('submit-btn');
+     await expect(button).toBeVisible();
+     await button.click();
+--- a/.agents/skills/nextjs-qa/locators-and-stability.md
++++ b/.agents/skills/nextjs-qa/locators-and-stability.md
+@@ -1,6 +1,6 @@
+ # Locators and E2E Test Stability
+ 
+-Resilient Playwright tests depend entirely on zero-brittle locators. When diagnosing a test failure, bad locators are the number one culprit.
++Use stable interaction locators and inspect DOM, data and state evidence when diagnosing failures.
+ 
+ ## The Locator Hierarchy
+ 1.  **MANDATORY:** `page.getByTestId('...')` - Use this for almost everything interactive.
+--- a/.agents/skills/nextjs-qa/mocking-strategy.md
++++ b/.agents/skills/nextjs-qa/mocking-strategy.md
+@@ -1,6 +1,6 @@
+ # Frontend Mocking Strategy
+ 
+-The Playwright `mock-api` script is the definitive system boundary for frontend End-to-End tests.
++Playwright route handlers in `pwa/e2e/mock-api.ts` and the global interceptor in `fixtures.ts` define the frontend E2E network boundary. They are not a standalone mock server.
+ 
+ ## Mock at System Boundaries Only
+ When testing Next.js components and workflows:
+@@ -11,3 +11,5 @@
+ Because the frontend uses Kiota-generated SDK clients, the mock data must be structurally perfect. If the mock data is slightly off from the OpenAPI spec, the generated SDK client will fail to parse it, causing a test failure.
+ 
+ When diagnosing "Element Not Found" or "Timeout" errors in E2E tests, always verify that the mocked API response isn't causing a silent parsing failure in the frontend data layer.
++
++Use `MOCK_IDS` and schema-compliant builders. Preserve method-sensitive route dispatch, stateful writes and route precedence; never allow unhandled API calls through `route.continue()`. Mocked E2E success is not live API/database evidence.
+--- a/.agents/skills/test-audit/SKILL.md
++++ b/.agents/skills/test-audit/SKILL.md
+@@ -1,60 +0,0 @@
+----
+-name: test-audit
+-description: Audit E2E and Unit tests to identify maintenance needs before starting new work. Use when starting a new feature, fixing a bug, or when E2E tests are slow/brittle.
+----
+-
+-# Test Audit
+-
+-## Quick Start
+-
+-1. **Identify Area**: List the files or features you are about to change.
+-2. **Run Audit**: Use `task agent:audit AREA=<area>` to find related tests and heuristics.
+-3. **Analyze**: Categorize tests into "Must Update", "Migration Candidates" (⚠️), and "Brittle Selectors" (❌).
+-
+-## Workflows
+-
+-### 1. Pre-Implementation Audit
+-Before touching a line of code:
+-- [ ] **Find Coverage**: Locate all Unit tests (`*.test.ts*`) and E2E specs (`*.spec.ts`) that exercise the target logic.
+-- [ ] **Establish Baseline**: Run tests using `task agent:test:impact` to verify the current state is green.
+-- [ ] **Harden Selectors**: If the audit finds ❌ brittle selectors, replace them with `data-testid` in the source and the test.
+-- [ ] **Contract Check**: Run `task agent:drift` to ensure the current state respects the OpenAPI law.
+-
+-### 2. E2E-to-Unit Migration Audit
+-Keep E2E tests lean and fast:
+-- [ ] **Identify Logic-Heavy E2E**: Find ⚠️ tests with high assertion counts but low DOM interaction.
+-- [ ] **Establish Shared Fixtures**: Ensure both the Unit test and the E2E mock use builders from `pwa/src/testing/builders.ts` to prevent "Shadow Drift."
+-- [ ] **Port & Prune**: Move business logic to Vitest, then prune those assertions from the E2E suite.
+-- [ ] **Preserve the Seam**: Retain a "Happy Path" E2E test for every vertical slice to verify UI <-> API integration (SSE, navigation, data loading).
+-
+-## Audit Criteria
+-
+-| Priority | Type | Condition | Action |
+-| :--- | :--- | :--- | :--- |
+-| **CRITICAL** | Failure | Test is already failing. | Fix BEFORE new work. |
+-| **HIGH** | Impacted | Test covers code being modified. | Update to match new spec. |
+-| **MEDIUM** | Migration | E2E test covers pure component logic. | Move to Unit Test after implementation. |
+-| **LOW** | Cleanup | Redundant test covering same path. | Remove. |
+-
+-## Migration Priority (E2E -> Unit)
+-
+-Move tests to Vitest/Unit when:
+-1. **Logic-Heavy (⚠️)**: The test asserts on complex data structures or state.
+-2. **Brittle (❌)**: The test uses non-standard locators (h2, span, classes) or fails due to timing.
+-3. **Redundant**: The UI state is already covered by component tests.
+-
+-## Tools
+-
+-- `task agent:audit AREA=<keyword>`: Generate report with ⚠️ and ❌ heuristics.
+-- `task agent:test:impact`: Run only the tests affected by current changes.
+-- `task test:unit`: Run unit tests.
+-- `task agent:drift`: Check contract alignment.
+-
+-## Example Report
+-
+-```markdown
+-# Test Audit Report: grocery
+-## PWA E2E Tests (Playwright)
+-- [ ] `pwa/e2e/grocery.spec.ts` ⚠️ Logic-Heavy: Good candidate for Unit Test. ❌ 1 brittle selector(s) found (e.g., `span`).
+-```
+-In this case, you should first harden the `span` selector, verify the E2E is green, implement changes, and then migrate the sorting logic to a Vitest test using shared builders.
+--- a/.agents/skills/test-audit/scripts/audit.py
++++ b/.agents/skills/test-audit/scripts/audit.py
+@@ -1,112 +0,0 @@
+-import os
+-import sys
+-import re
+-
+-def find_tests(root, area=None):
+-    unit_tests = []
+-    e2e_tests = []
+-    api_tests = []
+-    
+-    # PWA Unit tests
+-    pwa_src = os.path.join(root, "pwa/src")
+-    if os.path.exists(pwa_src):
+-        for dirpath, _, filenames in os.walk(pwa_src):
+-            for f in filenames:
+-                if f.endswith(".test.ts") or f.endswith(".test.tsx"):
+-                    path = os.path.join(dirpath, f)
+-                    if is_relevant(path, area):
+-                        unit_tests.append(path)
+-                    
+-    # PWA E2E tests
+-    pwa_e2e = os.path.join(root, "pwa/e2e")
+-    if os.path.exists(pwa_e2e):
+-        for dirpath, _, filenames in os.walk(pwa_e2e):
+-            for f in filenames:
+-                if f.endswith(".spec.ts"):
+-                    path = os.path.join(dirpath, f)
+-                    if is_relevant(path, area):
+-                        e2e_tests.append(path)
+-
+-    # API Tests
+-    api_tests_dir = os.path.join(root, "api/src/RecipeApi.Tests")
+-    if os.path.exists(api_tests_dir):
+-        for dirpath, _, filenames in os.walk(api_tests_dir):
+-            for f in filenames:
+-                if f.endswith("Tests.cs"):
+-                    path = os.path.join(dirpath, f)
+-                    if is_relevant(path, area):
+-                        api_tests.append(path)
+-                    
+-    return unit_tests, e2e_tests, api_tests
+-
+-def is_relevant(path, area):
+-    if not area:
+-        return True
+-    
+-    # Check filename
+-    if area.lower() in os.path.basename(path).lower():
+-        return True
+-        
+-    # Check content
+-    try:
+-        with open(path, 'r', errors='ignore') as f:
+-            content = f.read().lower()
+-            return area.lower() in content
+-    except:
+-        return False
+-
+-def analyze_e2e(path):
+-    try:
+-        with open(path, 'r', errors='ignore') as f:
+-            content = f.read()
+-            
+-        # Heuristics for migration candidates
+-        mock_usage = content.count("mockApi") + content.count("mock-api")
+-        assertions = content.count("expect(")
+-        dom_interactions = content.count("page.click") + content.count("page.fill") + content.count("page.locator")
+-        
+-        # If assertions are high but DOM interactions are low, it's likely a logic test
+-        if assertions > 5 and dom_interactions < 3:
+-            return "⚠️ Logic-Heavy: Good candidate for Unit Test."
+-        if mock_usage > 10:
+-            return "🔍 Mock-Heavy: Consider moving to integration/unit test."
+-            
+-        return ""
+-    except:
+-        return ""
+-
+-def main():
+-    root = os.getcwd()
+-    area = sys.argv[1] if len(sys.argv) > 1 else None
+-    
+-    unit, e2e, api = find_tests(root, area)
+-    
+-    print(f"# Test Audit Report: {area if area else 'Global'}")
+-    print("\n## Summary")
+-    print(f"- **PWA Unit**: {len(unit)}")
+-    print(f"- **PWA E2E**: {len(e2e)}")
+-    print(f"- **API Tests**: {len(api)}")
+-
+-    if api:
+-        print("\n## API Tests (.NET)")
+-        for t in api:
+-            print(f"- [ ] `{os.path.relpath(t, root)}`")
+-
+-    if unit:
+-        print("\n## PWA Unit Tests (Vitest)")
+-        for t in unit:
+-            print(f"- [ ] `{os.path.relpath(t, root)}`")
+-        
+-    if e2e:
+-        print("\n## PWA E2E Tests (Playwright)")
+-        for t in e2e:
+-            analysis = analyze_e2e(t)
+-            print(f"- [ ] `{os.path.relpath(t, root)}` {analysis}")
+-
+-    print("\n## Instructions")
+-    print("1. Run the checked tests using `task test:unit` or `task test:e2e`.")
+-    print("2. Ensure they are green before starting work.")
+-    print("3. For ⚠️ candidates, create a task to migrate logic to Vitest after implementation.")
+-
+-if __name__ == "__main__":
+-    main()
+--- a/.agents/skills/testing/SKILL.md
++++ b/.agents/skills/testing/SKILL.md
+@@ -1,45 +0,0 @@
+----
+-name: testing
+-description: Procedural guidance for End-to-End (E2E) testing, Contract-First verification, and Quality Assurance (QA).
+----
+-
+-# Skill: Universal Testing & Quality Assurance
+-
+-This skill provides the operational logic for ensuring system integrity, contract parity, and zero-regression development.
+-
+-## 1. The Quality Assurance Mission
+-**Objective**: Maintain a 100% pass rate for all tests and zero drift between the Application Programming Interface (API) specification and the implementation.
+-- **Principle**: Tests are the documentation of behavior. If a test fails, the feature is broken.
+-- **Constraint**: No feature is complete until it passes the "Integrity Gate" (`scripts/run-e2e-ci.sh`).
+-
+-## 2. Test-Driven Development (TDD) Workflow
+-You must follow this sequence for every change:
+-
+-1.  **Specification Phase**: Update the [specs/openapi.yaml](specs/openapi.yaml) to reflect model or endpoint changes.
+-2.  **Test Definition Phase**:
+-    *   **Frontend**: Write End-to-End (E2E) tests in `pwa/e2e/`. Use [Next.js Testing Detail](SKILL_NEXTJS_TESTING.md) for locator rules.
+-    *   **Backend**: Write xUnit unit or integration tests in the `api/` project.
+-3.  **Contract Mocking Phase**: Ensure the [specs/openapi.yaml](specs/openapi.yaml) contains rich examples. E2E tests use `page.route()` intercepts — fixture data in `pwa/e2e/` must stay in sync with OpenAPI examples.
+-4.  **Implementation Phase**: Write the minimum code required to make the tests pass.
+-5.  **Verification Phase**: Run the reconciliation task to ensure parity across Spec, Mock, and Code.
+-
+-## 3. Testing Tiers & Commands
+-Execute these commands from the project root using `task`.
+-
+-| Tier | Purpose | Command |
+-| :--- | :--- | :--- |
+-| **High-Speed Loop** | Fast validation (impacted tests only) during build. | `task gate` |
+-| **Frontend Dev Loop** | Comprehensive validation (all tests) before commit. | `task review` |
+-| **Backend Verification** | Runs all .NET unit and integration tests. | `task test:api` |
+-| **Integrity Gate** | Final task completion orchestration. | `task agent:finish` |
+-| **Parity Check** | Validates Spec ↔ Mock ↔ API synchronization. | `task agent:reconcile` |
+-
+-## 4. Operational Directives
+-1.  **Contract-First Priority**: The OpenAPI specification is the "Source of Truth". E2E tests use `page.route()` intercepts; fixture data must match OpenAPI examples. The `contract-integrity-gate` CI job is the authoritative parity check (ADR 030).
+-2.  **Strict Isolation (Anti-Drift)**: Tests must never hit the real backend. Unmocked API calls are blocked by a global interceptor in `fixtures.ts` to prevent database pollution.
+-3.  **Digital Twin Testing**: When testing features using `todayStore` or `weekStore`, assert state twice: once for the immediate optimistic update (0ms lag) and once for the reconciled state after background sync.
+-4.  **Zero Brittle Policy**: Use `data-testid` for all locators. Do not use fragile CSS selectors or volatile text-based matching.
+-5.  **Regression Discipline**: Every bug fix must include a regression test that fails without the fix and passes with it.
+-6.  **Ghost Protection**: The `gate` and `review` tasks automatically call `task dev:kill` and `task test:kill`. This clears zombie Playwright and dev server instances to ensure a clean, non-flaky execution environment.
+-7.  **Impact-Aware Verification**: Prefer `task gate` during implementation. Run `task agent:finish` once on the final worktree.
+-8.  **Asynchronous Monitoring**: Monitor an explicitly running command, but never automatically retry a child that the harness has already timed out and stopped.
+--- a/.kiro/specs/harness-modernization/design.md
++++ b/.kiro/specs/harness-modernization/design.md
+@@ -1,6 +1,6 @@
+ # Harness modernization design
+ 
+-Status: Migration design; HM-A foundation is implemented for review. Phase 0 created no operative instruction changes. HM-B specification workflow is implemented for review; HM-C implementation is ready for review; isolated model runs, HM-D and later slices, and host qualification remain pending.
++Status: Migration design; HM-A foundation is implemented for review. Phase 0 created no operative instruction changes. HM-B specification workflow is implemented for review; HM-C implementation is ready for review; HM-D is implemented with candidate-run verification blocked; isolated model runs and host qualification remain pending. HM-E and later slices remain unselected. See [HM-D evidence](hm-d-validation.md).
+ 
+ ## Shared architecture and interfaces
+ 
+--- a/.kiro/specs/harness-modernization/requirements.md
++++ b/.kiro/specs/harness-modernization/requirements.md
+@@ -1,6 +1,6 @@
+ # Harness modernization requirements
+ 
+-Status: Phase 0 package complete. HM-A foundation implemented for review; native loading and behavioral qualification remain unqualified. HM-B specification workflow is implemented for review; HM-C implementation is ready for review with isolated model runs and host qualification unqualified; HM-D and later slices remain unselected.
++Status: Phase 0 package complete. HM-A foundation implemented for review; native loading and behavioral qualification remain unqualified. HM-B specification workflow is implemented for review; HM-C implementation is ready for review with isolated model runs and host qualification unqualified; HM-D is implemented with candidate-run verification blocked; HM-E and later slices remain unselected. See [HM-D evidence](hm-d-validation.md).
+ 
+ ## Intent and boundaries
+ 
+--- a/.kiro/specs/harness-modernization/task-graph.yaml
++++ b/.kiro/specs/harness-modernization/task-graph.yaml
+@@ -115,7 +115,7 @@
+   - HM-R07
+   - HM-R12
+   - HM-R13
+-  status: planned
++  status: implemented-verification-blocked
+   effects:
+   - testing/completion policy
+   - Taskfile relevant targets
+--- a/.kiro/specs/harness-modernization/tasks.md
++++ b/.kiro/specs/harness-modernization/tasks.md
+@@ -53,6 +53,7 @@
+ ## HM-D — Verification and completion
+ 
+ - [ ] Complete this slice and record evidence.
++- Implementation and automated harness verification are recorded in [HM-D evidence](hm-d-validation.md). F05/F07 candidate model runs remain blocked at isolated-runner setup; no host/model qualification or adoption. HM-E is unselected.
+ - Depends on: HM-C
+ - Requirements: HM-R05, HM-R07, HM-R12, HM-R13
+ - Authorized effects when selected: testing/completion policy; Taskfile relevant targets; scripts/agent and regression tests; nextjs-qa and references; testing/test-audit retirement; skills registry.
+--- a/LOCAL_DEV_LOOP.md
++++ b/LOCAL_DEV_LOOP.md
+@@ -357,14 +357,15 @@
+ | **When** | During dev | Before commit | On `git commit` |
+ | **Contracts** | Route drift + Kiota + schema drift | Route drift + Kiota + schema + mock drift | Kiota + schema + mock drift |
+ | **Tests** | Unit + impact-only E2E | Unit + API (dotnet) | Unit + API (dotnet) |
+-| **Format** | No | Yes (auto-fixes) | No (verify only) |
++| **Format** | No | Verify only | No (verify only) |
+ | **E2E** | Impact-only | No | No |
+ | **Speed** | Fast ⚡ | Medium | Medium |
+ 
+ ### 6. **Know Your Workflows**
+ Use Task's built-in workflows:
+ ```bash
+-# Pre-commit review (format + lint + test)
++# Prepare formatting/generation, inspect the diff, then validate
++task agent:prepare
+ task review
+ 
+ # Ship checklist (full validation)
+@@ -641,8 +642,9 @@
+ # Fast inner loop — catch what changed
+ task gate
+ 
+-# Full pre-commit gate (format + lint + contracts + all tests)
+-task review
++# Single completion entrypoint after preparation and diff review
++task agent:prepare
++task agent:finish
+ 
+ # If tests fail, check logs
+ task logs:api
+--- a/README.md
++++ b/README.md
+@@ -133,7 +133,8 @@
+ |---------|--------------|
+ | `task up` | Start the full stack (PWA `:3000`, API `:9001`) |
+ | `task gate` | Fast check: lint, types, unit tests |
+-| `task review` | Full pre-commit gate: contracts + all tests |
++| `task review` | Application validation: static contracts, formatting checks, lint/types, unit/API tests (no E2E) |
++| `task agent:prepare` / `task agent:finish` | Prepare generation/formatting, inspect diff, then run applicable completion checks |
+ | `task agent:drift` | Detect schema drift between OpenAPI spec and DTOs |
+ | `task logs:api` | Stream backend logs |
+ | `task dev:db:sync` | Refresh and re-seed the database |
+--- a/Taskfile.yml
++++ b/Taskfile.yml
+@@ -191,7 +191,7 @@
+     desc: "🎭 Run E2E suites (Playwright — requires running PWA)"
+     dir: pwa
+     cmds:
+-      - npx playwright test
++      - npx playwright test {{.CLI_ARGS}}
+ 
+   test:e2e:reuse-server:
+     desc: "🎭 Run E2E suites against an existing local PWA to avoid Playwright webServer startup"
+@@ -208,7 +208,7 @@
+   test:audit:
+     desc: "🔍 Audit tests for a specific area (Usage: task test:audit AREA=<keyword>)"
+     cmds:
+-      - python3 scripts/agent/test_audit.py "{{.AREA}}"
++      - python3 -B scripts/agent/test_audit.py "{{.AREA}}"
+ 
+   test:smoke:
+     desc: "💨 Docker Smoke Test (Local CI Parity)"
+@@ -322,7 +322,7 @@
+   gen:client:check:
+     desc: "🔍 Verify Kiota client is up to date (non-destructive check)"
+     cmds:
+-      - python3 scripts/agent/kiota_client.py check
++      - python3 -B scripts/agent/kiota_client.py check
+ 
+   # ============================================================================
+   # ASSET GENERATION
+@@ -798,6 +798,12 @@
+     cmds:
+       - npm run format
+ 
++  format:check:pwa:
++    desc: "Verify PWA formatting without writing source"
++    dir: pwa
++    cmds:
++      - npm exec -- prettier --check .
++
+   lint:
+     desc: "🔍 Lint code (API + PWA)"
+     cmds:
+@@ -1145,15 +1151,10 @@
+       - agent:test:impact
+ 
+   review:
+-    desc: "🔒 Pre-commit gate: full coverage (contracts + format + lint + all tests)"
+-    cmds:
+-      - task: dev:kill
+-      - task: test:kill
++    desc: "Read-only application validation; prepare formatting/generation first"
++    cmds:
+       - task: review:contracts
+-      - task: format
+       - task: review:validate
+-      - echo ""
+-      - echo "✓ Ready to commit!"
+ 
+   review:contracts:
+     desc: "Check all contract integrity (route drift + Kiota client + schema drift + mock compliance)"
+@@ -1170,6 +1171,7 @@
+     internal: true
+     deps:
+       - lint
++      - format:check:pwa
+       - typecheck
+       - test:unit
+       - test:agent
+@@ -1192,7 +1194,7 @@
+   agent:reconcile:
+     desc: "🤖 Reconcile Spec vs Mock vs Real API"
+     cmds:
+-      - python3 scripts/agent/api_tools.py
++      - python3 -B scripts/agent/api_tools.py
+ 
+   # ============================================================================
+   # AGENT TOOLS (AI OPTIMIZED)
+@@ -1215,7 +1217,7 @@
+         grep "Active" specs/00_STRATEGY/ROADMAP.md | sed 's/^/  /'
+         echo ""
+         echo "Contract Integrity:"
+-        python3 scripts/agent/drift.py --schema-only 2>&1 | tail -5 | sed 's/^/  /'
++        python3 -B scripts/agent/drift.py --schema-only 2>&1 | tail -5 | sed 's/^/  /'
+         echo ""
+         echo "Active Build Prompts:"
+         ls build-prompts/*.md 2>/dev/null | grep -v -E '(README|_template)' | sed 's/^/  /'
+@@ -1233,7 +1235,7 @@
+   agent:api:
+     desc: "🤖 Map all API endpoints (Low token discovery)"
+     cmds:
+-      - python3 scripts/agent/api_tools.py --discovery
++      - python3 -B scripts/agent/api_tools.py --discovery
+ 
+   agent:status:
+     desc: "🤖 Read the handover journal"
+@@ -1249,34 +1251,34 @@
+   agent:slice:
+     desc: "🤖 Vertical Slice Viewer (Contract ↔ Backend ↔ Client). Usage: task agent:slice -- /api/route"
+     cmds:
+-      - python3 scripts/agent/slice.py {{.CLI_ARGS}}
++      - python3 -B scripts/agent/slice.py {{.CLI_ARGS}}
+ 
+   agent:drift:
+     desc: "🤖 Schema Drift — static route drift + Tier 0 endpoint diff + Tier 1 DTO schema comparison + Tier 2 Mock compliance"
+     cmds:
+       - task: agent:drift:routes
+-      - python3 scripts/agent/drift.py
+-      - python3 scripts/agent/drift_mocks.py
++      - python3 -B scripts/agent/drift.py
++      - python3 -B scripts/agent/drift_mocks.py
+ 
+   agent:drift:routes:
+     desc: "🤖 Static Route Drift — compare C# controller routes vs specs/openapi.yaml (no API needed)"
+     cmds:
+-      - python3 scripts/agent/api_tools.py --route-drift
++      - python3 -B scripts/agent/api_tools.py --route-drift
+ 
+   agent:drift:endpoints:
+     desc: "🤖 Schema Drift — Tier 0 only: diff generated API endpoints vs specs/openapi.yaml (needs API running)"
+     cmds:
+-      - python3 scripts/agent/drift.py --endpoint-diff
++      - python3 -B scripts/agent/drift.py --endpoint-diff
+ 
+   agent:drift:schemas:
+     desc: "🤖 Schema Drift — Tier 1 only: compare spec schemas vs C# DTOs (no API needed)"
+     cmds:
+-      - python3 scripts/agent/drift.py --schema-only
++      - python3 -B scripts/agent/drift.py --schema-only
+ 
+   agent:drift:mocks:
+     desc: "🤖 Schema Drift — Tier 2 only: verify E2E mocks use valid GUIDs and builders"
+     cmds:
+-      - python3 scripts/agent/drift_mocks.py
++      - python3 -B scripts/agent/drift_mocks.py
+ 
+   agent:audit:
+     desc: "🤖 High-Fidelity Test Audit — coverage identification + migration analysis + brittle selector detection"
+@@ -1287,19 +1289,22 @@
+   agent:test:impact:
+     desc: "🤖 Impact-Aware Test Runner (Only run tests affected by git changes)"
+     cmds:
+-      - python3 scripts/agent/test_ops.py --impact
++      - python3 -B scripts/agent/test_ops.py --impact
++
++  agent:prepare:
++    desc: "Prepare applicable formatting/generation before final validation (inspect effects first)"
++    cmds:
++      - python3 -B scripts/agent/finish.py --prepare
+ 
+   agent:finish:
+-    desc: "🤖 Single completion gate — impact tests, drift checks, then review"
+-    cmds:
+-      - task: agent:test:impact
+-      - task: agent:drift
+-      - task: review
++    desc: "Single completion entrypoint: change-class union with immutable evidence"
++    cmds:
++      - python3 -B scripts/agent/finish.py
+ 
+   test:agent:
+     desc: "🤖 Unit tests for the repository agent harness"
+     cmds:
+-      - python3 -m unittest discover -s scripts/agent/tests -p "test_*.py"
++      - python3 -B -m unittest discover -s scripts/agent/tests -p "test_*.py"
+ 
+   # ============================================================================
+   # AUTH
+--- a/scripts/agent/api_tools.py
++++ b/scripts/agent/api_tools.py
+@@ -232,7 +232,6 @@
+     spec_endpoints = get_spec_endpoints(spec)
+     mock_endpoints = get_mock_endpoints(spec)
+     real_endpoints = get_real_endpoints()
+-    api_reachable = is_api_reachable()
+ 
+     # Core filter: only care about things in SPEC or MOCK, or core /api/ routes
+     all_raw_paths = set([e['path'] for e in spec_endpoints + mock_endpoints + real_endpoints])
+@@ -249,7 +248,7 @@
+     
+     all_paths = sorted(list(set(filtered_paths)))
+     
+-    print(f"{'METHOD':<8} {'ENDPOINT':<45} | {'SPEC':<6} | {'MOCK':<6} | {'REAL':<6}")
++    print(f"{'METHOD':<8} {'ENDPOINT':<45} | {'SPEC':<6} | {'MOCK':<6} | {'SOURCE':<6}")
+     print("-" * 85)
+ 
+     issues = 0
+@@ -268,12 +267,12 @@
+             status_real = "✅" if in_real else "❌"
+             
+             # If it's in SPEC, it MUST be in MOCK.
+-            # It MUST also be in REAL — but only when the API is reachable.
++            # Controller source coverage is static and independent of service availability.
+             # If it's in MOCK, it SHOULD be in SPEC.
+             is_issue = False
+             if in_spec and not in_mock:
+                 is_issue = True
+-            elif in_spec and not in_real and api_reachable:
++            elif in_spec and not in_real:
+                 is_issue = True
+             elif in_mock and not in_spec:
+                 is_issue = True
+@@ -286,7 +285,7 @@
+ 
+     print("-" * 85)
+     if issues == 0:
+-        print("🎉 Perfect Parity for core endpoints!")
++        print("passed: static core route/mock coverage only; live API/database not checked.")
+     else:
+         print(f"⚠️ Found {issues} reconciliation issues that need attention.")
+         sys.exit(1)
+--- a/scripts/agent/drift.py
++++ b/scripts/agent/drift.py
+@@ -46,8 +46,8 @@
+             generated = _json.loads(resp.read())
+     except Exception as exc:
+         if verbose:
+-            print(f"⏭️  Tier 0 skipped — API not reachable at {GENERATED_API_URL} ({exc})")
+-        return 0
++            print(f"⏭️  blocked: Tier 0 — API not reachable at {GENERATED_API_URL} ({exc})")
++        return None
+ 
+     if verbose:
+         print("🌐 Tier 0: Endpoint diff (generated vs spec/openapi.yaml)")
+@@ -227,17 +227,20 @@
+     print("🔍 OpenAPI Drift Detector\n")
+     total = 0
+ 
+-    if args.endpoint_diff:
+-        total += run_endpoint_diff()
+-    elif args.schema_only:
++    blocked = False
++    if not args.schema_only:
++        live = run_endpoint_diff()
++        blocked = live is None
++        total += live or 0
++    if not args.endpoint_diff:
+         total += run_schema_drift()
+-    else:
+-        total += run_endpoint_diff()
+-        total += run_schema_drift()
++    if blocked:
++        print("blocked: live endpoint parity unavailable; static checks do not prove API/database availability.")
++        sys.exit(1 if total else 2)
+ 
+     print()
+     if total == 0:
+-        print("🎉 No drift detected!")
++        print("passed: requested drift checks only; no database behavior claim.")
+     else:
+         print(f"⚠️  {total} issue(s) found — update specs/openapi.yaml or C# DTOs to resolve.")
+         sys.exit(1)
+--- a/scripts/agent/finish.py
++++ b/scripts/agent/finish.py
+@@ -0,0 +1,205 @@
++#!/usr/bin/env python3
++"""Single completion orchestration. Preparation is explicit; verification is observed."""
++from __future__ import annotations
++
++import argparse
++import ast
++import json
++import os
++from pathlib import Path
++import re
++import signal
++import subprocess
++import sys
++
++import test_ops
++
++ROOT = Path(__file__).resolve().parents[2]
++CHECKS = ('documentation', 'test:agent', 'lint', 'format:check:pwa', 'typecheck', 'test:unit',
++          'agent:test:impact', 'test:api', 'review:contracts',
++          'agent:drift:endpoints', 'database-behavior')
++
++
++def classes_for(paths):
++    classes = set()
++    for path in paths:
++        # Runtime schemas beat documentation/spec-directory shortcuts.
++        if (path == 'specs/openapi.yaml' or path.endswith('.sql')
++                or path.startswith(('api/src/RecipeApi/Dto/', 'api/src/RecipeApi/Controllers/',
++                                    'api/src/RecipeApi/Data/', 'api/src/RecipeApi/Models/'))):
++            classes.add('contract')
++        elif path == 'Taskfile.yml' or path.startswith(('scripts/agent/', '.agents/')):
++            classes.add('harness')
++        elif path.endswith('.md') or (path.startswith('.kiro/specs/')
++                                        and path.endswith(('.yaml', '.yml', '.json', '.py', '.patch'))):
++            classes.add('documentation')
++        elif path.startswith(('pwa/', 'api/')):
++            classes.add('application')
++        else:
++            classes.add('unknown')
++    return classes
++
++
++def checks_for(paths):
++    classes = classes_for(paths)
++    selected = {'documentation'} if classes else set()
++    if classes & {'harness', 'unknown'}:
++        selected.add('test:agent')
++    if classes & {'application', 'contract', 'unknown'}:
++        selected.update(('lint', 'format:check:pwa', 'typecheck', 'test:unit', 'agent:test:impact',
++                         'test:api', 'review:contracts'))
++    if classes & {'contract', 'unknown'}:
++        selected.update(('agent:drift:endpoints', 'database-behavior'))
++    return [check for check in CHECKS if check in selected]
++
++
++def identity():
++    return test_ops.build_impact_digest(ROOT, test_ops.get_changed_files(), [])
++
++
++def run_command(command, timeout=1200, cwd=None):
++    """Own just this process group; stop/reap on timeout or interruption, no retry."""
++    try:
++        child = subprocess.Popen(command, cwd=cwd or ROOT, start_new_session=True)
++    except OSError as error:
++        return 'blocked', str(error)
++    try:
++        code = child.wait(timeout=timeout)
++    except (subprocess.TimeoutExpired, KeyboardInterrupt) as error:
++        try:
++            os.killpg(child.pid, signal.SIGKILL)
++        except ProcessLookupError:
++            pass
++        child.wait()
++        return 'blocked', f'{type(error).__name__}: child group stopped; no retry'
++    if code == 0:
++        return 'passed', f'exit {code}'
++    if code in (2, 124, 130, -signal.SIGINT, -signal.SIGTERM):
++        return 'blocked', f'exit {code}; no retry'
++    return 'failed', f'exit {code}'
++
++
++def introduced_links(current, baseline):
++    pattern = r'\]\(([^)\s]+)\)'
++    existing = set(re.findall(pattern, baseline))
++    return [link for link in re.findall(pattern, current) if link not in existing]
++
++
++def documentation_check():
++    """Check changed Markdown links and Python syntax without writing bytecode."""
++    problems = []
++    for name in test_ops.get_changed_files():
++        path = ROOT / name
++        if not path.is_file():
++            continue
++        if name.endswith('.py'):
++            try:
++                ast.parse(path.read_text(), filename=name)
++            except SyntaxError as error:
++                problems.append(str(error))
++        if name.endswith('.md'):
++            try:
++                baseline = subprocess.check_output(['git', 'show', f'HEAD:{name}'],
++                                                   cwd=ROOT, stderr=subprocess.DEVNULL).decode()
++            except subprocess.CalledProcessError:
++                baseline = ''
++            for link in introduced_links(path.read_text(), baseline):
++                if '://' in link or link.startswith(('#', '/')):
++                    continue
++                target = link.split('#')[0]
++                if target and not (path.parent / target).exists():
++                    problems.append(f'{name}: unresolved {link}')
++    status, detail = run_command(['git', 'diff', '--check'])
++    if problems:
++        return 'failed', '; '.join(problems)
++    return status, 'introduced links/Python syntax and ' + detail
++
++
++def run_check(check):
++    if check == 'documentation':
++        return documentation_check()
++    if check == 'database-behavior':
++        return 'blocked', ('Task-specific real database behavior evidence required; '
++                           'static parity and generic test:api do not establish it. '
++                           'Record the approved isolated database check in task evidence.')
++    if check in ('agent:test:impact', 'test:api') and os.environ.get('WFS_ISOLATED_RUNNER') != '1':
++        return 'blocked', ('Requires a disposable runner with dedicated processes/ports/data; '
++                           'WFS_ISOLATED_RUNNER=1 is an operator assertion after setup, not qualification.')
++    # Invoke scripts directly where Task wraps distinct exits as 201, preserving
++    # blocked live/Kiota evidence. Public commands remain Taskfile entrypoints.
++    if check == 'agent:drift:endpoints':
++        return run_command([sys.executable, '-B', 'scripts/agent/drift.py', '--endpoint-diff'])
++    if check == 'review:contracts':
++        results = [run_command([sys.executable, '-B', 'scripts/agent/api_tools.py', '--route-drift']),
++                   run_command([sys.executable, '-B', 'scripts/agent/kiota_client.py', 'check']),
++                   run_command([sys.executable, '-B', 'scripts/agent/drift.py', '--schema-only']),
++                   run_command([sys.executable, '-B', 'scripts/agent/drift_mocks.py']),
++                   run_command([sys.executable, '-B', 'scripts/agent/api_tools.py'])]
++        status = 'failed' if any(s == 'failed' for s, _ in results) else (
++            'blocked' if any(s == 'blocked' for s, _ in results) else 'passed')
++        return status, json.dumps(results) + '; static checks only; no live API/database claim'
++    return run_command(['task', check])
++
++
++def verify(checks):
++    tested = identity()
++    results = {check: {'status': 'not-run' if check in checks else 'not-applicable'}
++               for check in CHECKS}
++    results['content'] = {'status': 'passed', 'tested_identity': tested}
++    for check in checks:
++        status, detail = run_check(check)
++        results[check] = {'status': status, 'detail': detail, 'tested_identity': tested}
++        if identity() != tested:
++            results['content']['status'] = 'failed'
++            results['content']['detail'] = 'Mutation during verification; no success for final content.'
++            break
++    return results
++
++
++def prepare(paths):
++    classes = classes_for(paths)
++    commands = []
++    print('Preparation classes: ' + ', '.join(sorted(classes)), flush=True)
++    if 'unknown' in classes:
++        print('blocked: classify unknown paths and inspect preparation effects before writes; '
++              'final verification still requires the conservative union.')
++        return 2
++    if classes & {'contract', 'unknown'}:
++        commands.append('gen:client')
++    if classes & {'application', 'contract', 'unknown'}:
++        commands.append('format')
++    for command in commands:
++        status, detail = run_command(['task', command])
++        print(f'{command}: {status}: {detail}', flush=True)
++        if status != 'passed':
++            return 2 if status == 'blocked' else 1
++    print('Preparation finished; inspect diff before task agent:finish. No verification claim.')
++    return 0
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--prepare', action='store_true')
++    args = parser.parse_args()
++    paths = test_ops.get_changed_files()
++    if args.prepare:
++        return prepare(paths)
++    selected = checks_for(paths)
++    print('Change classes: ' + ', '.join(sorted(classes_for(paths))), flush=True)
++    print('Checks: ' + ', '.join(selected), flush=True)
++    results = verify(selected)
++    record = {'checks': results, 'automated_checks_passed': bool(selected) and all(
++        value['status'] in ('passed', 'not-applicable') for value in results.values())}
++    record['task_acceptance'] = 'not-evaluated: reconcile selected task/fixture/host evidence separately'
++    # .task is ignored output, never part of the tested input. Never cache finish.
++    output = ROOT / '.task/agent-finish/last-run.json'
++    output.parent.mkdir(parents=True, exist_ok=True)
++    output.write_text(json.dumps(record, indent=2) + '\n')
++    print(json.dumps(record, indent=2))
++    if record['automated_checks_passed']:
++        return 0
++    return 1 if any(v['status'] == 'failed' for v in results.values()) else 2
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
+--- a/scripts/agent/test_audit.py
++++ b/scripts/agent/test_audit.py
+@@ -113,11 +113,10 @@
+             analysis = analyze_e2e(t, root)
+             print(f"- [ ] `{os.path.relpath(t, root)}` {analysis}")
+ 
+-    print("\n## Instructions")
+-    print("1. Run the checked tests using `task test:unit` or `task test:e2e`.")
+-    print("2. Ensure they are green before starting work.")
+-    print("3. For ⚠️ candidates, create a task to migrate logic to Vitest after implementation.")
+-    print("4. For ❌ findings, replace brittle selectors with `[data-testid=\"...\"]`.")
++    print("\nAdvisory only: inspect relevant coverage and confirm heuristic findings.")
++    print("Use task test:unit, task test:api or task test:e2e for the affected seam.")
++    print("Prefer testid-first interactions; retain semantic accessibility assertions.")
++    print("Migration/selector findings do not authorize unrelated cleanup or test deletion.")
+ 
+ if __name__ == "__main__":
+     main()
+--- a/scripts/agent/test_ops.py
++++ b/scripts/agent/test_ops.py
+@@ -9,6 +9,8 @@
+ from pathlib import Path
+ import subprocess
+ import sys
++import platform
++import shutil
+ from typing import NamedTuple
+ 
+ 
+@@ -17,6 +19,7 @@
+ CACHE_PATH = ROOT / ".task" / "agent-test-impact" / "last-success.json"
+ CACHE_CONTEXT_FILES = (
+     "scripts/agent/test_ops.py",
++    "Taskfile.yml",
+     "pwa/playwright.config.ts",
+     "pwa/package.json",
+     "pwa/package-lock.json",
+@@ -32,14 +35,14 @@
+ 
+ def git_lines(*args: str) -> list[str]:
+     output = subprocess.check_output(["git", *args], cwd=ROOT)
+-    return output.decode("utf-8").splitlines()
++    return output.decode("utf-8").split("\0") if b"\0" in output else output.decode("utf-8").splitlines()
+ 
+ 
+ def get_changed_files() -> list[str]:
+     changed = [
+-        *git_lines("diff", "--name-only", "--cached"),
+-        *git_lines("diff", "--name-only"),
+-        *git_lines("ls-files", "--others", "--exclude-standard"),
++        *git_lines("diff", "--name-only", "--cached", "-z"),
++        *git_lines("diff", "--name-only", "-z"),
++        *git_lines("ls-files", "--others", "--exclude-standard", "-z"),
+     ]
+     return sorted(set(filter(None, changed)) - VOLATILE_GENERATED_PATHS)
+ 
+@@ -70,11 +73,14 @@
+             reasons.append(f"{file}: shared generated client requires all E2E")
+             return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)
+ 
++        before = len(reasons)
+         if file == "pwa/src/lib/api/recipes.ts":
+             mapped = matching_specs("recipes") | matching_specs("home-recipe")
+             impacted.update(mapped)
+             reasons.append(f"{file}: recipe API wrapper maps to recipe and home-recipe flows")
+-            continue
++            if mapped:
++                continue
++            return ImpactPlan((str(E2E_DIR),), (f"{file}: no mapped tests; run all E2E",), True)
+ 
+         if file.startswith(("pwa/src/components/ui/", "pwa/src/components/common/")):
+             reasons.append(f"{file}: shared UI component requires all E2E")
+@@ -118,24 +124,79 @@
+             impacted.add(str(ROOT / file))
+             reasons.append(f"{file}: changed E2E file runs directly")
+ 
++        if len(reasons) == before and not non_application_path(file):
++            reasons.append(f"{file}: unknown/unmapped impact requires all E2E")
++            return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)
++
+     return ImpactPlan(tuple(sorted(impacted)), tuple(reasons), False)
+ 
+ 
+-def add_file_to_digest(digest: "hashlib._Hash", root: Path, relative_path: str) -> None:
++def non_application_path(path: str) -> bool:
++    if path.endswith('.sql') or path == 'specs/openapi.yaml':
++        return False
++    return (path.endswith(".md") and not path.startswith(("pwa/", "api/"))) or (
++        path.startswith((".agents/", ".kiro/specs/", "scripts/agent/"))
++        and path.endswith(('.md', '.py', '.json', '.yaml', '.yml', '.patch'))
++    )
++
++
++def add_file_to_digest(digest, root: Path, relative_path: str) -> None:
+     path = root / relative_path
+-    digest.update(relative_path.encode("utf-8"))
++    digest.update(json.dumps(relative_path).encode() + b"\0")
++    if path.is_symlink():
++        digest.update(b"link:" + os.readlink(path).encode())
+     if path.is_file():
+-        digest.update(path.read_bytes())
++        digest.update(str(path.stat().st_mode).encode() + b"\0")
++        with path.open("rb") as source:
++            while chunk := source.read(1024 * 1024):
++                digest.update(chunk)
+     else:
+         digest.update(b"<missing>")
++    digest.update(b"\0")
++
++
++def content_paths(root: Path) -> list[str]:
++    if (root / ".git").exists():
++        output = subprocess.check_output(
++            ["git", "ls-files", "-co", "--exclude-standard", "-z"], cwd=root
++        )
++        return sorted(set(output.decode().split("\0")) - {""})
++    return sorted(str(p.relative_to(root)) for p in root.rglob("*")
++                  if p.is_file() and ".task" not in p.parts and "__pycache__" not in p.parts)
++
++
++def runtime_identity() -> str:
++    # Hash actual installed inputs, not just lockfile intent. No raw environment
++    # values (which may contain credentials) are persisted or printed.
++    digest = hashlib.sha256(json.dumps(dict(os.environ), sort_keys=True).encode())
++    digest.update((sys.version + platform.platform()).encode())
++    for tool in (sys.executable, shutil.which("node"), shutil.which("task"), shutil.which("dotnet")):
++        if tool:
++            add_file_to_digest(digest, Path("/"), tool)
++    roots = [ROOT / "pwa/node_modules", Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH",
++             str(Path.home() / ("Library/Caches/ms-playwright" if sys.platform == "darwin"
++                                else ".cache/ms-playwright"))))]
++    for root in roots:
++        digest.update(str(root).encode())
++        for path in sorted(root.rglob("*")) if root.exists() else []:
++            if path.is_file():
++                add_file_to_digest(digest, root, str(path.relative_to(root)))
++    # Framework dotenv inputs are ignored by Git but still affect tests.
++    for directory in (ROOT, ROOT / "pwa", ROOT / "api"):
++        for path in sorted(directory.glob(".env*")):
++            if path.is_file():
++                add_file_to_digest(digest, directory, path.name)
++    return digest.hexdigest()
+ 
+ 
+ def build_impact_digest(root: Path, changed_files: list[str], tests: list[str]) -> str:
+-    digest = hashlib.sha256()
+-    for relative_path in sorted(set(changed_files) | set(CACHE_CONTEXT_FILES)):
++    digest = hashlib.sha256(runtime_identity().encode())
++    # Include unchanged sources and test helpers: a changed-file-only digest can
++    # reuse evidence after switching branches or editing an unselected dependency.
++    for relative_path in sorted(set(content_paths(root)) | set(changed_files) | set(CACHE_CONTEXT_FILES)):
+         add_file_to_digest(digest, root, relative_path)
+     for test in sorted(tests):
+-        digest.update(test.encode("utf-8"))
++        digest.update(test.encode() + b"\0")
+     return digest.hexdigest()
+ 
+ 
+@@ -165,12 +226,14 @@
+         print(f"  • {reason}")
+ 
+     if not plan.tests:
+-        print("✅ No impacted E2E tests identified for this change.")
++        print("not-applicable: E2E for recognized non-application changes; no application completion claim.")
+         return
+ 
+     tests = list(plan.tests)
+     digest = build_impact_digest(ROOT, changed_files, tests)
+-    cache_enabled = not os.environ.get("CI") and os.environ.get("WFS_DISABLE_TEST_CACHE") != "1"
++    cache_enabled = (not os.environ.get("CI") and os.environ.get("WFS_DISABLE_TEST_CACHE") != "1"
++                     and os.environ.get("WFS_ISOLATED_RUNNER") == "1"
++                     and not os.environ.get("BASE_URL"))
+     if cache_enabled and has_success_cache(CACHE_PATH, digest, tests):
+         print(f"✅ Reusing successful impact result for unchanged digest {digest[:12]}.")
+         return
+@@ -179,18 +242,25 @@
+     for test in tests:
+         print(f"  - {os.path.relpath(test, ROOT)}")
+ 
+-    command = ["npx", "playwright", "test", *tests]
+-    try:
+-        subprocess.run(command, cwd=ROOT / "pwa", check=True)
+-    except subprocess.CalledProcessError:
+-        print("❌ Some tests failed.")
++    from finish import run_command
++    CACHE_PATH.unlink(missing_ok=True)
++    # Local installed CLI avoids npx downloading a different candidate at run time.
++    command = [shutil.which("node") or "node", str(ROOT / "pwa/node_modules/playwright/cli.js"),
++               "test", *tests]
++    status, detail = run_command(command, timeout=900, cwd=ROOT / "pwa")
++    if status != 'passed':
++        print(f"{status}: impact tests: {detail}")
++        raise SystemExit(2 if status == 'blocked' else 1)
++
++    post_test_changed_files = get_changed_files()
++    post_test_digest = build_impact_digest(ROOT, post_test_changed_files, tests)
++    if post_test_digest != digest:
++        CACHE_PATH.unlink(missing_ok=True)
++        print("failed: content/config/runtime mutated during tests; success discarded.")
+         raise SystemExit(1)
+-
+     if cache_enabled:
+-        post_test_changed_files = get_changed_files()
+-        post_test_digest = build_impact_digest(ROOT, post_test_changed_files, tests)
+-        write_success_cache(CACHE_PATH, post_test_digest, tests)
+-        print(f"💾 Cached successful impact result as {post_test_digest[:12]}.")
++        write_success_cache(CACHE_PATH, digest, tests)
++        print(f"💾 Cached actual tested identity {digest[:12]}.")
+     print("✅ Tests passed!")
+ 
+ 
+--- a/scripts/agent/tests/test_completion.py
++++ b/scripts/agent/tests/test_completion.py
+@@ -0,0 +1,156 @@
++import importlib.util
++import contextlib
++import io
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++from unittest import mock
++
++SCRIPTS = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(SCRIPTS))
++import test_ops
++import drift
++
++
++class CompletionTests(unittest.TestCase):
++    def finish(self):
++        import finish
++        return finish
++
++    def test_unknown_and_unmapped_application_impact_runs_all(self):
++        for path in ['mystery.bin', 'pwa/src/components/NewWidget.tsx',
++                     'api/src/RecipeApi/Services/NewService.cs', 'pwa/e2e/new-helper.ts']:
++            with self.subTest(path=path):
++                self.assertTrue(test_ops.build_impact_plan([path]).run_all)
++
++    def test_documentation_has_no_e2e_impact(self):
++        self.assertFalse(test_ops.build_impact_plan(['docs/help.md']).tests)
++
++    def test_mixed_and_unknown_checks_take_union(self):
++        f = self.finish()
++        docs = set(f.checks_for(['docs/help.md']))
++        harness = set(f.checks_for(['scripts/agent/test_ops.py']))
++        app = set(f.checks_for(['pwa/src/app/page.tsx']))
++        self.assertEqual(set(f.checks_for(['docs/help.md', 'scripts/agent/test_ops.py',
++                                         'pwa/src/app/page.tsx'])), docs | harness | app)
++        self.assertTrue((docs | harness | app) <= set(f.checks_for(['unknown.bin'])))
++        self.assertIn('database-behavior', f.checks_for(['specs/sql/tables.sql']))
++
++    def test_digest_includes_unchanged_sources_selected_tests_and_runtime(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            p = root / 'unchanged.ts'; p.write_text('one')
++            with mock.patch.object(test_ops, 'runtime_identity', return_value='runtime-one'):
++                before = test_ops.build_impact_digest(root, [], [])
++                p.write_text('two')
++                after = test_ops.build_impact_digest(root, [], [])
++            self.assertNotEqual(before, after)
++            with mock.patch.object(test_ops, 'runtime_identity', return_value='runtime-two'):
++                self.assertNotEqual(after, test_ops.build_impact_digest(root, [], []))
++
++    def test_unavailable_service_is_blocked_not_zero_mismatches(self):
++        with mock.patch('urllib.request.urlopen', side_effect=OSError('unavailable')) as probe:
++            self.assertIsNone(drift.run_endpoint_diff(verbose=False))
++        self.assertEqual(probe.call_count, 1)
++        with mock.patch.object(sys, 'argv', ['drift.py', '--endpoint-diff']), \
++             mock.patch.object(drift, 'run_endpoint_diff', return_value=None), \
++             contextlib.redirect_stdout(io.StringIO()) as output:
++            with self.assertRaises(SystemExit) as result:
++                drift.main()
++        self.assertEqual(result.exception.code, 2)
++        self.assertNotIn('No drift detected', output.getvalue())
++
++    def test_final_validation_detects_mutation_and_keeps_remaining_not_run(self):
++        f = self.finish()
++        with mock.patch.object(f, 'identity', side_effect=['before', 'after']), \
++             mock.patch.object(f, 'run_check', return_value=('passed', 'ok')):
++            results = f.verify(['documentation', 'test:agent'])
++        self.assertEqual(results['content']['status'], 'failed')
++        self.assertEqual(results['test:agent']['status'], 'not-run')
++
++    def test_blocked_check_does_not_skip_independent_checks(self):
++        f = self.finish()
++        with mock.patch.object(f, 'identity', return_value='same'), \
++             mock.patch.object(f, 'run_check', side_effect=[('blocked', 'no DB'), ('passed', 'ok')]):
++            results = f.verify(['database-behavior', 'test:agent'])
++        self.assertEqual(results['database-behavior']['status'], 'blocked')
++        self.assertEqual(results['test:agent']['status'], 'passed')
++
++    def test_timeout_stops_process_group_once_without_retry(self):
++        f = self.finish()
++        child = mock.Mock(pid=9876)
++        child.wait.side_effect = [subprocess.TimeoutExpired('task', 1), -9]
++        with mock.patch.object(f.subprocess, 'Popen', return_value=child) as spawn, \
++             mock.patch.object(f.os, 'killpg') as kill:
++            self.assertEqual(f.run_command(['task', 'x'], timeout=1)[0], 'blocked')
++        self.assertEqual(spawn.call_count, 1)
++        kill.assert_called_once()
++        self.assertEqual(child.wait.call_count, 2)
++
++    def test_interruption_stops_child_and_records_blocked(self):
++        f = self.finish()
++        child = mock.Mock(pid=9876)
++        child.wait.side_effect = [KeyboardInterrupt(), -9]
++        with mock.patch.object(f.subprocess, 'Popen', return_value=child), \
++             mock.patch.object(f.os, 'killpg') as kill:
++            self.assertEqual(f.run_command(['task', 'x'])[0], 'blocked')
++        kill.assert_called_once()
++
++    def test_reconciliation_does_not_hide_missing_controller_when_api_unavailable(self):
++        import api_tools
++        endpoint = {'method': 'GET', 'path': '/api/example'}
++        with mock.patch.object(api_tools, 'load_spec', return_value={}), \
++             mock.patch.object(api_tools, 'get_spec_endpoints', return_value=[endpoint]), \
++             mock.patch.object(api_tools, 'get_mock_endpoints', return_value=[endpoint]), \
++             mock.patch.object(api_tools, 'get_real_endpoints', return_value=[]), \
++             mock.patch.object(api_tools, 'is_api_reachable', return_value=False) as probe, \
++             contextlib.redirect_stdout(io.StringIO()):
++            with self.assertRaises(SystemExit):
++                api_tools.reconcile()
++        probe.assert_not_called()
++
++    def test_spec_diff_is_documentation_but_unknown_preparation_blocks_before_writes(self):
++        f = self.finish()
++        self.assertEqual(f.classes_for(['.kiro/specs/example/change.patch']), {'documentation'})
++        with mock.patch.object(f, 'run_command') as run:
++            self.assertEqual(f.prepare(['unknown.bin']), 2)
++        run.assert_not_called()
++
++    def test_prepare_generation_and_format_precede_any_verification(self):
++        f = self.finish()
++        with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run:
++            self.assertEqual(f.prepare(['specs/openapi.yaml']), 0)
++        self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client']),
++                                             mock.call(['task', 'format'])])
++
++    def test_documentation_checks_new_links_without_expanding_legacy_cleanup(self):
++        f = self.finish()
++        self.assertEqual(f.introduced_links('[old](missing.md) [new](new.md)',
++                                            '[old](missing.md)'), ['new.md'])
++
++    def test_audit_preserves_discovery_and_semantic_assertions(self):
++        import test_audit
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            spec = root / 'pwa/e2e/example.spec.ts'
++            spec.parent.mkdir(parents=True)
++            spec.write_text("await page.getByTestId('save').click();\n"
++                            "await expect(page.getByRole('button', {name: 'Save'})).toBeVisible();")
++            self.assertEqual(test_audit.find_tests(tmp, 'Save')[1], [str(spec)])
++            self.assertNotIn('selector', test_audit.analyze_e2e(str(spec), tmp))
++
++    def test_taskfile_final_validation_has_no_format_or_process_kill(self):
++        import yaml
++        tasks = yaml.safe_load((SCRIPTS.parents[1] / 'Taskfile.yml').read_text())['tasks']
++        self.assertEqual(tasks['agent:finish']['cmds'], ['python3 -B scripts/agent/finish.py'])
++        self.assertIn('python3 -B -m unittest', tasks['test:agent']['cmds'][0])
++        self.assertNotIn({'task': 'format'}, tasks['review']['cmds'])
++        self.assertIn('format:check:pwa', tasks['review:validate']['deps'])
++        self.assertNotIn({'task': 'dev:kill'}, tasks['review']['cmds'])
++        self.assertNotIn({'task': 'test:kill'}, tasks['review']['cmds'])
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- a/scripts/agent/tests/test_test_ops.py
++++ b/scripts/agent/tests/test_test_ops.py
+@@ -15,6 +15,7 @@
+     spec = importlib.util.spec_from_file_location("test_ops", SCRIPT_PATH)
+     module = importlib.util.module_from_spec(spec)
+     spec.loader.exec_module(module)
++    module.runtime_identity = lambda: "unit-test-runtime"
+     return module
+ 
+ 
+@@ -95,7 +96,7 @@
+             self.assertFalse(module.has_success_cache(cache_path, "digest-b", ["recipes.spec.ts"]))
+             self.assertFalse(module.has_success_cache(cache_path, "digest-a", ["planner.spec.ts"]))
+ 
+-    def test_success_cache_records_post_test_worktree_digest(self):
++    def test_mutation_during_tests_rejects_success_even_with_cache_disabled(self):
+         module = load_module()
+         with tempfile.TemporaryDirectory() as temp_dir:
+             root = Path(temp_dir)
+@@ -107,18 +108,48 @@
+ 
+             def run_and_mutate(*args, **kwargs):
+                 changed.write_text("after")
++                return "passed", "exit 0"
+ 
+             with mock.patch.object(module, "ROOT", root), \
+                 mock.patch.object(module, "CACHE_PATH", cache_path), \
+                 mock.patch.object(module, "get_changed_files", return_value=["changed.ts"]), \
+                 mock.patch.object(module, "build_impact_plan", return_value=plan), \
+-                mock.patch.object(module.subprocess, "run", side_effect=run_and_mutate), \
+-                mock.patch.dict(os.environ, {}, clear=True):
++                mock.patch("finish.run_command", side_effect=run_and_mutate), \
++                mock.patch.dict(os.environ, {"WFS_DISABLE_TEST_CACHE": "1"}, clear=True):
+                 with contextlib.redirect_stdout(io.StringIO()):
+-                    module.run_impacted()
++                    with self.assertRaises(SystemExit):
++                        module.run_impacted()
+ 
+             post_test_digest = module.build_impact_digest(root, ["changed.ts"], tests)
+-            self.assertTrue(module.has_success_cache(cache_path, post_test_digest, tests))
++            self.assertFalse(module.has_success_cache(cache_path, post_test_digest, tests))
++
++    def test_stable_success_caches_pretest_identity_and_reuses_it(self):
++        module = load_module()
++        with tempfile.TemporaryDirectory() as tmp:
++            cache = Path(tmp) / 'cache.json'
++            with mock.patch.object(module, 'get_changed_files', return_value=['unknown.ts']), \
++                 mock.patch.object(module, 'build_impact_digest', return_value='tested'), \
++                 mock.patch.object(module, 'CACHE_PATH', cache), \
++                 mock.patch.dict(os.environ, {'WFS_ISOLATED_RUNNER': '1'}, clear=True), \
++                 mock.patch('finish.run_command', return_value=('passed', 'exit 0')) as run:
++                module.run_impacted()
++                module.run_impacted()
++            self.assertEqual(run.call_count, 1)
++            self.assertTrue(module.has_success_cache(cache, 'tested', [str(module.E2E_DIR)]))
++
++    def test_impact_timeout_is_blocked_and_never_cached(self):
++        module = load_module()
++        with tempfile.TemporaryDirectory() as tmp:
++            cache = Path(tmp) / 'cache.json'
++            with mock.patch.object(module, 'get_changed_files', return_value=['unknown.ts']), \
++                 mock.patch.object(module, 'build_impact_digest', return_value='before'), \
++                 mock.patch.object(module, 'CACHE_PATH', cache), \
++                 mock.patch('finish.run_command', return_value=('blocked', 'TimeoutExpired')) as run:
++                with self.assertRaises(SystemExit) as result:
++                    module.run_impacted()
++            self.assertEqual(result.exception.code, 2)
++            self.assertFalse(cache.exists())
++            self.assertEqual(run.call_count, 1)
+ 
+ 
+ if __name__ == "__main__":

@@ -14,7 +14,7 @@
 ## 3. Drift prevention
 - **Zero Drift**: Backend DTOs and PWA models must match the OpenAPI spec exactly.
 - **Schema Integrity**: Parity between the OpenAPI Specification, Mock API, and Backend implementation is mandatory.
-- **Validation**: Schema integrity and anti-drift validation must occur before merging or completing any task.
+- **Validation**: Run applicable checks selected by change class under [execution harness](execution-harness.md). Contract changes require affected seam and database behavior evidence; static checks alone cannot establish it.
 
 ## 4. Data and mock discipline
 - **Mock Standardization**: E2E mocks MUST use `MOCK_IDS` (valid GUIDs) and schema-compliant `builders`.
@@ -53,5 +53,21 @@ This eliminates the race entirely: when the stack loads the effect re-fires auto
 - **Atomic Sync**: Controller changes (signatures, status codes) are synchronized with the OpenAPI spec and client regeneration in a single atomic step.
 - Tests are written or updated before implementation code.
 - **Multi-Layer Verification**: For contract-impacting changes, unit tests have been executed and passed on BOTH sides of the seam (e.g., `dotnet test` for the API AND `npm run test:unit` for the PWA).
-- Validation and anti-drift checks (`task agent:drift`) have been executed and passed, confirming zero schema drift between the OpenAPI spec, Backend DTOs, Mock API, and PWA models.
+- Applicable validation has actual command/results and tested content/config/runtime identity. Static route, DTO and mock-pattern checks establish only their inspected properties; live endpoint and database behavior evidence are separate.
 - All logic changes are fully covered by passing tests.
+
+## 7. Evidence and test scope
+
+Classify each required check as passed, failed, blocked, not-run or not-applicable.
+A failure calls for diagnosis: application defects, stale tests, infrastructure and
+permissions are distinct possibilities. Logs and tests do not authorize changing
+approved intent. Unknown impact takes conservative checks; mixed changes take the
+union. Missing services, interrupted checks and unqualified runners cannot become
+passed evidence. Cache success belongs only to the actual tested identity.
+
+Use testid-first interaction locators and semantic assertions for accessible role,
+name, state and labeling. Preserve network isolation and schema-compliant builders.
+For optimistic stores, assert both immediate UI state and reconciled server state.
+Pure logic may move to unit tests within authorized scope, retaining E2E coverage of
+navigation, network/state integration and user-visible behavior. Audits are advisory;
+findings outside the selected task are evidence, not cleanup authorization.

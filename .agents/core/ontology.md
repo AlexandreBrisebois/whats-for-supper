@@ -24,5 +24,5 @@ These terms describe repository work, not new application types.
 Application `WorkflowTask` and workflow instances are runtime domain concepts.
 They are not agent assignments, specification checkboxes or Taskfile targets.
 Do not infer equivalence between API objects, storage entities and workflow data
-from shared names. The conditional WFS source map is deferred to HM-C's verified
-investigation work; this ontology asserts no unverified product mapping.
+from shared names. Use the conditional [WFS source map](wfs-source-map.md) for verified navigation;
+check current source before relying on a mapping.

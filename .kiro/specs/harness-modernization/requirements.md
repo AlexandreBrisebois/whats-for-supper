@@ -1,6 +1,6 @@
 # Harness modernization requirements
 
-Status: Phase 0 package complete. HM-A foundation implemented for review; native loading and behavioral qualification remain unqualified. HM-B specification workflow is implemented for review; HM-C and later slices remain unselected.
+Status: Phase 0 package complete. HM-A foundation implemented for review; native loading and behavioral qualification remain unqualified. HM-B specification workflow is implemented for review; HM-C implementation is ready for review with isolated model runs and host qualification unqualified; HM-D is implemented with candidate-run verification blocked; HM-E and later slices remain unselected. See [HM-D evidence](hm-d-validation.md).
 
 ## Intent and boundaries
 

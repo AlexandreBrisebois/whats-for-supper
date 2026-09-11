@@ -1,6 +1,6 @@
 # Harness modernization design
 
-Status: Migration design; HM-A foundation is implemented for review. Phase 0 created no operative instruction changes. HM-B specification workflow is implemented for review; HM-C and later slices and host qualification remain pending.
+Status: Migration design; HM-A foundation is implemented for review. Phase 0 created no operative instruction changes. HM-B specification workflow is implemented for review; HM-C implementation is ready for review; HM-D is implemented with candidate-run verification blocked; isolated model runs and host qualification remain pending. HM-E and later slices remain unselected. See [HM-D evidence](hm-d-validation.md).
 
 ## Shared architecture and interfaces
 

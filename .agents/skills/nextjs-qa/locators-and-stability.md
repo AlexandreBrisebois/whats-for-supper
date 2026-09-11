@@ -1,6 +1,6 @@
 # Locators and E2E Test Stability
 
-Resilient Playwright tests depend entirely on zero-brittle locators. When diagnosing a test failure, bad locators are the number one culprit.
+Use stable interaction locators and inspect DOM, data and state evidence when diagnosing failures.
 
 ## The Locator Hierarchy
 1.  **MANDATORY:** `page.getByTestId('...')` - Use this for almost everything interactive.

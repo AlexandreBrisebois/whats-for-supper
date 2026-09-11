@@ -49,3 +49,31 @@ Host adapters describe available delegation mechanics, not a different scope pol
 Summarize findings and narrow context between steps. Check the current task/spec
 first, targeted code next, then history only if still needed. A large context
 window is not a reason to load unrelated material.
+
+## Investigation
+
+For an unknown or complex path, start at the reported component, route or failing
+test. Follow the API wrapper/generated client → approved OpenAPI operation →
+controller → service → persistence or workflow boundary, loading only affected
+source and immediate dependencies. Use the conditional [WFS source map](wfs-source-map.md)
+as navigation, then verify current code. `task agent:slice -- <route>` and
+`task agent:api` support discovery; their static output is not proof of live parity.
+
+Record the ordered source paths, representation changes (DTO/entity/client/state),
+contract agreement or mismatch, observed side effects and likely failure point.
+Investigation in review/plan mode ends in findings; it does not authorize fixes.
+For implementation, use the approved contract/testing sequence before changing logic.
+
+## Delegation handoff
+
+Use the [execution packet](../templates/execution-packet.md) for each independently
+useful assignment: outcome, authorization, allowed effects/file ownership, required
+context, acceptance, checks and stop conditions. Keep optional examples/advice
+separate from mandatory constraints. Resolve shared contracts before dependent
+implementation; do not dispatch competing writers to shared files. Read-only
+reviews can run alongside the sole writer. Agent count or model brand does not
+require escalation or prove correctness; use actual host capabilities.
+
+The lead reconciles findings against approved intent, reviews returned diffs and
+actual check evidence, and integrates only the selected scope. A delegated success
+message is not a substitute for evidence; unresolved dependencies remain visible.

@@ -191,7 +191,7 @@ tasks:
     desc: "🎭 Run E2E suites (Playwright — requires running PWA)"
     dir: pwa
     cmds:
-      - npx playwright test
+      - npx playwright test {{.CLI_ARGS}}
 
   test:e2e:reuse-server:
     desc: "🎭 Run E2E suites against an existing local PWA to avoid Playwright webServer startup"
@@ -208,7 +208,7 @@ tasks:
   test:audit:
     desc: "🔍 Audit tests for a specific area (Usage: task test:audit AREA=<keyword>)"
     cmds:
-      - python3 scripts/agent/test_audit.py "{{.AREA}}"
+      - python3 -B scripts/agent/test_audit.py "{{.AREA}}"
 
   test:smoke:
     desc: "💨 Docker Smoke Test (Local CI Parity)"
@@ -322,7 +322,7 @@ tasks:
   gen:client:check:
     desc: "🔍 Verify Kiota client is up to date (non-destructive check)"
     cmds:
-      - python3 scripts/agent/kiota_client.py check
+      - python3 -B scripts/agent/kiota_client.py check
 
   # ============================================================================
   # ASSET GENERATION
@@ -798,6 +798,12 @@ tasks:
     cmds:
       - npm run format
 
+  format:check:pwa:
+    desc: "Verify PWA formatting without writing source"
+    dir: pwa
+    cmds:
+      - npm exec -- prettier --check .
+
   lint:
     desc: "🔍 Lint code (API + PWA)"
     cmds:
@@ -1145,15 +1151,10 @@ tasks:
       - agent:test:impact
 
   review:
-    desc: "🔒 Pre-commit gate: full coverage (contracts + format + lint + all tests)"
+    desc: "Read-only application validation; prepare formatting/generation first"
     cmds:
-      - task: dev:kill
-      - task: test:kill
       - task: review:contracts
-      - task: format
       - task: review:validate
-      - echo ""
-      - echo "✓ Ready to commit!"
 
   review:contracts:
     desc: "Check all contract integrity (route drift + Kiota client + schema drift + mock compliance)"
@@ -1170,6 +1171,7 @@ tasks:
     internal: true
     deps:
       - lint
+      - format:check:pwa
       - typecheck
       - test:unit
       - test:agent
@@ -1192,7 +1194,7 @@ tasks:
   agent:reconcile:
     desc: "🤖 Reconcile Spec vs Mock vs Real API"
     cmds:
-      - python3 scripts/agent/api_tools.py
+      - python3 -B scripts/agent/api_tools.py
 
   # ============================================================================
   # AGENT TOOLS (AI OPTIMIZED)
@@ -1215,7 +1217,7 @@ tasks:
         grep "Active" specs/00_STRATEGY/ROADMAP.md | sed 's/^/  /'
         echo ""
         echo "Contract Integrity:"
-        python3 scripts/agent/drift.py --schema-only 2>&1 | tail -5 | sed 's/^/  /'
+        python3 -B scripts/agent/drift.py --schema-only 2>&1 | tail -5 | sed 's/^/  /'
         echo ""
         echo "Active Build Prompts:"
         ls build-prompts/*.md 2>/dev/null | grep -v -E '(README|_template)' | sed 's/^/  /'
@@ -1233,7 +1235,7 @@ tasks:
   agent:api:
     desc: "🤖 Map all API endpoints (Low token discovery)"
     cmds:
-      - python3 scripts/agent/api_tools.py --discovery
+      - python3 -B scripts/agent/api_tools.py --discovery
 
   agent:status:
     desc: "🤖 Read the handover journal"
@@ -1249,34 +1251,34 @@ tasks:
   agent:slice:
     desc: "🤖 Vertical Slice Viewer (Contract ↔ Backend ↔ Client). Usage: task agent:slice -- /api/route"
     cmds:
-      - python3 scripts/agent/slice.py {{.CLI_ARGS}}
+      - python3 -B scripts/agent/slice.py {{.CLI_ARGS}}
 
   agent:drift:
     desc: "🤖 Schema Drift — static route drift + Tier 0 endpoint diff + Tier 1 DTO schema comparison + Tier 2 Mock compliance"
     cmds:
       - task: agent:drift:routes
-      - python3 scripts/agent/drift.py
-      - python3 scripts/agent/drift_mocks.py
+      - python3 -B scripts/agent/drift.py
+      - python3 -B scripts/agent/drift_mocks.py
 
   agent:drift:routes:
     desc: "🤖 Static Route Drift — compare C# controller routes vs specs/openapi.yaml (no API needed)"
     cmds:
-      - python3 scripts/agent/api_tools.py --route-drift
+      - python3 -B scripts/agent/api_tools.py --route-drift
 
   agent:drift:endpoints:
     desc: "🤖 Schema Drift — Tier 0 only: diff generated API endpoints vs specs/openapi.yaml (needs API running)"
     cmds:
-      - python3 scripts/agent/drift.py --endpoint-diff
+      - python3 -B scripts/agent/drift.py --endpoint-diff
 
   agent:drift:schemas:
     desc: "🤖 Schema Drift — Tier 1 only: compare spec schemas vs C# DTOs (no API needed)"
     cmds:
-      - python3 scripts/agent/drift.py --schema-only
+      - python3 -B scripts/agent/drift.py --schema-only
 
   agent:drift:mocks:
     desc: "🤖 Schema Drift — Tier 2 only: verify E2E mocks use valid GUIDs and builders"
     cmds:
-      - python3 scripts/agent/drift_mocks.py
+      - python3 -B scripts/agent/drift_mocks.py
 
   agent:audit:
     desc: "🤖 High-Fidelity Test Audit — coverage identification + migration analysis + brittle selector detection"
@@ -1287,19 +1289,22 @@ tasks:
   agent:test:impact:
     desc: "🤖 Impact-Aware Test Runner (Only run tests affected by git changes)"
     cmds:
-      - python3 scripts/agent/test_ops.py --impact
+      - python3 -B scripts/agent/test_ops.py --impact
+
+  agent:prepare:
+    desc: "Prepare applicable formatting/generation before final validation (inspect effects first)"
+    cmds:
+      - python3 -B scripts/agent/finish.py --prepare
 
   agent:finish:
-    desc: "🤖 Single completion gate — impact tests, drift checks, then review"
+    desc: "Single completion entrypoint: change-class union with immutable evidence"
     cmds:
-      - task: agent:test:impact
-      - task: agent:drift
-      - task: review
+      - python3 -B scripts/agent/finish.py
 
   test:agent:
     desc: "🤖 Unit tests for the repository agent harness"
     cmds:
-      - python3 -m unittest discover -s scripts/agent/tests -p "test_*.py"
+      - python3 -B -m unittest discover -s scripts/agent/tests -p "test_*.py"
 
   # ============================================================================
   # AUTH

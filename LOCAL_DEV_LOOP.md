@@ -357,14 +357,15 @@ We use the `pre-commit` framework to ensure code quality before every commit.
 | **When** | During dev | Before commit | On `git commit` |
 | **Contracts** | Route drift + Kiota + schema drift | Route drift + Kiota + schema + mock drift | Kiota + schema + mock drift |
 | **Tests** | Unit + impact-only E2E | Unit + API (dotnet) | Unit + API (dotnet) |
-| **Format** | No | Yes (auto-fixes) | No (verify only) |
+| **Format** | No | Verify only | No (verify only) |
 | **E2E** | Impact-only | No | No |
 | **Speed** | Fast ⚡ | Medium | Medium |
 
 ### 6. **Know Your Workflows**
 Use Task's built-in workflows:
 ```bash
-# Pre-commit review (format + lint + test)
+# Prepare formatting/generation, inspect the diff, then validate
+task agent:prepare
 task review
 
 # Ship checklist (full validation)
@@ -641,8 +642,9 @@ task agent:summary
 # Fast inner loop — catch what changed
 task gate
 
-# Full pre-commit gate (format + lint + contracts + all tests)
-task review
+# Single completion entrypoint after preparation and diff review
+task agent:prepare
+task agent:finish
 
 # If tests fail, check logs
 task logs:api

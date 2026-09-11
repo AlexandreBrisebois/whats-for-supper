@@ -46,7 +46,8 @@ Good interfaces make testing natural:
    }
    ```
 
-2. **Return results, don't produce side effects**
+2. **Prefer pure calculations where appropriate**
+   Persistence and workflow operations intentionally have side effects; retain and test their observable results.
    ```csharp
    // Testable
    public Discount CalculateDiscount(Cart cart) {}
@@ -62,11 +63,11 @@ Good interfaces make testing natural:
    - Fewer params = simpler test setup
 
 ## 3. Refactor Candidates
-After completing a feature (Green phase), look for:
+Within the selected scope after Green, consider these only when needed for the change. Do not turn observations into adjacent cleanup:
 
 - **Duplication** → Extract function/class
 - **Long methods** → Break into private helpers (keep tests on public interface)
 - **Shallow modules** → Combine or deepen
 - **Feature envy** → Move logic to where data lives
 - **Primitive obsession** → Introduce value objects
-- **Existing code** the new code reveals as problematic
+- **Existing code** required by the selected behavior; report unrelated issues separately
