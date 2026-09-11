@@ -142,7 +142,7 @@ tasks:
   - HM-R10
   - HM-R11
   - HM-R12
-  status: planned
+  status: implemented-verification-blocked
   effects:
   - HANDOVER/JOURNAL and repo memory destinations
   - core completion/context

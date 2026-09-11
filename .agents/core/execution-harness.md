@@ -74,3 +74,25 @@ Inspect `.task/agent-finish/last-run.json` and report passed, failed, blocked, n
 and not-applicable separately. A passing static check cannot cancel a blocked live
 check. Finish records automated checks only; do not claim completion while selected
 acceptance, fixture or loading evidence is missing.
+
+## Evidence and meaningful handoffs
+
+Record changed paths, actual checks and content identity in the selected spec's
+task evidence. Keep durable rationale in `specs/decisions/` when a decision needs
+preserving; implementation facts belong with code/config references. Synchronize
+only affected contracts, configuration documentation and task records within scope.
+Static reconciliation alone is not database or live endpoint parity.
+
+Update [HANDOVER](../../HANDOVER.md) at a meaningful handoff or interruption, only
+in the writer's own task section. Preserve other tasks. Use these compact fields:
+Task/spec; Worktree/branch; Authorized scope and source; Current checkpoint;
+Verification evidence and content identity; Blocker or next action.
+Check stale evidence against current files when resuming. Completed detail belongs
+in specs; HANDOVER supplies context, not authority. [JOURNAL](../../JOURNAL.md) is
+frozen historical evidence after its salvage pass; do not append session results.
+There is no mandatory multi-file turn-end bookkeeping or automatic cleanup skill.
+Useful repeatable tooling may be proposed within scope; temporary scripts do not
+need automatic promotion into the repository.
+
+`task agent:summary` prints navigation only; it does not load handover, skill bodies
+or the whole registry. Use `task agent:status` explicitly for resumption/ambiguity.

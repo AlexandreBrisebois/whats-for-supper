@@ -748,7 +748,8 @@ This repository is optimized for **Universal Agent Protocol (UAP)** and includes
 
 | Task | AI Utility |
 |------|------------|
-| `task agent:summary` | Generates a context-dense summary of the project. |
+| `task agent:summary` | Prints compact source/spec navigation without loading resume context or the skill registry. |
+| `task agent:status` | Explicitly reads HANDOVER for resumption or active-state ambiguity. |
 | `task agent:api` | Maps all C# endpoints to a markdown table (low token cost). |
 | `task agent:drift` | Fuzzes the delta between OpenAPI specs and C# DTOs. |
 | `task agent:slice` | Shows the full "vertical slice" (Spec ↔ Backend ↔ Client) for a route. |

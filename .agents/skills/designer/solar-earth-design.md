@@ -1,25 +1,15 @@
-# Solar Earth Aesthetic Guidelines
+# Solar Earth surfaces and motion
 
-When building UIs, you must adhere to the Solar Earth design language. Avoid generic aesthetics; UIs should feel modern, smooth, and highly responsive.
+Load for relevant WFS surface or transition work. Existing utilities in
+[globals.css](../../../pwa/src/app/globals.css), including `.glass`, `.glass-nav`
+and `.glass-sage`, own the implemented blur, border and background values.
+Use the affected component's established pattern before introducing another utility.
 
-## Core Principles
+Translucency is useful where it preserves readability; check contrast on the actual
+composite background. Retain clear hierarchy and stable layout during asynchronous
+updates. Skeletons or spinners should communicate state without moving controls.
 
-1.  **Glassmorphism over Solid Blocks:**
-    *   Use semi-transparent backgrounds and backdrop blurs.
-    *   Leverage CSS variables defined in `index.css`: `--glass-bg`, `--glass-border`.
-    *   **Do not use inline styles or ad-hoc Tailwind classes for opacity/blur unless necessary.**
-2.  **Typography & Hierarchy:**
-    *   Use modern Google Fonts (Inter, Roboto, Outfit).
-    *   Maintain strict heading hierarchy (H1-H6). No skipping heading levels.
-3.  **Micro-Animations & Motion (Framer Motion):**
-    *   Interactive elements should feel alive. Use Framer Motion for transitions.
-    *   **Standard Spring Profile:** `type: "spring", stiffness: 300, damping: 30`
-    *   **Lists:** Use `staggerChildren: 0.05` for list rendering.
-    *   **Loading:** Implement skeleton loaders or elegant spinners for any async action. Avoid abrupt layout shifts.
-
-## Anti-Patterns
-
-*   **Wrong:** Using hardcoded hex colors (`#FF0000`).
-*   **Right:** Using design tokens (`var(--destructive-color)`).
-*   **Wrong:** "Jumping" UI elements when state changes.
-*   **Right:** Smooth Framer Motion `layoutId` transitions or simple opacity fades.
+Motion should explain an interaction or state change. Reuse existing transitions
+and respect reduced-motion preferences; do not add animation, a font, a library or
+list staggering just to satisfy an aesthetic checklist. A spring with stiffness
+300 and damping 30 is an optional starting example, not a universal constraint.

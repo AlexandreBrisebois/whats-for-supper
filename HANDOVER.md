@@ -1,31 +1,32 @@
-# Agent Handover Journal (Active)
+# Active resume checkpoints
 
-This file tracks the real-time execution state for **Active Tasks only**. Refer to [JOURNAL.md](JOURNAL.md) for historical archives.
+Load for resumption or active-state ambiguity via `task agent:status`. These
+checkpoints are context, not authority. Follow the shared
+[handoff procedure](.agents/core/execution-harness.md#evidence-and-meaningful-handoffs).
 
-## Next Session Entry Points
+## Public Synology release
 
-1. **Review the public Synology release specification**
-   - The owner-approved beta deployment decisions are captured in `specs/features/public-synology-release/`.
-   - Review and adjust `requirements.md`, `design.md`, `tasks.md`, and `workstream-map.md` before launching implementation.
-   - The first release is `0.1.0-beta.1`; publication remains blocked on the documented release gates and requires separate explicit authorization.
+Task/spec: [.kiro/specs/01-public-synology-release](.kiro/specs/01-public-synology-release/tasks.md).
+Worktree/branch: Current checkout `harness-upgrade`; original task branch not recorded.
+Authorized scope and source: Prior checkpoint records owner-approved beta planning; no release execution selected by HM-E.
+Current checkpoint: Review requirements/design/tasks/workstream map before implementation; current tasks say planned. First release target remains `0.1.0-beta.1`.
+Verification evidence and content identity: HM-E verified the current spec path/status; it did not run release gates or certify physical NAS behavior. See [salvage evidence](.kiro/specs/harness-modernization/hm-e-ledger.md).
+Blocker or next action: Resume release planning when selected; publication remains subject to release gates and separate explicit authorization.
 
-2. **Complete the .NET 11 Preview 6 migration validation**
-   - The working tree aligns the SDK, API and test projects, package versions, Docker images, CI workflows, debugging configuration, generated client, and engineering documentation with ADR 043.
-   - Run the ADR 043 release gates: restore, vulnerability audit, contract reconciliation/drift, API tests, complete repository tests, and Docker builds.
-   - Resolve only migration-caused failures; preserve unrelated working-tree changes.
+## .NET preview migration and generated-file reconciliation
 
-3. **Reconcile generated and lock files**
-   - Confirm the modified Kiota output and `pwa/package-lock.json` are deterministic results of the pinned tool and dependency versions.
-   - Review the final diff for accidental generated churn before committing.
+Task/spec: [ADR 043](specs/decisions/043-dotnet-11-preview-migration.md); prior migration checkpoint, including generated client/lockfile review.
+Worktree/branch: Current checkout `harness-upgrade`; original task branch not recorded.
+Authorized scope and source: Prior checkpoint records migration validation; HM-E does not execute it or authorize commits.
+Current checkpoint: SDK and API/test project pins inspected; dotnet-ef is Preview 7 while runtime projects remain Preview 6; prior checkpoint's claim of a dirty migration worktree is stale (HM-E started clean). Validation and generated/lockfile determinism remain unconfirmed.
+Verification evidence and content identity: [HM-E ledger](.kiro/specs/harness-modernization/hm-e-ledger.md) records inspected sources; no new restore, vulnerability, API, application-suite or Docker-build pass is claimed.
+Blocker or next action: When resumed, verify current identity, inspect ADR 043 gates and generated/lockfile determinism; diagnose migration-caused failures within scope. Deferred `home-goto.spec.ts` C7 reload test still skips; do not silently close it.
 
-4. **Close the migration handover**
-   - Record every passing or blocked gate here.
-   - After all required gates pass, move the migration result to `JOURNAL.md` and leave only the next active objective.
+## HM-E — harness modernization
 
-## Standing Notes
-
-- **Global Toast Pattern (ADR 042).** Use `addToast` from `useUiStore` for user action feedback.
-- **Playwright Mock Layering (ADR 040).** Use `route.fallback()` instead of `route.continue()` for test-specific overrides.
-- **E2E Route Handler Pattern (ADR 035).** Use `new URL(route.request().url())` inside handler bodies.
-- **Zero Drift Doctrine.** `task gate` must pass before ending any session.
-- **Known deferred E2E:** `home-goto.spec.ts` still skips the reload-after-"Make This Tonight" scenario.
+Task/spec: [HM-E](.kiro/specs/harness-modernization/tasks.md#hm-e--memory-and-specialist-cleanup).
+Worktree/branch: `/Users/alex/Code/whats-for-supper`, `harness-upgrade`.
+Authorized scope and source: User selected HM-E only; no HM-Q, adoption, commit, push, deploy or application behavior changes.
+Current checkpoint: Memory salvage, specialist/caller cleanup and summary/status implementation recorded in [HM-E evidence](.kiro/specs/harness-modernization/hm-e-validation.md).
+Verification evidence and content identity: See HM-E evidence and content records; automated checks do not qualify candidate/native loading. HM-D remains implemented-verification-blocked with its checkbox open.
+Blocker or next action: Fresh/resumed native loading and F07 candidate runs need the protocol-compliant pinned runner. Acceptance remains open; stop at HM-E.

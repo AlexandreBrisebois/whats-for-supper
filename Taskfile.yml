@@ -1201,36 +1201,15 @@ tasks:
   # ============================================================================
 
   agent:summary:
-    desc: "🤖 Context-dense project summary for AI agents"
+    desc: "Compact repository navigation; resume context is explicit"
     cmds:
       - |
-        echo "=== PROJECT SUMMARY ==="
-        echo "Tech Stack: .NET 11 Preview, Next.js 16, Postgres (pgvector)"
-        echo ""
-        echo "Project Map:"
-        echo "  API:     api/src/RecipeApi/"
-        echo "  PWA:     pwa/src/"
-        echo "  Spec:    specs/openapi.yaml"
-        echo "  Scripts: scripts/agent/"
-        echo ""
-        echo "Active Phases:"
-        grep "Active" specs/00_STRATEGY/ROADMAP.md | sed 's/^/  /'
-        echo ""
-        echo "Contract Integrity:"
-        python3 -B scripts/agent/drift.py --schema-only 2>&1 | tail -5 | sed 's/^/  /'
-        echo ""
-        echo "Active Build Prompts:"
-        ls build-prompts/*.md 2>/dev/null | grep -v -E '(README|_template)' | sed 's/^/  /'
-        ls -d build-prompts/*/ 2>/dev/null | grep -v -E 'done|archive' | sed 's/^/  /'
-        echo ""
-        echo "Active Feature Specs (.kiro/specs/):"
-        ls .kiro/specs/*.md 2>/dev/null | grep -v README | sed 's/^/  /'
-        echo ""
-        echo "Agent Skills (.agents/skills/):"
-        cat .agents/skills/README.md
-        echo ""
-        echo "Active Session:"
-        cat HANDOVER.md 2>/dev/null || echo "No active handover log found."
+        echo "Entrypoint: AGENT.md (shared policy and conditional loading)"
+        echo "Source: api/src/RecipeApi/ and pwa/src/"
+        echo "Contract: specs/openapi.yaml"
+        echo "Active specifications: .kiro/specs/ (select the requested task)"
+        echo "Targeted discovery: task agent:slice -- <route>"
+        echo "Resume or state ambiguity: task agent:status"
 
   agent:api:
     desc: "🤖 Map all API endpoints (Low token discovery)"
@@ -1238,7 +1217,7 @@ tasks:
       - python3 -B scripts/agent/api_tools.py --discovery
 
   agent:status:
-    desc: "🤖 Read the handover journal"
+    desc: "Read the explicit resume checkpoint"
     cmds:
       - cat HANDOVER.md
 

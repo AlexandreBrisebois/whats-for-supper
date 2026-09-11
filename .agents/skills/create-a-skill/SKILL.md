@@ -1,117 +1,34 @@
 ---
 name: create-a-skill
-description: Create new agent skills with proper structure, progressive disclosure, and bundled resources. Use when user wants to create, write, or build a new skill.
+description: Author or revise a repository-specific WFS skill when explicitly requested. Ordinary feature work does not require skill creation.
 ---
 
-# Create a Skill
+# Repository skill authoring
 
-## Process
+Use the request and existing context to identify the specialist outcome, trigger,
+boundaries and needed resources. Clarify only consequential missing information.
 
-1. **Gather requirements** - ask user about:
-   - What task/domain does the skill cover?
-   - What specific use cases should it handle?
-   - Does it need executable scripts or just instructions?
-   - Any reference materials to include?
+Keep universal policy with the owners in [AGENT.md](../../../AGENT.md). Link to the
+relevant owner rather than duplicating authority, testing, permissions, delegation,
+loading or completion rules. Do not introduce compulsory generic skills, automatic
+turn-end skills, persona activation, mandatory interviews or recursive loading chains.
+A reference is navigation; state the condition under which its body is needed.
 
-2. **Draft the skill** - create:
-   - SKILL.md with concise instructions
-   - Additional reference files if content exceeds 500 lines
-   - Utility scripts if deterministic operations needed
+Create a folder under `.agents/skills/` with `SKILL.md` and YAML frontmatter:
 
-3. **Review with user** - present draft and ask:
-   - Does this cover your use cases?
-   - Anything missing or unclear?
-   - Should any section be more/less detailed?
-
-## Skill Structure
-
-```
-skill-name/
-├── SKILL.md           # Main instructions (required)
-├── REFERENCE.md       # Detailed docs (if needed)
-├── EXAMPLES.md        # Usage examples (if needed)
-└── scripts/           # Utility scripts (if needed)
-    └── helper.js
+```yaml
+name: example-specialist
+description: Describe its concrete WFS capability and specific activation condition.
 ```
 
-## SKILL.md Template
+Keep the body focused on non-obvious repository decisions. Add a supporting reference
+only for substantial conditional detail, and a script only for a useful repeatable
+operation. Examples are optional advice, not new mandatory constraints. Avoid copied
+manuals, arbitrary line quotas and unsupported efficiency claims.
 
-```md
----
-name: skill-name
-description: Brief description of capability. Use when [specific triggers].
----
-
-# Skill Name
-
-## Quick start
-
-[Minimal working example]
-
-## Workflows
-
-[Step-by-step processes with checklists for complex tasks]
-
-## Advanced features
-
-[Link to separate files: See [REFERENCE.md](REFERENCE.md)]
-```
-
-## Description Requirements
-
-The description is **the only thing your agent sees** when deciding which skill to load. It's surfaced in the system prompt alongside all other installed skills. Your agent reads these descriptions and picks the relevant skill based on the user's request.
-
-**Goal**: Give your agent just enough info to know:
-
-1. What capability this skill provides
-2. When/why to trigger it (specific keywords, contexts, file types)
-
-**Format**:
-
-- Max 1024 chars
-- Write in third person
-- First sentence: what it does
-- Second sentence: "Use when [specific triggers]"
-
-**Good example**:
-
-```
-Extract text and tables from PDF files, fill forms, merge documents. Use when working with PDF files or when user mentions PDFs, forms, or document extraction.
-```
-
-**Bad example**:
-
-```
-Helps with documents.
-```
-
-The bad example gives your agent no way to distinguish this from other document skills.
-
-## When to Add Scripts
-
-Add utility scripts when:
-
-- Operation is deterministic (validation, formatting)
-- Same code would be generated repeatedly
-- Errors need explicit handling
-
-Scripts save tokens and improve reliability vs generated code.
-
-## When to Split Files
-
-Split into separate files when:
-
-- SKILL.md exceeds 100 lines
-- Content has distinct domains (finance vs sales schemas)
-- Advanced features are rarely needed
-
-## Review Checklist
-
-After drafting, verify:
-
-- [ ] Description includes triggers ("Use when...")
-- [ ] SKILL.md under 100 lines
-- [ ] No time-sensitive info
-- [ ] Consistent terminology
-- [ ] Concrete examples included
-- [ ] References one level deep
+Update the [registry](../README.md) with the discovery name, entrypoint and trigger.
+Preserve established discovery identities when directories differ (for example,
+`aws-architect` exposes `aws-well-architected`). Verify frontmatter, incoming links,
+active routes and the absence of loading cascades. For executable changes, add focused
+regressions before implementation and use the shared completion procedure. Record
+actual checks and any unavailable native discovery observation separately.

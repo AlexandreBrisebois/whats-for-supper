@@ -1,0 +1,47 @@
+{
+  "checks": {
+    "documentation": {
+      "status": "passed",
+      "detail": "introduced links/Python syntax and exit 0",
+      "tested_identity": "b88e0e024ea55cfdd170275aa7d2fddb6191098f9723e081b726b9d776e9eacd"
+    },
+    "test:agent": {
+      "status": "passed",
+      "detail": "exit 0",
+      "tested_identity": "b88e0e024ea55cfdd170275aa7d2fddb6191098f9723e081b726b9d776e9eacd"
+    },
+    "lint": {
+      "status": "not-applicable"
+    },
+    "format:check:pwa": {
+      "status": "not-applicable"
+    },
+    "typecheck": {
+      "status": "not-applicable"
+    },
+    "test:unit": {
+      "status": "not-applicable"
+    },
+    "agent:test:impact": {
+      "status": "not-applicable"
+    },
+    "test:api": {
+      "status": "not-applicable"
+    },
+    "review:contracts": {
+      "status": "not-applicable"
+    },
+    "agent:drift:endpoints": {
+      "status": "not-applicable"
+    },
+    "database-behavior": {
+      "status": "not-applicable"
+    },
+    "content": {
+      "status": "passed",
+      "tested_identity": "b88e0e024ea55cfdd170275aa7d2fddb6191098f9723e081b726b9d776e9eacd"
+    }
+  },
+  "automated_checks_passed": true,
+  "task_acceptance": "not-evaluated: reconcile selected task/fixture/host evidence separately"
+}

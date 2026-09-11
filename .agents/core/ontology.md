@@ -18,6 +18,7 @@ These terms describe repository work, not new application types.
 | Check | A named validation with defined inputs and an observable result. |
 | Result | The observed outcome of a check; a process exit alone does not establish untested behavior. |
 | Evidence | Recorded observation supporting a claim, tied to the checked content, command/configuration and environment. It supplies no new authorization. |
+| Resume checkpoint | Compact active-task context in HANDOVER; stale until checked, and never authority or proof of completion. |
 | Content identity | Commit and/or digest identifying the actual content checked, including relevant dirty/untracked inputs. |
 | Environment | Runtime, service availability, host/model and configuration relevant to a check. Static inspection does not prove live behavior. |
 

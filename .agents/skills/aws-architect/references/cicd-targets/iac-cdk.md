@@ -1,5 +1,14 @@
 # CI/CD — CDK Infrastructure Pipelines
 
+Use only for the selected AWS question. This is illustrative reference material,
+not the deployed WFS configuration or a required checklist. Start from the affected
+WFS CDK construct and workflow identified by the skill entrypoint. Load linked
+references only when needed; examples do not require choosing a new service,
+account topology or deployment. Verify prices, limits, versions and policy scopes
+against current provider documentation before relying on them. Existing authorization
+and shared repository policy govern any actual action.
+
+
 ## Pattern Overview
 
 An IaC-only pipeline deploys infrastructure changes (CDK stacks) without a specific application runtime target. The same CDK pipeline pattern also serves as the backbone for Lambda, ECS, and other target pipelines.
@@ -256,7 +265,7 @@ new ApiStack(app, `ApiStack-${env}`, {
 
 ## CDK Testing
 
-Always write snapshot + assertion tests for CDK stacks. This catches unintended infrastructure changes during code review.
+For changed CDK behavior, assert the affected synthesized resources and permissions. Use snapshots only when they add useful review coverage; follow the shared test policy.
 
 ```typescript
 import * as cdk from 'aws-cdk-lib';

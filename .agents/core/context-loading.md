@@ -22,8 +22,9 @@ do not re-read it merely because another document links to it.
 
 Links are navigation, not recursive loading instructions. No skill is a mandatory
 startup dependency. Load only the supporting files needed by an activated skill;
-do not load the registry or follow skill cascades to orient yourself. Archives,
-repo memory and host memory are optional context under the shared trust boundary.
+do not load the registry or follow skill cascades to orient yourself. Archives and
+host memory are optional context under the shared trust boundary.
+Repository memory sources are retired; verified facts live with their owners.
 
 ## Bound the work
 

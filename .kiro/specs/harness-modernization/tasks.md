@@ -1,6 +1,6 @@
 # Dependency-ordered migration tasks
 
-Phase 0 is complete. HM-A was explicitly selected by the user on 2026-09-09 and is implemented for review, with native loading unqualified. HM-B was selected on 2026-09-09 and is implemented for review with evidence below. HM-C was selected on 2026-09-10 and is implemented for review with evidence below. HM-D through HM-Q remain unselected; do not begin them. The machine-readable [task graph](task-graph.yaml) owns IDs, dependencies, effects and acceptance; this document explains sequencing.
+Phase 0 is complete. HM-A was explicitly selected by the user on 2026-09-09 and is implemented for review, with native loading unqualified. HM-B was selected on 2026-09-09 and is implemented for review with evidence below. HM-C was selected on 2026-09-10 and is implemented for review with evidence below. HM-D was selected and implemented with candidate verification blocked. HM-E was selected on 2026-09-11 and is implemented with required loading/fixture verification blocked. HM-Q remains unselected; do not begin it. The machine-readable [task graph](task-graph.yaml) owns IDs, dependencies, effects and acceptance; this document explains sequencing.
 
 ```text
 HM-0 package → HM-A foundation → HM-B specification workflow
@@ -53,7 +53,7 @@ One lead edits each selected slice. Up to two reviewers may inspect independent 
 ## HM-D — Verification and completion
 
 - [ ] Complete this slice and record evidence.
-- Implementation and automated harness verification are recorded in [HM-D evidence](hm-d-validation.md). F05/F07 candidate model runs remain blocked at isolated-runner setup; no host/model qualification or adoption. HM-E is unselected.
+- Implementation and automated harness verification are recorded in [HM-D evidence](hm-d-validation.md). F05/F07 candidate model runs remain blocked at isolated-runner setup; no host/model qualification or adoption. HM-E was subsequently selected explicitly; this does not close HM-D acceptance.
 - Depends on: HM-C
 - Requirements: HM-R05, HM-R07, HM-R12, HM-R13
 - Authorized effects when selected: testing/completion policy; Taskfile relevant targets; scripts/agent and regression tests; nextjs-qa and references; testing/test-audit retirement; skills registry.
@@ -64,6 +64,7 @@ One lead edits each selected slice. Up to two reviewers may inspect independent 
 ## HM-E — Memory and specialist cleanup
 
 - [ ] Complete this slice and record evidence.
+- Implementation, provenance and automated checks are recorded in [HM-E evidence](hm-e-validation.md). Native fresh/resumed loading and F07 candidate runs remain blocked/not-run; acceptance is open. HM-D qualifications remain unresolved; HM-Q is unselected.
 - Depends on: HM-D
 - Requirements: HM-R08, HM-R10, HM-R11, HM-R12
 - Authorized effects when selected: HANDOVER/JOURNAL and repo memory destinations; core completion/context; designer/caveman/mere-designer; death-audit/create-a-skill; aws-architect entrypoint/references; session-review retirement; registry and summary/status targets.

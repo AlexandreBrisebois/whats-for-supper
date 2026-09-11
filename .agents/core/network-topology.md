@@ -1,28 +1,45 @@
-# Network Topology & Environment Doctrine
+# Network topology reference
 
-This document defines the canonical network configuration for "What's For Supper" in production environments. All agents must adhere to these rules to ensure SSE (Server-Sent Events) stability and correct cookie flow.
+Load only for network/deployment, cookie or SSE origin work. These are source-verified
+implementation facts, not proof of a running deployment.
 
-## 1. Same-Origin Policy (The "/" Rule)
+## Browser and server URLs are different
 
-In production environments behind Traefik, the PWA and API must operate as a single logical origin. This is enforced via environment variables:
+[config.ts](../../pwa/src/lib/constants/config.ts) and the
+[Kiota adapter](../../pwa/src/lib/api/api-client.ts) default the browser API base to
+an empty string. [useScheduleStream](../../pwa/src/hooks/useScheduleStream.ts) builds
+`/api/stream` when that base is empty and uses credentials. Same-origin browser
+requests behind Traefik retain `/api`; do not expose Docker service names to browsers.
+Do not require a literal `/` base: callers concatenate paths, and a leading `/` base
+can produce `//api/...`. Inspect each affected URL builder when changing the base.
 
-- **`NEXT_PUBLIC_API_BASE_URL=/`**: This MUST be set to `/`. This ensures that the browser treats all API calls (including SSE `/api/stream`) as same-origin requests. This is critical for:
-    - **Cookie Flow**: Browser automatically includes `h_access` and other identity cookies.
-    - **SSE Stability**: Avoids CORS complexities and ensures Traefik can correctly handle unbuffered stream headers.
-- **`API_INTERNAL_URL=/`**: This MUST be set to `/`. This forces both client-side and server-side logic to use relative paths, ensuring consistency across environments when proxied.
+[serverFetch](../../pwa/src/lib/api/server-client.ts) concatenates `API_INTERNAL_URL`
+and the endpoint without normalization. Its default and the production override use
+`http://api:9001`, the configured absolute container-network URL. It explicitly forwards
+`h_access` in the Cookie header and identity as `X-Family-Member-Id`. This internal
+request does not change the browser origin. The retired claim that both bases must
+be `/`, or that internal absolute URLs inherently break SSR cookies, was incorrect.
 
-## 2. Domain Management
+## Configuration owners
 
-- **`DOMAIN_NAME`**: This is the primary routing key for Traefik. It must match the public-facing URL (including subdomains if applicable, e.g., `wfs.example.com`).
-- **`NEXT_PUBLIC_COOKIE_DOMAIN`**: Set this to the parent domain (e.g., `.example.com`) to allow cookies to persist across subdomains if the architecture expands.
+- [apps.yml](../../docker/compose/apps.yml) defines API `/api` routing, the dedicated
+  priority-100 stream router and `sse-headers@file` middleware. The prefix is retained.
+  [traefik_dynamic.yml](../../docker/compose/traefik_dynamic.yml) defines the headers
+  and additional local-host routes; inspect the composed configuration for deployment.
+- [production-overrides.yml](../../docker/compose/production-overrides.yml) binds the
+  host `DATA_ROOT` location to `/data`; the base API sets container `DATA_ROOT=/data`.
+  [production.yml](../../docker/compose/production.yml) separately overrides container
+  `DATA_ROOT` with the host variable. Do not assume those different compositions
+  produce the same storage path. Verify rendered env and mounts before deployment.
+- Both production files default Traefik host ports to 9100 (HTTP) and 9180 (admin),
+  with overrides. These are legacy configuration facts, not public-release requirements.
+  The [public release spec](../../.kiro/specs/01-public-synology-release/design.md)
+  owns its planned public exposure and qualification gates.
+- `DOMAIN_NAME` is a host routing value, not a URL with scheme/path.
+  [auth.ts](../../pwa/src/lib/auth.ts) and
+  [identity cookies](../../pwa/src/lib/identity/cookie.ts) read optional
+  `NEXT_PUBLIC_COOKIE_DOMAIN`. A parent domain is not universally required.
 
-## 3. Traefik Routing
-
-Traefik is responsible for the unified origin. It routes `/api/*` to the `api` container and all other traffic to the `pwa` container.
-
-- **No Path Stripping**: The `/api` prefix must reach the API container as-is.
-- **SSE Priority**: The `/api/stream` route must have a dedicated router with high priority and unbuffered headers (middleware `sse-headers@file`).
-
-## 4. Why absolute URLs are forbidden in production
-
-Using absolute URLs (e.g., `http://api:9001`) in `NEXT_PUBLIC_API_BASE_URL` or `API_INTERNAL_URL` in production breaks the "Same-Origin" guarantee. It forces the browser into CORS mode for client calls and disconnects the server-side fetches from the cookie-aware proxy logic, leading to authentication failures in SSR.
+Verify the selected Compose combination and server/client behavior rather than
+copying historical environment claims. Static source inspection does not establish
+SSE delivery, cookie behavior in a deployed browser, or persistent-volume recovery.

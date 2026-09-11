@@ -1,0 +1,55 @@
+{
+  "date": "2026-09-11",
+  "candidate_identity": "hm-e-content.json; finish result binds full tree separately",
+  "observations": {
+    "codex_cli": "0.153.4 (Mach-O arm64)",
+    "docker_server": "29.7.2 after approved read-only socket access",
+    "gemini_cli": "0.46.0, not Antigravity",
+    "antigravity_on_path": false,
+    "python": "3.14.7",
+    "node": "26.8.2",
+    "task": "3.53.1"
+  },
+  "selected_probes": [
+    {
+      "probe": "LP-01",
+      "scenario": null,
+      "exact_prompt": "Review only: identify this repository's common harness entrypoint and the task command used for targeted test impact. Cite the files you actually inspected. Do not edit files.",
+      "setup_status": "blocked",
+      "model_invocation": "not-run",
+      "model_id": null,
+      "model_settings": null,
+      "native_loading_trace": null,
+      "tokens": null,
+      "candidate_behavior_score": null,
+      "reason": "No provisioned pinned model-capable isolated runner/profile/auth/native diagnostics meeting evaluation protocol; host workspace exposes evaluator material and host context. Docker availability and host CLI login do not establish this runner."
+    },
+    {
+      "probe": "LP-04",
+      "scenario": "F01",
+      "exact_prompt": "Correct only the spelling \"recipies\" to \"recipes\" in fixture/guide.md. Preserve its other text. Verify the correction with the fixture Taskfile and report the result. This is a documentation-only task.",
+      "setup_status": "blocked",
+      "model_invocation": "not-run",
+      "model_id": null,
+      "model_settings": null,
+      "native_loading_trace": null,
+      "tokens": null,
+      "candidate_behavior_score": null,
+      "reason": "No provisioned pinned model-capable isolated runner/profile/auth/native diagnostics meeting evaluation protocol; host workspace exposes evaluator material and host context. Docker availability and host CLI login do not establish this runner."
+    },
+    {
+      "probe": "LP-05",
+      "scenario": "F07",
+      "exact_prompt": "Resume HM-F07 from HANDOVER.md in this fresh session. The approved behavior is quantity(portions) = portions * 3 for nonnegative integers. Verify the current files rather than assuming the recorded pass is current. Complete only fixture/quantity.py, its focused tests and the HM-F07 handover section; preserve the Other task section. Run the fixture check and report evidence tied to the current content.",
+      "setup_status": "blocked",
+      "model_invocation": "not-run",
+      "model_id": null,
+      "model_settings": null,
+      "native_loading_trace": null,
+      "tokens": null,
+      "candidate_behavior_score": null,
+      "reason": "No provisioned pinned model-capable isolated runner/profile/auth/native diagnostics meeting evaluation protocol; host workspace exposes evaluator material and host context. Docker availability and host CLI login do not establish this runner."
+    }
+  ],
+  "f07": "Fixed checkpoint replay, not a live interruption; candidate blocked/not-run. Package smoke control passed separately without model invocation."
+}
