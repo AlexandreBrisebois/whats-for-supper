@@ -55,7 +55,7 @@ If Recipe X is the current top card (the one Jordan is looking at) and it gets p
 
 ### Server-side filter requirement
 
-The API endpoint `GET /api/discovery/items?category={cat}` MUST filter out recipes that are assigned to any slot in the current week (`weekOffset=0`). The client triggers a refetch; the server is responsible for the authoritative exclusion. The client only does an ID diff to determine which cards to animate out.
+The API endpoint `GET /api/discovery?category={cat}` MUST filter out recipes that are assigned to any slot in the current week (`weekOffset=0`). The client triggers a refetch; the server is responsible for the authoritative exclusion. The client only does an ID diff to determine which cards to animate out.
 
 ---
 

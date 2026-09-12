@@ -8,7 +8,7 @@ A registry of custom scripts and tools designed to optimize agent efficiency.
 | :--- | :--- | :--- |
 | `api_tools.py` | Multi-purpose tool for API Discovery and Parity Reconciliation. | `task agent:api` or `task agent:reconcile` |
 | `slice.py` | Vertical Slice Viewer for full-stack route context. | `task agent:slice -- /api/route` |
-| `drift.py` | Schema Drift Fuzzer (Contract vs. Backend DTOs). | `task agent:drift` |
+| `drift.py` | Live endpoint comparison and static DTO property/requiredness checks. | `task agent:drift` |
 | `test_ops.py` | Explainable, cache-aware impact runner with untracked-file coverage. | `task agent:test:impact` |
 | `kiota_client.py` | Runtime-safe Kiota generation and drift checking with a one-shot timeout. | `task gen:client` or `task gen:client:check` |
 | `run-e2e-ci.sh` | Runs full E2E suite in a stable environment. | `task test:e2e:ci` |
@@ -22,7 +22,7 @@ A registry of custom scripts and tools designed to optimize agent efficiency.
 - **Problem Solved**: Reading large C# controllers to find routes is token-expensive and error-prone.
 - **Modes**:
     - `--discovery`: Maps C# Controller endpoints to a markdown table (use via `task agent:api`).
-    - `(default)`: Checks parity between Spec, Mock, and Real API (use via `task agent:reconcile`).
+    - `(default)`: Checks static route coverage between spec, mock handlers and controller source (use via `task agent:reconcile`).
 
 ### slice.py
 - **Source**: [scripts/agent/slice.py](file:///Users/alex/Code/whats-for-supper/scripts/agent/slice.py)
@@ -73,7 +73,7 @@ Use the output to understand the full contract ↔ backend ↔ client chain befo
 - **Modes**:
     - `--impact`: Explains and runs tests affected by tracked and untracked changes.
     - `--all`: Runs every E2E test explicitly.
-- **Cache**: Successful local impact runs are reused only when changed-file contents, selected tests, and test configuration produce the same digest. Set `WFS_DISABLE_TEST_CACHE=1` to force a run. CI never reuses this cache.
+- **Cache**: Successful local impact runs require identical source/configuration/runtime inputs before and after testing; mutation discards success. Unmapped impact runs all E2E. Set `WFS_DISABLE_TEST_CACHE=1` to force a run. CI never reuses this cache.
 
 ### kiota_client.py
 - **Problem Solved**: Hidden overwrite prompts and incompatible runtime roll-forward made Kiota appear to hang.
@@ -82,3 +82,15 @@ Use the output to understand the full contract ↔ backend ↔ client chain befo
 ### run-e2e-ci.sh
 - **Source**: [scripts/run-e2e-ci.sh](file:///Users/alex/Code/whats-for-supper/scripts/run-e2e-ci.sh)
 - **Problem Solved**: Environment drift during E2E runs.
+
+### Completion and advisory audit
+
+`task agent:prepare` prepares applicable generation/formatting; `task agent:finish`
+selects change-class checks and records immutable evidence. See
+[execution harness](core/execution-harness.md) for effects and blocked checks.
+
+`task agent:audit AREA=<keyword>` retains `scripts/agent/test_audit.py` through
+`test:audit`. It discovers PWA unit/E2E and API tests by filename/content and reports
+logic-heavy, mock-heavy and selector heuristics. Findings are advisory; preserve
+semantic accessibility assertions and do not expand the selected task into cleanup.
+Static navigation/parity does not prove live services or database behavior.

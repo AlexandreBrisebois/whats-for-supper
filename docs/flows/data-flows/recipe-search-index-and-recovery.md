@@ -34,7 +34,7 @@ That sequence keeps the product shippable at every step.
 
 ```mermaid
 flowchart TD
-    A[POST /api/recipes/search] --> B[Validate + clamp limit to max 5]
+    A[POST /api/recipes/search] --> B[Validate + clamp limit: default 6, minimum 1, maximum 50]
     B --> B2{mode?}
     B2 -->|agent| BA[AgentSearchTranslationService: LLM prompt → RecipeSearchRequestDto]
     BA --> C

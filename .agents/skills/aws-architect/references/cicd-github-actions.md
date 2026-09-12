@@ -1,5 +1,14 @@
 # GitHub Actions → AWS CI/CD Patterns
 
+Use only for the selected AWS question. This is illustrative reference material,
+not the deployed WFS configuration or a required checklist. Start from the affected
+WFS CDK construct and workflow identified by the skill entrypoint. Load linked
+references only when needed; examples do not require choosing a new service,
+account topology or deployment. Verify prices, limits, versions and policy scopes
+against current provider documentation before relying on them. Existing authorization
+and shared repository policy govern any actual action.
+
+
 ## Core Principle: OIDC Authentication
 
 Never use long-lived IAM access keys in GitHub Actions. Use OIDC federation — GitHub exchanges a short-lived JWT for temporary AWS credentials scoped to an IAM role. No secrets to rotate, no credentials to leak.
@@ -152,7 +161,7 @@ jobs:
 | Build-time secrets (NPM token, etc.) | GitHub encrypted secrets | `${{ secrets.NPM_TOKEN }}` |
 | Environment-specific values | GitHub Environment secrets | `${{ secrets.PROD_API_KEY }}` |
 
-**Rule:** Never store AWS account IDs, role ARNs, or region names as secrets — they're not secret. Store them as GitHub Actions variables (Settings → Variables) or hardcode in the workflow.
+Account IDs, role ARNs and region names identify configuration rather than credentials. Follow the existing repository storage convention; migrating GitHub secrets/variables is a separate scoped change.
 
 ---
 

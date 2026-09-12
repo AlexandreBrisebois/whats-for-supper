@@ -1,78 +1,63 @@
 ---
 name: openapi-expert
-description: Orchestrate the end-to-end API lifecycle. Ensure specifications, high-fidelity examples, generated clients, and E2E tests are perfectly aligned with zero-drift.
+description: Maintain approved API contracts, generated clients, examples and stateful mocks across WFS seams.
 ---
 
-# Skill: OpenAPI Specialist (The Negotiator)
+# OpenAPI procedure
 
-You are responsible for the "Seams" of the application. Your primary objective is to ensure that the OpenAPI Specification (OAS) remains the absolute Source of Truth for communication between the Backend and the Frontend.
+Follow [contract/testing](../../core/contract-testing.md) and the selected scope:
+approved contract → tests → implementation. Use [API design principles](api-design-principles.md)
+for surface design. A divergent DTO, test or log does not authorize a contract
+rewrite. Resolve against approved intent; ask only for consequential changes not
+covered by existing authorization. Review may end with findings only.
 
-## 1. Operational Directives (Sequential)
+## Establish and synchronize the seam
 
-Follow these directives in order for every API change or new endpoint.
+1. Use [shared investigation](../../core/context-loading.md#investigation),
+   `task agent:api` and `task agent:slice -- <route>` to locate the operation in
+   `specs/openapi.yaml`, affected controller/DTO, client wrapper and mocks.
+2. For an authorized API change, define paths, parameters, response schemas and
+   schema-valid examples first. Preserve camelCase JSON and deterministic valid
+   UUIDs. Include applicable empty collections and documented error responses.
+3. Regenerate with `task gen:client`; its pipeline is
+   `scripts/agent/kiota_client.py` and `pwa/scripts/fix-kiota-imports.js`.
+   Inspect the affected route/models under `pwa/src/lib/api/generated/`; validate
+   compilation with `task typecheck`. Do not hand-edit generated types.
+4. Write affected seam regression tests before implementation. Synchronize backend
+   DTOs, wrapper calls, builders and Playwright mocks with the approved contract.
+   Follow [database](../database/SKILL.md) for persistence changes: storage shapes
+   may differ from API DTOs and require explicit conversion/constraint checks.
+5. Use `task agent:reconcile` and applicable drift checks, then the shared
+   [execution harness](../../core/execution-harness.md) completion route.
 
-### Directive 1: Spec-First Initialization
-1.  **Modify Source**: Update `specs/openapi.yaml` before writing any implementation code.
-2.  **Rich Examples**: Every response schema MUST include high-fidelity `example` data. This is mandatory for Playwright mocking.
-3.  **Validate Spec**: Ensure the YAML is syntactically correct and follows OpenAPI 3.x standards.
+## Check coverage
 
-### Directive 2: SDK & Type Synchronization
-1.  **Regenerate Client**: Run `npm run api:generate` inside the `pwa/` directory. This uses Kiota to rebuild the SDK.
-2.  **Post-Process Imports**: Verify that `pwa/scripts/fix-kiota-imports.js` has executed (automatically triggered by `api:generate`).
-3.  **Sync Types**: Run `task types:sync` to update the flat TypeScript types in `pwa/src/lib/api/types.ts`.
+| Command | Observation |
+|---|---|
+| `task agent:api` / `task agent:slice -- <route>` | Static discovery and navigation |
+| `task agent:reconcile` | Static comparison of contract, backend and mock surfaces |
+| `task agent:drift:endpoints` | Live API OpenAPI endpoint comparison; requires configured API (default 127.0.0.1:5001) |
+| `task agent:drift:schemas` | Static DTO/schema comparison |
+| `task agent:drift:mocks` | Static hardcoded-ID/GUID pattern audit; not schema validation |
+| `task agent:drift` | Aggregate checks; inspect each result and unavailable service limitations |
+| `task test:api`, `task test:unit`, `task test:e2e:ci` | Applicable backend, PWA unit and production-build Playwright behavior |
 
-### Directive 3: Mock Verification (Playwright)
-1.  **Start Mock Server**: Run `npm run mock-api` in the PWA.
-2.  **Verify Data Flow**: Ensure the UI components can consume the new endpoint using the generated client and that the mock data renders correctly.
-3.  **Image High-Fidelity**: Use valid Unsplash URLs in examples to prevent layout shifts or broken image indicators during testing.
+A skipped live probe or green aggregate log cannot establish live parity. Record
+actual subcheck results and blocked dependencies; do not rewrite the contract to
+clear drift automatically. Tooling behavior and completion changes have their
+shared owner, not a separate model-tier policy here.
 
-### Directive 4: Implementation Reconciliation
-1.  **Discover Backend**: Run `task agent:api` to map the current C# Controller endpoints.
-2.  **Slice Inspection**: Use `task agent:slice -- /api/your-route` to verify the vertical alignment between the Spec, the C# Controller, and the TypeScript Client.
-3.  **Parity Check**: Run `task agent:reconcile` to perform a multi-layer validation of the API surface.
+## Mock and client behavior
 
-### Directive 5: Zero-Drift Enforcement (Tiered)
+Use `pwa/e2e/mock-api.ts`, `pwa/src/testing/builders.ts` and `pwa/src/testing/mock-ids.ts` and their schema-compliant builders.
+Preserve method dispatch, route precedence (Playwright last-registered matching
+route first), mutation state, retry transitions and observable side effects.
+A typed success response alone does not model an operation that changes subsequent
+reads. Backend factories likewise retain workflow persistence needed by tests.
+Use deterministic `MOCK_IDS` and valid media fixtures; cover populated/empty and
+applicable error states. There is no requirement to start a nonexistent mock-server
+script: the PWA uses Playwright route mocks.
 
-Use the cheapest tier first. Escalate only if drift is detected or the API is unavailable.
-
-| Tier | Command | Model | Requires |
-| :--- | :--- | :--- | :--- |
-| **0 — Endpoint Diff** | `task agent:drift:endpoints` | Haiku 4.5 / Gemini 2.0 Flash | API running at `127.0.0.1:5001` |
-| **1 — Schema Drift** | `task agent:drift:schemas` | Haiku 4.5 / Gemini 2.0 Flash | Nothing (static analysis) |
-| **Full** | `task agent:drift` | Haiku 4.5 / Gemini 2.0 Flash | API running (Tier 0 skipped gracefully if not) |
-| **2 — Manual Review** | You read specific files | Larger model | Tier 0/1 found something ambiguous |
-
-**Workflow:**
-1. **Tier 0**: Run `task agent:drift:endpoints` — fetches `/openapi/v1.json` from the running .NET API and diffs all paths/methods against `specs/openapi.yaml`. Catches missing endpoints instantly.
-2. **Tier 1**: Run `task agent:drift:schemas` — compares `components/schemas` in the spec against C# DTO files. Catches property name, type, and nullability drift.
-3. **Tier 2**: Only if Tier 0/1 report something ambiguous — inspect the specific file, keep naming conventions and example quality standards high.
-4.  **Refine & Repeat**: If drift is detected, immediately update `specs/openapi.yaml` and repeat Directives 2-4.
-
-### Directive 6: Frontend Integration (Wiring)
-1.  **Centralized Client**: Initialize the `ApiClient` once in a wrapper service (e.g., `pwa/src/lib/api/client.ts`).
-2.  **Typed Implementation**: Use only the generated types (e.g., `RecipeDto`, `ScheduleDays`) for state and props.
-3.  **Hook Abstraction**: Wrap client calls in custom React hooks or services to isolate the UI from SDK changes.
-
-## 2. Integrity Gate Checklist (Mandatory)
-
-Before declaring an API task "Done", you must verify:
-- [ ] `specs/openapi.yaml` is the finalized contract.
-- [ ] `pwa/src/lib/api/generated` contains the updated SDK.
-- [ ] `task agent:reconcile` shows "✅" for all layers.
-- [ ] `task agent:drift` reports zero mismatches between Backend and Spec.
-- [ ] `task test:pwa:ci` (or `scripts/run-e2e-ci.sh`) passes 100%.
-
-## 3. High-Fidelity Mocking Standards
-
-| Feature | Requirement | Rationale |
-| :--- | :--- | :--- |
-| **Collections** | Provide both a full list and an empty `[]` example. | Ensures UI handles "No Data" states. |
-| **Errors** | Include 400, 401, and 404 response examples. | Enables robust error-handling testing in the PWA. |
-| **Media** | Use valid Unsplash URLs (`https://images.unsplash.com/...`). | Prevents broken images in E2E recordings/screenshots. |
-| **UUIDs** | Use deterministic UUIDs in examples. | Ensures stable test assertions. |
-
-## 4. Token-Efficient Research
-
-- **Targeted Reading**: Do not read the entire `generated/` SDK. Navigate directly to the route-specific folder (e.g., `pwa/src/lib/api/generated/api/recipes/`).
-- **Discovery First**: Always use `task agent:api` to understand the API landscape before diving into C# code.
-- **Slice Context**: Use `task agent:slice` to gather all relevant context for a single route in one turn.
+Existing centralized client setup is `pwa/src/lib/api/api-client.ts`; affected
+wrappers such as `recipes.ts` and `schedule.ts` isolate SDK calls. Prefer targeted
+route/model inspection over loading the entire generated SDK.

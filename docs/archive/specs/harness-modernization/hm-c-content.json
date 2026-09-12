@@ -1,0 +1,318 @@
+{
+  "starting_commit": "55bd68f7961647fc9a3c4d754e8de2f46821b1e9",
+  "initial_git_status": "",
+  "original_manifest_baseline": "13fcddedffa9c2a07b2498afb530e7906394b006",
+  "files": {
+    ".agents/core/context-loading.md": {
+      "sha256": "8e98e5ba0423339b3b951ad3dba5e1c3d62c830e793c01b135a277ca25abcd96",
+      "bytes": 4876
+    },
+    ".agents/core/ontology.md": {
+      "sha256": "e89f751c379e6a5e9826869fe902552d733a47d6cbd366b6188c16f0d381cfec",
+      "bytes": 2465
+    },
+    ".agents/core/wfs-source-map.md": {
+      "sha256": "f8bef446610fbc7caa44a818a456c8296389d0f5e292be5ff1b2d6d0224e22f8",
+      "bytes": 3329
+    },
+    ".agents/prompts/surgical.md": {
+      "sha256": "6385c787c6d780d38733f57636cd44045e7af60d217b8326a9813a71773973cf",
+      "bytes": 2086
+    },
+    ".agents/prompts/task-executor.md": {
+      "sha256": "23991a3b5ab037a53cb156506ec40ef22bd933dee2806bc015d4c19835781edf",
+      "bytes": 3580
+    },
+    ".agents/skills/README.md": {
+      "sha256": "8184f7343e0babb7331c5eef6a839e5cc1235345eec5e56c644a4f5302ac56fc",
+      "bytes": 2948
+    },
+    ".agents/skills/contract-engineer/SKILL.md": null,
+    ".agents/skills/contract-engineer/api-design-principles.md": null,
+    ".agents/skills/database/SKILL.md": {
+      "sha256": "44718c6749556b999e63578a7e4458474daec9c2afd060f1dd756b806c2da3a6",
+      "bytes": 2749
+    },
+    ".agents/skills/dotnet-dev/SKILL.md": {
+      "sha256": "296792477580a9f90892ac380b846b61cd926f39bd689cddec84e5d82215f04e",
+      "bytes": 4188
+    },
+    ".agents/skills/dotnet-dev/architecture-guidelines.md": {
+      "sha256": "8f2e86f527d0a3c654f7b86004713845493e780c2ec81f586d95ce80ad063dca",
+      "bytes": 2603
+    },
+    ".agents/skills/dotnet-dev/testing-and-mocking.md": {
+      "sha256": "70e210251c0699addb85066424e186d812c0434597850333d37a09d2cacb415b",
+      "bytes": 3587
+    },
+    ".agents/skills/nextjs-dev/SKILL.md": {
+      "sha256": "d63d6571303f8bc589da53fe0467b4f2d8ffa334eabc07571ef7438f971dbbcf",
+      "bytes": 5358
+    },
+    ".agents/skills/nextjs-dev/vertical-slicing.md": {
+      "sha256": "7c3cb783978f0d3418309837b3912b414a921257d1e7586d04d138f7fd7c6a62",
+      "bytes": 1611
+    },
+    ".agents/skills/openapi-expert/SKILL.md": {
+      "sha256": "e60ccd87c7874f35e8bca92cab4e3fb95e88ad32011a5dde3b2c5f5088967f60",
+      "bytes": 3788
+    },
+    ".agents/skills/openapi-expert/api-design-principles.md": {
+      "sha256": "390e46b806ac83fe2568dddf4b2c02c1903bc2b6611f244c7ee0c15b96acfe3e",
+      "bytes": 1308
+    },
+    ".agents/skills/team-orchestration/SKILL.md": null,
+    ".agents/skills/tracer/SKILL.md": null,
+    ".agents/skills/workflow-author/SKILL.md": {
+      "sha256": "d8416b152b4aa70945ce2ed7d66854f07188711bb84fa0f928d7499d4deb7b54",
+      "bytes": 5873
+    },
+    ".kiro/specs/harness-modernization/design.md": {
+      "sha256": "f639c0ecb785854ad3648223e938e22bd15b753d256072beac3e12ec4598083b",
+      "bytes": 9893
+    },
+    ".kiro/specs/harness-modernization/evaluation/check-implementation-guidance.py": {
+      "sha256": "f1bf6f9ff1b5f1d9eeb35c9deb2b2ecbc0de614f41f8ea2727f0c5f125ab8be8",
+      "bytes": 5528
+    },
+    ".kiro/specs/harness-modernization/hm-c-fixtures.json": {
+      "sha256": "2e385fbf1e736c177d5fdd3f5358126b3a436e55d0556bdb47481075c9026f6f",
+      "bytes": 23706
+    },
+    ".kiro/specs/harness-modernization/hm-c-validation.md": {
+      "sha256": "4ac92464e99b1d83ea1b32e6450f744f5468ab152cd12e17649d5204c47efe64",
+      "bytes": 9319
+    },
+    ".kiro/specs/harness-modernization/requirements.md": {
+      "sha256": "6257d14d55a1a382adc733ccd119cab07f8b6839d54f356eab7e01af092fdee0",
+      "bytes": 5431
+    },
+    ".kiro/specs/harness-modernization/task-graph.yaml": {
+      "sha256": "b8916752deed218632aa0b2a72363727dffc65e7a8463c7bd12457bf7c50ef07",
+      "bytes": 6410
+    },
+    ".kiro/specs/harness-modernization/tasks.md": {
+      "sha256": "8856b1636a50eef2ef79bbc256347d6602047c7dacf43471ea26e08b52de6c0d",
+      "bytes": 8147
+    }
+  },
+  "source_inputs": {
+    "Taskfile.yml": {
+      "sha256": "da3b776cc8a851e9d4070b1273e7788371f3690e92844b649f14ce3db4e0552b",
+      "bytes": 46959
+    },
+    "api/database/compatibility.sql": {
+      "sha256": "45a9ce7dca9b8f5a168d3360f5bdf1aa1df41e89e509f42740e4854e4d0d32f0",
+      "bytes": 1905
+    },
+    "api/database/migrate.sh": {
+      "sha256": "045001e5b0d37833ba937f7ea4ecfc5aa8a39b562040e3a2504b4e66711dfc18",
+      "bytes": 340
+    },
+    "api/database/schema.sql": {
+      "sha256": "bacfa3f4baf389359e96dfbb5674b53c47adcfda68087a3e4694fe8b8664d750",
+      "bytes": 9774
+    },
+    "api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs": {
+      "sha256": "8b98687a3d7de81406566871b5abe461b00542a95a34fb1253ca26308e493643",
+      "bytes": 14180
+    },
+    "api/src/RecipeApi/Controllers/RecipeController.cs": {
+      "sha256": "105f56d7ceef73811d4115ecfbe1727771613371a983c99ff46d925e4fa5d98d",
+      "bytes": 17657
+    },
+    "api/src/RecipeApi/Controllers/ScheduleController.cs": {
+      "sha256": "e941ef007169fc7b88ef48d3a8316e425fa05aa1a1a78ffa1eec5ecfcf6402d2",
+      "bytes": 3553
+    },
+    "api/src/RecipeApi/Controllers/WorkflowController.cs": {
+      "sha256": "a527132509031e5a08abf35a4e4072ddcfae71a5158cd017fb2346ca1c9c840b",
+      "bytes": 3679
+    },
+    "api/src/RecipeApi/Data/RecipeDbContext.cs": {
+      "sha256": "54fa1da361594a832696d187d838138b00b899f5325a6773c7519f3b153c985b",
+      "bytes": 14895
+    },
+    "api/src/RecipeApi/Infrastructure/IStorageProvider.cs": {
+      "sha256": "0b9a1d3a5e46bd74adbc4b79da38f41ac8e92436d5888afa2781f53860585c3c",
+      "bytes": 653
+    },
+    "api/src/RecipeApi/Infrastructure/WorkflowRootResolver.cs": {
+      "sha256": "1f58fe4c6e0a37ba684b1c9b36a38f5a5fdc980eebf863da5a571b2b6cdc2767",
+      "bytes": 621
+    },
+    "api/src/RecipeApi/Infrastructure/WorkflowSeeder.cs": {
+      "sha256": "52c827096989bbe689d27b5aab8a8afc4e50b2feea9d895f6e396b5e79e6b4ba",
+      "bytes": 1892
+    },
+    "api/src/RecipeApi/Models/RecipeImportReport.cs": {
+      "sha256": "2fa6fb2814f07dc9a2226156c01894a01c8006ff4c249c5573c830cd2fd6fc56",
+      "bytes": 1507
+    },
+    "api/src/RecipeApi/Models/WeeklyPlan.cs": {
+      "sha256": "5ab87b0cfbbfbd57ece1e7a73a307e469c7e20104a2eb3dccae5d8c5135fac43",
+      "bytes": 1032
+    },
+    "api/src/RecipeApi/Models/WorkflowDefinition.cs": {
+      "sha256": "b945fafe5f2bcf95606623219f202f20f0106dfa3dd682970a72aa14d7830a5e",
+      "bytes": 597
+    },
+    "api/src/RecipeApi/Models/WorkflowInstance.cs": {
+      "sha256": "82d14b99d40c02ec5b10c188a16d190e865fd1b6246bc514ee37021b7d537641",
+      "bytes": 829
+    },
+    "api/src/RecipeApi/Models/WorkflowTask.cs": {
+      "sha256": "3408be49a3afafc7ac70d6104124dcfcdd8df7509162ff9186d3581bb30f6e06",
+      "bytes": 1438
+    },
+    "api/src/RecipeApi/Program.cs": {
+      "sha256": "3cf903304e077595dc9483e9a7147876cf2cd27e00eb64535dc79ecf8cff728b",
+      "bytes": 19711
+    },
+    "api/src/RecipeApi/Services/GroceryRecomputeService.cs": {
+      "sha256": "d227f98493b58e87511f8b448b4dcce990a2afee939e55a9ec1d64cbf25ff976",
+      "bytes": 16119
+    },
+    "api/src/RecipeApi/Services/IWorkflowOrchestrator.cs": {
+      "sha256": "401088470fcf96177d276c428961e3e4f9b233ffd49c05a1493b35376089be30",
+      "bytes": 328
+    },
+    "api/src/RecipeApi/Services/RecipeImportReportService.cs": {
+      "sha256": "aeb11688a5269c3647e62559a0d2fbdb3a5e0f2d8e5e6177b9b1564b2831711f",
+      "bytes": 13307
+    },
+    "api/src/RecipeApi/Services/RecipeImportService.cs": {
+      "sha256": "cbfc831f6d5845f044ce862d905f64bbc85d43ad980ec9e8b448d7b8bc789b7b",
+      "bytes": 3369
+    },
+    "api/src/RecipeApi/Services/ScheduleService.cs": {
+      "sha256": "a9758397689f14b28ee75a7541a4cc5f7dc45dfd60894d0cdeeab5bc794ab90f",
+      "bytes": 30301
+    },
+    "api/src/RecipeApi/Services/WorkflowOrchestrator.cs": {
+      "sha256": "b9e5370bdae1b48a00c6ae330f35134a1348ec52d89e7a29caef81525e4c4fe1",
+      "bytes": 6912
+    },
+    "api/src/RecipeApi/Services/WorkflowRepository.cs": {
+      "sha256": "1356e4b126077506c07633c2d977a419d96641e8a03f976d45f4e945775214d3",
+      "bytes": 736
+    },
+    "api/src/RecipeApi/Services/WorkflowWorker.cs": {
+      "sha256": "5701c3fe6dea4169b22a713fc49d901286bb6ba5ea15fcde04998c913c5595c5",
+      "bytes": 27511
+    },
+    "api/src/RecipeApi/Workflow/IWorkflowProcessor.cs": {
+      "sha256": "9d3f3ab896a51e711321d02036e25147cbce43b660e242fbbc3b8c47a8853efe",
+      "bytes": 203
+    },
+    "api/src/RecipeApi/Workflows/recipe-import.yaml": {
+      "sha256": "a71adcc9141d8d8f74e1e9f6fd685ad7edd0df3b430c9f680917853cf65d1066",
+      "bytes": 1130
+    },
+    "api/src/RecipeApi/Workflows/url-import.yaml": {
+      "sha256": "8552d04433f83a3d01e4c4399906c79d31deca6ffe5e63e9a5373dcd929ab4fe",
+      "bytes": 1334
+    },
+    "api/src/RestClient/07-workflow.rest": {
+      "sha256": "ab6b22d2fdc6ab5a1511b545092122c35e5575682365e020eb77f58caa103022",
+      "bytes": 2376
+    },
+    "pwa/e2e/mock-api.ts": {
+      "sha256": "63f0fa995732a3a151ef75e514eedd6ac60836855157d7913df320127dedf81f",
+      "bytes": 44802
+    },
+    "pwa/scripts/fix-kiota-imports.js": {
+      "sha256": "d4044d60b130f20911f43b15e2fc9a79950614202090007fca67e72c8ab3433f",
+      "bytes": 966
+    },
+    "pwa/src/components/planner/GroceryList.tsx": {
+      "sha256": "721d405979f80cedcdaa6a2c6035951b2558287c00e540b3d245c79b6da9cd99",
+      "bytes": 23107
+    },
+    "pwa/src/components/recipes/RecipeDetailSheet.tsx": {
+      "sha256": "8525f16ef242856f5744bb89b73b76d492b860be1a8db93620f199b5157c3734",
+      "bytes": 42443
+    },
+    "pwa/src/components/recipes/RecipeImportIssueSheet.tsx": {
+      "sha256": "d915c571c497af215ac507fce823861ab770015ce723288ffd7508340ead8f02",
+      "bytes": 8962
+    },
+    "pwa/src/lib/api/api-client.ts": {
+      "sha256": "c5cd4cfebddd8d5c1f2827c522a236fe12c504130ea0991c07bc8fc46376aa95",
+      "bytes": 2331
+    },
+    "pwa/src/lib/api/recipes.ts": {
+      "sha256": "88ca28ba4b1818e81134e94ab7a4c20d2ea424b69a9cdfcdf71b4ec6498ecfd7",
+      "bytes": 22868
+    },
+    "pwa/src/lib/api/schedule.ts": {
+      "sha256": "1d1d3d5bf5463b5b82a13d9020562639f215bdb7d8edbc402321626cf14bb1cd",
+      "bytes": 1612
+    },
+    "pwa/src/store/weekStore.ts": {
+      "sha256": "aa8b87cb863d9697c3a22a6c98951062152ca069f00d16718bcb8280845c05da",
+      "bytes": 22723
+    },
+    "pwa/src/testing/builders.ts": {
+      "sha256": "58febaa1685def6f03642ddebf89ae41f42c50f77f550246ec144ee75228722a",
+      "bytes": 4754
+    },
+    "pwa/src/testing/mock-ids.ts": {
+      "sha256": "0183f35809dfc78f1db0de4971e5816356f5868dbce1f754067373fec3d621e2",
+      "bytes": 2327
+    },
+    "scripts/agent/api_tools.py": {
+      "sha256": "3a19d0f525d74b100b39dac3310689eec55bd9603310635a43ae6e8c6c0ba8a1",
+      "bytes": 12560
+    },
+    "scripts/agent/drift.py": {
+      "sha256": "6e71da0ffd3a218374e59e91f1b06b4d945524df0d7128685f2cb1671d10f245",
+      "bytes": 8795
+    },
+    "scripts/agent/drift_mocks.py": {
+      "sha256": "38e37852f4fdf7a5114b35b82734e1cbe201f756647ac5ac6c934705f6a0a1fe",
+      "bytes": 1944
+    },
+    "scripts/agent/kiota_client.py": {
+      "sha256": "ed53098a71a19c20e3962dd169e1ddbfe73083266566a18b2090266584125d7d",
+      "bytes": 6523
+    },
+    "scripts/agent/slice.py": {
+      "sha256": "1d210756b2a96e5c1bd0a36105ec26ba6e97f7f830b620945e651edf966748ab",
+      "bytes": 5064
+    },
+    "scripts/agent/test_ops.py": {
+      "sha256": "427d5028013bd43e45562cd40925c75b82e29e9aa49499469ef2784dc25154fc",
+      "bytes": 7306
+    },
+    "scripts/agent/tests/test_kiota_client.py": {
+      "sha256": "7209fa386b5cf79d7a40e3c242c10cc9f9afd68899fb79bd4abb143811394be8",
+      "bytes": 3496
+    },
+    "scripts/agent/tests/test_taskfile_contract_gate.py": {
+      "sha256": "2168cfeb66e40efafd68392bb5b3f5a542933d71ac989892f10bc92ae2c20172",
+      "bytes": 531
+    },
+    "scripts/agent/tests/test_test_ops.py": {
+      "sha256": "61562f870a17af63152142e7259ff163c6d8f45cd4b059aa0e08c39bb2d27712",
+      "bytes": 5018
+    },
+    "specs/openapi.yaml": {
+      "sha256": "fca5ec3830cb28fe79124c4ecc0d4134640a0e5c13dbae3461db0c6416ad0724",
+      "bytes": 102261
+    }
+  },
+  "verified_directories": [
+    ".kiro/specs/",
+    "api/src/RecipeApi.Tests/",
+    "api/src/RecipeApi/",
+    "api/src/RecipeApi/Controllers/",
+    "api/src/RecipeApi/Workflows/",
+    "api/src/RestClient/",
+    "pwa/e2e/",
+    "pwa/src/app/",
+    "pwa/src/lib/api/",
+    "pwa/src/lib/api/generated/"
+  ],
+  "identity_self_exclusion": "hm-c-content.json is excluded from its own file hashes. All other changed candidate/evidence files are covered."
+}

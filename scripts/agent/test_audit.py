@@ -113,11 +113,10 @@ def main():
             analysis = analyze_e2e(t, root)
             print(f"- [ ] `{os.path.relpath(t, root)}` {analysis}")
 
-    print("\n## Instructions")
-    print("1. Run the checked tests using `task test:unit` or `task test:e2e`.")
-    print("2. Ensure they are green before starting work.")
-    print("3. For ⚠️ candidates, create a task to migrate logic to Vitest after implementation.")
-    print("4. For ❌ findings, replace brittle selectors with `[data-testid=\"...\"]`.")
+    print("\nAdvisory only: inspect relevant coverage and confirm heuristic findings.")
+    print("Use task test:unit, task test:api or task test:e2e for the affected seam.")
+    print("Prefer testid-first interactions; retain semantic accessibility assertions.")
+    print("Migration/selector findings do not authorize unrelated cleanup or test deletion.")
 
 if __name__ == "__main__":
     main()

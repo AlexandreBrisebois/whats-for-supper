@@ -15,6 +15,7 @@ def load_module():
     spec = importlib.util.spec_from_file_location("test_ops", SCRIPT_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.runtime_identity = lambda: "unit-test-runtime"
     return module
 
 
@@ -95,7 +96,7 @@ class ImpactPlanningTests(unittest.TestCase):
             self.assertFalse(module.has_success_cache(cache_path, "digest-b", ["recipes.spec.ts"]))
             self.assertFalse(module.has_success_cache(cache_path, "digest-a", ["planner.spec.ts"]))
 
-    def test_success_cache_records_post_test_worktree_digest(self):
+    def test_mutation_during_tests_rejects_success_even_with_cache_disabled(self):
         module = load_module()
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -107,18 +108,48 @@ class ImpactPlanningTests(unittest.TestCase):
 
             def run_and_mutate(*args, **kwargs):
                 changed.write_text("after")
+                return "passed", "exit 0"
 
             with mock.patch.object(module, "ROOT", root), \
                 mock.patch.object(module, "CACHE_PATH", cache_path), \
                 mock.patch.object(module, "get_changed_files", return_value=["changed.ts"]), \
                 mock.patch.object(module, "build_impact_plan", return_value=plan), \
-                mock.patch.object(module.subprocess, "run", side_effect=run_and_mutate), \
-                mock.patch.dict(os.environ, {}, clear=True):
+                mock.patch("finish.run_command", side_effect=run_and_mutate), \
+                mock.patch.dict(os.environ, {"WFS_DISABLE_TEST_CACHE": "1"}, clear=True):
                 with contextlib.redirect_stdout(io.StringIO()):
-                    module.run_impacted()
+                    with self.assertRaises(SystemExit):
+                        module.run_impacted()
 
             post_test_digest = module.build_impact_digest(root, ["changed.ts"], tests)
-            self.assertTrue(module.has_success_cache(cache_path, post_test_digest, tests))
+            self.assertFalse(module.has_success_cache(cache_path, post_test_digest, tests))
+
+    def test_stable_success_caches_pretest_identity_and_reuses_it(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / 'cache.json'
+            with mock.patch.object(module, 'get_changed_files', return_value=['unknown.ts']), \
+                 mock.patch.object(module, 'build_impact_digest', return_value='tested'), \
+                 mock.patch.object(module, 'CACHE_PATH', cache), \
+                 mock.patch.dict(os.environ, {'WFS_ISOLATED_RUNNER': '1'}, clear=True), \
+                 mock.patch('finish.run_command', return_value=('passed', 'exit 0')) as run:
+                module.run_impacted()
+                module.run_impacted()
+            self.assertEqual(run.call_count, 1)
+            self.assertTrue(module.has_success_cache(cache, 'tested', [str(module.E2E_DIR)]))
+
+    def test_impact_timeout_is_blocked_and_never_cached(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / 'cache.json'
+            with mock.patch.object(module, 'get_changed_files', return_value=['unknown.ts']), \
+                 mock.patch.object(module, 'build_impact_digest', return_value='before'), \
+                 mock.patch.object(module, 'CACHE_PATH', cache), \
+                 mock.patch('finish.run_command', return_value=('blocked', 'TimeoutExpired')) as run:
+                with self.assertRaises(SystemExit) as result:
+                    module.run_impacted()
+            self.assertEqual(result.exception.code, 2)
+            self.assertFalse(cache.exists())
+            self.assertEqual(run.call_count, 1)
 
 
 if __name__ == "__main__":

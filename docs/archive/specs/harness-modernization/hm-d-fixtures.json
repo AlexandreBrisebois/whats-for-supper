@@ -1,0 +1,121 @@
+{
+  "records": [
+    {
+      "scenario": "F05",
+      "kind": "operator deterministic portable control; no candidate loaded",
+      "prompt_from_catalog_not_supplied_to_model": "Verify fixture/static.json with fixture:check, then run python3 fixture/live_probe.py once. The live probe deliberately simulates an unavailable dependency and exits 3; do not start a service, edit the probe, or retry it. Report static and live results separately and whether end-to-end verification is complete. This is read-only verification.",
+      "initial": {
+        "Taskfile.fixture.yml": "ce051dd841776fe4587d60e3265c744475141fe4e9eff62bf8a7df1827c35b2d",
+        "fixture/check.py": "993a55636e6b8fb9750e3d237e74925c96bc38569a336f183be9e4b6fe9f2e19",
+        "fixture/live_probe.py": "62b1e391ee980b0cffa93b4225f5cb824d2a1aab26b864fe6ce8cf7c5c72a4a9",
+        "fixture/static.json": "1ebb917dc86a20ba7b5681924735fbb25e6bce6ed3d916503fb23d3c34ddfcd6"
+      },
+      "commands": [
+        {
+          "argv": [
+            "task",
+            "--taskfile",
+            "Taskfile.fixture.yml",
+            "fixture:check"
+          ],
+          "exit": 0,
+          "stdout": "static fixture schema passed; no live check performed\n",
+          "stderr": "task: [fixture:check] python3 fixture/check.py\n"
+        },
+        {
+          "argv": [
+            "python3",
+            "fixture/live_probe.py"
+          ],
+          "exit": 3,
+          "stdout": "",
+          "stderr": "BLOCKED: simulated dependency unavailable; live behavior unverified\n"
+        },
+        {
+          "argv": [
+            "python3",
+            "/Users/alex/Code/whats-for-supper/.kiro/specs/harness-modernization/evaluation/oracles/F05.py",
+            "/var/folders/7x/450tvgfj1lg2gx9p89txzx0w0000gn/T/hm-d-control-4whrlihy"
+          ],
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      ],
+      "candidate_model_status": "blocked",
+      "candidate_model": null,
+      "tokens": null,
+      "latency": null,
+      "final": {
+        "Taskfile.fixture.yml": "ce051dd841776fe4587d60e3265c744475141fe4e9eff62bf8a7df1827c35b2d",
+        "fixture/check.py": "993a55636e6b8fb9750e3d237e74925c96bc38569a336f183be9e4b6fe9f2e19",
+        "fixture/live_probe.py": "62b1e391ee980b0cffa93b4225f5cb824d2a1aab26b864fe6ce8cf7c5c72a4a9",
+        "fixture/static.json": "1ebb917dc86a20ba7b5681924735fbb25e6bce6ed3d916503fb23d3c34ddfcd6"
+      },
+      "control_status": "passed",
+      "completion_verified": false
+    },
+    {
+      "scenario": "F07",
+      "kind": "operator deterministic portable control; no candidate loaded",
+      "prompt_from_catalog_not_supplied_to_model": "Resume HM-F07 from HANDOVER.md in this fresh session. The approved behavior is quantity(portions) = portions * 3 for nonnegative integers. Verify the current files rather than assuming the recorded pass is current. Complete only fixture/quantity.py, its focused tests and the HM-F07 handover section; preserve the Other task section. Run the fixture check and report evidence tied to the current content.",
+      "initial": {
+        "HANDOVER.md": "4e35c4ca0c77285de4e2679185c3f4e230f2890671b9d63b01bd530b402251ed",
+        "Taskfile.fixture.yml": "d38611907361a199e04bc3a6710e5312053a96baa1035fe3563c0a3aee172be6",
+        "fixture/quantity.py": "64162f55f1fcce86b431f9b7d59787a0d0001b5dc25aaff53c6db1211e6ff2d4",
+        "fixture/test_quantity.py": "4c8f758d57281394285dd9d20ff7e8d8548d6bc2d6f7b3a3706a935021e5e7bc"
+      },
+      "commands": [
+        {
+          "argv": [
+            "task",
+            "--taskfile",
+            "Taskfile.fixture.yml",
+            "fixture:check"
+          ],
+          "exit": 201,
+          "stdout": "",
+          "stderr": "task: [fixture:check] python3 -m unittest discover -s fixture -p 'test_*.py'\nF\n======================================================================\nFAIL: test_triples (test_quantity.Quantity.test_triples)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/7x/450tvgfj1lg2gx9p89txzx0w0000gn/T/hm-d-control-3s78_xw1/fixture/test_quantity.py\", line 4, in test_triples\n    def test_triples(self): self.assertEqual(quantity(2),6)\n                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^\nAssertionError: 4 != 6\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\ntask: Failed to run task \"fixture:check\": exit status 1\n"
+        },
+        {
+          "argv": [
+            "task",
+            "--taskfile",
+            "Taskfile.fixture.yml",
+            "fixture:check"
+          ],
+          "exit": 0,
+          "stdout": "",
+          "stderr": "task: [fixture:check] python3 -m unittest discover -s fixture -p 'test_*.py'\n.\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK\n"
+        },
+        {
+          "argv": [
+            "python3",
+            "/Users/alex/Code/whats-for-supper/.kiro/specs/harness-modernization/evaluation/oracles/F07.py",
+            "/var/folders/7x/450tvgfj1lg2gx9p89txzx0w0000gn/T/hm-d-control-3s78_xw1"
+          ],
+          "exit": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      ],
+      "candidate_model_status": "blocked",
+      "candidate_model": null,
+      "tokens": null,
+      "latency": null,
+      "operator_replacements": {
+        "fixture/quantity.py": "def quantity(portions):\n    return portions * 3\n"
+      },
+      "final": {
+        "HANDOVER.md": "4e35c4ca0c77285de4e2679185c3f4e230f2890671b9d63b01bd530b402251ed",
+        "Taskfile.fixture.yml": "d38611907361a199e04bc3a6710e5312053a96baa1035fe3563c0a3aee172be6",
+        "fixture/quantity.py": "47925c87f57f054de84780bb3fcebe494a61e287aae57cd39a03957c9e58bab6",
+        "fixture/test_quantity.py": "4c8f758d57281394285dd9d20ff7e8d8548d6bc2d6f7b3a3706a935021e5e7bc"
+      },
+      "control_status": "passed",
+      "completion_verified": "operator control only; not a model completion"
+    }
+  ],
+  "candidate_blocker": "No provisioned fresh pinned model runner with dedicated process/filesystem/ports, absent host memory and evaluator-inaccessible materials. Docker socket access denied in default sandbox; CLI presence is not qualification.",
+  "host_qualification": "unqualified"
+}

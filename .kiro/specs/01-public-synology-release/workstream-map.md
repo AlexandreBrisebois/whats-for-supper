@@ -31,30 +31,32 @@ flowchart TD
 - [Design](design.md)
 - [Tasks](tasks.md)
 
-## Batch model map
+## Optional effort guidance
 
-| Workstream | Model | Reason |
+| Workstream | Suggested effort | Reason |
 |---|---|---|
-| WFS-PUB-001 | `MEDIUM_REQUIRED` | Several release files must form one deterministic contract. |
-| WFS-PUB-002 | `MEDIUM_REQUIRED` | External manifest/licensing evidence and two architectures require judgment. |
-| WFS-PUB-010 | `MEDIUM_REQUIRED` | A focused PWA slice crosses server rendering, client context, and consumers. |
-| WFS-PUB-011 | `MEDIUM_REQUIRED` | Compose, routing, storage, profiles, and Synology semantics interact. |
-| WFS-PUB-012 | `MEDIUM_REQUIRED` | CI release logic has external-state and supply-chain boundaries. |
-| WFS-PUB-020 | `MEDIUM_REQUIRED` | Trusted proxy and cookie behavior spans runtime and browser tests. |
-| WFS-PUB-021 | `LARGE_REQUIRED` | Auth hardening may change API contracts and security behavior. |
-| WFS-PUB-022 | `MEDIUM_REQUIRED` | Readiness spans API, migration, Compose, and failure injection. |
-| WFS-PUB-023 | `MEDIUM_REQUIRED` | External error semantics require careful mapping and stubs. |
-| WFS-PUB-030 | `MEDIUM_REQUIRED` | Data recovery needs operator docs plus physical proof. |
-| WFS-PUB-031 | `MEDIUM_REQUIRED` | Schema compatibility controls the rollback path. |
-| WFS-PUB-040 | `MEDIUM_REQUIRED` | Broad prose surface, but bounded to public/operator docs. |
-| WFS-PUB-041 | `LARGE_REQUIRED` | Authority and ADR reconciliation has repo-wide historical implications. |
-| WFS-PUB-042 | `MEDIUM_REQUIRED` | UI truth and moved references must be jointly verified. |
-| WFS-PUB-043 | `MEDIUM_REQUIRED` | Several machine-readable sources require coordinated assertions. |
-| WFS-PUB-050 | `MEDIUM_REQUIRED` | Multi-platform supply-chain evidence spans several tools. |
-| WFS-PUB-051 | `LARGE_REQUIRED` | Physical two-device qualification is long-running and stateful. |
-| WFS-PUB-052 | `LARGE_REQUIRED` | Final traceability and external publication authority have high blast radius. |
+| WFS-PUB-001 | Moderate | Several release files must form one deterministic contract. |
+| WFS-PUB-002 | Moderate | External manifest/licensing evidence and two architectures require judgment. |
+| WFS-PUB-010 | Moderate | A focused PWA slice crosses server rendering, client context, and consumers. |
+| WFS-PUB-011 | Moderate | Compose, routing, storage, profiles, and Synology semantics interact. |
+| WFS-PUB-012 | Moderate | CI release logic has external-state and supply-chain boundaries. |
+| WFS-PUB-020 | Moderate | Trusted proxy and cookie behavior spans runtime and browser tests. |
+| WFS-PUB-021 | High | Auth hardening may change API contracts and security behavior. |
+| WFS-PUB-022 | Moderate | Readiness spans API, migration, Compose, and failure injection. |
+| WFS-PUB-023 | Moderate | External error semantics require careful mapping and stubs. |
+| WFS-PUB-030 | Moderate | Data recovery needs operator docs plus physical proof. |
+| WFS-PUB-031 | Moderate | Schema compatibility controls the rollback path. |
+| WFS-PUB-040 | Moderate | Broad prose surface, but bounded to public/operator docs. |
+| WFS-PUB-041 | High | Authority and ADR reconciliation has repo-wide historical implications. |
+| WFS-PUB-042 | Moderate | UI truth and moved references must be jointly verified. |
+| WFS-PUB-043 | Moderate | Several machine-readable sources require coordinated assertions. |
+| WFS-PUB-050 | Moderate | Multi-platform supply-chain evidence spans several tools. |
+| WFS-PUB-051 | High | Physical two-device qualification is long-running and stateful. |
+| WFS-PUB-052 | High | Final traceability and external publication authority have high blast radius. |
 
-## First executable batch — engine Task payloads
+## Proposed execution packets
+
+Use the [shared specification workflow](../../../.agents/core/specification-workflow.md) and [execution-packet template](../../../.agents/templates/execution-packet.md). These proposed packets do not authorize execution. Their outcome, scope, required context, behavioral constraints, verification and stop boundaries are mandatory when selected; effort guidance and host/specialist suggestions are optional. No model-selection interview is required.
 
 These payloads are intentionally implementation-bounded. WFS-PUB-001 must establish the exact release-source paths before launching WFS-PUB-010 through WFS-PUB-012; replace path placeholders below with its recorded outputs.
 
@@ -63,10 +65,10 @@ These payloads are intentionally implementation-bounded. WFS-PUB-001 must establ
 ```yaml
 id: WFS-PUB-010
 title: Make public PWA settings runtime configurable
-model_label: MEDIUM_REQUIRED
-why_this_model: Server rendering, hydration, four consumers, and image-runtime proof require coordinated PWA reasoning.
-launch_targets: [kiro, antigravity, claude]
-owner_skill: nextjs-dev
+optional_effort: moderate
+optional_effort_reason: Server rendering, hydration, four consumers, and image-runtime proof require coordinated PWA reasoning.
+optional_launch_targets: [kiro, antigravity, claude]
+optional_specialist: nextjs-dev
 objective: Make locale, aisle order, agent search, and photo search respond to WFS runtime variables without rebuilding the PWA image.
 target:
   - pwa/src/app/layout.tsx
@@ -112,10 +114,10 @@ micro_handover: [changed_files, tests_run_and_results, runtime_image_evidence, d
 ```yaml
 id: WFS-PUB-011
 title: Build the host-agnostic Synology Project bundle
-model_label: MEDIUM_REQUIRED
-why_this_model: The slice coordinates Compose routing, profiles, storage, health, and Synology behavior without changing application contracts.
-launch_targets: [kiro, antigravity, claude]
-owner_skill: testing
+optional_effort: moderate
+optional_effort_reason: The slice coordinates Compose routing, profiles, storage, health, and Synology behavior without changing application contracts.
+optional_launch_targets: [kiro, antigravity, claude]
+optional_specialist: testing
 objective: Produce one canonical Synology Compose deployment that works on LAN and with the optional Cloudflare profile.
 target:
   - <release-source>/compose.yaml
@@ -159,10 +161,10 @@ micro_handover: [changed_files, rendered_service_summary, tests_run_and_results,
 ```yaml
 id: WFS-PUB-012
 title: Create the approval-gated public image workflow
-model_label: MEDIUM_REQUIRED
-why_this_model: A bounded workflow edit still needs careful tag immutability, multi-platform, artifact, and external-state handling.
-launch_targets: [kiro, antigravity, claude]
-owner_skill: testing
+optional_effort: moderate
+optional_effort_reason: A bounded workflow edit still needs careful tag immutability, multi-platform, artifact, and external-state handling.
+optional_launch_targets: [kiro, antigravity, claude]
+optional_specialist: testing
 objective: Make PR validation non-publishing and annotated release tags produce exact multi-platform Docker Hub images plus a draft release bundle.
 target:
   - .github/workflows/publish.yml

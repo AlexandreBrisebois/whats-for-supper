@@ -1,0 +1,86 @@
+{
+  "baseline_commit": "13fcddedffa9c2a07b2498afb530e7906394b006",
+  "description": "HM-A foundation and static checker content identity; no native-host or model qualification. Frozen Phase 0 manifest is unchanged.",
+  "files": {
+    ".agents/adapters/claude.md": {
+      "sha256": "c2cfbfd41cca3f822b49d3929715f27fc27c7420ebe8fd2c98eab035819ab7ab",
+      "bytes": 628
+    },
+    ".agents/adapters/codex.md": {
+      "sha256": "d569709a1c6a897c98d11394b1881bc9cce206d9ffea9bf84b0ccd616e85cabc",
+      "bytes": 715
+    },
+    ".agents/adapters/copilot.md": {
+      "sha256": "e2388dc9ee1894f81bbcf8c0874c3db574cd9a2bfc06c67db6e70e4e97d3d65b",
+      "bytes": 707
+    },
+    ".agents/adapters/gemini.md": {
+      "sha256": "914f947b0d0929661f96aa2b7d30006e3d0eea681ff6059965ff25c85ca5aa32",
+      "bytes": 769
+    },
+    ".agents/core/context-loading.md": {
+      "sha256": "2a0c89b8ec682a1a054c64c5c4f17a23b87c9ebf33a763221a19ee50ffee1d3f",
+      "bytes": 3205
+    },
+    ".agents/core/contract-testing.md": {
+      "sha256": "5c8918f5bb54625dd521a1c47505e02fe85dec585d55e42218cf251d56b4dca8",
+      "bytes": 4028
+    },
+    ".agents/core/execution-harness.md": {
+      "sha256": "ca8a49957493a842253447763cd17b2cefd747cb79f5dc4f25ae2ff412746c0b",
+      "bytes": 4352
+    },
+    ".agents/core/mission.md": {
+      "sha256": "e9b2e68251a46fd9d24f6bd8cf78f64ae60449c6345f62bd2f3ab1ad29b34ff8",
+      "bytes": 1042
+    },
+    ".agents/core/network-topology.md": {
+      "sha256": "d359138397ff70d92e531d20e7619302531d31dc6cd41384b2ee7fb1a5035637",
+      "bytes": 2145
+    },
+    ".github/copilot-instructions.md": {
+      "sha256": "2c68863564407f7b8ae017b485d47d72a18c26d1e6ddceed5ecc1f46ab8b5ad1",
+      "bytes": 187
+    },
+    ".kiro/steering.md": {
+      "sha256": "11ba9472822f14c4e405a6cbd790707b6e90228dcc0f18a4abe937a4dcb74e80",
+      "bytes": 648
+    },
+    ".kiro/steering/tool-trust.md": {
+      "sha256": "e3ce005d25aa064a1de54c40a1459e3aa4b161cd847283587ac7747113f4bcc3",
+      "bytes": 205
+    },
+    "AGENT.md": {
+      "sha256": "3ae3703c62c173c60efee0f259c6c113482db7e49ffb90ddf0fc904ca835d5d1",
+      "bytes": 3063
+    },
+    "AGENTS.md": {
+      "sha256": "035089839144dc5f66933108c115b055de42024c71ac7e523e8409a175914b85",
+      "bytes": 184
+    },
+    "CLAUDE.md": {
+      "sha256": "a8f5105912d8530d6f95568260e6a897929869999e5c3d79f8966ff26a228cd3",
+      "bytes": 176
+    },
+    "GEMINI.md": {
+      "sha256": "6d0e8a8933ac4998c3c07d1528d8b9531601c3b3e6c2fa4e9ea0538f33d9a9a6",
+      "bytes": 189
+    },
+    "pwa/CLAUDE.md": {
+      "sha256": "a3e6ecb2b2b9a5bb40a0d36a5e85d113827e73f5078ed6834e9b6a0edd184575",
+      "bytes": 175
+    },
+    ".agents/core/ontology.md": {
+      "sha256": "933524edcea3cd9c160d047764ea203db2eb4c38fa1cd7365573448ae86fbfb0",
+      "bytes": 2469
+    },
+    ".kiro/steering/home-e2e.md": {
+      "sha256": "807948f6a8d6418074fad19a86a1c87d6b6e08730fd40d9f3a9e084c05c857da",
+      "bytes": 4688
+    },
+    ".kiro/specs/harness-modernization/evaluation/check-foundation.py": {
+      "sha256": "5474ac5e7115278f189509a054ccb1f95491da972135ab8473402184f0bb9799",
+      "bytes": 5734
+    }
+  }
+}

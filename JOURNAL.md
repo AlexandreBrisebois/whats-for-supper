@@ -1,3 +1,13 @@
+# Frozen history notice — 2026-09-11
+
+HM-E completed the unique-history salvage pass. This file is frozen and searchable;
+do not append session records. Historical claims, commands and checkboxes are not
+current authorization or validation. See the [provenance ledger](.kiro/specs/harness-modernization/hm-e-ledger.md)
+for verified destinations and obsolete/duplicated facts. Active resume checkpoints
+live in [HANDOVER.md](HANDOVER.md); task evidence belongs in the selected spec.
+
+---
+
 # Handover Journal: Historical Archive
 
 This file contains the historical session logs and technical archives for the "What's For Supper" project. Refer to this only when deep-diving into historical technical context or past decisions that have not yet been promoted to ADRs.

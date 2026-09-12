@@ -66,9 +66,9 @@ task
 | `task dev:api` | Start API with hot reload |
 | `task dev:pwa` | Start PWA with hot reload |
 | `task gate` | ⚡ Fast dev loop: catch what changed |
-| `task review` | 🔒 Pre-commit gate: full coverage |
+| `task review` | 🔒 Application validation (unit/API tests; no E2E) |
 | `task test` | Run all tests 🧪 |
-| `task test:smoke` | 💨 Docker Smoke Test (Local CI Parity) |
+| `task test:smoke` | Shared local/CI Docker smoke checks; resets development containers and volumes |
 | `task gen:client` | 🔄 Regenerate Kiota API client from spec |
 | `task agent:drift` | 🤖 Check route, schema, and mock drift |
 | `task agent:drift:routes` | 🤖 Static controller route vs OpenAPI check |
@@ -99,7 +99,7 @@ task test:unit         # PWA unit tests (Vitest — fast, no server)
 task test:unit:watch   # PWA unit tests in watch mode
 task test:e2e          # E2E tests (Playwright — requires running PWA)
 task test:e2e:ci       # E2E tests in CI-parity mode (build + test)
-task test:smoke        # 💨 Full Docker smoke test (CI Parity)
+task test:smoke        # Shared CI smoke workflow; destroys disposable development DB
 
 # Building & Publishing
 task build             # Force rebuild all images (No-cache + Image removal) 📦
@@ -157,6 +157,22 @@ task review            # Pre-commit review (format + lint + test)
 task ship              # Final ship checklist
 task tag               # 🏷️ Tag and push release (patch|minor|major)
 ```
+
+`task test:smoke` and CI call the same Python runner. It requires Docker Compose
+and Python with PyYAML (`python3 -m pip install pyyaml`). It resets the
+`whats-for-supper` Compose project, including its PostgreSQL and application-data
+volumes, then builds with `infrastructure.yml`, `apps.yml`, and `ci-overrides.yml`.
+The checked-in synthetic `docker/compose/smoke.env` supplies configuration in both
+environments; development overrides and local seed directories are not mounted.
+Ports 9001 and 3000 must be available after the project reset; the runner does not
+kill unrelated processes occupying them.
+
+Smoke checks cover migration success, PostgreSQL readiness, API/PWA health, valid
+API health JSON, and live OpenAPI endpoint drift. Failures dump container logs;
+success, failure, and handled interruption attempt teardown and preserve a failing
+exit status. CI also has an always-run fallback teardown. Local and CI builds use
+their host architecture. Seeding and E2E remain separate checks; after smoke testing,
+restore the development database from local seed data with `task dev:db:sync`.
 
 ---
 
@@ -236,12 +252,12 @@ task test
 # Run API tests in watch mode
 task test:api:watch
 
-# Run PWA tests in watch mode
-task test:pwa:watch
+# Run PWA unit tests in watch mode
+task test:unit:watch
 
 # Run both in watch mode (separate terminals)
 task test:api:watch &
-task test:pwa:watch &
+task test:unit:watch &
 ```
 
 **When to use:** TDD, debugging test failures, before committing.
@@ -332,7 +348,7 @@ This project uses a **Dual-Config Strategy** to separate your ecosystem settings
 - `HEARTH_SECRET`: The family passphrase for onboarding. **Must be the same** in all active config files for authentication to work across services.
 - `NEXT_PUBLIC_API_BASE_URL`: 
   - Set to `http://api.wfs.localhost` (Docker) or `http://localhost:9001` (Local).
-  - Use `/backend` in production (Cloudflare) to leverage the Next.js rewrite proxy.
+  - Leave empty or unset in production behind Traefik (including Cloudflare Tunnel); Traefik routes same-origin `/api/*` requests directly to the API.
 
 **Initialize local overrides:**
 ```bash
@@ -357,14 +373,15 @@ We use the `pre-commit` framework to ensure code quality before every commit.
 | **When** | During dev | Before commit | On `git commit` |
 | **Contracts** | Route drift + Kiota + schema drift | Route drift + Kiota + schema + mock drift | Kiota + schema + mock drift |
 | **Tests** | Unit + impact-only E2E | Unit + API (dotnet) | Unit + API (dotnet) |
-| **Format** | No | Yes (auto-fixes) | No (verify only) |
+| **Format** | No | Verify only | No (verify only) |
 | **E2E** | Impact-only | No | No |
 | **Speed** | Fast ⚡ | Medium | Medium |
 
 ### 6. **Know Your Workflows**
 Use Task's built-in workflows:
 ```bash
-# Pre-commit review (format + lint + test)
+# Prepare formatting/generation, inspect the diff, then validate
+task agent:prepare
 task review
 
 # Ship checklist (full validation)
@@ -419,7 +436,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '11.0.x'
+          include-prerelease: true
 
       - name: Restore dependencies
         run: cd api && dotnet restore
@@ -641,8 +659,9 @@ task agent:summary
 # Fast inner loop — catch what changed
 task gate
 
-# Full pre-commit gate (format + lint + contracts + all tests)
-task review
+# Single completion entrypoint after preparation and diff review
+task agent:prepare
+task agent:finish
 
 # If tests fail, check logs
 task logs:api
@@ -746,7 +765,8 @@ This repository is optimized for **Universal Agent Protocol (UAP)** and includes
 
 | Task | AI Utility |
 |------|------------|
-| `task agent:summary` | Generates a context-dense summary of the project. |
+| `task agent:summary` | Prints compact source/spec navigation without loading resume context or the skill registry. |
+| `task agent:status` | Explicitly reads HANDOVER for resumption or active-state ambiguity. |
 | `task agent:api` | Maps all C# endpoints to a markdown table (low token cost). |
 | `task agent:drift` | Fuzzes the delta between OpenAPI specs and C# DTOs. |
 | `task agent:slice` | Shows the full "vertical slice" (Spec ↔ Backend ↔ Client) for a route. |

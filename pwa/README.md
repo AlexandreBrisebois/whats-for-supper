@@ -1,12 +1,13 @@
 # What's for Supper — PWA
 
-Next.js 15 progressive web app for the What's for Supper meal planning system.
+Next.js 16.3 progressive web app for the What's for Supper meal planning system.
 
 ## Tech stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16.3 (App Router)
+- **UI**: React 19
 - **Language**: TypeScript (strict)
-- **Styling**: Tailwind CSS with earth tone palette
+- **Styling**: Tailwind CSS 4 with earth tone palette
 - **State**: Zustand
 - **API client**: Axios
 - **Icons**: Lucide React

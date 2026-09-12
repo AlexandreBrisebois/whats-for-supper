@@ -456,28 +456,6 @@ export function createRecipeDetailResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1}
- */
-// @ts-ignore
-export function createRecipeDietaryProfileDto_fopFlagsFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeDietaryProfileDto_fopFlags;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeDietaryProfileDto_fopFlagsMember1}
- */
-// @ts-ignore
-export function createRecipeDietaryProfileDto_fopFlagsMember1FromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeDietaryProfileDto_fopFlagsMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeDietaryProfileDto}
  */
 // @ts-ignore
@@ -485,28 +463,6 @@ export function createRecipeDietaryProfileDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipeDietaryProfileDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1}
- */
-// @ts-ignore
-export function createRecipeDto_dietaryProfileFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeDto_dietaryProfile;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeDto_dietaryProfileMember1}
- */
-// @ts-ignore
-export function createRecipeDto_dietaryProfileMember1FromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeDto_dietaryProfileMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -654,28 +610,6 @@ export function createRecipeSearchRequestDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto}
- */
-// @ts-ignore
-export function createRecipeSearchResponseDto_topPickFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeSearchResponseDto_topPick;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeSearchResponseDto_topPickMember1}
- */
-// @ts-ignore
-export function createRecipeSearchResponseDto_topPickMember1FromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeSearchResponseDto_topPickMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeSearchResponseDto}
  */
 // @ts-ignore
@@ -694,28 +628,6 @@ export function createRecipeSearchResultDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipeSearchResultDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeShareBundleDto_heroMember1 | SharedImageDto}
- */
-// @ts-ignore
-export function createRecipeShareBundleDto_heroFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeShareBundleDto_hero;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeShareBundleDto_heroMember1}
- */
-// @ts-ignore
-export function createRecipeShareBundleDto_heroMember1FromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeShareBundleDto_heroMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -808,28 +720,6 @@ export function createRecommendationsResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ScheduleDayDto_recipeMember1 | ScheduleRecipeDto}
- */
-// @ts-ignore
-export function createScheduleDayDto_recipeFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoScheduleDayDto_recipe;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ScheduleDayDto_recipeMember1}
- */
-// @ts-ignore
-export function createScheduleDayDto_recipeMember1FromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoScheduleDayDto_recipeMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ScheduleDayDto}
  */
 // @ts-ignore
@@ -837,28 +727,6 @@ export function createScheduleDayDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoScheduleDayDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto}
- */
-// @ts-ignore
-export function createScheduleDays_balanceSummaryFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoScheduleDays_balanceSummary;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ScheduleDays_balanceSummaryMember1}
- */
-// @ts-ignore
-export function createScheduleDays_balanceSummaryMember1FromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoScheduleDays_balanceSummaryMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1595,8 +1463,7 @@ export function deserializeIntoInventoryCaptureResponse(
 // @ts-ignore
 export function deserializeIntoManagementBackfillSearchAcceptedResponse(
   managementBackfillSearchAcceptedResponse:
-    | Partial<ManagementBackfillSearchAcceptedResponse>
-    | undefined = {}
+    Partial<ManagementBackfillSearchAcceptedResponse> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     message: (n) => {
@@ -1838,11 +1705,9 @@ export function deserializeIntoRecipeDietaryProfileDto(
       recipeDietaryProfileDto.cuisineType = n.getStringValue();
     },
     fopFlags: (n) => {
-      recipeDietaryProfileDto.fopFlags =
-        n.getObjectValue<FopFlagsDto>(createFopFlagsDtoFromDiscriminatorValue) ??
-        n.getObjectValue<RecipeDietaryProfileDto_fopFlagsMember1>(
-          createRecipeDietaryProfileDto_fopFlagsMember1FromDiscriminatorValue
-        );
+      recipeDietaryProfileDto.fopFlags = n.getObjectValue<FopFlagsDto>(
+        createFopFlagsDtoFromDiscriminatorValue
+      );
     },
     mealTypes: (n) => {
       recipeDietaryProfileDto.mealTypes = n.getCollectionOfPrimitiveValues<string>('string');
@@ -1867,37 +1732,6 @@ export function deserializeIntoRecipeDietaryProfileDto(
       recipeDietaryProfileDto.wholeGrainConfident = n.getBooleanValue();
     },
   };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeDietaryProfileDto_fopFlags The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeDietaryProfileDto_fopFlags(
-  recipeDietaryProfileDto_fopFlags:
-    | Partial<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1>
-    | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    ...deserializeIntoFopFlagsDto(recipeDietaryProfileDto_fopFlags as FopFlagsDto),
-    ...deserializeIntoRecipeDietaryProfileDto_fopFlagsMember1(
-      recipeDietaryProfileDto_fopFlags as RecipeDietaryProfileDto_fopFlagsMember1
-    ),
-  };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeDietaryProfileDto_fopFlagsMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeDietaryProfileDto_fopFlagsMember1(
-  recipeDietaryProfileDto_fopFlagsMember1:
-    | Partial<RecipeDietaryProfileDto_fopFlagsMember1>
-    | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -1931,13 +1765,9 @@ export function deserializeIntoRecipeDto(
       recipeDto.description = n.getStringValue();
     },
     dietaryProfile: (n) => {
-      recipeDto.dietaryProfile =
-        n.getObjectValue<RecipeDietaryProfileDto>(
-          createRecipeDietaryProfileDtoFromDiscriminatorValue
-        ) ??
-        n.getObjectValue<RecipeDto_dietaryProfileMember1>(
-          createRecipeDto_dietaryProfileMember1FromDiscriminatorValue
-        );
+      recipeDto.dietaryProfile = n.getObjectValue<RecipeDietaryProfileDto>(
+        createRecipeDietaryProfileDtoFromDiscriminatorValue
+      );
     },
     finishedDishIndex: (n) => {
       recipeDto.finishedDishIndex = n.getNumberValue() ?? -1;
@@ -2002,35 +1832,6 @@ export function deserializeIntoRecipeDto(
       recipeDto.totalTime = n.getStringValue();
     },
   };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeDto_dietaryProfile The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeDto_dietaryProfile(
-  recipeDto_dietaryProfile:
-    | Partial<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>
-    | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    ...deserializeIntoRecipeDietaryProfileDto(recipeDto_dietaryProfile as RecipeDietaryProfileDto),
-    ...deserializeIntoRecipeDto_dietaryProfileMember1(
-      recipeDto_dietaryProfile as RecipeDto_dietaryProfileMember1
-    ),
-  };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeDto_dietaryProfileMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeDto_dietaryProfileMember1(
-  recipeDto_dietaryProfileMember1: Partial<RecipeDto_dietaryProfileMember1> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -2348,46 +2149,11 @@ export function deserializeIntoRecipeSearchResponseDto(
       );
     },
     topPick: (n) => {
-      recipeSearchResponseDto.topPick =
-        n.getObjectValue<RecipeSearchResponseDto_topPickMember1>(
-          createRecipeSearchResponseDto_topPickMember1FromDiscriminatorValue
-        ) ??
-        n.getObjectValue<RecipeSearchResultDto>(createRecipeSearchResultDtoFromDiscriminatorValue);
+      recipeSearchResponseDto.topPick = n.getObjectValue<RecipeSearchResultDto>(
+        createRecipeSearchResultDtoFromDiscriminatorValue
+      );
     },
   };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeSearchResponseDto_topPick The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeSearchResponseDto_topPick(
-  recipeSearchResponseDto_topPick:
-    | Partial<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto>
-    | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    ...deserializeIntoRecipeSearchResponseDto_topPickMember1(
-      recipeSearchResponseDto_topPick as RecipeSearchResponseDto_topPickMember1
-    ),
-    ...deserializeIntoRecipeSearchResultDto(
-      recipeSearchResponseDto_topPick as RecipeSearchResultDto
-    ),
-  };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeSearchResponseDto_topPickMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeSearchResponseDto_topPickMember1(
-  recipeSearchResponseDto_topPickMember1:
-    | Partial<RecipeSearchResponseDto_topPickMember1>
-    | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -2446,10 +2212,9 @@ export function deserializeIntoRecipeShareBundleDto(
 ): Record<string, (node: ParseNode) => void> {
   return {
     hero: (n) => {
-      recipeShareBundleDto.hero =
-        n.getObjectValue<RecipeShareBundleDto_heroMember1>(
-          createRecipeShareBundleDto_heroMember1FromDiscriminatorValue
-        ) ?? n.getObjectValue<SharedImageDto>(createSharedImageDtoFromDiscriminatorValue);
+      recipeShareBundleDto.hero = n.getObjectValue<SharedImageDto>(
+        createSharedImageDtoFromDiscriminatorValue
+      );
     },
     info: (n) => {
       recipeShareBundleDto.info = n.getObjectValue<RecipeShareInfoDto>(
@@ -2470,35 +2235,6 @@ export function deserializeIntoRecipeShareBundleDto(
       recipeShareBundleDto.version = n.getStringValue();
     },
   };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeShareBundleDto_hero The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeShareBundleDto_hero(
-  recipeShareBundleDto_hero:
-    | Partial<RecipeShareBundleDto_heroMember1 | SharedImageDto>
-    | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    ...deserializeIntoRecipeShareBundleDto_heroMember1(
-      recipeShareBundleDto_hero as RecipeShareBundleDto_heroMember1
-    ),
-    ...deserializeIntoSharedImageDto(recipeShareBundleDto_hero as SharedImageDto),
-  };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeShareBundleDto_heroMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeShareBundleDto_heroMember1(
-  recipeShareBundleDto_heroMember1: Partial<RecipeShareBundleDto_heroMember1> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -2678,42 +2414,14 @@ export function deserializeIntoScheduleDayDto(
       scheduleDayDto.day = n.getStringValue();
     },
     recipe: (n) => {
-      scheduleDayDto.recipe =
-        n.getObjectValue<ScheduleDayDto_recipeMember1>(
-          createScheduleDayDto_recipeMember1FromDiscriminatorValue
-        ) ?? n.getObjectValue<ScheduleRecipeDto>(createScheduleRecipeDtoFromDiscriminatorValue);
+      scheduleDayDto.recipe = n.getObjectValue<ScheduleRecipeDto>(
+        createScheduleRecipeDtoFromDiscriminatorValue
+      );
     },
     status: (n) => {
       scheduleDayDto.status = n.getNumberValue();
     },
   };
-}
-/**
- * The deserialization information for the current model
- * @param ScheduleDayDto_recipe The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoScheduleDayDto_recipe(
-  scheduleDayDto_recipe: Partial<ScheduleDayDto_recipeMember1 | ScheduleRecipeDto> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    ...deserializeIntoScheduleDayDto_recipeMember1(
-      scheduleDayDto_recipe as ScheduleDayDto_recipeMember1
-    ),
-    ...deserializeIntoScheduleRecipeDto(scheduleDayDto_recipe as ScheduleRecipeDto),
-  };
-}
-/**
- * The deserialization information for the current model
- * @param ScheduleDayDto_recipeMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoScheduleDayDto_recipeMember1(
-  scheduleDayDto_recipeMember1: Partial<ScheduleDayDto_recipeMember1> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -2726,13 +2434,9 @@ export function deserializeIntoScheduleDays(
 ): Record<string, (node: ParseNode) => void> {
   return {
     balanceSummary: (n) => {
-      scheduleDays.balanceSummary =
-        n.getObjectValue<ScheduleDays_balanceSummaryMember1>(
-          createScheduleDays_balanceSummaryMember1FromDiscriminatorValue
-        ) ??
-        n.getObjectValue<WeeklyBalanceSummaryDto>(
-          createWeeklyBalanceSummaryDtoFromDiscriminatorValue
-        );
+      scheduleDays.balanceSummary = n.getObjectValue<WeeklyBalanceSummaryDto>(
+        createWeeklyBalanceSummaryDtoFromDiscriminatorValue
+      );
     },
     days: (n) => {
       scheduleDays.days = n.getCollectionOfObjectValues<ScheduleDayDto>(
@@ -2759,37 +2463,6 @@ export function deserializeIntoScheduleDays(
       scheduleDays.weekOffset = n.getNumberValue();
     },
   };
-}
-/**
- * The deserialization information for the current model
- * @param ScheduleDays_balanceSummary The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoScheduleDays_balanceSummary(
-  scheduleDays_balanceSummary:
-    | Partial<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto>
-    | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    ...deserializeIntoScheduleDays_balanceSummaryMember1(
-      scheduleDays_balanceSummary as ScheduleDays_balanceSummaryMember1
-    ),
-    ...deserializeIntoWeeklyBalanceSummaryDto(
-      scheduleDays_balanceSummary as WeeklyBalanceSummaryDto
-    ),
-  };
-}
-/**
- * The deserialization information for the current model
- * @param ScheduleDays_balanceSummaryMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoScheduleDays_balanceSummaryMember1(
-  scheduleDays_balanceSummaryMember1: Partial<ScheduleDays_balanceSummaryMember1> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -3121,8 +2794,7 @@ export function deserializeIntoWorkflowInstanceDetailDto(
 // @ts-ignore
 export function deserializeIntoWorkflowInstanceDetailDto_parameters(
   workflowInstanceDetailDto_parameters:
-    | Partial<WorkflowInstanceDetailDto_parameters>
-    | undefined = {}
+    Partial<WorkflowInstanceDetailDto_parameters> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
 }
@@ -3225,8 +2897,7 @@ export function deserializeIntoWorkflowTriggerRequestDto(
 // @ts-ignore
 export function deserializeIntoWorkflowTriggerRequestDto_parameters(
   workflowTriggerRequestDto_parameters:
-    | Partial<WorkflowTriggerRequestDto_parameters>
-    | undefined = {}
+    Partial<WorkflowTriggerRequestDto_parameters> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
 }
@@ -3666,7 +3337,7 @@ export interface RecipeDietaryProfileDto extends AdditionalDataHolder, Parsable 
   /**
    * The fopFlags property
    */
-  fopFlags?: FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1 | null;
+  fopFlags?: FopFlagsDto | null;
   /**
    * The mealTypes property
    */
@@ -3696,10 +3367,6 @@ export interface RecipeDietaryProfileDto extends AdditionalDataHolder, Parsable 
    */
   wholeGrainConfident?: boolean | null;
 }
-export type RecipeDietaryProfileDto_fopFlags =
-  | FopFlagsDto
-  | RecipeDietaryProfileDto_fopFlagsMember1;
-export interface RecipeDietaryProfileDto_fopFlagsMember1 extends AdditionalDataHolder, Parsable {}
 export interface RecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The addedBy property
@@ -3732,7 +3399,7 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The dietaryProfile property
    */
-  dietaryProfile?: RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1 | null;
+  dietaryProfile?: RecipeDietaryProfileDto | null;
   /**
    * The finishedDishIndex property
    */
@@ -3810,8 +3477,6 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    */
   totalTime?: string | null;
 }
-export type RecipeDto_dietaryProfile = RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1;
-export interface RecipeDto_dietaryProfileMember1 extends AdditionalDataHolder, Parsable {}
 export type RecipeDto_mealTypes =
   (typeof RecipeDto_mealTypesObject)[keyof typeof RecipeDto_mealTypesObject];
 export type RecipeDto_sourceType =
@@ -4032,16 +3697,12 @@ export interface RecipeSearchResponseDto extends AdditionalDataHolder, Parsable 
   /**
    * The topPick property
    */
-  topPick?: RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto | null;
+  topPick?: RecipeSearchResultDto | null;
 }
 export type RecipeSearchResponseDto_resultPath =
   (typeof RecipeSearchResponseDto_resultPathObject)[keyof typeof RecipeSearchResponseDto_resultPathObject];
 export type RecipeSearchResponseDto_searchMode =
   (typeof RecipeSearchResponseDto_searchModeObject)[keyof typeof RecipeSearchResponseDto_searchModeObject];
-export type RecipeSearchResponseDto_topPick =
-  | RecipeSearchResponseDto_topPickMember1
-  | RecipeSearchResultDto;
-export interface RecipeSearchResponseDto_topPickMember1 extends AdditionalDataHolder, Parsable {}
 export interface RecipeSearchResultDto extends AdditionalDataHolder, Parsable {
   /**
    * The id property
@@ -4088,7 +3749,7 @@ export interface RecipeShareBundleDto extends AdditionalDataHolder, Parsable {
   /**
    * The hero property
    */
-  hero?: RecipeShareBundleDto_heroMember1 | SharedImageDto | null;
+  hero?: SharedImageDto | null;
   /**
    * The info property
    */
@@ -4106,8 +3767,6 @@ export interface RecipeShareBundleDto extends AdditionalDataHolder, Parsable {
    */
   version?: string | null;
 }
-export type RecipeShareBundleDto_hero = RecipeShareBundleDto_heroMember1 | SharedImageDto;
-export interface RecipeShareBundleDto_heroMember1 extends AdditionalDataHolder, Parsable {}
 export interface RecipeShareInfoDto extends AdditionalDataHolder, Parsable {
   /**
    * The appVersion property
@@ -4228,19 +3887,17 @@ export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
   /**
    * The recipe property
    */
-  recipe?: ScheduleDayDto_recipeMember1 | ScheduleRecipeDto | null;
+  recipe?: ScheduleRecipeDto | null;
   /**
    * 0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
    */
   status?: number | null;
 }
-export type ScheduleDayDto_recipe = ScheduleDayDto_recipeMember1 | ScheduleRecipeDto;
-export interface ScheduleDayDto_recipeMember1 extends AdditionalDataHolder, Parsable {}
 export interface ScheduleDays extends AdditionalDataHolder, Parsable {
   /**
    * The balanceSummary property
    */
-  balanceSummary?: ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto | null;
+  balanceSummary?: WeeklyBalanceSummaryDto | null;
   /**
    * The days property
    */
@@ -4266,10 +3923,6 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    */
   weekOffset?: number | null;
 }
-export type ScheduleDays_balanceSummary =
-  | ScheduleDays_balanceSummaryMember1
-  | WeeklyBalanceSummaryDto;
-export interface ScheduleDays_balanceSummaryMember1 extends AdditionalDataHolder, Parsable {}
 export interface ScheduleDays_groceryState extends AdditionalDataHolder, Parsable {}
 export interface ScheduleRecipeDto extends AdditionalDataHolder, Parsable {
   /**
@@ -4762,9 +4415,7 @@ export function serializeInventoryCaptureResponse(
 export function serializeManagementBackfillSearchAcceptedResponse(
   writer: SerializationWriter,
   managementBackfillSearchAcceptedResponse:
-    | Partial<ManagementBackfillSearchAcceptedResponse>
-    | undefined
-    | null = {},
+    Partial<ManagementBackfillSearchAcceptedResponse> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!managementBackfillSearchAcceptedResponse || isSerializingDerivedType) {
@@ -4845,9 +4496,7 @@ export function serializeManagementTaskStatusResponse(
 export function serializeManagementTaskStatusResponse_result(
   writer: SerializationWriter,
   managementTaskStatusResponse_result:
-    | Partial<ManagementTaskStatusResponse_result>
-    | undefined
-    | null = {},
+    Partial<ManagementTaskStatusResponse_result> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!managementTaskStatusResponse_result || isSerializingDerivedType) {
@@ -4988,10 +4637,10 @@ export function serializeRecipeDietaryProfileDto(
   }
   writer.writeNumberValue('confidence', recipeDietaryProfileDto.confidence);
   writer.writeStringValue('cuisineType', recipeDietaryProfileDto.cuisineType);
-  writer.writeObjectValue<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1>(
+  writer.writeObjectValue<FopFlagsDto>(
     'fopFlags',
     recipeDietaryProfileDto.fopFlags,
-    serializeRecipeDietaryProfileDto_fopFlags
+    serializeFopFlagsDto
   );
   writer.writeCollectionOfPrimitiveValues<string>('mealTypes', recipeDietaryProfileDto.mealTypes);
   writer.writeStringValue('primaryFoodGroup', recipeDietaryProfileDto.primaryFoodGroup);
@@ -5004,47 +4653,6 @@ export function serializeRecipeDietaryProfileDto(
   writer.writeStringValue('source', recipeDietaryProfileDto.source);
   writer.writeBooleanValue('wholeGrainConfident', recipeDietaryProfileDto.wholeGrainConfident);
   writer.writeAdditionalData(recipeDietaryProfileDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeDietaryProfileDto_fopFlags The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeDietaryProfileDto_fopFlags(
-  writer: SerializationWriter,
-  recipeDietaryProfileDto_fopFlags:
-    | Partial<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  serializeFopFlagsDto(writer, recipeDietaryProfileDto_fopFlags as FopFlagsDto);
-  serializeRecipeDietaryProfileDto_fopFlagsMember1(
-    writer,
-    recipeDietaryProfileDto_fopFlags as RecipeDietaryProfileDto_fopFlagsMember1
-  );
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeDietaryProfileDto_fopFlagsMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeDietaryProfileDto_fopFlagsMember1(
-  writer: SerializationWriter,
-  recipeDietaryProfileDto_fopFlagsMember1:
-    | Partial<RecipeDietaryProfileDto_fopFlagsMember1>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!recipeDietaryProfileDto_fopFlagsMember1 || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(recipeDietaryProfileDto_fopFlagsMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5068,10 +4676,10 @@ export function serializeRecipeDto(
   writer.writeStringValue('cuisineType', recipeDto.cuisineType);
   writer.writeDateValue('deletedAt', recipeDto.deletedAt);
   writer.writeStringValue('description', recipeDto.description);
-  writer.writeObjectValue<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>(
+  writer.writeObjectValue<RecipeDietaryProfileDto>(
     'dietaryProfile',
     recipeDto.dietaryProfile,
-    serializeRecipeDto_dietaryProfile
+    serializeRecipeDietaryProfileDto
   );
   writer.writeNumberValue('finishedDishIndex', recipeDto.finishedDishIndex ?? -1);
   writer.writeGuidValue('id', recipeDto.id);
@@ -5098,44 +4706,6 @@ export function serializeRecipeDto(
   writer.writeStringValue('sourceUrl', recipeDto.sourceUrl);
   writer.writeStringValue('totalTime', recipeDto.totalTime);
   writer.writeAdditionalData(recipeDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeDto_dietaryProfile The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeDto_dietaryProfile(
-  writer: SerializationWriter,
-  recipeDto_dietaryProfile:
-    | Partial<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  serializeRecipeDietaryProfileDto(writer, recipeDto_dietaryProfile as RecipeDietaryProfileDto);
-  serializeRecipeDto_dietaryProfileMember1(
-    writer,
-    recipeDto_dietaryProfile as RecipeDto_dietaryProfileMember1
-  );
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeDto_dietaryProfileMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeDto_dietaryProfileMember1(
-  writer: SerializationWriter,
-  recipeDto_dietaryProfileMember1: Partial<RecipeDto_dietaryProfileMember1> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!recipeDto_dietaryProfileMember1 || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(recipeDto_dietaryProfileMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5442,53 +5012,12 @@ export function serializeRecipeSearchResponseDto(
     'searchMode',
     recipeSearchResponseDto.searchMode
   );
-  writer.writeObjectValue<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto>(
+  writer.writeObjectValue<RecipeSearchResultDto>(
     'topPick',
     recipeSearchResponseDto.topPick,
-    serializeRecipeSearchResponseDto_topPick
+    serializeRecipeSearchResultDto
   );
   writer.writeAdditionalData(recipeSearchResponseDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeSearchResponseDto_topPick The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeSearchResponseDto_topPick(
-  writer: SerializationWriter,
-  recipeSearchResponseDto_topPick:
-    | Partial<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  serializeRecipeSearchResponseDto_topPickMember1(
-    writer,
-    recipeSearchResponseDto_topPick as RecipeSearchResponseDto_topPickMember1
-  );
-  serializeRecipeSearchResultDto(writer, recipeSearchResponseDto_topPick as RecipeSearchResultDto);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeSearchResponseDto_topPickMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeSearchResponseDto_topPickMember1(
-  writer: SerializationWriter,
-  recipeSearchResponseDto_topPickMember1:
-    | Partial<RecipeSearchResponseDto_topPickMember1>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!recipeSearchResponseDto_topPickMember1 || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(recipeSearchResponseDto_topPickMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5539,10 +5068,10 @@ export function serializeRecipeShareBundleDto(
   if (!recipeShareBundleDto || isSerializingDerivedType) {
     return;
   }
-  writer.writeObjectValue<RecipeShareBundleDto_heroMember1 | SharedImageDto>(
+  writer.writeObjectValue<SharedImageDto>(
     'hero',
     recipeShareBundleDto.hero,
-    serializeRecipeShareBundleDto_hero
+    serializeSharedImageDto
   );
   writer.writeObjectValue<RecipeShareInfoDto>(
     'info',
@@ -5561,47 +5090,6 @@ export function serializeRecipeShareBundleDto(
   );
   writer.writeStringValue('version', recipeShareBundleDto.version);
   writer.writeAdditionalData(recipeShareBundleDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeShareBundleDto_hero The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeShareBundleDto_hero(
-  writer: SerializationWriter,
-  recipeShareBundleDto_hero:
-    | Partial<RecipeShareBundleDto_heroMember1 | SharedImageDto>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  serializeRecipeShareBundleDto_heroMember1(
-    writer,
-    recipeShareBundleDto_hero as RecipeShareBundleDto_heroMember1
-  );
-  serializeSharedImageDto(writer, recipeShareBundleDto_hero as SharedImageDto);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeShareBundleDto_heroMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeShareBundleDto_heroMember1(
-  writer: SerializationWriter,
-  recipeShareBundleDto_heroMember1:
-    | Partial<RecipeShareBundleDto_heroMember1>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!recipeShareBundleDto_heroMember1 || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(recipeShareBundleDto_heroMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5779,51 +5267,13 @@ export function serializeScheduleDayDto(
   }
   writer.writeStringValue('date', scheduleDayDto.date);
   writer.writeStringValue('day', scheduleDayDto.day);
-  writer.writeObjectValue<ScheduleDayDto_recipeMember1 | ScheduleRecipeDto>(
+  writer.writeObjectValue<ScheduleRecipeDto>(
     'recipe',
     scheduleDayDto.recipe,
-    serializeScheduleDayDto_recipe
+    serializeScheduleRecipeDto
   );
   writer.writeNumberValue('status', scheduleDayDto.status);
   writer.writeAdditionalData(scheduleDayDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param ScheduleDayDto_recipe The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeScheduleDayDto_recipe(
-  writer: SerializationWriter,
-  scheduleDayDto_recipe:
-    | Partial<ScheduleDayDto_recipeMember1 | ScheduleRecipeDto>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  serializeScheduleDayDto_recipeMember1(
-    writer,
-    scheduleDayDto_recipe as ScheduleDayDto_recipeMember1
-  );
-  serializeScheduleRecipeDto(writer, scheduleDayDto_recipe as ScheduleRecipeDto);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param ScheduleDayDto_recipeMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeScheduleDayDto_recipeMember1(
-  writer: SerializationWriter,
-  scheduleDayDto_recipeMember1: Partial<ScheduleDayDto_recipeMember1> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!scheduleDayDto_recipeMember1 || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(scheduleDayDto_recipeMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5840,10 +5290,10 @@ export function serializeScheduleDays(
   if (!scheduleDays || isSerializingDerivedType) {
     return;
   }
-  writer.writeObjectValue<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto>(
+  writer.writeObjectValue<WeeklyBalanceSummaryDto>(
     'balanceSummary',
     scheduleDays.balanceSummary,
-    serializeScheduleDays_balanceSummary
+    serializeWeeklyBalanceSummaryDto
   );
   writer.writeCollectionOfObjectValues<ScheduleDayDto>(
     'days',
@@ -5864,47 +5314,6 @@ export function serializeScheduleDays(
   writer.writeNumberValue('status', scheduleDays.status);
   writer.writeNumberValue('weekOffset', scheduleDays.weekOffset);
   writer.writeAdditionalData(scheduleDays.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param ScheduleDays_balanceSummary The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeScheduleDays_balanceSummary(
-  writer: SerializationWriter,
-  scheduleDays_balanceSummary:
-    | Partial<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  serializeScheduleDays_balanceSummaryMember1(
-    writer,
-    scheduleDays_balanceSummary as ScheduleDays_balanceSummaryMember1
-  );
-  serializeWeeklyBalanceSummaryDto(writer, scheduleDays_balanceSummary as WeeklyBalanceSummaryDto);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param ScheduleDays_balanceSummaryMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeScheduleDays_balanceSummaryMember1(
-  writer: SerializationWriter,
-  scheduleDays_balanceSummaryMember1:
-    | Partial<ScheduleDays_balanceSummaryMember1>
-    | undefined
-    | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!scheduleDays_balanceSummaryMember1 || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(scheduleDays_balanceSummaryMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -6221,9 +5630,7 @@ export function serializeWorkflowInstanceDetailDto(
 export function serializeWorkflowInstanceDetailDto_parameters(
   writer: SerializationWriter,
   workflowInstanceDetailDto_parameters:
-    | Partial<WorkflowInstanceDetailDto_parameters>
-    | undefined
-    | null = {},
+    Partial<WorkflowInstanceDetailDto_parameters> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!workflowInstanceDetailDto_parameters || isSerializingDerivedType) {
@@ -6316,9 +5723,7 @@ export function serializeWorkflowTriggerRequestDto(
 export function serializeWorkflowTriggerRequestDto_parameters(
   writer: SerializationWriter,
   workflowTriggerRequestDto_parameters:
-    | Partial<WorkflowTriggerRequestDto_parameters>
-    | undefined
-    | null = {},
+    Partial<WorkflowTriggerRequestDto_parameters> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!workflowTriggerRequestDto_parameters || isSerializingDerivedType) {

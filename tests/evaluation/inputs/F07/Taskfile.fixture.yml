@@ -1,0 +1,5 @@
+version: '3'
+tasks:
+  fixture:check:
+    cmds:
+    - python3 -m unittest discover -s fixture -p 'test_*.py'

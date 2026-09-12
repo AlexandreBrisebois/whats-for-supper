@@ -1,5 +1,14 @@
 # AWS Well-Architected Framework — Pillars Reference
 
+Use only for the selected AWS question. This is illustrative reference material,
+not the deployed WFS configuration or a required checklist. Start from the affected
+WFS CDK construct and workflow identified by the skill entrypoint. Load linked
+references only when needed; examples do not require choosing a new service,
+account topology or deployment. Verify prices, limits, versions and policy scopes
+against current provider documentation before relying on them. Existing authorization
+and shared repository policy govern any actual action.
+
+
 Six pillars. Every architectural recommendation maps to at least one. Tag recommendations with the pillar abbreviation.
 
 ---
@@ -132,7 +141,7 @@ Six pillars. Every architectural recommendation maps to at least one. Tag recomm
 
 **Cost governance defaults:**
 - AWS Budgets alert at 80% of monthly ceiling (hard stop at 100%)
-- Mandatory resource tags: `env`, `team`, `workload`, `cost-center`
+- Example cost-attribution tags: `env`, `team`, `workload`, `cost-center`
 - Cost Explorer enabled from day one
 - Scheduled Lambda / ECS tasks off during off-hours in dev
 

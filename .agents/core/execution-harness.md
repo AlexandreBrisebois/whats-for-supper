@@ -1,58 +1,125 @@
-# Execution Harness
+# Execution harness
 
-## 1. Execution principle
-Do not reinvent established workflows. If a task can be accomplished using an existing project command, use that command instead of creating ad-hoc shell scripts or running bare terminal commands. Operations must remain predictable, trackable, and aligned with the repository's native automation.
+Use Taskfile.yml as the command interface; inspect the selected targets and their
+scripts before execution. Commands do not grant authority to reset data, kill shared
+processes, stage files or extend the selected task. A worktree alone does not isolate
+processes, ports or databases.
 
-## 2. Preferred execution surface
-The primary interface for all automation, building, testing, and agentic workflows is the `Taskfile.yml`. Before attempting any operation, verify if a relevant `task` command already exists. Relying on the Taskfile ensures consistency, leverages pre-configured environment variables, and minimizes destructive side effects.
+## Completion and preparation
 
-## 3. Key agent commands
-Use the following canonical commands to perform regular operational duties safely:
+Use `task gate` for development feedback and retain the broad final checks below.
+Its adaptive E2E selection does not replace backend tests or the scope review.
 
-- **`task agent:reconcile`**: Run this to reconcile the OpenAPI Specification, Mock API, and Backend implementation. Use it when creating or updating API contracts.
-- **`task agent:drift`**: Run this to check for schema drift across endpoints, backend DTOs, and frontend mocks. Use it to ensure absolute contract integrity before finalizing a feature.
-- **`task agent:slice -- <route>`**: Run this to view a vertical slice of a specific route (Contract ↔ Backend ↔ Client). Use it during planning or debugging to understand the full data flow of a feature.
-- **`task gate`**: Run this for a high-speed developer loop (lint + typecheck + impacted tests). It automatically clears lingering processes via `dev:kill` and `test:kill`.
-- **`task dev:kill`**: Run this manually if you encounter "port already in use" errors or strange flakiness.
-- **`task test:kill`**: Run this manually to clear zombie Playwright workers.
-- **`task agent:test:impact`**: Run this to execute only the tests affected by your recent git changes.
-- **`task agent:finish`**: Run this once for final completion. It owns impact → drift → review ordering and safely reuses an unchanged successful impact result.
-- **`task agent:audit AREA=<keyword>`**: Run this to identify tests, analyze migration candidates, and detect brittle selectors for a specific feature area.
-- **`task review`**: Run this for a full pre-commit review. Like `gate`, it clears lingerng processes before starting.
-- **Timeout handling**: A harness child that reports a timeout has already been stopped. Do not retry it automatically. Use its diagnostic to correct permissions/runtime or ask for one focused user action.
+`task agent:finish` is the single applicable implementation completion entrypoint.
+It selects checks from tracked, staged and untracked paths; mixed classes take their
+union and unknown paths select the conservative union. No-change/review-only work
+records findings without implying tested implementation. Task-specific acceptance
+and isolated model/host qualification remain separate obligations in the task evidence.
 
-## 4. Agent Toolbox
-Each `task` command in Section 3 is backed by a script in `scripts/agent/`. Before debugging a failure or extending a workflow, consult the toolbox to understand what each script does, what problem it solves, and what modes it supports.
+| Change class | Applicable checks |
+|---|---|
+| Documentation | Changed links, Python syntax where present, diff whitespace; review instruction meaning |
+| Harness | Documentation checks and `task test:agent`; selected loading/fixture checks remain explicit task evidence |
+| Application | Documentation, lint/types, unit/API/impact tests and static contract/client checks |
+| Contract/schema | Application checks plus live endpoint parity and task-specific real database behavior |
+| Unknown | Union of all classes; never silently reduce verification |
 
-→ See [.agents/agent-toolbox.md](../agent-toolbox.md)
+Before final verification, run `task agent:prepare` after inspecting its effects.
+It generates the client for contract changes, then formats application code. Unknown
+preparation blocks before writes until paths/effects are classified; unknown final
+verification still selects the full union.
+Documentation/harness preparation requires no application generation or formatting;
+fix relevant syntax/whitespace before final checks. Review the resulting diff and
+preserve unrelated work. `gen:client:sync` also stages files and is not preparation.
 
-## 5. Safe operating rules
+Finish performs no formatting/generation in the source tree. Agent Python commands
+use `-B` to avoid adding/updating bytecode during verification. Kiota check generates
+and formats only in its temporary output directory. `review` remains a reusable
+application validation target, with no formatter or process-kill step; it does not
+include E2E and is not a second completion workflow. `gate` is the developer loop
+and still kills processes: inspect its effects and use dedicated resources.
 
-- **Strict Isolation**: All E2E tests are isolated via global API mocking. Any unhandled API call will fail the test. Never use `route.continue()` in mocks.
-- **Never bypass the Taskfile**: If a `task` exists for linting, formatting, or testing, never run the underlying tool directly unless debugging a specific failure that requires isolated execution.
-- **Targeted Context Loading**: When loading context to act safely, prioritize targeted commands like `task agent:slice` over recursively reading the file system.
-- **Destructive Actions**: Never modify schema or core logic without first verifying the impact using `task gate` or `task agent:drift`.
+Finish captures content/config/runtime identity before verification and checks it
+after every check. Mutation fails content evidence and leaves remaining checks
+not-run. Its JSON record is `.task/agent-finish/last-run.json`; later edits invalidate
+that identity and require new applicable verification. Record evidence-file updates
+as later documentation content rather than attaching old success to a new digest.
 
-## 6. Pre-Implementation Audit
-Before starting a new feature or refactoring:
-1. Run `task agent:audit AREA=<feature>` to identify the relevant test surface.
-2. Address any flagged brittle selectors (`data-testid` migration) in the existing tests first to establish a stable green baseline.
-3. Review migration candidates — if a logic-heavy E2E test is flagged, prioritize moving that logic to a Vitest unit test.
+`agent:test:impact` includes tracked/untracked changes and falls back to all E2E for
+unknown/unmapped application paths. Cache identity covers all tracked/untracked source,
+configuration, installed dependencies/browser bytes, tool executables and hashed
+runtime/environment inputs. Success is stored only under the pre-test identity when
+post-test identity agrees. CI and `WFS_DISABLE_TEST_CACHE=1` disable reuse, not mutation
+detection. Reuse additionally requires `WFS_ISOLATED_RUNNER=1` and no external
+`BASE_URL`. The cache cannot prove external live-service state; E2E must use the
+repository's mocked API boundary.
 
-## 7. Completion workflow
-Before concluding any implementation phase:
-1. Use `task gate` during implementation when broad validation is warranted.
-2. Run `task agent:finish` exactly once on the final worktree state.
-3. Run a final `task agent:audit` when the task changes E2E selectors.
-4. Do not declare work complete until the applicable validation steps succeed.
+## Effects, blockers and supporting commands
 
-## 7. Session state files
+- `task agent:reconcile` and `agent:drift:routes` inspect source route coverage;
+  `agent:drift:schemas` checks DTO property/requiredness patterns;
+  `agent:drift:mocks` audits ID/GUID patterns. None proves live API/database behavior.
+- `task agent:drift:endpoints` probes the generated live API specification once.
+  Unavailable service is blocked (script exit 2), not zero mismatches.
+- Finish requires dedicated processes/ports/data for E2E/API tests. Set
+  `WFS_ISOLATED_RUNNER=1` only after establishing them; this is an operator assertion,
+  not host/model qualification. Missing task-specific real database evidence remains
+  explicitly blocked and must be recorded with its actual command and tested identity.
+- A timed-out/interrupted finish child group is stopped and reaped without retry.
+  Kiota retains its compatible runtime, clean-output and one-shot timeout behavior.
+  Correct the cause before a new authorized attempt; monitor a running command only.
+- `task agent:audit AREA=<keyword>` (backed by `test:audit`) is optional, advisory and
+  bounded to affected coverage. Heuristics never require unrelated cleanup or deletion.
+- `task agent:slice -- <route>` and `task agent:api` support static navigation.
+  `task agent:status` remains the explicit HANDOVER reader under context-loading policy.
 
-Two files track active and historical work. Load them only when needed — do not load reflexively.
+Inspect `.task/agent-finish/last-run.json` and report passed, failed, blocked, not-run
+and not-applicable separately. A passing static check cannot cancel a blocked live
+check. Finish records automated checks only; do not claim completion while selected
+acceptance, fixture or loading evidence is missing.
 
-| File | Holds | When to load | Command |
-| :--- | :--- | :--- | :--- |
-| `HANDOVER.md` | Active session state: current objectives, next entry points, recently completed work | At the start of a session to orient yourself, or when resolving ambiguity about in-progress work | `task agent:status` |
-| `JOURNAL.md` | Historical archive: past session logs, ADRs, technical decisions | Only when a current task requires understanding a past decision not visible in the code or spec | Read directly |
+## Scope review
 
-**Rule:** If `HANDOVER.md` answers your question, do not open `JOURNAL.md`.
+After preparation and before `agent:finish`, compare the current worktree with the
+starting baseline recorded under [context loading](context-loading.md#bound-the-work).
+Inspect the actual diff, including new/deleted files and changes within files that
+were already dirty. Do not attribute all differences from HEAD to the current task.
+
+Account for each task-changed file in task evidence or the final report: what changed,
+why the requested outcome needs it, and any incidental formatter/generated changes.
+Review semantic scope within expected files too: unrelated refactors, changed
+defaults, removed behavior and weakened tests can pass broad checks. Investigate
+unexpected edits; retain only changes justified by the existing authorization.
+Remove your own unnecessary edits while preserving pre-existing and concurrent work;
+never reset or restore a whole dirty file to discard a task-local change.
+
+Record the baseline reference, reviewed final content identity, per-file rationale
+and unresolved differences. Recheck the scope review if preparation, fixes or later
+edits change the reviewed content. The review is an agent assessment, not automated
+proof of authorization, and must not narrow the checks selected by `agent:finish`.
+If the baseline is missing or concurrent edits cannot be distinguished, report that
+limit, recover available history and resolve ambiguous ownership before reverting.
+Do not claim preservation or scope verification without evidence; continue independent
+authorized work while consequential uncertainty is resolved.
+
+## Evidence and meaningful handoffs
+
+Record changed paths, actual checks and content identity in the selected spec's
+task evidence. Keep durable rationale in `specs/decisions/` when a decision needs
+preserving; implementation facts belong with code/config references. Synchronize
+only affected contracts, configuration documentation and task records within scope.
+Static reconciliation alone is not database or live endpoint parity.
+
+Update [HANDOVER](../../HANDOVER.md) at a meaningful handoff or interruption, only
+in the writer's own task section. Preserve other tasks. Use these compact fields:
+Task/spec; Worktree/branch; Authorized scope and source; Current checkpoint;
+Verification evidence and content identity; Blocker or next action.
+Check stale evidence against current files when resuming. Completed detail belongs
+in specs; HANDOVER supplies context, not authority. [JOURNAL](../../JOURNAL.md) is
+frozen historical evidence after its salvage pass; do not append session results.
+There is no mandatory multi-file turn-end bookkeeping or automatic cleanup skill.
+Useful repeatable tooling may be proposed within scope; temporary scripts do not
+need automatic promotion into the repository.
+
+`task agent:summary` prints navigation only; it does not load handover, skill bodies
+or the whole registry. Use `task agent:status` explicitly for resumption/ambiguity.

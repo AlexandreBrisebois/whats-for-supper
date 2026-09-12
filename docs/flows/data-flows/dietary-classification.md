@@ -8,64 +8,37 @@
 
 ## Overview
 
-Dietary classification runs **once per recipe** at import time via a background workflow processor. The result is cached in the database and on disk (`recipe.info`). Balance scoring runs **on every assign/remove** — in-memory, deterministic, no LLM involved.
+Dietary classification is event-driven. `HealthWorker` consumes pending `health_events` and delegates `recipe_changed` and `week_changed` events to [`HealthComputationService`](../../../api/src/RecipeApi/Services/HealthComputationService.cs). Recipe classification writes `health_recipe_profiles`; weekly scoring writes `health_week_summaries`.
 
-**LLM boundary:** The LLM is called exactly once per recipe to produce the `DietaryProfile`. All downstream logic — balance scoring, nudging, indicator rendering — is pure deterministic code.
+**LLM boundary:** Each recipe computation with usable ingredients calls the configured `IChatClient`. There is no existing-profile cache guard in this service: subsequent events and retries can classify again. Balance scoring and nutrition-derived FOP flags use deterministic code.
 
 ---
 
 ## Classification Data Flow
 
-### Full path: import → dietary_profile → recipe.info
-
 ```mermaid
 flowchart TD
-    subgraph Workflow["Background Workflow (ClassifyDietaryProfileProcessor)"]
-        A[Recipe in DB\nwith RawMetadata + Ingredients] --> B{dietary_profile IS NULL\nOR forceReclassify?}
-        B -->|No — cache hit| C[Skip — log debug\nreturn without LLM call]
-        B -->|Yes — classify| D[Read: name, description first 150 chars,\ningredient names from supply]
-        D --> E{RawMetadata present\nwith supply?}
-        E -->|No| F[Log debug — return\nno LLM call]
-        E -->|Yes| G[Single LLM call\nGemini Flash\n~300-500 tokens]
-        G --> H{Validate response}
-        H -->|primaryFoodGroup invalid| I[Log warning — return\nno DB write]
-        H -->|LLM throws| J[Log error — return\nno DB write]
-        H -->|Valid| K[Apply wholeGrainConfident guard:\nremove WholeGrains from secondaryFoodGroups\nif wholeGrainConfident = false]
-        K --> L[Parse NutritionInformation\nfrom raw_metadata — null-safe]
-        L --> M[NutritionParser.ComputeFopFlags\npure deterministic math\nno LLM]
-        M --> N[Attach FopFlags to DietaryProfile\nnull when nutrition absent]
-        N --> O[Write recipes.dietary_profile JSONB\nWrite recipes.category = primaryFoodGroup]
-        O --> P[db.SaveChangesAsync]
-    end
-
-    subgraph Backup["Next BackupAsync"]
-        P --> Q[ManagementService.BackupAsync\nwrites dietaryProfile to recipe.info]
-    end
-
-    subgraph Restore["RestoreAsync"]
-        R[recipe.info with dietaryProfile] --> S[Write recipes.dietary_profile\nSet recipes.category\nNo LLM call]
-    end
+    A[HealthWorker: recipe_changed] --> B[HealthComputationService.ProcessRecipeChangedAsync]
+    B --> C{Recipe, raw metadata,\nand ingredient names available?}
+    C -->|No| D[Return without classification]
+    C -->|Yes| E[Extract supply or recipeIngredient\nand nutrition from raw metadata]
+    E --> F[Call configured IChatClient\nwith name, truncated description, ingredients]
+    F --> G{Valid food group\nand protein source?}
+    G -->|No or LLM failure| H[Throw; HealthWorker retries\nup to three total attempts]
+    G -->|Yes| I[Apply wholeGrainConfident guard\nand compute nutrition FOP flags]
+    I --> J[Upsert health_recipe_profiles\nprofile, flags, timestamp, version]
+    J --> K[SaveChangesAsync]
 ```
 
-### Token cost model
-
-| Component | Tokens | Frequency |
-|-----------|--------|-----------|
-| System prompt | ~300 (cache-eligible) | Once per cache TTL |
-| Recipe payload (name + description + ingredients) | ~150–400 | **Once per recipe, ever** |
-| LLM response | ~80–120 | Once per recipe, ever |
-| **Total per recipe** | **~230–520** | **Once. Cached forever.** |
-| Balance scoring | **0** | Every assign/remove |
-
-At Gemini Flash pricing: classifying 1,000 recipes ≈ **$0.04**.
+`ProcessWeekChangedAsync` loads the week's seven dinner slots and their `health_recipe_profiles`, calls `WeeklyBalanceScorer.Compute`, and upserts the balance summary, FOP summary, and recomputation timestamp in `health_week_summaries`. These health tables are separate from the legacy `recipes.dietary_profile` and `weekly_plans.balance_summary` fields; this service does not update those legacy fields or write `recipe.info`.
 
 ---
 
 ## Balance Scoring Data Flow
 
-### When it runs
+### Legacy grocery balance writes
 
-`GroceryRecomputeService.RecomputeForWeekAsync` is called on every recipe **assign** or **remove**. At the end of that method, after writing `grocery_items`, balance scoring runs in the same `SaveChangesAsync` call:
+[`GroceryRecomputeService`](../../../api/src/RecipeApi/Services/GroceryRecomputeService.cs) retains legacy balance writes alongside the health service. `RecomputeForWeekAsync` is called on every recipe **assign** or **remove**. At the end of that method, after writing `grocery_items`, balance scoring runs in the same `SaveChangesAsync` call:
 
 ```mermaid
 flowchart TD
@@ -130,7 +103,7 @@ FOP flags (`highInSodium`, `highInSaturatedFat`, `highInSugars`) are computed **
 | Sugars | > 15.0 g |
 | Sodium | > 345.0 mg |
 
-**`fopFlags = null` is the common case.** Most recipes (home blogs, synthesized, photo imports) have no schema.org nutrition markup. Phase 2 CNF integration will fill these gaps via `forceReclassify`.
+**`fopFlags = null` is the common case.** Most recipes (home blogs, synthesized, photo imports) have no schema.org nutrition markup. The health service leaves flags null when source nutrition is absent.
 
 ---
 

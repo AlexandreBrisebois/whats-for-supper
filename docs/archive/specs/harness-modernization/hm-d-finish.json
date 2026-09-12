@@ -1,0 +1,48 @@
+{
+  "checks": {
+    "documentation": {
+      "status": "passed",
+      "detail": "introduced links/Python syntax and exit 0",
+      "tested_identity": "8d74d5e0010d72d7c685a3d8a6f8e69e9dee4740042e1d83ec1e6ebe17a11fcd"
+    },
+    "test:agent": {
+      "status": "passed",
+      "detail": "exit 0",
+      "tested_identity": "8d74d5e0010d72d7c685a3d8a6f8e69e9dee4740042e1d83ec1e6ebe17a11fcd"
+    },
+    "lint": {
+      "status": "not-applicable"
+    },
+    "format:check:pwa": {
+      "status": "not-applicable"
+    },
+    "typecheck": {
+      "status": "not-applicable"
+    },
+    "test:unit": {
+      "status": "not-applicable"
+    },
+    "agent:test:impact": {
+      "status": "not-applicable"
+    },
+    "test:api": {
+      "status": "not-applicable"
+    },
+    "review:contracts": {
+      "status": "not-applicable"
+    },
+    "agent:drift:endpoints": {
+      "status": "not-applicable"
+    },
+    "database-behavior": {
+      "status": "not-applicable"
+    },
+    "content": {
+      "status": "passed",
+      "tested_identity": "8d74d5e0010d72d7c685a3d8a6f8e69e9dee4740042e1d83ec1e6ebe17a11fcd"
+    }
+  },
+  "automated_checks_passed": true,
+  "task_acceptance": "not-evaluated: reconcile selected task/fixture/host evidence separately",
+  "evidence_boundary": "Captured passing candidate run before copying this record and refreshing hm-d-content.json. All implementation bytes are unchanged; later final finish validates these evidence-file updates. No model/host/task acceptance claim."
+}

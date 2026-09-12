@@ -20,8 +20,8 @@ This guide covers deploying **What's For Supper** on a home NAS or any Docker-ca
 
 ```bash
 git clone https://github.com/AlexandreBrisebois/whats-for-supper.git
-cd whats-for-supper/docker
-cp .env.example .env.local
+cd whats-for-supper
+cp docker/.env.example docker/.env.local
 ```
 
 Edit `.env.local` — the fields you **must** set are:
@@ -40,7 +40,7 @@ Edit `.env.local` — the fields you **must** set are:
 ## 2. Start the stack
 
 ```bash
-docker compose -f docker/docker-compose.prod.yml --env-file docker/.env.local up -d
+docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml --env-file docker/.env.local up -d
 ```
 
 Services that start:
@@ -50,9 +50,9 @@ Services that start:
 | `traefik` | 80, 443, 8080 (admin) | Reverse proxy + TLS |
 | `api` | 9001 (internal) | .NET API |
 | `pwa` | 3000 (internal) | Next.js PWA |
-| `postgres` | 5432 (internal) | PostgreSQL 17 |
+| `postgres` | 5432 (internal) | PostgreSQL 18 |
 
-The database schema is applied automatically on first API startup via `psqldef`.
+The database schema is applied by the `psqldef` migration sidecar running `migrate.sh`, not by API startup.
 
 ---
 
@@ -241,11 +241,11 @@ ELEVATED_ACTIONS_PIN=1234
 
 ```bash
 git pull
-docker compose -f docker/docker-compose.prod.yml --env-file docker/.env.local pull
-docker compose -f docker/docker-compose.prod.yml --env-file docker/.env.local up -d
+docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml --env-file docker/.env.local pull
+docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml --env-file docker/.env.local up -d
 ```
 
-Schema changes are applied automatically on API startup via `psqldef` declarative diffing — no manual migration scripts.
+Schema changes are applied by the `psqldef` migration sidecar running `migrate.sh` using declarative diffing, not by API startup.
 
 ---
 

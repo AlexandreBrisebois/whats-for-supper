@@ -46,8 +46,8 @@ def run_endpoint_diff(verbose=True):
             generated = _json.loads(resp.read())
     except Exception as exc:
         if verbose:
-            print(f"⏭️  Tier 0 skipped — API not reachable at {GENERATED_API_URL} ({exc})")
-        return 0
+            print(f"⏭️  blocked: Tier 0 — API not reachable at {GENERATED_API_URL} ({exc})")
+        return None
 
     if verbose:
         print("🌐 Tier 0: Endpoint diff (generated vs spec/openapi.yaml)")
@@ -227,17 +227,20 @@ def main():
     print("🔍 OpenAPI Drift Detector\n")
     total = 0
 
-    if args.endpoint_diff:
-        total += run_endpoint_diff()
-    elif args.schema_only:
+    blocked = False
+    if not args.schema_only:
+        live = run_endpoint_diff()
+        blocked = live is None
+        total += live or 0
+    if not args.endpoint_diff:
         total += run_schema_drift()
-    else:
-        total += run_endpoint_diff()
-        total += run_schema_drift()
+    if blocked:
+        print("blocked: live endpoint parity unavailable; static checks do not prove API/database availability.")
+        sys.exit(1 if total else 2)
 
     print()
     if total == 0:
-        print("🎉 No drift detected!")
+        print("passed: requested drift checks only; no database behavior claim.")
     else:
         print(f"⚠️  {total} issue(s) found — update specs/openapi.yaml or C# DTOs to resolve.")
         sys.exit(1)

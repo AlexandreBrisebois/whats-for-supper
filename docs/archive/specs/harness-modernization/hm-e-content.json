@@ -1,0 +1,644 @@
+{
+  "starting_commit": "52e2ed2d3505d74020e7628fc83c53e1019f63e1",
+  "starting_branch": "harness-upgrade",
+  "starting_git_status": "",
+  "starting_path_count": 1662,
+  "starting_inventory_digest": "5bcae3108870290a6b33054764645cd55c725546636834ea4b8772460145c6ee",
+  "implementation_files": {
+    ".agents/MEMORY.md": {
+      "before_sha256": "e4bb5a86f7ab3e1adcdd4f699d2355105d7983b4334745ac88f7d2ec5de1f455",
+      "after_sha256": null
+    },
+    ".agents/core/context-loading.md": {
+      "before_sha256": "8e98e5ba0423339b3b951ad3dba5e1c3d62c830e793c01b135a277ca25abcd96",
+      "after_sha256": "2db26ad2d0a6c5e94909aa25857f3af09017120f99d61b175c316d09315da97d"
+    },
+    ".agents/core/execution-harness.md": {
+      "before_sha256": "0c5a30cbf7369278d4770f18c1773dc333b1e38a2ceb22e96ea65ca35e40e484",
+      "after_sha256": "51d7760a5f4e20ba0b66757038d6b7b6da8fdb30c27cf531c379559508227c33"
+    },
+    ".agents/core/memory/2026-05-11-spec-review-evolution.md": {
+      "before_sha256": "c39ad40d10169979bdb1e5dfe99305804fd03cb18afe0756423ec509d5e4a017",
+      "after_sha256": null
+    },
+    ".agents/core/network-topology.md": {
+      "before_sha256": "d359138397ff70d92e531d20e7619302531d31dc6cd41384b2ee7fb1a5035637",
+      "after_sha256": "4017032bc0d9c17d993c10d41c56a25522784f560546c14252a27921301e57b8"
+    },
+    ".agents/core/ontology.md": {
+      "before_sha256": "e89f751c379e6a5e9826869fe902552d733a47d6cbd366b6188c16f0d381cfec",
+      "after_sha256": "9f83cdfa8041dd6a8204c2e3816decf88cf7b8e3bf9de62a07d026dc2f12df37"
+    },
+    ".agents/prompts/caveman.md": {
+      "before_sha256": "21968853bfe5c0f8bb6c6aad8e98d00bc3b47123fabdd19801363257fd0524c9",
+      "after_sha256": "4e4ee0e02551580147fbad09b1e9b0957f64483bcac4f05c982437fb97724fbb"
+    },
+    ".agents/prompts/mere-designer.md": {
+      "before_sha256": "75d4b4c81916a95b37ad658500b2cda20a4f597e304c4e843aa331768ed2df6f",
+      "after_sha256": "2e4fcf0a74ddf004717d36bfc9d18051831c1e90dd1f20b4f533a1f1c5c61475"
+    },
+    ".agents/skills/README.md": {
+      "before_sha256": "591399ecd559b2bc2d3332855553f1b21a6b5781902b7967f6878a3436f05c58",
+      "after_sha256": "bac30d54ad9e90b3d54d16986ed6976ae74b665ea750adb2b023efec27c0e5cc"
+    },
+    ".agents/skills/aws-architect/SKILL.md": {
+      "before_sha256": "a1e5f547df113762dd029184b0fa00f3780ed4f957df4df75ee0dae455d15dd8",
+      "after_sha256": "745d7672a02e8806d7240b37d8bab427f911e65173abb5bc9eb473993d1f14c4"
+    },
+    ".agents/skills/aws-architect/references/cicd-github-actions.md": {
+      "before_sha256": "0b33202b0bdb271dcecd7364cb7f72ac7735b356ce4b254a8938a93f5544ded2",
+      "after_sha256": "9fe477d3f24921e4d94a556f9cd99d970b1fb8a8b70c09a7ee3682d64fd576f7"
+    },
+    ".agents/skills/aws-architect/references/cicd-targets/ecs-fargate.md": {
+      "before_sha256": "a46a159d405510ade7d8bd442288294da0f76f463c96afc81a4262011d37bf32",
+      "after_sha256": "2d31f0b16f47224cd634654a07b0b247b2a0fdaaf34f4244e5de9c9c0d8eadac"
+    },
+    ".agents/skills/aws-architect/references/cicd-targets/iac-cdk.md": {
+      "before_sha256": "2e9db70a1ec4ac342b7594ddf9dbfc6466879b2038f2b983020bd57193d9ba85",
+      "after_sha256": "65ff22c8f497d86325443211a2c82f67855f9b75d22ac30bc36d98ef055fd50b"
+    },
+    ".agents/skills/aws-architect/references/cicd-targets/lambda.md": {
+      "before_sha256": "65d26310b1ef1adf2139d042571f06f5b19d1b4545fba7047d04e5964977480c",
+      "after_sha256": "613532214e1d90ae305de4a754340dc504451ee49d167f8f489ff2abea5bfe7b"
+    },
+    ".agents/skills/aws-architect/references/cicd-targets/s3-cloudfront.md": {
+      "before_sha256": "4981195983c1fd2baafcd90130a61ee7346c1c208de8039a32e26cf7c74ed02f",
+      "after_sha256": "3e501656f5fe5c1dcfef550c4244a1d357f163057227bdf8d8e65ac72996cabd"
+    },
+    ".agents/skills/aws-architect/references/cost-conscious.md": {
+      "before_sha256": "c3b37f73c7096b0d8acf64e402fa7515312ea1aa749fef7926626c547045c76a",
+      "after_sha256": "4e2bfc2283bfef0322bfabef57d8fce804d632332b38a40287cb8ccfb61d395b"
+    },
+    ".agents/skills/aws-architect/references/landing-zone.md": {
+      "before_sha256": "6a45aaff883145f11618c8064cd35c10a98d172827fb0b65db69608faf950702",
+      "after_sha256": "eb326f8b04b88b86c789fd10a8af98090a7e2add14c51230d8a3e4c0f7c97e21"
+    },
+    ".agents/skills/aws-architect/references/service-selection.md": {
+      "before_sha256": "0b43d3db560bdc025d5b8b56565377d17cd9e7b861758c311f713d902a6e8e26",
+      "after_sha256": "630f8c7a96b10d29371b589c07fde8d636fd2660bdc1005e39fe04fa291ceac6"
+    },
+    ".agents/skills/aws-architect/references/well-architected-pillars.md": {
+      "before_sha256": "f11c788eb3088f4b34da087bfcdc447f996bac70ab04eb721ede218bb3eed2c6",
+      "after_sha256": "f5f02e14c29dfe860cdf972ec971e81fa8831a069e42707131803eae79e4f3fa"
+    },
+    ".agents/skills/create-a-skill/SKILL.md": {
+      "before_sha256": "8af339eab58d17403f838147eeb63f95a5465c53d0671a49dd0a717400e31663",
+      "after_sha256": "c7f56736a335c3a1003340da55ed554f11c388d1ddae574688117ecdf8167281"
+    },
+    ".agents/skills/death-audit/SKILL.md": {
+      "before_sha256": "bfaa0147e08943ae384d9f93682c7f2836d74c85cabe7062f8c852ad94e965ae",
+      "after_sha256": "976312ddcd990b08a29ad0c86e10df009872adc7b5e51f72c7532ce0b9745c44"
+    },
+    ".agents/skills/designer/SKILL.md": {
+      "before_sha256": "d2a5b5ddf4bb6c7f65c52407fee1df9ffc8ac0666690ca21dee4d6d3fd57199f",
+      "after_sha256": "7e485d375f9331f7768d5cd221e431726de6b1aa826b8b0a51674e6bacabb150"
+    },
+    ".agents/skills/designer/solar-earth-design.md": {
+      "before_sha256": "9b2bac815aaf8a434fdefb800de963fb98d41c1d3453a0b58a919c9b8031994e",
+      "after_sha256": "5e6300c1b7cea560b791cc786d42f3f6ec024aa8988f377de2e75dc6364d12ee"
+    },
+    ".agents/skills/designer/visual-identity.md": {
+      "before_sha256": "4d6474dbf043df14e32eac5d8c80c21bdf75cad06160ed86cab0fde824080641",
+      "after_sha256": "00a15225a245a50396acbef6d84a249348078ff3666c7ea4b5eea02707287820"
+    },
+    ".agents/skills/session-review/SKILL.md": {
+      "before_sha256": "84ddddead934122712a58eeef48a8f1ff6dc4713a255e6e9a1b1c916343bbdad",
+      "after_sha256": null
+    },
+    ".kiro/specs/harness-modernization/design.md": {
+      "before_sha256": "1703139626039595049d8fb8393e1ae0b9e19c56be5305d95b47927c00f74a44",
+      "after_sha256": "ef7f229da3ba3ada8de34b6b59ab37348e239a10327663d34c89161febbaf238"
+    },
+    ".kiro/specs/harness-modernization/evaluation/check-memory-cleanup.py": {
+      "before_sha256": null,
+      "after_sha256": "38984d6dacc09a3dbe3fec380f563c4cadea71693ea8db65f20543274a8c2105"
+    },
+    ".kiro/specs/harness-modernization/requirements.md": {
+      "before_sha256": "8496e86544ec1f63083a396651a8ba92e329cc79ce10404737ff99298850e537",
+      "after_sha256": "06c85531993525c25215a78f4a5acd3a2a263b7ff6ec009b781c41795faa3950"
+    },
+    ".kiro/specs/harness-modernization/task-graph.yaml": {
+      "before_sha256": "9f0d8dc2e7570bc3ab0796f81f85506bea4fec64f86823db3e5dad727993b6ca",
+      "after_sha256": "897c37c238a2bf163fc3c14cc540945ff91ae1b8da162f0183c39071da89cb60"
+    },
+    ".kiro/specs/harness-modernization/tasks.md": {
+      "before_sha256": "76a72895e166ed79f0ffc1360db3b73473e83fa30585d2f0979d2fd38c8c269c",
+      "after_sha256": "be24ee23dca4cf2093ba65df1dac2b2217d684dfedb2889009d92490c5981276"
+    },
+    "HANDOVER.md": {
+      "before_sha256": "82a4f1af18d0a982623cafe604a02c20f813ed6f2ffd9270f629d086631a2fdc",
+      "after_sha256": "96587800924583b81e2b876675d5f93ea73951413df8a3fd7c1b2b5cac179788"
+    },
+    "JOURNAL.md": {
+      "before_sha256": "d8ae5e5e7abc499eee1bea78dda0d5bdadf5fb25adb13e3e858498ec96bad7a4",
+      "after_sha256": "9a89d3401e98495d0a16d102f2a59798d01892e02035d41a60e06dbc4d73467a"
+    },
+    "LOCAL_DEV_LOOP.md": {
+      "before_sha256": "5a0dccecb1ab8029619d8774d7a0d3d6d8492468d4db63c2fed11394fe695b31",
+      "after_sha256": "5e1f82388a0b2f454854e62ac486cdfcf8295651acc746297fb81e9e30e9f409"
+    },
+    "Taskfile.yml": {
+      "before_sha256": "3912baf80a7b5ebece1d74266ae2b9344bd27146f7e4517ec8ee681c78ec8d8a",
+      "after_sha256": "817817546d754beaf0146143971dc0ddc771649b562fffa41acba270d222de6b"
+    },
+    "scripts/agent/tests/test_summary_status.py": {
+      "before_sha256": null,
+      "after_sha256": "d22d198a9d390b06487504cc96185fbab98befca8befba5137c5b8e86024c443"
+    },
+    "specs/decisions/044-bounded-review-and-resume-evidence.md": {
+      "before_sha256": null,
+      "after_sha256": "5e08e3575d5296b8cb87298d66bbfa7653d7c1db13807a0cb6083e4f391efd11"
+    }
+  },
+  "verification_sources": {
+    ".agents/core/contract-testing.md": "ad7e9f0aed91ca87817f7205a1668ae176bbf14557bc88ee60fd687dc9c9fcfa",
+    ".agents/core/execution-harness.md": "51d7760a5f4e20ba0b66757038d6b7b6da8fdb30c27cf531c379559508227c33",
+    ".agents/core/specification-workflow.md": "46dcf8e54bbe80204586a6330cd9e6c5f4f9bd3d147387dd8b6ee64061121032",
+    ".agents/skills/workflow-author/SKILL.md": "d8416b152b4aa70945ce2ed7d66854f07188711bb84fa0f928d7499d4deb7b54",
+    ".config/dotnet-tools.json": "290819c2bd17b43ef25a56f9efd1a177d2fcf4d4f7ba0ace5207f69915fc4755",
+    ".github/workflows/aws-deploy.yml": "deaf7a5dbd70a7075d030022f95388bd46e81db15a08db077d68fe3a23d4dd72",
+    ".kiro/specs/01-public-synology-release/design.md": "0ef56e8d445cfebb994f9ffd38395e5ec14fa51c31021faa8a3aa29a58367e22",
+    ".kiro/specs/01-public-synology-release/requirements.md": "a78e3880af791ec4e3b245b8e672a5eb310626fd63c8c34b38bf3a2a6520fccd",
+    ".kiro/specs/01-public-synology-release/tasks.md": "5a29701987136b1ab7f041a446194cd11269f5993f93bf4a60763a00df92022b",
+    ".kiro/specs/01-public-synology-release/workstream-map.md": "b482111875be35125bd073251cb96c7878eb56526d70d72a2c333c0edbdddf06",
+    ".kiro/specs/archive/AGENTS.md": "be39c9df649169342205fcd2bbc05a10fc5d9f792314b8171b97699ea53800bd",
+    ".kiro/specs/archive/capture-duplicate-detection/tasks.md": "a72e23de7a091322709d8eb9d0eb39ea28b6a6793d87ea754d3373e8ace53e27",
+    ".kiro/specs/archive/high-fidelity-sharing/tasks.md": "c29152139cc110abea286c1f2be622d04af75aa547fa207d51348b946bfe1439",
+    ".kiro/specs/archive/phase-12-no-menu.md": "75f4d08bdfaaa257b8127c3a8a9ec2cf4d69b9f87984129ef979fb002aa58ca4",
+    ".kiro/specs/archive/phase-13-goto-synthesis.md": "e7c85d2d3227aed7d484c6a9f578729a2e7d1c4e2519c7ff91d4ceb6e165761b",
+    ".kiro/specs/archive/phase-14-ux-hardening.md": "f2c615d7e8b30ed0cdbaf152f215a584217e56029ad15b30eeaa436d96d9bdc9",
+    ".kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/tasks.md": "803d6d625d8b369ce60361071053ea8f342842a9fb02bebb48fd2d5f6a0dc721",
+    ".kiro/specs/archive/recipe-stack-browse/tasks.md": "aafc0bb2ada1100b54b8014c69f037938f30173e75d78d89ba46b3058f971b88",
+    ".kiro/specs/archive/semantic-recipe-search-v2/tasks.md": "9cd429317c651b6aad4ad9a7b4e2aee2541cf1be65e89378b941aceab0e229ef",
+    ".kiro/specs/cnf/cnf-cross-spec-review/design.md": "d8884728253863661c8f0ee2ff809bf594a0922aa64443e08bbc0ce4a038aaa9",
+    ".kiro/specs/cnf/cnf-cross-spec-review/requirements.md": "09c5e6466614c00d9d26fd8110e1b5acaed0aeb093e68c0cf4904b2d091e9a97",
+    ".kiro/specs/cnf/cnf-cross-spec-review/tasks.md": "2dfbf4190390a698f9a6d0b9055d64ba19c6178c55364782f060a48c4592089b",
+    ".kiro/specs/cnf/dietitian-agent-phase2/tasks.md": "cc80d648de1d22d9b2e459ae280fa047f5d830196f013877f552e86f1c4fa82e",
+    ".kiro/specs/harness-modernization/hm-d-validation.md": "4cb11932eb4d59f4353ebb75d65115391dc3f71cc18de7b673243e6bf1d457f6",
+    ".kiro/specs/harness-modernization/task-graph.yaml": "897c37c238a2bf163fc3c14cc540945ff91ae1b8da162f0183c39071da89cb60",
+    "AGENT.md": "3ae3703c62c173c60efee0f259c6c113482db7e49ffb90ddf0fc904ca835d5d1",
+    "DEPLOY.md": "2f9210f90d06e2b7ff0f9edab48554770b720c040624702d04632177ef3a3c5e",
+    "Taskfile.yml": "817817546d754beaf0146143971dc0ddc771649b562fffa41acba270d222de6b",
+    "api/RecipeApi.csproj": "f66aada6d3645fad2f4431d45fbb741e7da3495ad932b9ae05d10240258a8ba1",
+    "api/src/RecipeApi.Tests/RecipeApi.Tests.csproj": "ba1f1ba7b58df494510d673221dca33ce5c8a9336ae05b1f83204ec8c2497d83",
+    "api/src/RecipeApi/Services/CaptureFailureService.cs": "88a7b76335db0873e0d5e4bcde15783a2ec792d84f97f967a24f3bcf5b79db29",
+    "api/src/RecipeApi/Services/DiscoveryService.cs": "b78ba56aa23c688b7438d049e286fd6ba38bdbb2c7441c7ab7d0da3d8cde7183",
+    "api/src/RecipeApi/Services/InventoryCaptureService.cs": "e5483d5db961e4f890d379c349eff6cae1e3a5e87c2914bef6372650b613671b",
+    "api/src/RecipeApi/Services/RecipePurgeService.cs": "de04380e396b7e302342da3bc366cc29a408f7ab28136fbe647acdadd39e6da5",
+    "api/src/RecipeApi/Services/RecipeSearchService.cs": "69c65e5e2036c71ed627d086e0ddf9f115f7d836b873e269f5fa956abe3e2bc6",
+    "api/src/RecipeApi/Services/RecipeService.cs": "51406ff79f1d3427784b1aa36db8dec42e7f63676acc0bab2e7e0e8e57a4caf7",
+    "api/src/RecipeApi/Services/ScheduleService.cs": "a9758397689f14b28ee75a7541a4cc5f7dc45dfd60894d0cdeeab5bc794ab90f",
+    "api/src/RecipeApi/Services/SearchFingerprintService.cs": "55774bfaec589d5c5de1be59cfce685fcd0139ba7fcfcc4f5df0415642fa4b18",
+    "api/src/RecipeApi/Workflows/recipe-import.yaml": "a71adcc9141d8d8f74e1e9f6fd685ad7edd0df3b430c9f680917853cf65d1066",
+    "api/src/RecipeApi/Workflows/url-import.yaml": "8552d04433f83a3d01e4c4399906c79d31deca6ffe5e63e9a5373dcd929ab4fe",
+    "docker/compose/apps.yml": "fcfbcf9602e1e94cd44086390fdb9371653ad52a45c5fe430b0242f9cc3a06aa",
+    "docker/compose/production-overrides.yml": "2bea23ea02c95074e410020965da4bd920ca782d2308011825c14bd404faf576",
+    "docker/compose/production.yml": "87eacaf558d46360e96794818c5919acb59f0d2c38a40b21e9f09420f7ab792e",
+    "docker/compose/traefik_dynamic.yml": "44637f3d2328f0cdab3a92ef0fd4360a8fc985b134230f2266d62979170fcfec",
+    "docs/flows/data-flows/recipe-search-index-and-recovery.md": "c1020f896310508cc2d99ff29565d97b0bb7dfde5613d65fadc0627fc666ed4f",
+    "docs/search-experience-design.md": "803af8194e977f64b8e878de0acc7594e8bd8d5ae0b0069a5e2aa0b9a3519884",
+    "global.json": "9703478bce465771df18fa66a44b97bb954e200d5d7c65373b6c0dc119ae8b67",
+    "infrastructure/aws/src/Aws/AwsStack.cs": "4ca94324aa9c303f894e7abbacff1910617fdfdfa2ab91c32bf6a8e11387728a",
+    "infrastructure/aws/src/Aws/BackendConstruct.cs": "685288a58a89b1b40d3ea394ec9f267b3f783540dcdbfa8334543d409d53df6f",
+    "infrastructure/aws/src/Aws/FrontendConstruct.cs": "fff8655a3868c5d9bf258a6766176bffce234153963643ed668b866aee508b24",
+    "pwa/e2e/action-pivot.spec.ts": "9c51fc7d3b401b43f45d85eec4f88414087fe1fd6347ccbfe16de32d0e3821d9",
+    "pwa/e2e/discovery.spec.ts": "c42c6261afa9aec8e3346821683e46988a44088759514b6c73420861b65d3c32",
+    "pwa/e2e/home-goto.spec.ts": "a319a10e4b12c37163b647ea1b2fe00c38e76927ed17b1bf236f701eb4e3d37a",
+    "pwa/e2e/planner.spec.ts": "83b29c4c5c1043eb7cef63a26454f25e0adbb3c4758f04a02205f93a3737820b",
+    "pwa/e2e/recipe-hero-actions.spec.ts": "6a1e9777be33358aaa24682d0ae951a63fa156daba1627e44b011f3f79018127",
+    "pwa/e2e/sharing-fidelity.spec.ts": "60903905d1e318b47d9230c54029c18b4732eb87a45e8b53b027cab41ae49b8d",
+    "pwa/package-lock.json": "44466026b67a3f0be29a75545c953fd766a4e4fb9e634708c7f2dd1ef314d829",
+    "pwa/playwright.config.ts": "be5926f4c557859e2c179cbd70eeeb53571526f3d619858d114f1f026cb19415",
+    "pwa/public/manifest.json": "12ee4a7efc73bd5da6c927f82277aae6528f5bf0d83fb1562a13a6ba9f1bb36e",
+    "pwa/src/app/(app)/discovery/page.tsx": "2f3d0dc4fbaa965f242e2041f8fd27fee98fec1aaf61d3dd7e27c935853e40fb",
+    "pwa/src/app/(app)/planner/page.tsx": "1067b0648f1955dccc11489af42f64728be6d5a310e17e35310b235e6b809f7e",
+    "pwa/src/app/globals.css": "2c85ed1a9cf0b0909df7bee3e73e8297dbad5a08d9e7a02b75483bcea57e20e5",
+    "pwa/src/app/layout.tsx": "b6de73de745111bbd4c92c6069ad4d97898a3afa51ffa51134347b370d27183b",
+    "pwa/src/components/home/HomeCommandCenter.tsx": "b68c1ac0c1c4bb46ba190121f4d59fca001e22b3e724c455ff942d8a27b56a22",
+    "pwa/src/components/home/HomeSections.tsx": "f0ea6f4849e5a8387cd498dae984058f30475943a99b617894403cc17a2dab79",
+    "pwa/src/components/planner/PlanningPivotSheet.tsx": "f98384ecd561a02bc56e34f82b495e16217cf73eab2c3438be6a32961284e31a",
+    "pwa/src/components/planner/QuickFindModal.tsx": "47318206241f598999bdd04f6d1d7ec2f8d0ff0aeffcbb60a76218fd3f5ff1b2",
+    "pwa/src/components/profile/FamilyGOTOSettings.tsx": "a302017112e9cd31aee8f401755aa83b2517eef9a059f182a2b55216ad1479ab",
+    "pwa/src/components/recipes/RecipeStackCard.test.tsx": "a8469088c1284c54d7c18d24dc8d7ae4eec209c4a0cdc7514cd59982418ece22",
+    "pwa/src/components/ui/ToastContainer.tsx": "cf1500489e47bbe08e28bb8b7d84a36b8c0e2418e98c2b3c3bdbe622fecbef04",
+    "pwa/src/hooks/useScheduleStream.test.ts": "40ece821dd1229e8e972238e9afa4e9400cfb508426b88eeef7729adda76ff5f",
+    "pwa/src/hooks/useScheduleStream.ts": "6071dc273eb4425dee4a88166a3fd082e20d5a748c57c24466d09660a701daab",
+    "pwa/src/lib/api/api-client.ts": "c5cd4cfebddd8d5c1f2827c522a236fe12c504130ea0991c07bc8fc46376aa95",
+    "pwa/src/lib/api/discovery.ts": "4cb6a5d8aefef2125f30750401a49e727aa1e384d60e13fe9d861cf89e4d0e34",
+    "pwa/src/lib/api/generated/kiota-lock.json": "9fb58b2d649123ef100b3c0f6510d7a1b8c403f88332d34bc41b7269fe52f46a",
+    "pwa/src/lib/api/generated/models/index.ts": "af0d555baa382af1d4f6acd603f49f4f106f7fd5530f9e0905a162f15fee73d9",
+    "pwa/src/lib/api/recipes.ts": "88ca28ba4b1818e81134e94ab7a4c20d2ea424b69a9cdfcdf71b4ec6498ecfd7",
+    "pwa/src/lib/api/server-client.test.ts": "4540c42a5b721e6ded7cf3235a0f72b7ae927401472ddf914001414f2863b517",
+    "pwa/src/lib/api/server-client.ts": "04426cad934ca6cdeacd5302ca558688033cdf23738557cd816d34d2f90b89ea",
+    "pwa/src/lib/auth.ts": "d9b122b42cccfdc8a589c05a3e05deaa4a4864dee9cf17c4a403ec5f6db09f2a",
+    "pwa/src/lib/constants/config.ts": "b8b3450c355949178b872806d02a18c6b12e996845de58fbda2dc91958f4d6a8",
+    "pwa/src/lib/identity/cookie.ts": "f899606ac6d2cc7b800b0e03a5b16dbe908e7967e8d7f9802baff52c4f5e640b",
+    "pwa/src/store/familyStore.ts": "68d09caecfb61d69a663cd20f7082dc1306cd3c4986203c72ced84b4c6b1566a",
+    "pwa/src/store/uiStore.ts": "5ccf270b4683dae67efc96a2ff0821c38861a783f979ce48df3f1903e99d307b",
+    "scripts/agent/api_tools.py": "09a744f7feb8b189cd096d4bb359efaf2b8cdab42656c3c0004d8a9133f8951f",
+    "scripts/agent/drift.py": "8a6e8315b3e58d416b91254f20f1d9dd741f7b8dd9eec7a8fbff5971e7e7721a",
+    "specs/00_STRATEGY/ROADMAP.md": "196f5735793a2b89a82f0a7e0427cd8e2c9a361436631e250b5ac8a8d35583b9",
+    "specs/05_ARCHIVE/AGENTS.md": "45f94affffe98db66ca2d2783419494d5295f10513d0307be4d0d3abe7d696ec",
+    "specs/05_ARCHIVE/build-prompts/phase-10-done/02-api-logic.md": "c10569e93788091c2f0ff5245304842256d40f656e57f4aa0bf729070e3ab1fc",
+    "specs/decisions/0043-ipad-command-center-dashboard.md": "e7994b14f0f70aa8bd0d4a86ea8924eb6f5288b8428f8251251ab02409c54fc8",
+    "specs/decisions/011-realtime-sync-strategy.md": "cb7bd4909de097030387324b1afe1d001ad1525a61e4d95e7e4bfdd9b8a55297",
+    "specs/decisions/014-vote-count-persistence-in-calendar.md": "94571c12a684842f5c45038a5025b1d3cbb03c1519542dfd1bc42df348cd552b",
+    "specs/decisions/015-automated-api-contract-workflow.md": "4a7144d2f8b874f5f702676aa9ae527b6ee88dfe8b3c2723c4f9dec46bb61ec1",
+    "specs/decisions/018-bulk-workflow-trigger-pattern.md": "7547f7c0d2f9504fb4edbf6a3b3fadc45675151bdcc27f08a67500bfadbb7a53",
+    "specs/decisions/019-management-workflow-standardization.md": "41b1a3dc8d2f0af9018aefccfe23bcb9b69df976c783638389b6f4d3a4c29626",
+    "specs/decisions/020-automated-core-workflow-seeding.md": "033023b287b0a58ef2b4bab9bcf03585f534fc7ad727c5eb3e3a367fc8c4ddb3",
+    "specs/decisions/022-centralized-api-response-wrapping.md": "8a198ef07ac0c324d869c389fe1e5dd1afc572bb0afb8110c537edb6b88f20f2",
+    "specs/decisions/023-resilient-docker-development-workflow.md": "8820986ca00208fe01c86194876bd9bd242842bf6275a748ef1e3c76e6ceed5d",
+    "specs/decisions/024-robust-ingredient-serialization.md": "5815d761e2b8a38970ffc02631412e194398a27fa85b07485639a3bcd8f59b98",
+    "specs/decisions/025-recipe-instructions-contract.md": "5d970af2f726cc8ac3434693093ab143137f0baef4f13da48a402d7b9f5bc4f0",
+    "specs/decisions/026-aisle-first-grocery-mapping.md": "10342c21aa09b420afb04e05c84db5b5567f230ebd43397f8113c9007e429821",
+    "specs/decisions/027-hearth-secret-stateless-auth.md": "2e3cc37f835e23a486cd816d9f53e68c79ca65dcab53117487258997b8620995",
+    "specs/decisions/028-cross-week-schedule-move.md": "83ccb88de5e0e2f95111bd8a937863952ef97426e40c12a4002c79e2efe0d7d4",
+    "specs/decisions/029-deterministic-e2e-testing-strategy.md": "4c4eafbb9e571f0f0b08c41b2fa52a4e256c68ad387ab1712ab8743eec072415",
+    "specs/decisions/030-prism-removal-playwright-intercepts.md": "95654eaecabfb7509d52a2f28c6bc9c66aa86d4b725fd12aa1a6a2b59cacf5a8",
+    "specs/decisions/031-service-worker-blocked-in-e2e.md": "065df66b757cee75abdc9327614c034cdaff427b69b6733c50f53eb9cb435d42",
+    "specs/decisions/032-ssr-bypass-e2e-testing-pattern.md": "322e262e135cb04d63ff45a074395303ccf4dd6fb99e0cfd1b53ffd4e629ab62",
+    "specs/decisions/035-e2e-route-handler-url-parsing.md": "704fd348bdbb9b3ba50836cac951dd852bb7a01b4b0c6501beba9bff5c09afef",
+    "specs/decisions/037-soft-delete-and-recycle-bin-pattern.md": "b570c0a9a7bafae32ebcc501287a14b6e039d014c1c235d440882f9f557fa9d7",
+    "specs/decisions/040-playwright-mock-layering.md": "de43db6943fc75871b42fff20b9cabe8bed15540228ac80af85a7bf8c5c21f33",
+    "specs/decisions/041-workflow-based-search-indexing-migration.md": "666d5556f319e8e111d2a884acf9124fce148c4057700cb4f5718f40d28bac41",
+    "specs/decisions/042-global-ui-toast-pattern.md": "2cface430ab3c5de6b4203f1435635755a47d363dcb549eb711d8bea0fc0c41c",
+    "specs/decisions/043-dotnet-11-preview-migration.md": "e3dfc8e5fde8c36ff394e684abd85541534c48547439d00013044bcd2a1ea71e",
+    "specs/openapi.yaml": "fca5ec3830cb28fe79124c4ecc0d4134640a0e5c13dbae3461db0c6416ad0724"
+  },
+  "evidence_files": [
+    ".kiro/specs/harness-modernization/hm-e-finish.json",
+    ".kiro/specs/harness-modernization/hm-e-journal-inventory.json",
+    ".kiro/specs/harness-modernization/hm-e-ledger.md",
+    ".kiro/specs/harness-modernization/hm-e-probes.json",
+    ".kiro/specs/harness-modernization/hm-e-validation.md"
+  ],
+  "evidence_identity_note": "Evidence files are not recursively hashed here; final finish checks their complete source tree identity. Source-reference inspection is not runtime behavior.",
+  "manifest_inputs": {
+    ".agents/MEMORY.md": {
+      "manifest_sha256": "e4bb5a86f7ab3e1adcdd4f699d2355105d7983b4334745ac88f7d2ec5de1f455",
+      "starting_sha256": "e4bb5a86f7ab3e1adcdd4f699d2355105d7983b4334745ac88f7d2ec5de1f455",
+      "baseline_matches": true,
+      "disposition": "retire-after-salvage",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/core/memory/2026-05-11-spec-review-evolution.md": {
+      "manifest_sha256": "c39ad40d10169979bdb1e5dfe99305804fd03cb18afe0756423ec509d5e4a017",
+      "starting_sha256": "c39ad40d10169979bdb1e5dfe99305804fd03cb18afe0756423ec509d5e4a017",
+      "baseline_matches": true,
+      "disposition": "retire-after-salvage",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/prompts/caveman.md": {
+      "manifest_sha256": "21968853bfe5c0f8bb6c6aad8e98d00bc3b47123fabdd19801363257fd0524c9",
+      "starting_sha256": "21968853bfe5c0f8bb6c6aad8e98d00bc3b47123fabdd19801363257fd0524c9",
+      "baseline_matches": true,
+      "disposition": "tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/prompts/mere-designer.md": {
+      "manifest_sha256": "75d4b4c81916a95b37ad658500b2cda20a4f597e304c4e843aa331768ed2df6f",
+      "starting_sha256": "75d4b4c81916a95b37ad658500b2cda20a4f597e304c4e843aa331768ed2df6f",
+      "baseline_matches": true,
+      "disposition": "tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/README.md": {
+      "manifest_sha256": "e6350836157a97c57467fea88c55af19976edb31785587660f1113a884fa52e9",
+      "starting_sha256": "591399ecd559b2bc2d3332855553f1b21a6b5781902b7967f6878a3436f05c58",
+      "baseline_matches": false,
+      "disposition": "rebuild-discovery",
+      "migration_touches": [
+        {
+          "task": "HM-B",
+          "scope": "Update discovery for the skills changed or retired in this slice; HM-E verifies final ten."
+        },
+        {
+          "task": "HM-C",
+          "scope": "Update discovery for the skills changed or retired in this slice; HM-E verifies final ten."
+        },
+        {
+          "task": "HM-D",
+          "scope": "Update discovery for the skills changed or retired in this slice; HM-E verifies final ten."
+        },
+        {
+          "task": "HM-E",
+          "scope": "Update discovery for the skills changed or retired in this slice; HM-E verifies final ten."
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/SKILL.md": {
+      "manifest_sha256": "a1e5f547df113762dd029184b0fa00f3780ed4f957df4df75ee0dae455d15dd8",
+      "starting_sha256": "a1e5f547df113762dd029184b0fa00f3780ed4f957df4df75ee0dae455d15dd8",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/cicd-github-actions.md": {
+      "manifest_sha256": "0b33202b0bdb271dcecd7364cb7f72ac7735b356ce4b254a8938a93f5544ded2",
+      "starting_sha256": "0b33202b0bdb271dcecd7364cb7f72ac7735b356ce4b254a8938a93f5544ded2",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/cicd-targets/ecs-fargate.md": {
+      "manifest_sha256": "a46a159d405510ade7d8bd442288294da0f76f463c96afc81a4262011d37bf32",
+      "starting_sha256": "a46a159d405510ade7d8bd442288294da0f76f463c96afc81a4262011d37bf32",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/cicd-targets/iac-cdk.md": {
+      "manifest_sha256": "2e9db70a1ec4ac342b7594ddf9dbfc6466879b2038f2b983020bd57193d9ba85",
+      "starting_sha256": "2e9db70a1ec4ac342b7594ddf9dbfc6466879b2038f2b983020bd57193d9ba85",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/cicd-targets/lambda.md": {
+      "manifest_sha256": "65d26310b1ef1adf2139d042571f06f5b19d1b4545fba7047d04e5964977480c",
+      "starting_sha256": "65d26310b1ef1adf2139d042571f06f5b19d1b4545fba7047d04e5964977480c",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/cicd-targets/s3-cloudfront.md": {
+      "manifest_sha256": "4981195983c1fd2baafcd90130a61ee7346c1c208de8039a32e26cf7c74ed02f",
+      "starting_sha256": "4981195983c1fd2baafcd90130a61ee7346c1c208de8039a32e26cf7c74ed02f",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/cost-conscious.md": {
+      "manifest_sha256": "c3b37f73c7096b0d8acf64e402fa7515312ea1aa749fef7926626c547045c76a",
+      "starting_sha256": "c3b37f73c7096b0d8acf64e402fa7515312ea1aa749fef7926626c547045c76a",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/landing-zone.md": {
+      "manifest_sha256": "6a45aaff883145f11618c8064cd35c10a98d172827fb0b65db69608faf950702",
+      "starting_sha256": "6a45aaff883145f11618c8064cd35c10a98d172827fb0b65db69608faf950702",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/service-selection.md": {
+      "manifest_sha256": "0b43d3db560bdc025d5b8b56565377d17cd9e7b861758c311f713d902a6e8e26",
+      "starting_sha256": "0b43d3db560bdc025d5b8b56565377d17cd9e7b861758c311f713d902a6e8e26",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/aws-architect/references/well-architected-pillars.md": {
+      "manifest_sha256": "f11c788eb3088f4b34da087bfcdc447f996bac70ab04eb721ede218bb3eed2c6",
+      "starting_sha256": "f11c788eb3088f4b34da087bfcdc447f996bac70ab04eb721ede218bb3eed2c6",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/create-a-skill/SKILL.md": {
+      "manifest_sha256": "8af339eab58d17403f838147eeb63f95a5465c53d0671a49dd0a717400e31663",
+      "starting_sha256": "8af339eab58d17403f838147eeb63f95a5465c53d0671a49dd0a717400e31663",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/death-audit/SKILL.md": {
+      "manifest_sha256": "bfaa0147e08943ae384d9f93682c7f2836d74c85cabe7062f8c852ad94e965ae",
+      "starting_sha256": "bfaa0147e08943ae384d9f93682c7f2836d74c85cabe7062f8c852ad94e965ae",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/designer/SKILL.md": {
+      "manifest_sha256": "d2a5b5ddf4bb6c7f65c52407fee1df9ffc8ac0666690ca21dee4d6d3fd57199f",
+      "starting_sha256": "d2a5b5ddf4bb6c7f65c52407fee1df9ffc8ac0666690ca21dee4d6d3fd57199f",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/designer/solar-earth-design.md": {
+      "manifest_sha256": "9b2bac815aaf8a434fdefb800de963fb98d41c1d3453a0b58a919c9b8031994e",
+      "starting_sha256": "9b2bac815aaf8a434fdefb800de963fb98d41c1d3453a0b58a919c9b8031994e",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/designer/visual-identity.md": {
+      "manifest_sha256": "4d6474dbf043df14e32eac5d8c80c21bdf75cad06160ed86cab0fde824080641",
+      "starting_sha256": "4d6474dbf043df14e32eac5d8c80c21bdf75cad06160ed86cab0fde824080641",
+      "baseline_matches": true,
+      "disposition": "retain-tighten",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    ".agents/skills/session-review/SKILL.md": {
+      "manifest_sha256": "84ddddead934122712a58eeef48a8f1ff6dc4713a255e6e9a1b1c916343bbdad",
+      "starting_sha256": "84ddddead934122712a58eeef48a8f1ff6dc4713a255e6e9a1b1c916343bbdad",
+      "baseline_matches": true,
+      "disposition": "retire-after-migration",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    "HANDOVER.md": {
+      "manifest_sha256": "82a4f1af18d0a982623cafe604a02c20f813ed6f2ffd9270f629d086631a2fdc",
+      "starting_sha256": "82a4f1af18d0a982623cafe604a02c20f813ed6f2ffd9270f629d086631a2fdc",
+      "baseline_matches": true,
+      "disposition": "single-active-checkpoint",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    "JOURNAL.md": {
+      "manifest_sha256": "d8ae5e5e7abc499eee1bea78dda0d5bdadf5fb25adb13e3e858498ec96bad7a4",
+      "starting_sha256": "d8ae5e5e7abc499eee1bea78dda0d5bdadf5fb25adb13e3e858498ec96bad7a4",
+      "baseline_matches": true,
+      "disposition": "salvage-then-freeze",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    "Taskfile.yml": {
+      "manifest_sha256": "da3b776cc8a851e9d4070b1273e7788371f3690e92844b649f14ce3db4e0552b",
+      "starting_sha256": "3912baf80a7b5ebece1d74266ae2b9344bd27146f7e4517ec8ee681c78ec8d8a",
+      "baseline_matches": false,
+      "disposition": "targeted-fix",
+      "migration_touches": [
+        {
+          "task": "HM-D",
+          "scope": "Verification and evidence commands only."
+        },
+        {
+          "task": "HM-E",
+          "scope": "Summary/status memory behavior only."
+        }
+      ]
+    },
+    "specs/decisions/011-realtime-sync-strategy.md": {
+      "manifest_sha256": "cb7bd4909de097030387324b1afe1d001ad1525a61e4d95e7e4bfdd9b8a55297",
+      "starting_sha256": "cb7bd4909de097030387324b1afe1d001ad1525a61e4d95e7e4bfdd9b8a55297",
+      "baseline_matches": true,
+      "disposition": "inspect-preserve",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    "specs/decisions/015-automated-api-contract-workflow.md": {
+      "manifest_sha256": "4a7144d2f8b874f5f702676aa9ae527b6ee88dfe8b3c2723c4f9dec46bb61ec1",
+      "starting_sha256": "4a7144d2f8b874f5f702676aa9ae527b6ee88dfe8b3c2723c4f9dec46bb61ec1",
+      "baseline_matches": true,
+      "disposition": "inspect-preserve",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    "specs/decisions/023-resilient-docker-development-workflow.md": {
+      "manifest_sha256": "8820986ca00208fe01c86194876bd9bd242842bf6275a748ef1e3c76e6ceed5d",
+      "starting_sha256": "8820986ca00208fe01c86194876bd9bd242842bf6275a748ef1e3c76e6ceed5d",
+      "baseline_matches": true,
+      "disposition": "inspect-preserve",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    "specs/decisions/029-deterministic-e2e-testing-strategy.md": {
+      "manifest_sha256": "4c4eafbb9e571f0f0b08c41b2fa52a4e256c68ad387ab1712ab8743eec072415",
+      "starting_sha256": "4c4eafbb9e571f0f0b08c41b2fa52a4e256c68ad387ab1712ab8743eec072415",
+      "baseline_matches": true,
+      "disposition": "inspect-preserve",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    },
+    "specs/decisions/032-ssr-bypass-e2e-testing-pattern.md": {
+      "manifest_sha256": "322e262e135cb04d63ff45a074395303ccf4dd6fb99e0cfd1b53ffd4e629ab62",
+      "starting_sha256": "322e262e135cb04d63ff45a074395303ccf4dd6fb99e0cfd1b53ffd4e629ab62",
+      "baseline_matches": true,
+      "disposition": "inspect-preserve",
+      "migration_touches": [
+        {
+          "task": "HM-E",
+          "scope": "primary disposition; preserve unrelated content"
+        }
+      ]
+    }
+  },
+  "preservation": "Started clean; no unrelated tracked/untracked edits. Closure checker compares every unowned original file and frozen evidence to starting HEAD."
+}

@@ -1,0 +1,1152 @@
+{
+  "source_sha256": "d8ae5e5e7abc499eee1bea78dda0d5bdadf5fb25adb13e3e858498ec96bad7a4",
+  "line_count": 1325,
+  "sections": [
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1,
+      "end_line": 6,
+      "heading": "# Handover Journal: Historical Archive",
+      "source_section_sha256": "d625a973bbb8ac637f7a8b168321346d0a3d2dc1779f68c3bd9408cc1f0a1213",
+      "decision": "Historical archive prologue/separator preserved byte-for-byte; no unique current fact.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": []
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 7,
+      "end_line": 13,
+      "heading": "### [2026-09-09] Archived specification clarity audit \u2014 complete",
+      "source_section_sha256": "80b06b98db818a6e9fa8798e5ef286a19e1c72d83b799dc3bb1ec4250fab6137",
+      "decision": "Archive audit evidence remains historical; archive policy/inventories already exist. No acceptance of every archived task inferred.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/AGENTS.md",
+        "specs/05_ARCHIVE/AGENTS.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/AGENTS.md",
+          "specs/05_ARCHIVE/AGENTS.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 14,
+      "end_line": 23,
+      "heading": "### [2026-09-08] Duplicate reporting and grocery reclassification \u2014 complete and archived",
+      "source_section_sha256": "0f44be7bb161261560cf0fe384677a47b48fe64c9624ad3fa63b1ebc4afa4c78",
+      "decision": "Completed slice and initial finish failure/recovered review remain separate historical results; do not recreate an active retry.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/tasks.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/tasks.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 24,
+      "end_line": 38,
+      "heading": "### [2026-08-05] Archive Reconciliation \u2014 Duplicate Recipe Capture Prevention (completed 2026-05-24)",
+      "source_section_sha256": "670dae2478b4302055638ad4b9dfa2a13b20fd78327c9ab59c02303208629cee",
+      "decision": "Duplicate handling/filtering/GUID/recovery history already has archived spec; no current test pass inferred.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/capture-duplicate-detection/tasks.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/capture-duplicate-detection/tasks.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 39,
+      "end_line": 53,
+      "heading": "### [2026-08-05] Archive Reconciliation \u2014 High-Fidelity Recipe Sharing (completed 2026-05-24)",
+      "source_section_sha256": "d15f493d28840f665cf86176711c1ae2de3d2f7650608ec392ac42cfd30c2bf2",
+      "decision": "Structured instructions, privacy scrub and preview history already owned; preserve test history without re-certification.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/high-fidelity-sharing/tasks.md",
+        "pwa/e2e/sharing-fidelity.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/high-fidelity-sharing/tasks.md",
+          "pwa/e2e/sharing-fidelity.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 54,
+      "end_line": 74,
+      "heading": "### [2026-05-26] Session \u2014 Planner Page Enhancements",
+      "source_section_sha256": "4f89dd19bb11b664333274678f63fda0b012414836faa6fb3fdc24b11639ee81",
+      "decision": "UI trigger, Plan Later, Cook Mode and Ordered In implementation details have source/tests; historical test counts not migrated.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/components/planner/PlanningPivotSheet.tsx",
+        "pwa/e2e/planner.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/components/planner/PlanningPivotSheet.tsx",
+          "pwa/e2e/planner.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 75,
+      "end_line": 93,
+      "heading": "### [2026-05-16] Session \u2014 High-Fidelity Recipe Sharing \u2014 Preview UI",
+      "source_section_sha256": "962ae5a0ccfafcb4819d5094d72ce6f8f91e93e786bde6bdf7d9d2c9cd0685ce",
+      "decision": "Structured instructions, privacy scrub and preview history already owned; preserve test history without re-certification.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/high-fidelity-sharing/tasks.md",
+        "pwa/e2e/sharing-fidelity.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/high-fidelity-sharing/tasks.md",
+          "pwa/e2e/sharing-fidelity.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 94,
+      "end_line": 114,
+      "heading": "### [2026-05-15] Session \u2014 iPad Planner & CNF/Health Alignment",
+      "source_section_sha256": "4140066c7f50ce5b35a353487c329092d8fe479903e240eccb3afeb74a474e6e",
+      "decision": "Layout and CNF decisions have ADR/spec owners; purge/hero claims duplicate later detailed entries.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/0043-ipad-command-center-dashboard.md",
+        ".kiro/specs/cnf/cnf-cross-spec-review/tasks.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/0043-ipad-command-center-dashboard.md",
+          ".kiro/specs/cnf/cnf-cross-spec-review/tasks.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 115,
+      "end_line": 135,
+      "heading": "### [2026-05-14] Session \u2014 Multi-Recipe GOTO Rotation",
+      "source_section_sha256": "307483a0aaad2a82c5453a38b5b39e15fd0e1e97249777995dd56cceb7611b4d",
+      "decision": "Rotation/settings/history is source/test-owned; the open reload skip is separately retained in HANDOVER.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/components/profile/FamilyGOTOSettings.tsx",
+        "pwa/e2e/home-goto.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/components/profile/FamilyGOTOSettings.tsx",
+          "pwa/e2e/home-goto.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 136,
+      "end_line": 162,
+      "heading": "### [2026-05-11] Session \u2014 Recipe Purge 500 Hardening",
+      "source_section_sha256": "971a383f22c4b5d414cfa539c357389a54ba4545282707ecaab52027d82d770c",
+      "decision": "Dependent cleanup, transaction/filesystem ordering and response history already have ADR/source owner.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/037-soft-delete-and-recycle-bin-pattern.md",
+        "api/src/RecipeApi/Services/RecipePurgeService.cs"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/037-soft-delete-and-recycle-bin-pattern.md",
+          "api/src/RecipeApi/Services/RecipePurgeService.cs"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 163,
+      "end_line": 186,
+      "heading": "### [2026-05-10] Session \u2014 Recipe Hero Actions Integration",
+      "source_section_sha256": "b68e2ff0808dc57fdeec0377a8993b8972f26e378488eae17cd25724f784edf0",
+      "decision": "Hero actions/toast/auth fixture history already owned; no duplicate policy or fresh pass.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/042-global-ui-toast-pattern.md",
+        "pwa/e2e/recipe-hero-actions.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/042-global-ui-toast-pattern.md",
+          "pwa/e2e/recipe-hero-actions.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 187,
+      "end_line": 199,
+      "heading": "### [2026-05-09] Session \u2014 RecipeStackCard Test Alignment",
+      "source_section_sha256": "e2b96f04367c8b6984c39d9c51ddcca4d696f502c964f50bd027eb42924bbef2",
+      "decision": "Historical icon expectation correction and test counts remain history; no new rule.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/components/recipes/RecipeStackCard.test.tsx"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/components/recipes/RecipeStackCard.test.tsx"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 200,
+      "end_line": 226,
+      "heading": "### [2026-05-09] Session \u2014 Recipe Action Pivot & E2E Stabilization",
+      "source_section_sha256": "1d790ab703318f1a57f568880484b1f0ed081d762e35a3a32578cdb6cb913a92",
+      "decision": "Context CTA, fallback mocking and native search fetch rationale have current references; source inspected for fallback/fetch.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/040-playwright-mock-layering.md",
+        "pwa/src/lib/api/recipes.ts",
+        "pwa/e2e/action-pivot.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/040-playwright-mock-layering.md",
+          "pwa/src/lib/api/recipes.ts",
+          "pwa/e2e/action-pivot.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 227,
+      "end_line": 254,
+      "heading": "### [2026-05-09] Session \u2014 Search UX & Intelligence Optimization",
+      "source_section_sha256": "f149a06dd1f2eac39fe15685c971e1e63fbcd447e682b2c8febdbd95f18700f4",
+      "decision": "Layout/healthy filter/pantry boost/top-pick dedupe/localization have design/source owners; no duplicated constants.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "docs/search-experience-design.md",
+        "api/src/RecipeApi/Services/RecipeSearchService.cs"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "docs/search-experience-design.md",
+          "api/src/RecipeApi/Services/RecipeSearchService.cs"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 255,
+      "end_line": 283,
+      "heading": "### [2026-05-09] Session \u2014 Search Indexing Resiliency & Workflow Migration",
+      "source_section_sha256": "3fa46810a0ac3a33f3c80c8c3f187334a84658f0fcea45b634b3260381393266",
+      "decision": "Workflow retry/observability and provider bypass rationale already in ADR/flow; old provider implementation claim is historical.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/041-workflow-based-search-indexing-migration.md",
+        "docs/flows/data-flows/recipe-search-index-and-recovery.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/041-workflow-based-search-indexing-migration.md",
+          "docs/flows/data-flows/recipe-search-index-and-recovery.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 284,
+      "end_line": 321,
+      "heading": "### [2026-05-08] Session \u2014 Recipe Stack Browse Stabilization \u2014 Green State",
+      "source_section_sha256": "f9ba117c04dc7dbca8ba498faee4613dcc9272a57f28d6542270f93ff6c81166",
+      "decision": "Merge reconciliation/UI/mock/client history already has archived task evidence; old commands and totals not current validation.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/recipe-stack-browse/tasks.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/recipe-stack-browse/tasks.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 322,
+      "end_line": 405,
+      "heading": "### [2026-05-08] Session \u2014 Semantic Recipe Search v2 (search-feature branch) \u2014 Close-Out Documentation",
+      "source_section_sha256": "7541e83b98f29a50e89b5a680b25b0984e3fe96b2990adbd376449cc5935ed50",
+      "decision": "Seven rationale claims and unresolved follow-up audited separately in ledger; obsolete capture CAS not copied. Config/reindex and 60-second in-memory snapshot already owned.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/semantic-recipe-search-v2/tasks.md",
+        "DEPLOY.md",
+        "api/src/RecipeApi/Services/InventoryCaptureService.cs",
+        "api/src/RecipeApi/Services/CaptureFailureService.cs"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/semantic-recipe-search-v2/tasks.md",
+          "DEPLOY.md",
+          "api/src/RecipeApi/Services/InventoryCaptureService.cs",
+          "api/src/RecipeApi/Services/CaptureFailureService.cs"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 406,
+      "end_line": 428,
+      "heading": "### [2026-05-06] SSE fill_the_gap_invalidated Race Condition Fix",
+      "source_section_sha256": "ba471946900257d9eeb6e234bc5c44f29ab1a3b4e76ea36314ca64bf9dbcab06",
+      "decision": "Race/version guard rationale already in shared testing owner and source; historical CI result preserved.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".agents/core/contract-testing.md",
+        "pwa/src/app/(app)/discovery/page.tsx"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".agents/core/contract-testing.md",
+          "pwa/src/app/(app)/discovery/page.tsx"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 429,
+      "end_line": 473,
+      "heading": "### [2026-05-04] Session \u2014 Dev Loop Refactor (gate/review/test naming)",
+      "source_section_sha256": "18117dfa66f2527c153eeedbff6e628547ec08bcad4c91b343418669e5334454",
+      "decision": "Old gate/review formatting, generated-tree mutation and parallel read-only claims superseded by HM-D. Current finish/prepare semantics inspected; no obsolete commands promoted.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "Taskfile.yml",
+        ".agents/core/execution-harness.md",
+        ".kiro/specs/harness-modernization/hm-d-validation.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "Taskfile.yml",
+          ".agents/core/execution-harness.md",
+          ".kiro/specs/harness-modernization/hm-d-validation.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 474,
+      "end_line": 500,
+      "heading": "### [2026-05-04] Session \u2014 E2E Gate Repair & SSE Readiness",
+      "source_section_sha256": "c22ab14ee30e48a59360ca598aaf64514db8bd60a63cf19149e575440abb5e9a",
+      "decision": "Handler URL parsing already owned; reload skip verified separately. Cache-clearing and past pass remain history, not instructions.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/035-e2e-route-handler-url-parsing.md",
+        "pwa/e2e/home-goto.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/035-e2e-route-handler-url-parsing.md",
+          "pwa/e2e/home-goto.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 501,
+      "end_line": 519,
+      "heading": "### [2026-05-02] Session \u2014 SmartPivotCard Cleanup",
+      "source_section_sha256": "9e1da13efdc2d6d52f0a4f06dd3142b79c8ade1cd33c12110593171b3d0d5363",
+      "decision": "Historical removal supersedes older proposed deletion; no recurring cleanup mandate.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/components/home/HomeSections.tsx"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/components/home/HomeSections.tsx"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 520,
+      "end_line": 565,
+      "heading": "### [2026-05-01] Session \u2014 Phase 14 UX Hardening",
+      "source_section_sha256": "0c955a1edfac3827bf19bf869792f790af7e230a701013cb10993a679d19f905",
+      "decision": "Parser/cooked/voting/week/SSR state changes already have archived spec. Old ready-to-commit result remains history.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/phase-14-ux-hardening.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/phase-14-ux-hardening.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 566,
+      "end_line": 615,
+      "heading": "### [2026-05-01] Session \u2014 Phase 13 F (AI Wiring), Phase 14 Spec, Discovery Fix",
+      "source_section_sha256": "3a995458ff6820aff39c57c58520887125e44205c88d695430b7954601ad92fb",
+      "decision": "Parser/cooked/voting/week/SSR state changes already have archived spec. Old ready-to-commit result remains history.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/phase-14-ux-hardening.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/phase-14-ux-hardening.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 616,
+      "end_line": 655,
+      "heading": "### [2026-05-01] Session \u2014 Phase 13 Phases D1\u2013D3, D fix, E",
+      "source_section_sha256": "3b0e2d9b5ad89cf06199f8126c78ccd9a2f3b5594d6c1841685dcb14aa928d9e",
+      "decision": "A/B/C repeated block, D states, AI wiring and settings workaround retained as history; later changes supersede contradictory states. Settings workaround and live AI limitation separately classified in ledger.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/phase-13-goto-synthesis.md",
+        "pwa/src/store/familyStore.ts",
+        "api/src/RecipeApi/Workflows/recipe-import.yaml"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/phase-13-goto-synthesis.md",
+          "pwa/src/store/familyStore.ts",
+          "api/src/RecipeApi/Workflows/recipe-import.yaml"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 656,
+      "end_line": 714,
+      "heading": "### [2026-04-30] Session \u2014 Phase 13 Phases A, B, C",
+      "source_section_sha256": "c46919401e475f0254ab6a3b8f90a9b8152085e84dc66c755e442ec138cffb6a",
+      "decision": "A/B/C repeated block, D states, AI wiring and settings workaround retained as history; later changes supersede contradictory states. Settings workaround and live AI limitation separately classified in ledger.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/phase-13-goto-synthesis.md",
+        "pwa/src/store/familyStore.ts",
+        "api/src/RecipeApi/Workflows/recipe-import.yaml"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/phase-13-goto-synthesis.md",
+          "pwa/src/store/familyStore.ts",
+          "api/src/RecipeApi/Workflows/recipe-import.yaml"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 715,
+      "end_line": 835,
+      "heading": "### [2026-05-01] Session \u2014 Phase 13 Phase D4 + TonightPivotCard UX",
+      "source_section_sha256": "260f52ac12089bc7f6566373dbc66e0c3d405633de2f212cf9b5e163fc0bd16b",
+      "decision": "A/B/C repeated block, D states, AI wiring and settings workaround retained as history; later changes supersede contradictory states. Settings workaround and live AI limitation separately classified in ledger.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/phase-13-goto-synthesis.md",
+        "pwa/src/store/familyStore.ts",
+        "api/src/RecipeApi/Workflows/recipe-import.yaml"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/phase-13-goto-synthesis.md",
+          "pwa/src/store/familyStore.ts",
+          "api/src/RecipeApi/Workflows/recipe-import.yaml"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 836,
+      "end_line": 897,
+      "heading": "### [2026-04-30] Phase 12 \u2014 No-Menu Home State (\"Tonight Pivot\")",
+      "source_section_sha256": "f8f17a711059e132c9d38288b6f1a190e412b3bd2c53f394e5722bbfab23658f",
+      "decision": "Settings/SSR/layout/GOTO history already owned. Obsolete single-GOTO/additionalData/SmartPivot cleanup instructions not promoted.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/archive/phase-12-no-menu.md",
+        "specs/decisions/032-ssr-bypass-e2e-testing-pattern.md",
+        "pwa/src/store/familyStore.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/archive/phase-12-no-menu.md",
+          "specs/decisions/032-ssr-bypass-e2e-testing-pattern.md",
+          "pwa/src/store/familyStore.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 898,
+      "end_line": 910,
+      "heading": "### [2026-04-30] PWA Immersion & Polish",
+      "source_section_sha256": "14a75416adf7ee12be63adacf71bb5ef4f9e50acf54800e68b52bcf05fca351a",
+      "decision": "Viewport/overscroll/shortcut implementation details have code/config owners; no new design mandate.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/app/layout.tsx",
+        "pwa/src/app/globals.css",
+        "pwa/public/manifest.json"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/app/layout.tsx",
+          "pwa/src/app/globals.css",
+          "pwa/public/manifest.json"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 911,
+      "end_line": 924,
+      "heading": "### [2026-04-30] Home Page Cleanup & Roadmap Alignment",
+      "source_section_sha256": "f94cd0d3a05fc9086ffbbb998bbed9556e1fa8c3a34706023a37dd7fd87eef82",
+      "decision": "Dead UI/rename details superseded; unique deferred quick-fix ideas salvaged in HM-E ledger as unselected history.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/components/home/HomeCommandCenter.tsx",
+        "pwa/src/components/home/HomeSections.tsx"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/components/home/HomeCommandCenter.tsx",
+          "pwa/src/components/home/HomeSections.tsx"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 925,
+      "end_line": 938,
+      "heading": "### [2026-04-29] API Reconciliation: Multi-line Detection & Schema Alignment",
+      "source_section_sha256": "b0b16c57b017b680f2579b15231756fde8bdb95f5bbad482a9d3ca8f4e622cf2",
+      "decision": "Old regex repair and 38-route parity claim historical; HM-D owns current static/live distinction.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "scripts/agent/api_tools.py",
+        ".kiro/specs/harness-modernization/hm-d-validation.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "scripts/agent/api_tools.py",
+          ".kiro/specs/harness-modernization/hm-d-validation.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 939,
+      "end_line": 952,
+      "heading": "### [2026-04-29] E2E Fix: Service Worker Blocking + Grocery State Persistence",
+      "source_section_sha256": "22e7dc8e561e40a9b8477e75a1b14f3299fe85f4b6967370c5eb372d05435c19",
+      "decision": "Worker interception rationale already in ADR/config. Old grocery restore implementation is historical, not current state ownership.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/031-service-worker-blocked-in-e2e.md",
+        "pwa/playwright.config.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/031-service-worker-blocked-in-e2e.md",
+          "pwa/playwright.config.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 953,
+      "end_line": 966,
+      "heading": "### [2026-04-29] Prism Removal \u2014 Playwright Intercepts Only",
+      "source_section_sha256": "7cb26ae71f393788ccd3f1a0e4b69730689c941ac9acfcd4a78b5d46ed15159c",
+      "decision": "Prism removal supersedes earlier Prism-guaranteed-parity narrative; preserve rationale at ADR and test configuration.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/030-prism-removal-playwright-intercepts.md",
+        "pwa/playwright.config.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/030-prism-removal-playwright-intercepts.md",
+          "pwa/playwright.config.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 967,
+      "end_line": 979,
+      "heading": "### [2026-04-29] Phase 11 \u2014 UX Seams & Auth Layer",
+      "source_section_sha256": "16d7741b7ffc24e41f8877fc1f0e229e62c545899a09a7e972821ea3cfec667d",
+      "decision": "Auth/cross-week rationale already owned; old cooked button and polling details superseded by later UX/SSE work.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/027-hearth-secret-stateless-auth.md",
+        "specs/decisions/028-cross-week-schedule-move.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/027-hearth-secret-stateless-auth.md",
+          "specs/decisions/028-cross-week-schedule-move.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 980,
+      "end_line": 990,
+      "heading": "### [2026-04-29] Planner E2E Stabilization & Resilience",
+      "source_section_sha256": "14355ce0f43e609635112e228183d91e52c2351453c802a211aa8d1d89d5665e",
+      "decision": "Polling/fixed-date/skipped-live result remains historical; current SSE and evidence policy own new work.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/029-deterministic-e2e-testing-strategy.md",
+        "specs/decisions/011-realtime-sync-strategy.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/029-deterministic-e2e-testing-strategy.md",
+          "specs/decisions/011-realtime-sync-strategy.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 991,
+      "end_line": 998,
+      "heading": "### [2026-04-29] Roadmap \u2014 Pantry Pasta button (Quick Fixes card)",
+      "source_section_sha256": "d577ab0ab762cab7851b7d586101339da93c6afcbdd8a19f6dd4c1413e134d58",
+      "decision": "Unique unselected recipe-injection proposal retained in HM-E ledger; not in current old controls/roadmap and not adopted.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/components/home/HomeSections.tsx",
+        "specs/00_STRATEGY/ROADMAP.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/components/home/HomeSections.tsx",
+          "specs/00_STRATEGY/ROADMAP.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 999,
+      "end_line": 1005,
+      "heading": "## Technical Archive (Summarized)",
+      "source_section_sha256": "c3eb7ddaa2c262a2fbc9e9335cf45d10e4446411878a14eb09a80702b0e7b657",
+      "decision": "Summarized restoration/voting/workspace history remains frozen; shared owners supersede old universal protocol.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/024-robust-ingredient-serialization.md",
+        "AGENT.md",
+        "Taskfile.yml"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/024-robust-ingredient-serialization.md",
+          "AGENT.md",
+          "Taskfile.yml"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1006,
+      "end_line": 1018,
+      "heading": "### [2026-04-26] Agentic Framework Optimization (Flash & Haiku)",
+      "source_section_sha256": "273a5142422e70aeb779bc565fd551b6dbcc2baccd84ec3ddc8821e600d09030",
+      "decision": "Old skill refactor queue superseded by HM slices; no model savings/100% adherence evidence promoted.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/harness-modernization/task-graph.yaml",
+        "AGENT.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/harness-modernization/task-graph.yaml",
+          "AGENT.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1019,
+      "end_line": 1020,
+      "heading": "## Session History",
+      "source_section_sha256": "2b8e6b158f91ad329b1b3c088832bc7dea76e3321f877a2b02a4a43429fedf89",
+      "decision": "Historical archive prologue/separator preserved byte-for-byte; no unique current fact.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": []
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1021,
+      "end_line": 1032,
+      "heading": "### [2026-04-29] Phase 10 Complete \u2014 Kitchen & Grocery Hardening",
+      "source_section_sha256": "09cbe1952e099034bd9ec19036b2f952ca1247b97c569fbac34ec38898ddda7e",
+      "decision": "Schedule/grocery/Cook Mode/backup/vote history already in archive; old polling/totals/commit are historical.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/05_ARCHIVE/build-prompts/phase-10-done/02-api-logic.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/05_ARCHIVE/build-prompts/phase-10-done/02-api-logic.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1033,
+      "end_line": 1064,
+      "heading": "### [2026-04-29] Prompt 05 \u2014 Kitchen & Grocery Hardening",
+      "source_section_sha256": "75a7c4711298858e7d2a9b89a9c5a46d267a86baa6e25b881607a84c0d7afdeb",
+      "decision": "Instruction extraction and aisle mapping rationale already owned; payload savings and parity totals remain unverified historical measurements.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/025-recipe-instructions-contract.md",
+        "specs/decisions/026-aisle-first-grocery-mapping.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/025-recipe-instructions-contract.md",
+          "specs/decisions/026-aisle-first-grocery-mapping.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1065,
+      "end_line": 1083,
+      "heading": "### [2026-04-27] Data Resilience & Routing Consolidation",
+      "source_section_sha256": "948a303c6231dfbdf70199755850d2e6333fa914978166cd4eff687173cdcf10",
+      "decision": "Ingredient fallback and controller consolidation already source/ADR-owned; bulk command and stale-build cleanup are historical.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/024-robust-ingredient-serialization.md",
+        "api/src/RecipeApi/Services/RecipeService.cs"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/024-robust-ingredient-serialization.md",
+          "api/src/RecipeApi/Services/RecipeService.cs"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1084,
+      "end_line": 1091,
+      "heading": "### [2026-04-25] Full-Stack Contract & Schema Realignment",
+      "source_section_sha256": "66a31fd1910d3ce80d749806f2b885cbea82054034f105cfc8de14787b489e4e",
+      "decision": "Old nullability/route mapping/drift counts preserved as history; static source is not full system evidence.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "scripts/agent/drift.py",
+        "specs/openapi.yaml"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "scripts/agent/drift.py",
+          "specs/openapi.yaml"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1092,
+      "end_line": 1100,
+      "heading": "### [2026-04-23] Automated API Contract Workflow (Kiota & Prism)",
+      "source_section_sha256": "aefa2ce3441ff702efd67aad96cade968852374e78d88623302073607e190ac2",
+      "decision": "Kiota rationale already in ADR; Prism/guaranteed parity portion superseded by removal and HM-D evidence policy.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/015-automated-api-contract-workflow.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/015-automated-api-contract-workflow.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1101,
+      "end_line": 1114,
+      "heading": "### [2026-04-26] Build Prompt 10: E2E Verification & Legacy Cleanup",
+      "source_section_sha256": "da46b417c67f52da4d5f30499391c1f198e3e7ac99a62685c2704c6583bd5fc2",
+      "decision": "Workflow migration history already owned; old three-step chain and zero-loss guarantee not asserted as current.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".agents/skills/workflow-author/SKILL.md",
+        "api/src/RecipeApi/Workflows/recipe-import.yaml"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".agents/skills/workflow-author/SKILL.md",
+          "api/src/RecipeApi/Workflows/recipe-import.yaml"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1115,
+      "end_line": 1136,
+      "heading": "### [2026-04-23] Merge SmartDefaults Into Planner Grid: Unified Grid Integration",
+      "source_section_sha256": "2e37fd5c0706310ea822bff9c7b18da5dfb8c47ba0dcf866d835f0d9a53960fa",
+      "decision": "Grid integration has source/tests; old component/polling/build results are historical.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/app/(app)/planner/page.tsx",
+        "pwa/e2e/planner.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/app/(app)/planner/page.tsx",
+          "pwa/e2e/planner.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1137,
+      "end_line": 1166,
+      "heading": "### [2026-04-23] Planner Voting Feature: Real-Time Vote Count Persistence",
+      "source_section_sha256": "3a5bfb37567032af1a96c07078374ebd1e490fd317c7cd133288f447698d14e0",
+      "decision": "Vote persistence rationale already owned; older polling/migration paths and totals not active policy.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/014-vote-count-persistence-in-calendar.md",
+        "api/src/RecipeApi/Services/ScheduleService.cs"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/014-vote-count-persistence-in-calendar.md",
+          "api/src/RecipeApi/Services/ScheduleService.cs"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1167,
+      "end_line": 1182,
+      "heading": "### [2026-04-23] Quick Find Modal: Hero Image Fix",
+      "source_section_sha256": "591fe5e811aa0a7013ae1b6e60a1b2935ef0ab64e52a18776e1ad76d60c2bdb8",
+      "decision": "Image fallback/DTO mapping bug history has source owners; no new blanket image rule.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/components/planner/QuickFindModal.tsx",
+        "api/src/RecipeApi/Services/ScheduleService.cs"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/components/planner/QuickFindModal.tsx",
+          "api/src/RecipeApi/Services/ScheduleService.cs"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1183,
+      "end_line": 1209,
+      "heading": "### [2026-04-23] Smart Voting Defaults: Consensus-Based Pre-Selection",
+      "source_section_sha256": "b0970e955d23c5d6f38f1127c7ec89f3db1b236cdb5de53bbdf5aa1987c10bde",
+      "decision": "Old separate component and ranking formula remain history after grid integration; do not move old numbers as current contract.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "api/src/RecipeApi/Services/ScheduleService.cs",
+        "pwa/src/app/(app)/planner/page.tsx"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "api/src/RecipeApi/Services/ScheduleService.cs",
+          "pwa/src/app/(app)/planner/page.tsx"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1210,
+      "end_line": 1223,
+      "heading": "### [2026-04-23] Backend Schedule API Implementation & Migration Fix",
+      "source_section_sha256": "c4fda2c6249d8ec1da20ea846a06446290fc1b017df71bb1de5f9e2717fb068d",
+      "decision": "Early schedule state/migration behavior superseded by later state machine; source/contract own current behavior.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "api/src/RecipeApi/Services/ScheduleService.cs",
+        "specs/openapi.yaml"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "api/src/RecipeApi/Services/ScheduleService.cs",
+          "specs/openapi.yaml"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1224,
+      "end_line": 1231,
+      "heading": "### [2026-04-23] Supper Planner PWA Implementation",
+      "source_section_sha256": "7c55211728a4ee1cfe6d8d553d7b10f22cdcf9ce0dbd738c6a1f054cbd2786af",
+      "decision": "Early UI/Finalize history already source/test-owned; no fresh five-test pass.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/app/(app)/planner/page.tsx",
+        "pwa/e2e/planner.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/app/(app)/planner/page.tsx",
+          "pwa/e2e/planner.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1232,
+      "end_line": 1237,
+      "heading": "### [2026-04-22] Session Review & Documentation Stabilization",
+      "source_section_sha256": "5d5d3565bfd0656bd299034d839e0c579de0d58d1260f594551826b56b3432b2",
+      "decision": "Old lanes and Law-file consolidation is historical; compulsory session-review superseded by HM-E.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".agents/core/execution-harness.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".agents/core/execution-harness.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1238,
+      "end_line": 1244,
+      "heading": "### [2026-04-21] PWA Discovery UI Integration (TDD)",
+      "source_section_sha256": "46ddc025e8183bf9fa4dde37905a19af0fc1adde72a1fd022b6b6ac60aa0daf2",
+      "decision": "Integration/category/identity history already has source/tests; no additional policy owner.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "pwa/src/lib/api/discovery.ts",
+        "pwa/e2e/discovery.spec.ts"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "pwa/src/lib/api/discovery.ts",
+          "pwa/e2e/discovery.spec.ts"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1245,
+      "end_line": 1250,
+      "heading": "### [2026-04-21] API Discovery Services & Match Logic (TDD)",
+      "source_section_sha256": "fd06ea75f0950663b062afac9ed38c238bd7d3769c777048dc8fa8b579fe49bd",
+      "decision": "Old matching and difficulty heuristics remain historical; current service owns implementation.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "api/src/RecipeApi/Services/DiscoveryService.cs"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "api/src/RecipeApi/Services/DiscoveryService.cs"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1251,
+      "end_line": 1264,
+      "heading": "### [2026-04-26] Phase 9 Task 01: Bulk Recipe Import Trigger",
+      "source_section_sha256": "0d9995fdb07bb3764a3907f846d87460311eb52c78b392d81beecae64e9cbc81",
+      "decision": "Bulk trigger rationale already in ADR 018 (journal mislabels 017); route later consolidated, no old endpoint instruction promoted.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/018-bulk-workflow-trigger-pattern.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/018-bulk-workflow-trigger-pattern.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1265,
+      "end_line": 1279,
+      "heading": "### [2026-04-27] Management Workflow Standardization & Automated Seeding",
+      "source_section_sha256": "976dde90510234d249fb6f882a0f60e8bfa73176dea098bdf6d273c65c5c47dd",
+      "decision": "Management processor/seeding/view/backup history already has rationale/source owners; old migrations are history.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/019-management-workflow-standardization.md",
+        "specs/decisions/020-automated-core-workflow-seeding.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/019-management-workflow-standardization.md",
+          "specs/decisions/020-automated-core-workflow-seeding.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1280,
+      "end_line": 1295,
+      "heading": "### [2026-04-27] Agentic Framework Evolution & Drift Resolution",
+      "source_section_sha256": "06760c93ff9880de2624b406d4d00f822d5604df5f2a1ca98106e6f3b10ec69a",
+      "decision": "Old skill refactor queue superseded by HM slices; no model savings/100% adherence evidence promoted.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        ".kiro/specs/harness-modernization/task-graph.yaml",
+        "AGENT.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          ".kiro/specs/harness-modernization/task-graph.yaml",
+          "AGENT.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1296,
+      "end_line": 1311,
+      "heading": "### [2026-04-27] API Centralization & Dev Workflow Hardening",
+      "source_section_sha256": "d6fe3600c99db102565ca2a45690b118e7754c0ef75dedf935939f59be3b31a8",
+      "decision": "Response wrapping and chiseled HTTP seed rationale already owned; old destructive sync commands not reauthorized.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "specs/decisions/022-centralized-api-response-wrapping.md",
+        "specs/decisions/023-resilient-docker-development-workflow.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "specs/decisions/022-centralized-api-response-wrapping.md",
+          "specs/decisions/023-resilient-docker-development-workflow.md"
+        ]
+      }
+    },
+    {
+      "source": "JOURNAL.md",
+      "start_line": 1312,
+      "end_line": 1325,
+      "heading": "### [2026-05-03] Session \u2014 URL Import Workflow Correction",
+      "source_section_sha256": "ba4e457c0649453baab056a63d6588b7a9c1fd3b176269898ff2b41dc7538c5d",
+      "decision": "YAML parameter/dependency/payload fix has canonical workflow owner; old data/workflows path and six-test result remain history.",
+      "destinations": [
+        "JOURNAL.md (frozen original body)",
+        "api/src/RecipeApi/Workflows/url-import.yaml",
+        ".agents/skills/workflow-author/SKILL.md"
+      ],
+      "verification": {
+        "method": "Section read in full; referenced owner paths checked. Current claims only where explicitly identified in hm-e-ledger.md; no historical tests rerun.",
+        "owner_paths": [
+          "api/src/RecipeApi/Workflows/url-import.yaml",
+          ".agents/skills/workflow-author/SKILL.md"
+        ]
+      }
+    }
+  ]
+}

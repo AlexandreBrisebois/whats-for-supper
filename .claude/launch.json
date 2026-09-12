@@ -5,6 +5,7 @@
       "name": "dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "cwd": "pwa",
       "port": 3000,
       "autoPort": true
     }

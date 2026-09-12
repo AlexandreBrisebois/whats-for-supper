@@ -1,12 +1,21 @@
 # AWS Landing Zone Reference
 
+Use only for the selected AWS question. This is illustrative reference material,
+not the deployed WFS configuration or a required checklist. Start from the affected
+WFS CDK construct and workflow identified by the skill entrypoint. Load linked
+references only when needed; examples do not require choosing a new service,
+account topology or deployment. Verify prices, limits, versions and policy scopes
+against current provider documentation before relying on them. Existing authorization
+and shared repository policy govern any actual action.
+
+
 A landing zone is the multi-account AWS environment that all workloads live inside. Getting it right early is much cheaper than restructuring later.
 
 ---
 
 ## Control Tower vs Custom Landing Zone
 
-### AWS Control Tower — Recommended for most teams
+### AWS Control Tower — conditional account-management option
 
 **Choose Control Tower when:**
 - Greenfield setup with no existing AWS Organization

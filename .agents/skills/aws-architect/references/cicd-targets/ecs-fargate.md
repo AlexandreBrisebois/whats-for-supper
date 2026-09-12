@@ -1,5 +1,14 @@
 # CI/CD — ECS Fargate Container Deployments
 
+Use only for the selected AWS question. This is illustrative reference material,
+not the deployed WFS configuration or a required checklist. Start from the affected
+WFS CDK construct and workflow identified by the skill entrypoint. Load linked
+references only when needed; examples do not require choosing a new service,
+account topology or deployment. Verify prices, limits, versions and policy scopes
+against current provider documentation before relying on them. Existing authorization
+and shared repository policy govern any actual action.
+
+
 ## Prerequisites
 
 - ECR repository created for the container image

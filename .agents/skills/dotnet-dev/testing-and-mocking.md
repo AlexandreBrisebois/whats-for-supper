@@ -21,7 +21,7 @@ Characteristics:
 - Uses public API only
 - Survives internal refactors
 - Describes WHAT, not HOW
-- One logical assertion per test
+- Related assertions may verify one observable behavior, including persisted state
 
 ### Bad Tests
 **Implementation-detail tests**: Coupled to internal structure.
@@ -39,13 +39,13 @@ public async Task CheckoutCallsPaymentServiceProcess() {
 Red flags:
 - Mocking internal collaborators
 - Testing private methods
-- Asserting on call counts/order
+- Asserting incidental call counts/order (required side-effect counts and ordering can be contractual)
 - Test breaks when refactoring without behavior change
 - Test name describes HOW not WHAT
-- Verifying through external means instead of interface
+- Prefer public behavior; direct database assertions are appropriate for persistence and constraint requirements
 
 ```csharp
-// BAD: Bypasses interface to verify
+// Appropriate when the requirement specifically includes persistence
 [Fact]
 public async Task CreateUserSavesToDatabase() {
   await CreateUser("Alice");
@@ -69,10 +69,12 @@ Mock at **system boundaries** only:
 - Time/randomness
 - File system (sometimes)
 
-Don't mock:
-- Your own classes/modules
-- Internal collaborators
-- Anything you control
+Avoid mocking internal collaborators merely to mirror implementation. When an integration
+factory replaces orchestration or another boundary, preserve required domain side effects.
+For example, a workflow-trigger fake must persist the WorkflowInstance and WorkflowTask
+state that subsequent reads assert; an empty success object is insufficient. Inspect
+`api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs` and the selected tests. In-memory
+providers cannot prove PostgreSQL constraints or relational update behavior.
 
 ## 3. Designing for Mockability
 At system boundaries, design interfaces that are easy to mock:
@@ -98,7 +100,7 @@ public interface IApi {
 ```
 
 The SDK approach means:
-- Each mock returns one specific shape
-- No conditional logic in test setup
+- Each operation has a typed contract
+- Stateful mocks retain method dispatch, persistence, retry and status transitions; conditional behavior is necessary when callers observe it
 - Easier to see which endpoints a test exercises
 - Type safety per endpoint

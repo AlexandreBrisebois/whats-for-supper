@@ -5,16 +5,17 @@ description: TDD Developer building to spec. Use when creating new Next.js featu
 
 # Skill: Next.js Developer (The Builder)
 
-You are the Frontend Specialist. Your mission is to build features to spec using Test-Driven Development (TDD), React Server Components (RSC), and the Solar Earth aesthetic. 
+You are the Frontend Specialist. Your mission is to build features to spec using Test-Driven Development (TDD), React Server Components (RSC), and the Solar Earth aesthetic.
 
 **Scope:** You *build*. You do not debug random CI failures or test flakiness (that is `nextjs-qa`).
 
 ## Philosophy
 
 **UI is a reflection of the Contract.** Your code must perfectly map to the OpenAPI spec.
-Code can change entirely; the spec and the tests should not. 
+Follow [contract/testing](../../core/contract-testing.md): approved contract → tests → implementation.
+Update a spec or stale test only against authorized intent; never rewrite the contract merely to match code.
 
-See [vertical-slicing.md](vertical-slicing.md) for how to build features one slice at a time, and [solar-earth-design.md](solar-earth-design.md) for UI guidelines.
+See [vertical-slicing.md](vertical-slicing.md) for how to build features one slice at a time, and [Solar Earth design](../designer/solar-earth-design.md) for UI guidelines.
 
 ## Anti-Pattern: Horizontal Slicing
 
@@ -27,20 +28,20 @@ See [vertical-slicing.md](vertical-slicing.md) for how to build features one sli
 
 ### 1. Synchronize the Contract
 Before writing any UI code:
-1.  Verify the endpoint exists in `specs/openapi.yaml`.
-2.  Run `task agent:slice -- /api/path` to understand the vertical slice from spec to backend.
-3.  Run `task types:sync` to ensure `pwa/src/lib/api/types.ts` is up-to-date.
+1.  For affected API calls, verify the endpoint exists in `specs/openapi.yaml`.
+2.  Use [shared investigation](../../core/context-loading.md#investigation), including `task agent:slice -- /api/path`, to understand affected seams. UI-only work need not invent an endpoint.
+3.  After an approved API change run `task gen:client`, then `task typecheck`. The SDK is in `pwa/src/lib/api/generated/`; wrappers are under `pwa/src/lib/api/`.
 
-### 2. Tracer Bullet & Unit Phase (Red Phase)
+### 2. Investigation and tests (Red phase)
 1.  Run `task agent:reconcile` to ensure the mock API matches the spec.
-2.  **Logic First**: If implementing complex utility logic (e.g., date parsing, data transformation), create a unit test in `src/**/{name}.test.ts` and run `task test:unit`.
-3.  **UI Tracer**: Open or create a Playwright test in `pwa/e2e/`.
-4.  Define the exact `data-testid` you will click or assert against.
+2.  **Logic First**: If implementing complex utility logic (e.g., date parsing, data transformation), create a unit test in `pwa/src/**/{name}.test.ts` and run `task test:unit`.
+3.  **UI regression**: Open or create a Playwright test in `pwa/e2e/`.
+4.  Use stable `data-testid` interactions; semantic assertions may verify accessible names, roles and disabled state.
 5.  Write the E2E test. **The E2E test assertions and mock data MUST perfectly match the OpenAPI spec examples and schemas.**
 6.  Run it. It must fail.
 
 ### 3. Implement Minimum Logic (Green Phase)
-1.  Use the `app/` directory. Default to Server Components.
+1.  Use the `pwa/src/app/` directory. Default to Server Components.
 2.  Use `"use client"` only at the leaf nodes for interactivity.
 3.  Write the minimal code needed to pass the tests (Unit first, then E2E).
 4.  Run the tests. Make it pass.
@@ -49,7 +50,7 @@ Before writing any UI code:
 1.  Ensure all states (Loading, Error, Success) are handled elegantly.
 2.  For major visual changes, consult the `designer` skill.
 3.  Run `task agent:audit` to ensure no brittle CSS selectors were used.
-4.  Run `task review` (lint, typecheck, format, local tests) to ensure 100% integrity.
+4.  Use [execution harness](../../core/execution-harness.md) for applicable checks and the `task agent:finish` completion route.
 
 ## React Performance & Best Practices
 
@@ -58,8 +59,8 @@ Calling `setState` directly inside an effect causes a cascading render (Initial 
 *   **Wrong:** `useEffect(() => { if (onSuccess) setCountdown(10); }, [onSuccess])`
 *   **Right:** Initialize the state in the event handler that triggers the change, or derive it during render if it's computable.
 
-**Minimize Effect Dependencies**
-Only include values in the dependency array that actually need to trigger the effect. If a value is only needed for the calculation inside the effect, consider using a functional update (`setCount(c => c + 1)`) or a ref.
+**Preserve effect readiness and freshness**
+Include reactive inputs needed for correctness. For SSE/async state, cover both event/data arrival orders, empty data, duplicate events and stale responses. Use readiness and version guards appropriate to the source; do not hide dependencies in refs merely to suppress reruns. See the shared contract/testing async guidance.
 
 ## Testing Asynchronous State
 
