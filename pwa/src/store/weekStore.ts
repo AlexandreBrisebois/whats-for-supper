@@ -202,8 +202,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       // groceryState is a Kiota AdditionalDataHolder — the actual key/value pairs
       // live in .additionalData (typed as Record<string, unknown> by Kiota).
       const serverGroceryState = scheduleData.groceryState?.additionalData as
-        | Record<string, boolean>
-        | undefined;
+        Record<string, boolean> | undefined;
       if (serverGroceryState && typeof serverGroceryState === 'object') {
         usePlannerStore.getState().setGroceryState(serverGroceryState);
       }
@@ -516,8 +515,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     });
 
     const incomingGroceryState = schedule.groceryState?.additionalData as
-      | Record<string, boolean>
-      | undefined;
+      Record<string, boolean> | undefined;
 
     set({
       schedule: preserved,

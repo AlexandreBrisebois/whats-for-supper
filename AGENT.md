@@ -38,6 +38,7 @@ conditional loading table. Do not recursively read every link in this document.
 | [Mission](.agents/core/mission.md) | Product intent and engineering posture |
 | [Contract/testing](.agents/core/contract-testing.md) | Contract-first, test-first, zero-drift and test evidence policy |
 | [Execution harness](.agents/core/execution-harness.md) | Commands and completion workflow |
+| [Dependency upgrades](.agents/core/dependency-upgrades.md) | Package-resolution, generated-client, and validation workflow |
 | [Context loading](.agents/core/context-loading.md) | Loading, bounded scope and delegation |
 | [Ontology](.agents/core/ontology.md) | Shared meanings; no new runtime types |
 

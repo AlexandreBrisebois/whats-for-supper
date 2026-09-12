@@ -65,8 +65,7 @@ export interface FillTheGapRequestBuilder extends BaseRequestBuilder<FillTheGapR
    */
   get(
     requestConfiguration?:
-      | RequestConfiguration<FillTheGapRequestBuilderGetQueryParameters>
-      | undefined
+      RequestConfiguration<FillTheGapRequestBuilderGetQueryParameters> | undefined
   ): Promise<FillTheGapGetResponse | undefined>;
   /**
    * Returns up to 5 recipe suggestions for an empty planner slot. Recipes already assigned to CalendarEvents in the target week (identified by weekOffset) are excluded. Results are sorted by rotation sort: LastCookedDate ASC NULLS FIRST (never-cooked recipes first), then VoteCount DESC as a tiebreaker. RecipeMatches (family favourites) are returned before DiscoveryRecipes fallback results.
@@ -75,8 +74,7 @@ export interface FillTheGapRequestBuilder extends BaseRequestBuilder<FillTheGapR
    */
   toGetRequestInformation(
     requestConfiguration?:
-      | RequestConfiguration<FillTheGapRequestBuilderGetQueryParameters>
-      | undefined
+      RequestConfiguration<FillTheGapRequestBuilderGetQueryParameters> | undefined
   ): RequestInformation;
 }
 /**

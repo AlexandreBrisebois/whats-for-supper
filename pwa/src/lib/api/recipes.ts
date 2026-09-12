@@ -617,10 +617,7 @@ export async function searchRecipes(
   }
 
   const result = (await response.json()) as
-    | { data?: RecipeSearchResponseDto }
-    | RecipeSearchResponseDto
-    | null
-    | undefined;
+    { data?: RecipeSearchResponseDto } | RecipeSearchResponseDto | null | undefined;
   const data = ((result as { data?: RecipeSearchResponseDto } | null | undefined)?.data ??
     (result as RecipeSearchResponseDto | null | undefined)) as RecipeSearchResponseDto | undefined;
 

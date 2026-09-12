@@ -117,8 +117,7 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
    */
   get(
     requestConfiguration?:
-      | RequestConfiguration<ScheduleRequestBuilderGetQueryParameters>
-      | undefined
+      RequestConfiguration<ScheduleRequestBuilderGetQueryParameters> | undefined
   ): Promise<ScheduleGetResponse | undefined>;
   /**
    * Get schedule for a week
@@ -127,8 +126,7 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
    */
   toGetRequestInformation(
     requestConfiguration?:
-      | RequestConfiguration<ScheduleRequestBuilderGetQueryParameters>
-      | undefined
+      RequestConfiguration<ScheduleRequestBuilderGetQueryParameters> | undefined
   ): RequestInformation;
 }
 /**

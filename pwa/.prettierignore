@@ -9,3 +9,6 @@ coverage/
 test-results/
 .last-run.json
 *.log
+next-env.d.ts
+playwright-report/
+src/lib/api/generated/kiota-lock.json

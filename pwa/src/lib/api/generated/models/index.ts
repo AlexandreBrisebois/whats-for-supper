@@ -1595,8 +1595,7 @@ export function deserializeIntoInventoryCaptureResponse(
 // @ts-ignore
 export function deserializeIntoManagementBackfillSearchAcceptedResponse(
   managementBackfillSearchAcceptedResponse:
-    | Partial<ManagementBackfillSearchAcceptedResponse>
-    | undefined = {}
+    Partial<ManagementBackfillSearchAcceptedResponse> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     message: (n) => {
@@ -1876,8 +1875,7 @@ export function deserializeIntoRecipeDietaryProfileDto(
 // @ts-ignore
 export function deserializeIntoRecipeDietaryProfileDto_fopFlags(
   recipeDietaryProfileDto_fopFlags:
-    | Partial<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1>
-    | undefined = {}
+    Partial<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     ...deserializeIntoFopFlagsDto(recipeDietaryProfileDto_fopFlags as FopFlagsDto),
@@ -1894,8 +1892,7 @@ export function deserializeIntoRecipeDietaryProfileDto_fopFlags(
 // @ts-ignore
 export function deserializeIntoRecipeDietaryProfileDto_fopFlagsMember1(
   recipeDietaryProfileDto_fopFlagsMember1:
-    | Partial<RecipeDietaryProfileDto_fopFlagsMember1>
-    | undefined = {}
+    Partial<RecipeDietaryProfileDto_fopFlagsMember1> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
 }
@@ -2011,8 +2008,7 @@ export function deserializeIntoRecipeDto(
 // @ts-ignore
 export function deserializeIntoRecipeDto_dietaryProfile(
   recipeDto_dietaryProfile:
-    | Partial<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>
-    | undefined = {}
+    Partial<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     ...deserializeIntoRecipeDietaryProfileDto(recipeDto_dietaryProfile as RecipeDietaryProfileDto),
@@ -2364,8 +2360,7 @@ export function deserializeIntoRecipeSearchResponseDto(
 // @ts-ignore
 export function deserializeIntoRecipeSearchResponseDto_topPick(
   recipeSearchResponseDto_topPick:
-    | Partial<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto>
-    | undefined = {}
+    Partial<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     ...deserializeIntoRecipeSearchResponseDto_topPickMember1(
@@ -2384,8 +2379,7 @@ export function deserializeIntoRecipeSearchResponseDto_topPick(
 // @ts-ignore
 export function deserializeIntoRecipeSearchResponseDto_topPickMember1(
   recipeSearchResponseDto_topPickMember1:
-    | Partial<RecipeSearchResponseDto_topPickMember1>
-    | undefined = {}
+    Partial<RecipeSearchResponseDto_topPickMember1> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
 }
@@ -2479,8 +2473,7 @@ export function deserializeIntoRecipeShareBundleDto(
 // @ts-ignore
 export function deserializeIntoRecipeShareBundleDto_hero(
   recipeShareBundleDto_hero:
-    | Partial<RecipeShareBundleDto_heroMember1 | SharedImageDto>
-    | undefined = {}
+    Partial<RecipeShareBundleDto_heroMember1 | SharedImageDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     ...deserializeIntoRecipeShareBundleDto_heroMember1(
@@ -2768,8 +2761,7 @@ export function deserializeIntoScheduleDays(
 // @ts-ignore
 export function deserializeIntoScheduleDays_balanceSummary(
   scheduleDays_balanceSummary:
-    | Partial<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto>
-    | undefined = {}
+    Partial<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     ...deserializeIntoScheduleDays_balanceSummaryMember1(
@@ -3121,8 +3113,7 @@ export function deserializeIntoWorkflowInstanceDetailDto(
 // @ts-ignore
 export function deserializeIntoWorkflowInstanceDetailDto_parameters(
   workflowInstanceDetailDto_parameters:
-    | Partial<WorkflowInstanceDetailDto_parameters>
-    | undefined = {}
+    Partial<WorkflowInstanceDetailDto_parameters> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
 }
@@ -3225,8 +3216,7 @@ export function deserializeIntoWorkflowTriggerRequestDto(
 // @ts-ignore
 export function deserializeIntoWorkflowTriggerRequestDto_parameters(
   workflowTriggerRequestDto_parameters:
-    | Partial<WorkflowTriggerRequestDto_parameters>
-    | undefined = {}
+    Partial<WorkflowTriggerRequestDto_parameters> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {};
 }
@@ -3697,8 +3687,7 @@ export interface RecipeDietaryProfileDto extends AdditionalDataHolder, Parsable 
   wholeGrainConfident?: boolean | null;
 }
 export type RecipeDietaryProfileDto_fopFlags =
-  | FopFlagsDto
-  | RecipeDietaryProfileDto_fopFlagsMember1;
+  FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1;
 export interface RecipeDietaryProfileDto_fopFlagsMember1 extends AdditionalDataHolder, Parsable {}
 export interface RecipeDto extends AdditionalDataHolder, Parsable {
   /**
@@ -4039,8 +4028,7 @@ export type RecipeSearchResponseDto_resultPath =
 export type RecipeSearchResponseDto_searchMode =
   (typeof RecipeSearchResponseDto_searchModeObject)[keyof typeof RecipeSearchResponseDto_searchModeObject];
 export type RecipeSearchResponseDto_topPick =
-  | RecipeSearchResponseDto_topPickMember1
-  | RecipeSearchResultDto;
+  RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto;
 export interface RecipeSearchResponseDto_topPickMember1 extends AdditionalDataHolder, Parsable {}
 export interface RecipeSearchResultDto extends AdditionalDataHolder, Parsable {
   /**
@@ -4267,8 +4255,7 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
   weekOffset?: number | null;
 }
 export type ScheduleDays_balanceSummary =
-  | ScheduleDays_balanceSummaryMember1
-  | WeeklyBalanceSummaryDto;
+  ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto;
 export interface ScheduleDays_balanceSummaryMember1 extends AdditionalDataHolder, Parsable {}
 export interface ScheduleDays_groceryState extends AdditionalDataHolder, Parsable {}
 export interface ScheduleRecipeDto extends AdditionalDataHolder, Parsable {
@@ -4762,9 +4749,7 @@ export function serializeInventoryCaptureResponse(
 export function serializeManagementBackfillSearchAcceptedResponse(
   writer: SerializationWriter,
   managementBackfillSearchAcceptedResponse:
-    | Partial<ManagementBackfillSearchAcceptedResponse>
-    | undefined
-    | null = {},
+    Partial<ManagementBackfillSearchAcceptedResponse> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!managementBackfillSearchAcceptedResponse || isSerializingDerivedType) {
@@ -4845,9 +4830,7 @@ export function serializeManagementTaskStatusResponse(
 export function serializeManagementTaskStatusResponse_result(
   writer: SerializationWriter,
   managementTaskStatusResponse_result:
-    | Partial<ManagementTaskStatusResponse_result>
-    | undefined
-    | null = {},
+    Partial<ManagementTaskStatusResponse_result> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!managementTaskStatusResponse_result || isSerializingDerivedType) {
@@ -5015,9 +4998,7 @@ export function serializeRecipeDietaryProfileDto(
 export function serializeRecipeDietaryProfileDto_fopFlags(
   writer: SerializationWriter,
   recipeDietaryProfileDto_fopFlags:
-    | Partial<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1>
-    | undefined
-    | null = {},
+    Partial<FopFlagsDto | RecipeDietaryProfileDto_fopFlagsMember1> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   serializeFopFlagsDto(writer, recipeDietaryProfileDto_fopFlags as FopFlagsDto);
@@ -5036,9 +5017,7 @@ export function serializeRecipeDietaryProfileDto_fopFlags(
 export function serializeRecipeDietaryProfileDto_fopFlagsMember1(
   writer: SerializationWriter,
   recipeDietaryProfileDto_fopFlagsMember1:
-    | Partial<RecipeDietaryProfileDto_fopFlagsMember1>
-    | undefined
-    | null = {},
+    Partial<RecipeDietaryProfileDto_fopFlagsMember1> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!recipeDietaryProfileDto_fopFlagsMember1 || isSerializingDerivedType) {
@@ -5109,9 +5088,7 @@ export function serializeRecipeDto(
 export function serializeRecipeDto_dietaryProfile(
   writer: SerializationWriter,
   recipeDto_dietaryProfile:
-    | Partial<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1>
-    | undefined
-    | null = {},
+    Partial<RecipeDietaryProfileDto | RecipeDto_dietaryProfileMember1> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   serializeRecipeDietaryProfileDto(writer, recipeDto_dietaryProfile as RecipeDietaryProfileDto);
@@ -5459,9 +5436,7 @@ export function serializeRecipeSearchResponseDto(
 export function serializeRecipeSearchResponseDto_topPick(
   writer: SerializationWriter,
   recipeSearchResponseDto_topPick:
-    | Partial<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto>
-    | undefined
-    | null = {},
+    Partial<RecipeSearchResponseDto_topPickMember1 | RecipeSearchResultDto> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   serializeRecipeSearchResponseDto_topPickMember1(
@@ -5480,9 +5455,7 @@ export function serializeRecipeSearchResponseDto_topPick(
 export function serializeRecipeSearchResponseDto_topPickMember1(
   writer: SerializationWriter,
   recipeSearchResponseDto_topPickMember1:
-    | Partial<RecipeSearchResponseDto_topPickMember1>
-    | undefined
-    | null = {},
+    Partial<RecipeSearchResponseDto_topPickMember1> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!recipeSearchResponseDto_topPickMember1 || isSerializingDerivedType) {
@@ -5572,9 +5545,7 @@ export function serializeRecipeShareBundleDto(
 export function serializeRecipeShareBundleDto_hero(
   writer: SerializationWriter,
   recipeShareBundleDto_hero:
-    | Partial<RecipeShareBundleDto_heroMember1 | SharedImageDto>
-    | undefined
-    | null = {},
+    Partial<RecipeShareBundleDto_heroMember1 | SharedImageDto> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   serializeRecipeShareBundleDto_heroMember1(
@@ -5593,9 +5564,7 @@ export function serializeRecipeShareBundleDto_hero(
 export function serializeRecipeShareBundleDto_heroMember1(
   writer: SerializationWriter,
   recipeShareBundleDto_heroMember1:
-    | Partial<RecipeShareBundleDto_heroMember1>
-    | undefined
-    | null = {},
+    Partial<RecipeShareBundleDto_heroMember1> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!recipeShareBundleDto_heroMember1 || isSerializingDerivedType) {
@@ -5797,9 +5766,7 @@ export function serializeScheduleDayDto(
 export function serializeScheduleDayDto_recipe(
   writer: SerializationWriter,
   scheduleDayDto_recipe:
-    | Partial<ScheduleDayDto_recipeMember1 | ScheduleRecipeDto>
-    | undefined
-    | null = {},
+    Partial<ScheduleDayDto_recipeMember1 | ScheduleRecipeDto> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   serializeScheduleDayDto_recipeMember1(
@@ -5875,9 +5842,7 @@ export function serializeScheduleDays(
 export function serializeScheduleDays_balanceSummary(
   writer: SerializationWriter,
   scheduleDays_balanceSummary:
-    | Partial<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto>
-    | undefined
-    | null = {},
+    Partial<ScheduleDays_balanceSummaryMember1 | WeeklyBalanceSummaryDto> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   serializeScheduleDays_balanceSummaryMember1(
@@ -5896,9 +5861,7 @@ export function serializeScheduleDays_balanceSummary(
 export function serializeScheduleDays_balanceSummaryMember1(
   writer: SerializationWriter,
   scheduleDays_balanceSummaryMember1:
-    | Partial<ScheduleDays_balanceSummaryMember1>
-    | undefined
-    | null = {},
+    Partial<ScheduleDays_balanceSummaryMember1> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!scheduleDays_balanceSummaryMember1 || isSerializingDerivedType) {
@@ -6221,9 +6184,7 @@ export function serializeWorkflowInstanceDetailDto(
 export function serializeWorkflowInstanceDetailDto_parameters(
   writer: SerializationWriter,
   workflowInstanceDetailDto_parameters:
-    | Partial<WorkflowInstanceDetailDto_parameters>
-    | undefined
-    | null = {},
+    Partial<WorkflowInstanceDetailDto_parameters> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!workflowInstanceDetailDto_parameters || isSerializingDerivedType) {
@@ -6316,9 +6277,7 @@ export function serializeWorkflowTriggerRequestDto(
 export function serializeWorkflowTriggerRequestDto_parameters(
   writer: SerializationWriter,
   workflowTriggerRequestDto_parameters:
-    | Partial<WorkflowTriggerRequestDto_parameters>
-    | undefined
-    | null = {},
+    Partial<WorkflowTriggerRequestDto_parameters> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
   if (!workflowTriggerRequestDto_parameters || isSerializingDerivedType) {

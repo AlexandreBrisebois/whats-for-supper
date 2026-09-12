@@ -88,8 +88,7 @@ export interface DiscoveryRequestBuilder extends BaseRequestBuilder<DiscoveryReq
    */
   get(
     requestConfiguration?:
-      | RequestConfiguration<DiscoveryRequestBuilderGetQueryParameters>
-      | undefined
+      RequestConfiguration<DiscoveryRequestBuilderGetQueryParameters> | undefined
   ): Promise<DiscoveryGetResponse | undefined>;
   /**
    * Get recipes for discovery stack
@@ -98,8 +97,7 @@ export interface DiscoveryRequestBuilder extends BaseRequestBuilder<DiscoveryReq
    */
   toGetRequestInformation(
     requestConfiguration?:
-      | RequestConfiguration<DiscoveryRequestBuilderGetQueryParameters>
-      | undefined
+      RequestConfiguration<DiscoveryRequestBuilderGetQueryParameters> | undefined
   ): RequestInformation;
 }
 /**
