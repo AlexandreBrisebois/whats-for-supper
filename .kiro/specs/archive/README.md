@@ -48,7 +48,6 @@ The notes describe the recorded documents, not verified current implementation. 
 | [home-recovery-flow-hardening](home-recovery-flow-hardening/task.md) | 3 | 3 unchecked markers retained; not active work |
 | [home-today-sync](home-today-sync/bugfix.md) | 1 | Historical description; no checkbox completion record |
 | [image-caching-fix](image-caching-fix/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
-| [next messages.md](next%20messages.md) | 1 | Historical follow-up questions; no active task |
 | [phase-12-no-menu.md](phase-12-no-menu.md) | 1 | 30 unchecked markers retained; not active work |
 | [phase-13-goto-synthesis.md](phase-13-goto-synthesis.md) | 1 | 1 unchecked markers retained; not active work |
 | [phase-14-ux-hardening.md](phase-14-ux-hardening.md) | 1 | 24 unchecked markers retained; not active work |
