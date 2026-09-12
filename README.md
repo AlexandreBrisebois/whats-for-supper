@@ -134,6 +134,7 @@ task init
 | `task up` | Start the full stack (PWA `:3000`, API `:9001`) |
 | `task gate` | Fast check: lint, types, unit tests |
 | `task review` | Application validation: static contracts, formatting checks, lint/types, unit/API tests (no E2E) |
+| `task test:smoke` | Shared local/CI Docker checks; resets development containers and volumes, then tears down |
 | `task agent:prepare` / `task agent:finish` | Prepare generation/formatting, inspect diff, then run applicable completion checks |
 | `task agent:drift` | Detect schema drift between OpenAPI spec and DTOs |
 | `task logs:api` | Stream backend logs |

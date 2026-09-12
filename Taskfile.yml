@@ -211,48 +211,18 @@ tasks:
       - python3 -B scripts/agent/test_audit.py "{{.AREA}}"
 
   test:smoke:
-    desc: "💨 Docker Smoke Test (Local CI Parity)"
+    desc: "Docker smoke: fresh disposable development DB, shared local/CI checks, teardown"
     summary: |
-      Builds and starts all services using CI overrides, verifies health, and tears down.
-      Matches the 'docker-smoke' job in .github/workflows/ci.yml
+      Resets development Compose containers and volumes, builds with CI configuration,
+      checks migration, Postgres/API/PWA health and endpoint drift, then tears down.
+      Uses synthetic configuration; local seed files are not mounted or modified.
     cmds:
-      - |
-        echo "🚀 Starting Docker Smoke Test..."
-        # Use existing COMPOSE_CMD but append ci-overrides.yml
-        {{.COMPOSE_CMD}} -f docker/compose/ci-overrides.yml up --build -d
-      - |
-        echo "⌛ Waiting for services to be healthy..."
-        # Wait for Postgres
-        for i in $(seq 1 30); do
-          STATUS=$(docker inspect --format='{{"{{"}}.State.Health.Status{{"}}"}}' whats-for-supper-postgres 2>/dev/null || echo "")
-          if [ "$STATUS" = "healthy" ]; then echo "  ✓ Postgres healthy"; break; fi
-          [ "$i" -eq 30 ] && echo "  ✗ Postgres failed health check" && exit 1
-          sleep 2
-        done
-        # Wait for PWA (via Traefik or direct)
-        for i in $(seq 1 30); do
-          if curl -sf http://localhost:3000/api/health > /dev/null; then echo "  ✓ PWA healthy"; break; fi
-          [ "$i" -eq 30 ] && echo "  ✗ PWA failed health check" && exit 1
-          sleep 3
-        done
-        # Verify API
-        for i in $(seq 1 20); do
-          if curl -sf http://localhost:9001/api/health > /dev/null; then
-            echo "  ✓ API healthy (Port 9001)"
-            break
-          fi
-          [ "$i" -eq 20 ] && echo "  ✗ API failed health check" && exit 1
-          sleep 2
-        done
-      - echo "✅ Smoke test passed!"
-      - task: test:smoke:down
+      - python3 -B scripts/agent/docker_smoke.py
 
   test:smoke:down:
-    desc: "Tear down smoke test environment"
+    desc: "Remove disposable development Compose containers and volumes"
     cmds:
-      - '{{.COMPOSE_CMD}} -f docker/compose/ci-overrides.yml down -v'
-      - echo "✓ Smoke test environment cleaned up"
-    silent: true
+      - python3 -B scripts/agent/docker_smoke.py --down
 
 
   # ============================================================================

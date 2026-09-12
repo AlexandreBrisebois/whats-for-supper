@@ -7,6 +7,9 @@ processes, ports or databases.
 
 ## Completion and preparation
 
+Use `task gate` for development feedback and retain the broad final checks below.
+Its adaptive E2E selection does not replace backend tests or the scope review.
+
 `task agent:finish` is the single applicable implementation completion entrypoint.
 It selects checks from tracked, staged and untracked paths; mixed classes take their
 union and unknown paths select the conservative union. No-change/review-only work
@@ -74,6 +77,30 @@ Inspect `.task/agent-finish/last-run.json` and report passed, failed, blocked, n
 and not-applicable separately. A passing static check cannot cancel a blocked live
 check. Finish records automated checks only; do not claim completion while selected
 acceptance, fixture or loading evidence is missing.
+
+## Scope review
+
+After preparation and before `agent:finish`, compare the current worktree with the
+starting baseline recorded under [context loading](context-loading.md#bound-the-work).
+Inspect the actual diff, including new/deleted files and changes within files that
+were already dirty. Do not attribute all differences from HEAD to the current task.
+
+Account for each task-changed file in task evidence or the final report: what changed,
+why the requested outcome needs it, and any incidental formatter/generated changes.
+Review semantic scope within expected files too: unrelated refactors, changed
+defaults, removed behavior and weakened tests can pass broad checks. Investigate
+unexpected edits; retain only changes justified by the existing authorization.
+Remove your own unnecessary edits while preserving pre-existing and concurrent work;
+never reset or restore a whole dirty file to discard a task-local change.
+
+Record the baseline reference, reviewed final content identity, per-file rationale
+and unresolved differences. Recheck the scope review if preparation, fixes or later
+edits change the reviewed content. The review is an agent assessment, not automated
+proof of authorization, and must not narrow the checks selected by `agent:finish`.
+If the baseline is missing or concurrent edits cannot be distinguished, report that
+limit, recover available history and resolve ambiguous ownership before reverting.
+Do not claim preservation or scope verification without evidence; continue independent
+authorized work while consequential uncertainty is resolved.
 
 ## Evidence and meaningful handoffs
 

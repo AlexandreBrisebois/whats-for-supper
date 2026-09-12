@@ -1,6 +1,6 @@
 # Harness modernization design
 
-Status: Migration design; HM-A foundation is implemented for review. Phase 0 created no operative instruction changes. HM-B specification workflow is implemented for review; HM-C implementation is ready for review; HM-D is implemented with candidate-run verification blocked; isolated model runs and host qualification remain pending. HM-E is implemented with native loading/F07 verification blocked and acceptance open; HM-Q remains unselected. See [HM-E evidence](hm-e-validation.md). See [HM-D evidence](hm-d-validation.md).
+Status: HM-A through HM-E are implemented. HM-D, HM-E and HM-Q are complete with the user waiver of model runs, native loading and efficiency measurement on 2026-09-11. Deterministic verification passed; no model qualification or measured efficiency claim. See [completion evidence](hm-q-validation.md).
 
 ## Shared architecture and interfaces
 

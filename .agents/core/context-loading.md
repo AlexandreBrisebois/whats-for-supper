@@ -34,6 +34,18 @@ tracked and untracked work. For application behavior, prefer vertical slices thr
 end-to-end acceptance. Do not fold adjacent cleanup into the task. A selected
 slice stays bounded even if later dependencies or unrelated failures are visible.
 
+Before the first edit, record the requested outcome and a starting worktree baseline
+in task-local evidence. Include HEAD, staged/unstaged changes and untracked paths;
+retain enough content evidence to distinguish later edits from pre-existing work,
+including edits within an already-dirty file. Use a temporary snapshot or equivalent
+host history; keep untracked content out of logs and shared artifacts. A list of
+filenames alone is insufficient. Reuse the baseline when resuming the same task;
+do not replace it with the current state and thereby hide task changes.
+
+Before completion, review changes since that baseline against the requested outcome
+using the [scope review](execution-harness.md#scope-review). This review supplements
+the broad final checks; tests cannot establish whether an edit was authorized.
+
 Resolve consequential unknowns about intent or scope before dependent work.
 Existing authorization remains valid within its stated scope. Load targeted
 source and immediate dependencies to resolve technical uncertainty; do not expand

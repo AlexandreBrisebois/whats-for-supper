@@ -197,84 +197,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Create .env for CI
-        run: |
-          cat > .env <<EOF
-          POSTGRES_USER=recipe_app
-          POSTGRES_PASSWORD=ci_password
-          POSTGRES_DB=recipe_app_db
-          POSTGRES_CONNECTION_STRING=postgres://recipe_app:ci_password@postgres:5432/recipe_app_db
-          ASPNETCORE_ENVIRONMENT=Development
-          CORS_ALLOWED_ORIGINS=http://localhost:3000
-          NEXT_PUBLIC_API_BASE_URL=http://localhost:9001
-          GEMINI_API_KEY=none
-          GEMINI_MODEL_ID=gemini-3-flash-preview
-          DOCKER_BUILDKIT=1
-          COMPOSE_DOCKER_CLI_BUILD=1
-          EOF
+      - name: Install smoke runner dependency
+        run: python3 -m pip install pyyaml
 
-      - name: Build and start all services
-        run: docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/ci-overrides.yml up --build --detach
+      - name: Build, verify and tear down disposable Docker stack
+        run: python3 -B scripts/agent/docker_smoke.py
 
-      - name: Verify Migration success
-        run: |
-          for i in $(seq 1 30); do
-            STATUS=$(docker inspect --format='{{.State.Status}}' whats-for-supper-migration 2>/dev/null || echo "")
-            EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' whats-for-supper-migration 2>/dev/null || echo "1")
-            if [ "$STATUS" = "exited" ]; then
-              if [ "$EXIT_CODE" = "0" ]; then
-                echo "Migration completed successfully"
-                exit 0
-              else
-                echo "Migration failed with exit code $EXIT_CODE"
-                docker logs whats-for-supper-migration
-                exit 1
-              fi
-            fi
-            echo "Waiting for migration... ($STATUS)"
-            sleep 2
-          done
-          echo "Migration timed out" && exit 1
-
-      - name: Wait for Postgres health
-        run: |
-          for i in $(seq 1 30); do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' whats-for-supper-postgres 2>/dev/null || echo "")
-            if [ "$STATUS" = "healthy" ]; then echo "postgres healthy"; break; fi
-            [ "$i" -eq 30 ] && echo "Postgres failed health check" && exit 1
-            sleep 2
-          done
-
-      - name: Wait for API health
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:9001/api/health; then echo "API healthy"; break; fi
-            [ "$i" -eq 30 ] && echo "API failed health check" && exit 1
-            sleep 3
-          done
-
-      - name: Wait for PWA health
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:3000/api/health; then echo "PWA healthy"; break; fi
-            [ "$i" -eq 30 ] && echo "PWA failed health check" && exit 1
-            sleep 3
-          done
-
-      - name: Verify API health endpoint
-        run: curl -s http://127.0.0.1:9001/api/health | python3 -m json.tool
-
-      - name: Schema drift — Tier 0 (generated endpoint diff)
-        run: |
-          pip install pyyaml -q
-          python3 scripts/agent/drift.py --endpoint-diff
-        env:
-          GENERATED_API_URL: http://localhost:9001/openapi/v1.json
-
-      - name: Dump logs on failure
-        if: failure()
-        run: docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/ci-overrides.yml logs
-
-      - name: Tear down
+      - name: Fallback teardown after runner cancellation
         if: always()
-        run: docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/ci-overrides.yml down --volumes
+        run: python3 -B scripts/agent/docker_smoke.py --down

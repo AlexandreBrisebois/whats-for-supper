@@ -1,0 +1,72 @@
+{
+  "candidate_commit": "ca048a2b3368f91786646e990b8435a8fc9c3867",
+  "check_time": "before acceptance/status and handover documentation updates",
+  "commands": [
+    {
+      "command": [
+        "task",
+        "test:agent"
+      ],
+      "exit_code": 0,
+      "status": "passed",
+      "wall_clock_ms": 309,
+      "output": "Preparation classes: contract\ngen:client: passed: ok\nformat: passed: ok\nPreparation finished; inspect diff before task agent:finish. No verification claim.\nPreparation classes: unknown\nblocked: classify unknown paths and inspect preparation effects before writes; final verification still requires the conservative union.\n\u23f3 Kiota generation (timeout: 45s)\n\ud83c\udfaf Identifying impacted tests...\n  \u2022 unknown.ts: unknown/unmapped impact requires all E2E\n\ud83d\ude80 Running impacted tests...\n  - pwa/e2e\nblocked: impact tests: TimeoutExpired\n\ud83c\udfaf Identifying impacted tests...\n  \u2022 unknown.ts: unknown/unmapped impact requires all E2E\n\ud83d\ude80 Running impacted tests...\n  - pwa/e2e\n\ud83d\udcbe Cached actual tested identity tested.\n\u2705 Tests passed!\n\ud83c\udfaf Identifying impacted tests...\n  \u2022 unknown.ts: unknown/unmapped impact requires all E2E\n\u2705 Reusing successful impact result for unchanged digest tested.\ntask: [test:agent] python3 -B -m unittest discover -s scripts/agent/tests -p \"test_*.py\"\n..............................\n----------------------------------------------------------------------\nRan 30 tests in 0.142s\n\nOK\n"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        ".kiro/specs/harness-modernization/evaluation/check-memory-cleanup.py"
+      ],
+      "exit_code": 0,
+      "status": "passed",
+      "wall_clock_ms": 7574,
+      "output": "PASS HM-E static closure: 58 journal sections/1325 lines; 9 retired/10 retained skills; 55 active route files; ledger destinations, content identities, scope and previous evidence preserved.\nNative fresh/resumed loading and F07 candidate behavior remain separate blocked evidence.\n"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        ".kiro/specs/harness-modernization/evaluation/validate-package.py",
+        "--smoke"
+      ],
+      "exit_code": 0,
+      "status": "passed",
+      "wall_clock_ms": 4618,
+      "output": "PASS package: 143 artifacts, 33 targets, 14 requirements, 7 acyclic tasks, 8 scenarios, 37 payload hashes\nPASS YAML/JSON parsing, Python syntax, local Markdown links and baseline fingerprints\nNOTE JSON Schema structure checked; this checker is not a general JSON Schema implementation\nPASS F01: declared seeded outcome, initial oracle and positive control\nPASS F02: declared seeded outcome, initial oracle and positive control\nPASS F03 rejects negative control: old-sql-constraint\nPASS F03 rejects negative control: fabricated-persistence\nPASS F03: declared seeded outcome, initial oracle and positive control\nPASS F04 rejects negative control: effect-before-data\nPASS F04: declared seeded outcome, initial oracle and positive control\nPASS F05: declared seeded outcome, initial oracle and positive control\nPASS F06: declared seeded outcome, initial oracle and positive control\nPASS F07: declared seeded outcome, initial oracle and positive control\nPASS F08: declared seeded outcome, initial oracle and positive control\nPASS fixture smoke only; no model, native-host, real-service or production evaluation performed\n"
+    },
+    {
+      "command": [
+        "/tmp/wfs-hmq-tools/bin/python",
+        "-B",
+        ".kiro/specs/harness-modernization/evaluation/test_qualification.py"
+      ],
+      "exit_code": 0,
+      "status": "passed",
+      "wall_clock_ms": 354,
+      "output": ".......\n----------------------------------------------------------------------\nRan 7 tests in 0.274s\n\nOK\n"
+    }
+  ],
+  "evaluation_python_sha256": {
+    ".kiro/specs/harness-modernization/evaluation/check-foundation.py": "5474ac5e7115278f189509a054ccb1f95491da972135ab8473402184f0bb9799",
+    ".kiro/specs/harness-modernization/evaluation/check-specification-workflow.py": "f222827bb630b6dce27aa93e6b3d681ad9ba322a51bb8aaea9e26a02dd19d169",
+    ".kiro/specs/harness-modernization/evaluation/check-implementation-guidance.py": "f1bf6f9ff1b5f1d9eeb35c9deb2b2ecbc0de614f41f8ea2727f0c5f125ab8be8",
+    ".kiro/specs/harness-modernization/evaluation/check-memory-cleanup.py": "38984d6dacc09a3dbe3fec380f563c4cadea71693ea8db65f20543274a8c2105",
+    ".kiro/specs/harness-modernization/evaluation/test_qualification.py": "b6dbd7dcefef057e62ca55c69644516458ab170bf9f91a9d1ba47438726fec69",
+    ".kiro/specs/harness-modernization/evaluation/qualification.py": "b0c063b2ea6fe156ae7ec2ce2dd086460858971973a59a850873aa5b830edaba",
+    ".kiro/specs/harness-modernization/evaluation/validate-package.py": "78aa4ce1ee528cb36a2c04d39c429d436942cc3e99195a0d6f38f65a17909228"
+  },
+  "model_runs": "not-run; user waived",
+  "native_loading": "not-run; user waived",
+  "token_efficiency": "unmeasured; user waived",
+  "post_acceptance_closure": {
+    "status": "passed",
+    "unchanged_hm_e_implementation_files": 31,
+    "handover_other_task_sections": "byte-identical",
+    "prior_evidence_manifest_protocol_fixtures": "byte-identical to starting HEAD",
+    "acceptance_changes": "only current status/waiver and modernization checkpoint",
+    "final_package_smoke": "passed after documentation/status updates",
+    "agent_prepare": "passed; documentation class; no source writes",
+    "initial_check_attempt": "failed on authorized design.md status update; corrected scope exclusions before rerun, no implementation change"
+  }
+}

@@ -68,7 +68,7 @@ task
 | `task gate` | ⚡ Fast dev loop: catch what changed |
 | `task review` | 🔒 Pre-commit gate: full coverage |
 | `task test` | Run all tests 🧪 |
-| `task test:smoke` | 💨 Docker Smoke Test (Local CI Parity) |
+| `task test:smoke` | Shared local/CI Docker smoke checks; resets development containers and volumes |
 | `task gen:client` | 🔄 Regenerate Kiota API client from spec |
 | `task agent:drift` | 🤖 Check route, schema, and mock drift |
 | `task agent:drift:routes` | 🤖 Static controller route vs OpenAPI check |
@@ -99,7 +99,7 @@ task test:unit         # PWA unit tests (Vitest — fast, no server)
 task test:unit:watch   # PWA unit tests in watch mode
 task test:e2e          # E2E tests (Playwright — requires running PWA)
 task test:e2e:ci       # E2E tests in CI-parity mode (build + test)
-task test:smoke        # 💨 Full Docker smoke test (CI Parity)
+task test:smoke        # Shared CI smoke workflow; destroys disposable development DB
 
 # Building & Publishing
 task build             # Force rebuild all images (No-cache + Image removal) 📦
@@ -157,6 +157,22 @@ task review            # Pre-commit review (format + lint + test)
 task ship              # Final ship checklist
 task tag               # 🏷️ Tag and push release (patch|minor|major)
 ```
+
+`task test:smoke` and CI call the same Python runner. It requires Docker Compose
+and Python with PyYAML (`python3 -m pip install pyyaml`). It resets the
+`whats-for-supper` Compose project, including its PostgreSQL and application-data
+volumes, then builds with `infrastructure.yml`, `apps.yml`, and `ci-overrides.yml`.
+The checked-in synthetic `docker/compose/smoke.env` supplies configuration in both
+environments; development overrides and local seed directories are not mounted.
+Ports 9001 and 3000 must be available after the project reset; the runner does not
+kill unrelated processes occupying them.
+
+Smoke checks cover migration success, PostgreSQL readiness, API/PWA health, valid
+API health JSON, and live OpenAPI endpoint drift. Failures dump container logs;
+success, failure, and handled interruption attempt teardown and preserve a failing
+exit status. CI also has an always-run fallback teardown. Local and CI builds use
+their host architecture. Seeding and E2E remain separate checks; after smoke testing,
+restore the development database from local seed data with `task dev:db:sync`.
 
 ---
 

@@ -1,6 +1,6 @@
 # Harness modernization requirements
 
-Status: Phase 0 package complete. HM-A foundation implemented for review; native loading and behavioral qualification remain unqualified. HM-B specification workflow is implemented for review; HM-C implementation is ready for review with isolated model runs and host qualification unqualified; HM-D is implemented with candidate-run verification blocked; HM-E is implemented with native loading/F07 verification blocked and acceptance open; HM-Q remains unselected. See [HM-E evidence](hm-e-validation.md). See [HM-D evidence](hm-d-validation.md).
+Status: HM-A through HM-E are implemented. HM-D, HM-E and HM-Q are complete with the user waiver of model runs, native loading and efficiency measurement on 2026-09-11. Deterministic verification passed; no model qualification or measured efficiency claim. See [completion evidence](hm-q-validation.md).
 
 ## Intent and boundaries
 
@@ -45,3 +45,11 @@ Retain ten specialized skill entrypoints after nine retirements; registry and in
 The initial essential-context budget is a soft 1,500-token target, measured with the actual host/model tokenizer or telemetry. It is not a word-count conversion or a reason to remove correctness constraints. Reliability takes priority over that target.
 
 See [design](design.md), [tasks](tasks.md), [manifest](artifact-manifest.yaml) and [evaluation protocol](evaluation/README.md).
+
+## Accepted qualification exception — 2026-09-11
+
+The user explicitly waived model-dependent qualification and instructed that the work
+be considered done. This supersedes model-run/native-loading/efficiency requirements
+for completion of HM-D, HM-E and HM-Q. Their historical measurements remain absent;
+no threshold was rescored as passed. Structural acceptance and deterministic checks
+remain required and are recorded in [HM-Q evidence](hm-q-validation.md).

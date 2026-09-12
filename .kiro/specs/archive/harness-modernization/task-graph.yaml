@@ -115,7 +115,7 @@ tasks:
   - HM-R07
   - HM-R12
   - HM-R13
-  status: implemented-verification-blocked
+  status: complete-with-user-waiver
   effects:
   - testing/completion policy
   - Taskfile relevant targets
@@ -142,7 +142,7 @@ tasks:
   - HM-R10
   - HM-R11
   - HM-R12
-  status: implemented-verification-blocked
+  status: complete-with-user-waiver
   effects:
   - HANDOVER/JOURNAL and repo memory destinations
   - core completion/context
@@ -170,7 +170,7 @@ tasks:
   - HM-R02
   - HM-R05
   - HM-R13
-  status: planned
+  status: complete-with-user-waiver
   effects:
   - isolated evaluation environments
   - qualification evidence in this specification

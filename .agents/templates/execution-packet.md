@@ -13,6 +13,8 @@ correctness or permission rules.
 - **Authorization source:** <current request/selected task and approved intent;
   distinguish proposed work from authorized execution>
 - **Scope:** <allowed files/effects, exclusions; preserve unrelated work>
+- **Starting baseline:** <reference to pre-edit worktree evidence, including existing
+  dirty/untracked work; reuse on resumption; see shared scope review>
 - **Dependencies:** <immediate prerequisites, actual status and unresolved blockers>
 - **Acceptance:** <requirement IDs and observable done conditions>
 - **Required context:** <exact spec sections, contract/source paths and relevant
@@ -24,7 +26,8 @@ correctness or permission rules.
   with actual evidence and tested content identity; unavailable is never passed>
 - **Stop / escalation:** <selected boundary; consequential decisions or scope
   changes requiring input; continue independent authorized work where possible>
-- **Deliverable:** <reviewable diff or findings, validation and remaining blockers>
+- **Deliverable:** <reviewable diff or findings, validation and remaining blockers;
+  for edits, per-file scope rationale tied to baseline and final content identity>
 
 ## Optional guidance (non-binding)
 
