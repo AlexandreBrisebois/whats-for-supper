@@ -41,8 +41,8 @@ For adoption: no hard failures; all applicable candidate assertions pass across 
 Run from repository root:
 
 ```sh
-python3 .kiro/specs/harness-modernization/evaluation/validate-package.py
-python3 .kiro/specs/harness-modernization/evaluation/validate-package.py --smoke
+python3 tests/evaluation/validate-package.py
+python3 tests/evaluation/validate-package.py --smoke
 task test:agent
 ```
 

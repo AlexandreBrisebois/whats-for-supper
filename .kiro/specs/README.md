@@ -17,8 +17,8 @@ historical status or unrun checks. Follow the existing
 
 ## 6. Archived specifications
 
-`.kiro/specs/archive/`, `docs/archive/specs/`, and `specs/05_ARCHIVE/` contain historical reference material. Exclude these trees from active-task discovery and default context loading. Read a specific archived document only to answer a historical question or understand a decision relevant to an approved current task.
+`docs/archive/specs/`, `docs/archive/legacy-lanes/`, `docs/archive/legacy-build-prompts/`, and `docs/archive/adr/` contain historical reference material. Exclude these trees from active-task discovery and default context loading. Read a specific archived document only to answer a historical question or understand a decision relevant to an approved current task.
 
 Archived requirements, prompts, commands, status labels, and unchecked boxes do not authorize work and do not override current OpenAPI, repo doctrine, or an approved active spec. Archival alone does not prove every original task was implemented; preserve the recorded evidence rather than checking off old tasks without verification.
 
-When archiving, add a historical-reference notice to every document, remove active handover entries, update incoming spec links to their archive locations, and record the completion, supersession, or retirement decision with its actual validation outcome. Use the [Kiro archive index](archive/README.md) or [legacy archive index](../../specs/05_ARCHIVE/README.md) for historical lookup. Reopening work requires a current user request and a bounded active spec; do not automatically resume archived checklists.
+When archiving, add a historical-reference notice to every document, remove active handover entries, update incoming spec links to their archive locations, and record the completion, supersession, or retirement decision with its actual validation outcome. Use the [spec archive index](../../docs/archive/specs/README.md) or [legacy build-prompts index](../../docs/archive/legacy-build-prompts/README.md) for historical lookup. Reopening work requires a current user request and a bounded active spec; do not automatically resume archived checklists.

@@ -10,10 +10,10 @@ validator deliberately uses a complete JSON Schema implementation.
 From the repository root:
 
 ```sh
-python3 -B .kiro/specs/harness-modernization/evaluation/test_qualification.py
-python3 -B .kiro/specs/harness-modernization/evaluation/qualification.py plan --configuration codex-astra --host codex --model gpt-6-astra --output /tmp/new-hmq-records
-python3 -B .kiro/specs/harness-modernization/evaluation/qualification.py export --workspace /tmp/new-hmq-workspace --evidence /tmp/new-hmq-evidence --variant candidate --fixture F06 --candidate ca048a2b3368f91786646e990b8435a8fc9c3867
-python3 -B .kiro/specs/harness-modernization/evaluation/qualification.py report /tmp/new-hmq-records
+python3 -B tests/evaluation/test_qualification.py
+python3 -B tests/evaluation/qualification.py plan --configuration codex-astra --host codex --model gpt-6-astra --output /tmp/new-hmq-records
+python3 -B tests/evaluation/qualification.py export --workspace /tmp/new-hmq-workspace --evidence /tmp/new-hmq-evidence --variant candidate --fixture F06 --candidate ca048a2b3368f91786646e990b8435a8fc9c3867
+python3 -B tests/evaluation/qualification.py report /tmp/new-hmq-records
 ```
 
 Use fresh output paths each time. `plan` writes 48 not-run records per configuration;
