@@ -61,7 +61,7 @@ flowchart TD
 
     B -->|Photo upload| C[POST /api/recipes\nmultipart + images]
     B -->|Text description| D[POST /api/recipes/describe\nname + description]
-    B -->|URL share| E[POST /api/recipes/capture\nurl]
+    B -->|URL share| E[POST /api/recipes/capture-url\nurl]
 
     C --> C1[Images saved to disk\nrecipe.info written\nDB row: ImageCount = n]
     D --> D1[recipe.info written with description\nDB row: ImageCount = 0\nIsSynthesized = false]

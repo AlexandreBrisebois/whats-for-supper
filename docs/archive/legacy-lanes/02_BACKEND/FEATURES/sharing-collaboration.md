@@ -1,12 +1,14 @@
+> **HISTORICAL RECORD**: This document is preserved for architectural context. It is superseded by living documentation in /docs and the running codebase.
+
 # Sharing & Collaboration Specification
 
 This document defines how multiple family members interact with shared data in "What's For Supper" across different devices.
 
 ## 1. Identity Model
 
-- Passwordless, profile-based. See [recipe-pwa.spec.md §1.5](recipe-pwa.spec.md).
+- Passwordless, profile-based. See [recipe-pwa.spec.md §1.5](../../01_FRONTEND/frontend-pwa.spec.md).
 - Each device stores the selected `familyMemberId` in a persistent cookie.
-- The API receives `X-Family-Member-Id` on every request. See [ADR-008](decisions/008-api-identity-and-reliability.md).
+- The API receives `X-Family-Member-Id` on every request. See [ADR-008](../../../../../specs/decisions/008-api-identity-and-reliability.md).
 - All actions (recipe add, swipe vote, meal schedule) are attributed to the active family member.
 
 ## 2. Shared Data
@@ -35,7 +37,7 @@ All household data lives in the single PostgreSQL instance. All family members r
 
 ## 5. Family Management
 
-Managed via `GET/POST/DELETE /api/family`. See [recipe-api.spec.md §3](recipe-api.spec.md).
+Managed via `GET/POST/DELETE /api/family`. See [recipe-api.spec.md §3](../backend-api.spec.md).
 
 - Any family member can add or remove profiles (no admin role in this phase).
 - Removing a member retains their attributed recipes and historical preferences.

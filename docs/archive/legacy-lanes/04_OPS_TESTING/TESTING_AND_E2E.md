@@ -1,3 +1,5 @@
+> **HISTORICAL RECORD**: This document is preserved for architectural context. It is superseded by living documentation in /docs and the running codebase.
+
 ## 1. Testing Philosophy
 
 - **Test behavior, not implementation**: Focus on user outcomes.
@@ -18,7 +20,7 @@
 ### Why We Have a Mock API
 
 The mock API (Prism, via `npm run mock-api`) exists to:
-- **Contract-First Testing** — Prism generates mocks directly from [specs/openapi.yaml](../../specs/openapi.yaml), guaranteeing 100% parity with the API contract.
+- **Contract-First Testing** — Prism generates mocks directly from [specs/openapi.yaml](../../../../specs/openapi.yaml), guaranteeing 100% parity with the API contract.
 - **Decouple PWA tests from .NET backend availability** — Tests can run without Docker.
 - **Enable CI/CD** — GitHub Actions runs tests on commits without requiring a full API service.
 - **Fast feedback loop** — Local E2E runs in seconds, not minutes.
@@ -39,7 +41,7 @@ The mock API (Prism, via `npm run mock-api`) exists to:
 
 ### How Prism Works
 
-Prism generates all mock responses automatically from [specs/openapi.yaml](../../specs/openapi.yaml):
+Prism generates all mock responses automatically from [specs/openapi.yaml](../../../../specs/openapi.yaml):
 
 **Why Prism**:
 - **No manual implementation** — Mocks are generated directly from the OpenAPI spec.
@@ -77,7 +79,7 @@ This matches the OpenAPI schema exactly. No hardcoded mock values; Prism generat
 
 **Decision**: Use environment-based API routing instead of hardcoded endpoints. Mock API (Prism) starts automatically.
 
-**Configuration** ([pwa/playwright.config.ts](../pwa/playwright.config.ts)):
+**Configuration** ([pwa/playwright.config.ts](../../../../pwa/playwright.config.ts)):
 ```typescript
 const MOCK_API_PORT = process.env.MOCK_API_PORT || '5001';
 
@@ -113,7 +115,7 @@ webServer: isCI
 - Live API: `http://127.0.0.1:5000`
 - Cookie domain: `127.0.0.1`
 
-**Example** ([pwa/e2e/integration.spec.ts:92-99](../pwa/e2e/integration.spec.ts#L92-L99)):
+**Example** (pwa/e2e/integration.spec.ts:92-99 (historical reference; target retired)):
 ```typescript
 await page.context().addCookies([
   {
@@ -166,7 +168,7 @@ await expect(page.getByRole('heading', { name: /Good/i })).toBeVisible();
 | `x-family-member-id` | Identifies the current user (PWA sets via cookie + converts to header) | `550e8400-e29b-41d4-a716-446655440000` |
 | `Content-Type` | Request/response format | `application/json` (forms use `multipart/form-data`) |
 
-**Implementation** ([pwa/mock-api.js:18](../pwa/mock-api.js#L18)):
+**Implementation** (pwa/mock-api.js:18 (historical reference; target retired)):
 ```javascript
 res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-family-member-id');
 ```
@@ -269,7 +271,7 @@ Open: npx playwright show-trace <file>
 
 **Philosophy**: Test service logic with the in-memory EF Core provider. Tests run fast and are deterministic.
 
-**Test Database Factory** ([api/src/RecipeApi.Tests/Infrastructure/TestDbContextFactory.cs](../../api/src/RecipeApi.Tests/Infrastructure/TestDbContextFactory.cs)):
+**Test Database Factory** ([api/src/RecipeApi.Tests/Infrastructure/TestDbContextFactory.cs](../../../../api/src/RecipeApi.Tests/Infrastructure/TestDbContextFactory.cs)):
 ```csharp
 public static RecipeDbContext Create()
 {
@@ -280,7 +282,7 @@ public static RecipeDbContext Create()
 }
 ```
 
-**Example: ScheduleService Tests** ([api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs](../../api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs)):
+**Example: ScheduleService Tests** ([api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs](../../../../api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs)):
 
 | Test | Scenario | Assertions |
 |------|----------|-----------|
@@ -313,7 +315,7 @@ Migrations are tested implicitly when the application starts:
 task dev:api  # Applies all unapplied migrations at startup
 ```
 
-**Migration Verification**: [api/Migrations/20260423151137_AddCalendarEvents.cs](../../api/Migrations/20260423151137_AddCalendarEvents.cs)
+**Migration Verification**: api/Migrations/20260423151137_AddCalendarEvents.cs (historical reference; target retired)
 - Creates `calendar_events` table with UUID, foreign key to recipes, and check constraint on `status` column.
 - Column naming: `status` (lowercase) matches check constraint convention.
 
@@ -371,7 +373,7 @@ If mock API becomes a bottleneck:
 
 **Key Challenge**: Button text may change dynamically (emoji vs text). Use `locator()` with `hasText` option instead of `getByRole()` with name matching.
 
-**Example** ([pwa/e2e/planner.spec.ts:103-108](../../pwa/e2e/planner.spec.ts#L103)):
+**Example** ([pwa/e2e/planner.spec.ts:103-108](../../../../pwa/e2e/planner.spec.ts#L103)):
 
 ```typescript
 // ❌ WRONG: Looks for button with name "Start Cooking"

@@ -1,3 +1,5 @@
+> **HISTORICAL RECORD**: This document is preserved for architectural context. It is superseded by living documentation in /docs and the running codebase.
+
 # Integration Specification
 
 This document defines how "What's For Supper" integrates with external services and internal components.

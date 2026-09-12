@@ -1,3 +1,5 @@
+> **HISTORICAL RECORD**: This document is preserved for architectural context. It is superseded by living documentation in /docs and the running codebase.
+
 # Meal Planning Specification (Supper Planner)
 
 **Status**: AUTHORITATIVE

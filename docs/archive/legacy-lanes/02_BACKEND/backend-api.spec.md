@@ -1,3 +1,5 @@
+> **HISTORICAL RECORD**: This document is preserved for architectural context. It is superseded by living documentation in /docs and the running codebase.
+
 # Backend API & Data Specification
 
 **Status**: AUTHORITATIVE  
@@ -327,16 +329,16 @@ Returns a summary of the import pipeline's overall health and counts.
 ## 3.4 Implementation Details
 
 ### File References
-- **Model**: [api/src/RecipeApi/Models/CalendarEvent.cs](../../api/src/RecipeApi/Models/CalendarEvent.cs)
-- **Service**: [api/src/RecipeApi/Services/ScheduleService.cs](../../api/src/RecipeApi/Services/ScheduleService.cs) (156 lines, 5 public methods)
-- **Controller**: [api/src/RecipeApi/Controllers/ScheduleController.cs](../../api/src/RecipeApi/Controllers/ScheduleController.cs)
+- **Model**: [api/src/RecipeApi/Models/CalendarEvent.cs](../../../../api/src/RecipeApi/Models/CalendarEvent.cs)
+- **Service**: [api/src/RecipeApi/Services/ScheduleService.cs](../../../../api/src/RecipeApi/Services/ScheduleService.cs) (156 lines, 5 public methods)
+- **Controller**: [api/src/RecipeApi/Controllers/ScheduleController.cs](../../../../api/src/RecipeApi/Controllers/ScheduleController.cs)
 - **DTOs**: 
-  - [ScheduleDays.cs](../../api/src/RecipeApi/Dto/ScheduleDays.cs) (response envelope)
-  - [SmartDefaultsDto.cs](../../api/src/RecipeApi/Dto/SmartDefaultsDto.cs) (consensus pre-selection)
-  - [MoveScheduleDto.cs](../../api/src/RecipeApi/Dto/MoveScheduleDto.cs)
-  - [AssignScheduleDto.cs](../../api/src/RecipeApi/Dto/AssignScheduleDto.cs)
-- **Migration**: [20260423151137_AddCalendarEvents.cs](../../api/Migrations/20260423151137_AddCalendarEvents.cs)
-- **Tests**: [api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs](../../api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs) (5 tests, all passing)
+  - [ScheduleDays.cs](../../../../api/src/RecipeApi/Dto/ScheduleDays.cs) (response envelope)
+  - [SmartDefaultsDto.cs](../../../../api/src/RecipeApi/Dto/SmartDefaultsDto.cs) (consensus pre-selection)
+  - [MoveScheduleDto.cs](../../../../api/src/RecipeApi/Dto/MoveScheduleDto.cs)
+  - [AssignScheduleDto.cs](../../../../api/src/RecipeApi/Dto/AssignScheduleDto.cs)
+- **Migration**: 20260423151137_AddCalendarEvents.cs (historical reference; target retired)
+- **Tests**: [api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs](../../../../api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs) (5 tests, all passing)
 
 ### Key Decisions
 1. **Column Naming**: `status` column uses lowercase to match PostgreSQL check constraint convention. Entity config specifies `.HasColumnName("status")`.
@@ -384,7 +386,7 @@ All successful (2xx) API responses **MUST be automatically wrapped** in a `{ dat
 
 ### 4.2 Implementation Logic
 - **Controllers**: Return DTOs directly. Do NOT manually wrap.
-- **Filter**: `SuccessWrappingFilter` ([api/src/RecipeApi/Infrastructure/SuccessWrappingFilter.cs](../../api/src/RecipeApi/Infrastructure/SuccessWrappingFilter.cs)) intercepts `ObjectResult` and wraps it once.
+- **Filter**: `SuccessWrappingFilter` ([api/src/RecipeApi/Infrastructure/SuccessWrappingFilter.cs](../../../../api/src/RecipeApi/Infrastructure/SuccessWrappingFilter.cs)) intercepts `ObjectResult` and wraps it once.
 - **Mock API**: Must match production wrapping to ensure PWA consistency.
 
 ---

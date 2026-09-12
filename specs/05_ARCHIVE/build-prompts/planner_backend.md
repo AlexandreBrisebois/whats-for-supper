@@ -3,7 +3,7 @@
 > **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
 
 ## Objective
-Implement the backend API endpoints for the Supper Planner as defined in [backend-api.spec.md](../02_BACKEND/backend-api.spec.md) and [meal-planning.md](../01_FRONTEND/FEATURES/meal-planning.md).
+Implement the backend API endpoints for the Supper Planner as defined in [backend-api.spec.md](../../../docs/archive/legacy-lanes/02_BACKEND/backend-api.spec.md) and [meal-planning.md](../../../docs/archive/legacy-lanes/01_FRONTEND/FEATURES/meal-planning.md).
 
 ## Context
 The PWA implementation of the Planner is complete and currently relies on a `mock-api.js`. We need to move this logic into the C# `RecipeApi` and PostgreSQL database.

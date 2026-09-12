@@ -133,10 +133,10 @@ Active task plans live under `.kiro/specs/cnf/`; their orchestration order is de
 
 ---
 
-| [backend-api.spec.md](../02_BACKEND/backend-api.spec.md) | 0+ | ✅ |
-| [TESTING_AND_E2E.md](../04_OPS_TESTING/TESTING_AND_E2E.md) | 0+ | ✅ |
-| [ai-worker.spec.md](../03_AI_WORKER/ai-worker.spec.md) | 1 | ✅ |
-| [infrastructure.spec.md](../04_OPS_TESTING/infrastructure.spec.md) | 7 | 📝 |
+| [backend-api.spec.md](../../docs/archive/legacy-lanes/02_BACKEND/backend-api.spec.md) | 0+ | ✅ |
+| [TESTING_AND_E2E.md](../../docs/archive/legacy-lanes/04_OPS_TESTING/TESTING_AND_E2E.md) | 0+ | ✅ |
+| [ai-worker.spec.md](../../docs/archive/legacy-lanes/03_AI_WORKER/ai-worker.spec.md) | 1 | ✅ |
+| [infrastructure.spec.md](../../docs/archive/legacy-lanes/04_OPS_TESTING/infrastructure.spec.md) | 7 | 📝 |
 
 
 ---

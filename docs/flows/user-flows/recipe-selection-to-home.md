@@ -11,7 +11,7 @@
 > Historical context (pre-fix race condition) is preserved in the [Historical Race Path](#historical-race-path) section below.
 
 Historical specs: [home-command-center-hardening](../../../.kiro/specs/archive/home-command-center-hardening)
-ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)
+ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)
 
 ---
 
@@ -50,7 +50,7 @@ sequenceDiagram
         User->>PivotCard: taps "Quick Find"
         PivotCard->>HCC: onDiscover()
         HCC->>QFM: open QuickFindModal
-        QFM->>Backend: GET /api/schedule/fillTheGap
+        QFM->>Backend: GET /api/schedule/fill-the-gap
         Backend-->>QFM: RecipeDto[5]
         QFM->>User: show recipe carousel
         User->>QFM: taps "Select" on a recipe
@@ -145,4 +145,4 @@ The `pendingConfirmRef` was introduced as a guard to suppress the stale-data fla
 
 This entire mechanism is replaced by `todayStore`. `router.refresh()` no longer appears in any action handler. The `pendingConfirmRef` has been removed.
 
-Build prompt (historical): [`specs/05_BUILD_PROMPTS/home-recipe-selection-race-fix.md`](../../specs/05_BUILD_PROMPTS/home-recipe-selection-race-fix.md).
+Build prompt (historical): [`specs/05_BUILD_PROMPTS/home-recipe-selection-race-fix.md`](../../../specs/05_ARCHIVE/build-prompts/phase-12-no-menu-done/home-recipe-selection-race-fix.md).

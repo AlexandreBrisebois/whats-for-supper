@@ -1,3 +1,5 @@
+> **HISTORICAL RECORD**: This document is preserved for architectural context. It is superseded by living documentation in /docs and the running codebase.
+
 # Grocery List Specification: The Efficient Grocer
 
 This document defines the grocery list experience for "What's For Supper". The primary goal is to minimize "store fatigue" by organizing ingredients according to the physical layout of a typical grocery store.

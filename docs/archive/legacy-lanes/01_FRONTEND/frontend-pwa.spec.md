@@ -1,3 +1,5 @@
+> **HISTORICAL RECORD**: This document is preserved for architectural context. It is superseded by living documentation in /docs and the running codebase.
+
 # Frontend PWA Specification
 
 **Status**: AUTHORITATIVE  
@@ -73,7 +75,7 @@ The Home page is designed to answer "What's for Supper?" in 2 seconds and manage
 - **Cook Mode Trigger**: Cooking emoji button (👨‍🍳) on the day card for today's meal to enter high-visibility step-by-step mode.
 
 ### 5.2 API Integration
-**Reference**: [pwa/src/app/(app)/planner/page.tsx](../../pwa/src/app/(app)/planner/page.tsx)
+**Reference**: [pwa/src/app/(app)/planner/page.tsx][planner-page]
 
 | Action | Endpoint | Method | Notes |
 |--------|----------|--------|-------|
@@ -109,7 +111,7 @@ The Home page is designed to answer "What's for Supper?" in 2 seconds and manage
 - Refresh button → reloads vote state and updates pre-selection in real-time
 - No drag-to-reorder; slots are fixed pending user voting (preserve consensus signal)
 
-**Reference**: [pwa/src/components/planner/SmartDefaults.tsx](../../pwa/src/components/planner/SmartDefaults.tsx)
+**Reference**: pwa/src/components/planner/SmartDefaults.tsx (historical reference; target retired)
 
 ### 5.5 Design Conformance
 - **Background**: Cream (`#FDFCF0`) with flowing blob accents.
@@ -117,3 +119,5 @@ The Home page is designed to answer "What's for Supper?" in 2 seconds and manage
 - **Animation**: Framer Motion staggered entrance, smooth reorder transitions.
 - **Typography**: *Outfit* for day labels, *Inter* for recipe names.
 - **Consensus Colors**: Ochre (#E1AD01) for "Solar" energy (unanimous), Sage (#8A9A5B) for calm agreement.
+
+[planner-page]: ../../../../pwa/src/app/(app)/planner/page.tsx

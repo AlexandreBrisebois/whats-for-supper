@@ -1,3 +1,5 @@
+> **HISTORICAL RECORD**: This document is preserved for architectural context. It is superseded by living documentation in /docs and the running codebase.
+
 # AI Worker & Agent Pipeline
 
 **Status**: AUTHORITATIVE  

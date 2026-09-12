@@ -45,14 +45,14 @@ sequenceDiagram
 
     actor User
     participant Profile as Profile Page (/profile)
-    participant API as GET /api/family/members
+    participant API as GET /api/family
     participant Cookie as x-family-member-id cookie
     participant Home as /home
 
     rect rgb(230, 240, 255)
         note over Profile,API: First-time load — no cookie
         User->>Profile: Opens app → /profile
-        Profile->>API: GET /api/family/members
+        Profile->>API: GET /api/family
         API-->>Profile: [{ id, name, avatarUrl }, ...]
         Profile->>User: Shows member cards\nTitle: "Table's Set!"\nSubtitle: "Pick a family member to get started."\nNo "Continue as" button (no member selected yet)
     end
@@ -80,14 +80,14 @@ sequenceDiagram
 
     actor User
     participant Profile as Profile Page (/profile)
-    participant API as GET /api/family/members
+    participant API as GET /api/family
     participant Cookie as x-family-member-id cookie
     participant Home as /home
 
     rect rgb(230, 240, 255)
         note over Profile,API: Returning load — cookie exists (e.g. memberId = Alex)
         User->>Profile: Navigates to /profile
-        Profile->>API: GET /api/family/members
+        Profile->>API: GET /api/family
         API-->>Profile: [{ id, name, avatarUrl }, ...]
         Profile->>User: Shows member cards\nTitle: "Table's Set!"\nSubtitle: "Pick a family member to get started."\nAlex's card highlighted (selectedFamilyMemberId matches)\nFooter: "Continue as Alex" button (ghost/outline, terracotta, full-width)
     end
