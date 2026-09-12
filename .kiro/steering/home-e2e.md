@@ -4,10 +4,9 @@ inclusion: manual
 
 # Conditional home E2E reference
 
-Load only for home-page SSR/Playwright work. The section below is preserved
-verbatim from `.kiro/steering.md` at baseline
-`13fcddedffa9c2a07b2498afb530e7906394b006`; this loading move does not requalify
-its implementation claims. Check current source before relying on them.
+Load only for home-page SSR/Playwright work. This reference describes Home’s
+subscriptions to `todayStore` and `gotoStore`; check current source before
+relying on implementation details.
 
 ## 6. E2E testing constraints — Next.js SSR + Playwright
 
@@ -20,11 +19,13 @@ Concretely:
 - `page.route(/...schedule.../)` → only intercepts browser-originated requests.
 - Result: SSR always returns real backend data regardless of Playwright mocks.
 
-`HomeCommandCenter` receives `todaysRecipe` as a prop from SSR. The component **always** fires a client-side `getSchedule()` fetch on mount to reconcile stale SSR data (Phase 14 fix). When SSR returned a recipe, the fetch runs silently in the background — no spinner, no flash. When SSR returned nothing, the fetch shows a loader. This means:
+`HomeCommandCenter` subscribes to `todayStore` through `useTodayStore()` for the current recipe, status, loading state, and meal actions. `TodayStoreInitializer` owns initialization from SSR data; Home calls the store’s `sync()` on mount to reconcile stale data. The component does not own a separate local today state or schedule polling loop.
 
-- The schedule endpoint **is** interceptable by `page.route()` for the client-side reconciliation fetch.
-- However, the **initial render** still uses the SSR prop — so if SSR returns a recipe, `TonightMenuCard` renders immediately before the client fetch completes.
-- You still cannot mock the "no recipe tonight" initial state via `page.route()` alone — SSR will return whatever the real backend has.
+- Browser requests made by store synchronization are interceptable by `page.route()`.
+- The initial state is seeded from SSR, so a recipe can render before client synchronization completes.
+- Mocking browser schedule requests alone cannot control the SSR-seeded initial state.
+
+`HomeCommandCenter` also subscribes to `gotoStore` through `useGotoStore()`. The schedule stream records `recipe_ready` SSE events in that store. Home checks readiness for the pending active GOTO and reloads it through `familyStore.loadActiveGoTo()`; this transition uses store readiness instead of a component polling interval.
 
 ### What this means for E2E tests
 
@@ -34,14 +35,14 @@ Concretely:
 
 Reach the desired UI state **through the UI**, not by mocking SSR data:
 
-- To show `TonightPivotCard`: start with a planned recipe (SSR returns one), then skip it via the recovery dialog (`skip-tonight-btn` → `recovery-action-order-in` → `recovery-action-tomorrow`). This transitions `HomeCommandCenter` to `isSkipped=true` client-side, which shows the pivot card.
+- To show `TonightPivotCard`: start with a planned recipe (SSR returns one), then skip it via the recovery dialog (`skip-tonight-btn` → `recovery-action-order-in` → `recovery-action-tomorrow`). This updates `todayStore` to skipped status (`3`), from which `HomeCommandCenter` derives `isSkipped=true`, which shows the pivot card.
 - To show `CookedSuccessCard`: open Cook's Mode (`cook-mode-btn` on the card back face), step through all steps with `cooks-mode-step-next`, and click "Done" on the last step. This calls `onCooked` which fires `POST /api/schedule/day/{date}/validate` with `status: 2`. **Note: `cooked-btn` no longer exists — it was removed in Phase 14. The only path to marking a meal cooked is completing Cook's Mode.**
 
 This approach is more robust anyway — it tests real state transitions rather than mocked initial states.
 
 ### Settings mock
 
-The settings endpoint (`/api/settings/{key}`) is called client-side by `loadSetting()` in `HomeCommandCenter`'s `useEffect`. This **is** interceptable by `page.route()`. Always add it to `beforeEach` when testing home page behavior:
+The active GOTO is loaded client-side through `familyStore.loadActiveGoTo()`. Mock the settings endpoint (`/api/settings/{key}`) used by that store rather than relying on a component-local `loadSetting()` call. This **is** interceptable by `page.route()`. Always add it to `beforeEach` when testing home page behavior:
 
 ```ts
 await page.route(/\/(?:backend\/)?api\/settings\/(.+)/, async (route) => {

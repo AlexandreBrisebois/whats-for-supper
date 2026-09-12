@@ -17,7 +17,7 @@ historical status or unrun checks. Follow the existing
 
 ## 6. Archived specifications
 
-`.kiro/specs/archive/` and `specs/05_ARCHIVE/` contain historical reference material. Exclude both from active-task discovery and default context loading. Read a specific archived document only to answer a historical question or understand a decision relevant to an approved current task.
+`.kiro/specs/archive/`, `docs/archive/specs/`, and `specs/05_ARCHIVE/` contain historical reference material. Exclude these trees from active-task discovery and default context loading. Read a specific archived document only to answer a historical question or understand a decision relevant to an approved current task.
 
 Archived requirements, prompts, commands, status labels, and unchecked boxes do not authorize work and do not override current OpenAPI, repo doctrine, or an approved active spec. Archival alone does not prove every original task was implemented; preserve the recorded evidence rather than checking off old tasks without verification.
 

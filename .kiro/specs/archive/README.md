@@ -18,6 +18,13 @@ See [AGENTS.md](AGENTS.md) for agent handling rules and the [legacy archive](../
 - Corrected the archived `dev-loop-optimization` metadata status from `In Progress` to `Archived`. Other Kiro identifiers remain historical metadata, not current task routing.
 - Repaired resolvable archived-spec references and marked incoming flow-document references as historical. Old implementation paths and obsolete commands were retained as evidence, not modernized into runnable prompts.
 
+## Permanent archive
+
+The following packages were moved to `docs/archive/specs/` at the user’s direction on 2026-09-12. This restructuring does not revalidate their implementation or alter historical checkboxes.
+
+- [02-demo-mode-aws-deploy-hardening](../../../docs/archive/specs/02-demo-mode-aws-deploy-hardening/tasks.md) — retired completed package; requirements, design, and tasks preserved.
+- [cnf-cross-spec-review](../../../docs/archive/specs/cnf-cross-spec-review/tasks.md) — retired review package; the five CNF implementation packages remain active.
+
 ## Inventory
 
 The notes describe the recorded documents, not verified current implementation. "Unchecked markers" may be task, acceptance, validation, or example checkboxes; they do not assign work.
@@ -40,6 +47,7 @@ The notes describe the recorded documents, not verified current implementation. 
 | [grocery-item-check-off-404](grocery-item-check-off-404/bugfix.md) | 1 | Historical description; no checkbox completion record |
 | [grocery-reclassification](grocery-reclassification/tasks.md) | 3 | 1 unchecked markers retained; not active work |
 | [grocery-section-categorization](grocery-section-categorization/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
+| [harness-modernization](harness-modernization/tasks.md) | 19 | Archived harness work with validation records and evaluation fixtures; recorded blockers remain historical evidence |
 | [health-service-extraction](health-service-extraction/tasks.md) | 3 | 21 unchecked markers retained; not active work |
 | [hero-image-webp-migration](hero-image-webp-migration/tasks.md) | 3 | 1 unchecked markers retained; not active work |
 | [high-fidelity-sharing](high-fidelity-sharing/tasks.md) | 3 | 11 unchecked markers retained; not active work |

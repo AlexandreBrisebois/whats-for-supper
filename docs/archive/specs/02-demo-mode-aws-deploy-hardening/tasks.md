@@ -1,3 +1,5 @@
+> Historical reference: archived at the user’s direction on 2026-09-12. Retired from active execution; recorded tasks and validation remain historical evidence, not current verification.
+
 # Implementation Plan: Demo Mode AWS Deploy Hardening
 
 ## Task Dependency Graph

@@ -1,3 +1,5 @@
+> Historical reference: archived at the user’s direction on 2026-09-12. Retired from active execution; recorded tasks and validation remain historical evidence, not current verification.
+
 # Tasks: CNF Cross-Spec Review
 
 Use this checklist to launch independent review conversations. Each task includes a kickoff prompt. All kickoffs use the [shared specification workflow](../../../../.agents/core/specification-workflow.md): report findings (or no findings) without inventing an issue; apply the options/recommendation/wait steps only when a consequential decision remains. Patch only within existing authorization. Paste the prompt into a fresh Codex conversation when you want to work that branch.
