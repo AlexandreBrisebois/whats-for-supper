@@ -27,11 +27,12 @@ RUN LIB_PATH=$(find /usr/lib -name "libgssapi_krb5.so.2" | head -n 1 | xargs dir
 # =============================================================================
 # Stage 3 — Development (Hot Reload)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:11.0.100-preview.6-resolute AS development
+FROM mcr.microsoft.com/dotnet/sdk:11.0-preview-resolute AS development
 WORKDIR /src
 # Workaround for JIT crashes under QEMU emulation (Mac ARM64 -> Linux AMD64)
 ENV DOTNET_EnableWriteXorExecute=0
 COPY RecipeApi.csproj ./
+COPY Directory.Build.props ./
 RUN dotnet restore RecipeApi.csproj
 COPY . .
 ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls", "http://+:9001"]
@@ -39,11 +40,12 @@ ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls",
 # =============================================================================
 # Stage 4 — Build (Pinned SDK + QEMU Workaround)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:11.0.100-preview.6-resolute AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0-preview-resolute AS build
 WORKDIR /src
 # Workaround for JIT crashes under QEMU emulation (Mac ARM64 -> Linux AMD64)
 ENV DOTNET_EnableWriteXorExecute=0
 COPY RecipeApi.csproj ./
+COPY Directory.Build.props ./
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet restore RecipeApi.csproj
 COPY . .
