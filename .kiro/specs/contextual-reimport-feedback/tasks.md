@@ -16,14 +16,14 @@ flowchart LR
 Model label: `LARGE_REQUIRED` — replaces a public report-save contract and retires a manual-import trigger while coordinating report persistence, workflow creation, lifecycle marking, generated client, and API tests.
 
 1. [ ] Update `specs/openapi.yaml` first: replace `PUT /api/recipes/{id}/import-report` with `POST` using `RecipeImportIssueRequest` and a `RecipeImportReportSubmissionResponseDto`; retire both old `/api/recipes/{id}/import` operations and add ID-addressable `GET /api/recipe-imports/{importId}`.
-2. [ ] Add failing contract/API tests for every CRF-2/CRF-4 branch, repeated-save snapshot comparison, active-workflow ID reuse, `reimportStarted`/optional-ID response shape, workflow-ID authorization, and workflow-start failure retention.
-3. [ ] Implement the controller/service command as one per-recipe exclusive operation: capture prior snapshot before mutation, normalize/validate and persist every report, derive eligibility, reuse a matching active workflow or start one new eligible revision.
-4. [ ] Snapshot only content reasons and note onto the new workflow; return `reimportStarted=false` with no `importId` for manual review or unchanged terminal feedback, and expose `isReimporting` on the public report while an attempt is active.
+2. [ ] Add failing contract/API tests for every CRF-2/CRF-4 branch, repeated-save snapshot comparison, active-workflow ID reuse, rejection without mutation for changed active feedback and resolve, `reimportStarted` meaning an active newly created or reused workflow with its required ID, workflow-ID authorization, and workflow-start/failure retention.
+3. [ ] Extend the existing in-process per-recipe lock across the controller/service command: capture the prior snapshot before mutation, reject changed active feedback and resolve, otherwise normalize/validate and persist the permitted report, derive eligibility, reuse a matching active workflow or start one new eligible revision. Document that this assumes one active API process.
+4. [ ] Snapshot only content reasons and note onto the new workflow; return `reimportStarted=true` with the `importId` for a newly created or reused active workflow, return `false` with no ID for manual review or unchanged terminal feedback, and expose `isReimporting` on the public report while an attempt is active.
 5. [ ] Regenerate the client through the Taskfile and prove contract parity.
 
 Required context: `requirements.md` CRF-2; `RecipeController`; `RecipeImportService`; `RecipeImportReportService`; `specs/openapi.yaml` import-report and import routes.
 
-Escalate if: the orchestrator cannot preserve report/workflow consistency without a new durable outbox or schema change.
+Escalate if: the deployment requires multiple active API replicas, or the orchestrator cannot preserve the specified saved-report-on-launch-failure behavior without a new durable outbox or schema change.
 
 Verification: `task test:api`; `task agent:reconcile`; `task agent:drift`.
 
@@ -48,12 +48,12 @@ Verification: `task test:api`.
 
 Model label: `MEDIUM_REQUIRED` — adapts the generated client and existing sheet/detail state without changing report controls or introducing a new choice.
 
-1. [ ] Write failing component/detail tests: gear has no reimport action; every Save submits its draft to `POST /import-report`; only responses with `reimportStarted=true` begin ID-addressable polling; active reports disable Save and resolve.
+1. [ ] Write failing component/detail tests: gear has no reimport action; every Save submits its draft to `POST /import-report`; only recipe-detail responses with `reimportStarted=true` begin ID-addressable polling; active reports disable Save and resolve; failed or paused polling refreshes detail, unlocks controls, and shows actionable failure copy. Add Cook Mode coverage for consuming the same response, closing its sheet, and deferring durable outcome presentation to recipe detail.
 2. [ ] Remove `onReimport`, the refresh menu row, and reimport-only translation/test expectations from `ActionGearMenu`.
-3. [ ] In `RecipeDetailSheet` / `RecipeImportIssueSheet`, consume the command response, poll only `GET /api/recipe-imports/{importId}`, honor persisted `isReimporting`, and show the durable `Reimported — review changes` outcome after successful completion.
+3. [ ] In `RecipeDetailSheet` / `RecipeImportIssueSheet`, consume the command response, poll only `GET /api/recipe-imports/{importId}`, honor persisted `isReimporting`, and render the existing `readyToReview` state as the durable `Reimported — review changes` outcome on recipe detail and cards after successful completion without renaming the status. Preserve the review filter label `Ready to review`. In `CooksMode`, consume the same response and close the sheet without a second polling loop; later recipe detail owns durable state.
 4. [ ] Preserve focus, Escape, draft retention, manual resolution, 44px targets, and the current three-column reason layout.
 
-Required context: `requirements.md` CRF-1/CRF-2; `ActionGearMenu`; `RecipeImportIssueSheet`; `RecipeDetailSheet`; generated recipe client.
+Required context: `requirements.md` CRF-1/CRF-2; `ActionGearMenu`; `RecipeImportIssueSheet`; `RecipeDetailSheet`; `CooksMode`; generated recipe client.
 
 Forbidden: a new confirmation step, two visible completion buttons, auto-reimport based on a blank note, or changing duplicate eligibility.
 
@@ -66,7 +66,7 @@ Verification: `task test:unit`; `task agent:test:impact`.
 Model label: `SMALL_SAFE` — bounded mock/test extension after the contract and PWA client are stable.
 
 1. [ ] Extend the stateful PWA mock for `POST /import-report`, preserving report reasons/note and returning `reimportStarted` plus an import ID only for eligible drafts.
-2. [ ] Add E2E coverage for content-with-note start, active duplicate-save reuse, updated-note repeat start, unchanged-note manual review, blank-note manual review, duplicate/mixed manual review, active-control locking across reload, absent gear reimport, workflow-ID polling, and the durable successful-reimport outcome.
+2. [ ] Add E2E coverage for four representative parent-visible journeys: (a) eligible content-with-note start, ID-addressable polling, absent gear re-import, and durable successful outcome; (b) one manual-only save covering duplicate or blank-note behavior; (c) active-control locking across reload; and (d) failed/paused unlock after authoritative refresh. Keep the complete eligibility, reuse, and unchanged-feedback matrix in CRF-01 API/service tests.
 3. [ ] Confirm existing status-polling mocks remain deterministic.
 
 Required context: `requirements.md` CRF-2; `pwa/e2e/mock-api.ts`; existing recipe-report E2E flows.

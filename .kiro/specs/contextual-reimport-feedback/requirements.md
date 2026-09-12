@@ -20,11 +20,11 @@ Make **Report issue** the only repair entry point in recipe detail. A parent sta
 8. Reopening a report or saving feedback identical to the latest contextual-attempt snapshot SHALL save/review only and SHALL NOT start another workflow.
 9. The extraction agent uses the snapshot to focus its review. The original photos/HTML and output schema remain authoritative; user feedback cannot instruct the agent to invent facts or change its operating rules.
 10. Existing report statuses and duplicate lifecycle semantics remain unchanged. A re-import started under this feature follows the existing matching-workflow completion path.
-11. A completed contextual re-import SHALL have a durable parent-facing outcome that explicitly communicates re-import completion and review is required; `Ready to review` alone is insufficient wording.
-12. A contextual re-import SHALL be polled by its returned workflow `importId`, never by the latest workflow for a recipe.
-13. Snapshot comparison, report persistence, workflow creation, and attempt marking SHALL execute under one server-side exclusive per-recipe operation.
+11. A completed contextual re-import SHALL retain the existing durable `readyToReview` status and render it to parents as `Reimported — review changes` on recipe detail and recipe cards. The review filter remains the compact category label `Ready to review`. No database, OpenAPI enum, or lifecycle-status rename is required.
+12. When the PWA polls a contextual re-import, it SHALL use its returned workflow `importId`, never the latest workflow for a recipe. Recipe detail owns that polling and durable outcome presentation; Cook Mode does not start a second polling loop.
+13. In the single-active-API-process deployment, snapshot comparison, report persistence, workflow creation, and attempt marking SHALL execute under the existing server-side exclusive per-recipe operation. This feature does not add cross-replica locking, an outbox, or durable idempotency.
 14. A repeated submission of the same normalized feedback while its matching contextual workflow is pending or processing SHALL return that existing workflow ID and SHALL NOT create another workflow.
-15. While a contextual re-import is active, the report sheet SHALL disable Save and Mark as resolved and communicate that re-import is in progress. Editing, resolving, and a subsequent attempt resume only after the workflow reaches a terminal state.
+15. While a contextual re-import is active, the report sheet SHALL disable Save and Mark as resolved and communicate that re-import is in progress. Editing, resolving, and a subsequent attempt resume only after the workflow reaches a terminal state. For this parent flow, `completed`, `failed`, and `paused` are terminal; a failed or paused workflow clears `isReimporting` rather than leaving the sheet locked.
 
 ## Acceptance criteria
 
@@ -44,8 +44,8 @@ Make **Report issue** the only repair entry point in recipe detail. A parent sta
 6. A first eligible content-only report SHALL start a contextual re-import because no previous contextual-attempt snapshot exists.
 7. After a contextual attempt, changing the normalized content reasons and/or trimmed note SHALL start exactly one further contextual re-import.
 8. Saving the same normalized content reasons and trimmed note as the latest contextual-attempt snapshot SHALL save/review only and SHALL NOT start another workflow.
-9. If workflow start fails, the saved report, reasons, and note SHALL remain available for review; the UI SHALL show an actionable error and SHALL NOT claim that re-import started.
-10. The command response SHALL state whether re-import started and include `importId` only when it did.
+9. If workflow start fails, the saved report, reasons, and note SHALL remain available for review; the UI SHALL show an actionable error and SHALL NOT claim that re-import started. When a started contextual workflow reaches `failed` or `paused`, its report SHALL no longer be re-importing, the UI SHALL refresh and unlock, and a parent may amend feedback before another attempt. Identical feedback remains review-only and never retries automatically.
+10. The command response SHALL expose `reimportStarted` to mean that a contextual re-import is active for this submission, whether it was newly created or safely reused. It SHALL include `importId` exactly when `reimportStarted=true`.
 11. A duplicate concurrent submission of an active feedback snapshot SHALL return `reimportStarted=true` and the already-created `importId`; it SHALL NOT create a second workflow.
 
 ### CRF-3 — Immutable agent feedback
@@ -60,14 +60,14 @@ Make **Report issue** the only repair entry point in recipe detail. A parent sta
 ### CRF-4 — Workflow identity and active interaction safety
 
 1. The API SHALL expose `GET /api/recipe-imports/{importId}` for a contextual workflow's status. It SHALL validate that the workflow belongs to a recipe accessible to the current family context.
-2. `GET /api/recipes/{id}/import` SHALL be retired with the user-facing POST import trigger; the PWA SHALL use the ID-addressable status route exclusively.
+2. `GET /api/recipes/{id}/import` SHALL be retired with the user-facing POST import trigger; when the PWA polls, it SHALL use the ID-addressable status route exclusively.
 3. The public active-report representation SHALL expose an `isReimporting` boolean so a newly loaded recipe detail can lock the report controls while its workflow is active without changing existing report-filter status values.
-4. A Save or resolve attempt while `isReimporting=true` SHALL be unavailable in the UI and rejected by the server without mutating the report, except that an in-flight duplicate submission of the same feedback snapshot SHALL follow CRF-2.11 and return the existing workflow ID.
+4. A Save or resolve attempt while `isReimporting=true` SHALL be unavailable in the UI and rejected by the server without mutating the report, except that an in-flight duplicate submission of the same feedback snapshot SHALL follow CRF-2.11 and return the existing workflow ID. On a failed or paused workflow, the server-side lifecycle transition SHALL make `isReimporting=false` before the refreshed detail is returned to the parent.
 
 ## Contracts & routes
 
 - Replace `PUT /api/recipes/{id}/import-report` with `POST /api/recipes/{id}/import-report` as the sole report-submission command. It requires the existing `RecipeImportIssueRequest` body and family-member header.
-- The command always persists the report, then applies CRF-2 server-side. It returns `RecipeImportReportSubmissionResponseDto`: updated recipe detail, `reimportStarted`, and optional `importId`.
+- The command applies CRF-2 server-side and returns `RecipeImportReportSubmissionResponseDto`: updated recipe detail, `reimportStarted` when a newly created or reused contextual re-import is active, and its `importId` only in that case.
 - Retire user-facing `POST /api/recipes/{id}/import`; there is no compatibility path or unfocused manual re-import.
 - Add `GET /api/recipe-imports/{importId}` for workflow-specific polling; retire `GET /api/recipes/{id}/import` with the old trigger.
 - Existing report DELETE and generated-client parity remain in scope for regression only.
@@ -84,3 +84,4 @@ Make **Report issue** the only repair entry point in recipe detail. A parent sta
 - 2026-08-30: Remove direct gear-menu re-import; Report issue is the contextual entry point.
 - 2026-08-30: Save auto-reimports only content-only reports with a non-blank note.
 - 2026-08-30: Duplicate is always manual review, including mixed reports.
+- Verification allocation: API/service tests cover the complete eligibility, snapshot, reuse, and failure matrix; E2E covers the representative parent-visible journeys only.

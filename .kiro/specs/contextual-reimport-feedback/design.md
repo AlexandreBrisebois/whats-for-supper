@@ -31,16 +31,16 @@ Replace `PUT /api/recipes/{id}/import-report` with `POST /api/recipes/{id}/impor
 The controller delegates to one application operation that:
 
 1. normalizes and validates the draft through the report-service rules;
-2. persists the report for every valid draft;
+2. rejects a changed draft or resolve request while a contextual workflow is active; otherwise persists the report;
 3. verifies the deterministic re-import predicate and that the feedback is a new revision;
 4. when eligible, captures the prior snapshot before mutation, compares it, starts or reuses the matching workflow, and marks the matching attempt;
-5. returns updated recipe detail, `reimportStarted`, and an `importId` only for a started workflow.
+5. returns updated recipe detail, `reimportStarted`, and an `importId` when a newly created or reused contextual workflow is active for the submission.
 
-The PWA always uses this one `POST /import-report` command. A server-side per-recipe exclusive operation must capture the prior contextual-workflow snapshot *before* a material report update can clear its workflow pointer, then compare, persist, create/reuse the workflow, and mark the attempt. It must not compose report persistence and workflow creation from browser-side calls: that split can queue an attempt using stale or mismatched feedback. If persistence and workflow creation cannot share the existing transaction boundary, preserve the report and return a clear failure without creating/marking an attempt; do not silently fall back to an unfocused import.
+The PWA always uses this one `POST /import-report` command. In the single-active-API-process deployment, the application extends the existing in-process per-recipe lock across capture of the prior contextual-workflow snapshot, comparison, persistence, workflow creation/reuse, and attempt marking. Capture must occur *before* a material report update can clear its workflow pointer. It must not compose report persistence and workflow creation from browser-side calls: that split can queue an attempt using stale or mismatched feedback. If workflow creation or attempt marking fails, preserve the report and return a clear failure without creating/marking an attempt; do not silently fall back to an unfocused import. Cross-replica locking, an outbox, and durable idempotency are explicitly out of scope; adding API replicas requires a new concurrency design.
 
 `POST /api/recipes/{id}/import` and `GET /api/recipes/{id}/import` are intentionally retired for parent-facing use. `GET /api/recipe-imports/{importId}` is the only polling route and must authorize the workflow through its recipe/family relationship.
 
-For an eligible content-only draft, the operation compares its normalized content reasons and trimmed note with the snapshot on the report's most recent contextual workflow. If no snapshot exists, or the values differ, it starts one contextual attempt. If the values match a terminal workflow, it persists/reviews only. If they match a pending or processing workflow, it returns that existing workflow ID. This prevents re-import loops and duplicate submissions while allowing a parent to add more detail after review.
+For an eligible content-only draft, the operation compares its normalized content reasons and trimmed note with the snapshot on the report's most recent contextual workflow. If no snapshot exists, or the values differ, it starts one contextual attempt. If the values match a terminal workflow, it persists/reviews only. If they match a pending or processing workflow, it returns that existing workflow ID. While an active workflow has different feedback, it rejects the request without mutation. This prevents re-import loops and keeps the visible report aligned with the immutable feedback being processed.
 
 ## Workflow snapshot
 
@@ -66,13 +66,15 @@ The block states that:
 `RecipeImportIssueSheet` keeps the existing controls and one label, `Save`.
 
 - The sheet always calls `POST /import-report` with the report draft.
-- A response with `reimportStarted=true` and `importId` starts existing polling and shows `Reimport started...`.
+- A response with `reimportStarted=true` and `importId` starts or resumes ID-addressable polling and shows neutral `Reimporting recipe…` copy. The response does not need another public field to distinguish a newly created workflow from a reused one.
 - A response with `reimportStarted=false` closes as today and shows the manual-review confirmation.
 - The UI does not decide eligibility; it follows the command response. API validation and re-import policy remain authoritative.
 
-While `importIssue.isReimporting` is true, Save and Mark as resolved are disabled with `Reimporting recipe…` status copy. The state survives a refresh because it is delivered with recipe detail. The PWA polls only `GET /api/recipe-imports/{importId}` and re-enables controls when its authoritative detail refresh reports a terminal state.
+While `importIssue.isReimporting` is true, Save and Mark as resolved are disabled with `Reimporting recipe…` status copy. The state survives a refresh because it is delivered with recipe detail. The PWA polls only `GET /api/recipe-imports/{importId}` and re-enables controls when its authoritative detail refresh reports a terminal state. For `failed` or `paused`, it shows an actionable failure message, preserves the report for review, and allows a later changed-feedback submission; it never auto-retries an identical snapshot.
 
-When polling reaches successful completion, refetch authoritative detail and show the persistent outcome as `Reimported — review changes`, backed by the existing `readyToReview` report state. It remains visible on recipe detail and cards until manual resolution.
+`CooksMode` uses the same submission command and receives the authoritative recipe from its response. It updates its local recipe state, closes the issue sheet, and does not implement an independent polling loop or durable completion banner. On a later recipe-detail load, the persisted `isReimporting` or terminal review state supplies the lock or outcome. If the sheet is reopened while active, it uses the same disabled controls and status copy as recipe detail.
+
+When polling reaches successful completion, refetch authoritative detail and render the existing durable `readyToReview` report state as `Reimported — review changes` on recipe detail and cards. Keep the review filter's compact category label as `Ready to review`. Do not rename the database or OpenAPI status. The parent-facing outcome remains visible on recipe detail and cards until manual resolution.
 
 ## Pre-mortem
 
@@ -81,12 +83,14 @@ When polling reaches successful completion, refetch authoritative detail and sho
 | A duplicate report accidentally starts re-import | Enforce the predicate server-side; test duplicate-only and mixed cases. |
 | Agent gets a later edited note | Store the snapshot in workflow parameters and test immutability. |
 | Reopening a completed report starts another import | Compare normalized feedback to the latest workflow snapshot; unchanged feedback is review-only. |
-| Double Save or two devices start duplicate repair | Hold the per-recipe operation across comparison and workflow start; reuse the active matching workflow ID. |
+| Double Save or two devices served by the active API process start duplicate repair | Hold the existing in-process per-recipe operation across comparison and workflow start; reuse the active matching workflow ID. |
 | Polling observes another recipe workflow | Poll the returned workflow ID, not the recipe's latest workflow. |
-| Mom changes or resolves an in-flight report | Persist active state and lock controls until the workflow is terminal. |
+| Mom changes or resolves an in-flight report | Reject the changed request server-side and lock controls until the workflow is terminal. |
+| A failed or paused workflow leaves the sheet locked | Existing failure handling marks the report non-active; poll then refetch authoritative detail, show failure copy, and re-enable controls. |
 | A note becomes prompt injection | Delimit it as untrusted focus in the dynamic user message; retain source/schema authority. |
 | Photo and URL imports diverge | Forward the same optional parameters in both YAML workflows and test both. |
 | PWA calls two routes and loses context | Use one report-submission command; no client-side save-then-trigger chain. |
+| Cook Mode and recipe detail diverge | Cook Mode consumes the same submission response but defers polling and durable outcome presentation to recipe detail. |
 | Old direct re-import bypasses feedback rules | Retire user-facing POST `/import`; only report submission can start a contextual workflow. |
 | Workflow launch fails after a valid report | Keep the report for manual review and surface failure; never mark a nonexistent attempt. |
 
@@ -95,7 +99,7 @@ When polling reaches successful completion, refetch authoritative detail and sho
 | Layer | Evidence |
 |---|---|
 | Contract/client | OpenAPI response generation and drift gate include the changed report-submission command. |
-| API | Integration/service tests cover eligibility, report persistence, workflow snapshot, and failure retention. |
+| API | Integration/service tests cover the complete eligibility, report persistence, snapshot comparison/reuse, active-request rejection, and failure-retention matrix. |
 | Workflow/agent | Unit tests capture `ExtractRecipe` messages for image and URL paths, normal imports, and snapshot immutability. |
 | PWA | Component/detail tests prove no gear reimport, one Save command, response-driven polling, and save/error behavior. |
-| Digital twin | Stateful mock and E2E cover the command response and manual-only branches. |
+| Digital twin | Stateful mock and E2E cover four representative parent-visible journeys: eligible start/poll, manual-only save, active lock across reload, and failed/paused unlock. |
