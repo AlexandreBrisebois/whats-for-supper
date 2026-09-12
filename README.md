@@ -5,8 +5,8 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BUSL--1.1-CD5D45?style=flat-square" alt="Business Source License 1.1" /></a>
   <img src="https://img.shields.io/badge/.NET-11_Preview-512BD4?style=flat-square&logo=dotnet" alt=".NET 11 Preview" />
-  <img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js" alt="Next.js 16" />
-  <img src="https://img.shields.io/badge/PostgreSQL-17-336791?style=flat-square&logo=postgresql" alt="PostgreSQL 17" />
+  <img src="https://img.shields.io/badge/Next.js-16.3-black?style=flat-square&logo=next.js" alt="Next.js 16.3" />
+  <img src="https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql" alt="PostgreSQL 18" />
   <img src="https://img.shields.io/badge/AI-Gemini_Flash-4285F4?style=flat-square&logo=google" alt="Gemini Flash" />
 </p>
 
@@ -66,12 +66,12 @@ graph TD
     User([Browser / Mobile]) --> Traefik[Traefik :80/443]
 
     subgraph "Application Layer"
-        Traefik --> PWA[PWA — Next.js 16]
+        Traefik --> PWA[PWA — Next.js 16.3]
         Traefik --> API[API — .NET 11 Preview]
     end
 
     subgraph "Data Layer"
-        API --> DB[(PostgreSQL 17)]
+        API --> DB[(PostgreSQL 18)]
         API --> Storage[Local Storage / NAS mount]
     end
 
@@ -85,9 +85,9 @@ graph TD
 
 | Service | Technology | Role |
 |---------|------------|------|
-| **PWA** | Next.js 16 (App Router), TypeScript | Mobile-first frontend with real-time SSE sync |
+| **PWA** | Next.js 16.3 (App Router), React 19, TypeScript, Tailwind CSS 4 | Mobile-first frontend with real-time SSE sync |
 | **API** | ASP.NET Core 11 Preview, C# 14, EF Core 11 Preview | Backend with agentic workflow orchestration |
-| **DB** | PostgreSQL 17 | Structured data, JSONB recipe profiles |
+| **DB** | PostgreSQL 18 | Structured data, JSONB recipe profiles |
 | **Proxy** | Traefik | Unified routing, SSE header management |
 | **AI** | Gemini Flash | Recipe extraction, synthesis, dietary classification |
 
@@ -155,7 +155,7 @@ For a full local dev walkthrough, see [`LOCAL_DEV_LOOP.md`](LOCAL_DEV_LOOP.md).
 
 | Capability | Status | Notes |
 |------------|--------|-------|
-| Core architecture (Next.js 16 + .NET 11 Preview + Traefik) | ✅ Complete | |
+| Core architecture (Next.js 16.3 + .NET 11 Preview + Traefik) | ✅ Complete | |
 | Hearth auth (HMAC, no accounts) | ✅ Complete | |
 | Weekly planner with drag-and-drop | ✅ Complete | |
 | Real-time SSE sync (family-wide, no polling) | ✅ Complete | |

@@ -66,7 +66,7 @@ task
 | `task dev:api` | Start API with hot reload |
 | `task dev:pwa` | Start PWA with hot reload |
 | `task gate` | ⚡ Fast dev loop: catch what changed |
-| `task review` | 🔒 Pre-commit gate: full coverage |
+| `task review` | 🔒 Application validation (unit/API tests; no E2E) |
 | `task test` | Run all tests 🧪 |
 | `task test:smoke` | Shared local/CI Docker smoke checks; resets development containers and volumes |
 | `task gen:client` | 🔄 Regenerate Kiota API client from spec |
@@ -252,12 +252,12 @@ task test
 # Run API tests in watch mode
 task test:api:watch
 
-# Run PWA tests in watch mode
-task test:pwa:watch
+# Run PWA unit tests in watch mode
+task test:unit:watch
 
 # Run both in watch mode (separate terminals)
 task test:api:watch &
-task test:pwa:watch &
+task test:unit:watch &
 ```
 
 **When to use:** TDD, debugging test failures, before committing.
@@ -348,7 +348,7 @@ This project uses a **Dual-Config Strategy** to separate your ecosystem settings
 - `HEARTH_SECRET`: The family passphrase for onboarding. **Must be the same** in all active config files for authentication to work across services.
 - `NEXT_PUBLIC_API_BASE_URL`: 
   - Set to `http://api.wfs.localhost` (Docker) or `http://localhost:9001` (Local).
-  - Use `/backend` in production (Cloudflare) to leverage the Next.js rewrite proxy.
+  - Leave empty or unset in production behind Traefik (including Cloudflare Tunnel); Traefik routes same-origin `/api/*` requests directly to the API.
 
 **Initialize local overrides:**
 ```bash
@@ -436,7 +436,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '11.0.x'
+          include-prerelease: true
 
       - name: Restore dependencies
         run: cd api && dotnet restore
