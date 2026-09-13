@@ -96,6 +96,35 @@ describe('RecipeImportIssueSheet', () => {
     expect(screen.getByText('Choose Duplicate.')).toBeVisible();
   });
 
+  it('associates every active-state disabled control with the re-import explanation', () => {
+    render(
+      <RecipeImportIssueSheet
+        issue={existingIssue}
+        isReimporting
+        onClose={onClose}
+        onSave={onSave}
+        onResolve={onResolve}
+      />
+    );
+
+    const description = screen.getByText(
+      'Reimporting recipe… You can update this after it finishes.'
+    );
+    expect(description).toHaveAttribute('id', 'import-issue-reimporting-description');
+    for (const control of [
+      screen.getByTestId('import-issue-reason-ingredients'),
+      screen.getByTestId('import-issue-reason-steps'),
+      screen.getByTestId('import-issue-reason-duplicate'),
+      screen.getByTestId('import-issue-note-disclosure'),
+      screen.getByTestId('import-issue-note'),
+      screen.getByTestId('import-issue-save'),
+      screen.getByTestId('import-issue-resolve'),
+    ]) {
+      expect(control).toBeDisabled();
+      expect(control).toHaveAttribute('aria-describedby', 'import-issue-reimporting-description');
+    }
+  });
+
   it('supports one or both reasons and submits a trimmed optional note', async () => {
     onSave.mockResolvedValue(undefined);
     render(

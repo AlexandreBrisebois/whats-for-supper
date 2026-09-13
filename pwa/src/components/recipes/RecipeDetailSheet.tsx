@@ -513,6 +513,11 @@ export function RecipeDetailSheet({
             {recipe?.importIssue && (
               <div className="mt-2">
                 <RecipeImportIssueBadge status={recipe.importIssue.status} />
+                {recipe.importIssue.reimportFailureMessage && (
+                  <p role="status" className="mt-2 max-w-sm text-sm font-bold text-terracotta-700">
+                    {recipe.importIssue.reimportFailureMessage}
+                  </p>
+                )}
               </div>
             )}
           </div>

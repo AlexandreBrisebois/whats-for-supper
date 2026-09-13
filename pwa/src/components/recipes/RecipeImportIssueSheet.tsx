@@ -39,6 +39,7 @@ export function RecipeImportIssueSheet({
   onSave,
   onResolve,
 }: RecipeImportIssueSheetProps) {
+  const reimportingDescriptionId = 'import-issue-reimporting-description';
   const [reasons, setReasons] = useState<RecipeImportIssueReason[]>(() =>
     mergeReasons(issue, contextualReason)
   );
@@ -182,6 +183,7 @@ export function RecipeImportIssueSheet({
                 type="button"
                 data-testid={`import-issue-reason-${reason}`}
                 aria-pressed={selected}
+                aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
                 disabled={disabled || isReimporting}
                 onClick={() => toggleReason(reason)}
                 className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
@@ -216,7 +218,11 @@ export function RecipeImportIssueSheet({
           <p className="mt-3 text-sm text-charcoal/70">This will be saved for review.</p>
         )}
         {isReimporting && (
-          <p role="status" className="mt-3 text-sm font-bold text-charcoal/70">
+          <p
+            id={reimportingDescriptionId}
+            role="status"
+            className="mt-3 text-sm font-bold text-charcoal/70"
+          >
             Reimporting recipe… You can update this after it finishes.
           </p>
         )}
@@ -234,6 +240,7 @@ export function RecipeImportIssueSheet({
           type="button"
           data-testid="import-issue-note-disclosure"
           aria-expanded={noteOpen}
+          aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
           disabled={isReimporting}
           onClick={() => setNoteOpen((open) => !open)}
           className="mt-4 flex min-h-11 items-center gap-2 text-sm font-bold text-charcoal/75 disabled:cursor-not-allowed disabled:opacity-45"
@@ -254,6 +261,7 @@ export function RecipeImportIssueSheet({
               data-testid="import-issue-note"
               maxLength={500}
               value={note}
+              aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
               disabled={isReimporting}
               onChange={(event) => setNote(event.target.value)}
               className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-charcoal/15 bg-white px-4 py-3 text-charcoal outline-none transition focus:border-terracotta/30 focus:ring-4 focus:ring-terracotta/10"
@@ -276,6 +284,7 @@ export function RecipeImportIssueSheet({
         <button
           type="button"
           data-testid="import-issue-save"
+          aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
           disabled={reasons.length === 0 || busy || isReimporting}
           onClick={() => void save()}
           className="mt-5 min-h-12 w-full rounded-2xl bg-terracotta px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
@@ -288,6 +297,7 @@ export function RecipeImportIssueSheet({
             <button
               type="button"
               data-testid="import-issue-resolve"
+              aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
               disabled={busy || isReimporting}
               onClick={() => void resolve()}
               className={`min-h-11 rounded-2xl border px-5 font-bold text-sage-800 ${issue.status === 'readyToReview' ? 'border-sage-300 bg-sage-100' : 'border-sage-300 bg-transparent'}`}

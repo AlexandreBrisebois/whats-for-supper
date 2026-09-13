@@ -91,12 +91,14 @@ CRF-04 evidence (2026-09-12): baseline captured before edits at HEAD `3116d4015d
 
 Model label: `SMALL_SAFE` — no implementation; run repository-owned gates once all prior slices are complete.
 
-1. [ ] Verify the spec task checkboxes and decisions match implementation.
-2. [ ] Run `task agent:finish` exactly once and report passed versus blocked gates.
+1. [x] Verify the spec task checkboxes and decisions match implementation. Follow-up repair added the CRF-4.5 programmatic relationship: every active-state disabled reason, note-disclosure, note, Save, and resolve control now references the live `Reimporting recipe…` explanation.
+2. [x] Run `task agent:finish` exactly once and report passed versus blocked gates.
 
 Required context: this spec package and final worktree.
 
 Verification: `task agent:finish`.
+
+CRF-05 evidence (2026-09-12): reused the CRF-01 clean baseline at HEAD `3116d4015dc2dcf1253819950f279993cf09aa6d`. Before preparation, the staged 38-path delta was fully attributable to accepted CRF-01 through CRF-04 contract/API/client, workflow/agent, PWA, and mock/E2E slices; `git diff --cached --check` passed. `task agent:prepare` ran once and failed at `gen:client`: Kiota 1.35.0 exceeded its fixed 20-second timeout and was stopped without retry. It left no staged or unstaged path delta, so the scope review was unchanged. `task agent:finish` then ran exactly once. Its record tested identity was `77d695bab1eb38c1c806588568d3f15a811e9189db967228fdbfc08ebabdcfce`: documentation passed; lint failed with exit 201; format check, typecheck, unit, impact, API, contract review, live endpoint, and database checks were not run; the record marked content failed because the identity changed during verification. The later mutation was external commit `510c73d21b31eb65e2074d45055df681c776a07b`, which contains the same 38 CRF paths against the baseline and leaves the worktree clean. Follow-up repair added the parent-safe terminal failure message to recipe detail and the disabled-control description links. It passed `task test:unit` (505 passed, 4 skipped), focused `recipe-import-reporting.spec.ts` (9 passed), full `task test:e2e` (181 passed), `task format:check:pwa`, and `npm run typecheck`; the earlier API suite remains passed at 674 passed, 8 skipped. No preparation retry or second finish run was performed. This evidence edit is later documentation content and is not covered by the historical failed finish identity.
 
 ## Prompt manifest
 

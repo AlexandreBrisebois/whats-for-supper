@@ -174,6 +174,35 @@ describe('RecipeDetailSheet', () => {
     expect(mockAddToast).toHaveBeenCalledWith({ type: 'success', message: 'Marked as resolved' });
   });
 
+  it('keeps the parent-safe re-import failure message visible on recipe detail', async () => {
+    mockGetRecipe.mockResolvedValue({
+      ...(await mockGetRecipe()),
+      importIssue: {
+        reasons: ['steps'],
+        note: 'Check the final instructions.',
+        status: 'reported',
+        isReimporting: false,
+        reimportFailureMessage:
+          'We couldn’t re-import this recipe. Your report is saved. Add or change a detail, then Save to try again.',
+      },
+    });
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    expect(
+      await screen.findByText(
+        'We couldn’t re-import this recipe. Your report is saved. Add or change a detail, then Save to try again.'
+      )
+    ).toHaveAttribute('role', 'status');
+  });
+
   it('starts ID-addressable polling only from an accepted report Save response', async () => {
     const initialRecipe = await mockGetRecipe();
     const refreshedRecipe = {
