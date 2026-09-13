@@ -1,5 +1,9 @@
 # Tasks: Contextual Recipe Re-import Feedback
 
+> **Archived — historical reference only.** This task record is not an active work queue or current authority. See [archive guidance](../../../docs/archive/specs/README.md).
+
+> **Retired 2026-09-13 at owner request.** This package was archived without revalidation; checked and unchecked tasks, including their recorded validation outcomes, are preserved as historical evidence.
+
 ## Dependency graph
 
 ```mermaid

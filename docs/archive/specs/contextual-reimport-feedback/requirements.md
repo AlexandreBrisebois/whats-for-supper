@@ -1,5 +1,9 @@
 # Requirements: Contextual Recipe Re-import Feedback
 
+> **Archived — historical reference only.** This requirements record is not an active work queue or current authority. See [archive guidance](../../../docs/archive/specs/README.md).
+
+> **Retired 2026-09-13 at owner request.** This package was archived without revalidation; its recorded partial implementation and remaining acceptance work are preserved as historical evidence.
+
 ## Vision
 
 Make **Report issue** the only repair entry point in recipe detail. A parent states what is wrong once; the system saves the report and deterministically decides whether it must be reviewed manually or may start a focused re-import.

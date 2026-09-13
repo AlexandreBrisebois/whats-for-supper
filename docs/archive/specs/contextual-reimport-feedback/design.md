@@ -1,5 +1,9 @@
 # Design: Contextual Recipe Re-import Feedback
 
+> **Archived — historical reference only.** This design record is not an active work queue or current authority. See [archive guidance](../../../docs/archive/specs/README.md).
+
+> **Retired 2026-09-13 at owner request.** This package was archived without revalidation; its recorded partial implementation and remaining acceptance work are preserved as historical evidence.
+
 ## Intent trace
 
 ```mermaid
