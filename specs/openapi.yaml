@@ -73,7 +73,7 @@ components:
 
     RecipeImportIssueDto:
       type: object
-      required: [reasons, note, status]
+      required: [reasons, note, status, isReimporting, reimportFailureMessage]
       properties:
         reasons:
           type: array
@@ -85,6 +85,8 @@ components:
           maxLength: 500
         status:
           $ref: '#/components/schemas/RecipeImportIssueStatus'
+        isReimporting: { type: boolean }
+        reimportFailureMessage: { type: [string, 'null'] }
       examples:
         - reasons: [duplicate]
           note: 'This is the same recipe as our family lasagna.'
@@ -92,6 +94,16 @@ components:
         - reasons: [ingredients, duplicate]
           note: 'The ingredient list needs repair, and this recipe is also a duplicate.'
           status: reported
+
+    RecipeImportReportSubmissionResponseDto:
+      type: object
+      required: [updatedAt, recipe, reimportStarted, importId, reimportLaunchFailed]
+      properties:
+        updatedAt: { type: string, format: date-time }
+        recipe: { $ref: '#/components/schemas/RecipeDto' }
+        reimportStarted: { type: boolean }
+        importId: { type: [string, 'null'], format: uuid }
+        reimportLaunchFailed: { type: boolean }
 
     RecipeDto:
       type: object
@@ -1673,9 +1685,9 @@ paths:
         in: path
         required: true
         schema: { type: string, format: uuid }
-    put:
-      summary: Create or update the active import issue for a recipe
-      operationId: putRecipeImportReport
+    post:
+      summary: Submit a recipe import issue and start contextual re-import when eligible
+      operationId: postRecipeImportReport
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true
@@ -1695,10 +1707,10 @@ paths:
                   note: 'The quantities and final two steps need another pass.'
       responses:
         '200':
-          description: The authoritative recipe detail with its active import issue
+          description: The authoritative recipe detail and contextual re-import outcome
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+              schema: { $ref: '#/components/schemas/RecipeImportReportSubmissionResponseDto' }
               example:
                 updatedAt: '2026-08-11T16:00:00Z'
                 recipe:
@@ -2512,28 +2524,24 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ManagementTaskStatusResponse' }
 
-  /api/recipes/{id}/import:
+  /api/recipe-imports/{importId}:
     parameters:
-      - name: id
+      - name: importId
         in: path
         required: true
         schema: { type: string, format: uuid }
-    post:
-      summary: Trigger a manual recipe import
-      responses:
-        '202':
-          description: Accepted
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RecipeImportTriggerResponseDto' }
     get:
-      summary: Check status of a recipe import
+      summary: Get an authorized contextual recipe import by ID
+      operationId: getRecipeImportById
+      security: [{ FamilyMemberId: [] }]
       responses:
         '200':
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecipeImportStatusResponseDto' }
+              schema: { $ref: '#/components/schemas/WorkflowInstanceDetailDto' }
+        '404':
+          description: The import is absent or is not accessible to this family member
 
   /api/recipes/import-status:
     get:

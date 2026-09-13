@@ -146,12 +146,12 @@ describe('RecipeStackCard — rendering', () => {
     expect(screen.queryByLabelText(/Import issue status:/)).toBeNull();
   });
 
-  it('shows accessible Reported and Ready to review badges', () => {
+  it('shows accessible Reported and durable reimport-outcome badges', () => {
     const { rerender } = render(<RecipeStackCard {...defaultProps} importIssueStatus="reported" />);
     expect(screen.getByLabelText('Import issue status: Reported')).toBeTruthy();
 
     rerender(<RecipeStackCard {...defaultProps} importIssueStatus="readyToReview" />);
-    expect(screen.getByLabelText('Import issue status: Ready to review')).toBeTruthy();
+    expect(screen.getByLabelText('Import issue status: Reimported — check recipe')).toBeTruthy();
   });
 });
 

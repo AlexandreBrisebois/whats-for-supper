@@ -5,11 +5,12 @@ import {
   RecipeDto_sourceTypeObject,
   RecipeImportIssueReasonObject,
   RecipeImportIssueStatusObject,
+  WorkflowInstanceDetailDto_statusObject,
   type RecipeDto,
   type RecipeImportIssueDto,
 } from '../src/lib/api/generated/models/index';
 
-type ImportTerminalStatus = 'completed' | 'failed';
+type ImportTerminalStatus = 'completed' | 'failed' | 'paused';
 
 interface RecipeHarnessState {
   recipe: RecipeDto;
@@ -95,20 +96,41 @@ async function installRecipeHarness(
     const method = request.method();
 
     if (pathname.endsWith('/import-report')) {
-      if (method === 'PUT') {
+      if (method === 'POST') {
         const body = request.postDataJSON() as {
           reasons: RecipeImportIssueDto['reasons'];
           note?: string | null;
         };
         state.lastReportBody = body;
+        const note = body.note?.trim() || null;
+        const contentOnly =
+          (body.reasons?.length ?? 0) > 0 &&
+          body.reasons?.every(
+            (reason) =>
+              reason === RecipeImportIssueReasonObject.Ingredients ||
+              reason === RecipeImportIssueReasonObject.Steps
+          );
+        const reimportStarted = state.recipe.canReimport === true && contentOnly && note !== null;
         state.recipe = {
           ...state.recipe,
           importIssue: {
             reasons: body.reasons,
-            note: body.note ?? null,
+            note,
+            isReimporting: reimportStarted,
             status: RecipeImportIssueStatusObject.Reported,
           },
         };
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            recipe: state.recipe,
+            reimportStarted,
+            ...(reimportStarted ? { importId: MOCK_IDS.PHOTO_NEW } : {}),
+            reimportLaunchFailed: false,
+          }),
+        });
+        return;
       } else if (method === 'DELETE') {
         state.recipe = { ...state.recipe, importIssue: null };
       }
@@ -117,45 +139,6 @@ async function installRecipeHarness(
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ recipe: state.recipe }),
-      });
-      return;
-    }
-
-    if (pathname.endsWith('/import')) {
-      if (method === 'POST') {
-        await route.fulfill({
-          status: 202,
-          contentType: 'application/json',
-          body: JSON.stringify({ importId: MOCK_IDS.PHOTO_NEW }),
-        });
-        return;
-      }
-
-      state.importStatusReads += 1;
-      if (state.terminalStatus === 'completed' && state.recipe.importIssue) {
-        const hasDuplicate = state.recipe.importIssue.reasons?.includes(
-          RecipeImportIssueReasonObject.Duplicate
-        );
-        state.recipe = {
-          ...state.recipe,
-          importIssue: {
-            ...state.recipe.importIssue,
-            status: hasDuplicate
-              ? RecipeImportIssueStatusObject.Reported
-              : RecipeImportIssueStatusObject.ReadyToReview,
-          },
-        };
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          status: state.terminalStatus,
-          errorMessage:
-            state.terminalStatus === 'failed'
-              ? 'SQL timeout in CompleteRecipeImportReportProcessor at internal-host:5432'
-              : null,
-        }),
       });
       return;
     }
@@ -172,6 +155,52 @@ async function installRecipeHarness(
     await route.fallback();
   });
 
+  await page.route(`**/api/recipe-imports/${MOCK_IDS.PHOTO_NEW}`, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+
+    state.importStatusReads += 1;
+    const terminal = state.importStatusReads > 1;
+    if (terminal && state.recipe.importIssue) {
+      const failedOrPaused = state.terminalStatus === 'failed' || state.terminalStatus === 'paused';
+      state.recipe = {
+        ...state.recipe,
+        importIssue: {
+          ...state.recipe.importIssue,
+          isReimporting: false,
+          status: failedOrPaused
+            ? RecipeImportIssueStatusObject.Reported
+            : RecipeImportIssueStatusObject.ReadyToReview,
+          reimportFailureMessage: failedOrPaused
+            ? 'We couldn’t re-import this recipe. Your report is saved. Add or change a detail, then Save to try again.'
+            : null,
+        },
+      };
+    }
+
+    const status = terminal
+      ? state.terminalStatus === 'completed'
+        ? WorkflowInstanceDetailDto_statusObject.Completed
+        : state.terminalStatus === 'failed'
+          ? WorkflowInstanceDetailDto_statusObject.Failed
+          : WorkflowInstanceDetailDto_statusObject.Paused
+      : WorkflowInstanceDetailDto_statusObject.Processing;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: MOCK_IDS.PHOTO_NEW,
+        workflowId: 'recipe-import',
+        status,
+        tasks: [],
+        createdAt: '2026-05-04T12:00:00.000Z',
+        updatedAt: '2026-05-04T12:00:00.000Z',
+      }),
+    });
+  });
+
   return state;
 }
 
@@ -183,95 +212,106 @@ async function openRecipeDetail(page: Page, recipeId = MOCK_IDS.RECIPE_LASAGNA) 
 }
 
 test.describe('Recipe import issue reporting', () => {
-  test('mixed-report re-import stays Reported until the duplicate is manually resolved', async ({
+  test('starts eligible content feedback, polls its returned ID, and keeps the durable outcome', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
     const state = await installRecipeHarness(page);
     await openRecipeDetail(page);
+
     await page.getByTestId('action-gear-menu').click();
+    await expect(page.getByTestId('action-reimport-recipe')).toHaveCount(0);
     await page.getByTestId('action-report-import-issue').click();
     await page.getByTestId('import-issue-reason-ingredients').click();
-    await page.getByTestId('import-issue-reason-duplicate').click();
-    for (const reason of ['ingredients', 'steps', 'duplicate']) {
-      const target = await page.getByTestId(`import-issue-reason-${reason}`).boundingBox();
-      expect(target?.height).toBeGreaterThanOrEqual(44);
-      expect(target?.width).toBeGreaterThanOrEqual(44);
-    }
+    await page.getByTestId('import-issue-note').fill('Please check every quantity.');
     await page.getByTestId('import-issue-save').click();
 
-    const reasons = [
-      RecipeImportIssueReasonObject.Ingredients,
-      RecipeImportIssueReasonObject.Duplicate,
-    ];
-    expect(state.recipe.importIssue?.reasons).toEqual(reasons);
-    await page.getByTestId('action-gear-menu').click();
-    await page.getByTestId('action-reimport-recipe').click();
+    await expect
+      .poll(() => state.lastReportBody)
+      .toEqual({
+        reasons: [RecipeImportIssueReasonObject.Ingredients],
+        note: 'Please check every quantity.',
+      });
     await expect.poll(() => state.importStatusReads).toBeGreaterThan(0);
-    // Reload the detail from the authoritative mock after completion so the
-    // assertion cannot pass just because the pre-import badge was still shown.
+    await expect(page.getByTestId('recipe-import-issue-status-readyToReview')).toBeVisible();
+
     await openRecipeDetail(page);
     const detail = page.getByTestId('recipe-detail-sheet');
-    await expect(detail.getByTestId('recipe-import-issue-status-reported')).toBeVisible();
-    await expect(detail.getByTestId('recipe-import-issue-status-readyToReview')).toHaveCount(0);
+    await expect(detail.getByTestId('recipe-import-issue-status-readyToReview')).toBeVisible();
     await page.getByTestId('action-gear-menu').click();
-    await page.getByTestId('action-report-import-issue').click();
-    await expect(page.getByTestId('import-issue-reason-ingredients')).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
-    await expect(page.getByTestId('import-issue-reason-duplicate')).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
-    await page.getByTestId('import-issue-resolve').click();
-    await expect(detail.getByTestId('recipe-import-issue-status-reported')).toHaveCount(0);
-    expect(state.recipe.importIssue).toBeNull();
+    await expect(page.getByTestId('action-reimport-recipe')).toHaveCount(0);
   });
 
-  test('reports, updates, re-imports to Ready to review, and resolves one active issue', async ({
-    page,
-  }) => {
+  test('saves duplicate feedback for manual review without polling', async ({ page }) => {
     const state = await installRecipeHarness(page);
     await openRecipeDetail(page);
 
     await page.getByTestId('action-gear-menu').click();
     await expect(page.getByTestId('action-report-import-issue')).toHaveText('Report issue');
     await page.getByTestId('action-report-import-issue').click();
-    await page.getByTestId('import-issue-reason-ingredients').click();
+    await page.getByTestId('import-issue-reason-duplicate').click();
     await page.getByTestId('import-issue-save').click();
 
     await expect(page.getByTestId('recipe-import-issue-status-reported')).toBeVisible();
-    expect(state.recipe.importIssue?.reasons).toEqual([RecipeImportIssueReasonObject.Ingredients]);
+    await expect
+      .poll(() => state.lastReportBody)
+      .toEqual({
+        reasons: [RecipeImportIssueReasonObject.Duplicate],
+        note: null,
+      });
+    expect(state.importStatusReads).toBe(0);
 
     await page.getByTestId('action-gear-menu').click();
-    await expect(page.getByTestId('action-report-import-issue')).toHaveText('Review issue');
-    await page.getByTestId('action-report-import-issue').click();
-    await page.getByTestId('import-issue-reason-steps').click();
-    await page.getByTestId('import-issue-note-disclosure').click();
-    await page
-      .getByTestId('import-issue-note')
-      .fill('The quantities and final two steps need another pass.');
-    await page.getByTestId('import-issue-save').click();
-
-    expect(state.lastReportBody).toEqual({
-      reasons: [RecipeImportIssueReasonObject.Ingredients, RecipeImportIssueReasonObject.Steps],
-      note: 'The quantities and final two steps need another pass.',
-    });
-
-    await page.getByTestId('action-gear-menu').click();
-    await page.getByTestId('action-reimport-recipe').click();
-    await expect.poll(() => state.importStatusReads).toBeGreaterThan(0);
-    await expect(page.getByTestId('recipe-import-issue-status-readyToReview')).toBeVisible();
-
-    await page.getByTestId('action-gear-menu').click();
-    await page.getByTestId('action-report-import-issue').click();
-    await page.getByTestId('import-issue-resolve').click();
-
-    await expect(page.getByTestId('toast').filter({ hasText: 'Marked as resolved' })).toBeVisible();
-    await expect(page.getByTestId('recipe-import-issue-status-readyToReview')).toHaveCount(0);
-    expect(state.recipe.importIssue).toBeNull();
+    await expect(page.getByTestId('action-reimport-recipe')).toHaveCount(0);
   });
+
+  test('keeps the active report read-only across a reload', async ({ page }) => {
+    await installRecipeHarness(page, {
+      importIssue: {
+        reasons: [RecipeImportIssueReasonObject.Steps],
+        note: 'Check the final instructions.',
+        isReimporting: true,
+        status: RecipeImportIssueStatusObject.Reported,
+      },
+    });
+    await openRecipeDetail(page);
+    await page.getByTestId('action-gear-menu').click();
+    await page.getByTestId('action-report-import-issue').click();
+    await expect(page.getByTestId('import-issue-save')).toBeDisabled();
+    await expect(page.getByTestId('import-issue-resolve')).toBeDisabled();
+
+    await page.reload();
+    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_LASAGNA}`).click();
+    await page.getByTestId('action-gear-menu').click();
+    await page.getByTestId('action-report-import-issue').click();
+    await expect(page.getByTestId('import-issue-save')).toBeDisabled();
+    await expect(page.getByTestId('import-issue-resolve')).toBeDisabled();
+  });
+
+  for (const terminalStatus of ['failed', 'paused'] as const) {
+    test(`refreshes ${terminalStatus} polling results, shows recovery, and unlocks controls`, async ({
+      page,
+    }) => {
+      const state = await installRecipeHarness(page, {}, terminalStatus);
+      await openRecipeDetail(page);
+      await page.getByTestId('action-gear-menu').click();
+      await page.getByTestId('action-report-import-issue').click();
+      await page.getByTestId('import-issue-reason-steps').click();
+      await page.getByTestId('import-issue-note').fill('Please check the temperatures.');
+      await page.getByTestId('import-issue-save').click();
+
+      await expect.poll(() => state.importStatusReads).toBeGreaterThan(0);
+      await expect(
+        page.getByText(
+          'We couldn’t re-import this recipe. Your report is saved. Add or change a detail, then Save to try again.'
+        )
+      ).toBeVisible();
+      await page.getByTestId('action-gear-menu').click();
+      await page.getByTestId('action-report-import-issue').click();
+      await expect(page.getByTestId('import-issue-save')).toBeEnabled();
+      await expect(page.getByTestId('import-issue-resolve')).toBeEnabled();
+    });
+  }
 
   test('merges Cook Mode step reporting without losing the current step or checked ingredients', async ({
     page,
@@ -315,35 +355,6 @@ test.describe('Recipe import issue reporting', () => {
       reasons: [RecipeImportIssueReasonObject.Ingredients, RecipeImportIssueReasonObject.Steps],
       note: 'Keep this note.',
     });
-  });
-
-  test('keeps a failed re-import publicly Reported and never renders diagnostics', async ({
-    page,
-  }) => {
-    const state = await installRecipeHarness(
-      page,
-      {
-        importIssue: {
-          reasons: [RecipeImportIssueReasonObject.Steps],
-          note: null,
-          status: RecipeImportIssueStatusObject.Reported,
-        },
-      },
-      'failed'
-    );
-    await openRecipeDetail(page);
-
-    await page.getByTestId('action-gear-menu').click();
-    await page.getByTestId('action-reimport-recipe').click();
-    await expect.poll(() => state.importStatusReads).toBeGreaterThan(0);
-
-    await expect(
-      page.getByTestId('recipe-detail-sheet').getByTestId('recipe-import-issue-status-reported')
-    ).toBeVisible();
-    const publicDetail = page.getByTestId('recipe-detail-sheet');
-    await expect(publicDetail).not.toContainText('SQL timeout');
-    await expect(publicDetail).not.toContainText('CompleteRecipeImportReportProcessor');
-    await expect(publicDetail).not.toContainText('internal-host');
   });
 
   test('mobile review filters return regular Reported and Ready results without Top Pick', async ({
@@ -494,7 +505,7 @@ test.describe('Recipe import issue reporting', () => {
       });
     });
     await page.route(`**/api/recipes/${synthesized.id}**`, async (route) => {
-      if (route.request().method() === 'PUT') {
+      if (route.request().method() === 'POST') {
         const body = route.request().postDataJSON() as {
           reasons: RecipeImportIssueDto['reasons'];
           note?: string | null;

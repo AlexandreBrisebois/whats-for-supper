@@ -77,12 +77,13 @@ describe('CooksMode', () => {
     };
     getRecipeMock.mockResolvedValue(recipe);
     saveRecipeImportIssueMock.mockResolvedValue({
-      ...recipe,
-      importIssue: {
-        reasons: ['ingredients', 'steps'],
-        note: null,
-        status: 'reported',
+      recipe: {
+        ...recipe,
+        importIssue: { reasons: ['ingredients', 'steps'], note: null, status: 'reported' },
       },
+      reimportStarted: false,
+      reimportLaunchFailed: false,
+      importId: null,
     });
 
     render(
@@ -138,12 +139,17 @@ describe('CooksMode', () => {
     };
     getRecipeMock.mockResolvedValue(recipe);
     saveRecipeImportIssueMock.mockResolvedValue({
-      ...recipe,
-      importIssue: {
-        reasons: ['ingredients', 'steps'],
-        note: 'The amounts are unclear',
-        status: 'reported',
+      recipe: {
+        ...recipe,
+        importIssue: {
+          reasons: ['ingredients', 'steps'],
+          note: 'The amounts are unclear',
+          status: 'reported',
+        },
       },
+      reimportStarted: false,
+      reimportLaunchFailed: false,
+      importId: null,
     });
 
     render(
@@ -173,7 +179,7 @@ describe('CooksMode', () => {
       'true'
     );
     expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByLabelText('Optional note')).toHaveValue('The amounts are unclear');
+    expect(screen.getByLabelText('What should we check?')).toHaveValue('The amounts are unclear');
 
     fireEvent.click(screen.getByRole('button', { name: 'Close review issue' }));
     expect(screen.queryByRole('dialog', { name: 'Review issue' })).toBeNull();
@@ -181,7 +187,7 @@ describe('CooksMode', () => {
     expect(usePlannerStore.getState().cookProgress['recipe-1']).toBe(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Report issue with steps' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
       expect(saveRecipeImportIssueMock).toHaveBeenCalledWith('recipe-1', {

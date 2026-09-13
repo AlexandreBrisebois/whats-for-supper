@@ -500,13 +500,13 @@ export function createRecipeImportIssueRequestFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeImportStatusResponseDto}
+ * @returns {RecipeImportReportSubmissionResponseDto}
  */
 // @ts-ignore
-export function createRecipeImportStatusResponseDtoFromDiscriminatorValue(
+export function createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeImportStatusResponseDto;
+  return deserializeIntoRecipeImportReportSubmissionResponseDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -518,17 +518,6 @@ export function createRecipeImportSummaryDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipeImportSummaryDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeImportTriggerResponseDto}
- */
-// @ts-ignore
-export function createRecipeImportTriggerResponseDtoFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeImportTriggerResponseDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1843,6 +1832,9 @@ export function deserializeIntoRecipeImportIssueDto(
   recipeImportIssueDto: Partial<RecipeImportIssueDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    isReimporting: (n) => {
+      recipeImportIssueDto.isReimporting = n.getBooleanValue();
+    },
     note: (n) => {
       recipeImportIssueDto.note = n.getStringValue();
     },
@@ -1850,6 +1842,9 @@ export function deserializeIntoRecipeImportIssueDto(
       recipeImportIssueDto.reasons = n.getCollectionOfEnumValues<RecipeImportIssueReason>(
         RecipeImportIssueReasonObject
       );
+    },
+    reimportFailureMessage: (n) => {
+      recipeImportIssueDto.reimportFailureMessage = n.getStringValue();
     },
     status: (n) => {
       recipeImportIssueDto.status = n.getEnumValue<RecipeImportIssueStatus>(
@@ -1880,19 +1875,31 @@ export function deserializeIntoRecipeImportIssueRequest(
 }
 /**
  * The deserialization information for the current model
- * @param RecipeImportStatusResponseDto The instance to deserialize into.
+ * @param RecipeImportReportSubmissionResponseDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoRecipeImportStatusResponseDto(
-  recipeImportStatusResponseDto: Partial<RecipeImportStatusResponseDto> | undefined = {}
+export function deserializeIntoRecipeImportReportSubmissionResponseDto(
+  recipeImportReportSubmissionResponseDto:
+    Partial<RecipeImportReportSubmissionResponseDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
-    errorMessage: (n) => {
-      recipeImportStatusResponseDto.errorMessage = n.getStringValue();
+    importId: (n) => {
+      recipeImportReportSubmissionResponseDto.importId = n.getGuidValue();
     },
-    status: (n) => {
-      recipeImportStatusResponseDto.status = n.getStringValue();
+    recipe: (n) => {
+      recipeImportReportSubmissionResponseDto.recipe = n.getObjectValue<RecipeDto>(
+        createRecipeDtoFromDiscriminatorValue
+      );
+    },
+    reimportLaunchFailed: (n) => {
+      recipeImportReportSubmissionResponseDto.reimportLaunchFailed = n.getBooleanValue();
+    },
+    reimportStarted: (n) => {
+      recipeImportReportSubmissionResponseDto.reimportStarted = n.getBooleanValue();
+    },
+    updatedAt: (n) => {
+      recipeImportReportSubmissionResponseDto.updatedAt = n.getDateValue();
     },
   };
 }
@@ -1914,21 +1921,6 @@ export function deserializeIntoRecipeImportSummaryDto(
     },
     queueCount: (n) => {
       recipeImportSummaryDto.queueCount = n.getNumberValue();
-    },
-  };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeImportTriggerResponseDto The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeImportTriggerResponseDto(
-  recipeImportTriggerResponseDto: Partial<RecipeImportTriggerResponseDto> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    importId: (n) => {
-      recipeImportTriggerResponseDto.importId = n.getGuidValue();
     },
   };
 }
@@ -3483,6 +3475,10 @@ export type RecipeDto_sourceType =
   (typeof RecipeDto_sourceTypeObject)[keyof typeof RecipeDto_sourceTypeObject];
 export interface RecipeImportIssueDto extends AdditionalDataHolder, Parsable {
   /**
+   * The isReimporting property
+   */
+  isReimporting?: boolean | null;
+  /**
    * The note property
    */
   note?: string | null;
@@ -3490,6 +3486,10 @@ export interface RecipeImportIssueDto extends AdditionalDataHolder, Parsable {
    * The reasons property
    */
   reasons?: RecipeImportIssueReason[] | null;
+  /**
+   * The reimportFailureMessage property
+   */
+  reimportFailureMessage?: string | null;
   /**
    * The status property
    */
@@ -3509,15 +3509,27 @@ export interface RecipeImportIssueRequest extends AdditionalDataHolder, Parsable
 }
 export type RecipeImportIssueStatus =
   (typeof RecipeImportIssueStatusObject)[keyof typeof RecipeImportIssueStatusObject];
-export interface RecipeImportStatusResponseDto extends AdditionalDataHolder, Parsable {
+export interface RecipeImportReportSubmissionResponseDto extends AdditionalDataHolder, Parsable {
   /**
-   * The errorMessage property
+   * The importId property
    */
-  errorMessage?: string | null;
+  importId?: Guid | null;
   /**
-   * The status property
+   * The recipe property
    */
-  status?: string | null;
+  recipe?: RecipeDto | null;
+  /**
+   * The reimportLaunchFailed property
+   */
+  reimportLaunchFailed?: boolean | null;
+  /**
+   * The reimportStarted property
+   */
+  reimportStarted?: boolean | null;
+  /**
+   * The updatedAt property
+   */
+  updatedAt?: Date | null;
 }
 export interface RecipeImportSummaryDto extends AdditionalDataHolder, Parsable {
   /**
@@ -3532,12 +3544,6 @@ export interface RecipeImportSummaryDto extends AdditionalDataHolder, Parsable {
    * The queueCount property
    */
   queueCount?: number | null;
-}
-export interface RecipeImportTriggerResponseDto extends AdditionalDataHolder, Parsable {
-  /**
-   * The importId property
-   */
-  importId?: Guid | null;
 }
 export interface RecipeLibrarySummaryDto extends AdditionalDataHolder, Parsable {
   /**
@@ -4722,12 +4728,14 @@ export function serializeRecipeImportIssueDto(
   if (!recipeImportIssueDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeBooleanValue('isReimporting', recipeImportIssueDto.isReimporting);
   writer.writeStringValue('note', recipeImportIssueDto.note);
   if (recipeImportIssueDto.reasons)
     writer.writeCollectionOfEnumValues<RecipeImportIssueReason>(
       'reasons',
       recipeImportIssueDto.reasons
     );
+  writer.writeStringValue('reimportFailureMessage', recipeImportIssueDto.reimportFailureMessage);
   writer.writeEnumValue<RecipeImportIssueStatus>('status', recipeImportIssueDto.status);
   writer.writeAdditionalData(recipeImportIssueDto.additionalData);
 }
@@ -4757,21 +4765,35 @@ export function serializeRecipeImportIssueRequest(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeImportStatusResponseDto The instance to serialize from.
+ * @param RecipeImportReportSubmissionResponseDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeRecipeImportStatusResponseDto(
+export function serializeRecipeImportReportSubmissionResponseDto(
   writer: SerializationWriter,
-  recipeImportStatusResponseDto: Partial<RecipeImportStatusResponseDto> | undefined | null = {},
+  recipeImportReportSubmissionResponseDto:
+    Partial<RecipeImportReportSubmissionResponseDto> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
-  if (!recipeImportStatusResponseDto || isSerializingDerivedType) {
+  if (!recipeImportReportSubmissionResponseDto || isSerializingDerivedType) {
     return;
   }
-  writer.writeStringValue('errorMessage', recipeImportStatusResponseDto.errorMessage);
-  writer.writeStringValue('status', recipeImportStatusResponseDto.status);
-  writer.writeAdditionalData(recipeImportStatusResponseDto.additionalData);
+  writer.writeGuidValue('importId', recipeImportReportSubmissionResponseDto.importId);
+  writer.writeObjectValue<RecipeDto>(
+    'recipe',
+    recipeImportReportSubmissionResponseDto.recipe,
+    serializeRecipeDto
+  );
+  writer.writeBooleanValue(
+    'reimportLaunchFailed',
+    recipeImportReportSubmissionResponseDto.reimportLaunchFailed
+  );
+  writer.writeBooleanValue(
+    'reimportStarted',
+    recipeImportReportSubmissionResponseDto.reimportStarted
+  );
+  writer.writeDateValue('updatedAt', recipeImportReportSubmissionResponseDto.updatedAt);
+  writer.writeAdditionalData(recipeImportReportSubmissionResponseDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -4792,24 +4814,6 @@ export function serializeRecipeImportSummaryDto(
   writer.writeNumberValue('importedCount', recipeImportSummaryDto.importedCount);
   writer.writeNumberValue('queueCount', recipeImportSummaryDto.queueCount);
   writer.writeAdditionalData(recipeImportSummaryDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeImportTriggerResponseDto The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeImportTriggerResponseDto(
-  writer: SerializationWriter,
-  recipeImportTriggerResponseDto: Partial<RecipeImportTriggerResponseDto> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!recipeImportTriggerResponseDto || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeGuidValue('importId', recipeImportTriggerResponseDto.importId);
-  writer.writeAdditionalData(recipeImportTriggerResponseDto.additionalData);
 }
 /**
  * Serializes information the current object

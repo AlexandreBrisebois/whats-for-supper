@@ -3,7 +3,7 @@ import type { RecipeImportIssueStatus } from '@/lib/api/recipes';
 
 export function RecipeImportIssueBadge({ status }: { status: RecipeImportIssueStatus }) {
   const ready = status === 'readyToReview';
-  const label = ready ? 'Ready to review' : 'Reported';
+  const label = ready ? 'Reimported — check recipe' : 'Reported';
 
   return (
     <span

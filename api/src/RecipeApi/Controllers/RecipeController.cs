@@ -112,9 +112,9 @@ public class RecipeController(
         return Ok(result);
     }
 
-    [HttpPut("{id:guid}/import-report")]
+    [HttpPost("{id:guid}/import-report")]
     [SkipWrapping]
-    public async Task<IActionResult> PutImportReport(
+    public async Task<IActionResult> SubmitImportReport(
         Guid id,
         [FromBody] RecipeImportIssueRequest request,
         [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
@@ -124,9 +124,13 @@ public class RecipeController(
 
         try
         {
-            return Ok(await importReportService.UpsertAsync(id, familyMemberId.Value, request));
+            return Ok(await importReportService.SubmitAsync(id, familyMemberId.Value, request));
         }
         catch (RecipeImportReportIneligibleException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (RecipeImportReportActiveException ex)
         {
             return Conflict(new { message = ex.Message });
         }
@@ -141,40 +145,14 @@ public class RecipeController(
         if (familyMemberId is null)
             return BadRequest(new { status = StatusCodes.Status400BadRequest, message = "X-Family-Member-Id header is required." });
 
-        return Ok(await importReportService.DeleteAsync(id, familyMemberId.Value));
-    }
-
-    /// <summary>
-    /// POST /api/recipes/{id}/import — trigger a manual recipe import.
-    /// </summary>
-    [HttpPost("{id:guid}/import")]
-    public async Task<IActionResult> TriggerImport(Guid id)
-    {
         try
         {
-            var importId = await importService.TriggerImport(id);
-            return Accepted(new RecipeImportTriggerResponseDto { ImportId = importId });
+            return Ok(await importReportService.DeleteAsync(id, familyMemberId.Value));
         }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
+        catch (RecipeImportReportActiveException ex)
         {
             return Conflict(new { message = ex.Message });
         }
-    }
-
-    /// <summary>
-    /// GET /api/recipes/{id}/import — check the status of a recipe import.
-    /// </summary>
-    [HttpGet("{id:guid}/import")]
-    public async Task<IActionResult> GetImportStatus(Guid id)
-    {
-        var result = await importService.GetImportStatus(id);
-        return result == null
-            ? NotFound(new { message = "No import status found for this recipe." })
-            : Ok(result);
     }
 
     /// <summary>

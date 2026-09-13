@@ -3,6 +3,7 @@ import {
   type RecipeDto,
   type RecipeImportIssueDto,
   type RecipeImportIssueRequest,
+  RecipeImportIssueReasonObject,
   RecipeImportIssueStatusObject,
   type RecipeShareBundleDto,
   RecipeDto_sourceType,
@@ -10,6 +11,7 @@ import {
   type ScheduleRecipeDto,
   type ScheduleDays,
   type SmartDefaultsDto,
+  WorkflowInstanceDetailDto_statusObject,
 } from '../src/lib/api/generated/models/index';
 import {
   type FamilyGetResponse,
@@ -90,6 +92,8 @@ export async function mockSseWithConnectedSchedule(
  */
 export async function setupCommonRoutes(page: Page) {
   let activeImportIssue: RecipeImportIssueDto | null = null;
+  let activeImportId: string | null = null;
+  let importStatusReads = 0;
 
   // GET /api/family
   await page.route('**/api/family', async (route) => {
@@ -512,30 +516,53 @@ export async function setupCommonRoutes(page: Page) {
         body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
       });
     } else {
+      const id =
+        route
+          .request()
+          .url()
+          .match(/\/recipes\/([0-9a-f-]+)$/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
+        body: JSON.stringify({
+          recipe: builders.recipe({ id, importIssue: activeImportIssue }),
+          updatedAt: FIXED_E2E_TIMESTAMP,
+        }),
       });
     }
   });
 
-  // PUT/DELETE /api/recipes/{id}/import-report — registered after the recipe wildcard for priority
+  // POST/DELETE /api/recipes/{id}/import-report — registered after the recipe wildcard for priority
   await page.route('**/api/recipes/*/import-report', async (route) => {
     const request = route.request();
     const method = request.method();
     const id =
       request.url().match(/\/recipes\/([0-9a-f-]+)\/import-report/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
 
-    if (method === 'PUT') {
+    if (method === 'POST') {
       const body = request.postDataJSON() as RecipeImportIssueRequest;
+      const reasons = body.reasons ?? [];
+      const note = body.note?.trim() || null;
+      const contentOnly =
+        reasons.length > 0 &&
+        reasons.every(
+          (reason) =>
+            reason === RecipeImportIssueReasonObject.Ingredients ||
+            reason === RecipeImportIssueReasonObject.Steps
+        );
+      const reimportStarted =
+        builders.recipe({ id }).canReimport === true && contentOnly && note !== null;
       activeImportIssue = {
-        reasons: body.reasons ?? [],
-        note: body.note ?? null,
+        reasons,
+        note,
+        isReimporting: reimportStarted,
         status: RecipeImportIssueStatusObject.Reported,
       };
+      activeImportId = reimportStarted ? MOCK_IDS.PHOTO_NEW : null;
+      importStatusReads = 0;
     } else if (method === 'DELETE') {
       activeImportIssue = null;
+      activeImportId = null;
     } else {
       await route.fallback();
       return;
@@ -547,6 +574,42 @@ export async function setupCommonRoutes(page: Page) {
       body: JSON.stringify({
         updatedAt: FIXED_E2E_TIMESTAMP,
         recipe: builders.recipe({ id, importIssue: activeImportIssue }),
+        reimportStarted: activeImportId !== null,
+        ...(activeImportId ? { importId: activeImportId } : {}),
+        reimportLaunchFailed: false,
+      }),
+    });
+  });
+
+  // GET /api/recipe-imports/{importId} — deterministic pending then completed polling.
+  await page.route('**/api/recipe-imports/*', async (route) => {
+    if (route.request().method() !== 'GET' || activeImportId === null) {
+      await route.fallback();
+      return;
+    }
+
+    importStatusReads += 1;
+    const completed = importStatusReads > 1;
+    if (completed && activeImportIssue) {
+      activeImportIssue = {
+        ...activeImportIssue,
+        isReimporting: false,
+        status: RecipeImportIssueStatusObject.ReadyToReview,
+      };
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: activeImportId,
+        workflowId: 'recipe-import',
+        status: completed
+          ? WorkflowInstanceDetailDto_statusObject.Completed
+          : WorkflowInstanceDetailDto_statusObject.Processing,
+        tasks: [],
+        createdAt: FIXED_E2E_TIMESTAMP,
+        updatedAt: FIXED_E2E_TIMESTAMP,
       }),
     });
   });

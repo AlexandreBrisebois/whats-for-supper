@@ -13,6 +13,8 @@ interface RecipeImportIssueSheetProps {
   issue: RecipeImportIssue | null;
   contextualReason?: RecipeImportIssueReason;
   canReportContentIssues?: boolean;
+  isReimporting?: boolean;
+  reimportFailureMessage?: string | null;
   onClose: () => void;
   onSave: (draft: RecipeImportIssueDraft) => Promise<void>;
   onResolve: () => Promise<void>;
@@ -31,6 +33,8 @@ export function RecipeImportIssueSheet({
   issue,
   contextualReason,
   canReportContentIssues = true,
+  isReimporting = false,
+  reimportFailureMessage = null,
   onClose,
   onSave,
   onResolve,
@@ -49,10 +53,30 @@ export function RecipeImportIssueSheet({
 
   useEffect(() => closeRef.current?.focus(), []);
 
+  const [reasonAnnouncement, setReasonAnnouncement] = useState('');
+  const contentSelected = reasons.some(
+    (reason) => reason !== RecipeImportIssueReasonObject.Duplicate
+  );
+  const duplicateSelected = reasons.includes(RecipeImportIssueReasonObject.Duplicate);
+  const noteEligible = contentSelected && canReportContentIssues;
+
   const toggleReason = (reason: RecipeImportIssueReason) => {
-    setReasons((current) =>
-      current.includes(reason) ? current.filter((item) => item !== reason) : [...current, reason]
-    );
+    if (isReimporting) return;
+    if (reason !== RecipeImportIssueReasonObject.Duplicate && canReportContentIssues) {
+      setNoteOpen(true);
+    }
+    setReasons((current) => {
+      const selected = current.includes(reason);
+      if (selected) return current.filter((item) => item !== reason);
+      if (reason === RecipeImportIssueReasonObject.Duplicate) {
+        const cleared = current.filter((item) => item === RecipeImportIssueReasonObject.Duplicate);
+        if (current.length !== cleared.length) setReasonAnnouncement('Ingredients cleared');
+        return [RecipeImportIssueReasonObject.Duplicate];
+      }
+      const cleared = current.filter((item) => item !== RecipeImportIssueReasonObject.Duplicate);
+      if (current.length !== cleared.length) setReasonAnnouncement('Duplicate cleared');
+      return [...cleared, reason];
+    });
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -76,20 +100,24 @@ export function RecipeImportIssueSheet({
   };
 
   const save = async () => {
-    if (reasons.length === 0 || busy) return;
+    if (reasons.length === 0 || busy || isReimporting) return;
     setBusy(true);
     setError(null);
     try {
       await onSave({ reasons, note: note.trim() || null });
-    } catch {
-      setError('Could not save changes. Try again.');
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error && saveError.message === 'Re-import launch failed'
+          ? 'We saved your report, but couldn’t start re-import. Try again later.'
+          : 'Could not save changes. Try again.'
+      );
     } finally {
       setBusy(false);
     }
   };
 
   const resolve = async () => {
-    if (busy) return;
+    if (busy || isReimporting) return;
     setBusy(true);
     setError(null);
     try {
@@ -154,7 +182,7 @@ export function RecipeImportIssueSheet({
                 type="button"
                 data-testid={`import-issue-reason-${reason}`}
                 aria-pressed={selected}
-                disabled={disabled}
+                disabled={disabled || isReimporting}
                 onClick={() => toggleReason(reason)}
                 className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
                   selected
@@ -172,6 +200,9 @@ export function RecipeImportIssueSheet({
             );
           })}
         </fieldset>
+        <p className="sr-only" role="status" aria-live="polite">
+          {reasonAnnouncement}
+        </p>
         {!canReportContentIssues && (
           <p
             data-testid="import-issue-content-ineligible"
@@ -181,26 +212,49 @@ export function RecipeImportIssueSheet({
           </p>
         )}
 
+        {duplicateSelected && (
+          <p className="mt-3 text-sm text-charcoal/70">This will be saved for review.</p>
+        )}
+        {isReimporting && (
+          <p role="status" className="mt-3 text-sm font-bold text-charcoal/70">
+            Reimporting recipe… You can update this after it finishes.
+          </p>
+        )}
+        {reimportFailureMessage && (
+          <p role="status" className="mt-3 text-sm font-bold text-terracotta-700">
+            {reimportFailureMessage}
+          </p>
+        )}
+        {issue?.status === 'readyToReview' && (
+          <p className="mt-3 text-sm text-charcoal/70">
+            Reimport complete. Check the recipe, then mark this resolved when it looks right.
+          </p>
+        )}
         <button
           type="button"
           data-testid="import-issue-note-disclosure"
           aria-expanded={noteOpen}
+          disabled={isReimporting}
           onClick={() => setNoteOpen((open) => !open)}
-          className="mt-4 flex min-h-11 items-center gap-2 text-sm font-bold text-charcoal/75"
+          className="mt-4 flex min-h-11 items-center gap-2 text-sm font-bold text-charcoal/75 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          <ChevronDown size={16} className={noteOpen ? 'rotate-180' : ''} aria-hidden="true" /> Add
-          a note
+          <ChevronDown size={16} className={noteOpen ? 'rotate-180' : ''} aria-hidden="true" />
+          {noteEligible ? 'What should we check?' : 'Add a note'}
         </button>
+        {noteEligible && (
+          <p className="mt-1 text-sm text-charcoal/60">Add a note to re-import this recipe.</p>
+        )}
         {noteOpen && (
           <div className="mt-2">
             <label htmlFor="import-issue-note" className="text-sm font-bold text-charcoal/75">
-              Optional note
+              {noteEligible ? 'What should we check?' : 'Optional note'}
             </label>
             <textarea
               id="import-issue-note"
               data-testid="import-issue-note"
               maxLength={500}
               value={note}
+              disabled={isReimporting}
               onChange={(event) => setNote(event.target.value)}
               className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-charcoal/15 bg-white px-4 py-3 text-charcoal outline-none transition focus:border-terracotta/30 focus:ring-4 focus:ring-terracotta/10"
             />
@@ -222,11 +276,11 @@ export function RecipeImportIssueSheet({
         <button
           type="button"
           data-testid="import-issue-save"
-          disabled={reasons.length === 0 || busy}
+          disabled={reasons.length === 0 || busy || isReimporting}
           onClick={() => void save()}
           className="mt-5 min-h-12 w-full rounded-2xl bg-terracotta px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {existing ? 'Save changes' : 'Save'}
+          Save
         </button>
 
         {existing && (
@@ -234,7 +288,7 @@ export function RecipeImportIssueSheet({
             <button
               type="button"
               data-testid="import-issue-resolve"
-              disabled={busy}
+              disabled={busy || isReimporting}
               onClick={() => void resolve()}
               className={`min-h-11 rounded-2xl border px-5 font-bold text-sage-800 ${issue.status === 'readyToReview' ? 'border-sage-300 bg-sage-100' : 'border-sage-300 bg-transparent'}`}
             >

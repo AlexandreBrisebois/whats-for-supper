@@ -7,7 +7,6 @@ const mockGetRecipeShareBundle = vi.fn();
 const mockDownloadRecipeBundleFile = vi.fn();
 const mockUpdateRecipe = vi.fn();
 const mockDeleteRecipe = vi.fn();
-const mockReimportRecipe = vi.fn();
 const mockGetRecipeImportStatus = vi.fn();
 const mockUploadRecipeOriginal = vi.fn();
 const mockRegenerateHero = vi.fn();
@@ -21,7 +20,6 @@ vi.mock('@/lib/api/recipes', () => ({
   downloadRecipeBundleFile: (...args: unknown[]) => mockDownloadRecipeBundleFile(...args),
   updateRecipe: (...args: unknown[]) => mockUpdateRecipe(...args),
   deleteRecipe: (...args: unknown[]) => mockDeleteRecipe(...args),
-  reimportRecipe: (...args: unknown[]) => mockReimportRecipe(...args),
   getRecipeImportStatus: (...args: unknown[]) => mockGetRecipeImportStatus(...args),
   uploadRecipeOriginal: (...args: unknown[]) => mockUploadRecipeOriginal(...args),
   regenerateHero: (...args: unknown[]) => mockRegenerateHero(...args),
@@ -92,9 +90,6 @@ describe('RecipeDetailSheet', () => {
       originals: [],
     });
     mockDownloadRecipeBundleFile.mockResolvedValue(undefined);
-    mockReimportRecipe.mockResolvedValue({
-      importId: '550e8400-e29b-41d4-a716-446655440222',
-    });
   });
 
   it('renders Share in the visible action slot while keeping View Original separate', async () => {
@@ -114,8 +109,13 @@ describe('RecipeDetailSheet', () => {
 
   it('uses the authoritative save response to switch from report to review mode', async () => {
     mockSaveRecipeImportIssue.mockResolvedValue({
-      ...(await mockGetRecipe()),
-      importIssue: { reasons: ['ingredients'], note: null, status: 'reported' },
+      recipe: {
+        ...(await mockGetRecipe()),
+        importIssue: { reasons: ['ingredients'], note: null, status: 'reported' },
+      },
+      reimportStarted: false,
+      reimportLaunchFailed: false,
+      importId: null,
     });
     render(
       <RecipeDetailSheet
@@ -161,7 +161,7 @@ describe('RecipeDetailSheet', () => {
       />
     );
 
-    await screen.findByLabelText('Import issue status: Ready to review');
+    await screen.findByLabelText('Import issue status: Reimported — check recipe');
     fireEvent.click(screen.getByTestId('action-gear-menu'));
     fireEvent.click(screen.getByRole('button', { name: 'Review issue' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
@@ -174,7 +174,7 @@ describe('RecipeDetailSheet', () => {
     expect(mockAddToast).toHaveBeenCalledWith({ type: 'success', message: 'Marked as resolved' });
   });
 
-  it('polls a manual re-import to completion and refetches authoritative detail', async () => {
+  it('starts ID-addressable polling only from an accepted report Save response', async () => {
     const initialRecipe = await mockGetRecipe();
     const refreshedRecipe = {
       ...initialRecipe,
@@ -182,6 +182,20 @@ describe('RecipeDetailSheet', () => {
     };
     mockGetRecipe.mockReset();
     mockGetRecipe.mockResolvedValue(refreshedRecipe).mockResolvedValueOnce(initialRecipe);
+    mockSaveRecipeImportIssue.mockResolvedValue({
+      recipe: {
+        ...initialRecipe,
+        importIssue: {
+          reasons: ['ingredients'],
+          note: 'Missing amounts',
+          status: 'reported',
+          isReimporting: true,
+        },
+      },
+      reimportStarted: true,
+      importId: '550e8400-e29b-41d4-a716-446655440222',
+      reimportLaunchFailed: false,
+    });
     mockGetRecipeImportStatus
       .mockResolvedValueOnce({ status: 'Processing', errorMessage: null })
       .mockResolvedValueOnce({ status: 'Completed', errorMessage: null });
@@ -198,13 +212,31 @@ describe('RecipeDetailSheet', () => {
 
     await screen.findByTestId('recipe-detail-sheet');
     fireEvent.click(screen.getByTestId('action-gear-menu'));
-    fireEvent.click(screen.getByTestId('action-reimport-recipe'));
+    fireEvent.click(screen.getByRole('button', { name: 'Report issue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ingredients' }));
+    fireEvent.change(screen.getByLabelText('What should we check?'), {
+      target: { value: 'Missing amounts' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() => expect(mockGetRecipeImportStatus).toHaveBeenCalledTimes(2), {
-      timeout: 4000,
+    await waitFor(
+      () =>
+        expect(mockGetRecipeImportStatus).toHaveBeenCalledWith(
+          '550e8400-e29b-41d4-a716-446655440222'
+        ),
+      {
+        timeout: 4000,
+      }
+    );
+    expect(screen.queryByRole('dialog', { name: 'Report issue' })).toBeNull();
+    expect(mockAddToast).toHaveBeenCalledWith({
+      type: 'success',
+      message: 'Reimporting in background',
     });
     await waitFor(() => expect(mockGetRecipe).toHaveBeenCalledTimes(2));
-    expect(await screen.findByLabelText('Import issue status: Ready to review')).toBeVisible();
+    expect(
+      await screen.findByLabelText('Import issue status: Reimported — check recipe')
+    ).toBeVisible();
   });
 
   it('hides the share button if the recipe has no hero image', async () => {

@@ -76,6 +76,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [showCelebration, setShowCelebration] = useState(false);
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
   const [reportContext, setReportContext] = useState<RecipeImportIssueReason | null>(null);
+  const [reimportAcknowledgement, setReimportAcknowledgement] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingValue, setEditingValue] = useState('');
   const { cookProgress, setCookProgress } = usePlannerStore();
@@ -190,9 +191,11 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
   const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
     if (!recipeDetails) return;
-    const updated = await saveRecipeImportIssue(recipeDetails.id, draft);
-    setRecipeDetails(updated);
+    const submission = await saveRecipeImportIssue(recipeDetails.id, draft);
+    setRecipeDetails(submission.recipe);
+    if (submission.reimportLaunchFailed) throw new Error('Re-import launch failed');
     setReportContext(null);
+    setReimportAcknowledgement(submission.reimportStarted);
   };
 
   const handleResolveImportIssue = async () => {
@@ -562,10 +565,20 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           issue={recipeDetails.importIssue ?? null}
           contextualReason={reportContext}
           canReportContentIssues={recipeDetails.canReimport}
+          isReimporting={recipeDetails.importIssue?.isReimporting}
+          reimportFailureMessage={recipeDetails.importIssue?.reimportFailureMessage}
           onClose={() => setReportContext(null)}
           onSave={handleSaveImportIssue}
           onResolve={handleResolveImportIssue}
         />
+      )}
+      {reimportAcknowledgement && (
+        <p
+          role="status"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-charcoal px-4 py-2 text-sm font-bold text-white shadow-lg"
+        >
+          Reimporting in background
+        </p>
       )}
     </motion.div>
   );

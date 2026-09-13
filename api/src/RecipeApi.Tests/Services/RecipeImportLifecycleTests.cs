@@ -223,6 +223,29 @@ public class RecipeImportLifecycleTests
     }
 
     [Theory]
+    [InlineData("recipe-import")]
+    [InlineData("url-import")]
+    public void ImportWorkflow_ForwardsOptionalRepairSnapshotOnlyToExtraction(string workflowId)
+    {
+        var definition = ReadWorkflow(workflowId);
+
+        Assert.Contains("repairReasons?", definition.Parameters);
+        Assert.Contains("repairNote?", definition.Parameters);
+
+        var extraction = Assert.Single(definition.Tasks, task => task.Processor == "ExtractRecipe");
+        Assert.Equal("{{ repairReasons }}", extraction.Payload["repairReasons"]);
+        Assert.Equal("{{ repairNote }}", extraction.Payload["repairNote"]);
+
+        Assert.All(
+            definition.Tasks.Where(task => task.Processor != "ExtractRecipe"),
+            task =>
+            {
+                Assert.DoesNotContain("repairReasons", task.Payload.Keys);
+                Assert.DoesNotContain("repairNote", task.Payload.Keys);
+            });
+    }
+
+    [Theory]
     [InlineData("goto-synthesis")]
     [InlineData("recategorize-ingredients")]
     public void UnrelatedWorkflow_DoesNotMutateImportReport(string workflowId)

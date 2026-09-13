@@ -842,7 +842,7 @@ describe('RecipesPage', () => {
         within(reportedCard).getByLabelText('Import issue status: Reported')
       ).toBeInTheDocument();
       expect(
-        within(readyCard).getByLabelText('Import issue status: Ready to review')
+        within(readyCard).getByLabelText('Import issue status: Reimported — check recipe')
       ).toBeInTheDocument();
     });
 

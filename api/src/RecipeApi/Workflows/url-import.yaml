@@ -2,6 +2,8 @@ name: url-import
 parameters:
     - recipeId
     - url
+    - repairReasons?
+    - repairNote?
 
 tasks:
     - name: fetch_url_content
@@ -16,6 +18,8 @@ tasks:
           - fetch_url_content
       payload:
           recipeId: "{{ recipeId }}"
+          repairReasons: "{{ repairReasons }}"
+          repairNote: "{{ repairNote }}"
 
     - name: generate_hero
       processor: GenerateHero

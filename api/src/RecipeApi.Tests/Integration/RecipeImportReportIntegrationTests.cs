@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using RecipeApi.Data;
 using RecipeApi.Models;
 using RecipeApi.Tests.Infrastructure;
@@ -28,11 +29,11 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Put_Creates_Report_With_Ingredients_And_PublicProjection()
+    public async Task Submit_Creates_ManualReviewReport_With_Ingredients_And_PublicProjection()
     {
         var recipeId = await SeedRecipeAsync(imageCount: 1);
 
-        var response = await PutAsync(recipeId, new { reasons = new[] { "ingredients" } });
+        var response = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" } });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -49,25 +50,26 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Put_MaterialChange_ResetsLifecycle_WhileIdenticalSavePreservesIt()
+    public async Task Submit_UnchangedTerminalFeedback_RemainsManualReview()
     {
         var recipeId = await SeedRecipeAsync(sourceUrl: "https://example.com/recipe");
-        await PutAsync(recipeId, new { reasons = new[] { "ingredients" } });
-        var workflowId = Guid.NewGuid();
+        var initial = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" }, note = "Check quantities" });
+        using var initialJson = JsonDocument.Parse(await initial.Content.ReadAsStringAsync());
+        var workflowId = initialJson.RootElement.GetProperty("importId").GetGuid();
 
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var report = await db.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
             report.Status = RecipeImportReportStatus.ReadyToReview;
-            report.LastWorkflowInstanceId = workflowId;
             report.LastAttemptAt = DateTimeOffset.UtcNow.AddMinutes(-1);
             report.ReimportedAt = DateTimeOffset.UtcNow;
             report.LastError = "private";
+            (await db.WorkflowInstances.SingleAsync(workflow => workflow.Id == workflowId)).Status = WorkflowStatus.Completed;
             await db.SaveChangesAsync();
         }
 
-        var identical = await PutAsync(recipeId, new { reasons = new[] { "ingredients" } });
+        var identical = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" }, note = "  Check quantities " });
         Assert.Equal(HttpStatusCode.OK, identical.StatusCode);
         Assert.Equal("readyToReview", await ReadStatusAsync(identical));
 
@@ -77,31 +79,17 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
             Assert.Equal(workflowId, (await db.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId)).LastWorkflowInstanceId);
         }
 
-        var changed = await PutAsync(recipeId, new
-        {
-            reasons = new[] { "ingredients", "steps" },
-            note = "  The steps are incomplete.  "
-        });
-        Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
-        Assert.Equal("reported", await ReadStatusAsync(changed));
-
-        using var finalScope = _factory.Services.CreateScope();
-        var finalDb = finalScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var updated = await finalDb.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
-        Assert.Equal(["ingredients", "steps"], updated.Reasons);
-        Assert.Equal("The steps are incomplete.", updated.Note);
-        Assert.Null(updated.LastWorkflowInstanceId);
-        Assert.Null(updated.LastAttemptAt);
-        Assert.Null(updated.ReimportedAt);
-        Assert.Null(updated.LastError);
+        using var responseJson = JsonDocument.Parse(await identical.Content.ReadAsStringAsync());
+        Assert.False(responseJson.RootElement.GetProperty("reimportStarted").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, responseJson.RootElement.GetProperty("importId").ValueKind);
     }
 
     [Theory]
     [MemberData(nameof(InvalidRequests))]
-    public async Task Put_Rejects_InvalidReasonsAndNote(object body)
+    public async Task Submit_Rejects_InvalidReasonsAndNote(object body)
     {
         var recipeId = await SeedRecipeAsync(imageCount: 1);
-        var response = await PutAsync(recipeId, body);
+        var response = await SubmitAsync(recipeId, body);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -116,11 +104,11 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
 
     [Theory]
     [MemberData(nameof(ReimportableReasonSets))]
-    public async Task Put_ReimportableRecipe_AcceptsEveryValidReasonSubset(string[] reasons)
+    public async Task Submit_ReimportableRecipe_AcceptsEveryValidReasonSubset(string[] reasons)
     {
         var recipeId = await SeedRecipeAsync(imageCount: 1);
 
-        var response = await PutAsync(recipeId, new { reasons });
+        var response = await SubmitAsync(recipeId, new { reasons });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -137,11 +125,11 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
     };
 
     [Fact]
-    public async Task Put_NonReimportableRecipe_AcceptsDuplicateOnly()
+    public async Task Submit_NonReimportableRecipe_AcceptsDuplicateOnly()
     {
         var recipeId = await SeedRecipeAsync();
 
-        var response = await PutAsync(recipeId, new { reasons = new[] { "duplicate" } });
+        var response = await SubmitAsync(recipeId, new { reasons = new[] { "duplicate" } });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -151,11 +139,11 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
 
     [Theory]
     [MemberData(nameof(IneligibleContentReasonSets))]
-    public async Task Put_NonReimportableRecipe_RejectsAnyContentReason(string[] reasons)
+    public async Task Submit_NonReimportableRecipe_RejectsAnyContentReason(string[] reasons)
     {
         var recipeId = await SeedRecipeAsync();
 
-        var response = await PutAsync(recipeId, new { reasons });
+        var response = await SubmitAsync(recipeId, new { reasons });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
@@ -164,20 +152,17 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
     {
         { new[] { "ingredients" } },
         { new[] { "steps" } },
-        { new[] { "ingredients", "steps" } },
-        { new[] { "ingredients", "duplicate" } },
-        { new[] { "steps", "duplicate" } },
-        { new[] { "ingredients", "steps", "duplicate" } }
+        { new[] { "ingredients", "steps" } }
     };
 
     [Fact]
-    public async Task Put_ConcurrentSaves_KeepOneActiveRow()
+    public async Task Submit_ConcurrentSaves_KeepOneActiveRow()
     {
         var recipeId = await SeedRecipeAsync(imageCount: 1);
 
         var responses = await Task.WhenAll(
-            PutAsync(recipeId, new { reasons = new[] { "ingredients" } }),
-            PutAsync(recipeId, new { reasons = new[] { "steps" } }));
+            SubmitAsync(recipeId, new { reasons = new[] { "ingredients" } }),
+            SubmitAsync(recipeId, new { reasons = new[] { "steps" } }));
 
         Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
         using var scope = _factory.Services.CreateScope();
@@ -186,22 +171,140 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Put_RequiresKnownFamilyMember_AndEligibleRecipe()
+    public async Task Submit_EligibleFeedback_StartsContextualWorkflow_AndReturnsItsId()
+    {
+        var recipeId = await SeedRecipeAsync(imageCount: 1);
+
+        var response = await SubmitAsync(recipeId, new
+        {
+            reasons = new[] { "steps", "ingredients" },
+            note = "  Check the final steps.  "
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(json.RootElement.GetProperty("reimportStarted").GetBoolean());
+        var importId = json.RootElement.GetProperty("importId").GetGuid();
+        Assert.NotEqual(Guid.Empty, importId);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var report = await db.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
+        Assert.Equal(RecipeImportReportStatus.Reimporting, report.Status);
+        Assert.Equal(importId, report.LastWorkflowInstanceId);
+        var workflow = await db.WorkflowInstances.SingleAsync(w => w.Id == importId);
+        Assert.Contains("\"repairReasons\":\"ingredients,steps\"", workflow.Parameters);
+        Assert.Contains("\"repairNote\":\"Check the final steps.\"", workflow.Parameters);
+    }
+
+    [Fact]
+    public async Task Submit_MatchingActiveFeedback_ReusesWorkflow_WhileChangedFeedbackAndResolveAreRejected()
+    {
+        var recipeId = await SeedRecipeAsync(imageCount: 1);
+        var first = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" }, note = "Check quantities" });
+        using var firstJson = JsonDocument.Parse(await first.Content.ReadAsStringAsync());
+        var importId = firstJson.RootElement.GetProperty("importId").GetGuid();
+
+        var repeated = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" }, note = "  Check quantities  " });
+        Assert.Equal(HttpStatusCode.OK, repeated.StatusCode);
+        using var repeatedJson = JsonDocument.Parse(await repeated.Content.ReadAsStringAsync());
+        Assert.True(repeatedJson.RootElement.GetProperty("reimportStarted").GetBoolean());
+        Assert.Equal(importId, repeatedJson.RootElement.GetProperty("importId").GetGuid());
+
+        var changed = await SubmitAsync(recipeId, new { reasons = new[] { "steps" }, note = "Check the ending" });
+        Assert.Equal(HttpStatusCode.Conflict, changed.StatusCode);
+
+        var resolve = new HttpRequestMessage(HttpMethod.Delete, $"/api/recipes/{recipeId}/import-report");
+        resolve.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+        Assert.Equal(HttpStatusCode.Conflict, (await _client.SendAsync(resolve)).StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var report = await db.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
+        Assert.Equal(["ingredients"], report.Reasons);
+        Assert.Equal("Check quantities", report.Note);
+        Assert.Equal(importId, report.LastWorkflowInstanceId);
+        Assert.Equal(1, await db.WorkflowInstances.CountAsync(w => w.WorkflowId == "recipe-import"));
+    }
+
+    [Fact]
+    public async Task Submit_LaunchFailure_PersistsReportWithoutAttemptOrOrphanedWorkflow()
+    {
+        var recipeId = await SeedRecipeAsync(imageCount: 1);
+        _factory.WorkflowOrchestratorMock
+            .Setup(orchestrator => orchestrator.TriggerAsync(
+                It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<DateTimeOffset?>()))
+            .ThrowsAsync(new InvalidOperationException("workflow unavailable"));
+
+        var response = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" }, note = "Check quantities" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(json.RootElement.GetProperty("reimportLaunchFailed").GetBoolean());
+        Assert.False(json.RootElement.GetProperty("reimportStarted").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("importId").ValueKind);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var report = await db.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
+        Assert.Equal(RecipeImportReportStatus.Reported, report.Status);
+        Assert.Null(report.LastWorkflowInstanceId);
+        Assert.Empty(await db.WorkflowInstances.ToListAsync());
+    }
+
+    [Fact]
+    public async Task GetImportById_RequiresFamilyAccessToItsRecipe()
+    {
+        var recipeId = await SeedRecipeAsync(imageCount: 1);
+        var submitted = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" }, note = "Check quantities" });
+        using var submittedJson = JsonDocument.Parse(await submitted.Content.ReadAsStringAsync());
+        var importId = submittedJson.RootElement.GetProperty("importId").GetGuid();
+
+        var permitted = new HttpRequestMessage(HttpMethod.Get, $"/api/recipe-imports/{importId}");
+        permitted.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+        Assert.Equal(HttpStatusCode.OK, (await _client.SendAsync(permitted)).StatusCode);
+
+        var stranger = Guid.NewGuid();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.FamilyMembers.Add(new FamilyMember { Id = stranger, Name = "Not the recipe parent" });
+            await db.SaveChangesAsync();
+        }
+        var forbidden = new HttpRequestMessage(HttpMethod.Get, $"/api/recipe-imports/{importId}");
+        forbidden.Headers.Add("X-Family-Member-Id", stranger.ToString());
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.SendAsync(forbidden)).StatusCode);
+    }
+
+    [Fact]
+    public async Task RetiredRecipeScopedImportRoutes_AreNotAvailable()
+    {
+        var recipeId = await SeedRecipeAsync(imageCount: 1);
+
+        var post = await _client.PostAsync($"/api/recipes/{recipeId}/import", null);
+        var get = await _client.GetAsync($"/api/recipes/{recipeId}/import");
+
+        Assert.Equal(HttpStatusCode.NotFound, post.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
+    }
+
+    [Fact]
+    public async Task Submit_RequiresKnownFamilyMember_AndEligibleRecipe()
     {
         var recipeId = await SeedRecipeAsync();
 
-        var missingIdentity = await _client.PutAsJsonAsync(
+        var missingIdentity = await _client.PostAsJsonAsync(
             $"/api/recipes/{recipeId}/import-report",
             new { reasons = new[] { "ingredients" } });
         Assert.Equal(HttpStatusCode.BadRequest, missingIdentity.StatusCode);
 
-        var unknownMember = await PutAsync(
+        var unknownMember = await SubmitAsync(
             recipeId,
             new { reasons = new[] { "ingredients" } },
             Guid.NewGuid());
         Assert.Equal(HttpStatusCode.NotFound, unknownMember.StatusCode);
 
-        var ineligible = await PutAsync(recipeId, new { reasons = new[] { "ingredients" } });
+        var ineligible = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" } });
         Assert.Equal(HttpStatusCode.Conflict, ineligible.StatusCode);
     }
 
@@ -237,7 +340,7 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
     public async Task Delete_IsIdempotent_AndReturnsNullIssue()
     {
         var recipeId = await SeedRecipeAsync(imageCount: 1);
-        await PutAsync(recipeId, new { reasons = new[] { "steps" }, note = "Missing details" });
+        await SubmitAsync(recipeId, new { reasons = new[] { "duplicate" }, note = "Duplicate recipe" });
 
         foreach (var _ in Enumerable.Range(0, 2))
         {
@@ -304,9 +407,9 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
-    private async Task<HttpResponseMessage> PutAsync(Guid recipeId, object body, Guid? memberId = null)
+    private async Task<HttpResponseMessage> SubmitAsync(Guid recipeId, object body, Guid? memberId = null)
     {
-        var request = new HttpRequestMessage(HttpMethod.Put, $"/api/recipes/{recipeId}/import-report")
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/recipes/{recipeId}/import-report")
         {
             Content = JsonContent.Create(body)
         };

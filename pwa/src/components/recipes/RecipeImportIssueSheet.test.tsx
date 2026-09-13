@@ -47,16 +47,7 @@ describe('RecipeImportIssueSheet', () => {
     expect(note).toHaveClass('px-4', 'py-3', 'resize-none');
   });
 
-  it.each([
-    [RecipeImportIssueReasonObject.Duplicate],
-    [RecipeImportIssueReasonObject.Duplicate, RecipeImportIssueReasonObject.Ingredients],
-    [RecipeImportIssueReasonObject.Duplicate, RecipeImportIssueReasonObject.Steps],
-    [
-      RecipeImportIssueReasonObject.Duplicate,
-      RecipeImportIssueReasonObject.Ingredients,
-      RecipeImportIssueReasonObject.Steps,
-    ],
-  ])('saves the selected duplicate reason combination: %j', async (...reasons) => {
+  it('makes duplicate manual-review-only and clears content reasons without moving focus', async () => {
     onSave.mockResolvedValue(undefined);
     render(
       <RecipeImportIssueSheet
@@ -67,21 +58,24 @@ describe('RecipeImportIssueSheet', () => {
       />
     );
 
-    for (const reason of reasons) {
-      fireEvent.click(screen.getByTestId(`import-issue-reason-${reason}`));
-      expect(screen.getByTestId(`import-issue-reason-${reason}`)).toHaveAttribute(
-        'aria-pressed',
-        'true'
-      );
-    }
+    const ingredients = screen.getByTestId('import-issue-reason-ingredients');
+    const duplicate = screen.getByTestId('import-issue-reason-duplicate');
+    ingredients.focus();
+    fireEvent.click(ingredients);
+    fireEvent.click(duplicate);
+
+    expect(ingredients).toHaveAttribute('aria-pressed', 'false');
+    expect(duplicate).toHaveAttribute('aria-pressed', 'true');
+    expect(ingredients).toHaveFocus();
+    expect(screen.getByText('This will be saved for review.')).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('Ingredients cleared');
     fireEvent.click(screen.getByTestId('import-issue-save'));
     await waitFor(() =>
       expect(onSave).toHaveBeenCalledWith({
-        reasons: expect.arrayContaining(reasons),
+        reasons: [RecipeImportIssueReasonObject.Duplicate],
         note: null,
       })
     );
-    expect(onSave.mock.calls[0][0].reasons).toHaveLength(reasons.length);
   });
 
   it('keeps duplicate available while explaining content ineligibility', () => {
@@ -115,8 +109,12 @@ describe('RecipeImportIssueSheet', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Ingredients' }));
     fireEvent.click(screen.getByRole('button', { name: 'Steps' }));
-    fireEvent.click(screen.getByText('Add a note'));
-    fireEvent.change(screen.getByLabelText('Optional note'), {
+    expect(screen.getByRole('button', { name: 'What should we check?' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+    expect(screen.getByText('Add a note to re-import this recipe.')).toBeVisible();
+    fireEvent.change(screen.getByLabelText('What should we check?'), {
       target: { value: '  Missing detail  ' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -146,10 +144,10 @@ describe('RecipeImportIssueSheet', () => {
       'true'
     );
     expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByLabelText('Optional note')).toHaveValue('Amounts are missing');
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+    expect(screen.getByLabelText('What should we check?')).toHaveValue('Amounts are missing');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Could not save changes. Try again.'
     );

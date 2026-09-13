@@ -137,6 +137,53 @@ tasks:
     }
 
     [Fact]
+    public async Task TriggerAsync_OptionalRepairSnapshot_IsImmutableAndOmittedWhenAbsent()
+    {
+        var yaml = @"
+name: contextual_import
+parameters: [recipeId, repairReasons?, repairNote?]
+tasks:
+  - name: extract
+    processor: ExtractRecipe
+    payload:
+      recipeId: ""{{ recipeId }}""
+      repairReasons: ""{{ repairReasons }}""
+      repairNote: ""{{ repairNote }}""
+  - name: hero
+    processor: GenerateHero
+    payload:
+      recipeId: ""{{ recipeId }}""
+";
+        await _storage.SaveAsync("workflows", "contextual_import.yaml", yaml);
+        var recipeId = Guid.NewGuid().ToString();
+        var parameters = new Dictionary<string, string>
+        {
+            ["recipeId"] = recipeId,
+            ["repairReasons"] = "ingredients,steps",
+            ["repairNote"] = "Check the amount of flour."
+        };
+
+        var contextual = await _orchestrator.TriggerAsync("contextual_import", parameters);
+        parameters["repairNote"] = "Changed after launch.";
+
+        var contextualExtract = await _dbContext.WorkflowTasks
+            .SingleAsync(task => task.InstanceId == contextual.Id && task.ProcessorName == "ExtractRecipe");
+        using var contextualPayload = System.Text.Json.JsonDocument.Parse(contextualExtract.Payload!);
+        Assert.Equal("ingredients,steps", contextualPayload.RootElement.GetProperty("repairReasons").GetString());
+        Assert.Equal("Check the amount of flour.", contextualPayload.RootElement.GetProperty("repairNote").GetString());
+
+        var normal = await _orchestrator.TriggerAsync("contextual_import", new Dictionary<string, string>
+        {
+            ["recipeId"] = recipeId
+        });
+        var normalExtract = await _dbContext.WorkflowTasks
+            .SingleAsync(task => task.InstanceId == normal.Id && task.ProcessorName == "ExtractRecipe");
+        using var normalPayload = System.Text.Json.JsonDocument.Parse(normalExtract.Payload!);
+        Assert.False(normalPayload.RootElement.TryGetProperty("repairReasons", out _));
+        Assert.False(normalPayload.RootElement.TryGetProperty("repairNote", out _));
+    }
+
+    [Fact]
     public async Task TriggerAsync_SnapshotAtTrigger_CreatesInstanceAndTasks()
     {
         // Arrange

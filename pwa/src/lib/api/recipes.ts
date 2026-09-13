@@ -17,6 +17,7 @@ import type {
   RecipeImportIssueReason,
   RecipeImportIssueStatus,
   SharedImageDto,
+  RecipeImportReportSubmissionResponseDto,
 } from './generated/models/index';
 
 export interface Recipe {
@@ -49,6 +50,8 @@ export interface RecipeImportIssue {
   reasons: RecipeImportIssueReason[];
   note: string | null;
   status: RecipeImportIssueStatus;
+  isReimporting?: boolean;
+  reimportFailureMessage?: string | null;
 }
 export interface RecipeImportIssueDraft {
   reasons: RecipeImportIssueReason[];
@@ -57,7 +60,13 @@ export interface RecipeImportIssueDraft {
 
 function mapImportIssue(issue: RecipeImportIssueDto | null | undefined): RecipeImportIssue | null {
   if (!issue?.status) return null;
-  return { reasons: issue.reasons ?? [], note: issue.note ?? null, status: issue.status };
+  return {
+    reasons: issue.reasons ?? [],
+    note: issue.note ?? null,
+    status: issue.status,
+    isReimporting: issue.isReimporting ?? false,
+    reimportFailureMessage: issue.reimportFailureMessage ?? null,
+  };
 }
 
 export type RecommendationResult = {
@@ -222,13 +231,27 @@ export async function getRecipe(id: string): Promise<Recipe> {
   return mapToRecipe(result.recipe);
 }
 
+export interface RecipeImportReportSubmission {
+  recipe: Recipe;
+  reimportStarted: boolean;
+  importId: string | null;
+  reimportLaunchFailed: boolean;
+}
+
 export async function saveRecipeImportIssue(
   id: string,
   draft: RecipeImportIssueDraft
-): Promise<Recipe> {
-  const result = await apiClient.api.recipes.byId(id as any).importReport.put(draft);
+): Promise<RecipeImportReportSubmission> {
+  const result: RecipeImportReportSubmissionResponseDto | undefined = await apiClient.api.recipes
+    .byId(id as any)
+    .importReport.post(draft);
   if (!result?.recipe) throw new Error('Recipe not found');
-  return mapToRecipe(result.recipe);
+  return {
+    recipe: mapToRecipe(result.recipe),
+    reimportStarted: result.reimportStarted === true,
+    importId: result.importId ? String(result.importId) : null,
+    reimportLaunchFailed: result.reimportLaunchFailed === true,
+  };
 }
 
 export async function resolveRecipeImportIssue(id: string): Promise<Recipe> {
@@ -263,27 +286,17 @@ export async function deleteRecipe(id: string): Promise<void> {
   await apiClient.api.recipes.byId(id as any).delete();
 }
 
-export interface RecipeImportAttempt {
-  importId: string;
-}
-
 export interface RecipeImportStatus {
   status: string;
   errorMessage: string | null;
 }
 
-export async function reimportRecipe(id: string): Promise<RecipeImportAttempt> {
-  const result = await apiClient.api.recipes.byId(id as any).importEscaped.post();
-  if (!result?.importId) throw new Error('Import attempt was not returned');
-  return { importId: String(result.importId) };
-}
-
-export async function getRecipeImportStatus(id: string): Promise<RecipeImportStatus> {
-  const result = await apiClient.api.recipes.byId(id as any).importEscaped.get();
+export async function getRecipeImportStatus(importId: string): Promise<RecipeImportStatus> {
+  const result = await apiClient.api.recipeImports.byImportId(importId as any).get();
   if (!result?.status) throw new Error('Import status was not returned');
   return {
     status: result.status,
-    errorMessage: result.errorMessage ?? null,
+    errorMessage: null,
   };
 }
 

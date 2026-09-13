@@ -4,10 +4,12 @@
 // @ts-ignore
 import {
   createRecipeDetailResponseFromDiscriminatorValue,
-  serializeRecipeDetailResponse,
+  createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue,
   serializeRecipeImportIssueRequest,
+  serializeRecipeImportReportSubmissionResponseDto,
   type RecipeDetailResponse,
   type RecipeImportIssueRequest,
+  type RecipeImportReportSubmissionResponseDto,
 } from '../../../../models/index';
 // @ts-ignore
 import {
@@ -48,13 +50,35 @@ export function createRecipeDetailResponse404ErrorFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeDetailResponse409Error}
+ * @returns {RecipeImportReportSubmissionResponseDto400Error}
  */
 // @ts-ignore
-export function createRecipeDetailResponse409ErrorFromDiscriminatorValue(
+export function createRecipeImportReportSubmissionResponseDto400ErrorFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeDetailResponse409Error;
+  return deserializeIntoRecipeImportReportSubmissionResponseDto400Error;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeImportReportSubmissionResponseDto404Error}
+ */
+// @ts-ignore
+export function createRecipeImportReportSubmissionResponseDto404ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeImportReportSubmissionResponseDto404Error;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeImportReportSubmissionResponseDto409Error}
+ */
+// @ts-ignore
+export function createRecipeImportReportSubmissionResponseDto409ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeImportReportSubmissionResponseDto409Error;
 }
 /**
  * The deserialization information for the current model
@@ -68,9 +92,6 @@ export function deserializeIntoRecipeDetailResponse400Error(
   return {
     message: (n) => {
       recipeDetailResponse400Error.messageEscaped = n.getStringValue();
-    },
-    status: (n) => {
-      recipeDetailResponse400Error.status = n.getNumberValue();
     },
   };
 }
@@ -94,16 +115,55 @@ export function deserializeIntoRecipeDetailResponse404Error(
 }
 /**
  * The deserialization information for the current model
- * @param RecipeDetailResponse409Error The instance to deserialize into.
+ * @param RecipeImportReportSubmissionResponseDto400Error The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
-export function deserializeIntoRecipeDetailResponse409Error(
-  recipeDetailResponse409Error: Partial<RecipeDetailResponse409Error> | undefined = {}
+export function deserializeIntoRecipeImportReportSubmissionResponseDto400Error(
+  recipeImportReportSubmissionResponseDto400Error:
+    Partial<RecipeImportReportSubmissionResponseDto400Error> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
     message: (n) => {
-      recipeDetailResponse409Error.messageEscaped = n.getStringValue();
+      recipeImportReportSubmissionResponseDto400Error.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      recipeImportReportSubmissionResponseDto400Error.status = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeImportReportSubmissionResponseDto404Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeImportReportSubmissionResponseDto404Error(
+  recipeImportReportSubmissionResponseDto404Error:
+    Partial<RecipeImportReportSubmissionResponseDto404Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      recipeImportReportSubmissionResponseDto404Error.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      recipeImportReportSubmissionResponseDto404Error.status = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeImportReportSubmissionResponseDto409Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeImportReportSubmissionResponseDto409Error(
+  recipeImportReportSubmissionResponseDto409Error:
+    Partial<RecipeImportReportSubmissionResponseDto409Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      recipeImportReportSubmissionResponseDto409Error.messageEscaped = n.getStringValue();
     },
   };
 }
@@ -122,18 +182,18 @@ export interface ImportReportRequestBuilder extends BaseRequestBuilder<ImportRep
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<RecipeDetailResponse | undefined>;
   /**
-   * Create or update the active import issue for a recipe
+   * Submit a recipe import issue and start contextual re-import when eligible
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {Promise<RecipeDetailResponse>}
-   * @throws {RecipeDetailResponse400Error} error when the service returns a 400 status code
-   * @throws {RecipeDetailResponse404Error} error when the service returns a 404 status code
-   * @throws {RecipeDetailResponse409Error} error when the service returns a 409 status code
+   * @returns {Promise<RecipeImportReportSubmissionResponseDto>}
+   * @throws {RecipeImportReportSubmissionResponseDto400Error} error when the service returns a 400 status code
+   * @throws {RecipeImportReportSubmissionResponseDto404Error} error when the service returns a 404 status code
+   * @throws {RecipeImportReportSubmissionResponseDto409Error} error when the service returns a 409 status code
    */
-  put(
+  post(
     body: RecipeImportIssueRequest,
     requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<RecipeDetailResponse | undefined>;
+  ): Promise<RecipeImportReportSubmissionResponseDto | undefined>;
   /**
    * Mark the active recipe import issue as resolved
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -143,12 +203,12 @@ export interface ImportReportRequestBuilder extends BaseRequestBuilder<ImportRep
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
   /**
-   * Create or update the active import issue for a recipe
+   * Submit a recipe import issue and start contextual re-import when eligible
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
-  toPutRequestInformation(
+  toPostRequestInformation(
     body: RecipeImportIssueRequest,
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
@@ -158,10 +218,6 @@ export interface RecipeDetailResponse400Error extends AdditionalDataHolder, ApiE
    * The message property
    */
   messageEscaped?: string | null;
-  /**
-   * The status property
-   */
-  status?: number | null;
 }
 export interface RecipeDetailResponse404Error extends AdditionalDataHolder, ApiError, Parsable {
   /**
@@ -173,7 +229,30 @@ export interface RecipeDetailResponse404Error extends AdditionalDataHolder, ApiE
    */
   status?: number | null;
 }
-export interface RecipeDetailResponse409Error extends AdditionalDataHolder, ApiError, Parsable {
+export interface RecipeImportReportSubmissionResponseDto400Error
+  extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
+export interface RecipeImportReportSubmissionResponseDto404Error
+  extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
+export interface RecipeImportReportSubmissionResponseDto409Error
+  extends AdditionalDataHolder, ApiError, Parsable {
   /**
    * The message property
    */
@@ -195,7 +274,6 @@ export function serializeRecipeDetailResponse400Error(
     return;
   }
   writer.writeStringValue('message', recipeDetailResponse400Error.messageEscaped);
-  writer.writeNumberValue('status', recipeDetailResponse400Error.status);
   writer.writeAdditionalData(recipeDetailResponse400Error.additionalData);
 }
 /**
@@ -220,20 +298,70 @@ export function serializeRecipeDetailResponse404Error(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeDetailResponse409Error The instance to serialize from.
+ * @param RecipeImportReportSubmissionResponseDto400Error The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
-export function serializeRecipeDetailResponse409Error(
+export function serializeRecipeImportReportSubmissionResponseDto400Error(
   writer: SerializationWriter,
-  recipeDetailResponse409Error: Partial<RecipeDetailResponse409Error> | undefined | null = {},
+  recipeImportReportSubmissionResponseDto400Error:
+    Partial<RecipeImportReportSubmissionResponseDto400Error> | undefined | null = {},
   isSerializingDerivedType: boolean = false
 ): void {
-  if (!recipeDetailResponse409Error || isSerializingDerivedType) {
+  if (!recipeImportReportSubmissionResponseDto400Error || isSerializingDerivedType) {
     return;
   }
-  writer.writeStringValue('message', recipeDetailResponse409Error.messageEscaped);
-  writer.writeAdditionalData(recipeDetailResponse409Error.additionalData);
+  writer.writeStringValue(
+    'message',
+    recipeImportReportSubmissionResponseDto400Error.messageEscaped
+  );
+  writer.writeNumberValue('status', recipeImportReportSubmissionResponseDto400Error.status);
+  writer.writeAdditionalData(recipeImportReportSubmissionResponseDto400Error.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeImportReportSubmissionResponseDto404Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeImportReportSubmissionResponseDto404Error(
+  writer: SerializationWriter,
+  recipeImportReportSubmissionResponseDto404Error:
+    Partial<RecipeImportReportSubmissionResponseDto404Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeImportReportSubmissionResponseDto404Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue(
+    'message',
+    recipeImportReportSubmissionResponseDto404Error.messageEscaped
+  );
+  writer.writeNumberValue('status', recipeImportReportSubmissionResponseDto404Error.status);
+  writer.writeAdditionalData(recipeImportReportSubmissionResponseDto404Error.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeImportReportSubmissionResponseDto409Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeImportReportSubmissionResponseDto409Error(
+  writer: SerializationWriter,
+  recipeImportReportSubmissionResponseDto409Error:
+    Partial<RecipeImportReportSubmissionResponseDto409Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeImportReportSubmissionResponseDto409Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue(
+    'message',
+    recipeImportReportSubmissionResponseDto409Error.messageEscaped
+  );
+  writer.writeAdditionalData(recipeImportReportSubmissionResponseDto409Error.additionalData);
 }
 /**
  * Uri template for the request builder.
@@ -253,16 +381,16 @@ export const ImportReportRequestBuilderRequestsMetadata: RequestsMetadata = {
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
   },
-  put: {
+  post: {
     uriTemplate: ImportReportRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     errorMappings: {
-      400: createRecipeDetailResponse400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
-      404: createRecipeDetailResponse404ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
-      409: createRecipeDetailResponse409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      400: createRecipeImportReportSubmissionResponseDto400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      404: createRecipeImportReportSubmissionResponseDto404ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      409: createRecipeImportReportSubmissionResponseDto409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
-    responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
+    responseBodyFactory: createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue,
     requestBodyContentType: 'application/json',
     requestBodySerializer: serializeRecipeImportIssueRequest,
     requestInformationContentSetMethod: 'setContentFromParsable',

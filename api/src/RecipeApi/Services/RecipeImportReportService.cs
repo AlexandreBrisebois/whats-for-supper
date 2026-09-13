@@ -6,13 +6,14 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class RecipeImportReportService(RecipeDbContext db)
+public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator? orchestrator = null)
 {
     private const int MaxErrorLength = 2000;
+    // This is intentionally in-process only; adding concurrent API replicas needs a new durability design.
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> RecipeLocks = new();
     private static readonly HashSet<string> AllowedReasons = ["ingredients", "steps", "duplicate"];
 
-    public async Task<RecipeDetailResponseDto> UpsertAsync(
+    public async Task<RecipeImportReportSubmissionResponseDto> SubmitAsync(
         Guid recipeId,
         Guid familyMemberId,
         RecipeImportIssueRequest request)
@@ -22,17 +23,47 @@ public class RecipeImportReportService(RecipeDbContext db)
         await recipeLock.WaitAsync();
         try
         {
-            if (db.Database.IsRelational())
-            {
-                await UpsertRelationalAsync(recipeId, familyMemberId, reasons, note);
-            }
-            else
-            {
-                await UpsertTrackedAsync(recipeId, familyMemberId, reasons, note);
-            }
+            var report = await db.RecipeImportReports.SingleOrDefaultAsync(r => r.RecipeId == recipeId);
+            var priorWorkflow = report?.LastWorkflowInstanceId is Guid priorWorkflowId
+                ? await db.WorkflowInstances.SingleOrDefaultAsync(workflow => workflow.Id == priorWorkflowId)
+                : null;
+            var active = priorWorkflow is not null && IsActive(priorWorkflow.Status);
+            var matchingPriorFeedback = priorWorkflow is not null && MatchesSnapshot(priorWorkflow, reasons, note);
+            var materiallyChanged = report is not null && (!report.Reasons.SequenceEqual(reasons, StringComparer.Ordinal)
+                || !string.Equals(report.Note, note, StringComparison.Ordinal));
 
-            var report = await db.RecipeImportReports.AsNoTracking().SingleAsync(r => r.RecipeId == recipeId);
-            return ToDetailResponse(recipe, report);
+            if (active && (!matchingPriorFeedback || materiallyChanged))
+                throw new RecipeImportReportActiveException("This report cannot change while re-import is active.");
+
+            await PersistAsync(recipeId, familyMemberId, reasons, note);
+            report = await db.RecipeImportReports.SingleAsync(entry => entry.RecipeId == recipeId);
+
+            if (!IsEligible(recipe, reasons, note))
+                return ToSubmissionResponse(recipe, report, false, null, false);
+
+            if (active && matchingPriorFeedback)
+                return ToSubmissionResponse(recipe, report, true, priorWorkflow!.Id, false);
+
+            if (matchingPriorFeedback)
+                return ToSubmissionResponse(recipe, report, false, null, false);
+
+            WorkflowInstance? created = null;
+            try
+            {
+                created = await (orchestrator ?? throw new InvalidOperationException("Workflow orchestration is unavailable."))
+                    .TriggerAsync(WorkflowIdFor(recipe), WorkflowParameters(recipe, reasons, note));
+                await MarkAttemptStartedAsync(recipeId, created.Id);
+                return ToSubmissionResponse(recipe, report, true, created.Id, false);
+            }
+            catch (Exception)
+            {
+                if (created is not null && !await CompensateLaunchAsync(recipeId, created.Id))
+                    return ToSubmissionResponse(recipe, report, true, created.Id, false);
+
+                await ClearUnstartedAttemptAsync(recipeId);
+                report = await db.RecipeImportReports.SingleAsync(entry => entry.RecipeId == recipeId);
+                return ToSubmissionResponse(recipe, report, false, null, true);
+            }
         }
         finally
         {
@@ -43,14 +74,29 @@ public class RecipeImportReportService(RecipeDbContext db)
     public async Task<RecipeDetailResponseDto> DeleteAsync(Guid recipeId, Guid familyMemberId)
     {
         var recipe = await RequireRecipeAndMemberAsync(recipeId, familyMemberId);
-        var report = await db.RecipeImportReports.SingleOrDefaultAsync(r => r.RecipeId == recipeId);
-        if (report is not null)
+        var recipeLock = RecipeLocks.GetOrAdd(recipeId, _ => new SemaphoreSlim(1, 1));
+        await recipeLock.WaitAsync();
+        try
         {
-            db.RecipeImportReports.Remove(report);
-            await db.SaveChangesAsync();
-        }
+            var report = await db.RecipeImportReports.SingleOrDefaultAsync(r => r.RecipeId == recipeId);
+            if (report?.LastWorkflowInstanceId is Guid workflowId)
+            {
+                var workflow = await db.WorkflowInstances.SingleOrDefaultAsync(entry => entry.Id == workflowId);
+                if (workflow is not null && IsActive(workflow.Status))
+                    throw new RecipeImportReportActiveException("This report cannot be resolved while re-import is active.");
+            }
+            if (report is not null)
+            {
+                db.RecipeImportReports.Remove(report);
+                await db.SaveChangesAsync();
+            }
 
-        return ToDetailResponse(recipe, null);
+            return ToDetailResponse(recipe, null);
+        }
+        finally
+        {
+            recipeLock.Release();
+        }
     }
 
     public static RecipeImportIssueDto? ToPublicDto(RecipeImportReport? report) =>
@@ -62,7 +108,11 @@ public class RecipeImportReportService(RecipeDbContext db)
                 Note = report.Note,
                 Status = report.Status == RecipeImportReportStatus.ReadyToReview
                     ? "readyToReview"
-                    : "reported"
+                    : "reported",
+                IsReimporting = report.Status == RecipeImportReportStatus.Reimporting,
+                ReimportFailureMessage = report.Status == RecipeImportReportStatus.ReimportFailed
+                    ? "We couldn’t re-import this recipe. Your report is saved. Add or change a detail, then Save to try again."
+                    : null
             };
 
     public async Task MarkAttemptStartedAsync(Guid recipeId, Guid workflowInstanceId)
@@ -193,7 +243,7 @@ public class RecipeImportReportService(RecipeDbContext db)
         if (reasons.Distinct(StringComparer.Ordinal).Count() != reasons.Length)
             throw new ArgumentException("Import issue reasons must be unique.");
         var hasContentReason = reasons.Contains("ingredients") || reasons.Contains("steps");
-        if (hasContentReason && !RecipeService.CanReimport(recipe))
+        if (hasContentReason && !reasons.Contains("duplicate") && !RecipeService.CanReimport(recipe))
         {
             throw new RecipeImportReportIneligibleException(
                 "Ingredient and step issues can only be reported for recipes that can be re-imported.");
@@ -215,7 +265,7 @@ public class RecipeImportReportService(RecipeDbContext db)
             ?? throw new KeyNotFoundException($"Recipe {recipeId} not found.");
     }
 
-    private async Task UpsertTrackedAsync(
+    private async Task PersistAsync(
         Guid recipeId,
         Guid familyMemberId,
         string[] reasons,
@@ -257,46 +307,68 @@ public class RecipeImportReportService(RecipeDbContext db)
         await db.SaveChangesAsync();
     }
 
-    private async Task UpsertRelationalAsync(
-        Guid recipeId,
-        Guid familyMemberId,
-        string[] reasons,
-        string? note)
+    private static bool IsActive(WorkflowStatus status) =>
+        status is WorkflowStatus.Pending or WorkflowStatus.Processing;
+
+    private static bool IsEligible(Recipe recipe, string[] reasons, string? note) =>
+        RecipeService.CanReimport(recipe)
+        && !reasons.Contains("duplicate")
+        && (reasons.Contains("ingredients") || reasons.Contains("steps"))
+        && !string.IsNullOrWhiteSpace(note);
+
+    private static string WorkflowIdFor(Recipe recipe) => !string.IsNullOrEmpty(recipe.SourceUrl)
+        ? "url-import"
+        : recipe.ImageCount > 0
+            ? "recipe-import"
+            : throw new InvalidOperationException("Synthesized recipes cannot be reimported.");
+
+    private static Dictionary<string, string> WorkflowParameters(Recipe recipe, string[] reasons, string? note) => new()
     {
-        var now = DateTimeOffset.UtcNow;
-        await db.Database.ExecuteSqlAsync($$"""
-            INSERT INTO recipe_import_reports
-                (recipe_id, reasons, note, status, reported_by, updated_by, created_at, updated_at)
-            VALUES
-                ({{recipeId}}, {{reasons}}, {{note}}, 'reported', {{familyMemberId}}, {{familyMemberId}}, {{now}}, {{now}})
-            ON CONFLICT (recipe_id) DO UPDATE SET
-                reasons = EXCLUDED.reasons,
-                note = EXCLUDED.note,
-                updated_by = EXCLUDED.updated_by,
-                updated_at = EXCLUDED.updated_at,
-                status = CASE
-                    WHEN recipe_import_reports.reasons IS DISTINCT FROM EXCLUDED.reasons
-                      OR recipe_import_reports.note IS DISTINCT FROM EXCLUDED.note
-                    THEN 'reported'
-                    ELSE recipe_import_reports.status
-                END,
-                last_workflow_instance_id = CASE
-                    WHEN recipe_import_reports.reasons IS DISTINCT FROM EXCLUDED.reasons
-                      OR recipe_import_reports.note IS DISTINCT FROM EXCLUDED.note
-                    THEN NULL ELSE recipe_import_reports.last_workflow_instance_id END,
-                last_attempt_at = CASE
-                    WHEN recipe_import_reports.reasons IS DISTINCT FROM EXCLUDED.reasons
-                      OR recipe_import_reports.note IS DISTINCT FROM EXCLUDED.note
-                    THEN NULL ELSE recipe_import_reports.last_attempt_at END,
-                reimported_at = CASE
-                    WHEN recipe_import_reports.reasons IS DISTINCT FROM EXCLUDED.reasons
-                      OR recipe_import_reports.note IS DISTINCT FROM EXCLUDED.note
-                    THEN NULL ELSE recipe_import_reports.reimported_at END,
-                last_error = CASE
-                    WHEN recipe_import_reports.reasons IS DISTINCT FROM EXCLUDED.reasons
-                      OR recipe_import_reports.note IS DISTINCT FROM EXCLUDED.note
-                    THEN NULL ELSE recipe_import_reports.last_error END
-            """);
+        ["recipeId"] = recipe.Id.ToString(),
+        ["repairReasons"] = string.Join(',', reasons),
+        ["repairNote"] = note!
+    };
+
+    private static bool MatchesSnapshot(WorkflowInstance workflow, string[] reasons, string? note)
+    {
+        var parameters = workflow.Parameters is null
+            ? null
+            : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(workflow.Parameters);
+        return parameters is not null
+            && parameters.TryGetValue("repairReasons", out var snapshotReasons)
+            && parameters.TryGetValue("repairNote", out var snapshotNote)
+            && string.Equals(snapshotReasons, string.Join(',', reasons), StringComparison.Ordinal)
+            && string.Equals(snapshotNote, note, StringComparison.Ordinal);
+    }
+
+    private async Task<bool> CompensateLaunchAsync(Guid recipeId, Guid workflowId)
+    {
+        try
+        {
+            var workflow = await db.WorkflowInstances.SingleOrDefaultAsync(entry => entry.Id == workflowId);
+            if (workflow is not null)
+            {
+                db.WorkflowInstances.Remove(workflow);
+                await db.SaveChangesAsync();
+            }
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private async Task ClearUnstartedAttemptAsync(Guid recipeId)
+    {
+        var report = await db.RecipeImportReports.SingleAsync(entry => entry.RecipeId == recipeId);
+        report.Status = RecipeImportReportStatus.Reported;
+        report.LastWorkflowInstanceId = null;
+        report.LastAttemptAt = null;
+        report.ReimportedAt = null;
+        report.LastError = null;
+        report.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
     }
 
     private static RecipeDetailResponseDto ToDetailResponse(Recipe recipe, RecipeImportReport? report)
@@ -309,6 +381,25 @@ public class RecipeImportReportService(RecipeDbContext db)
             Recipe = dto
         };
     }
+
+    private static RecipeImportReportSubmissionResponseDto ToSubmissionResponse(
+        Recipe recipe,
+        RecipeImportReport report,
+        bool reimportStarted,
+        Guid? importId,
+        bool reimportLaunchFailed)
+    {
+        var detail = ToDetailResponse(recipe, report);
+        return new RecipeImportReportSubmissionResponseDto
+        {
+            UpdatedAt = detail.UpdatedAt,
+            Recipe = detail.Recipe,
+            ReimportStarted = reimportStarted,
+            ImportId = importId,
+            ReimportLaunchFailed = reimportLaunchFailed
+        };
+    }
 }
 
 public sealed class RecipeImportReportIneligibleException(string message) : InvalidOperationException(message);
+public sealed class RecipeImportReportActiveException(string message) : InvalidOperationException(message);

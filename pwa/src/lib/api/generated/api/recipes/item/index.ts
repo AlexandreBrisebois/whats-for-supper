@@ -16,11 +16,6 @@ import {
 } from './hero/index';
 // @ts-ignore
 import {
-  ImportRequestBuilderRequestsMetadata,
-  type ImportRequestBuilder,
-} from './importEscaped/index';
-// @ts-ignore
-import {
   ImportReportRequestBuilderRequestsMetadata,
   type ImportReportRequestBuilder,
 } from './importReport/index';
@@ -153,10 +148,6 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * The hero property
    */
   get hero(): HeroRequestBuilder;
-  /**
-   * The import property
-   */
-  get importEscaped(): ImportRequestBuilder;
   /**
    * The importReport property
    */
@@ -341,9 +332,6 @@ export const ItemRequestBuilderNavigationMetadata: Record<
   hero: {
     requestsMetadata: HeroRequestBuilderRequestsMetadata,
     navigationMetadata: HeroRequestBuilderNavigationMetadata,
-  },
-  importEscaped: {
-    requestsMetadata: ImportRequestBuilderRequestsMetadata,
   },
   importReport: {
     requestsMetadata: ImportReportRequestBuilderRequestsMetadata,

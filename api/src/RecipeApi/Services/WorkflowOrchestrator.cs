@@ -43,12 +43,12 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
     {
         var definition = await GetDefinitionAsync(workflowId);
 
-        // Validate that all required parameters are provided
+        // Validate that all required parameters are provided.
         foreach (var param in definition.Parameters)
         {
-            if (!parameters.ContainsKey(param))
+            if (!IsOptionalParameter(param) && !parameters.ContainsKey(ParameterName(param)))
             {
-                throw new InvalidWorkflowException($"Missing required parameter: {param}");
+                throw new InvalidWorkflowException($"Missing required parameter: {ParameterName(param)}");
             }
         }
 
@@ -73,7 +73,7 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
                 Status = taskDef.DependsOn.Any() ? TaskStatus.Waiting : TaskStatus.Pending,
                 ScheduledAt = !taskDef.DependsOn.Any() ? scheduledAt : null,
                 DependsOn = taskDef.DependsOn.ToArray(),
-                Payload = SubstituteVariables(taskDef.Payload, parameters)
+                Payload = SubstituteVariables(taskDef.Payload, parameters, definition.Parameters)
             };
             instance.Tasks.Add(task);
         }
@@ -94,15 +94,30 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
         return instance;
     }
 
-    private string SubstituteVariables(Dictionary<string, object> payload, Dictionary<string, string> parameters)
+    private string SubstituteVariables(
+        Dictionary<string, object> payload,
+        Dictionary<string, string> parameters,
+        List<string> definitionParameters)
     {
         var substitutedPayload = new Dictionary<string, object>();
         var regex = new Regex(@"\{\{(.*?)\}\}");
+        var optionalParameters = definitionParameters
+            .Where(IsOptionalParameter)
+            .Select(ParameterName)
+            .ToHashSet(StringComparer.Ordinal);
 
         foreach (var entry in payload)
         {
             if (entry.Value is string value)
             {
+                var matches = regex.Matches(value);
+                if (matches.Any(match =>
+                    optionalParameters.Contains(match.Groups[1].Value.Trim())
+                    && !parameters.ContainsKey(match.Groups[1].Value.Trim())))
+                {
+                    continue;
+                }
+
                 var substitutedValue = regex.Replace(value, match =>
                 {
                     var paramName = match.Groups[1].Value.Trim();
@@ -124,6 +139,10 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
 
         return System.Text.Json.JsonSerializer.Serialize(substitutedPayload);
     }
+
+    private static bool IsOptionalParameter(string parameter) => parameter.EndsWith('?', StringComparison.Ordinal);
+
+    private static string ParameterName(string parameter) => parameter.TrimEnd('?');
 
     private void ValidateDefinition(WorkflowDefinition definition)
     {
@@ -151,7 +170,7 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
     private void ValidateParameters(WorkflowTaskDefinition task, List<string> definedParameters)
     {
         var regex = new Regex(@"\{\{(.*?)\}\}");
-        var definedParamsSet = definedParameters.ToHashSet();
+        var definedParamsSet = definedParameters.Select(ParameterName).ToHashSet();
 
         foreach (var entry in task.Payload)
         {

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Models;
@@ -72,6 +73,28 @@ public class RecipeImportService(
             Status = instance.Status.ToString(),
             ErrorMessage = failedTask?.ErrorMessage
         };
+    }
+
+    public async Task<WorkflowInstanceDetailDto?> GetImportByIdAsync(Guid importId, Guid familyMemberId)
+    {
+        if (!await db.FamilyMembers.AnyAsync(member => member.Id == familyMemberId))
+            throw new KeyNotFoundException($"Family member {familyMemberId} not found.");
+
+        var instance = await db.WorkflowInstances
+            .Include(entry => entry.Tasks)
+            .SingleOrDefaultAsync(entry => entry.Id == importId);
+        if (instance is null) return null;
+
+        var parameters = instance.Parameters is null
+            ? null
+            : JsonSerializer.Deserialize<Dictionary<string, string>>(instance.Parameters);
+        if (parameters is null
+            || !parameters.TryGetValue("recipeId", out var recipeIdText)
+            || !Guid.TryParse(recipeIdText, out var recipeId)
+            || !await db.Recipes.AnyAsync(recipe => recipe.Id == recipeId && recipe.AddedBy == familyMemberId))
+            return null;
+
+        return WorkflowInstanceDetailDto.FromModel(instance);
     }
 
     public async Task<RecipeImportSummaryDto> GetImportSummary()

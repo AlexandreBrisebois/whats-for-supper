@@ -1,24 +1,20 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Settings, Trash2, RefreshCw, Pencil, Flag } from 'lucide-react';
+import { Settings, Trash2, Pencil, Flag } from 'lucide-react';
 import { t } from '@/locales';
 
 interface ActionGearMenuProps {
-  canReimport: boolean;
   hasImportIssue: boolean;
   onEdit?: () => void;
   onMoveToBin: () => void;
-  onReimport: () => void;
   onReportImportIssue: () => void;
 }
 
 export function ActionGearMenu({
-  canReimport,
   hasImportIssue,
   onEdit,
   onMoveToBin,
-  onReimport,
   onReportImportIssue,
 }: ActionGearMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,11 +30,6 @@ export function ActionGearMenu({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleReimport = () => {
-    onReimport();
-    setIsOpen(false);
-  };
 
   const handleMoveToBin = () => {
     onMoveToBin();
@@ -90,17 +81,6 @@ export function ActionGearMenu({
                 <Flag size={16} className="text-terracotta/70" />
                 {hasImportIssue ? 'Review issue' : 'Report issue'}
               </button>
-              {canReimport && (
-                <button
-                  type="button"
-                  data-testid="action-reimport-recipe"
-                  onClick={handleReimport}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
-                >
-                  <RefreshCw size={16} className="text-terracotta/70" />
-                  {t('recipes.reimportRecipe', 'Reimport Recipe')}
-                </button>
-              )}
               <button
                 type="button"
                 data-testid="action-move-to-bin"

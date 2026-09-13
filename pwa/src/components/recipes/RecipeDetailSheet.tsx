@@ -25,7 +25,6 @@ import {
   downloadRecipeBundleFile,
   updateRecipe,
   deleteRecipe,
-  reimportRecipe,
   getRecipeImportStatus,
   uploadRecipeOriginal,
   regenerateHero,
@@ -321,7 +320,7 @@ export function RecipeDetailSheet({
     if (watchedImportIdRef.current !== importId) return;
 
     try {
-      const result = await getRecipeImportStatus(targetRecipeId);
+      const result = await getRecipeImportStatus(importId);
       if (watchedImportIdRef.current !== importId) return;
 
       const status = result.status.toLowerCase();
@@ -344,34 +343,28 @@ export function RecipeDetailSheet({
     }
   };
 
-  const handleReimport = async () => {
-    if (!recipe) return;
-    try {
-      const attempt = await reimportRecipe(recipe.id);
-      watchedImportIdRef.current = attempt.importId;
-      if (importPollTimerRef.current) clearTimeout(importPollTimerRef.current);
-      void pollImportUntilTerminal(recipe.id, attempt.importId);
-      addToast({
-        type: 'success',
-        message: t('recipes.reimportStarted', 'Reimport started...'),
-      });
-    } catch (error) {
-      console.error('Failed to reimport recipe', error);
-      addToast({
-        type: 'error',
-        message: t('recipes.reimportFailed', 'Failed to start reimport'),
-      });
-    }
-  };
-
   const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
     if (!recipe) return;
-    const updated = await saveRecipeImportIssue(recipe.id, draft);
-    setRecipe(updated);
+    const submission = await saveRecipeImportIssue(recipe.id, draft);
+    setRecipe(submission.recipe);
+    if (submission.reimportLaunchFailed) {
+      throw new Error('Re-import launch failed');
+    }
     setShowImportIssueSheet(false);
+    if (submission.reimportStarted && submission.importId) {
+      watchedImportIdRef.current = submission.importId;
+      if (importPollTimerRef.current) clearTimeout(importPollTimerRef.current);
+      void pollImportUntilTerminal(recipe.id, submission.importId);
+      addToast({ type: 'success', message: 'Reimporting in background' });
+      return;
+    }
     addToast({
       type: 'success',
-      message: recipe.importIssue ? 'Changes saved' : 'Marked for review',
+      message: submission.recipe.importIssue?.reimportFailureMessage
+        ? 'Saved for review. Add new detail if you want us to try re-importing again.'
+        : recipe.importIssue
+          ? 'Changes saved'
+          : 'Marked for review',
     });
   };
 
@@ -576,14 +569,12 @@ export function RecipeDetailSheet({
               )}
             {!isLoading && recipe && !isEditing && (
               <ActionGearMenu
-                canReimport={recipe.canReimport}
                 hasImportIssue={Boolean(recipe.importIssue)}
                 onEdit={() => {
                   resetDrafts(recipe);
                   setIsEditing(true);
                 }}
                 onMoveToBin={() => void handleMoveToBin()}
-                onReimport={() => void handleReimport()}
                 onReportImportIssue={() => setShowImportIssueSheet(true)}
               />
             )}
@@ -1050,6 +1041,8 @@ export function RecipeDetailSheet({
         <RecipeImportIssueSheet
           issue={recipe.importIssue ?? null}
           canReportContentIssues={recipe.canReimport}
+          isReimporting={recipe.importIssue?.isReimporting}
+          reimportFailureMessage={recipe.importIssue?.reimportFailureMessage}
           onClose={() => setShowImportIssueSheet(false)}
           onSave={handleSaveImportIssue}
           onResolve={handleResolveImportIssue}

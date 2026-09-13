@@ -4,10 +4,8 @@ import { ActionGearMenu } from './ActionGearMenu';
 
 describe('ActionGearMenu', () => {
   const defaultProps = {
-    canReimport: true,
     hasImportIssue: false,
     onMoveToBin: vi.fn(),
-    onReimport: vi.fn(),
     onReportImportIssue: vi.fn(),
   };
 
@@ -21,14 +19,14 @@ describe('ActionGearMenu', () => {
     fireEvent.click(screen.getByTestId('action-gear-menu'));
 
     expect(screen.getByTestId('action-move-to-bin')).toBeDefined();
-    expect(screen.getByTestId('action-reimport-recipe')).toBeDefined();
+    expect(screen.queryByTestId('action-reimport-recipe')).toBeNull();
     const reportAction = screen.getByRole('button', { name: 'Report issue' });
     expect(reportAction).toBeVisible();
     expect(reportAction.querySelector('svg')).toHaveClass('text-terracotta/70');
   });
 
-  it('keeps reporting visible but hides reimport if canReimport is false', () => {
-    render(<ActionGearMenu {...defaultProps} canReimport={false} />);
+  it('keeps reporting visible without a direct re-import entry point', () => {
+    render(<ActionGearMenu {...defaultProps} />);
     fireEvent.click(screen.getByTestId('action-gear-menu'));
 
     expect(screen.getByTestId('action-move-to-bin')).toBeDefined();
@@ -41,17 +39,6 @@ describe('ActionGearMenu', () => {
     fireEvent.click(screen.getByTestId('action-gear-menu'));
 
     expect(screen.getByRole('button', { name: 'Review issue' })).toBeVisible();
-  });
-
-  it('calls onReimport and closes menu when reimport is clicked', () => {
-    render(<ActionGearMenu {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('action-gear-menu'));
-
-    const reimportBtn = screen.getByTestId('action-reimport-recipe');
-    fireEvent.click(reimportBtn);
-
-    expect(defaultProps.onReimport).toHaveBeenCalled();
-    expect(screen.queryByTestId('action-reimport-recipe')).toBeNull();
   });
 
   it('calls onMoveToBin and closes menu when move to bin is clicked', () => {

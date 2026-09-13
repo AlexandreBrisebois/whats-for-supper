@@ -1,11 +1,15 @@
 name: recipe-import
 parameters:
     - recipeId
+    - repairReasons?
+    - repairNote?
 tasks:
     - name: extract_recipe
       processor: ExtractRecipe
       payload:
           recipeId: "{{ recipeId }}"
+          repairReasons: "{{ repairReasons }}"
+          repairNote: "{{ repairNote }}"
     - name: generate_hero
       processor: GenerateHero
       depends_on:
