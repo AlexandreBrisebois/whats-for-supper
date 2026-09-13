@@ -137,9 +137,28 @@ Your household can be configured to automatically translate every new recipe you
 
 When translation is active:
 - **Consistent Library**: All ingredients, steps, and descriptions are stored in your target language from the start.
-- **Reimport to Translate**: If you have an existing recipe in another language, you can tap **Reimport** in the recipe's gear menu. The app will re-read the original source (the photo or website link) and generate a new, translated version.
+- **Existing recipes**: Open the recipe's gear menu and choose **Report issue**. Choose **Ingredients** or **Steps**, add a note explaining what needs attention, and tap **Save**. For recipes with an original photo or website source, the app may re-read that source and update the recipe in the background.
 
 This feature is controlled by your system administrator via the `IMPORT_TARGET_LANGUAGE` setting.
+
+---
+
+## Reporting a Recipe Issue
+
+If a recipe needs attention, open it, tap the gear menu, and choose **Report issue**. If it already has a report, the same option is named **Review issue**.
+
+Choose what needs a closer look:
+
+- **Ingredients** or **Steps** — add a short, specific note, then tap **Save**. For a recipe that can be re-imported from its original source, the app can start a focused re-import in the background.
+- **Duplicate** — this is always saved for manual review and does not re-import the recipe.
+
+You only need to tap **Save**. The app decides the safe next step. A report with no note is still saved for review, but it will not start a re-import.
+
+When a re-import starts, you can close the sheet and keep using the app. The recipe shows **Reimporting in background** while it works. When it finishes, it is marked **Reimported — check recipe**. Review the recipe, then choose **Mark as resolved** when it looks right.
+
+If re-import cannot finish, your report stays saved. Add or change a detail and tap **Save** to request another attempt. Saving unchanged feedback will not repeatedly restart it.
+
+In **Cook's Mode**, use the flag beside ingredients or a step to open this same reporting flow. Check the result later from the recipe detail screen.
 
 ---
 
