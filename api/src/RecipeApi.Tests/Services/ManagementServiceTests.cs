@@ -509,7 +509,7 @@ public class ManagementServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GenerateDreamingReportAsync_WritesMarkdownWithFailuresAndStuckWorkflows()
+    public async Task GenerateDreamingReportAsync_ReportsDreamingAsStuckOnlyAfterTwentyFourHours()
     {
         // Arrange
         var now = DateTimeOffset.UtcNow;
@@ -525,6 +525,16 @@ public class ManagementServiceTests : IAsyncLifetime
             now.AddHours(-2),
             taskStatus: TaskStatus.Processing));
         _db.WorkflowInstances.Add(Workflow(
+            "dreaming",
+            WorkflowStatus.Pending,
+            now.AddHours(-2),
+            taskStatus: TaskStatus.Pending));
+        _db.WorkflowInstances.Add(Workflow(
+            "dreaming",
+            WorkflowStatus.Processing,
+            now.AddHours(-25),
+            taskStatus: TaskStatus.Processing));
+        _db.WorkflowInstances.Add(Workflow(
             "db-backup",
             WorkflowStatus.Completed,
             now.AddMinutes(-10)));
@@ -537,7 +547,7 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.True(File.Exists(result.Path));
         Assert.StartsWith(ReportsRoot, result.Path);
         Assert.Equal(1, result.FailedWorkflows);
-        Assert.Equal(1, result.StuckWorkflows);
+        Assert.Equal(2, result.StuckWorkflows);
 
         var markdown = await File.ReadAllTextAsync(result.Path);
         Assert.Contains("# Dreaming Report", markdown);
@@ -548,6 +558,7 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Contains("Extraction failed", markdown);
         Assert.Contains("Keep an eye on these", markdown);
         Assert.Contains("stuck-import", markdown);
+        Assert.Equal(1, markdown.Split("dreaming (", StringSplitOptions.None).Length - 1);
     }
 
     // ── Restore step 8 ────────────────────────────────────────────────────────

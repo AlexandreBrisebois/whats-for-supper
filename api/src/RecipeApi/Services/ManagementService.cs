@@ -480,6 +480,7 @@ public class ManagementService(
         var now = clock.UtcNow;
         var since = now.AddHours(-24);
         var stuckCutoff = now.AddHours(-1);
+        var dreamingStuckCutoff = now.AddHours(-24);
 
         var recentFailures = await db.WorkflowInstances
             .AsNoTracking()
@@ -493,7 +494,8 @@ public class ManagementService(
             .Include(i => i.Tasks)
             .Where(i =>
                 (i.Status == WorkflowStatus.Processing || i.Status == WorkflowStatus.Pending)
-                && i.UpdatedAt < stuckCutoff)
+                && ((i.WorkflowId == "dreaming" && i.UpdatedAt < dreamingStuckCutoff)
+                    || (i.WorkflowId != "dreaming" && i.UpdatedAt < stuckCutoff)))
             .OrderBy(i => i.UpdatedAt)
             .ToListAsync(ct);
 
