@@ -1,6 +1,8 @@
-# Deployment Guide
+# Maintainer Deployment Reference
 
-This guide covers deploying **What's For Supper** on a home NAS or any Docker-capable host. The production stack runs on a Synology NAS with a Cloudflare Tunnel for remote access — that is the reference configuration described here.
+> **Not a public installation guide.** The qualified public Synology bundle is still in preparation. Do not use these maintainer-specific commands for a new household installation; follow the [Synology release plan](.kiro/specs/01-public-synology-release/requirements.md) and wait for its versioned release bundle.
+
+This reference records the current maintainer deployment configuration while the public installation, Cloudflare, backup, update, and rollback guides are being reconciled.
 
 ---
 

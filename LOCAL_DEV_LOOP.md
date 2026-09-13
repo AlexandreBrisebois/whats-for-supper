@@ -1,6 +1,6 @@
 # Local Development Loop & Infrastructure
 
-Comprehensive guide for local development, service orchestration, and discovery.
+This is a contributor guide for local development, service orchestration, and discovery. It is not a Synology installation guide; the public release path is tracked in the [Synology release plan](.kiro/specs/01-public-synology-release/requirements.md).
 
 ## Service Dependencies (Internal Network)
 

@@ -6,7 +6,7 @@ Welcome to the app that answers the most stressful question of the day before yo
 
 ## Getting Started
 
-Someone in your household will send you an invite link. Tap it, pick your name from the family list, and you're in. No account, no password.
+Open your household's app link, enter the shared household passphrase if asked, pick your name from the family list, and you're in. No personal account to create or separate password to remember.
 
 The app keeps your whole family on the same page — literally. Whatever anyone plans, cooks, or votes on shows up for everyone instantly. No more "I thought you were making dinner" moments.
 
@@ -16,9 +16,9 @@ The app keeps your whole family on the same page — literally. Whatever anyone 
 
 The home screen is your command centre. It tells you what's planned for tonight, how long it takes, and what to do next.
 
-If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to walk through the recipe step by step — hands-free, big text, no scrolling.
+If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to work through the recipe one clear, large-text step at a time.
 
-If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app will randomly pick one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing the page will cycle to another recipe from your GOTO list, so you're never stuck with the same suggestion every time. You can also use **Quick Find** for a short stack of suggestions, or search your library when you already know what you want.
+If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. You can also use **Quick Find** for a short stack of suggestions, or search your library when you already know what you want.
 
 This screen saves you from opening the fridge, staring blankly, and ordering pizza for the third time this week.
 
@@ -48,30 +48,11 @@ The planner saves you from the Sunday-night panic of figuring out five dinners f
 
 ---
 
-## Balanced Meals
-
-At the top of the weekly planner, you'll see a **balance indicator**. It tracks whether your week's dinners cover the key food groups from Canada's Food Guide:
-
-- **Protein** (meat, fish, legumes, eggs) — at least 3 nights
-- **Vegetables & fruit** — at least 4 nights
-- **Whole grains** (brown rice, quinoa, oats) — at least 2 nights
-- **Plant-based protein** (beans, lentils, tofu) — at least once
-
-When your week is balanced, the indicator turns green. If it isn't, it shows one helpful suggestion — like "Try to include vegetables or fruit in at least 4 dinners."
-
-The indicator is informational only — it never blocks you from assigning whatever you want. Think of it as a quiet co-planner, not a food critic.
-
-Every recipe is classified automatically when you add it. This happens once in the background and is remembered forever — the app never re-analyses the same recipe twice.
-
----
-
 ## Discovering New Recipes
 
 Swipe through recipe cards like a family vote. Heart the ones you love, pass on the rest.
 
 When enough family members like the same recipe, it rises to the top of the planner suggestions. No group chat needed.
-
-As you fill your weekly plan, the discovery stack quietly adjusts to surface recipes from food groups you haven't covered yet. If you've already got plenty of protein, you'll start seeing more vegetable-forward recipes — without having to filter anything yourself.
 
 Discovery saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
 
@@ -83,21 +64,11 @@ When you know exactly what you're looking for, or have a specific craving, use t
 
 You don't need to be precise. Type like you talk: "chicken pasta tonight", "quick fish", or "the salmon bowls we liked." The app uses semantic search to find the best matches even if the words don't match perfectly.
 
-Search is **planner-aware**. If you open search from a day in your planner, it automatically hides recipes you've already planned for other days and highlights ones that help balance your week.
+Search is **planner-aware**. If you open search from a day in your planner, it automatically hides recipes you've already planned for other days.
 
-Use the **"Healthy"** filter to quickly find light and nutritious meals. If you have a complex request, tap the **Stars icon** to use "Agent Search." You can type long-form sentences like "something with chicken but not too heavy" and the AI will find the best matches for you.
-
-You can also tap the **Camera icon** from Search:
-
-- Take a picture of a recipe card, cookbook page, handwritten note, or screenshot, and the app will look for the matching recipe that is already in your library.
-- Take pictures of your fridge, freezer, or pantry, and the app will identify visible ingredients and prioritize recipes that use what you have.
+Use the **"Healthy"** filter to quickly find light and nutritious meals.
 
 Tap any search result to open its recipe detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, or tap the **star** to add it to your family's GOTO list.
-
-When in Agent mode, the app becomes your **Personal Chef**:
-- **Menu Awareness**: The agent looks at what you've already planned for the week to ensure variety (e.g., suggesting a light stir-fry if you already have several pasta nights scheduled).
-- **Dietary Balance**: It prioritizes recipes that help you meet your weekly nutritional goals (like adding more whole grains or plant-based proteins).
-- **Personalized Reasoning**: Every "Top Pick" comes with a personalized explanation of why it fits your current plan and craving.
 
 Search saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
 
@@ -133,10 +104,10 @@ Adding recipes saves you from retyping Grandma's lasagna off a crumpled index ca
 
 ## Automated Recipe Translation
 
-Your household can be configured to automatically translate every new recipe you add into your preferred language (e.g., French). This happens during the initial processing of **Photo**, **URL**, and **Describe it** recipes.
+Your household can be configured to process new recipes in a preferred language (for example, French). This applies during the initial processing of **Photo**, **URL**, and **Describe it** recipes.
 
 When translation is active:
-- **Consistent Library**: All ingredients, steps, and descriptions are stored in your target language from the start.
+- **Consistent Library**: The recipe-processing workflow requests ingredients, steps, and descriptions in your chosen language.
 - **Existing recipes**: Open the recipe's gear menu and choose **Report issue**. Choose **Ingredients** or **Steps**, add a note explaining what needs attention, and tap **Save**. For recipes with an original photo or website source, the app may re-read that source and update the recipe in the background.
 
 This feature is controlled by your system administrator via the `IMPORT_TARGET_LANGUAGE` setting.
@@ -164,7 +135,7 @@ In **Cook's Mode**, use the flag beside ingredients or a step to open this same 
 
 ## Managing Your Library
 
-If you delete a recipe by mistake, don't panic. It goes to the **Recycle Bin** (found in Settings) for 30 days. You can restore it with one tap.
+If you delete a recipe by mistake, don't panic. It goes to the **Recycle Bin** in the recipe library, where you can restore it with one tap.
 
 You can also toggle whether a recipe is "Discoverable" directly from the library or the browse stack. Only discoverable recipes appear in the family voting stack.
 
@@ -178,12 +149,10 @@ Everything in the app is shared and live. When Alex assigns a recipe on the plan
 
 The grocery list works the same way. Two people in the same store, checking things off together in real time.
 
-The discovery stack adapts in real time too — as the week fills up, the cards shift toward whatever food group the family still needs most.
-
 ---
 
 ## Showcase (Demo Mode)
 
-If you see a notice saying **"Demo Mode Active"**, you are in a trial environment. 
+Demo Mode is a managed showcase environment. The host captures a master snapshot, and the app restores recipes, plans, and votes from it on a configured schedule.
 
-The app state (recipes, planner, votes) is periodically reset to a clean master snapshot. Most expensive AI features like "Agent Search" or "Recipe Extraction" are disabled to keep the showcase cost-optimized, but you can still search the library, browse cards, and use the planner normally.
+To keep the showcase predictable and avoid AI costs, AI-powered recipe processing is disabled. You can still use the planner, browse the library, and use regular search.
