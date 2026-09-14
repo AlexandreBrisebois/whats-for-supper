@@ -31,7 +31,7 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-preview.6" />
     <PackageReference Include="Pgvector" Version="0.*" />
     <!-- OpenAPI -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-preview.6.26359.118" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.1.26425.128" />
     <PackageReference Include="Microsoft.OpenApi" Version="3.10.2" />
     <!-- Logging -->
     <PackageReference Include="Serilog.AspNetCore" Version="10.*" />
