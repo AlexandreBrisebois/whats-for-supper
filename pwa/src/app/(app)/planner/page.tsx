@@ -40,6 +40,7 @@ import { GroceryList } from '@/components/planner/GroceryList';
 // import { BalanceIndicator } from '@/components/planner/BalanceIndicator';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
+import { useUiStore } from '@/store/uiStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { type AssignmentRecipe, resolveOccupiedSlot } from '@/lib/planner/slotAssignment';
 import { getVotingLink } from '@/lib/auth';
@@ -267,7 +268,10 @@ export default function PlannerPage() {
     if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
 
     const { slot, recipe } = pendingRecovery;
-    await resolveOccupiedSlot(slot, action);
+    const deferResult = await resolveOccupiedSlot(slot, action, action === 'next_week');
+    if (action === 'next_week' && deferResult?.data?.message) {
+      useUiStore.getState().addToast(deferResult.data.message);
+    }
     useWeekStore.getState().assignRecipe(slot.dayIndex, recipe);
 
     if (slot.weekOffset === 0 && slot.date === getTodayString()) {

@@ -93,6 +93,75 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task DeferRecipe_MovesLockedSourceToFirstFreeDateAndPublishesBothWeeks()
+    {
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var nextMonday = today.AddDays(7 - ((int)today.DayOfWeek + 6) % 7);
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(), RecipeId = recipeId, Date = today,
+            Status = CalendarEventStatus.Locked, VoteCount = 4
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await _service.DeferRecipeAsync(new DeferScheduleDto(today, recipeId), "connection", 12);
+
+        Assert.Equal(nextMonday, result.ScheduledDate);
+        var moved = Assert.Single(_db.CalendarEvents);
+        Assert.Equal(CalendarEventStatus.Planned, moved.Status);
+        Assert.Equal(4, moved.VoteCount);
+        _publisherMock.Verify(p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), "connection", 12), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task DeferRecipe_PreservesSkippedSourceVoteCountAndCreatesPlannedDestination()
+    {
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
+        var sourceDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(), RecipeId = recipeId, Date = sourceDate,
+            Status = CalendarEventStatus.Skipped, VoteCount = 3
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.DeferRecipeAsync(new DeferScheduleDto(sourceDate, recipeId));
+
+        var source = Assert.Single(_db.CalendarEvents.Where(e => e.Date == sourceDate));
+        Assert.Null(source.RecipeId);
+        Assert.Equal(CalendarEventStatus.Skipped, source.Status);
+        Assert.Equal(3, source.VoteCount);
+        var destination = Assert.Single(_db.CalendarEvents.Where(e => e.Date != sourceDate));
+        Assert.Equal(recipeId, destination.RecipeId);
+        Assert.Equal(CalendarEventStatus.Planned, destination.Status);
+        Assert.Equal(3, destination.VoteCount);
+    }
+
+    [Fact]
+    public async Task FinalizeOverdueMeals_OnlyCooksPastPlannedAndLockedRecipeEvents()
+    {
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
+        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = yesterday, Status = CalendarEventStatus.Planned },
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = today, Status = CalendarEventStatus.Locked },
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = yesterday.AddDays(-1), Status = CalendarEventStatus.Skipped });
+        await _db.SaveChangesAsync();
+
+        await _service.FinalizeOverdueMealsAsync();
+        await _service.FinalizeOverdueMealsAsync();
+
+        Assert.Equal(CalendarEventStatus.Cooked, _db.CalendarEvents.Single(e => e.Date == yesterday).Status);
+        Assert.Equal(CalendarEventStatus.Locked, _db.CalendarEvents.Single(e => e.Date == today).Status);
+        Assert.Equal(CalendarEventStatus.Skipped, _db.CalendarEvents.Single(e => e.Date == yesterday.AddDays(-1)).Status);
+    }
+
+    [Fact]
     public async Task Should_Swap_Recipes_When_Moving_To_Occupied_Slot()
     {
         // Arrange

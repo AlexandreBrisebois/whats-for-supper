@@ -422,6 +422,21 @@ components:
         intent: { type: string, enum: [swap, push], default: swap }
         targetWeekOffset: { type: [integer, 'null'] }
 
+    DeferScheduleDto:
+      type: object
+      required: [sourceDate, recipeId]
+      properties:
+        sourceDate: { type: string, format: date }
+        recipeId: { type: string, format: uuid }
+
+    DeferScheduleResultDto:
+      type: object
+      required: [scheduledDate, scheduledWeekOffset, message]
+      properties:
+        scheduledDate: { type: string, format: date }
+        scheduledWeekOffset: { type: integer }
+        message: { type: string }
+
     AssignScheduleDto:
       type: object
       required: [weekOffset, dayIndex, recipeId]
@@ -2251,6 +2266,29 @@ paths:
                     type: object
                     properties:
                       message: { type: string }
+
+  /api/schedule/defer:
+    post:
+      summary: Defer a scheduled recipe to the first free date next week or later
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeferScheduleDto' }
+      responses:
+        '200':
+          description: Deferred
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/DeferScheduleResultDto' }
+        '404':
+          description: No schedule event matches the exact source date and recipe
+        '409':
+          description: The source event is awaiting consensus
 
   /api/schedule/assign:
     post:

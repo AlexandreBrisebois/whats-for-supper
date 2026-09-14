@@ -25,6 +25,7 @@ import { useFamilyStore } from '@/store/familyStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useGotoStore } from '@/store/gotoStore';
 import { useWeekStore } from '@/store/weekStore';
+import { useUiStore } from '@/store/uiStore';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 import type { GoToItem } from '@/lib/api/generated/models/index';
@@ -215,15 +216,12 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
             await finalizeOrderedIn();
           }
-          const fromIndex = getMondayBasedDayIndex(todayStr);
-          await apiClient.api.schedule.move.post({
-            weekOffset: 0,
-            fromIndex,
-            toIndex: 0,
-            targetWeekOffset: 1,
-            intent: 'push',
-            recipeId,
-          });
+          const sourceDate = DateOnly.parse(todayStr);
+          if (!sourceDate) return;
+          const deferResult = await apiClient.api.schedule.defer.post({ sourceDate, recipeId });
+          if (deferResult?.data?.message) {
+            useUiStore.getState().addToast(deferResult.data.message);
+          }
 
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
             assignRecipe(recoveryFlow.pendingRecipe);
@@ -238,7 +236,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             });
           }
           sync();
-          router.push(ROUTES.PLANNER);
         } else if (action === 'drop') {
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
             await finalizeOrderedIn();

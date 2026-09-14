@@ -67,7 +67,8 @@ export async function findFirstOpenPlannerSlot(
 
 export async function resolveOccupiedSlot(
   slot: Pick<PlannerSlot, 'weekOffset' | 'dayIndex' | 'date' | 'recipe'>,
-  action: 'tomorrow' | 'next_week' | 'drop'
+  action: 'tomorrow' | 'next_week' | 'drop',
+  useServerDefer = false
 ) {
   if (action === 'drop') {
     const date = DateOnly.parse(slot.date);
@@ -90,6 +91,12 @@ export async function resolveOccupiedSlot(
       recipeId,
     });
     return;
+  }
+
+  if (useServerDefer) {
+    const sourceDate = DateOnly.parse(slot.date);
+    if (!sourceDate) return;
+    return apiClient.api.schedule.defer.post({ sourceDate, recipeId });
   }
 
   await apiClient.api.schedule.move.post({

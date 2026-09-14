@@ -197,6 +197,7 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, CategorizeIngredientsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CategorizeRecipeProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, FinalizeOverdueMealsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CompleteRecipeImportReportProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
     builder.Services.AddScoped<IWorkflowProcessor, WorkflowProcessor>();
