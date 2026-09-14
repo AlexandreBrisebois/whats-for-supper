@@ -1012,7 +1012,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 </div>
               </button>
               <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
-                {day.recipe?.id && (
+                {day.recipe?.id && !day._isPending && (
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}

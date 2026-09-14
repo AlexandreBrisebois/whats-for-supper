@@ -436,6 +436,38 @@ describe('PlannerPage voting action row', () => {
     expect(pivotSheet.getAttribute('data-day-index')).toBe('0');
   });
 
+  it('hides the change recipe button for a pending family suggestion', () => {
+    const schedule = makeAssignedSchedule('2026-05-10', 0) as any[];
+    schedule[0]._isPending = true;
+
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      balanceSummary: null,
+      schedule,
+      isLoading: false,
+      status: 1,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+
+    render(<PlannerPage />);
+
+    const card = screen.getByTestId('day-card-0');
+    expect(within(card).queryByTestId('change-recipe-button')).not.toBeInTheDocument();
+    expect(within(card).getByTestId('edit-recipe-button')).toBeInTheDocument();
+  });
+
   it('does not render start-cook-mode or view-recipe-button on the cards', () => {
     mocks.setPlannerState({
       currentWeekOffset: 0,
