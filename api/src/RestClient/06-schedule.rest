@@ -46,6 +46,16 @@ X-Hearth-Secret: {{hearthSecret}}
   "toIndex": 2
 }
 
+### Defer a scheduled recipe to the first free next-week date
+POST {{baseUrl}}/api/schedule/defer
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "sourceDate": "2026-09-13",
+  "recipeId": "550e8400-e29b-41d4-a716-446655440000"
+}
+
 ### Get smart defaults for week
 # Returns consensus-voted recipes and open slots for planning.
 # Only shows recipes that hit the consensus threshold.

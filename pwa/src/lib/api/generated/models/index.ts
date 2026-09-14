@@ -5,6 +5,7 @@
 import {
   createUntypedNodeFromDiscriminatorValue,
   type AdditionalDataHolder,
+  type DateOnly,
   type Guid,
   type Parsable,
   type ParseNode,
@@ -210,6 +211,28 @@ export function createCaptureUrlDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoCaptureUrlDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DeferScheduleDto}
+ */
+// @ts-ignore
+export function createDeferScheduleDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDeferScheduleDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DeferScheduleResultDto}
+ */
+// @ts-ignore
+export function createDeferScheduleResultDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDeferScheduleResultDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -937,6 +960,30 @@ export function createWorkflowTriggerResponseDtoFromDiscriminatorValue(
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoWorkflowTriggerResponseDto;
 }
+export interface DeferScheduleDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+  /**
+   * The sourceDate property
+   */
+  sourceDate?: DateOnly | null;
+}
+export interface DeferScheduleResultDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The message property
+   */
+  message?: string | null;
+  /**
+   * The scheduledDate property
+   */
+  scheduledDate?: DateOnly | null;
+  /**
+   * The scheduledWeekOffset property
+   */
+  scheduledWeekOffset?: number | null;
+}
 export interface DescribeRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * Free-text description used to synthesize the full recipe via AI
@@ -1112,6 +1159,45 @@ export function deserializeIntoCaptureUrlDto(
     },
     url: (n) => {
       captureUrlDto.url = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DeferScheduleDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDeferScheduleDto(
+  deferScheduleDto: Partial<DeferScheduleDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    recipeId: (n) => {
+      deferScheduleDto.recipeId = n.getGuidValue();
+    },
+    sourceDate: (n) => {
+      deferScheduleDto.sourceDate = n.getDateOnlyValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DeferScheduleResultDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDeferScheduleResultDto(
+  deferScheduleResultDto: Partial<DeferScheduleResultDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      deferScheduleResultDto.message = n.getStringValue();
+    },
+    scheduledDate: (n) => {
+      deferScheduleResultDto.scheduledDate = n.getDateOnlyValue();
+    },
+    scheduledWeekOffset: (n) => {
+      deferScheduleResultDto.scheduledWeekOffset = n.getNumberValue();
     },
   };
 }
@@ -4111,6 +4197,45 @@ export function serializeCaptureUrlDto(
   writer.writeNumberValue('rating', captureUrlDto.rating);
   writer.writeStringValue('url', captureUrlDto.url);
   writer.writeAdditionalData(captureUrlDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param DeferScheduleDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDeferScheduleDto(
+  writer: SerializationWriter,
+  deferScheduleDto: Partial<DeferScheduleDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!deferScheduleDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('recipeId', deferScheduleDto.recipeId);
+  writer.writeDateOnlyValue('sourceDate', deferScheduleDto.sourceDate);
+  writer.writeAdditionalData(deferScheduleDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param DeferScheduleResultDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDeferScheduleResultDto(
+  writer: SerializationWriter,
+  deferScheduleResultDto: Partial<DeferScheduleResultDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!deferScheduleResultDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', deferScheduleResultDto.message);
+  writer.writeDateOnlyValue('scheduledDate', deferScheduleResultDto.scheduledDate);
+  writer.writeNumberValue('scheduledWeekOffset', deferScheduleResultDto.scheduledWeekOffset);
+  writer.writeAdditionalData(deferScheduleResultDto.additionalData);
 }
 /**
  * Serializes information the current object

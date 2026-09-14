@@ -61,6 +61,24 @@ public class DreamingWorkflowSeederTests : IDisposable
         Assert.Single(_db.WorkflowInstances.Where(i => i.WorkflowId == "dreaming"));
     }
 
+    [Fact]
+    public async Task SeedAsync_UsesSixUtcDefaultWhenNoCronOverrideIsConfigured()
+    {
+        await SaveDreamingWorkflowAsync();
+        var configuration = new ConfigurationBuilder().Build();
+        var seeder = new DreamingWorkflowSeeder(
+            _db,
+            new WorkflowOrchestrator(new WorkflowRepository(_storage), _db),
+            new CronScheduleCalculator(configuration),
+            _clock,
+            NullLogger<DreamingWorkflowSeeder>.Instance);
+
+        await seeder.SeedAsync(CancellationToken.None);
+
+        var task = Assert.Single(_db.WorkflowTasks);
+        Assert.Equal(new DateTimeOffset(2026, 5, 9, 6, 0, 0, TimeSpan.Zero), task.ScheduledAt);
+    }
+
     private DreamingWorkflowSeeder CreateSeeder()
     {
         var configuration = new ConfigurationBuilder()

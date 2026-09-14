@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   assignRecipe: vi.fn(),
   sync: vi.fn(),
   movePost: vi.fn().mockResolvedValue(undefined),
+  deferPost: vi.fn().mockResolvedValue({ data: { message: 'Moved meal to Monday, May 18.' } }),
+  addToast: vi.fn(),
   removeDelete: vi.fn().mockResolvedValue(undefined),
   validatePost: vi.fn().mockResolvedValue(undefined),
   currentRecipe: null as any,
@@ -150,6 +152,10 @@ vi.mock('@/store/weekStore', () => ({
   },
 }));
 
+vi.mock('@/store/uiStore', () => ({
+  useUiStore: Object.assign(() => ({}), { getState: () => ({ addToast: mocks.addToast }) }),
+}));
+
 vi.mock('@/store/familyStore', () => ({
   useFamilyStore: (selector?: (state: any) => any) => {
     const state = {
@@ -177,6 +183,9 @@ vi.mock('@/lib/api/api-client', () => ({
       schedule: {
         move: {
           post: mocks.movePost,
+        },
+        defer: {
+          post: mocks.deferPost,
         },
         day: {
           byDate: () => ({
@@ -307,7 +316,7 @@ describe('HomeCommandCenter', () => {
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
-  it('navigates to planner after saving tonight for next week', async () => {
+  it('defers tonight to the server-selected next-week date without navigating', async () => {
     mocks.currentRecipe = {
       id: 'recipe-1',
       name: 'Pasta',
@@ -323,8 +332,12 @@ describe('HomeCommandCenter', () => {
     });
 
     await waitFor(() => {
-      expect(mocks.movePost).toHaveBeenCalledTimes(1);
-      expect(mocks.push).toHaveBeenCalledWith('/planner');
+      expect(mocks.deferPost).toHaveBeenCalledWith(
+        expect.objectContaining({ recipeId: 'recipe-1' })
+      );
+      expect(mocks.movePost).not.toHaveBeenCalled();
+      expect(mocks.addToast).toHaveBeenCalledWith('Moved meal to Monday, May 18.');
+      expect(mocks.push).not.toHaveBeenCalled();
     });
   });
 

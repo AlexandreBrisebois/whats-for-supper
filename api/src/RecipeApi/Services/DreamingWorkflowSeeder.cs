@@ -12,7 +12,7 @@ public class DreamingWorkflowSeeder(
     ILogger<DreamingWorkflowSeeder> logger)
 {
     private const string DreamingWorkflowId = "dreaming";
-    private const string DreamingCronExpression = "${DREAMING_CRON_UTC:-0 3 * * *}";
+    private const string DreamingCronExpression = "${DREAMING_CRON_UTC:-0 6 * * *}";
 
     public async Task SeedAsync(CancellationToken ct)
     {

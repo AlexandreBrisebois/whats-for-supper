@@ -31,6 +31,24 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         return Ok(new { message = "Recipe moved" });
     }
 
+    [HttpPost("defer")]
+    public async Task<IActionResult> DeferRecipe([FromBody] DeferScheduleDto dto)
+    {
+        try
+        {
+            var result = await _scheduleService.DeferRecipeAsync(dto, GetConnectionId(), GetMoveSeq());
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (DeferScheduleConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("assign")]
     public async Task<IActionResult> AssignRecipe([FromBody] AssignScheduleDto dto)
     {

@@ -709,6 +709,21 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // POST /api/schedule/defer
+  await page.route('**/api/schedule/defer', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          scheduledDate: '2026-05-18',
+          scheduledWeekOffset: 1,
+          message: 'Moved meal to Monday, May 18.',
+        },
+      }),
+    });
+  });
+
   // GET /api/schedule/fill-the-gap
   await page.route('**/api/schedule/fill-the-gap', async (route) => {
     await route.fulfill({

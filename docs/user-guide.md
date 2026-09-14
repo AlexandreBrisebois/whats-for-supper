@@ -18,6 +18,10 @@ The home screen is your command centre. It tells you what's planned for tonight,
 
 If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to work through the recipe one clear, large-text step at a time.
 
+If tonight's plan changes, tap **Skip**, choose **Order In** or another backup, then decide what to do with the planned recipe: move it to tomorrow, save it for next week, or drop it. **Save for Next Week** finds the first open day starting next Monday. If next week is full, the app saves it on the next available later date and tells you where it went. You stay on the page you were using.
+
+Overnight, the app marks missed planned meals from earlier days as cooked so recipe rotation stays useful. Meals marked Ordered In, meals already cooked, and future plans are left alone.
+
 If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. You can also use **Quick Find** for a short stack of suggestions, or search your library when you already know what you want.
 
 This screen saves you from opening the fridge, staring blankly, and ordering pizza for the third time this week.

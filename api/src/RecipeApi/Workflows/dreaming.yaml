@@ -15,12 +15,17 @@ tasks:
     processor: ProcessMaintenanceCommands
     payload: {}
 
+  - name: finalize-overdue-meals
+    processor: FinalizeOverdueMeals
+    payload: {}
+
   - name: report
     processor: GenerateDreamingReport
     depends_on:
       - prune
       - backup
       - maintenance
+      - finalize-overdue-meals
     payload: {}
 
   - name: reschedule
@@ -30,4 +35,4 @@ tasks:
     payload:
       workflowId: dreaming
       schedule:
-        cron: "${DREAMING_CRON_UTC:-0 3 * * *}"
+        cron: "${DREAMING_CRON_UTC:-0 6 * * *}"

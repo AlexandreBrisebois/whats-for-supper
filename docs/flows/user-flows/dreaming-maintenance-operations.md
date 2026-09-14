@@ -2,7 +2,7 @@
 
 This flow describes how an operator understands and intervenes in the recurring Dreaming maintenance cycle.
 
-Dreaming is intentionally quiet. A family member should not have to think about it during normal meal planning. It exists for system health: prune old workflow history, trigger backup, write a report, and schedule the next run.
+Dreaming is intentionally quiet. A family member should not have to think about it during normal meal planning. It finalizes eligible overdue planned or locked meals as cooked, prunes old workflow history, triggers backup, writes a report, and schedules the next run.
 
 ## Normal nightly flow
 
@@ -19,6 +19,7 @@ sequenceDiagram
     Dreaming->>Dreaming: Prune old terminal workflow history
     Dreaming->>Backup: Start db-backup workflow
     Backup->>DataRoot: Flush backup artifacts to disk
+    Dreaming->>Dreaming: Finalize overdue planned and locked recipe meals as cooked
     Dreaming->>DataRoot: Write reports/dreaming-yyyy-MM-dd.md
     Dreaming->>Dreaming: Start next dreaming instance with scheduled root task
     Operator->>DataRoot: Optionally review latest Markdown report
