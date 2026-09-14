@@ -1,5 +1,9 @@
 # Dreaming Completion and Next-Week Defer Requirements
 
+> **Archived — historical reference only.** This requirements record is not an active work queue or current authority. See [archive guidance](../../../docs/archive/specs/README.md).
+
+> **Retired 2026-09-14 at owner request.** This planned package was archived without implementation or revalidation; its proposed requirements are preserved as historical evidence.
+
 Status: Draft for review  
 Scope: Dreaming completion and existing-meal next-week defer only  
 Non-authorizing: This specification does not authorize implementation, commit, deployment, or generated-client edits until approved.

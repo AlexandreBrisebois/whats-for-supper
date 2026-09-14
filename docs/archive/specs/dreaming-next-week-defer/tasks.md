@@ -1,5 +1,9 @@
 # Dreaming Completion and Next-Week Defer Tasks
 
+> **Archived — historical reference only.** This task record is not an active work queue or current authority. See [archive guidance](../../../docs/archive/specs/README.md).
+
+> **Retired 2026-09-14 at owner request.** This planned package was archived without implementation or revalidation; unchecked tasks and their proposed validation are preserved as historical evidence.
+
 Status: Planned; implementation has not started  
 Requirements: [requirements.md](requirements.md)  
 Design: [design.md](design.md)

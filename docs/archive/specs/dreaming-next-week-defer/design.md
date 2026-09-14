@@ -1,5 +1,9 @@
 # Dreaming Completion and Next-Week Defer Design
 
+> **Archived — historical reference only.** This design record is not an active work queue or current authority. See [archive guidance](../../../docs/archive/specs/README.md).
+
+> **Retired 2026-09-14 at owner request.** This planned package was archived without implementation or revalidation; its proposed design is preserved as historical evidence.
+
 Status: Draft implementation design  
 Requirements: [requirements.md](requirements.md)
 
