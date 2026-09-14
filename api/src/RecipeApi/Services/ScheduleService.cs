@@ -373,10 +373,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             source.Status = CalendarEventStatus.Planned;
         }
 
-        if (wasCooked)
-            await RecalculateLastCookedDateAsync(dto.RecipeId, ct);
-
-        await _dbContext.SaveChangesAsync(ct);
+        await SaveChangesAndRecalculateLastCookedDatesAsync(wasCooked ? [dto.RecipeId] : [], ct);
 
         var mondays = new[] { sourceMonday, destinationMonday }.Distinct().ToArray();
         foreach (var monday in mondays)
@@ -408,8 +405,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         var recipeIds = overdue.Select(e => e.RecipeId!.Value).Distinct().ToArray();
         foreach (var @event in overdue) @event.Status = CalendarEventStatus.Cooked;
-        foreach (var recipeId in recipeIds) await RecalculateLastCookedDateAsync(recipeId, ct);
-        await _dbContext.SaveChangesAsync(ct);
+        await SaveChangesAndRecalculateLastCookedDatesAsync(recipeIds, ct);
 
         foreach (var monday in overdue.Select(e => GetMonday(e.Date)).Distinct())
         {
@@ -435,6 +431,18 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         recipe.LastCookedDate = latest is { } date
             ? new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)
             : null;
+    }
+
+    private async Task SaveChangesAndRecalculateLastCookedDatesAsync(IEnumerable<Guid> recipeIds, CancellationToken ct)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
+        await _dbContext.SaveChangesAsync(ct);
+
+        foreach (var recipeId in recipeIds.Distinct())
+            await RecalculateLastCookedDateAsync(recipeId, ct);
+
+        await _dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
     }
 
     private async Task SwapInternalAsync(DateOnly fromDate, DateOnly toDate)

@@ -141,6 +141,25 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task DeferRecipe_RecalculatesLastCookedDateAfterMovingTheOnlyCookedEvent()
+    {
+        var recipeId = Guid.NewGuid();
+        var cookedDate = new DateOnly(2026, 5, 13);
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup", LastCookedDate = new DateTimeOffset(2026, 5, 13, 0, 0, 0, TimeSpan.Zero) });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(), RecipeId = recipeId, Date = cookedDate, Status = CalendarEventStatus.Cooked
+        });
+        await _db.SaveChangesAsync();
+
+        var service = CreateService(new FixedClock(new DateTimeOffset(2026, 5, 13, 12, 0, 0, TimeSpan.Zero)));
+
+        await service.DeferRecipeAsync(new DeferScheduleDto(cookedDate, recipeId));
+
+        Assert.Null(_db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
+    }
+
+    [Fact]
     public async Task FinalizeOverdueMeals_OnlyCooksPastPlannedAndLockedRecipeEvents()
     {
         var recipeId = Guid.NewGuid();
@@ -159,6 +178,39 @@ public class ScheduleServiceTests : IAsyncLifetime
         Assert.Equal(CalendarEventStatus.Cooked, _db.CalendarEvents.Single(e => e.Date == yesterday).Status);
         Assert.Equal(CalendarEventStatus.Locked, _db.CalendarEvents.Single(e => e.Date == today).Status);
         Assert.Equal(CalendarEventStatus.Skipped, _db.CalendarEvents.Single(e => e.Date == yesterday.AddDays(-1)).Status);
+    }
+
+    [Fact]
+    public async Task FinalizeOverdueMeals_RecalculatesLastCookedDateFromNewlyCookedEventDate()
+    {
+        var recipeId = Guid.NewGuid();
+        var cookedDate = new DateOnly(2026, 5, 12);
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(), RecipeId = recipeId, Date = cookedDate, Status = CalendarEventStatus.Planned
+        });
+        await _db.SaveChangesAsync();
+
+        var service = CreateService(new FixedClock(new DateTimeOffset(2026, 5, 13, 12, 0, 0, TimeSpan.Zero)));
+
+        await service.FinalizeOverdueMealsAsync();
+
+        Assert.Equal(
+            new DateTimeOffset(2026, 5, 12, 0, 0, 0, TimeSpan.Zero),
+            _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
+    }
+
+    private ScheduleService CreateService(IClock clock)
+    {
+        var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
+        var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
+        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock);
+    }
+
+    private sealed class FixedClock(DateTimeOffset now) : IClock
+    {
+        public DateTimeOffset UtcNow => now;
     }
 
     [Fact]
