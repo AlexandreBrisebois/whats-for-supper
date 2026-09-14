@@ -611,16 +611,9 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         var @event = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == date);
         if (@event != null)
         {
-            // Determine weekOffset from the date before removing
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
-            var thisMonday = today.AddDays(-daysToMonday);
-            var dateDayNumber = date.DayNumber;
-            var weekOffset = (dateDayNumber - thisMonday.DayNumber) / 7;
-
             // Derive the Monday of the week containing the removed event's date
-            var eventDaysToMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
-            var monday = date.AddDays(-eventDaysToMonday);
+            var monday = GetMonday(date);
+            var weekOffset = GetWeekOffset(monday);
 
             _dbContext.CalendarEvents.Remove(@event);
             await _dbContext.SaveChangesAsync();
@@ -787,7 +780,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         if (dto.Status == 2 && @event.Recipe != null) // 2 = Cooked
         {
-            @event.Recipe.LastCookedDate = DateTimeOffset.UtcNow;
+            @event.Recipe.LastCookedDate = _clock.UtcNow;
             _logger.LogInformation("Updated LastCookedDate for recipe {RecipeId}", @event.RecipeId);
         }
 

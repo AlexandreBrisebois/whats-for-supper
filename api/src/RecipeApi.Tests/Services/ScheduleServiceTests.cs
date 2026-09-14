@@ -201,6 +201,45 @@ public class ScheduleServiceTests : IAsyncLifetime
             _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
     }
 
+    [Fact]
+    public async Task ValidateDay_UsesInjectedClockForLastCookedDate()
+    {
+        var recipeId = Guid.NewGuid();
+        var scheduledDate = new DateOnly(2026, 5, 12);
+        var clock = new FixedClock(new DateTimeOffset(2026, 5, 13, 12, 0, 0, TimeSpan.Zero));
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(), RecipeId = recipeId, Date = scheduledDate, Status = CalendarEventStatus.Planned
+        });
+        await _db.SaveChangesAsync();
+
+        await CreateService(clock).ValidateDayAsync(scheduledDate.ToString("yyyy-MM-dd"), new ValidationDto(2));
+
+        Assert.Equal(clock.UtcNow, _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
+    }
+
+    [Fact]
+    public async Task RemoveRecipe_UsesInjectedClockToPublishTheAffectedWeek()
+    {
+        var recipeId = Guid.NewGuid();
+        var scheduledDate = new DateOnly(2026, 5, 12);
+        var clock = new FixedClock(new DateTimeOffset(2026, 5, 13, 12, 0, 0, TimeSpan.Zero));
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(), RecipeId = recipeId, Date = scheduledDate, Status = CalendarEventStatus.Planned
+        });
+        await _db.SaveChangesAsync();
+
+        await CreateService(clock).RemoveRecipeAsync(scheduledDate);
+
+        _publisherMock.Verify(
+            publisher => publisher.PublishWeekUpdatedAsync(
+                It.Is<ScheduleDays>(schedule => schedule.WeekOffset == 0), null, null),
+            Times.Once);
+    }
+
     private ScheduleService CreateService(IClock clock)
     {
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();

@@ -36,7 +36,8 @@ sequenceDiagram
     alt action === 'tomorrow'
         HCC->>API: POST /api/schedule/move { intent: 'push', fromIndex: today, toIndex: today+1 }
     else action === 'next_week'
-        HCC->>API: POST /api/schedule/move { intent: 'push', targetWeekOffset: 1 }
+        HCC->>API: POST /api/schedule/defer { sourceDate: today, recipeId }
+        API-->>HCC: final scheduled date and message
     else action === 'drop'
         HCC->>API: DELETE /api/schedule/day/{date}/remove
     end
@@ -52,7 +53,7 @@ sequenceDiagram
     Note over HCC: On page reload — see Scenario C
 ```
 
-> **Note on `status: 3`:** The validate call with `status: 3` (Skipped) is made for the "Order In" branch regardless of which recipe-rescue option the user picks. The recipe-rescue action (tomorrow / next_week / drop) is a separate move/delete call that runs first.
+> **Note on `status: 3`:** The validate call with `status: 3` (Skipped) is made for the "Order In" branch regardless of which recipe-rescue option the user picks. The recipe-rescue action (tomorrow / next_week / drop) runs first. For **Next Week**, the server starts on the following Monday and chooses the first date without a calendar entry; when that week is full, it continues into later weeks and returns the final destination message.
 
 ---
 
