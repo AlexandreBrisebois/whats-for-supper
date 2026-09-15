@@ -237,6 +237,35 @@ describe('GroceryList — section completion UI', () => {
 });
 
 describe('GroceryList — collapsible sections', () => {
+  it('keeps a section open when its final ingredient is checked', () => {
+    mockGroceryState = { tomato: true, lettuce: false };
+    const { rerender } = renderList();
+    const header = screen.getByRole('button', { name: /Produce/ });
+
+    expect(header).toHaveAttribute('aria-expanded', 'true');
+
+    mockGroceryState = { tomato: true, lettuce: true };
+    rerender(<GroceryList weekOffset={0} items={ITEMS} />);
+
+    expect(header).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('lettuce')).toBeVisible();
+  });
+
+  it('defaults completed sections to collapsed and re-collapses them when the app returns', () => {
+    mockGroceryState = { tomato: true, lettuce: true };
+    renderList();
+    const header = screen.getByRole('button', { name: /Produce/ });
+
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(header);
+    expect(header).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent(document, new Event('visibilitychange'));
+
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('starts expanded and toggles one section without affecting another', () => {
     render(
       <GroceryList

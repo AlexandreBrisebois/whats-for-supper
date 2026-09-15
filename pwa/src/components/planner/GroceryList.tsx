@@ -57,7 +57,6 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
   const [reclassifyErrors, setReclassifyErrors] = useState<Set<string>>(new Set());
   const [pendingReclassifications, setPendingReclassifications] = useState<Set<string>>(new Set());
   const reclassifyGroceryItem = useWeekStore((state) => state.reclassifyGroceryItem);
-  const [collapsedAisles, setCollapsedAisles] = useState<Set<GrocerySection>>(new Set());
   const grouped = useMemo(() => {
     const result: Partial<Record<GrocerySection, GroceryLineItemDto[]>> = {};
     for (const item of items) {
@@ -68,6 +67,22 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
     }
     return result;
   }, [items]);
+  const completedAisles = useMemo(
+    () =>
+      new Set(
+        AISLE_ORDER.filter((aisle) => {
+          const aisleItems = grouped[aisle] ?? [];
+          return (
+            aisleItems.length > 0 &&
+            aisleItems.every((item) => groceryState[item.displayName ?? ''])
+          );
+        })
+      ),
+    [grouped, groceryState]
+  );
+  const [collapsedAisles, setCollapsedAisles] = useState<Set<GrocerySection>>(
+    () => new Set(completedAisles)
+  );
 
   useEffect(() => {
     // Initialize grocery state if not already set and we have items
@@ -83,6 +98,27 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
       setGroceryState(initialState);
     }
   }, [items, groceryState, setGroceryState]);
+
+  useEffect(() => {
+    const collapseCompletedAislesOnReturn = () => {
+      if (document.visibilityState !== 'visible') return;
+
+      setCollapsedAisles((current) => {
+        const next = new Set(current);
+        let changed = false;
+        completedAisles.forEach((aisle) => {
+          if (!next.has(aisle)) {
+            next.add(aisle);
+            changed = true;
+          }
+        });
+        return changed ? next : current;
+      });
+    };
+
+    document.addEventListener('visibilitychange', collapseCompletedAislesOnReturn);
+    return () => document.removeEventListener('visibilitychange', collapseCompletedAislesOnReturn);
+  }, [completedAisles]);
 
   const handleToggle = async (ingredientName: string) => {
     const newState = !groceryState[ingredientName];
