@@ -311,8 +311,8 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     const recipeToMove = preDragSnapshot[from].recipe;
     if (!recipeToMove?.id) return;
 
-    // BS-10: Deterministic Move API using RecipeId instead of fromIndex.
-    moveRecipeApi(get().weekOffset, recipeToMove.id, to).catch(() =>
+    // Identify the source slot too: the same recipe may be scheduled more than once.
+    moveRecipeApi(get().weekOffset, recipeToMove.id, to, from).catch(() =>
       set({ schedule: preDragSnapshot, optimisticWriteAt: null })
     );
   },
@@ -328,8 +328,8 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
     get().reorderLocally(from, to, prev);
 
-    // BS-10: Deterministic Move API using RecipeId instead of fromIndex.
-    moveRecipeApi(get().weekOffset, recipeToMove.id, to).catch(() => set({ schedule: prev }));
+    // Identify the source slot too: the same recipe may be scheduled more than once.
+    moveRecipeApi(get().weekOffset, recipeToMove.id, to, from).catch(() => set({ schedule: prev }));
   },
 
   // ── openVoting ────────────────────────────────────────────────────────────

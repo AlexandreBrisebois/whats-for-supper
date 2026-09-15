@@ -173,6 +173,10 @@ describe('weekStore — drag debounce bug condition (Property 1)', () => {
     // Assert: moveRecipeApi must have been called exactly 1 time total.
     // FAILS on unfixed code (called 3 times). PASSES on fixed code.
     expect(moveRecipeMock).toHaveBeenCalledTimes(1);
+    // The planner must identify the source slot as well as the recipe. Recipes
+    // can appear more than once in a week; without fromIndex the API falls back
+    // to the first matching recipe (often Monday) instead of the dragged card.
+    expect(moveRecipeMock).toHaveBeenCalledWith(0, 'recipe-1', 4, 1);
   });
 
   /**

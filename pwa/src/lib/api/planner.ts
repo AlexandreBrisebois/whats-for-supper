@@ -60,12 +60,22 @@ export const lockSchedule = async (weekOffset: number) => {
   return result?.data || result;
 };
 
-export const moveRecipe = async (weekOffset: number, recipeId: string, toIndex: number) => {
+export const moveRecipe = async (
+  weekOffset: number,
+  recipeId: string,
+  toIndex: number,
+  fromIndex: number
+) => {
   // Increment the move sequence counter before the request so HearthAuthProvider
   // stamps the new value on X-Move-Seq. The server echoes it back in week_updated,
   // letting applySnapshot identify and skip its own echo.
   usePlannerStore.getState().nextMoveSeq();
-  const result = await apiClient.api.schedule.move.post({ weekOffset, recipeId, toIndex });
+  const result = await apiClient.api.schedule.move.post({
+    weekOffset,
+    recipeId,
+    toIndex,
+    fromIndex,
+  });
   return result;
 };
 
