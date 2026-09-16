@@ -115,6 +115,21 @@ try
     builder.Services.AddScoped<RecipePurgeService>();
     builder.Services.AddScoped<CaptureFailureService>();
     builder.Services.AddScoped<RecipeSearchService>();
+    builder.Services.AddScoped<RecipeLexicalSearchRepository>();
+    builder.Services.AddScoped<RecipeSemanticSearchRepository>();
+    builder.Services.AddSingleton(new RecipeSearchRolloutOptions
+    {
+        DatabaseLexicalEnabled = builder.Configuration.GetValue<bool>("WFS_ENABLE_DATABASE_LEXICAL_RETRIEVAL"),
+        DatabaseLexicalShadowEnabled = builder.Configuration.GetValue<bool>("WFS_SHADOW_DATABASE_LEXICAL_RETRIEVAL"),
+        Semantic = new RecipeSemanticSearchOptions
+        {
+            Enabled = builder.Configuration.GetValue<bool?>("WFS_ENABLE_SEMANTIC_RETRIEVAL") ?? true,
+            CandidateLimit = builder.Configuration.GetValue<int?>("WFS_SEMANTIC_CANDIDATE_LIMIT") ?? 50,
+            EmbeddingDimensions = builder.Configuration.GetValue<int?>("EMBEDDING_DIMENSIONS") ?? 1536,
+            EmbeddingModel = builder.Configuration["EMBEDDING_MODEL_ID"] ?? "gemini-embedding-2",
+            EmbeddingVersion = builder.Configuration["EMBEDDING_MODEL_VERSION"]
+        }
+    });
     builder.Services.AddScoped<AgentSearchTranslationService>();
     builder.Services.AddSingleton<InventoryCaptureService>();
     builder.Services.AddScoped<RecipeImportService>();
@@ -134,6 +149,8 @@ try
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<SearchIndexWorkflow>();
+    builder.Services.AddScoped<SearchReconciliationWorkflow>();
+    builder.Services.AddSingleton<IRecipeSearchDocumentBuilder, RecipeSearchDocumentBuilder>();
     builder.Services.AddScoped<DreamingWorkflowSeeder>();
     builder.Services.AddScoped<DemoWorkflowSeeder>();
     builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
@@ -200,6 +217,7 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, FinalizeOverdueMealsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CompleteRecipeImportReportProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchReconciliationWorkflow>());
     builder.Services.AddScoped<IWorkflowProcessor, WorkflowProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),

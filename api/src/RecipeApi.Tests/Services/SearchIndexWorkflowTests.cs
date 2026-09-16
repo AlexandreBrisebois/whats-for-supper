@@ -89,6 +89,8 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
         Assert.NotNull(doc);
         Assert.Equal("ready", doc.IndexStatus);
+        Assert.Equal("ready", doc.EmbeddingStatus);
+        Assert.Equal(fingerprint, doc.EmbeddingFingerprint);
         Assert.NotNull(doc.LastIndexedAt);
         Assert.NotNull(doc.Embedding);
     }
@@ -135,6 +137,9 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         
         // ExecuteAsync should throw because we are calling it directly without worker error handling
         await Assert.ThrowsAnyAsync<Exception>(() => service.ExecuteAsync(task, CancellationToken.None));
+        var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
+        Assert.Equal("ready", doc!.IndexStatus);
+        Assert.Equal("failed", doc.EmbeddingStatus);
     }
 
     [Fact]
@@ -170,8 +175,8 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
 
         var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
         Assert.NotNull(doc);
-        Assert.Contains("Lemon Pasta", doc.DocumentText);
-        Assert.Contains("Bright citrus pasta", doc.DocumentText);
+        Assert.Contains("lemon pasta", doc.DocumentText);
+        Assert.Contains("bright citrus pasta", doc.DocumentText);
         Assert.Contains("pasta", doc.DocumentText);
     }
 

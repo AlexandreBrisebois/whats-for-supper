@@ -185,6 +185,8 @@ public class ManagementService(
                     ["searchMetadata"] = doc.SearchMetadata ?? "{}",
                     ["embeddingModel"] = doc.EmbeddingModel,
                     ["embeddingVersion"] = (object?)doc.EmbeddingVersion,
+                    ["embeddingStatus"] = doc.EmbeddingStatus,
+                    ["embeddingFingerprint"] = doc.EmbeddingFingerprint,
                     ["sourceFingerprint"] = doc.SourceFingerprint,
                     ["exportedAt"] = DateTimeOffset.UtcNow.ToString("O")
                 };
@@ -961,17 +963,18 @@ public class ManagementService(
                 var schemaVersion = root.TryGetProperty("schemaVersion", out var sv) ? sv.GetInt32() : 0;
                 var embeddingModel = root.TryGetProperty("embeddingModel", out var em) ? em.GetString() : null;
 
-                if (schemaVersion != 1 || embeddingModel != configuredModel)
+                var sourceFingerprint = root.TryGetProperty("sourceFingerprint", out var fp) ? fp.GetString() : null;
+                if (schemaVersion != RecipeSearchDocumentBuilder.CurrentSchemaVersion)
                 {
                     await UpsertSearchDocumentPendingAsync(recipe.Id, ct);
-                    logger.LogInformation("recipe_index_restore_marked_pending recipeId={RecipeId} reason=incompatible schemaVersion={SchemaVersion} model={Model}",
-                        recipe.Id, schemaVersion, embeddingModel);
+                    logger.LogInformation("recipe_index_restore_marked_pending recipeId={RecipeId} reason=stale schemaVersion={SchemaVersion}", recipe.Id, schemaVersion);
                     continue;
                 }
 
                 var documentText = root.TryGetProperty("documentText", out var dt) ? dt.GetString() ?? string.Empty : string.Empty;
-                var sourceFingerprint = root.TryGetProperty("sourceFingerprint", out var fp) ? fp.GetString() : null;
                 var embeddingVersion = root.TryGetProperty("embeddingVersion", out var ev) ? ev.GetString() : null;
+                var embeddingFingerprint = root.TryGetProperty("embeddingFingerprint", out var ef) ? ef.GetString() : null;
+                var embeddingStatus = root.TryGetProperty("embeddingStatus", out var es) ? es.GetString() : "pending";
                 string? embeddingJson = null;
                 if (root.TryGetProperty("embedding", out var embProp) && embProp.ValueKind == JsonValueKind.Array)
                     embeddingJson = embProp.GetRawText();
@@ -983,26 +986,31 @@ public class ManagementService(
                     {
                         RecipeId = recipe.Id,
                         DocumentText = documentText,
-                        SearchMetadata = "{}",
+                        SearchMetadata = root.TryGetProperty("searchMetadata", out var sm) ? sm.GetRawText() : "{}",
                         IndexStatus = "ready",
                         EmbeddingJson = embeddingJson,
-                        EmbeddingModel = embeddingModel!,
+                        EmbeddingModel = embeddingModel ?? configuredModel,
                         EmbeddingVersion = embeddingVersion,
+                        EmbeddingStatus = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && sourceFingerprint == SearchFingerprintService.ComputeSourceFingerprint(recipe) && embeddingStatus == "ready" ? "ready" : "pending",
+                        EmbeddingFingerprint = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && sourceFingerprint == SearchFingerprintService.ComputeSourceFingerprint(recipe) ? embeddingFingerprint : null,
                         SourceFingerprint = sourceFingerprint,
                         LastIndexedAt = DateTimeOffset.UtcNow,
-                        SchemaVersion = 1
+                        SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
                     });
                 }
                 else
                 {
                     existing.DocumentText = documentText;
+                    existing.SearchMetadata = root.TryGetProperty("searchMetadata", out var restoredMetadata) ? restoredMetadata.GetRawText() : "{}";
                     existing.IndexStatus = "ready";
                     existing.EmbeddingJson = embeddingJson;
-                    existing.EmbeddingModel = embeddingModel!;
+                    existing.EmbeddingModel = embeddingModel ?? configuredModel;
                     existing.EmbeddingVersion = embeddingVersion;
+                    existing.EmbeddingStatus = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && sourceFingerprint == SearchFingerprintService.ComputeSourceFingerprint(recipe) && embeddingStatus == "ready" ? "ready" : "pending";
+                    existing.EmbeddingFingerprint = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && sourceFingerprint == SearchFingerprintService.ComputeSourceFingerprint(recipe) ? embeddingFingerprint : null;
                     existing.SourceFingerprint = sourceFingerprint;
                     existing.LastIndexedAt = DateTimeOffset.UtcNow;
-                    existing.SchemaVersion = 1;
+                    existing.SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion;
                 }
 
                 await db.SaveChangesAsync(ct);
@@ -1376,13 +1384,16 @@ public class ManagementService(
                 DocumentText = string.Empty,
                 SearchMetadata = "{}",
                 IndexStatus = "pending",
+                EmbeddingStatus = "pending",
                 EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "text-embedding-3-small",
-                SchemaVersion = 1
+                SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
             });
         }
-        else if (existing.IndexStatus != "ready")
+        else
         {
             existing.IndexStatus = "pending";
+            existing.EmbeddingStatus = "pending";
+            existing.EmbeddingFingerprint = null;
         }
         await db.SaveChangesAsync(ct);
     }

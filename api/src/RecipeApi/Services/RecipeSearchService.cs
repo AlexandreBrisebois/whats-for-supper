@@ -14,17 +14,17 @@ public partial class RecipeSearchService(
     InventoryCaptureService inventoryCaptureService,
     IEmbeddingProvider? embeddingProvider = null,
     AgentSearchTranslationService? agentTranslator = null,
-    ISearchTelemetry? telemetry = null)
+    ISearchTelemetry? telemetry = null,
+    RecipeLexicalSearchRepository? lexicalRepository = null,
+    RecipeSemanticSearchRepository? semanticRepository = null,
+    RecipeSearchRolloutOptions? rolloutOptions = null)
 {
     private const double PantryMatchBoost = 0.25;
     private const int DefaultLimit = 6;
     private const int MaxLimit = 50;
-    private const int VectorCandidateLimit = 50;
+    private const int LexicalCandidateLimit = 50;
     private const double ReasonThreshold = 0.3;
     private const double MinimumCandidateScore = 0.15;
-    private const double SimilarityThreshold = 0.7; // Threshold for "Find Similar" and Vector search
-    private const double VectorSimilarityWeight = 0.6;
-    private const double LexicalSimilarityWeight = 0.4;
     private const double PlannerGapBoost = 0.20;
     private const double PlannerUrgencyBoost = 0.10;
     private const double NotesMatchBoost = 0.10;
@@ -65,7 +65,7 @@ public partial class RecipeSearchService(
                 recipe.DeletedAt == null &&
                 recipe.IsReady);
 
-        recipesQuery = ApplyFilters(recipesQuery, appliedFilters);
+        recipesQuery = RecipeSearchPredicate.Apply(recipesQuery, appliedFilters, db);
 
         // 2. Retrieval
         var candidates = new List<RankedRecipe>();
@@ -82,17 +82,21 @@ public partial class RecipeSearchService(
             // Standard/Agent/Pantry Hybrid Search
             var lexicalCandidates = await GetLexicalCandidatesAsync(recipesQuery, query, appliedFilters, ct);
 
-            if (embeddingProvider is not null)
+            if (embeddingProvider is not null && semanticRepository is not null && SemanticOptions.Enabled)
             {
                 try
                 {
-                    // Vector Retrieval (300ms budget as per Requirement 13, AC 7)
+                    // The provider call and PostgreSQL vector query share one 300 ms budget.
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                     cts.CancelAfter(TimeSpan.FromMilliseconds(300));
 
-                    var vectorCandidates = await VectorSearchAsync(query, recipesQuery, cts.Token);
+                    var vectorCandidates = await VectorSearchAsync(query, recipesQuery, appliedFilters, cts.Token);
                     candidates = MergeCandidates(lexicalCandidates, vectorCandidates);
                     resultPath = "hybrid";
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (OperationCanceledException)
                 {
@@ -135,6 +139,7 @@ public partial class RecipeSearchService(
         var finalCandidates = candidates
             .OrderByDescending(candidate => candidate.Score)
             .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
+            .ThenBy(candidate => candidate.Recipe.Id)
             .ToList();
 
         if (dto.Filters?.NotCookedInLongTime == true)
@@ -143,6 +148,7 @@ public partial class RecipeSearchService(
             finalCandidates = candidates
                 .OrderByDescending(c => c.Score)
                 .ThenBy(c => c.Recipe.LastCookedDate)
+                .ThenBy(c => c.Recipe.Id)
                 .ToList();
         }
 
@@ -392,7 +398,8 @@ public partial class RecipeSearchService(
         return candidate with
         {
             Score = score,
-            Reasons = reasons
+            Reasons = reasons,
+            ScoreComponents = WithComponents(candidate.ScoreComponents, ("family.rating", ratingDelta), ("family.votes", voteBoost))
         };
     }
 
@@ -423,7 +430,7 @@ public partial class RecipeSearchService(
                         Source = "planner-fit",
                         Label = "Already planned for this week"
                     });
-                    return updated with { Score = updated.Score + PlannedDemotion, Reasons = reasons };
+                    return updated with { Score = updated.Score + PlannedDemotion, Reasons = reasons, ScoreComponents = WithComponents(updated.ScoreComponents, ("schedule.already-planned", PlannedDemotion)) };
                 }
                 return updated;
             })
@@ -472,7 +479,8 @@ public partial class RecipeSearchService(
         {
             Score = score,
             Reasons = reasons,
-            PlannerFitNote = plannerFitNote
+            PlannerFitNote = plannerFitNote,
+            ScoreComponents = WithComponents(candidate.ScoreComponents, ("planner.balance", balanceSummary is null ? 0 : GetBalanceGapAdjustment(balanceSummary, dietaryProfile).Boost), ("planner.urgency", IsUrgentQuery(query) && IsQuickRecipe(candidate.Recipe.TotalTime) ? PlannerUrgencyBoost : 0))
         };
     }
 
@@ -693,34 +701,31 @@ public partial class RecipeSearchService(
     [GeneratedRegex(@"(\d+)")]
     private static partial Regex TotalMinutesRegex();
 
+    private RecipeSemanticSearchOptions SemanticOptions => rolloutOptions?.Semantic ?? new RecipeSemanticSearchOptions();
+
     private async Task<List<RankedRecipe>> VectorSearchAsync(
         string query,
         IQueryable<Recipe> recipesQuery,
+        RecipeSearchFiltersDto filters,
         CancellationToken ct)
     {
-        if (embeddingProvider is null) return [];
+        if (embeddingProvider is null || semanticRepository is null) return [];
 
         var queryVector = await embeddingProvider.GenerateAsync(query, ct);
-        var queryVectorJson = JsonSerializer.Serialize(queryVector);
-
-        var vectorCandidates = await db.RecipeSearchDocuments
-            .FromSql($@"
-                SELECT * FROM recipe_search_documents
-                WHERE embedding IS NOT NULL
-                AND embedding <=> ({queryVectorJson})::vector < {1.0 - SimilarityThreshold}
-                ORDER BY embedding <=> ({queryVectorJson})::vector
-                LIMIT {VectorCandidateLimit}")
-            .AsNoTracking()
-            .Include(d => d.Recipe)
-            .Where(d => recipesQuery.Select(r => r.Id).Contains(d.RecipeId))
-            .ToListAsync(ct);
+        var vectorCandidates = await semanticRepository.SearchAsync(queryVector, filters, SemanticOptions, null, ct);
+        var ids = vectorCandidates.Select(candidate => candidate.RecipeId).ToArray();
+        var recipes = ids.Length == 0
+            ? new Dictionary<Guid, Recipe>()
+            : await recipesQuery.Where(recipe => ids.Contains(recipe.Id)).ToDictionaryAsync(recipe => recipe.Id, ct);
 
         return vectorCandidates
-            .Select(d => new RankedRecipe(
-                d.Recipe!,
-                CalculateCosineSimilarity(queryVector, d.Embedding),
+            .Where(candidate => recipes.ContainsKey(candidate.RecipeId))
+            .Select(candidate => new RankedRecipe(
+                recipes[candidate.RecipeId],
+                candidate.Score,
                 [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Matches the meaning of your search" }],
-                null))
+                null,
+                new Dictionary<string, double> { ["retrieval.semantic.raw"] = candidate.Score }))
             .ToList();
     }
 
@@ -731,7 +736,12 @@ public partial class RecipeSearchService(
     {
         var targetDoc = await db.RecipeSearchDocuments
             .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.RecipeId == similarToId, ct);
+            .FirstOrDefaultAsync(d => d.RecipeId == similarToId
+                && d.IndexStatus == "ready"
+                && d.EmbeddingStatus == "ready"
+                && d.EmbeddingFingerprint == d.SourceFingerprint
+                && d.EmbeddingModel == SemanticOptions.EmbeddingModel
+                && d.EmbeddingVersion == SemanticOptions.EmbeddingVersion, ct);
 
         if (targetDoc?.EmbeddingJson is null)
         {
@@ -741,57 +751,53 @@ public partial class RecipeSearchService(
             return await GetLexicalCandidatesAsync(recipesQuery.Where(r => r.Id != similarToId), targetRecipe.Name ?? "", null, ct);
         }
 
-        var candidates = await db.RecipeSearchDocuments
-            .FromSql($@"
-                SELECT * FROM recipe_search_documents
-                WHERE recipe_id != {similarToId}
-                AND embedding IS NOT NULL
-                AND embedding <=> ({targetDoc.EmbeddingJson})::vector < {1.0 - SimilarityThreshold}
-                ORDER BY embedding <=> ({targetDoc.EmbeddingJson})::vector
-                LIMIT {VectorCandidateLimit}")
-            .AsNoTracking()
-            .Include(d => d.Recipe)
-            .Where(d => recipesQuery.Select(r => r.Id).Contains(d.RecipeId))
-            .ToListAsync(ct);
+        if (semanticRepository is null || targetDoc.Embedding is null || targetDoc.Embedding.Length != SemanticOptions.EmbeddingDimensions) return [];
 
-        var targetVector = targetDoc.Embedding;
-
-        return candidates
-            .Select(d => new RankedRecipe(
-                d.Recipe!,
-                CalculateCosineSimilarity(targetVector, d.Embedding),
-                [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Similar to " + (targetDoc.Recipe?.Name ?? "original") }],
-                null))
-            .ToList();
-    }
-
-    private static double CalculateCosineSimilarity(float[]? vector1, float[]? vector2)
-    {
-        if (vector1 == null || vector2 == null || vector1.Length != vector2.Length)
+        try
         {
-            return 0;
+            using var semanticBudget = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            semanticBudget.CancelAfter(TimeSpan.FromMilliseconds(300));
+
+            var semanticCandidates = await semanticRepository.SearchAsync(
+                targetDoc.Embedding,
+                new RecipeSearchFiltersDto(),
+                SemanticOptions,
+                similarToId,
+                semanticBudget.Token);
+            var ids = semanticCandidates.Select(candidate => candidate.RecipeId).ToArray();
+            var recipes = ids.Length == 0
+                ? new Dictionary<Guid, Recipe>()
+                : await recipesQuery.Where(recipe => ids.Contains(recipe.Id)).ToDictionaryAsync(recipe => recipe.Id, ct);
+
+            return semanticCandidates
+                .Where(candidate => recipes.ContainsKey(candidate.RecipeId))
+                .Select(candidate => new RankedRecipe(
+                    recipes[candidate.RecipeId],
+                    candidate.Score,
+                    [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Similar to original" }],
+                    null))
+                .ToList();
         }
-
-        double dotProduct = 0;
-        double magnitude1 = 0;
-        double magnitude2 = 0;
-
-        for (int i = 0; i < vector1.Length; i++)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            dotProduct += vector1[i] * vector2[i];
-            magnitude1 += vector1[i] * vector1[i];
-            magnitude2 += vector2[i] * vector2[i];
+            throw;
         }
-
-        magnitude1 = Math.Sqrt(magnitude1);
-        magnitude2 = Math.Sqrt(magnitude2);
-
-        if (magnitude1 == 0 || magnitude2 == 0)
+        catch (Exception)
         {
-            return 0;
-        }
+            var sourceRecipe = await db.Recipes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(recipe => recipe.Id == similarToId, ct);
+            if (sourceRecipe is null)
+            {
+                return [];
+            }
 
-        return dotProduct / (magnitude1 * magnitude2);
+            return await GetLexicalCandidatesAsync(
+                recipesQuery.Where(recipe => recipe.Id != similarToId),
+                sourceRecipe.Name ?? string.Empty,
+                null,
+                ct);
+        }
     }
 
     private async Task<List<RankedRecipe>> GetLexicalCandidatesAsync(
@@ -800,8 +806,41 @@ public partial class RecipeSearchService(
         RecipeSearchFiltersDto? filters,
         CancellationToken ct)
     {
+        if (lexicalRepository is not null && rolloutOptions?.DatabaseLexicalEnabled == true)
+        {
+            var databaseCandidates = await lexicalRepository.SearchAsync(query, filters ?? new RecipeSearchFiltersDto(), LexicalCandidateLimit, ct);
+            var candidateIds = databaseCandidates.Select(candidate => candidate.RecipeId).ToArray();
+            var recipesById = candidateIds.Length == 0
+                ? new Dictionary<Guid, Recipe>()
+                : await recipesQuery.Where(recipe => candidateIds.Contains(recipe.Id)).ToDictionaryAsync(recipe => recipe.Id, ct);
+
+            return databaseCandidates
+                .Where(candidate => recipesById.ContainsKey(candidate.RecipeId))
+                .Select(candidate => new RankedRecipe(
+                    recipesById[candidate.RecipeId],
+                    candidate.Score,
+                    [new RecipeSearchReasonDto { Source = "name-match", Label = "Matches your search" }],
+                    null,
+                    new Dictionary<string, double> { ["retrieval.lexical.raw"] = candidate.Score }))
+                .ToList();
+        }
+
         var recipes = await recipesQuery.ToListAsync(ct);
-        return BuildRankedCandidates(recipes, query, filters);
+        var legacyCandidates = BuildRankedCandidates(recipes, query, filters);
+        if (lexicalRepository is not null && rolloutOptions?.DatabaseLexicalShadowEnabled == true)
+        {
+            var databaseCandidates = await lexicalRepository.SearchAsync(query, filters ?? new RecipeSearchFiltersDto(), LexicalCandidateLimit, ct);
+            var databaseIds = databaseCandidates.Select(candidate => candidate.RecipeId).ToHashSet();
+            var legacyIds = legacyCandidates.Select(candidate => candidate.Recipe.Id).ToHashSet();
+            telemetry?.Emit(SearchTelemetryEvents.SearchLexicalShadowCompared, new()
+            {
+                ["databaseCandidateCount"] = databaseIds.Count,
+                ["legacyCandidateCount"] = legacyIds.Count,
+                ["overlapCount"] = databaseIds.Intersect(legacyIds).Count()
+            });
+        }
+
+        return legacyCandidates;
     }
 
     private List<RankedRecipe> MergeCandidates(
@@ -812,7 +851,8 @@ public partial class RecipeSearchService(
 
         foreach (var l in lexical)
         {
-            all[l.Recipe.Id] = l with { Score = l.Score * LexicalSimilarityWeight };
+            var normalized = NormalizeLexicalScore(l.Score);
+            all[l.Recipe.Id] = l with { Score = normalized * SemanticOptions.LexicalWeight, ScoreComponents = WithComponents(l.ScoreComponents, ("retrieval.lexical.normalized", normalized), ("retrieval.lexical.weighted", normalized * SemanticOptions.LexicalWeight)) };
         }
 
         foreach (var v in vector)
@@ -825,72 +865,31 @@ public partial class RecipeSearchService(
 
                 all[v.Recipe.Id] = existing with
                 {
-                    Score = existing.Score + (v.Score * VectorSimilarityWeight),
-                    Reasons = mergedReasons
+                    Score = existing.Score + (NormalizeSemanticScore(v.Score) * SemanticOptions.SemanticWeight),
+                    Reasons = mergedReasons,
+                    ScoreComponents = WithComponents(existing.ScoreComponents, ("retrieval.semantic.raw", v.Score), ("retrieval.semantic.normalized", NormalizeSemanticScore(v.Score)), ("retrieval.semantic.weighted", NormalizeSemanticScore(v.Score) * SemanticOptions.SemanticWeight))
                 };
             }
             else
             {
-                all[v.Recipe.Id] = v with { Score = v.Score * VectorSimilarityWeight };
+                var normalized = NormalizeSemanticScore(v.Score);
+                all[v.Recipe.Id] = v with { Score = normalized * SemanticOptions.SemanticWeight, ScoreComponents = WithComponents(v.ScoreComponents, ("retrieval.semantic.normalized", normalized), ("retrieval.semantic.weighted", normalized * SemanticOptions.SemanticWeight)) };
             }
         }
 
-        return all.Values.ToList();
+        return all.Values.OrderBy(candidate => candidate.Recipe.Id).ToList();
     }
 
-    private IQueryable<Recipe> ApplyFilters(IQueryable<Recipe> query, RecipeSearchFiltersDto filters)
+    // Lexical similarity is already a 0-1 score. Cosine similarity is -1 to 1;
+    // map it to the same 0-1 fusion scale before applying configured weights.
+    private static double NormalizeLexicalScore(double score) => Math.Clamp(score, 0, 1);
+    private static double NormalizeSemanticScore(double score) => Math.Clamp((score + 1) / 2, 0, 1);
+
+    private static IReadOnlyDictionary<string, double> WithComponents(IReadOnlyDictionary<string, double>? current, params (string Name, double Value)[] additions)
     {
-        if (filters.NewRecipes == true)
-        {
-            var thirtyDaysAgo = DateTimeOffset.UtcNow.AddDays(-30);
-            query = query.Where(r => r.CreatedAt >= thirtyDaysAgo);
-            // Additional constraint: not cooked more than twice (requires joining schedule, skipping for now as per v2 spec simple def)
-        }
-
-        if (filters.NeverCooked == true)
-        {
-            query = query.Where(r => r.LastCookedDate == null);
-        }
-
-        if (filters.FamilyFavorite == true)
-        {
-            query = query.Where(r => (int)r.Rating >= 2 && (r.IsDiscoverable || r.Notes != null));
-        }
-
-        if (filters.QuickOnly == true)
-        {
-            // We'll filter this in memory in the service after fetching,
-            // but we can do a coarse filter here if we want.
-            // For now, let's keep it broad and filter in RankRecipe or BuildRankedCandidates.
-        }
-
-        if (filters.NotCookedInLongTime == true)
-        {
-            query = query.Where(r => r.LastCookedDate != null);
-        }
-
-        if (filters.DiscoverableOnly == true)
-        {
-            query = query.Where(r => r.IsDiscoverable);
-        }
-
-        if (filters.HealthyOnly == true)
-        {
-            query = query.Where(r => r.IsHealthyChoice);
-        }
-
-        if (filters.ReadyToReviewOnly == true)
-        {
-            query = query.Where(recipe => db.RecipeImportReports.Any(report =>
-                report.RecipeId == recipe.Id &&
-                report.Status == RecipeImportReportStatus.ReadyToReview));
-        }
-        else if (filters.ReportedOnly == true)
-        {
-            query = query.Where(recipe => db.RecipeImportReports.Any(report => report.RecipeId == recipe.Id));
-        }
-
-        return query;
+        var components = current is null ? new Dictionary<string, double>() : new Dictionary<string, double>(current);
+        foreach (var (name, value) in additions) components[name] = value;
+        return components;
     }
 
     private async Task<List<RankedRecipe>> ApplyPantryBoostAsync(
@@ -927,7 +926,7 @@ public partial class RecipeSearchService(
                     Label = $"Uses {matches.Count} ingredients from your camera photos"
                 });
 
-                return candidate with { Score = score, Reasons = reasons };
+                return candidate with { Score = score, Reasons = reasons, ScoreComponents = WithComponents(candidate.ScoreComponents, ("pantry.match", PantryMatchBoost)) };
             }
 
             return candidate;
@@ -938,5 +937,6 @@ public partial class RecipeSearchService(
         Recipe Recipe,
         double Score,
         List<RecipeSearchReasonDto> Reasons,
-        string? PlannerFitNote);
+        string? PlannerFitNote,
+        IReadOnlyDictionary<string, double>? ScoreComponents = null);
 }

@@ -10,7 +10,8 @@ public class SearchIndexWorkflow(
     RecipeDbContext db,
     IEmbeddingProvider? embeddingProvider = null,
     ILogger<SearchIndexWorkflow>? logger = null,
-    ISearchTelemetry? telemetry = null) : IWorkflowProcessor
+    ISearchTelemetry? telemetry = null,
+    IRecipeSearchDocumentBuilder? documentBuilder = null) : IWorkflowProcessor
 {
     public string ProcessorName => "IndexRecipeSearch";
 
@@ -56,7 +57,8 @@ public class SearchIndexWorkflow(
         }
 
         // Stale-job guard: compare current fingerprint with job fingerprint
-        var currentFingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
+        var content = (documentBuilder ?? new RecipeSearchDocumentBuilder()).Build(recipe);
+        var currentFingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe, content);
         if (!string.IsNullOrEmpty(jobFingerprint) && currentFingerprint != jobFingerprint)
         {
             logger?.LogInformation("Skipping index job for recipe {RecipeId} — fingerprint mismatch (stale job)", recipeId);
@@ -68,12 +70,18 @@ public class SearchIndexWorkflow(
             return;
         }
 
+        // Publish lexical content before the provider call. The fingerprint check makes
+        // publication conditional on the content this workflow was asked to index.
         var doc = await db.RecipeSearchDocuments.FindAsync([recipeId], ct);
         if (doc is null) return;
-
-        doc.IndexStatus = "indexing";
-        doc.DocumentText = BuildDocumentText(recipe);
-        doc.EmbeddingModel = EmbeddingModelId;
+        if (!string.IsNullOrEmpty(jobFingerprint) && jobFingerprint != currentFingerprint) return;
+        doc.DocumentText = content.DocumentText;
+        doc.SearchMetadata = content.SearchMetadata;
+        doc.SchemaVersion = content.SchemaVersion;
+        doc.SourceFingerprint = currentFingerprint;
+        doc.IndexStatus = "ready";
+        doc.LastIndexedAt = DateTimeOffset.UtcNow;
+        doc.EmbeddingStatus = "indexing";
         await db.SaveChangesAsync(ct);
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -87,13 +95,20 @@ public class SearchIndexWorkflow(
         {
             if (embeddingProvider is not null)
             {
-                var vector = await embeddingProvider.GenerateAsync(doc.DocumentText, ct);
+                var vector = await embeddingProvider.GenerateAsync(content.DocumentText, ct);
+                await db.Entry(doc).ReloadAsync(ct);
+                if (doc.SourceFingerprint != currentFingerprint)
+                {
+                    telemetry?.Emit(SearchTelemetryEvents.IndexJobStale, new() { ["recipeId"] = recipeId.ToString(), ["reason"] = "superseded_before_embedding_publish" });
+                    return;
+                }
                 doc.Embedding = vector;
+                doc.EmbeddingFingerprint = currentFingerprint;
+                doc.EmbeddingModel = EmbeddingModelId;
+                doc.EmbeddingStatus = "ready";
             }
-
-            doc.IndexStatus = "ready";
-            doc.LastIndexedAt = DateTimeOffset.UtcNow;
-            doc.SourceFingerprint = currentFingerprint;
+            else
+                doc.EmbeddingStatus = "pending";
             await db.SaveChangesAsync(ct);
 
             sw.Stop();
@@ -118,8 +133,12 @@ public class SearchIndexWorkflow(
                 entry.State = EntityState.Unchanged;
             }
 
-            doc.IndexStatus = "failed";
-            await db.SaveChangesAsync(ct);
+            await db.Entry(doc).ReloadAsync(ct);
+            if (doc.SourceFingerprint == currentFingerprint)
+            {
+                doc.EmbeddingStatus = "failed";
+                await db.SaveChangesAsync(ct);
+            }
             sw.Stop();
             logger?.LogError(ex, "Failed to index recipe {RecipeId}", recipeId);
             telemetry?.Emit(SearchTelemetryEvents.IndexJobFailed, new()
@@ -141,7 +160,7 @@ public class SearchIndexWorkflow(
     {
         var pendingIds = await db.RecipeSearchDocuments
             .AsNoTracking()
-            .Where(d => d.IndexStatus == "pending" || d.IndexStatus == "stale" || d.IndexStatus == "failed")
+            .Where(d => d.IndexStatus != "ready" || d.EmbeddingStatus == "failed" || d.EmbeddingStatus == "pending")
             .Select(d => new { d.RecipeId, d.SourceFingerprint })
             .ToListAsync(ct);
 
@@ -159,32 +178,5 @@ public class SearchIndexWorkflow(
         }
     }
 
-    public static string BuildDocumentText(Recipe recipe)
-    {
-        var parts = new List<string>();
-
-        if (!string.IsNullOrWhiteSpace(recipe.Name))
-            parts.Add(recipe.Name + ".");
-        if (!string.IsNullOrWhiteSpace(recipe.Description))
-            parts.Add(recipe.Description + ".");
-
-        var ingredients = RecipeService.DeserializeIngredients(recipe.Ingredients);
-        if (ingredients.Count > 0)
-            parts.Add($"Ingredients: {string.Join(", ", ingredients)}.");
-
-        if (!string.IsNullOrWhiteSpace(recipe.Notes))
-            parts.Add($"Notes: {recipe.Notes}.");
-        if (!string.IsNullOrWhiteSpace(recipe.Category))
-            parts.Add($"Category: {recipe.Category}.");
-        if (!string.IsNullOrWhiteSpace(recipe.CuisineType))
-            parts.Add($"Cuisine: {recipe.CuisineType}.");
-        if (recipe.MealTypes is { Length: > 0 })
-            parts.Add($"Meal types: {string.Join(", ", recipe.MealTypes)}.");
-        if (!string.IsNullOrWhiteSpace(recipe.DietaryProfile))
-            parts.Add($"Dietary: {recipe.DietaryProfile}.");
-        if (!string.IsNullOrWhiteSpace(recipe.TotalTime))
-            parts.Add($"Time: {recipe.TotalTime}.");
-
-        return string.Join(" ", parts);
-    }
+    public static string BuildDocumentText(Recipe recipe) => new RecipeSearchDocumentBuilder().Build(recipe).DocumentText;
 }

@@ -58,18 +58,21 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
         _db.Recipes.Add(recipe);
         await _db.SaveChangesAsync();
 
-        var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
+        var content = new RecipeSearchDocumentBuilder().Build(recipe);
+        var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe, content);
         _db.RecipeSearchDocuments.Add(new RecipeSearchDocument
         {
             RecipeId = recipe.Id,
-            DocumentText = SearchIndexWorkflow.BuildDocumentText(recipe),
-            SearchMetadata = "{}",
+            DocumentText = content.DocumentText,
+            SearchMetadata = content.SearchMetadata,
             IndexStatus = "ready",
             EmbeddingJson = """[0.1,0.2,0.3]""",
             EmbeddingModel = "text-embedding-3-small",
+            EmbeddingStatus = "ready",
+            EmbeddingFingerprint = fingerprint,
             SourceFingerprint = fingerprint,
             LastIndexedAt = DateTimeOffset.UtcNow,
-            SchemaVersion = 1
+            SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
         });
         await _db.SaveChangesAsync();
     }
@@ -147,7 +150,7 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
-        Assert.Equal(1, root.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(RecipeSearchDocumentBuilder.CurrentSchemaVersion, root.GetProperty("schemaVersion").GetInt32());
         Assert.Equal(recipe.Id.ToString(), root.GetProperty("recipeId").GetString());
         Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("documentText").GetString()));
         Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("embeddingModel").GetString()));
@@ -222,7 +225,7 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RestoreAsync_WithIncompatibleEmbeddingModel_SetsPending()
+    public async Task RestoreAsync_WithIncompatibleEmbeddingModel_PreservesLexicalContentAndMarksEmbeddingPending()
     {
         var recipe = BuildReadyRecipe();
         await SeedReadyDocumentAsync(recipe);
@@ -244,7 +247,10 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
 
         var restored = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
         if (restored is not null)
-            Assert.Equal("pending", restored.IndexStatus);
+        {
+            Assert.Equal("ready", restored.IndexStatus);
+            Assert.Equal("pending", restored.EmbeddingStatus);
+        }
     }
 
     [Fact]

@@ -77,6 +77,18 @@ public class RecipeService(
         };
 
         db.Recipes.Add(recipe);
+        // Keep the derived row in the same save as its recipe: a worker can never
+        // observe a committed recipe that has no pending sidecar.
+        db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+        {
+            RecipeId = recipeId,
+            DocumentText = string.Empty,
+            SearchMetadata = "{}",
+            IndexStatus = "pending",
+            EmbeddingStatus = "pending",
+            EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2",
+            SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
+        });
         await db.SaveChangesAsync();
 
         // Enqueue search index job for new recipe
@@ -405,11 +417,7 @@ public class RecipeService(
             recipe.RawMetadata = JsonSerializer.Serialize(raw);
         }
 
-        recipe.UpdatedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync();
-
-        // Re-enqueue search index when search-relevant fields changed
-        if (dto.Name is not null ||
+        var searchRelevantChanged = dto.Name is not null ||
             dto.Description is not null ||
             dto.Ingredients is not null ||
             dto.Notes is not null ||
@@ -417,7 +425,36 @@ public class RecipeService(
             dto.IsDiscoverable.HasValue ||
             dto.CuisineType is not null ||
             dto.MealTypes is not null ||
-            dto.RecipeInstructions is not null)
+            dto.RecipeInstructions is not null;
+
+        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        if (searchRelevantChanged)
+        {
+            var sidecar = await db.RecipeSearchDocuments.FindAsync(id);
+            if (sidecar is null)
+            {
+                db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+                {
+                    RecipeId = id,
+                    DocumentText = string.Empty,
+                    SearchMetadata = "{}",
+                    IndexStatus = "pending",
+                    EmbeddingStatus = "pending",
+                    EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2",
+                    SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
+                });
+            }
+            else
+            {
+                sidecar.IndexStatus = "pending";
+                sidecar.EmbeddingStatus = "pending";
+                sidecar.EmbeddingFingerprint = null;
+            }
+        }
+        await db.SaveChangesAsync();
+
+        // Re-enqueue search index after the recipe and pending sidecar commit.
+        if (searchRelevantChanged)
         {
             try
             {

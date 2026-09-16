@@ -10,6 +10,7 @@ public static class SearchTelemetryEvents
     public const string SearchRequested = "recipe_search_requested";
     public const string SearchCompleted = "recipe_search_completed";
     public const string SearchFallbackServed = "recipe_search_fallback_served";
+    public const string SearchLexicalShadowCompared = "recipe_search_lexical_shadow_compared";
     public const string SearchEmptyResults = "recipe_search_empty_results";
     public const string IndexJobStarted = "recipe_index_job_started";
     public const string IndexJobCompleted = "recipe_index_job_completed";

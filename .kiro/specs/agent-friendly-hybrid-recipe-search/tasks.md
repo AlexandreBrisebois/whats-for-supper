@@ -21,8 +21,8 @@ unverified deployment/runtime checks cannot be recorded as passed.
 | --- | --- | --- |
 | 1 — Baseline and facts | Completed | Versioned fixture, factual vocabulary, and isolated PostgreSQL baseline measurement completed; no Task 2 work started |
 | 2 — Canonical indexing and dreaming repair | Not started | Implementation, upgrade/backfill and concurrency tests pending |
-| 3 — Database lexical retrieval | Not started | Migration, bounded retrieval and real query-plan evidence pending |
-| 4 — Semantic retrieval and fusion | Not started | Ranking, fallback and cancellation tests pending |
+| 3 — Database lexical retrieval | Completed | Bounded PostgreSQL canonical-document retrieval is flag-gated; isolated PostgreSQL migration/index/fallback evidence captured below. Task 4 semantic fusion and Task 6 rollout remain pending. |
+| 4 — Semantic retrieval and fusion | Completed | Bounded PostgreSQL semantic retrieval, deterministic fusion, compatibility gates, fallback, and cancellation coverage completed; public response remains unchanged. |
 | 5 — Contract, scrolling and agent compatibility | Not started | API/client/UI changes and continuation/browse tests pending |
 | 6 — Rollout and operations | Not started | Load, coverage and rollback evidence pending |
 | 7 — Dead-code removal | Not started | Caller migration, deletion inventory and post-removal checks pending |
@@ -157,6 +157,13 @@ filter exposure rather than guessing a storage schema.
 
 ## 2. Canonical document, sidecar lifecycle, and safe backfill
 
+**Task 2 starting baseline (2026-09-16):** `HEAD` is
+`470a784497d6886e70a0eb21eae0c86681bce64a`. `git status --short`, staged
+and unstaged tracked diffs were empty before Task 2 edits. This specification
+packet remains an ignored local packet; its supplied content is preserved and
+Task 2 evidence below will identify the task-local update separately. No
+existing-data migration or backfill has been run.
+
 **Requirements:** R2, R6-AC1.
 
 **Outcome:** One builder owns document text/metadata/fingerprint inputs; every
@@ -196,6 +203,32 @@ backfill rebuilds derived search documents without recipe re-import or reset.
 approved environment/data scope. Do not remove legacy read paths until R3
 lexical fallback evidence exists.
 
+**Task 2 implementation evidence (2026-09-16):** Added the version-2 canonical
+builder and fingerprint, independent canonical/embedding states and fingerprints,
+transactional create/update sidecars, conditional embedding publication, and a
+keyset-paginated reconciliation child workflow dispatched by dreaming. The
+existing backfill endpoint now triggers that reconciliation workflow; no public
+contract or PWA behavior changed. Backup/restore retains lexical content while
+making an incompatible or unverifiable vector pending.
+
+- **Passed:** focused API tests (canonical builder, lifecycle/failure behavior,
+  reconciliation, recipe sidecars, dreaming seed, and backup/restore) — 45
+  passed; `git diff --check` passed.
+- **Passed with warning:** equivalent `psqldef --dry-run` against the healthy
+  local PostgreSQL container produced the expected additive sidecar changes
+  (new embedding state/fingerprint, schema-version default, and constraints).
+  The tool warned while parsing pre-existing unrelated DDL but emitted the
+  expected search-document diff.
+- **Blocked:** the repository `task db:schema:push DRY_RUN=true` could not
+  resolve the Compose `postgres` alias from its standalone container, despite
+  the local database being healthy. No migration, compatibility SQL execution,
+  existing-data upgrade, or backfill was applied, because this task has no
+  approved existing-data scope. Real persisted Postgres behavior after migration
+  therefore remains blocked rather than passed.
+- **Not run:** `task agent:prepare` and `task agent:finish`; preparation currently
+  formats the entire API/PWA trees, an unbounded write outside this backend/schema
+  slice. Targeted formatter verification was run for the changed C# paths.
+
 ## 3. Bounded PostgreSQL lexical retrieval behind a flag
 
 **Requirements:** R3, R4-AC2, R6-AC2.
@@ -217,6 +250,63 @@ results. Run relevant API tests and static contract checks.
 **Stop condition:** If the intended trigram index is not selected, tune/query
 design against the corpus before enabling the flag. Do not use production index
 creation or declare live-plan proof from in-memory tests.
+
+**Task 3 implementation evidence (2026-09-16):** Added `pg_trgm` to clean-install
+DDL, plus an idempotent compatibility extension statement. `migrate.sh` performs
+the existing-install GIN creation as a separate `CREATE INDEX CONCURRENTLY IF NOT
+EXISTS` step (after checking that the sidecar table exists; an invalid partial
+index from an interrupted concurrent build is dropped concurrently first), before
+its regular transactional compatibility/psqldef sequence. This is resumable after
+interruption and avoids the table-writing lock of a transactional index build. No migration,
+backfill, reset, or production index creation was applied.
+
+- **Starting worktree baseline:** `HEAD` was
+  `470a784497d6886e70a0eb21eae0c86681bce64a`. Before Task 3 edits, the uncommitted
+  Task 2 sidecar slice was already present in `schema.sql`, `compatibility.sql`,
+  `RecipeDbContext.cs`, `RecipeSearchService.cs`, its listed services/tests, and
+  this ignored packet. Those edits are preserved; Task 3 adds only the lexical
+  repository/predicate/options/tests, the trigram migration wiring, and this
+  evidence update.
+- **Bounded path and rollout:** `RecipeLexicalSearchRepository` joins ready,
+  non-deleted recipes to ready canonical sidecars, applies the shared existing
+  hard filters in PostgreSQL, uses a parameterized canonical-text `ILIKE` trigram
+  predicate, orders by PostgreSQL `word_similarity`, and limits to 50 before the
+  application loads those recipe projections. `WFS_ENABLE_DATABASE_LEXICAL_RETRIEVAL`
+  defaults false; when false, `WFS_SHADOW_DATABASE_LEXICAL_RETRIEVAL` is the sole
+  temporary comparison path and emits only candidate-count/overlap telemetry.
+  Public response values and legacy serving are unchanged.
+- **Passed — schema preview:** `task db:schema:push DRY_RUN=true` against the
+  healthy local PostgreSQL container completed. It previewed `CREATE EXTENSION IF
+  NOT EXISTS pg_trgm` and `CREATE INDEX IF NOT EXISTS
+  idx_recipe_search_documents_document_trgm ... USING gin (document_text
+  gin_trgm_ops) WHERE index_status = 'ready'`; psqldef also warned about parsing
+  pre-existing unrelated DDL and showed the still-unapplied Task 2 additive
+  sidecar diff. The preview does not execute `compatibility.sql` or the separate
+  concurrent-index step.
+- **Passed — isolated PostgreSQL tests:** `dotnet test
+  api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --filter
+  "FullyQualifiedName~RecipeLexicalSearchPostgresTests" --logger
+  "console;verbosity=normal"` — 3 passed. The isolated databases were created
+  and dropped per test. Coverage includes exact, partial, accented, and short
+  queries; ready/non-deleted eligibility; healthy hard-filter parity; top-50
+  cap; and an embedding-provider exception returning database lexical results
+  with the existing `fallback-lexical` response value.
+- **Passed — representative query plan:** the 100,000-row isolated corpus ran
+  `EXPLAIN (ANALYZE, BUFFERS)` for the same canonical-text predicate. It returned
+  one candidate through `Bitmap Index Scan on
+  idx_recipe_search_documents_document_trgm`, then the recipe primary-key scan;
+  observed execution was 0.381 ms with 90 shared-buffer hits. The PostgreSQL test
+  asserts the index name so a sequential-plan regression fails the focused suite.
+- **Passed — focused regression/scope checks:** 39 existing search, hybrid, and
+  telemetry tests passed under `RecipeSearchIntegrationTests|HybridSearchTests|
+  SearchTelemetryTests`; `dotnet format ... --verify-no-changes` for the Task 3
+  C# paths, `sh -n api/database/migrate.sh`, and `git diff --check` passed.
+- **Not run / remaining rollout work:** no existing-data migration, reconciliation
+  backfill, shadow cohort, broad flag enablement, load target, semantic fusion,
+  contract change, deployment, or Task 4 work. `task agent:prepare` and
+  `task agent:finish` remain not run because preparation formats the entire API/PWA
+  trees, an unbounded write over the pre-existing Task 2 worktree; focused tests
+  and formatter/scope checks are recorded separately.
 
 ## 4. Semantic top-K, bounded fusion, and deterministic reasons
 
@@ -243,6 +333,54 @@ admin diagnostics.
 Keep public reason and result-path values compatible in this slice. New internal
 classifications reach the public response only through task 5's atomic contract
 and client changes.
+
+**Task 4 implementation evidence (2026-09-16):** Replaced the fixed vector
+similarity gate with `RecipeSemanticSearchRepository`: PostgreSQL applies the
+same ready/non-deleted/hard-filter predicates as lexical retrieval, current
+canonical fingerprint equality, ready embedding status, configured model/version,
+and vector dimension before cosine-distance top-K ordering. The 50-candidate
+default is configurable. `RecipeSearchService` now fuses the ID union in stable
+recipe-ID order after normalizing lexical 0-1 scores and cosine -1..1 scores to
+0-1, then applies configured lexical/semantic weights. Its private score ledger
+retains retrieval raw/normalized/weighted values and separate planner, pantry,
+family/rating, and schedule contributions; public DTO reasons/path enums were
+not changed. The semantic provider call and vector query share a linked 300-ms
+budget. Timeout/provider/vector failure returns lexical results; caller
+cancellation is rethrown rather than converted to fallback. The similar path
+uses the same compatibility policy and preserves its existing lexical fallback.
+
+- **Starting worktree baseline:** `HEAD` was `470a784497d6886e70a0eb21eae0c86681bce64a`.
+  Task 2/3 changes were already present. A binary tracked diff snapshot had SHA-256
+  `09b35bb4532473407351ecf24090dd543ec828460447ba74366b6afb82e42b77` and the
+  pre-existing untracked-path identity list had SHA-256
+  `cc70438667c1d228841259039727a1a1fc253883fe3bac8c04b81c2e83f097de` before
+  Task 4 edits. Task-local production paths are the semantic repository, rollout
+  options/DI, and `RecipeSearchService`; the focused PostgreSQL test and this
+  evidence are the task-local test/documentation paths.
+- **Passed — isolated PostgreSQL:** `RecipeLexicalSearchPostgresTests` ran with
+  a temporary database created and dropped by the test fixture: 5 passed. It
+  proves top-K (2), French/English beef retrieval through a fixture embedding,
+  stale fingerprint/model/status rejection, lexical discovery without a vector,
+  provider fallback, timeout-inclusive fallback timing, and caller cancellation.
+  The existing lexical PostgreSQL plan/filter checks passed in the same run.
+- **Passed — focused in-memory/API:** `HybridSearchTests` passed 6/6. The final
+  focused command without the opt-in PostgreSQL connection passed 6 and skipped
+  the 5 PostgreSQL tests as designed. `git diff --check` and focused
+  `dotnet format --verify-no-changes` passed.
+- **Passed — local PostgreSQL re-verification and cleanup:** against the healthy
+  local `pgvector/pgvector:pg18` container, the isolated
+  `RecipeLexicalSearchPostgresTests` command passed 5/5 using a temporary
+  per-test database that the fixture dropped. This reconfirmed compatible
+  current-vector eligibility, top-K, English/French semantic retrieval,
+  provider/timeout lexical fallback timing, and propagated caller
+  cancellation. A targeted source/test scan found no remaining
+  `SimilarityThreshold`, `VectorCandidateLimit`, `VectorSimilarityWeight`,
+  `LexicalSimilarityWeight`, or `CalculateCosineSimilarity` callers; the
+  retained lexical ranking path remains the configured Task 3 fallback.
+- **Not run:** `task agent:prepare` / `task agent:finish` remain intentionally
+  not run because preparation formats the entire API/PWA trees over the
+  pre-existing Task 2/3 dirty worktree. No migration, backfill, deployment,
+  OpenAPI/client/PWA change, or Task 5 work was performed.
 
 ## 5. Contract-first structured filters and agent compatibility
 

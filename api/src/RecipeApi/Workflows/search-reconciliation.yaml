@@ -1,0 +1,8 @@
+name: search-reconciliation
+parameters:
+  - cursor?
+tasks:
+  - name: reconcile
+    processor: ReconcileRecipeSearch
+    payload:
+      cursor: "{{ cursor }}"
