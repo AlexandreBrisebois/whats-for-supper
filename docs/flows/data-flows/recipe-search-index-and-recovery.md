@@ -1,11 +1,11 @@
 # Data Flow: Recipe Search Index And Recovery
 
-**Historical spec:** `.kiro/specs/archive/semantic-recipe-search-v2`
+**Current spec:** `.kiro/specs/agent-friendly-hybrid-recipe-search`
 
 This document defines the data flow for:
 - hybrid recipe search (lexical + vector),
 - planner-aware and family-fit reranking,
-- agent-mode super-search (server-side translation),
+- agent-supplied requests that retain the original query,
 - pantry/fridge/freezer photo inventory search,
 - vector indexing workflow (`SearchIndexWorkflow`),
 - backup/restore-compatible index persistence (`search.index.json` sidecar),
@@ -16,15 +16,14 @@ This document defines the data flow for:
 
 ## Overview
 
-Every search path — standard field, agent super-search, inventory photo, similar-recipe, and agent callers — flows through the same `RecipeSearchService`. There is one truth source for ranking. Callers may set different request fields (`mode`, `similarToRecipeId`, `pantrySnapshotId`) but they receive the same `RecipeSearchResponseDto`.
+Every search path — standard field, agent caller, inventory photo, and similar-recipe — flows through the same `RecipeSearchService`. There is one truth source for ranking. Callers may set different request fields (`mode`, `similarToRecipeId`, `pantrySnapshotId`) but they receive the same `RecipeSearchResponseDto`; agent mode does not translate or replace the submitted query.
 
 The implementation is staged:
-1. Lexical/fuzzy retrieval (trigram similarity in-process)
-2. Planner-aware and family-fit reranking
-3. Vector indexing seam (`SearchIndexWorkflow`, `recipe_search_documents` table)
-4. Backup/restore-compatible index persistence (`search.index.json` sidecar)
-5. Hybrid retrieval (lexical + pgvector merged)
-6. Recovery systems (Recycle Bin, Failed Captures)
+1. Canonical document indexing (`SearchIndexWorkflow`, `recipe_search_documents` table)
+2. Bounded PostgreSQL lexical retrieval
+3. Optional pgvector retrieval fused with lexical candidates
+4. Planner-aware, family-fit, and pantry reranking
+5. Recovery systems (Recycle Bin, Failed Captures)
 
 That sequence keeps the product shippable at every step.
 
@@ -34,16 +33,13 @@ That sequence keeps the product shippable at every step.
 
 ```mermaid
 flowchart TD
-    A[POST /api/recipes/search] --> B[Validate + clamp limit: default 6, minimum 1, maximum 50]
-    B --> B2{mode?}
-    B2 -->|agent| BA[AgentSearchTranslationService: LLM prompt → RecipeSearchRequestDto]
-    BA --> C
-    B2 -->|standard or similar| C
-    C[Load planner context if weekOffset + dayIndex present] --> D
-    D[Load pantry snapshot if pantrySnapshotId present] --> E
-    E[Lexical/trigram candidate retrieval — in-process TrigramSimilarity] --> F
-    E2[Vector candidate retrieval if index ready — 300 ms budget] --> F
-    F[Merge candidate pool — deduplicate by recipeId, keep max score] --> G
+    A[POST /api/recipes/search] --> B[Validate + clamp limit: default 12, minimum 1, maximum 50]
+    B --> C[Apply eligibility and hard filters]
+    C --> D[Load planner context if weekOffset + dayIndex present]
+    D --> E[Load pantry snapshot if pantrySnapshotId present]
+    E[Bounded PostgreSQL lexical retrieval from canonical documents] --> F
+    E2[Optional vector retrieval if index ready — 300 ms budget] --> F
+    F[Merge bounded candidate union by recipeId] --> G
     G[Planner-aware reranker — exclude assigned, apply balance gap + urgency] --> H
     H[Family-fit reranker — rating boost, vote boost, notes boost] --> I
     I[Inventory-fit boost if pantry snapshot present] --> J
@@ -51,20 +47,14 @@ flowchart TD
     K[Return RecipeSearchResponseDto — topPick + results + reasons + resultPath]
 ```
 
-### Retrieval: lexical/trigram
+### Retrieval: database lexical
 
-Candidate scoring is computed entirely in-process (no external text-search service):
-- `TrigramSimilarity(query, name)` → weighted 0.4
-- `TrigramSimilarity(query, notes)` → weighted 0.3 (+ `NotesMatchBoost = 0.10` if score ≥ 0.3)
-- `TrigramSimilarity(query, documentText)` → weighted 0.2
-- Final score: `max(nameScore, notesScore, documentScore)` before modifiers
-- Candidates below `MinimumCandidateScore = 0.20` are dropped from the pool
-- Empty query: all non-deleted recipes are included as default candidates (score = 0)
-
-`documentText` is built as:
-```
-<name>. <description>. Ingredients: <comma-joined>. Notes: <notes>.
-```
+PostgreSQL applies eligibility and hard predicates before `pg_trgm` matching on
+the canonical `recipe_search_documents.document_text`, ranks with
+`word_similarity`, and returns no more than the configured candidate limit.
+The service never materializes all eligible recipes for a non-empty lexical
+query. Empty-query browse uses its own bounded database ordering and does not
+invoke lexical or vector retrieval.
 
 ### Retrieval: vector (pgvector)
 
@@ -97,7 +87,6 @@ All score constants are named constants in `RecipeSearchService` — not magic n
 | `rating == 2` (Like) | `+0.08` | `BoostLike` |
 | `rating == 1` (Dislike) | `−0.10` | `BoostDislike` |
 | Positive discovery votes (normalised) | `+min(0.15, voteCount × 0.05)` | `BoostVotesMax / BoostVotesRate` |
-| Notes match (score ≥ 0.3) | `+0.10` | `NotesMatchBoost` |
 
 ### Planner-fit modifiers (only when `weekOffset` + `dayIndex` provided)
 
@@ -125,11 +114,12 @@ Every active modifier appears as a `RecipeSearchReasonDto` entry in the result's
 
 ---
 
-## Agent-Mode Translation
+## Agent-supplied requests
 
-When `mode: "agent"` is set, `AgentSearchTranslationService` translates the free-form `query` string into a structured `RecipeSearchRequestDto` using a server-side LLM prompt. The translated request then flows through the identical search pipeline — no separate retrieval branch, no separate ranking logic. The caller receives the same `RecipeSearchResponseDto` shape regardless of mode.
-
-The translation is a thin service boundary: it may rewrite `query`, set `filters`, or infer `weekOffset`/`dayIndex` from the text. It does not fork ranking or maintain state.
+When `mode: "agent"` is set, the same deterministic search pipeline runs with
+the caller's original `query`. An agent may supply the approved structured
+filters and preferences, but search serving does not invoke an LLM to rewrite,
+rerank, or select a result.
 
 ---
 

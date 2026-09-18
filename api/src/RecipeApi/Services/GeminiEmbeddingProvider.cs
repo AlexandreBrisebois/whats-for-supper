@@ -12,52 +12,42 @@ public class GeminiEmbeddingProvider(IConfiguration configuration, IHttpClientFa
     private readonly string _apiKey = configuration["GEMINI_API_KEY"] ?? "none";
     private readonly string _endpoint = configuration["GEMINI_ENDPOINT"] ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
     private readonly string _modelId = configuration["EMBEDDING_MODEL_ID"] ?? "gemini-embedding-2";
+    private readonly int _dimensions = configuration.GetValue<int?>("EMBEDDING_DIMENSIONS") ?? 1536;
 
     public async Task<float[]> GenerateAsync(string text, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(text)) return [];
 
-        try
+        using var client = httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Add("x-goog-api-key", _apiKey);
+
+        var model = _modelId.StartsWith("models/", StringComparison.Ordinal)
+            ? _modelId["models/".Length..]
+            : _modelId;
+        var endpoint = new Uri(new Uri(new Uri(_endpoint).GetLeftPart(UriPartial.Authority)), $"/v1beta/models/{Uri.EscapeDataString(model)}:embedContent");
+        var response = await client.PostAsJsonAsync(endpoint, new
         {
-            using var client = httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+            model = $"models/{model}",
+            content = new { parts = new[] { new { text } } },
+            outputDimensionality = _dimensions
+        }, ct);
 
-            // Ensure endpoint ends with a slash before appending embeddings
-            var baseUrl = _endpoint.EndsWith('/') ? _endpoint : _endpoint + "/";
-            var url = $"{baseUrl}embeddings";
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException($"Gemini embedding request failed with status {response.StatusCode}.");
 
-            var response = await client.PostAsJsonAsync(url, new
-            {
-                input = text,
-                model = _modelId,
-                dimensions = 1536
-            }, ct);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync(ct);
-                throw new Exception($"Gemini Embedding API failed: {response.StatusCode} - {error}");
-            }
-
-            var result = await response.Content.ReadFromJsonAsync<OpenAiEmbeddingResponse>(cancellationToken: ct);
-            return result?.Data?.FirstOrDefault()?.Embedding ?? [];
-        }
-        catch (Exception)
-        {
-            // Fail silently or log? Since this is part of a workflow, throwing will trigger retries.
-            throw;
-        }
+        var result = await response.Content.ReadFromJsonAsync<GeminiEmbeddingResponse>(cancellationToken: ct);
+        return result?.Embedding?.Values ?? [];
     }
 
-    private class OpenAiEmbeddingResponse
-    {
-        [JsonPropertyName("data")]
-        public List<OpenAiEmbeddingData>? Data { get; set; }
-    }
-
-    private class OpenAiEmbeddingData
+    private class GeminiEmbeddingResponse
     {
         [JsonPropertyName("embedding")]
-        public float[]? Embedding { get; set; }
+        public GeminiEmbeddingData? Embedding { get; set; }
+    }
+
+    private class GeminiEmbeddingData
+    {
+        [JsonPropertyName("values")]
+        public float[]? Values { get; set; }
     }
 }

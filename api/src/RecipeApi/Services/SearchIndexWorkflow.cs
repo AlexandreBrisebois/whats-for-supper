@@ -177,6 +177,4 @@ public class SearchIndexWorkflow(
             });
         }
     }
-
-    public static string BuildDocumentText(Recipe recipe) => new RecipeSearchDocumentBuilder().Build(recipe).DocumentText;
 }

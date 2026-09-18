@@ -18,4 +18,7 @@ public class RecipeSearchResponseDto
 
     [JsonPropertyName("resultPath")]
     public string ResultPath { get; set; } = "lexical-only";
+
+    [JsonPropertyName("nextCursor")]
+    public string? NextCursor { get; set; }
 }

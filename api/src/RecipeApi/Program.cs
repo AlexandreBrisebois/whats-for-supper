@@ -30,6 +30,7 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    var openTelemetryEndpoint = builder.Configuration["OpenTelemetry:Endpoint"];
 
     // ── Serilog ──────────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, config) =>
@@ -38,7 +39,7 @@ try
               .Enrich.FromLogContext()
               .WriteTo.OpenTelemetry(options =>
               {
-                  options.Endpoint = ctx.Configuration["OpenTelemetry:Endpoint"] ?? "http://localhost:4317";
+                  options.Endpoint = openTelemetryEndpoint ?? "http://localhost:4317";
                   options.ResourceAttributes = new Dictionary<string, object>
                   {
                       ["service.name"] = "RecipeApi"
@@ -61,7 +62,12 @@ try
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation()
-                   .AddHttpClientInstrumentation();
+                   .AddHttpClientInstrumentation()
+                   .AddMeter(SearchTelemetryMetrics.MeterName);
+            if (!string.IsNullOrWhiteSpace(openTelemetryEndpoint))
+            {
+                metrics.AddOtlpExporter(options => options.Endpoint = new Uri(openTelemetryEndpoint));
+            }
             // metrics.AddConsoleExporter(); // Too noisy for production stdout
         });
 
@@ -115,12 +121,12 @@ try
     builder.Services.AddScoped<RecipePurgeService>();
     builder.Services.AddScoped<CaptureFailureService>();
     builder.Services.AddScoped<RecipeSearchService>();
+    builder.Services.AddSingleton<RecipeSearchContinuationStore>();
     builder.Services.AddScoped<RecipeLexicalSearchRepository>();
     builder.Services.AddScoped<RecipeSemanticSearchRepository>();
     builder.Services.AddSingleton(new RecipeSearchRolloutOptions
     {
-        DatabaseLexicalEnabled = builder.Configuration.GetValue<bool>("WFS_ENABLE_DATABASE_LEXICAL_RETRIEVAL"),
-        DatabaseLexicalShadowEnabled = builder.Configuration.GetValue<bool>("WFS_SHADOW_DATABASE_LEXICAL_RETRIEVAL"),
+        ConfigurationVersion = builder.Configuration["WFS_SEARCH_CONFIGURATION_VERSION"] ?? "hybrid-search-v1",
         Semantic = new RecipeSemanticSearchOptions
         {
             Enabled = builder.Configuration.GetValue<bool?>("WFS_ENABLE_SEMANTIC_RETRIEVAL") ?? true,
@@ -130,7 +136,6 @@ try
             EmbeddingVersion = builder.Configuration["EMBEDDING_MODEL_VERSION"]
         }
     });
-    builder.Services.AddScoped<AgentSearchTranslationService>();
     builder.Services.AddSingleton<InventoryCaptureService>();
     builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddScoped<RecipeImportReportService>();

@@ -52,8 +52,28 @@ public sealed class SearchReconciliationWorkflow(
     private async Task<bool> HasActiveIndexAsync(Guid recipeId, string fingerprint, CancellationToken ct)
     {
         var recipeToken = recipeId.ToString();
-        var fingerprintToken = fingerprint;
-        return await db.WorkflowInstances.AsNoTracking().AnyAsync(i => i.WorkflowId == "index-recipe-search" && (i.Status == WorkflowStatus.Pending || i.Status == WorkflowStatus.Processing) && i.Parameters != null && i.Parameters.Contains(recipeToken) && i.Parameters.Contains(fingerprintToken), ct);
+        if (db.Database.IsRelational())
+        {
+            var parameters = JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeToken,
+                ["fingerprint"] = fingerprint
+            });
+
+            return await db.WorkflowInstances.FromSql($"""
+                SELECT * FROM workflow_instances
+                WHERE workflow_id = 'index-recipe-search'
+                  AND status IN ({(int)WorkflowStatus.Pending}, {(int)WorkflowStatus.Processing})
+                  AND parameters @> {parameters}::jsonb
+                """).AsNoTracking().AnyAsync(ct);
+        }
+
+        return await db.WorkflowInstances.AsNoTracking().AnyAsync(i =>
+            i.WorkflowId == "index-recipe-search"
+            && (i.Status == WorkflowStatus.Pending || i.Status == WorkflowStatus.Processing)
+            && i.Parameters != null
+            && i.Parameters.Contains(recipeToken)
+            && i.Parameters.Contains(fingerprint), ct);
     }
 
     private static Guid? ReadCursor(string? payload)

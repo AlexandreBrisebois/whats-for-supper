@@ -29,6 +29,34 @@ public class SearchReconciliationWorkflowTests
         Assert.False(string.IsNullOrWhiteSpace(queued.Parameters["fingerprint"]));
     }
 
+    [Fact]
+    public async Task ExecuteAsync_DoesNotQueueWhenAnEquivalentIndexWorkflowIsActive()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var recipe = new Recipe { Id = Guid.NewGuid(), IsReady = true, Name = "Already indexing" };
+        var content = new RecipeSearchDocumentBuilder().Build(recipe);
+        var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe, content);
+        db.Recipes.Add(recipe);
+        db.WorkflowInstances.Add(new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "index-recipe-search",
+            Status = WorkflowStatus.Pending,
+            Parameters = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["recipeId"] = recipe.Id.ToString(),
+                ["fingerprint"] = fingerprint
+            })
+        });
+        await db.SaveChangesAsync();
+        var orchestrator = new RecordingOrchestrator();
+        var workflow = new SearchReconciliationWorkflow(db, orchestrator, new RecipeSearchDocumentBuilder(), NullLogger<SearchReconciliationWorkflow>.Instance);
+
+        await workflow.ExecuteAsync(new WorkflowTask { Payload = "{}" }, CancellationToken.None);
+
+        Assert.Empty(orchestrator.Calls);
+    }
+
     private sealed class RecordingOrchestrator : IWorkflowOrchestrator
     {
         public List<(string WorkflowId, Dictionary<string, string> Parameters)> Calls { get; } = [];

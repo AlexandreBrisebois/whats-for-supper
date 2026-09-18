@@ -941,7 +941,7 @@ public class ManagementService(
         await RestoreRecipeImportReportsAsync(ct);
 
         // 4b. Restore search index sidecars
-        var configuredModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "text-embedding-3-small";
+        var configuredModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2";
         foreach (var recipe in recipesToRestore)
         {
             if (ct.IsCancellationRequested) break;
@@ -1385,7 +1385,7 @@ public class ManagementService(
                 SearchMetadata = "{}",
                 IndexStatus = "pending",
                 EmbeddingStatus = "pending",
-                EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "text-embedding-3-small",
+                EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2",
                 SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
             });
         }

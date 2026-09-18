@@ -169,7 +169,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipePurgeService>();
         builder.Services.AddScoped<CaptureFailureService>();
         builder.Services.AddScoped<RecipeSearchService>();
-        builder.Services.AddScoped<AgentSearchTranslationService>();
+        builder.Services.AddSingleton<RecipeSearchContinuationStore>();
         builder.Services.AddSingleton<InventoryCaptureService>();
         
         var mockEmbedding = new Mock<IEmbeddingProvider>();
@@ -177,7 +177,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             .ReturnsAsync(new float[1536]);
         builder.Services.AddSingleton<IEmbeddingProvider>(mockEmbedding.Object);
 
-        // Stub IChatClient so AgentSearchTranslationService and InventoryCaptureService can be resolved in tests.
+        // Stub IChatClient so InventoryCaptureService can be resolved in tests.
         // The default stub inspects the prompt and returns shape-correct payloads for each test path.
         builder.Services.AddSingleton<IChatClient>(_chatClient ?? new StubChatClient(null));
         builder.Services.AddScoped<RecipeImportService>();

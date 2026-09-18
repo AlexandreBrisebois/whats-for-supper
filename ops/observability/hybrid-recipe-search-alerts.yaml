@@ -1,0 +1,28 @@
+version: 1
+source: OpenTelemetry meter RecipeApi.Search and recipe-search telemetry events
+privacy: Alert labels and annotations must not contain raw queries or continuation tokens.
+alerts:
+  - name: HybridRecipeSearchLexicalP95Slow
+    condition: recipe.search.response.duration p95 by search.latency_population=lexical-only > 250ms for 15m
+    severity: warning
+    runbook: docs/operations/hybrid-recipe-search-rollout.md#slow-queries
+  - name: HybridRecipeSearchHybridP95Slow
+    condition: recipe.search.response.duration p95 by search.latency_population=hybrid > 600ms for 15m
+    severity: warning
+    runbook: docs/operations/hybrid-recipe-search-rollout.md#slow-queries
+  - name: HybridRecipeSearchFallbackP95Slow
+    condition: recipe.search.response.duration p95 by search.latency_population=semantic-failure-fallback > 600ms for 15m
+    severity: critical
+    runbook: docs/operations/hybrid-recipe-search-rollout.md#provider-or-vector-failure
+  - name: HybridRecipeSearchFallbackSpike
+    condition: recipe.search.fallback.count rate > 5% of non-browse search completions for 10m
+    severity: critical
+    runbook: docs/operations/hybrid-recipe-search-rollout.md#provider-or-vector-failure
+  - name: HybridRecipeSearchCoverageLow
+    condition: readyDocumentCount / eligibleRecipeCount < 0.98 for 30m after a backfill start
+    severity: warning
+    runbook: docs/operations/hybrid-recipe-search-rollout.md#backfill-and-coverage
+  - name: HybridRecipeSearchZeroResultSpike
+    condition: recipe_search_empty_results rate is more than 3x its seven-day baseline for 15m
+    severity: warning
+    runbook: docs/operations/hybrid-recipe-search-rollout.md#on-call-diagnostics

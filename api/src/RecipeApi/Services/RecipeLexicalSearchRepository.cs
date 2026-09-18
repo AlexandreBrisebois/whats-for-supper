@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RecipeApi.Data;
 using RecipeApi.Dto;
+using System.Text.RegularExpressions;
 
 namespace RecipeApi.Services;
 
@@ -19,13 +20,20 @@ public sealed class RecipeLexicalSearchRepository(RecipeDbContext db)
         var parameters = new List<NpgsqlParameter>
         {
             new("query", trimmedQuery),
-            new("pattern", $"%{trimmedQuery}%"),
             new("candidateLimit", candidateLimit)
         };
-        // A substring predicate keeps exact, partial, accented, and short queries
-        // indexable through gin_trgm_ops. PostgreSQL still computes a text score
-        // after the index admits the bounded candidate set.
-        const string matchPredicate = "d.document_text ILIKE @pattern";
+        var matchPredicates = new List<string>();
+        AddPattern("phrase", trimmedQuery);
+        foreach (var term in Regex.Matches(trimmedQuery, @"[\p{L}\p{N}]+")
+                     .Select(match => match.Value)
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .Where(term => !string.Equals(term, trimmedQuery, StringComparison.OrdinalIgnoreCase)))
+            AddPattern("term" + matchPredicates.Count, term);
+
+        // Each predicate remains trigram-indexable. The whole phrase preserves exact
+        // recall while individual meaningful terms admit documents where the words are
+        // separated or reordered; word_similarity still ranks the original request.
+        var matchPredicate = $"({string.Join(" OR ", matchPredicates)})";
         var hardFilters = RecipeSearchPredicate.BuildSql(filters, parameters);
 
         var sql = $"""
@@ -43,6 +51,12 @@ public sealed class RecipeLexicalSearchRepository(RecipeDbContext db)
 
         return await db.Database.SqlQueryRaw<RecipeLexicalCandidate>(sql, parameters.Cast<object>().ToArray())
             .ToListAsync(ct);
+
+        void AddPattern(string name, string value)
+        {
+            parameters.Add(new NpgsqlParameter(name, $"%{value}%"));
+            matchPredicates.Add($"d.document_text ILIKE @{name}");
+        }
     }
 }
 

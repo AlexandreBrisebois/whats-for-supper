@@ -23,9 +23,9 @@ unverified deployment/runtime checks cannot be recorded as passed.
 | 2 — Canonical indexing and dreaming repair | Not started | Implementation, upgrade/backfill and concurrency tests pending |
 | 3 — Database lexical retrieval | Completed | Bounded PostgreSQL canonical-document retrieval is flag-gated; isolated PostgreSQL migration/index/fallback evidence captured below. Task 4 semantic fusion and Task 6 rollout remain pending. |
 | 4 — Semantic retrieval and fusion | Completed | Bounded PostgreSQL semantic retrieval, deterministic fusion, compatibility gates, fallback, and cancellation coverage completed; public response remains unchanged. |
-| 5 — Contract, scrolling and agent compatibility | Not started | API/client/UI changes and continuation/browse tests pending |
-| 6 — Rollout and operations | Not started | Load, coverage and rollback evidence pending |
-| 7 — Dead-code removal | Not started | Caller migration, deletion inventory and post-removal checks pending |
+| 5 — Contract, scrolling and agent compatibility | In progress | Contract/client regeneration and deterministic serving started; continuation/browse completion and acceptance tests remain pending. |
+| 6 — Rollout and operations | In progress | Rollout controls and operational artifacts implemented; cohort/runtime acceptance remains blocked below. |
+| 7 — Dead-code removal | In progress | Legacy serving paths removed; PostgreSQL checks pass, but dependent API migration and required acceptance evidence remain incomplete below. |
 
 ### Task 1 evidence
 
@@ -426,6 +426,16 @@ from this contract slice and raise the explicit dependency; do not ship a field
 with invented semantics. Retire LLM query rewriting/reranking from the serving
 path; a future conversational feature needs separate authorization.
 
+**Task 5 partial evidence (2026-09-17):** Starting `HEAD` was `15aa79018c8d0f4605d65ced63c821f7c8f1adef`; the tracked worktree was clean. The contract now makes `query` optional for browse, makes `limit` 1–50/default 12 alternatives, adds preferences/cursor fields and a `browse` result path, and documents/rejects `excludedIngredients` rather than interpreting it. The controller passes the caller DTO unchanged; LLM translation/reranking service, registration, and tests were removed. The Kiota client was regenerated. The PWA wrapper/page now model `nextCursor`, append unique cards, retain cards on load failure, expose a Load more retry, guard stale initial responses, and restore scroll after detail close.
+
+- **Passed:** elevated `task gen:client`; `task typecheck`.
+- **Blocked:** `dotnet test ... --filter FullyQualifiedName~RecipeSearchIntegrationTests` built both projects but VSTest failed before tests with `SocketException (13): Permission denied` binding its communication listener in the restricted sandbox.
+- **Remaining / not complete:** ranked snapshot continuation, database-keyset browse pagination, factual-filter predicates, stateful mock parity, and required API/PWA/E2E acceptance coverage. Do not mark Task 5 complete from this checkpoint.
+
+**Result-loading completion evidence (2026-09-17):** Ranked responses now retain only a bounded, ten-minute in-process snapshot of remaining mapped alternatives behind an opaque cursor; continuation rechecks current eligibility and returns `topPick: null` without reranking. Empty/filter-only browse uses its own cursor state containing only the explore-order position and initial top-pick ID, then keyset-paginates `never cooked → least recently cooked → newest → ID` through the eligible library. Invalid or expired cursors return the documented 409 restart guidance. The PWA appends unique batches of 12, ignores stale next-page responses, retains visible cards on failure, and distinguishes an expired cursor with an explicit restart action. This completes the user-visible result-limit defect only; the remaining Task 5 requirements above still require their own coverage and implementation.
+
+- **Passed:** `dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --filter "FullyQualifiedName~RecipeSearchIntegrationTests"` (29 passed); `npm run test:unit -- 'src/app/(app)/recipes/page.test.tsx'` (46 passed); `npm run typecheck`; `task gen:client:check`; `task agent:reconcile`; `task agent:drift:schemas`; `git diff --check`.
+
 ## 6. Controlled rollout, operations, and default enablement
 
 **Requirements:** R6 and all preceding acceptance criteria.
@@ -451,6 +461,59 @@ response measurements. Preserve the 300-ms combined semantic-attempt budget.
 coverage, privacy review, rollback path, and on-call ownership are evidenced.
 Failure of the embedding provider or vector SQL must leave an operating lexical
 path before this task can complete.
+
+**Task 6 implementation evidence (2026-09-17):** The starting `HEAD` was
+`15aa79018c8d0f4605d65ced63c821f7c8f1adef`. Before Task 6 edits, the Task 5
+working state was already dirty; its complete binary tracked-diff snapshot is
+`/private/tmp/wfs-task6-starting-worktree.diff`, SHA-256
+`9dcbb4c0e86db05d3021dcd74e2dce3d22489f434cb31281c65e506ec05ed14c`.
+Task 6 adds only rollout option fields/DI, privacy-safe search telemetry and
+OpenTelemetry instruments, focused telemetry/shadow tests, dashboard and alert
+definitions, a synthetic probe, this runbook/evidence update. The Task 5 hunks
+in `Program.cs` and `RecipeSearchService.cs` remain outside this task's ownership.
+No production configuration, migration, alert, traffic, or deployment was changed.
+
+- **Passed — privacy and telemetry contract:** elevated focused API test
+  `dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --filter
+  "FullyQualifiedName~SearchTelemetryTests" --logger "console;verbosity=normal"`
+  passed 8/8. It verifies opaque correlation and configuration-version fields,
+  absence of query/continuation keys, and separate lexical, semantic-attempt,
+  reranking, and result-path latency fields. Fallback is classified as either
+  semantic-budget exhaustion or provider/vector error; caller cancellation still
+  propagates.
+- **Passed — static operational artifacts:** `git diff --check` passed and
+  `python3 -B scripts/operations/probe_hybrid_recipe_search.py --help` passed.
+  The dashboard, alerts, runbook, and probe contain no user-request telemetry
+  fields. OpenTelemetry metrics export is enabled only when
+  `OpenTelemetry:Endpoint` is configured.
+- **Blocked — shadow comparison report:** the added isolated PostgreSQL shadow
+  regression was discovered but skipped because `WFS_TEST_POSTGRES_CONNECTION`
+  is not configured in this environment. It will verify overlap and average rank
+  delta without changing lexical serving once a disposable PostgreSQL connection
+  is supplied. No cohort shadow data exists yet.
+- **Blocked — relevance outcomes and representative load:** no authorized
+  non-production cohort/deployment is available. Therefore no versioned
+  relevance/shadow report or p95 measurement exists for lexical-only (<250 ms),
+  hybrid (<600 ms), or semantic-failure fallback (<600 ms including semantic
+  attempt). These populations are instrumented separately; targets are not
+  claimed as passed.
+- **Blocked — backfill coverage:** no approved environment/data scope exists to
+  trigger reconciliation or measure eligible, ready-document, and ready-embedding
+  coverage. No migration, reset, or re-import occurred.
+- **Not run — synthetic lexical/hybrid probes and rollback rehearsal:** both
+  require an approved internal endpoint and controlled process configuration.
+  The runbook defines the newest-flag-first rollback order and on-call diagnostics,
+  but documentation is not rehearsal evidence.
+- **Passed — on-call diagnostics design:** the runbook and alert links cover
+  provider/vector failure, slow paths, coverage/backfill, zero-result spikes,
+  privacy, and required incident identity. Live alert delivery/ownership remains
+  blocked pending deployment configuration.
+- **Not applicable:** production flag enablement, production migration, and
+  deployment were intentionally not attempted under this task authorization.
+
+**Completion boundary:** Task 6 is not complete and Task 7 has not started.
+General traffic remains disabled until the blocked relevance, latency, coverage,
+synthetic, rollback, and live on-call acceptance evidence is recorded.
 
 ## Dependency order
 
@@ -490,6 +553,74 @@ retrieval after deletion. Follow repository preparation/completion checks.
 migrate that caller and its assertions first. Completion requires deletion of
 legacy rollout code, a tested database lexical fallback, and documented compatible
 release rollback. A disabled old path does not satisfy removal.
+
+**Task 7 cleanup evidence (2026-09-17, in progress):** Starting `HEAD` was
+`15aa79018c8d0f4605d65ced63c821f7c8f1adef`. Before Task 7 edits, the existing
+Task 5/6 tracked diff was saved to `/private/tmp/wfs-task7-starting-worktree.diff`
+with SHA-256 `4ead3f9973875b79668f3442ee7584da190e0f3822aa4b3661a49c2a8eaf1c96`;
+the untracked-path identity list was saved to
+`/private/tmp/wfs-task7-starting-untracked-paths.txt` with SHA-256
+`50c2372b20f38d7b29ba7bb6b01ad444ae5e33d456c3e79cecb5f4754c963bad`.
+
+- **Removed after caller audit:** `RecipeSearchService`'s in-memory full-library
+  scan, ranker, duplicate document-text builder, JSON ingredient reader, trigram
+  utilities, thresholds, and legacy/shadow comparison emitter; the remaining
+  non-empty-query caller now always uses `RecipeLexicalSearchRepository`.
+  `SearchIndexWorkflow.BuildDocumentText` was a no-caller wrapper around the
+  canonical builder and was removed. The lexical/semantic shadow flags, structured
+  response suppression flag, their `Program.cs` configuration reads, shadow-only
+  telemetry events, PostgreSQL shadow test, dashboard panel, and rollout runbook
+  instructions were removed. The obsolete LLM translation/reranking service,
+  registration, test, prompt references, and historical design document had
+  already been deleted by Task 5; stale agent-translation and in-process-trigram
+  claims were removed from the active search-flow documentation.
+- **Retained with active supported callers:** `RecipeSearchDocumentBuilder` is
+  used by indexing, reconciliation, fingerprint, and builder tests;
+  `RecipeLexicalSearchRepository` is registered in `Program.cs` and called by
+  `RecipeSearchService` for every non-empty lexical request; the semantic
+  repository and `WFS_ENABLE_SEMANTIC_RETRIEVAL` remain the active semantic
+  disable control; planner, family, pantry, similar-search, indexing, and
+  telemetry components remain direct `RecipeSearchService` or workflow callers.
+  `WFS_SEARCH_CONFIGURATION_VERSION` remains telemetry identity, not a serving
+  compatibility flag.
+- **Passed — real PostgreSQL:** elevated
+  `dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --filter
+  "FullyQualifiedName~RecipeLexicalSearchPostgresTests" --logger
+  "console;verbosity=normal"` passed 5/5 against the healthy local
+  `pgvector/pgvector:pg18` service. The fixture created and dropped uniquely
+  named temporary databases. It proves canonical PostgreSQL lexical matching,
+  eligibility/hard filters, candidate bounds, trigram index use, compatible
+  semantic candidates, semantic timeout/provider-error lexical fallback, and
+  caller cancellation propagation after removal.
+- **Passed — PWA and contract/client:** `task typecheck` passed. The first
+  sandboxed `task gen:client:check` timed out; the elevated retry passed and
+  confirmed the generated client is current. `git diff --check` passed after
+  cleanup.
+- **Failed — API test migration:** elevated
+  `dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --filter
+  "FullyQualifiedName~RecipeSearchIntegrationTests" --logger
+  "console;verbosity=minimal"` failed 24/26. Those tests use the in-memory test
+  host and are direct callers of the removed lexical implementation; non-empty
+  searches now correctly require the PostgreSQL lexical repository. Migrating
+  those API acceptance tests (including browse, similar, planner, and pantry
+  signals) to the real PostgreSQL fixture is required before Task 7 can complete;
+  adding an in-memory compatibility ranking mock would violate this task.
+- **Not run:** `task agent:prepare` and `task agent:finish` were not run. The
+  selected task cannot complete while Task 5/6 remain incomplete and the API
+  acceptance suite fails; preparation would also format/generate across the
+  pre-existing mixed Task 5/6 worktree. E2E and live endpoint checks are not run.
+- **Scope review:** compared the final worktree with the Task 7 baseline. Task 7
+  changes are limited to the search service/options/DI/telemetry/workflow wrapper,
+  the PostgreSQL cleanup test, Task 7 evidence, and search rollout/flow
+  documentation (including deletion of the obsolete design document). Existing
+  Task 5/6 contract, DTO, controller, PWA, generated-client, operational alert,
+  probe, and test-factory changes remain preserved and are not claimed as Task 7
+  completion evidence.
+
+**Completion boundary:** Task 7 remains in progress. Do not mark it completed
+until the real-PostgreSQL API acceptance migration proves search, browse, similar
+search, planner/pantry signals, lexical fallback, and bounded retrieval, and the
+remaining Task 5/6 acceptance evidence is resolved.
 
 ## Specification review — 2026-09-15
 

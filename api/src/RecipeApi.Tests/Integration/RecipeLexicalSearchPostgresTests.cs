@@ -51,6 +51,7 @@ public class RecipeLexicalSearchPostgresTests : IAsyncLifetime
     public async Task SearchAsync_ReturnsBoundedCanonicalMatches_WithEligibilityAndHardFilters()
     {
         var chicken = await SeedReadyDocumentAsync("Poulet rôti au citron", "[\"poulet\",\"citron\"]", healthy: true);
+        var reorderedPhrase = await SeedReadyDocumentAsync("Lemon chicken skillet", "[\"chicken\",\"lemon\"]");
         await SeedReadyDocumentAsync("Hidden chicken", "[\"chicken\"]", healthy: false, deleted: true);
         await SeedReadyDocumentAsync("Not ready chicken", "[\"chicken\"]", healthy: true, ready: false);
         for (var index = 0; index < 60; index++)
@@ -61,12 +62,14 @@ public class RecipeLexicalSearchPostgresTests : IAsyncLifetime
         var bounded = await repository.SearchAsync("chicken", new RecipeSearchFiltersDto { HealthyOnly = true }, 5);
         var partial = await repository.SearchAsync("chic", new RecipeSearchFiltersDto(), 50);
         var shortQuery = await repository.SearchAsync("ch", new RecipeSearchFiltersDto(), 50);
+        var phrase = await repository.SearchAsync("chicken lemon", new RecipeSearchFiltersDto(), 50);
 
         Assert.Contains(accented, candidate => candidate.RecipeId == chicken.Id);
         Assert.Equal(5, bounded.Count);
         Assert.All(bounded, candidate => Assert.True(candidate.Score > 0));
         Assert.NotEmpty(partial);
         Assert.NotEmpty(shortQuery);
+        Assert.Contains(phrase, candidate => candidate.RecipeId == reorderedPhrase.Id);
     }
 
     [PostgresFact]
@@ -183,7 +186,6 @@ public class RecipeLexicalSearchPostgresTests : IAsyncLifetime
 
     private static RecipeSearchRolloutOptions SearchOptions(int candidateLimit = 50) => new()
     {
-        DatabaseLexicalEnabled = true,
         Semantic = new RecipeSemanticSearchOptions { CandidateLimit = candidateLimit, EmbeddingModel = "task4", EmbeddingVersion = "v1" }
     };
 

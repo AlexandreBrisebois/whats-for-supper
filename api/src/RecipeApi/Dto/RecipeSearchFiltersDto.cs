@@ -4,6 +4,27 @@ namespace RecipeApi.Dto;
 
 public class RecipeSearchFiltersDto
 {
+    [JsonPropertyName("cuisines")]
+    public List<string>? Cuisines { get; set; }
+
+    [JsonPropertyName("mealTypes")]
+    public List<string>? MealTypes { get; set; }
+
+    [JsonPropertyName("includedIngredients")]
+    public List<string>? IncludedIngredients { get; set; }
+
+    [JsonPropertyName("dietaryProfiles")]
+    public List<string>? DietaryProfiles { get; set; }
+
+    [JsonPropertyName("categories")]
+    public List<string>? Categories { get; set; }
+
+    [JsonPropertyName("maximumTotalMinutes")]
+    public int? MaximumTotalMinutes { get; set; }
+
+    // Deliberately retained solely to return the documented unsupported-filter error.
+    [JsonPropertyName("excludedIngredients")]
+    public List<string>? ExcludedIngredients { get; set; }
     [JsonPropertyName("newRecipes")]
     public bool? NewRecipes { get; set; }
 
