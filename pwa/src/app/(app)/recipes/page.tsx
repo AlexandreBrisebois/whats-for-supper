@@ -65,8 +65,9 @@ function resolveDayName(weekOffset: number, dayIndex: number): string {
   return WEEKDAYS[target.getDay()];
 }
 
-const INITIAL_LIMIT = 6;
-const PAGE_SIZE = 6;
+const INITIAL_LIMIT = 12;
+const PAGE_SIZE = 12;
+const SEARCH_DEBOUNCE_MS = 500;
 
 export default function RecipesPage() {
   const router = useRouter();
@@ -95,6 +96,8 @@ export default function RecipesPage() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [limit, setLimit] = useState(INITIAL_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
+  const [loadMoreExpired, setLoadMoreExpired] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [allowAgentSearch, setAllowAgentSearch] = useState<boolean | null>(null);
   const [allowPhotoSearch, setAllowPhotoSearch] = useState<boolean | null>(null);
@@ -109,6 +112,8 @@ export default function RecipesPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const resultsSentinelRef = useRef<HTMLDivElement | null>(null);
+  const requestGenerationRef = useRef(0);
+  const detailScrollYRef = useRef(0);
 
   const addToDay = searchParams.get('addToDay');
   const weekOffset = searchParams.get('weekOffset');
@@ -173,6 +178,7 @@ export default function RecipesPage() {
       nextPantrySnapshotId?: string | null,
       nextLimit?: number
     ) => {
+      const generation = ++requestGenerationRef.current;
       setIsLoading(true);
       try {
         const filters = nextFilters ?? activeFilters;
@@ -188,19 +194,22 @@ export default function RecipesPage() {
           pantrySnapshotId: snapshotId ?? undefined,
           filters: Object.keys(filters).length > 0 ? filters : undefined,
         });
+        if (generation !== requestGenerationRef.current) return;
         setData(response);
         setSimilarToRecipeId(nextSimilarToRecipeId ?? null);
       } catch (error) {
         console.error('Failed to search recipes', error);
+        if (generation !== requestGenerationRef.current) return;
         setData({
           topPick: null,
           results: [],
           appliedFilters: {},
           searchMode: 'standard',
           resultPath: 'lexical-only',
+          nextCursor: null,
         });
       } finally {
-        setIsLoading(false);
+        if (generation === requestGenerationRef.current) setIsLoading(false);
       }
     },
     [activeFilters, pantrySnapshotId, limit, parsedWeekOffset, parsedDayIndex]
@@ -231,6 +240,7 @@ export default function RecipesPage() {
           appliedFilters: {},
           searchMode: 'standard',
           resultPath: 'lexical-only',
+          nextCursor: null,
         });
       } finally {
         if (isActive) {
@@ -257,10 +267,11 @@ export default function RecipesPage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       void runSearch(value, similarToRecipeId, activeFilters, pantrySnapshotId, limit);
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
   };
 
   const handleOpenRecipe = (recipeId: string) => {
+    detailScrollYRef.current = window.scrollY;
     setOpenDetailRecipeId(recipeId);
   };
 
@@ -428,6 +439,7 @@ export default function RecipesPage() {
           appliedFilters: {},
           searchMode: 'agent',
           resultPath: 'lexical-only',
+          nextCursor: null,
         })
       )
       .finally(() => setIsLoading(false));
@@ -490,28 +502,48 @@ export default function RecipesPage() {
   const hasReviewFilters = Boolean(activeFilters.reportedOnly || activeFilters.readyToReviewOnly);
   const displayedTopPick = hasReviewFilters ? null : topPick;
   const showEmptyState = !isLoading && displayedTopPick == null && results.length === 0;
-  const hasMoreResults = data !== null && results.length >= limit;
+  const hasMoreResults = Boolean(data?.nextCursor);
 
   const handleShowMore = useCallback(async () => {
     if (isLoadingMore || isLoading || !hasMoreResults) return;
 
-    const nextLimit = limit + PAGE_SIZE;
-    setLimit(nextLimit);
+    const cursor = data?.nextCursor;
+    if (!cursor) return;
+    const generation = requestGenerationRef.current;
     setIsLoadingMore(true);
+    setLoadMoreError(false);
+    setLoadMoreExpired(false);
     try {
       const response = await searchRecipes({
         query,
         mode: 'standard',
-        limit: nextLimit,
+        limit: PAGE_SIZE,
+        continuationToken: cursor,
         weekOffset: parsedWeekOffset,
         dayIndex: parsedDayIndex,
         similarToRecipeId: similarToRecipeId ?? undefined,
         pantrySnapshotId: pantrySnapshotId ?? undefined,
         filters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
       });
-      setData(response);
-    } catch {
+      if (generation !== requestGenerationRef.current) return;
+      setData((current) => {
+        if (!current) return current;
+        const known = new Set(current.results.map((recipe) => recipe.id));
+        return {
+          ...response,
+          topPick: current.topPick,
+          results: [
+            ...current.results,
+            ...response.results.filter((recipe) => !known.has(recipe.id)),
+          ],
+        };
+      });
+    } catch (error) {
       // keep existing results
+      const continuationExpired =
+        error instanceof Error && 'status' in error && error.status === 409;
+      setLoadMoreExpired(continuationExpired);
+      setLoadMoreError(!continuationExpired);
     } finally {
       setIsLoadingMore(false);
     }
@@ -520,7 +552,7 @@ export default function RecipesPage() {
     hasMoreResults,
     isLoading,
     isLoadingMore,
-    limit,
+    data?.nextCursor,
     pantrySnapshotId,
     parsedDayIndex,
     parsedWeekOffset,
@@ -1109,9 +1141,37 @@ export default function RecipesPage() {
                 ref={resultsSentinelRef}
                 data-testid="search-results-scroll-sentinel"
                 className="flex min-h-12 items-center justify-center px-1"
-                aria-hidden="true"
+                aria-live="polite"
               >
                 {isLoadingMore ? <Loader2 size={18} className="animate-spin text-ochre" /> : null}
+                {loadMoreError ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleShowMore()}
+                    className="text-sm font-bold text-ochre underline"
+                    data-testid="search-load-more-retry"
+                  >
+                    Load more
+                  </button>
+                ) : null}
+                {loadMoreExpired ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void runSearch(
+                        query,
+                        similarToRecipeId,
+                        activeFilters,
+                        pantrySnapshotId,
+                        INITIAL_LIMIT
+                      )
+                    }
+                    className="text-sm font-bold text-ochre underline"
+                    data-testid="search-restart-expired"
+                  >
+                    Restart search
+                  </button>
+                ) : null}
               </div>
             )}
           </>
@@ -1137,7 +1197,10 @@ export default function RecipesPage() {
           plannerDayLabel={
             dayName ?? (addToDay !== null ? `Day ${parseInt(addToDay, 10) + 1}` : null)
           }
-          onClose={() => setOpenDetailRecipeId(null)}
+          onClose={() => {
+            setOpenDetailRecipeId(null);
+            requestAnimationFrame(() => window.scrollTo({ top: detailScrollYRef.current }));
+          }}
           onUseForDay={handleAssignRecipe}
           onPlanForLater={handlePlanForLater}
           onFindSimilar={handleFindSimilar}

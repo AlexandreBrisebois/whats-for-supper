@@ -249,11 +249,22 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         {
             entity.HasKey(e => e.RecipeId);
             entity.Property(e => e.SearchMetadata).HasColumnType("jsonb");
+            entity.Property(e => e.IndexStatus).HasDefaultValue("pending");
+            entity.Property(e => e.EmbeddingStatus).HasDefaultValue("pending");
+            entity.HasIndex(e => e.DocumentText)
+                  .HasDatabaseName("idx_recipe_search_documents_document_trgm")
+                  .HasMethod("gin")
+                  .HasFilter("index_status = 'ready'")
+                  .HasOperators("gin_trgm_ops");
             entity.HasOne(e => e.Recipe)
                   .WithOne()
                   .HasForeignKey<RecipeSearchDocument>(e => e.RecipeId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.ToTable("recipe_search_documents");
+            entity.ToTable("recipe_search_documents", table =>
+            {
+                table.HasCheckConstraint("CK_recipe_search_documents_index_status", "index_status IN ('pending', 'indexing', 'ready', 'failed')");
+                table.HasCheckConstraint("CK_recipe_search_documents_embedding_status", "embedding_status IN ('pending', 'indexing', 'ready', 'failed')");
+            });
         });
 
         modelBuilder.Entity<MaintenanceCommand>(entity =>

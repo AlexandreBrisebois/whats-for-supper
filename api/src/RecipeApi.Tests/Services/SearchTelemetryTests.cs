@@ -98,6 +98,30 @@ public class SearchTelemetryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Search_RequestTelemetry_IsCorrelatedAndNeverContainsQueryOrContinuation()
+    {
+        await SeedDocumentAsync(BuildRecipe("Chicken Soup"));
+        using var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
+        var searchService = scope.ServiceProvider.GetRequiredService<RecipeSearchService>();
+
+        await Assert.ThrowsAsync<RecipeSearchContinuationExpiredException>(() => searchService.SearchAsync(new RecipeSearchRequestDto
+        {
+            Query = "private chicken query",
+            ContinuationToken = "private-continuation-token"
+        }));
+
+        var events = _telemetry.Events.Where(e => e.Name == SearchTelemetryEvents.SearchRequested).ToList();
+        Assert.NotEmpty(events);
+        Assert.All(events, e =>
+        {
+            Assert.DoesNotContain("query", e.Payload.Keys, StringComparer.OrdinalIgnoreCase);
+            Assert.DoesNotContain("continuation", e.Payload.Keys, StringComparer.OrdinalIgnoreCase);
+            Assert.True(Guid.TryParse(e.Payload["correlationId"]?.ToString(), out _));
+            Assert.False(string.IsNullOrWhiteSpace(e.Payload["configurationVersion"]?.ToString()));
+        });
+    }
+
+    [Fact]
     public async Task Search_Emits_RecipeSearchEmptyResults_WhenNoMatches()
     {
         // Don't seed any matching recipe

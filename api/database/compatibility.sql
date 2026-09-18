@@ -1,4 +1,32 @@
+-- Task 3: extension installation is transactional and idempotent. The matching
+-- GIN index is created by migrate.sh in its separate resumable concurrent step.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 BEGIN;
+
+-- Task 2 search sidecar lifecycle is additive. Existing vectors have no
+-- trustworthy content fingerprint and are deliberately made semantically
+-- ineligible until reconciliation rebuilds them.
+DO $$
+BEGIN
+    IF to_regclass('public.recipe_search_documents') IS NOT NULL THEN
+        ALTER TABLE public.recipe_search_documents
+            ADD COLUMN IF NOT EXISTS embedding_status text NOT NULL DEFAULT 'pending',
+            ADD COLUMN IF NOT EXISTS embedding_fingerprint text;
+        ALTER TABLE public.recipe_search_documents
+            ALTER COLUMN schema_version SET DEFAULT 2;
+        UPDATE public.recipe_search_documents
+        SET embedding_status = CASE WHEN embedding_json IS NULL THEN 'pending' ELSE 'pending' END,
+            embedding_fingerprint = NULL
+        WHERE embedding_fingerprint IS NULL;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'CK_recipe_search_documents_index_status') THEN
+            ALTER TABLE public.recipe_search_documents ADD CONSTRAINT "CK_recipe_search_documents_index_status" CHECK (index_status IN ('pending', 'indexing', 'ready', 'failed'));
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'CK_recipe_search_documents_embedding_status') THEN
+            ALTER TABLE public.recipe_search_documents ADD CONSTRAINT "CK_recipe_search_documents_embedding_status" CHECK (embedding_status IN ('pending', 'indexing', 'ready', 'failed'));
+        END IF;
+    END IF;
+END $$;
 
 DO $$
 BEGIN

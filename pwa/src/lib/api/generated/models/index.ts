@@ -600,6 +600,17 @@ export function createRecipeSearchFiltersDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchPreferencesDto}
+ */
+// @ts-ignore
+export function createRecipeSearchPreferencesDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchPreferencesDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeSearchReasonDto}
  */
 // @ts-ignore
@@ -2107,14 +2118,37 @@ export function deserializeIntoRecipeSearchFiltersDto(
   recipeSearchFiltersDto: Partial<RecipeSearchFiltersDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    categories: (n) => {
+      recipeSearchFiltersDto.categories = n.getCollectionOfPrimitiveValues<string>('string');
+    },
+    cuisines: (n) => {
+      recipeSearchFiltersDto.cuisines = n.getCollectionOfPrimitiveValues<string>('string');
+    },
+    dietaryProfiles: (n) => {
+      recipeSearchFiltersDto.dietaryProfiles = n.getCollectionOfPrimitiveValues<string>('string');
+    },
     discoverableOnly: (n) => {
       recipeSearchFiltersDto.discoverableOnly = n.getBooleanValue();
+    },
+    excludedIngredients: (n) => {
+      recipeSearchFiltersDto.excludedIngredients =
+        n.getCollectionOfPrimitiveValues<string>('string');
     },
     familyFavorite: (n) => {
       recipeSearchFiltersDto.familyFavorite = n.getBooleanValue();
     },
     healthyOnly: (n) => {
       recipeSearchFiltersDto.healthyOnly = n.getBooleanValue();
+    },
+    includedIngredients: (n) => {
+      recipeSearchFiltersDto.includedIngredients =
+        n.getCollectionOfPrimitiveValues<string>('string');
+    },
+    maximumTotalMinutes: (n) => {
+      recipeSearchFiltersDto.maximumTotalMinutes = n.getNumberValue();
+    },
+    mealTypes: (n) => {
+      recipeSearchFiltersDto.mealTypes = n.getCollectionOfPrimitiveValues<string>('string');
     },
     neverCooked: (n) => {
       recipeSearchFiltersDto.neverCooked = n.getBooleanValue();
@@ -2133,6 +2167,27 @@ export function deserializeIntoRecipeSearchFiltersDto(
     },
     reportedOnly: (n) => {
       recipeSearchFiltersDto.reportedOnly = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchPreferencesDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchPreferencesDto(
+  recipeSearchPreferencesDto: Partial<RecipeSearchPreferencesDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    concepts: (n) => {
+      recipeSearchPreferencesDto.concepts = n.getCollectionOfPrimitiveValues<string>('string');
+    },
+    cuisines: (n) => {
+      recipeSearchPreferencesDto.cuisines = n.getCollectionOfPrimitiveValues<string>('string');
+    },
+    ingredients: (n) => {
+      recipeSearchPreferencesDto.ingredients = n.getCollectionOfPrimitiveValues<string>('string');
     },
   };
 }
@@ -2166,6 +2221,9 @@ export function deserializeIntoRecipeSearchRequestDto(
   recipeSearchRequestDto: Partial<RecipeSearchRequestDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    continuationToken: (n) => {
+      recipeSearchRequestDto.continuationToken = n.getStringValue();
+    },
     dayIndex: (n) => {
       recipeSearchRequestDto.dayIndex = n.getNumberValue();
     },
@@ -2175,7 +2233,7 @@ export function deserializeIntoRecipeSearchRequestDto(
       );
     },
     limit: (n) => {
-      recipeSearchRequestDto.limit = n.getNumberValue() ?? 5;
+      recipeSearchRequestDto.limit = n.getNumberValue() ?? 12;
     },
     mode: (n) => {
       recipeSearchRequestDto.mode =
@@ -2184,6 +2242,11 @@ export function deserializeIntoRecipeSearchRequestDto(
     },
     pantrySnapshotId: (n) => {
       recipeSearchRequestDto.pantrySnapshotId = n.getGuidValue();
+    },
+    preferences: (n) => {
+      recipeSearchRequestDto.preferences = n.getObjectValue<RecipeSearchPreferencesDto>(
+        createRecipeSearchPreferencesDtoFromDiscriminatorValue
+      );
     },
     query: (n) => {
       recipeSearchRequestDto.query = n.getStringValue();
@@ -2210,6 +2273,9 @@ export function deserializeIntoRecipeSearchResponseDto(
       recipeSearchResponseDto.appliedFilters = n.getObjectValue<RecipeSearchFiltersDto>(
         createRecipeSearchFiltersDtoFromDiscriminatorValue
       );
+    },
+    nextCursor: (n) => {
+      recipeSearchResponseDto.nextCursor = n.getStringValue();
     },
     resultPath: (n) => {
       recipeSearchResponseDto.resultPath = n.getEnumValue<RecipeSearchResponseDto_resultPath>(
@@ -3685,9 +3751,25 @@ export interface RecipePurgeResponse extends AdditionalDataHolder, Parsable {
 }
 export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
   /**
+   * The categories property
+   */
+  categories?: string[] | null;
+  /**
+   * The cuisines property
+   */
+  cuisines?: string[] | null;
+  /**
+   * The dietaryProfiles property
+   */
+  dietaryProfiles?: string[] | null;
+  /**
    * The discoverableOnly property
    */
   discoverableOnly?: boolean | null;
+  /**
+   * Unsupported; requests containing it return 400.
+   */
+  excludedIngredients?: string[] | null;
   /**
    * The familyFavorite property
    */
@@ -3696,6 +3778,18 @@ export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
    * The healthyOnly property
    */
   healthyOnly?: boolean | null;
+  /**
+   * The includedIngredients property
+   */
+  includedIngredients?: string[] | null;
+  /**
+   * The maximumTotalMinutes property
+   */
+  maximumTotalMinutes?: number | null;
+  /**
+   * The mealTypes property
+   */
+  mealTypes?: string[] | null;
   /**
    * The neverCooked property
    */
@@ -3721,6 +3815,20 @@ export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
    */
   reportedOnly?: boolean | null;
 }
+export interface RecipeSearchPreferencesDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The concepts property
+   */
+  concepts?: string[] | null;
+  /**
+   * The cuisines property
+   */
+  cuisines?: string[] | null;
+  /**
+   * The ingredients property
+   */
+  ingredients?: string[] | null;
+}
 export interface RecipeSearchReasonDto extends AdditionalDataHolder, Parsable {
   /**
    * The label property
@@ -3735,6 +3843,10 @@ export type RecipeSearchReasonDto_source =
   (typeof RecipeSearchReasonDto_sourceObject)[keyof typeof RecipeSearchReasonDto_sourceObject];
 export interface RecipeSearchRequestDto extends AdditionalDataHolder, Parsable {
   /**
+   * Opaque continuation token. Expired tokens return 409 with restart guidance.
+   */
+  continuationToken?: string | null;
+  /**
    * The dayIndex property
    */
   dayIndex?: number | null;
@@ -3743,7 +3855,7 @@ export interface RecipeSearchRequestDto extends AdditionalDataHolder, Parsable {
    */
   filters?: RecipeSearchFiltersDto | null;
   /**
-   * The limit property
+   * Number of alternatives only; topPick is not counted.
    */
   limit?: number | null;
   /**
@@ -3755,7 +3867,11 @@ export interface RecipeSearchRequestDto extends AdditionalDataHolder, Parsable {
    */
   pantrySnapshotId?: Guid | null;
   /**
-   * The query property
+   * The preferences property
+   */
+  preferences?: RecipeSearchPreferencesDto | null;
+  /**
+   * Original caller query; omit or empty for browse.
    */
   query?: string | null;
   /**
@@ -3774,6 +3890,10 @@ export interface RecipeSearchResponseDto extends AdditionalDataHolder, Parsable 
    * The appliedFilters property
    */
   appliedFilters?: RecipeSearchFiltersDto | null;
+  /**
+   * The nextCursor property
+   */
+  nextCursor?: string | null;
   /**
    * The resultPath property
    */
@@ -5046,9 +5166,25 @@ export function serializeRecipeSearchFiltersDto(
   if (!recipeSearchFiltersDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeCollectionOfPrimitiveValues<string>('categories', recipeSearchFiltersDto.categories);
+  writer.writeCollectionOfPrimitiveValues<string>('cuisines', recipeSearchFiltersDto.cuisines);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'dietaryProfiles',
+    recipeSearchFiltersDto.dietaryProfiles
+  );
   writer.writeBooleanValue('discoverableOnly', recipeSearchFiltersDto.discoverableOnly);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'excludedIngredients',
+    recipeSearchFiltersDto.excludedIngredients
+  );
   writer.writeBooleanValue('familyFavorite', recipeSearchFiltersDto.familyFavorite);
   writer.writeBooleanValue('healthyOnly', recipeSearchFiltersDto.healthyOnly);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'includedIngredients',
+    recipeSearchFiltersDto.includedIngredients
+  );
+  writer.writeNumberValue('maximumTotalMinutes', recipeSearchFiltersDto.maximumTotalMinutes);
+  writer.writeCollectionOfPrimitiveValues<string>('mealTypes', recipeSearchFiltersDto.mealTypes);
   writer.writeBooleanValue('neverCooked', recipeSearchFiltersDto.neverCooked);
   writer.writeBooleanValue('newRecipes', recipeSearchFiltersDto.newRecipes);
   writer.writeBooleanValue('notCookedInLongTime', recipeSearchFiltersDto.notCookedInLongTime);
@@ -5056,6 +5192,29 @@ export function serializeRecipeSearchFiltersDto(
   writer.writeBooleanValue('readyToReviewOnly', recipeSearchFiltersDto.readyToReviewOnly);
   writer.writeBooleanValue('reportedOnly', recipeSearchFiltersDto.reportedOnly);
   writer.writeAdditionalData(recipeSearchFiltersDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchPreferencesDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchPreferencesDto(
+  writer: SerializationWriter,
+  recipeSearchPreferencesDto: Partial<RecipeSearchPreferencesDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchPreferencesDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfPrimitiveValues<string>('concepts', recipeSearchPreferencesDto.concepts);
+  writer.writeCollectionOfPrimitiveValues<string>('cuisines', recipeSearchPreferencesDto.cuisines);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'ingredients',
+    recipeSearchPreferencesDto.ingredients
+  );
+  writer.writeAdditionalData(recipeSearchPreferencesDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5091,18 +5250,24 @@ export function serializeRecipeSearchRequestDto(
   if (!recipeSearchRequestDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeStringValue('continuationToken', recipeSearchRequestDto.continuationToken);
   writer.writeNumberValue('dayIndex', recipeSearchRequestDto.dayIndex);
   writer.writeObjectValue<RecipeSearchFiltersDto>(
     'filters',
     recipeSearchRequestDto.filters,
     serializeRecipeSearchFiltersDto
   );
-  writer.writeNumberValue('limit', recipeSearchRequestDto.limit ?? 5);
+  writer.writeNumberValue('limit', recipeSearchRequestDto.limit ?? 12);
   writer.writeEnumValue<RecipeSearchRequestDto_mode>(
     'mode',
     recipeSearchRequestDto.mode ?? RecipeSearchRequestDto_modeObject.Standard
   );
   writer.writeGuidValue('pantrySnapshotId', recipeSearchRequestDto.pantrySnapshotId);
+  writer.writeObjectValue<RecipeSearchPreferencesDto>(
+    'preferences',
+    recipeSearchRequestDto.preferences,
+    serializeRecipeSearchPreferencesDto
+  );
   writer.writeStringValue('query', recipeSearchRequestDto.query);
   writer.writeGuidValue('similarToRecipeId', recipeSearchRequestDto.similarToRecipeId);
   writer.writeNumberValue('weekOffset', recipeSearchRequestDto.weekOffset);
@@ -5128,6 +5293,7 @@ export function serializeRecipeSearchResponseDto(
     recipeSearchResponseDto.appliedFilters,
     serializeRecipeSearchFiltersDto
   );
+  writer.writeStringValue('nextCursor', recipeSearchResponseDto.nextCursor);
   writer.writeEnumValue<RecipeSearchResponseDto_resultPath>(
     'resultPath',
     recipeSearchResponseDto.resultPath
@@ -6249,6 +6415,7 @@ export const RecipeSearchResponseDto_resultPathObject = {
   LexicalOnly: 'lexical-only',
   Hybrid: 'hybrid',
   FallbackLexical: 'fallback-lexical',
+  Browse: 'browse',
 } as const;
 export const RecipeSearchResponseDto_searchModeObject = {
   Standard: 'standard',

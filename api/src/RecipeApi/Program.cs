@@ -30,6 +30,7 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    var openTelemetryEndpoint = builder.Configuration["OpenTelemetry:Endpoint"];
 
     // ── Serilog ──────────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, config) =>
@@ -38,7 +39,7 @@ try
               .Enrich.FromLogContext()
               .WriteTo.OpenTelemetry(options =>
               {
-                  options.Endpoint = ctx.Configuration["OpenTelemetry:Endpoint"] ?? "http://localhost:4317";
+                  options.Endpoint = openTelemetryEndpoint ?? "http://localhost:4317";
                   options.ResourceAttributes = new Dictionary<string, object>
                   {
                       ["service.name"] = "RecipeApi"
@@ -61,7 +62,12 @@ try
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation()
-                   .AddHttpClientInstrumentation();
+                   .AddHttpClientInstrumentation()
+                   .AddMeter(SearchTelemetryMetrics.MeterName);
+            if (!string.IsNullOrWhiteSpace(openTelemetryEndpoint))
+            {
+                metrics.AddOtlpExporter(options => options.Endpoint = new Uri(openTelemetryEndpoint));
+            }
             // metrics.AddConsoleExporter(); // Too noisy for production stdout
         });
 
@@ -115,7 +121,21 @@ try
     builder.Services.AddScoped<RecipePurgeService>();
     builder.Services.AddScoped<CaptureFailureService>();
     builder.Services.AddScoped<RecipeSearchService>();
-    builder.Services.AddScoped<AgentSearchTranslationService>();
+    builder.Services.AddSingleton<RecipeSearchContinuationStore>();
+    builder.Services.AddScoped<RecipeLexicalSearchRepository>();
+    builder.Services.AddScoped<RecipeSemanticSearchRepository>();
+    builder.Services.AddSingleton(new RecipeSearchRolloutOptions
+    {
+        ConfigurationVersion = builder.Configuration["WFS_SEARCH_CONFIGURATION_VERSION"] ?? "hybrid-search-v1",
+        Semantic = new RecipeSemanticSearchOptions
+        {
+            Enabled = builder.Configuration.GetValue<bool?>("WFS_ENABLE_SEMANTIC_RETRIEVAL") ?? true,
+            CandidateLimit = builder.Configuration.GetValue<int?>("WFS_SEMANTIC_CANDIDATE_LIMIT") ?? 50,
+            EmbeddingDimensions = builder.Configuration.GetValue<int?>("EMBEDDING_DIMENSIONS") ?? 1536,
+            EmbeddingModel = builder.Configuration["EMBEDDING_MODEL_ID"] ?? "gemini-embedding-2",
+            EmbeddingVersion = builder.Configuration["EMBEDDING_MODEL_VERSION"]
+        }
+    });
     builder.Services.AddSingleton<InventoryCaptureService>();
     builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddScoped<RecipeImportReportService>();
@@ -134,6 +154,8 @@ try
     builder.Services.AddScoped<IValidationService, ValidationService>();
     builder.Services.AddScoped<ImageService>();
     builder.Services.AddScoped<SearchIndexWorkflow>();
+    builder.Services.AddScoped<SearchReconciliationWorkflow>();
+    builder.Services.AddSingleton<IRecipeSearchDocumentBuilder, RecipeSearchDocumentBuilder>();
     builder.Services.AddScoped<DreamingWorkflowSeeder>();
     builder.Services.AddScoped<DemoWorkflowSeeder>();
     builder.Services.AddSingleton<ISearchTelemetry, LoggingSearchTelemetry>();
@@ -200,6 +222,7 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, FinalizeOverdueMealsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CompleteRecipeImportReportProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchReconciliationWorkflow>());
     builder.Services.AddScoped<IWorkflowProcessor, WorkflowProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),

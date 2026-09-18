@@ -11,7 +11,6 @@ namespace RecipeApi.Controllers;
 public class RecipeController(
     RecipeService recipeService,
     RecipeSearchService recipeSearchService,
-    AgentSearchTranslationService agentSearchTranslationService,
     ImageService imageService,
     RecipeImportService importService,
     RecipeImportReportService importReportService,
@@ -286,20 +285,25 @@ public class RecipeController(
         return Ok(response);
     }
 
-    /// <summary>POST /api/recipes/search — hybrid recipe search with optional agent translation.</summary>
+    /// <summary>POST /api/recipes/search — deterministic hybrid recipe search.</summary>
     [HttpPost("search")]
     [SkipWrapping]
     public async Task<IActionResult> Search([FromBody] RecipeSearchRequestDto dto, CancellationToken ct)
     {
-        var originalQuery = dto.Query;
-        var effectiveDto = string.Equals(dto.Mode, "agent", StringComparison.OrdinalIgnoreCase)
-            ? await agentSearchTranslationService.TranslateAsync(dto, ct)
-            : dto;
+        if (dto.Limit is < 1 or > 50)
+            return BadRequest(new { error = "limit must be between 1 and 50" });
+        if (dto.Filters?.ExcludedIngredients is { Count: > 0 })
+            return BadRequest(new { error = "excludedIngredients is not supported" });
 
-        effectiveDto.OriginalQuery = originalQuery;
-
-        var result = await recipeSearchService.SearchAsync(effectiveDto, ct);
-        return Ok(result);
+        try
+        {
+            var result = await recipeSearchService.SearchAsync(dto, ct);
+            return Ok(result);
+        }
+        catch (RecipeSearchContinuationExpiredException)
+        {
+            return Conflict(new { error = "Search continuation expired. Restart the search to continue." });
+        }
     }
 
     /// <summary>GET /api/recipes/{id}/original/{photoIndex} — raw image binary.</summary>

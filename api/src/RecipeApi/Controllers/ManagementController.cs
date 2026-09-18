@@ -86,13 +86,12 @@ public class ManagementController(
         _ = Task.Run(async () =>
         {
             using var scope = scopeFactory.CreateScope();
-            var searchWorkflow = scope.ServiceProvider.GetRequiredService<SearchIndexWorkflow>();
             var orchestrator = scope.ServiceProvider.GetRequiredService<IWorkflowOrchestrator>();
 
             try
             {
-                // Use CancellationToken.None so it doesn't cancel when the HTTP request finishes
-                await searchWorkflow.BackfillAsync(orchestrator, CancellationToken.None);
+                // Initial backfill uses the same resumable path as dreaming repair.
+                await orchestrator.TriggerAsync("search-reconciliation", []);
             }
             catch (Exception ex)
             {

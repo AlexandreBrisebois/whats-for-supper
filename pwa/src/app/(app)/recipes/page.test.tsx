@@ -264,9 +264,10 @@ describe('RecipesPage', () => {
       expect(mocks.searchRecipes).toHaveBeenCalledWith({
         query: '',
         mode: 'standard',
-        limit: 6,
+        limit: 12,
         weekOffset: undefined,
         dayIndex: undefined,
+        similarToRecipeId: undefined,
       });
     });
 
@@ -283,11 +284,42 @@ describe('RecipesPage', () => {
       expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
         query: 'chicken',
         mode: 'standard',
-        limit: 6,
+        limit: 12,
         weekOffset: undefined,
         dayIndex: undefined,
+        similarToRecipeId: undefined,
+        pantrySnapshotId: undefined,
+        filters: undefined,
       });
     });
+  });
+
+  it('waits until typing has settled before searching', async () => {
+    await act(async () => {
+      render(<RecipesPage />);
+    });
+
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chi' } });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(499);
+      });
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+
+      fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500);
+      });
+
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: 'chicken' })
+      );
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders the top pick card and alternate cards from the search response', async () => {
@@ -382,11 +414,13 @@ describe('RecipesPage', () => {
     mocks.searchRecipes.mockResolvedValueOnce(
       makeSearchResponse({
         results: Array.from({ length: 6 }, (_, index) => makeSearchResult(index + 2)),
+        nextCursor: 'cursor-page-two',
       })
     );
     mocks.searchRecipes.mockResolvedValueOnce(
       makeSearchResponse({
-        results: Array.from({ length: 7 }, (_, index) => makeSearchResult(index + 2)),
+        topPick: null,
+        results: Array.from({ length: 7 }, (_, index) => makeSearchResult(index + 8)),
       })
     );
 
@@ -414,6 +448,7 @@ describe('RecipesPage', () => {
           query: '',
           mode: 'standard',
           limit: 12,
+          continuationToken: 'cursor-page-two',
           weekOffset: undefined,
           dayIndex: undefined,
           similarToRecipeId: undefined,
@@ -1003,7 +1038,7 @@ describe('RecipesPage', () => {
       expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
         query: '',
         mode: 'standard',
-        limit: 6,
+        limit: 12,
         weekOffset: undefined,
         dayIndex: undefined,
         similarToRecipeId: '11111111-1111-1111-1111-111111111111',

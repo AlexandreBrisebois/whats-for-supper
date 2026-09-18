@@ -106,6 +106,7 @@ export type RecipeSearchResponse = {
   appliedFilters: Record<string, boolean | null>;
   searchMode: string | null;
   resultPath: string | null;
+  nextCursor: string | null;
 };
 
 type KiotaAdditionalData = {
@@ -598,6 +599,13 @@ export async function updateRecipe(
   });
 }
 
+export class RecipeSearchRequestError extends Error {
+  constructor(readonly status: number) {
+    super(`Recipe search failed with status ${status}`);
+    this.name = 'RecipeSearchRequestError';
+  }
+}
+
 export async function searchRecipes(
   request: Pick<
     RecipeSearchRequestDto,
@@ -609,6 +617,8 @@ export async function searchRecipes(
     | 'similarToRecipeId'
     | 'pantrySnapshotId'
     | 'filters'
+    | 'preferences'
+    | 'continuationToken'
   >
 ): Promise<RecipeSearchResponse> {
   const familyMemberId =
@@ -626,7 +636,7 @@ export async function searchRecipes(
   });
 
   if (!response.ok) {
-    throw new Error(`Recipe search failed with status ${response.status}`);
+    throw new RecipeSearchRequestError(response.status);
   }
 
   const result = (await response.json()) as
@@ -644,6 +654,7 @@ export async function searchRecipes(
     appliedFilters: readField<Record<string, boolean | null>>(data, 'appliedFilters') || {},
     searchMode: readField<string>(data, 'searchMode') || null,
     resultPath: readField<string>(data, 'resultPath') || null,
+    nextCursor: readField<string>(data, 'nextCursor') || null,
   };
 }
 

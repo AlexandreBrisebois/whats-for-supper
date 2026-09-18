@@ -78,7 +78,7 @@ public class SearchFingerprintServiceTests
     }
 
     [Fact]
-    public void ComputeSourceFingerprint_Changes_When_Rating_Changes()
+    public void ComputeSourceFingerprint_DoesNotChange_When_RatingChangesBecauseItIsNotIndexed()
     {
         var recipe = BuildCanonicalRecipe();
         var original = SearchFingerprintService.ComputeSourceFingerprint(recipe);
@@ -86,11 +86,11 @@ public class SearchFingerprintServiceTests
         recipe.Rating = RecipeRating.Love;
         var changed = SearchFingerprintService.ComputeSourceFingerprint(recipe);
 
-        Assert.NotEqual(original, changed);
+        Assert.Equal(original, changed);
     }
 
     [Fact]
-    public void ComputeSourceFingerprint_Changes_When_IsDiscoverable_Changes()
+    public void ComputeSourceFingerprint_DoesNotChange_When_DiscoverabilityChangesBecauseItIsAnEligibilityPredicate()
     {
         var recipe = BuildCanonicalRecipe();
         var original = SearchFingerprintService.ComputeSourceFingerprint(recipe);
@@ -98,7 +98,7 @@ public class SearchFingerprintServiceTests
         recipe.IsDiscoverable = !recipe.IsDiscoverable;
         var changed = SearchFingerprintService.ComputeSourceFingerprint(recipe);
 
-        Assert.NotEqual(original, changed);
+        Assert.Equal(original, changed);
     }
 
     [Fact]

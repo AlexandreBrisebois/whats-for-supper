@@ -1,5 +1,7 @@
 namespace RecipeApi.Services;
 
+using System.Diagnostics.Metrics;
+
 public interface ISearchTelemetry
 {
     void Emit(string eventName, Dictionary<string, object?> payload);
@@ -19,4 +21,15 @@ public static class SearchTelemetryEvents
     public const string IndexRestoreMarkedPending = "recipe_index_restore_marked_pending";
 
     public const int UnhealthyIndexAgeMinutes = 10;
+}
+
+public static class SearchTelemetryMetrics
+{
+    public const string MeterName = "RecipeApi.Search";
+    public static readonly Meter Meter = new(MeterName);
+    public static readonly Histogram<double> ResponseDurationMilliseconds = Meter.CreateHistogram<double>("recipe.search.response.duration", "ms");
+    public static readonly Histogram<double> LexicalDurationMilliseconds = Meter.CreateHistogram<double>("recipe.search.lexical.duration", "ms");
+    public static readonly Histogram<double> SemanticAttemptDurationMilliseconds = Meter.CreateHistogram<double>("recipe.search.semantic_attempt.duration", "ms");
+    public static readonly Histogram<double> RerankingDurationMilliseconds = Meter.CreateHistogram<double>("recipe.search.reranking.duration", "ms");
+    public static readonly Counter<long> FallbackCount = Meter.CreateCounter<long>("recipe.search.fallback.count");
 }

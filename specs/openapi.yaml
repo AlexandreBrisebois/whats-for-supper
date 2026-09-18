@@ -208,6 +208,13 @@ components:
     RecipeSearchFiltersDto:
       type: object
       properties:
+        cuisines: { type: array, items: { type: string } }
+        mealTypes: { type: array, items: { type: string } }
+        includedIngredients: { type: array, items: { type: string } }
+        dietaryProfiles: { type: array, items: { type: string } }
+        categories: { type: array, items: { type: string } }
+        maximumTotalMinutes: { type: integer, minimum: 1 }
+        excludedIngredients: { type: array, items: { type: string }, description: Unsupported; requests containing it return 400. }
         newRecipes: { type: [boolean, 'null'] }
         neverCooked: { type: [boolean, 'null'] }
         familyFavorite: { type: [boolean, 'null'] }
@@ -255,16 +262,24 @@ components:
 
     RecipeSearchRequestDto:
       type: object
-      required: [query]
       properties:
-        query: { type: string }
+        query: { type: [string, 'null'], description: Original caller query; omit or empty for browse. }
         mode: { type: string, enum: [standard, agent], default: standard }
         similarToRecipeId: { type: [string, 'null'], format: uuid }
         pantrySnapshotId: { type: [string, 'null'], format: uuid }
         weekOffset: { type: [integer, 'null'] }
         dayIndex: { type: [integer, 'null'] }
-        limit: { type: integer, minimum: 1, maximum: 5, default: 5 }
+        limit: { type: integer, minimum: 1, maximum: 50, default: 12, description: Number of alternatives only; topPick is not counted. }
         filters: { $ref: '#/components/schemas/RecipeSearchFiltersDto' }
+        preferences: { $ref: '#/components/schemas/RecipeSearchPreferencesDto' }
+        continuationToken: { type: [string, 'null'], description: Opaque continuation token. Expired tokens return 409 with restart guidance. }
+
+    RecipeSearchPreferencesDto:
+      type: object
+      properties:
+        ingredients: { type: array, items: { type: string } }
+        cuisines: { type: array, items: { type: string } }
+        concepts: { type: array, items: { type: string } }
 
     RecipeSearchResponseDto:
       type: object
@@ -283,7 +298,8 @@ components:
           enum: [standard, agent, similar, pantry-assisted]
         resultPath:
           type: string
-          enum: [lexical-only, hybrid, fallback-lexical]
+          enum: [lexical-only, hybrid, fallback-lexical, browse]
+        nextCursor: { type: [string, 'null'] }
 
     TopPickDto:
       type: object
@@ -2115,7 +2131,7 @@ paths:
   /api/recipes/search:
     post:
       summary: Search recipes
-      description: Searches ready, non-soft-deleted recipes only. Pending imports are not eligible for top pick or result cards.
+      description: Searches ready, non-soft-deleted recipes only. Query is preserved verbatim; empty query browses the eligible library. Excluded ingredients are not supported and return 400.
       operationId: searchRecipes
       requestBody:
         required: true
@@ -2134,6 +2150,11 @@ paths:
                 appliedFilters: {}
                 searchMode: standard
                 resultPath: lexical-only
+                nextCursor: null
+        '400':
+          description: Malformed request, out-of-range limit, or unsupported excludedIngredients filter.
+        '409':
+          description: Continuation expired; retain displayed cards and restart the search.
 
   /api/schedule:
     get:

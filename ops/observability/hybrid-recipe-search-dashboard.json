@@ -1,0 +1,37 @@
+{
+  "title": "Hybrid recipe search rollout",
+  "source": "OpenTelemetry meter RecipeApi.Search",
+  "privacy": "No panel may group, display, or derive raw query text or continuation tokens.",
+  "panels": [
+    {
+      "title": "Response p95 by serving population",
+      "metric": "recipe.search.response.duration",
+      "groupBy": ["search.latency_population", "search.configuration_version"],
+      "targetsMs": {
+        "lexical-only": 250,
+        "hybrid": 600,
+        "semantic-failure-fallback": 600
+      }
+    },
+    {
+      "title": "Retrieval component p95",
+      "metrics": [
+        "recipe.search.lexical.duration",
+        "recipe.search.semantic_attempt.duration",
+        "recipe.search.reranking.duration"
+      ],
+      "groupBy": ["search.result_path", "search.configuration_version"]
+    },
+    {
+      "title": "Fallback and failure classification",
+      "metric": "recipe.search.fallback.count",
+      "groupBy": ["search.failure_class", "search.configuration_version"]
+    },
+    {
+      "title": "Index readiness coverage",
+      "event": "recipe_search_completed",
+      "formula": "readyDocumentCount / eligibleRecipeCount and readyEmbeddingCount / eligibleRecipeCount",
+      "groupBy": ["configurationVersion"]
+    }
+  ]
+}

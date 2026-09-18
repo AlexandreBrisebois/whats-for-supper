@@ -1,9 +1,9 @@
 # Flow: Recipe Search And Library Recovery
 
-**Historical spec:** `.kiro/specs/archive/semantic-recipe-search-v2`
+**Current spec:** `.kiro/specs/agent-friendly-hybrid-recipe-search`
 
 This document describes the user experience for:
-- semantic recipe search (standard, agent super-search, and pantry photo search),
+- hybrid recipe search (standard, agent-supplied, and pantry photo search),
 - planner-aware recipe selection,
 - recipe detail actions (notes, rating, discovery, similar),
 - soft delete and Recycle Bin restore / permanent purge,
@@ -29,10 +29,8 @@ The user should be able to answer "What should we eat?" in seconds, recover from
 flowchart TD
     A[User opens /recipes] --> B[Search field + quick filter pills + utility row]
     B --> C[Types short query and presses Enter]
-    B --> C2[Taps stars icon for long-form super-search]
     B --> C3[Taps camera for pantry/fridge/freezer popup]
     C --> D[Short list returns — max 5 results]
-    C2 --> D
     C3 --> D
     D --> E[Top Pick — hero card]
     D --> F[Alternates 2–5]
@@ -65,12 +63,11 @@ flowchart TD
 - `Enter` executes search — no button required.
 - No special lane name in the default UI.
 
-### 2. Stars-triggered long-form super-search
+### 2. Agent-supplied search
 
-- `data-testid="agent-search-trigger"` opens/expands `data-testid="agent-search-input"` textarea.
-- The user describes a craving, mood, constraint set, or fuzzy memory.
-- Server translates the free-form text to a structured search request (no separate retrieval branch).
-- Result is still a normal shortlist of recipes — not a chat transcript.
+- An agent may submit the user's original sentence with approved structured filters or preferences.
+- The API does not translate the query, use an LLM reranker, or make the final selection.
+- The result is the same normal recipe response as a standard search.
 
 ### 3. Camera-triggered inventory search
 

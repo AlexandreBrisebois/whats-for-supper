@@ -114,7 +114,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Search_Clamps_To_MaxLimit()
+    public async Task Search_Rejects_An_OutOfRange_Limit()
     {
         for (var index = 0; index < 12; index++)
         {
@@ -133,15 +133,82 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         var response = await PostSearchAsync(new { query = "chicken", limit = 99 });
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 
-        using var document = await ReadDataAsync(response);
-        var results = document.RootElement.GetProperty("results");
-        Assert.True(results.GetArrayLength() <= 50);
-        // Ensure TopPick is not in results
-        var topPick = document.RootElement.GetProperty("topPick");
-        var topPickId = topPick.GetProperty("id").GetGuid();
-        Assert.DoesNotContain(results.EnumerateArray(), r => r.GetProperty("id").GetGuid() == topPickId);
+    [Fact]
+    public async Task Search_Returns_Continuation_Batches_Without_Repeating_The_TopPick()
+    {
+        for (var index = 0; index < 15; index++)
+        {
+            await SeedRecipeAsync(new Recipe
+            {
+                Id = Guid.NewGuid(),
+                AddedBy = _factory.DefaultFamilyMemberId,
+                Name = $"Chicken continuation {index}",
+                Description = "Chicken dinner",
+                Ingredients = JsonSerializer.Serialize(new[] { "chicken" }),
+                ImageCount = 1,
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-index),
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        using var first = await ReadDataAsync(await PostSearchAsync(new { query = "chicken", limit = 12 }));
+        var cursor = first.RootElement.GetProperty("nextCursor").GetString();
+
+        Assert.False(string.IsNullOrWhiteSpace(cursor));
+        Assert.Equal(12, SearchResultIds(first.RootElement).Count);
+
+        using var next = await ReadDataAsync(await PostSearchAsync(new { query = "chicken", limit = 12, continuationToken = cursor }));
+        var firstIds = SearchResultIds(first.RootElement).Append(first.RootElement.GetProperty("topPick").GetProperty("id").GetGuid()).ToHashSet();
+
+        Assert.Equal(JsonValueKind.Null, next.RootElement.GetProperty("topPick").ValueKind);
+        Assert.Equal(2, SearchResultIds(next.RootElement).Count);
+        Assert.DoesNotContain(SearchResultIds(next.RootElement), firstIds.Contains);
+        Assert.Equal(JsonValueKind.Null, next.RootElement.GetProperty("nextCursor").ValueKind);
+    }
+
+    [Fact]
+    public async Task Browse_Uses_Continuation_To_Reach_More_Than_Fifty_Eligible_Recipes()
+    {
+        for (var index = 0; index < 55; index++)
+        {
+            await SeedRecipeAsync(new Recipe
+            {
+                Id = Guid.NewGuid(),
+                AddedBy = _factory.DefaultFamilyMemberId,
+                Name = $"Browse recipe {index}",
+                Description = "Library recipe",
+                Ingredients = JsonSerializer.Serialize(new[] { "pantry" }),
+                ImageCount = 1,
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-index),
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        var seen = new HashSet<Guid>();
+        string? cursor = null;
+        do
+        {
+            using var page = await ReadDataAsync(await PostSearchAsync(new { query = "", limit = 12, continuationToken = cursor }));
+            if (page.RootElement.GetProperty("topPick").ValueKind != JsonValueKind.Null)
+                seen.Add(page.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
+            foreach (var id in SearchResultIds(page.RootElement))
+                Assert.True(seen.Add(id), $"Duplicate recipe {id}");
+            cursor = page.RootElement.GetProperty("nextCursor").GetString();
+        } while (cursor is not null);
+
+        Assert.Equal(55, seen.Count);
+    }
+
+    [Fact]
+    public async Task Search_Returns_Restart_Guidance_For_An_Expired_Continuation()
+    {
+        var response = await PostSearchAsync(new { query = "", continuationToken = "expired-cursor" });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains("Restart the search", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]

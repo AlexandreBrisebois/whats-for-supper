@@ -37,9 +37,17 @@ public class RecipeSearchDocument
     [Column("embedding_version")]
     public string? EmbeddingVersion { get; set; }
 
-    /// <summary>pending | indexing | ready | failed | stale</summary>
+    /// <summary>pending | indexing | ready | failed. This is canonical-content readiness only.</summary>
     [Column("index_status")]
     public string IndexStatus { get; set; } = "pending";
+
+    /// <summary>pending | indexing | ready | failed. Independent from lexical content readiness.</summary>
+    [Column("embedding_status")]
+    public string EmbeddingStatus { get; set; } = "pending";
+
+    /// <summary>Fingerprint of the canonical content that produced EmbeddingJson.</summary>
+    [Column("embedding_fingerprint")]
+    public string? EmbeddingFingerprint { get; set; }
 
     [Column("last_indexed_at")]
     public DateTimeOffset? LastIndexedAt { get; set; }

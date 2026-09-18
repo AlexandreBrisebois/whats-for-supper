@@ -17,7 +17,7 @@ services:
       DATA_ROOT: /data
       DREAMING_CRON_UTC: "${DREAMING_CRON_UTC:-0 3 * * *}"
       ELEVATED_ACTIONS_PIN: ${ELEVATED_ACTIONS_PIN:-}
-      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-text-embedding-3-small}
+      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-gemini-embedding-2}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
       GEMINI_ENDPOINT: ${GEMINI_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/openai/}

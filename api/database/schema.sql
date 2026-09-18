@@ -1,4 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE family_members (
     id uuid PRIMARY KEY,
@@ -89,14 +90,23 @@ CREATE TABLE IF NOT EXISTS recipe_search_documents (
     embedding_model text NOT NULL,
     embedding_version text,
     index_status text NOT NULL DEFAULT 'pending',
+    embedding_status text NOT NULL DEFAULT 'pending',
+    embedding_fingerprint text,
     last_indexed_at timestamptz,
     source_fingerprint text,
-    schema_version integer NOT NULL DEFAULT 1
+    schema_version integer NOT NULL DEFAULT 2,
+    CONSTRAINT "CK_recipe_search_documents_index_status" CHECK (index_status IN ('pending', 'indexing', 'ready', 'failed')),
+    CONSTRAINT "CK_recipe_search_documents_embedding_status" CHECK (embedding_status IN ('pending', 'indexing', 'ready', 'failed'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_recipe_search_documents_embedding 
     ON recipe_search_documents 
     USING hnsw (embedding vector_cosine_ops);
+
+CREATE INDEX IF NOT EXISTS idx_recipe_search_documents_document_trgm
+    ON recipe_search_documents
+    USING gin (document_text gin_trgm_ops)
+    WHERE index_status = 'ready';
 
 CREATE TABLE IF NOT EXISTS weekly_plans (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -5,13 +5,10 @@ namespace RecipeApi.Dto;
 public class RecipeSearchRequestDto
 {
     [JsonPropertyName("query")]
-    public string Query { get; set; } = string.Empty;
+    public string? Query { get; set; }
 
     [JsonPropertyName("mode")]
     public string? Mode { get; set; }
-
-    [JsonPropertyName("originalQuery")]
-    public string? OriginalQuery { get; set; }
 
     [JsonPropertyName("similarToRecipeId")]
     public Guid? SimilarToRecipeId { get; set; }
@@ -30,4 +27,10 @@ public class RecipeSearchRequestDto
 
     [JsonPropertyName("filters")]
     public RecipeSearchFiltersDto? Filters { get; set; }
+
+    [JsonPropertyName("preferences")]
+    public RecipeSearchPreferencesDto? Preferences { get; set; }
+
+    [JsonPropertyName("continuationToken")]
+    public string? ContinuationToken { get; set; }
 }
