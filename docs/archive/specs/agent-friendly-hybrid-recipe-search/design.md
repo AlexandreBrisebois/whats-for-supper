@@ -1,3 +1,5 @@
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 # Design: Agent-Friendly Hybrid Recipe Search
 
 The [feature ontology](ontology.md) defines the domain concepts, ownership and

@@ -1,3 +1,5 @@
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 # Agent-Friendly Hybrid Recipe Search
 
 Read the [feature ontology](ontology.md) for the shared concepts, ownership,
