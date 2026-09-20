@@ -44,7 +44,7 @@ public sealed class RecipeSearchContinuationStore
         : SearchContinuation(Fingerprint, Response, ExpiresAt);
     public sealed record BrowseContinuation(string Fingerprint, BrowsePosition Position, Guid? TopPickId, RecipeSearchResponseDto Response, DateTimeOffset ExpiresAt)
         : SearchContinuation(Fingerprint, Response, ExpiresAt);
-    public sealed record BrowsePosition(DateTimeOffset? LastCookedDate, DateTimeOffset CreatedAt, Guid Id);
+    public sealed record BrowsePosition(DateTimeOffset? LastCookedDate, DateTimeOffset CreatedAt, Guid Id, int? WeekOffset = null);
 
     public static RecipeSearchResultDto Clone(RecipeSearchResultDto result) => new()
     {

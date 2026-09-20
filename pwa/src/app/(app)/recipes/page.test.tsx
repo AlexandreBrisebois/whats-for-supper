@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { useFamilyStore } from '@/store/familyStore';
+import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 
 const mocks = vi.hoisted(() => {
   const searchRecipes = vi.fn();
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => {
   const restoreRecipe = vi.fn();
   const purgeRecipe = vi.fn();
   const healthGet = vi.fn();
+  const filterDiscoveryGet = vi.fn();
   const push = vi.fn();
   const loadGoTo = vi.fn();
   const saveGoTo = vi.fn();
@@ -35,6 +37,7 @@ const mocks = vi.hoisted(() => {
     restoreRecipe,
     purgeRecipe,
     healthGet,
+    filterDiscoveryGet,
     push,
     loadGoTo,
     saveGoTo,
@@ -114,6 +117,11 @@ vi.mock('@/lib/api/api-client', () => ({
       health: {
         get: (...args: unknown[]) => mocks.healthGet(...args),
       },
+      recipes: {
+        search: {
+          filters: { get: (...args: unknown[]) => mocks.filterDiscoveryGet(...args) },
+        },
+      },
     },
   },
 }));
@@ -142,6 +150,7 @@ function makeSearchResponse(overrides: Record<string, unknown> = {}) {
       notes: null,
       reasons: [{ source: 'name-match', label: 'Name matches your search' }],
       plannerFitNote: null,
+      isPromotionEligible: true,
     },
     results: [
       {
@@ -154,6 +163,7 @@ function makeSearchResponse(overrides: Record<string, unknown> = {}) {
         notes: null,
         reasons: [{ source: 'name-match', label: 'Name matches your search' }],
         plannerFitNote: null,
+        isPromotionEligible: true,
       },
     ],
     appliedFilters: {},
@@ -191,6 +201,7 @@ function makeSearchResult(index: number) {
     notes: null,
     reasons: [{ source: 'name-match', label: 'Name matches your search' }],
     plannerFitNote: null,
+    isPromotionEligible: true,
   };
 }
 
@@ -235,6 +246,20 @@ describe('RecipesPage', () => {
     mocks.restoreRecipe.mockResolvedValue(undefined);
     mocks.purgeRecipe.mockResolvedValue(undefined);
     mocks.healthGet.mockResolvedValue({ demoMode: false });
+    mocks.filterDiscoveryGet.mockResolvedValue({
+      generatedAt: null,
+      main: [
+        { id: 'beef', concept: 'beef' },
+        { id: 'poultry', concept: 'poultry' },
+        { id: 'pork', concept: 'pork' },
+        { id: 'fish', concept: 'fish' },
+        { id: 'pasta', concept: 'pasta' },
+        { id: 'vegetarian', concept: 'vegetarian' },
+      ],
+      mealTypes: ['Supper', 'Lunch', 'Breakfast', 'Dessert'],
+      cuisines: { promoted: [], all: [] },
+    });
+    useSearchPromotionStore.getState().reset();
   });
 
   afterEach(() => {
@@ -390,18 +415,21 @@ describe('RecipesPage', () => {
 
   it('loads more search results from an infinite-scroll sentinel instead of a manual button', async () => {
     const observerCallbacks: IntersectionObserverCallback[] = [];
+    const observerOptions: IntersectionObserverInit[] = [];
     const observe = vi.fn();
     const disconnect = vi.fn();
     const originalIntersectionObserver = globalThis.IntersectionObserver;
 
     class MockIntersectionObserver implements IntersectionObserver {
       readonly root = null;
-      readonly rootMargin = '600px 0px';
+      rootMargin = '';
       readonly scrollMargin = '0px 0px 0px 0px';
       readonly thresholds = [0];
 
-      constructor(callback: IntersectionObserverCallback) {
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
         observerCallbacks.push(callback);
+        observerOptions.push(options ?? {});
+        this.rootMargin = options?.rootMargin ?? '';
       }
 
       observe = observe;
@@ -414,6 +442,7 @@ describe('RecipesPage', () => {
     mocks.searchRecipes.mockResolvedValueOnce(
       makeSearchResponse({
         results: Array.from({ length: 6 }, (_, index) => makeSearchResult(index + 2)),
+        resultPath: 'browse',
         nextCursor: 'cursor-page-two',
       })
     );
@@ -435,6 +464,7 @@ describe('RecipesPage', () => {
 
       expect(screen.queryByTestId('show-more-results')).not.toBeInTheDocument();
       expect(observe).toHaveBeenCalledWith(screen.getByTestId('search-results-scroll-sentinel'));
+      expect(observerOptions).toContainEqual({ rootMargin: '400px 0px' });
 
       await act(async () => {
         observerCallbacks[0]?.(
@@ -447,7 +477,7 @@ describe('RecipesPage', () => {
         expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
           query: '',
           mode: 'standard',
-          limit: 12,
+          limit: 24,
           continuationToken: 'cursor-page-two',
           weekOffset: undefined,
           dayIndex: undefined,
@@ -459,6 +489,134 @@ describe('RecipesPage', () => {
     } finally {
       globalThis.IntersectionObserver = originalIntersectionObserver;
     }
+  });
+
+  it('keeps one browse continuation in flight when the observer fires repeatedly', async () => {
+    const observerCallbacks: IntersectionObserverCallback[] = [];
+    const originalIntersectionObserver = globalThis.IntersectionObserver;
+    let resolveContinuation: ((value: ReturnType<typeof makeSearchResponse>) => void) | undefined;
+
+    class MockIntersectionObserver implements IntersectionObserver {
+      readonly root = null;
+      readonly rootMargin = '400px 0px';
+      readonly scrollMargin = '0px 0px 0px 0px';
+      readonly thresholds = [0];
+
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallbacks.push(callback);
+      }
+
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+      takeRecords = vi.fn(() => []);
+    }
+
+    globalThis.IntersectionObserver = MockIntersectionObserver;
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({ resultPath: 'browse', nextCursor: 'cursor-page-two' })
+    );
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveContinuation = resolve;
+        })
+    );
+
+    try {
+      await act(async () => {
+        render(<RecipesPage />);
+      });
+      await waitFor(() => expect(observerCallbacks).not.toHaveLength(0));
+
+      await act(async () => {
+        const entry = [{ isIntersecting: true } as IntersectionObserverEntry];
+        observerCallbacks[0]?.(entry, {} as IntersectionObserver);
+        observerCallbacks[0]?.(entry, {} as IntersectionObserver);
+      });
+
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        resolveContinuation?.(
+          makeSearchResponse({ topPick: null, resultPath: 'browse', results: [] })
+        );
+      });
+    } finally {
+      globalThis.IntersectionObserver = originalIntersectionObserver;
+    }
+  });
+
+  it('does not let an obsolete initial browse response replace a newer search', async () => {
+    vi.useFakeTimers();
+    let resolveInitial: ((value: ReturnType<typeof makeSearchResponse>) => void) | undefined;
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveInitial = resolve;
+        })
+    );
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        topPick: null,
+        results: [{ ...makeSearchResult(9), name: 'New search result' }],
+      })
+    );
+
+    try {
+      render(<RecipesPage />);
+      fireEvent.change(screen.getByTestId('recipe-search-input'), {
+        target: { value: 'new query' },
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500);
+        await Promise.resolve();
+      });
+      expect(screen.getByText('New search result')).toBeInTheDocument();
+
+      await act(async () => {
+        resolveInitial?.(
+          makeSearchResponse({
+            topPick: null,
+            results: [{ ...makeSearchResult(8), name: 'Old browse result' }],
+          })
+        );
+      });
+
+      expect(screen.getByText('New search result')).toBeInTheDocument();
+      expect(screen.queryByText('Old browse result')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('restarts an open browse generation when Search promotion eligibility is invalidated', async () => {
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({ resultPath: 'browse', nextCursor: 'stale-cursor' })
+    );
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        resultPath: 'browse',
+        topPick: null,
+        results: [{ ...makeSearchResult(31), name: 'Fresh after schedule change' }],
+      })
+    );
+
+    await act(async () => {
+      render(<RecipesPage />);
+    });
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      useSearchPromotionStore.getState().invalidate();
+    });
+
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: '', limit: 12 })
+      );
+    });
+    expect(await screen.findByText('Fresh after schedule change')).toBeInTheDocument();
   });
 
   it('renders the empty state when search returns no top pick and no results', async () => {
@@ -912,18 +1070,11 @@ describe('RecipesPage', () => {
 
       fireEvent.click(filtersButton);
       const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-      for (const label of [
-        'New',
-        'Never Tried',
-        'Family Favorite',
-        'Quick',
-        "It's Been a While",
-        'Healthy Choice',
-        'Reported',
-        'Ready to review',
-      ]) {
+      for (const label of ['Quick', 'Family Favorite', 'Never Tried', 'Supper', 'Beef']) {
         expect(within(dialog).getByRole('button', { name: label })).toBeInTheDocument();
       }
+      expect(within(dialog).queryByRole('button', { name: 'Reported' })).not.toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'More filters' }));
 
       const callsBeforeCancel = mocks.searchRecipes.mock.calls.length;
       fireEvent.click(within(dialog).getByRole('button', { name: 'Reported' }));
@@ -933,6 +1084,7 @@ describe('RecipesPage', () => {
 
       fireEvent.click(filtersButton);
       const applyDialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+      fireEvent.click(within(applyDialog).getByRole('button', { name: 'More filters' }));
       fireEvent.click(within(applyDialog).getByRole('button', { name: 'Reported' }));
       fireEvent.click(within(applyDialog).getByRole('button', { name: 'Ready to review' }));
       fireEvent.click(within(applyDialog).getByRole('button', { name: 'Apply filters' }));

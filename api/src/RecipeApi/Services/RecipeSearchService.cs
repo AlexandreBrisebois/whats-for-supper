@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
@@ -18,12 +19,15 @@ public partial class RecipeSearchService(
     RecipeLexicalSearchRepository? lexicalRepository = null,
     RecipeSemanticSearchRepository? semanticRepository = null,
     RecipeSearchRolloutOptions? rolloutOptions = null,
-    RecipeSearchContinuationStore? continuationStore = null)
+    RecipeSearchContinuationStore? continuationStore = null,
+    IClock? clock = null,
+    RecipeSearchFilterOptions? filterOptions = null)
 {
     private const double PantryMatchBoost = 0.25;
     private const int DefaultLimit = 12;
     private const int MaxLimit = 50;
     private const int LexicalCandidateLimit = 50;
+    private const string QuickRecipePattern = "^(?:\\s*)(?:pt(?:0h(?:[0-2]?\\d|30)m?|(?:[0-2]?\\d|30)m)|(?:[1-9]|[12]\\d|30)\\s*(?:m|min|mins|minute|minutes))(?:\\s*)$";
     private const double PlannerGapBoost = 0.20;
     private const double PlannerUrgencyBoost = 0.10;
     private const double BoostLove = 0.15;
@@ -32,6 +36,8 @@ public partial class RecipeSearchService(
     private const double BoostVotesMax = 0.15;
     private const double BoostVotesRate = 0.05;
     private const double PlannedDemotion = -10.0;
+    private readonly IClock _clock = clock ?? new SystemClock();
+    private readonly RecipeSearchFilterOptions? _filterOptions = filterOptions;
 
     public async Task<RecipeSearchResponseDto> SearchAsync(RecipeSearchRequestDto dto, CancellationToken ct = default)
     {
@@ -43,6 +49,8 @@ public partial class RecipeSearchService(
         long rerankingDurationMs = 0;
         string? failureClass = null;
         var query = dto.Query?.Trim() ?? string.Empty;
+        var concepts = NormalizeConcepts(dto.Preferences?.Concepts);
+        var semanticQuery = CreateSemanticQuery(query, concepts);
         var limit = Math.Clamp(dto.Limit ?? DefaultLimit, 1, MaxLimit);
         var appliedFilters = dto.Filters ?? new RecipeSearchFiltersDto();
         var continuationFingerprint = CreateContinuationFingerprint(dto, query);
@@ -77,8 +85,8 @@ public partial class RecipeSearchService(
         if (!string.IsNullOrWhiteSpace(dto.ContinuationToken))
             return await ContinueAsync(dto.ContinuationToken, continuationFingerprint, recipesQuery, limit, ct);
 
-        if (string.IsNullOrWhiteSpace(query))
-            return await BrowseAsync(recipesQuery, appliedFilters, searchMode, limit, continuationFingerprint, ct);
+        if (string.IsNullOrWhiteSpace(semanticQuery))
+            return await BrowseAsync(recipesQuery, appliedFilters, searchMode, limit, continuationFingerprint, dto.WeekOffset, ct);
 
         // 2. Retrieval
         var candidates = new List<RankedRecipe>();
@@ -90,13 +98,18 @@ public partial class RecipeSearchService(
             candidates = await SimilarSearchAsync(dto.SimilarToRecipeId.Value, recipesQuery, ct);
             resultPath = "similar";
         }
-        else if (!string.IsNullOrWhiteSpace(query))
+        else
         {
             // Standard/Agent/Pantry Hybrid Search
-            var lexicalStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            var lexicalCandidates = await GetLexicalCandidatesAsync(recipesQuery, query, appliedFilters, ct);
-            lexicalStopwatch.Stop();
-            lexicalDurationMs = lexicalStopwatch.ElapsedMilliseconds;
+            var conceptOnly = string.IsNullOrWhiteSpace(query);
+            var lexicalCandidates = new List<RankedRecipe>();
+            if (!conceptOnly)
+            {
+                var lexicalStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                lexicalCandidates = await GetLexicalCandidatesAsync(recipesQuery, query, appliedFilters, ct);
+                lexicalStopwatch.Stop();
+                lexicalDurationMs = lexicalStopwatch.ElapsedMilliseconds;
+            }
 
             if (embeddingProvider is not null && semanticRepository is not null && SemanticOptions.Enabled)
             {
@@ -107,9 +120,9 @@ public partial class RecipeSearchService(
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                     cts.CancelAfter(TimeSpan.FromMilliseconds(300));
 
-                    var vectorCandidates = await VectorSearchAsync(query, recipesQuery, appliedFilters, cts.Token);
-                    candidates = MergeCandidates(lexicalCandidates, vectorCandidates);
-                    resultPath = "hybrid";
+                    var vectorCandidates = await VectorSearchAsync(semanticQuery, recipesQuery, appliedFilters, cts.Token);
+                    candidates = conceptOnly ? vectorCandidates : MergeCandidates(lexicalCandidates, vectorCandidates);
+                    resultPath = conceptOnly ? "semantic-only" : "hybrid";
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -117,7 +130,9 @@ public partial class RecipeSearchService(
                 }
                 catch (OperationCanceledException)
                 {
-                    candidates = lexicalCandidates;
+                    candidates = conceptOnly
+                        ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct)
+                        : lexicalCandidates;
                     resultPath = "fallback-lexical";
                     failureClass = "semantic_budget_exhausted";
                     telemetry?.Emit(SearchTelemetryEvents.SearchFallbackServed, new()
@@ -129,7 +144,9 @@ public partial class RecipeSearchService(
                 }
                 catch (Exception)
                 {
-                    candidates = lexicalCandidates;
+                    candidates = conceptOnly
+                        ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct)
+                        : lexicalCandidates;
                     resultPath = "fallback-lexical";
                     failureClass = "semantic_provider_or_vector_error";
                     telemetry?.Emit(SearchTelemetryEvents.SearchFallbackServed, new()
@@ -147,7 +164,10 @@ public partial class RecipeSearchService(
             }
             else
             {
-                candidates = lexicalCandidates;
+                candidates = conceptOnly
+                    ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct)
+                    : lexicalCandidates;
+                resultPath = conceptOnly ? "fallback-lexical" : resultPath;
             }
         }
         // 3. Reranking
@@ -309,18 +329,22 @@ public partial class RecipeSearchService(
         string searchMode,
         int limit,
         string fingerprint,
+        int? weekOffset,
         CancellationToken ct)
     {
-        var recipes = await BrowseOrder(recipesQuery).Take(limit + 2).ToListAsync(ct);
+        var ranked = await GetBrowseRankedRecipesAsync(recipesQuery, filters, weekOffset, ct);
+        var recipes = ranked.Take(limit + 2).Select(candidate => candidate.Recipe).ToList();
         var candidates = BuildDefaultCandidates(recipes, filters);
+        var promotionEligibleIds = ranked.Where(candidate => candidate.IsCalendarEligible).Select(candidate => candidate.Recipe.Id).ToHashSet();
         var reportStatuses = await GetReportStatusesAsync(candidates.Select(candidate => candidate.Recipe.Id), ct);
         var reviewFilterActive = filters.ReportedOnly == true || filters.ReadyToReviewOnly == true;
-        var topPick = reviewFilterActive ? null : candidates.FirstOrDefault(candidate => !reportStatuses.ContainsKey(candidate.Recipe.Id));
+        var topPick = reviewFilterActive ? null : candidates.FirstOrDefault(candidate =>
+            promotionEligibleIds.Contains(candidate.Recipe.Id) && !reportStatuses.ContainsKey(candidate.Recipe.Id));
         var alternatives = candidates.Where(candidate => candidate.Recipe.Id != topPick?.Recipe.Id).ToList();
-        var results = alternatives.Take(limit).Select(candidate => MapResult(candidate, reportStatuses)).ToList();
+        var results = alternatives.Take(limit).Select(candidate => MapResult(candidate, reportStatuses, promotionEligibleIds.Contains(candidate.Recipe.Id))).ToList();
         var response = new RecipeSearchResponseDto
         {
-            TopPick = topPick is null ? null : MapResult(topPick, reportStatuses),
+            TopPick = topPick is null ? null : MapResult(topPick, reportStatuses, true),
             Results = results,
             AppliedFilters = filters,
             SearchMode = searchMode,
@@ -333,7 +357,7 @@ public partial class RecipeSearchService(
             var store = continuationStore ?? throw new InvalidOperationException("Search continuation storage must be registered.");
             response.NextCursor = store.StoreBrowse(
                 fingerprint,
-                new RecipeSearchContinuationStore.BrowsePosition(last.LastCookedDate, last.CreatedAt, last.Id),
+                new RecipeSearchContinuationStore.BrowsePosition(last.LastCookedDate, last.CreatedAt, last.Id, weekOffset),
                 topPick?.Recipe.Id,
                 response);
         }
@@ -349,15 +373,15 @@ public partial class RecipeSearchService(
         RecipeSearchContinuationStore store,
         CancellationToken ct)
     {
-        var position = continuation.Position;
-        var pageQuery = BrowseOrder(AfterBrowsePosition(recipesQuery, position));
+        var ranked = await GetBrowseRankedRecipesAsync(recipesQuery, continuation.Response.AppliedFilters, continuation.Position.WeekOffset, ct);
+        var afterPosition = ranked.SkipWhile(candidate => candidate.Recipe.Id != continuation.Position.Id).Skip(1);
         if (continuation.TopPickId is Guid topPickId)
-            pageQuery = pageQuery.Where(recipe => recipe.Id != topPickId).OrderBy(recipe => recipe.LastCookedDate.HasValue ? 1 : 0).ThenBy(recipe => recipe.LastCookedDate).ThenByDescending(recipe => recipe.CreatedAt).ThenBy(recipe => recipe.Id);
-
-        var recipes = await pageQuery.Take(limit + 1).ToListAsync(ct);
+            afterPosition = afterPosition.Where(candidate => candidate.Recipe.Id != topPickId);
+        var recipes = afterPosition.Take(limit + 1).Select(candidate => candidate.Recipe).ToList();
         var candidates = BuildDefaultCandidates(recipes, continuation.Response.AppliedFilters);
+        var promotionEligibleIds = ranked.Where(candidate => candidate.IsCalendarEligible).Select(candidate => candidate.Recipe.Id).ToHashSet();
         var reportStatuses = await GetReportStatusesAsync(candidates.Select(candidate => candidate.Recipe.Id), ct);
-        var results = candidates.Take(limit).Select(candidate => MapResult(candidate, reportStatuses)).ToList();
+        var results = candidates.Take(limit).Select(candidate => MapResult(candidate, reportStatuses, promotionEligibleIds.Contains(candidate.Recipe.Id))).ToList();
         var response = RecipeSearchContinuationStore.Clone(continuation.Response);
         response.TopPick = null;
         response.Results = results;
@@ -383,6 +407,71 @@ public partial class RecipeSearchService(
                     (recipe.LastCookedDate == position.LastCookedDate && (recipe.CreatedAt < position.CreatedAt ||
                         (recipe.CreatedAt == position.CreatedAt && recipe.Id.CompareTo(position.Id) > 0)))));
 
+    private static IQueryable<Recipe> ApplyBrowseQuickEligibility(IQueryable<Recipe> recipes, RecipeSearchFiltersDto filters) =>
+        filters.QuickOnly == true
+            ? recipes.Where(recipe => recipe.TotalTime != null && Regex.IsMatch(recipe.TotalTime, QuickRecipePattern, RegexOptions.IgnoreCase))
+            : recipes;
+
+    private static IQueryable<Recipe> BrowseProjection(IQueryable<Recipe> recipes) => recipes.Select(recipe => new Recipe
+    {
+        Id = recipe.Id,
+        Name = recipe.Name,
+        Description = recipe.Description,
+        TotalTime = recipe.TotalTime,
+        Rating = recipe.Rating,
+        IsDiscoverable = recipe.IsDiscoverable,
+        Notes = recipe.Notes,
+        CreatedAt = recipe.CreatedAt,
+        LastCookedDate = recipe.LastCookedDate
+    });
+
+    private async Task<List<BrowseRankedRecipe>> GetBrowseRankedRecipesAsync(
+        IQueryable<Recipe> recipesQuery,
+        RecipeSearchFiltersDto filters,
+        int? selectedWeekOffset,
+        CancellationToken ct)
+    {
+        var now = _clock.UtcNow;
+        var today = DateOnly.FromDateTime(now.UtcDateTime);
+        var weekOffset = selectedWeekOffset ?? 0;
+        var (monday, sunday) = GetWeekBounds(weekOffset, today);
+        var intervalStart = today.AddDays(-(_filterOptions?.RediscoveryIntervalDays ?? RecipeSearchFilterOptions.DefaultRediscoveryIntervalDays));
+        var recipes = await BrowseProjection(ApplyBrowseQuickEligibility(recipesQuery, filters)).ToListAsync(ct);
+        var recipeIds = recipes.Select(recipe => recipe.Id).ToArray();
+        var facts = await db.RecipeSearchAffinityFacts.AsNoTracking()
+            .Where(fact => recipeIds.Contains(fact.RecipeId))
+            .ToDictionaryAsync(fact => fact.RecipeId, ct);
+        var blocked = await db.CalendarEvents.AsNoTracking()
+            .Where(@event => @event.RecipeId != null && recipeIds.Contains(@event.RecipeId.Value) &&
+                ((@event.Date >= today && (@event.Status == CalendarEventStatus.Planned || @event.Status == CalendarEventStatus.Locked || @event.Status == CalendarEventStatus.AwaitingConsensus)) ||
+                 (@event.Date >= monday && @event.Date <= sunday && @event.Status == CalendarEventStatus.Cooked)))
+            .Select(@event => @event.RecipeId!.Value)
+            .ToHashSetAsync(ct);
+
+        return recipes
+            .Select(recipe =>
+            {
+                facts.TryGetValue(recipe.Id, out var fact);
+                var calendarEligible = !blocked.Contains(recipe.Id);
+                var eligible = calendarEligible && fact is { Affinity: > 0, LastCookedOn: not null } && fact.LastCookedOn <= intervalStart;
+                return new BrowseRankedRecipe(recipe, fact?.Affinity ?? 0, fact?.LastCookedOn, eligible, calendarEligible);
+            })
+            .OrderByDescending(candidate => candidate.IsPromotionEligible)
+            .ThenByDescending(candidate => candidate.IsPromotionEligible ? candidate.Affinity : 0)
+            .ThenBy(candidate => candidate.IsPromotionEligible ? candidate.AffinityLastCookedOn : null)
+            .ThenBy(candidate => candidate.Recipe.LastCookedDate.HasValue ? 1 : 0)
+            .ThenBy(candidate => candidate.Recipe.LastCookedDate)
+            .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
+            .ThenBy(candidate => candidate.Recipe.Id)
+            .ToList();
+    }
+
+    private static (DateOnly Monday, DateOnly Sunday) GetWeekBounds(int weekOffset, DateOnly today)
+    {
+        var monday = today.AddDays(-((int)today.DayOfWeek + 6) % 7 + weekOffset * 7);
+        return (monday, monday.AddDays(6));
+    }
+
     private async Task<Dictionary<Guid, RecipeImportReportStatus>> GetReportStatusesAsync(IEnumerable<Guid> recipeIds, CancellationToken ct)
     {
         var ids = recipeIds.Distinct().ToArray();
@@ -398,6 +487,16 @@ public partial class RecipeSearchService(
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(serialized)));
     }
 
+    private static string[] NormalizeConcepts(IEnumerable<string>? concepts) => concepts?
+        .Where(concept => !string.IsNullOrWhiteSpace(concept))
+        .Select(concept => concept.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray() ?? [];
+
+    private static string CreateSemanticQuery(string query, IEnumerable<string> concepts) => string.Join(
+        " ",
+        new[] { query }.Concat(concepts).Where(value => !string.IsNullOrWhiteSpace(value)));
+
     private static List<RankedRecipe> BuildDefaultCandidates(List<Recipe> recipes, RecipeSearchFiltersDto? filters)
     {
         var candidates = recipes
@@ -411,11 +510,6 @@ public partial class RecipeSearchService(
                 }],
                 null))
             .ToList();
-
-        if (filters?.QuickOnly == true)
-        {
-            candidates = candidates.Where(c => IsQuickRecipe(c.Recipe.TotalTime)).ToList();
-        }
 
         return candidates;
     }
@@ -654,7 +748,8 @@ public partial class RecipeSearchService(
 
     private static RecipeSearchResultDto MapResult(
         RankedRecipe candidate,
-        IReadOnlyDictionary<Guid, RecipeImportReportStatus> reportStatuses)
+        IReadOnlyDictionary<Guid, RecipeImportReportStatus> reportStatuses,
+        bool isPromotionEligible = false)
     {
         var recipe = candidate.Recipe;
         return new RecipeSearchResultDto
@@ -672,7 +767,8 @@ public partial class RecipeSearchService(
             PlannerFitNote = candidate.PlannerFitNote,
             ImportIssueStatus = reportStatuses.TryGetValue(recipe.Id, out var status)
                 ? status == RecipeImportReportStatus.ReadyToReview ? "readyToReview" : "reported"
-                : null
+                : null,
+            IsPromotionEligible = isPromotionEligible
         };
     }
 
@@ -1007,6 +1103,13 @@ public partial class RecipeSearchService(
             return candidate;
         }).ToList();
     }
+
+    private sealed record BrowseRankedRecipe(
+        Recipe Recipe,
+        int Affinity,
+        DateOnly? AffinityLastCookedOn,
+        bool IsPromotionEligible,
+        bool IsCalendarEligible);
 
     private sealed record RankedRecipe(
         Recipe Recipe,

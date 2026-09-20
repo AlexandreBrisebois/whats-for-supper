@@ -24,6 +24,12 @@ tasks:
     payload:
       workflowId: search-reconciliation
 
+  - name: materialize-recipe-search-filters
+    processor: MaterializeRecipeSearchFilters
+    depends_on:
+      - finalize-overdue-meals
+    payload: {}
+
   - name: report
     processor: GenerateDreamingReport
     depends_on:
@@ -32,6 +38,7 @@ tasks:
       - maintenance
       - finalize-overdue-meals
       - reconcile-search
+      - materialize-recipe-search-filters
     payload: {}
 
   - name: reschedule

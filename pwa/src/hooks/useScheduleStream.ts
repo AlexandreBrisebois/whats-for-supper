@@ -8,6 +8,7 @@ import { useGotoStore } from '@/store/gotoStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 import { getTodayString } from '@/lib/imageUtils';
 
 /**
@@ -93,6 +94,7 @@ export function useScheduleStream() {
       }
 
       useWeekStore.getState().applySlotUpdate({ date, recipe, status });
+      useSearchPromotionStore.getState().invalidate();
     });
 
     // ── week_updated ───────────────────────────────────────────────────────
@@ -103,6 +105,7 @@ export function useScheduleStream() {
       console.log('[SSE] Received "week_updated" event');
       const { schedule, echoSeq } = JSON.parse(e.data);
       useWeekStore.getState().applySnapshot(schedule, echoSeq);
+      useSearchPromotionStore.getState().invalidate();
 
       // Keep todayStore in sync with the week snapshot
       const today = getTodayString();
@@ -142,6 +145,7 @@ export function useScheduleStream() {
       console.log('[SSE] Received "fill_the_gap_invalidated" event');
       const { weekOffset } = JSON.parse(e.data);
       useDiscoveryStore.getState().invalidateFillTheGap(weekOffset);
+      useSearchPromotionStore.getState().invalidate();
     });
 
     // ── recipe_ready ───────────────────────────────────────────────────────

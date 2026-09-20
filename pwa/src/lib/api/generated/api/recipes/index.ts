@@ -48,7 +48,11 @@ import {
   type RecommendationsRequestBuilder,
 } from './recommendations/index';
 // @ts-ignore
-import { SearchRequestBuilderRequestsMetadata, type SearchRequestBuilder } from './search/index';
+import {
+  SearchRequestBuilderNavigationMetadata,
+  SearchRequestBuilderRequestsMetadata,
+  type SearchRequestBuilder,
+} from './search/index';
 // @ts-ignore
 import { TrashRequestBuilderRequestsMetadata, type TrashRequestBuilder } from './trash/index';
 // @ts-ignore
@@ -382,6 +386,7 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
   },
   search: {
     requestsMetadata: SearchRequestBuilderRequestsMetadata,
+    navigationMetadata: SearchRequestBuilderNavigationMetadata,
   },
   trash: {
     requestsMetadata: TrashRequestBuilderRequestsMetadata,

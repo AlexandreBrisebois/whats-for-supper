@@ -11,6 +11,14 @@ internal static class RecipeSearchPredicate
 {
     public static IQueryable<Recipe> Apply(IQueryable<Recipe> query, RecipeSearchFiltersDto filters, RecipeDbContext db)
     {
+        var cuisines = NormalizeValues(filters.Cuisines);
+        if (cuisines.Length > 0)
+            query = query.Where(recipe => recipe.CuisineType != null && cuisines.Contains(recipe.CuisineType.ToLower()));
+
+        var mealTypes = NormalizeValues(filters.MealTypes);
+        if (mealTypes.Length > 0)
+            query = query.Where(recipe => recipe.MealTypes != null && recipe.MealTypes.Any(mealType => mealTypes.Contains(mealType.ToLower())));
+
         if (filters.NewRecipes == true)
             query = query.Where(recipe => recipe.CreatedAt >= DateTimeOffset.UtcNow.AddDays(-30));
         if (filters.NeverCooked == true)
@@ -34,6 +42,20 @@ internal static class RecipeSearchPredicate
     public static string BuildSql(RecipeSearchFiltersDto filters, List<NpgsqlParameter> parameters)
     {
         var predicates = new List<string>();
+        var cuisines = NormalizeValues(filters.Cuisines);
+        if (cuisines.Length > 0)
+        {
+            parameters.Add(new NpgsqlParameter("cuisines", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Text) { Value = cuisines });
+            predicates.Add("LOWER(r.cuisine_type) = ANY(@cuisines)");
+        }
+
+        var mealTypes = NormalizeValues(filters.MealTypes);
+        if (mealTypes.Length > 0)
+        {
+            parameters.Add(new NpgsqlParameter("mealTypes", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Text) { Value = mealTypes });
+            predicates.Add("EXISTS (SELECT 1 FROM unnest(r.meal_types) AS meal_type WHERE LOWER(meal_type) = ANY(@mealTypes))");
+        }
+
         if (filters.NewRecipes == true)
         {
             parameters.Add(new NpgsqlParameter("newerThan", DateTimeOffset.UtcNow.AddDays(-30)));
@@ -52,4 +74,10 @@ internal static class RecipeSearchPredicate
 
         return predicates.Count == 0 ? string.Empty : "\n  AND " + string.Join("\n  AND ", predicates);
     }
+
+    private static string[] NormalizeValues(IEnumerable<string>? values) => values?
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Select(value => value.Trim().ToLowerInvariant())
+        .Distinct(StringComparer.Ordinal)
+        .ToArray() ?? [];
 }

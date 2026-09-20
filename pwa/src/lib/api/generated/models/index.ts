@@ -589,6 +589,28 @@ export function createRecipePurgeResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchCuisineOptionsDto}
+ */
+// @ts-ignore
+export function createRecipeSearchCuisineOptionsDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchCuisineOptionsDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchFilterDiscoveryDto}
+ */
+// @ts-ignore
+export function createRecipeSearchFilterDiscoveryDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchFilterDiscoveryDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeSearchFiltersDto}
  */
 // @ts-ignore
@@ -596,6 +618,17 @@ export function createRecipeSearchFiltersDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipeSearchFiltersDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeSearchMainDefinitionDto}
+ */
+// @ts-ignore
+export function createRecipeSearchMainDefinitionDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeSearchMainDefinitionDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2110,6 +2143,56 @@ export function deserializeIntoRecipePurgeResponse(
 }
 /**
  * The deserialization information for the current model
+ * @param RecipeSearchCuisineOptionsDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchCuisineOptionsDto(
+  recipeSearchCuisineOptionsDto: Partial<RecipeSearchCuisineOptionsDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    all: (n) => {
+      recipeSearchCuisineOptionsDto.all = n.getCollectionOfPrimitiveValues<string>('string');
+    },
+    promoted: (n) => {
+      recipeSearchCuisineOptionsDto.promoted = n.getCollectionOfPrimitiveValues<string>('string');
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchFilterDiscoveryDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchFilterDiscoveryDto(
+  recipeSearchFilterDiscoveryDto: Partial<RecipeSearchFilterDiscoveryDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    cuisines: (n) => {
+      recipeSearchFilterDiscoveryDto.cuisines = n.getObjectValue<RecipeSearchCuisineOptionsDto>(
+        createRecipeSearchCuisineOptionsDtoFromDiscriminatorValue
+      );
+    },
+    generatedAt: (n) => {
+      recipeSearchFilterDiscoveryDto.generatedAt = n.getDateValue();
+    },
+    main: (n) => {
+      recipeSearchFilterDiscoveryDto.main =
+        n.getCollectionOfObjectValues<RecipeSearchMainDefinitionDto>(
+          createRecipeSearchMainDefinitionDtoFromDiscriminatorValue
+        );
+    },
+    mealTypes: (n) => {
+      recipeSearchFilterDiscoveryDto.mealTypes =
+        n.getCollectionOfEnumValues<RecipeSearchFilterDiscoveryDto_mealTypes>(
+          RecipeSearchFilterDiscoveryDto_mealTypesObject
+        );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param RecipeSearchFiltersDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -2167,6 +2250,27 @@ export function deserializeIntoRecipeSearchFiltersDto(
     },
     reportedOnly: (n) => {
       recipeSearchFiltersDto.reportedOnly = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeSearchMainDefinitionDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeSearchMainDefinitionDto(
+  recipeSearchMainDefinitionDto: Partial<RecipeSearchMainDefinitionDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    concept: (n) => {
+      recipeSearchMainDefinitionDto.concept = n.getStringValue();
+    },
+    id: (n) => {
+      recipeSearchMainDefinitionDto.id = n.getStringValue();
+    },
+    label: (n) => {
+      recipeSearchMainDefinitionDto.label = n.getStringValue();
     },
   };
 }
@@ -2322,6 +2426,9 @@ export function deserializeIntoRecipeSearchResultDto(
     },
     isDiscoverable: (n) => {
       recipeSearchResultDto.isDiscoverable = n.getBooleanValue();
+    },
+    isPromotionEligible: (n) => {
+      recipeSearchResultDto.isPromotionEligible = n.getBooleanValue();
     },
     name: (n) => {
       recipeSearchResultDto.name = n.getStringValue();
@@ -3749,6 +3856,36 @@ export interface RecipePurgeResponse extends AdditionalDataHolder, Parsable {
    */
   purged?: boolean | null;
 }
+export interface RecipeSearchCuisineOptionsDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The all property
+   */
+  all?: string[] | null;
+  /**
+   * The promoted property
+   */
+  promoted?: string[] | null;
+}
+export interface RecipeSearchFilterDiscoveryDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The cuisines property
+   */
+  cuisines?: RecipeSearchCuisineOptionsDto | null;
+  /**
+   * Timestamp of the cuisine materialization only; null when no materialized state exists.
+   */
+  generatedAt?: Date | null;
+  /**
+   * Configured order; no score or promotion fields are exposed.
+   */
+  main?: RecipeSearchMainDefinitionDto[] | null;
+  /**
+   * The mealTypes property
+   */
+  mealTypes?: RecipeSearchFilterDiscoveryDto_mealTypes[] | null;
+}
+export type RecipeSearchFilterDiscoveryDto_mealTypes =
+  (typeof RecipeSearchFilterDiscoveryDto_mealTypesObject)[keyof typeof RecipeSearchFilterDiscoveryDto_mealTypesObject];
 export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
   /**
    * The categories property
@@ -3815,9 +3952,23 @@ export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
    */
   reportedOnly?: boolean | null;
 }
+export interface RecipeSearchMainDefinitionDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The concept property
+   */
+  concept?: string | null;
+  /**
+   * The id property
+   */
+  id?: string | null;
+  /**
+   * Non-null only for a configured custom ID; built-in IDs use PWA translations.
+   */
+  label?: string | null;
+}
 export interface RecipeSearchPreferencesDto extends AdditionalDataHolder, Parsable {
   /**
-   * The concepts property
+   * Semantic preferences. With an empty query and non-blank concepts
    */
   concepts?: string[] | null;
   /**
@@ -3871,7 +4022,7 @@ export interface RecipeSearchRequestDto extends AdditionalDataHolder, Parsable {
    */
   preferences?: RecipeSearchPreferencesDto | null;
   /**
-   * Original caller query; omit or empty for browse.
+   * Original caller query. Omit or leave empty for browse only when preferences.concepts has no usable value; concept-only requests are ranked searches.
    */
   query?: string | null;
   /**
@@ -3932,6 +4083,10 @@ export interface RecipeSearchResultDto extends AdditionalDataHolder, Parsable {
    * The isDiscoverable property
    */
   isDiscoverable?: boolean | null;
+  /**
+   * Search browse-only server-vetted candidate eligibility for Top Pick and Surprise Me.
+   */
+  isPromotionEligible?: boolean | null;
   /**
    * The name property
    */
@@ -5154,6 +5309,61 @@ export function serializeRecipePurgeResponse(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchCuisineOptionsDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchCuisineOptionsDto(
+  writer: SerializationWriter,
+  recipeSearchCuisineOptionsDto: Partial<RecipeSearchCuisineOptionsDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchCuisineOptionsDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfPrimitiveValues<string>('all', recipeSearchCuisineOptionsDto.all);
+  writer.writeCollectionOfPrimitiveValues<string>(
+    'promoted',
+    recipeSearchCuisineOptionsDto.promoted
+  );
+  writer.writeAdditionalData(recipeSearchCuisineOptionsDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchFilterDiscoveryDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchFilterDiscoveryDto(
+  writer: SerializationWriter,
+  recipeSearchFilterDiscoveryDto: Partial<RecipeSearchFilterDiscoveryDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchFilterDiscoveryDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<RecipeSearchCuisineOptionsDto>(
+    'cuisines',
+    recipeSearchFilterDiscoveryDto.cuisines,
+    serializeRecipeSearchCuisineOptionsDto
+  );
+  writer.writeDateValue('generatedAt', recipeSearchFilterDiscoveryDto.generatedAt);
+  writer.writeCollectionOfObjectValues<RecipeSearchMainDefinitionDto>(
+    'main',
+    recipeSearchFilterDiscoveryDto.main,
+    serializeRecipeSearchMainDefinitionDto
+  );
+  if (recipeSearchFilterDiscoveryDto.mealTypes)
+    writer.writeCollectionOfEnumValues<RecipeSearchFilterDiscoveryDto_mealTypes>(
+      'mealTypes',
+      recipeSearchFilterDiscoveryDto.mealTypes
+    );
+  writer.writeAdditionalData(recipeSearchFilterDiscoveryDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param RecipeSearchFiltersDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -5192,6 +5402,26 @@ export function serializeRecipeSearchFiltersDto(
   writer.writeBooleanValue('readyToReviewOnly', recipeSearchFiltersDto.readyToReviewOnly);
   writer.writeBooleanValue('reportedOnly', recipeSearchFiltersDto.reportedOnly);
   writer.writeAdditionalData(recipeSearchFiltersDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeSearchMainDefinitionDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeSearchMainDefinitionDto(
+  writer: SerializationWriter,
+  recipeSearchMainDefinitionDto: Partial<RecipeSearchMainDefinitionDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeSearchMainDefinitionDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('concept', recipeSearchMainDefinitionDto.concept);
+  writer.writeStringValue('id', recipeSearchMainDefinitionDto.id);
+  writer.writeStringValue('label', recipeSearchMainDefinitionDto.label);
+  writer.writeAdditionalData(recipeSearchMainDefinitionDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5336,6 +5566,7 @@ export function serializeRecipeSearchResultDto(
     recipeSearchResultDto.importIssueStatus
   );
   writer.writeBooleanValue('isDiscoverable', recipeSearchResultDto.isDiscoverable);
+  writer.writeBooleanValue('isPromotionEligible', recipeSearchResultDto.isPromotionEligible);
   writer.writeStringValue('name', recipeSearchResultDto.name);
   writer.writeStringValue('notes', recipeSearchResultDto.notes);
   writer.writeStringValue('plannerFitNote', recipeSearchResultDto.plannerFitNote);
@@ -6397,6 +6628,12 @@ export const RecipeImportIssueReasonObject = {
 export const RecipeImportIssueStatusObject = {
   Reported: 'reported',
   ReadyToReview: 'readyToReview',
+} as const;
+export const RecipeSearchFilterDiscoveryDto_mealTypesObject = {
+  Supper: 'Supper',
+  Lunch: 'Lunch',
+  Breakfast: 'Breakfast',
+  Dessert: 'Dessert',
 } as const;
 export const RecipeSearchReasonDto_sourceObject = {
   NameMatch: 'name-match',

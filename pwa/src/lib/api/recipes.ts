@@ -98,6 +98,7 @@ export type RecipeSearchResult = {
   reasons: Array<{ source: string; label: string }>;
   plannerFitNote: string | null;
   importIssueStatus: RecipeImportIssueStatus | null;
+  isPromotionEligible: boolean;
 };
 
 export type RecipeSearchResponse = {
@@ -189,6 +190,7 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
   const plannerFitNote = (readField<string | null>(dto, 'plannerFitNote') ?? null) as string | null;
   const importIssueStatus = (readField<RecipeImportIssueStatus | null>(dto, 'importIssueStatus') ??
     null) as RecipeImportIssueStatus | null;
+  const isPromotionEligible = readField<boolean>(dto, 'isPromotionEligible') ?? false;
 
   // Kiota currently deserializes nullable union topPick into an empty marker object.
   // Treat that shape as null so the page can show the real empty state.
@@ -210,6 +212,7 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
     })),
     plannerFitNote,
     importIssueStatus,
+    isPromotionEligible,
   };
 }
 

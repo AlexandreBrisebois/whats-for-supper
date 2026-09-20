@@ -4,6 +4,22 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS recipe_search_filter_state (
+    id integer PRIMARY KEY CHECK (id = 1),
+    generated_at timestamptz NOT NULL,
+    cuisine_payload jsonb NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS recipe_search_affinity_facts (
+    recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
+    affinity integer NOT NULL,
+    last_cooked_on date,
+    generated_at timestamptz NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_recipe_search_affinity_facts_generated_at
+    ON recipe_search_affinity_facts (generated_at);
+
 -- Task 2 search sidecar lifecycle is additive. Existing vectors have no
 -- trustworthy content fingerprint and are deliberately made semantically
 -- ineligible until reconciliation rebuilds them.

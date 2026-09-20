@@ -140,6 +140,19 @@ CREATE TABLE recipe_votes (
     CONSTRAINT recipe_votes_vote_check CHECK (vote >= 1 AND vote <= 2)
 );
 
+CREATE TABLE IF NOT EXISTS recipe_search_filter_state (
+    id integer PRIMARY KEY CHECK (id = 1),
+    generated_at timestamptz NOT NULL,
+    cuisine_payload jsonb NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS recipe_search_affinity_facts (
+    recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
+    affinity integer NOT NULL,
+    last_cooked_on date,
+    generated_at timestamptz NOT NULL
+);
+
 CREATE TABLE workflow_tasks (
     task_id uuid PRIMARY KEY,
     instance_id uuid NOT NULL REFERENCES workflow_instances(id) ON DELETE CASCADE,
@@ -196,6 +209,7 @@ CREATE INDEX idx_workflow_tasks_instance_id ON workflow_tasks (instance_id);
 CREATE INDEX idx_calendar_events_date ON calendar_events (date);
 CREATE INDEX idx_recipe_votes_family_member_id ON recipe_votes (family_member_id);
 CREATE INDEX idx_recipe_votes_recipe_id ON recipe_votes (recipe_id);
+CREATE INDEX idx_recipe_search_affinity_facts_generated_at ON recipe_search_affinity_facts (generated_at);
 CREATE INDEX idx_recipes_added_by ON recipes (added_by) WHERE (added_by IS NOT NULL);
 CREATE INDEX idx_recipes_created_at_desc ON recipes (created_at DESC);
 CREATE INDEX idx_recipes_discovery_lookup ON recipes (category, id) WHERE (is_discoverable = true);

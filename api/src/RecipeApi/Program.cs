@@ -121,6 +121,8 @@ try
     builder.Services.AddScoped<RecipePurgeService>();
     builder.Services.AddScoped<CaptureFailureService>();
     builder.Services.AddScoped<RecipeSearchService>();
+    builder.Services.AddScoped<RecipeSearchFilterMaterializer>();
+    builder.Services.AddScoped<RecipeSearchFilterBackfillService>();
     builder.Services.AddSingleton<RecipeSearchContinuationStore>();
     builder.Services.AddScoped<RecipeLexicalSearchRepository>();
     builder.Services.AddScoped<RecipeSemanticSearchRepository>();
@@ -136,6 +138,9 @@ try
             EmbeddingVersion = builder.Configuration["EMBEDDING_MODEL_VERSION"]
         }
     });
+    builder.Services.AddSingleton(sp => new RecipeSearchFilterOptions(
+        builder.Configuration,
+        sp.GetRequiredService<ILogger<RecipeSearchFilterOptions>>()));
     builder.Services.AddSingleton<InventoryCaptureService>();
     builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddScoped<RecipeImportReportService>();
@@ -220,6 +225,7 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, CategorizeRecipeProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, FinalizeOverdueMealsProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, MaterializeRecipeSearchFiltersProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CompleteRecipeImportReportProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchReconciliationWorkflow>());
@@ -258,6 +264,7 @@ try
        "RestoreDemoState"));
 
     builder.Services.AddHostedService<DreamingWorkflowSeederHostedService>();
+    builder.Services.AddHostedService<RecipeSearchFilterBackfillHostedService>();
     builder.Services.AddHostedService<DemoWorkflowSeederHostedService>();
     builder.Services.AddHostedService<WorkflowWorker>();
     builder.Services.AddHostedService<HealthWorker>();

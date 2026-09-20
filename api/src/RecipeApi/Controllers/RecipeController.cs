@@ -1,7 +1,11 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Infrastructure;
+using RecipeApi.Models;
 using RecipeApi.Services;
 
 namespace RecipeApi.Controllers;
@@ -16,8 +20,51 @@ public class RecipeController(
     RecipeImportReportService importReportService,
     RecipeImportBulkService bulkImportService,
     RecipePurgeService recipePurgeService,
+    RecipeDbContext db,
+    RecipeSearchFilterOptions filterOptions,
     ILogger<RecipeController> logger) : ControllerBase
 {
+    /// <summary>GET /api/recipes/search/filters — configured and materialized search vocabulary.</summary>
+    [HttpGet("search/filters")]
+    [SkipWrapping]
+    public async Task<IActionResult> GetSearchFilters(CancellationToken ct)
+    {
+        var state = await db.RecipeSearchFilterStates
+            .AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == RecipeSearchFilterState.SingletonId, ct);
+        if (state is null)
+            return Ok(RecipeSearchFilterDiscoveryDto.CreateFallback(filterOptions));
+
+        try
+        {
+            var cuisines = JsonSerializer.Deserialize<MaterializedCuisinePayload>(state.CuisinePayload,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (cuisines is null)
+                return Ok(RecipeSearchFilterDiscoveryDto.CreateFallback(filterOptions));
+
+            return Ok(new RecipeSearchFilterDiscoveryDto
+            {
+                GeneratedAt = state.GeneratedAt,
+                Main = filterOptions.Main.Select(definition => new RecipeSearchMainDefinitionDto
+                {
+                    Id = definition.Id,
+                    Concept = definition.Concept,
+                    Label = definition.Label
+                }).ToList(),
+                MealTypes = [.. RecipeSearchFilterDiscoveryDto.FixedMealTypes],
+                Cuisines = new RecipeSearchCuisineOptionsDto
+                {
+                    Promoted = cuisines.Promoted ?? [],
+                    All = cuisines.All ?? []
+                }
+            });
+        }
+        catch (JsonException)
+        {
+            return Ok(RecipeSearchFilterDiscoveryDto.CreateFallback(filterOptions));
+        }
+    }
+
     /// <summary>POST /api/recipes — upload images and create a new recipe.</summary>
     [HttpPost]
     [RequestSizeLimit(500 * 1024 * 1024)] // 500 MB outer limit (20 images × 20 MB)
@@ -32,6 +79,8 @@ public class RecipeController(
         var recipeId = await recipeService.CreateRecipe(familyMemberId.Value, files, dto);
         return Accepted(new { id = recipeId });
     }
+
+    private sealed record MaterializedCuisinePayload(List<string>? Promoted, List<string>? All);
 
     /// <summary>GET /api/recipes — paginated list. Default: newest first. order=explore: lastCookedDate ASC NULLS FIRST.</summary>
     [HttpGet]

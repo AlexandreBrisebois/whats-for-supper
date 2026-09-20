@@ -10,8 +10,12 @@ import {
   type RecipeSearchResponseDto,
 } from '../../../models/index';
 // @ts-ignore
+import { FiltersRequestBuilderRequestsMetadata, type FiltersRequestBuilder } from './filters/index';
+// @ts-ignore
 import {
   type BaseRequestBuilder,
+  type KeysToExcludeForNavigationMetadata,
+  type NavigationMetadata,
   type Parsable,
   type ParsableFactory,
   type RequestConfiguration,
@@ -24,7 +28,11 @@ import {
  */
 export interface SearchRequestBuilder extends BaseRequestBuilder<SearchRequestBuilder> {
   /**
-   * Searches ready, non-soft-deleted recipes only. Query is preserved verbatim; empty query browses the eligible library. Excluded ingredients are not supported and return 400.
+   * The filters property
+   */
+  get filters(): FiltersRequestBuilder;
+  /**
+   * Searches ready, non-soft-deleted recipes only. Query is preserved verbatim. Empty query browses the eligible library only without usable preference concepts; concept-only requests are ranked searches. Excluded ingredients are not supported and return 400.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeSearchResponseDto>}
@@ -34,7 +42,7 @@ export interface SearchRequestBuilder extends BaseRequestBuilder<SearchRequestBu
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<RecipeSearchResponseDto | undefined>;
   /**
-   * Searches ready, non-soft-deleted recipes only. Query is preserved verbatim; empty query browses the eligible library. Excluded ingredients are not supported and return 400.
+   * Searches ready, non-soft-deleted recipes only. Query is preserved verbatim. Empty query browses the eligible library only without usable preference concepts; concept-only requests are ranked searches. Excluded ingredients are not supported and return 400.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -48,6 +56,17 @@ export interface SearchRequestBuilder extends BaseRequestBuilder<SearchRequestBu
  * Uri template for the request builder.
  */
 export const SearchRequestBuilderUriTemplate = '{+baseurl}/api/recipes/search';
+/**
+ * Metadata for all the navigation properties in the request builder.
+ */
+export const SearchRequestBuilderNavigationMetadata: Record<
+  Exclude<keyof SearchRequestBuilder, KeysToExcludeForNavigationMetadata>,
+  NavigationMetadata
+> = {
+  filters: {
+    requestsMetadata: FiltersRequestBuilderRequestsMetadata,
+  },
+};
 /**
  * Metadata for all the requests in the request builder.
  */

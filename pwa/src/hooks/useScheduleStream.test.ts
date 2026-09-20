@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 
 // ── Store mock factories ─────────────────────────────────────────────────────
 // Define the mock functions at module scope so they are accessible in tests.
@@ -153,6 +154,7 @@ beforeEach(() => {
   MockEventSource.instances = [];
   mockWeekOffset = 0;
   vi.clearAllMocks();
+  useSearchPromotionStore.getState().reset();
 });
 
 afterEach(() => {
@@ -231,6 +233,13 @@ describe('connected event', () => {
 // ── slot_updated event ───────────────────────────────────────────────────────
 
 describe('slot_updated event', () => {
+  it('invalidates the Search-only promotion generation', () => {
+    const { source } = setupHook();
+
+    source.emit('slot_updated', { date: '2026-09-20', recipe: null, status: 0 });
+
+    expect(useSearchPromotionStore.getState().version).toBe(1);
+  });
   it('calls applyServerUpdate on todayStore when date matches today', () => {
     const { source } = setupHook();
 

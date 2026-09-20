@@ -14,7 +14,7 @@ using Xunit;
 namespace RecipeApi.Tests.Integration;
 
 /// <summary>Isolated PostgreSQL coverage for Task 3 database lexical retrieval.</summary>
-public class RecipeLexicalSearchPostgresTests : IAsyncLifetime
+public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
 {
     private const string ConnectionVariable = "WFS_TEST_POSTGRES_CONNECTION";
     private readonly string _databaseName = $"wfs_lexical_{Guid.NewGuid():N}";

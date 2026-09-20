@@ -1,6 +1,16 @@
 import { test, expect } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
+const FILTER_MAIN_IDS = {
+  BEEF: 'beef',
+  POULTRY: 'poultry',
+  PORK: 'pork',
+  FISH: 'fish',
+  PASTA: 'pasta',
+  VEGETARIAN: 'vegetarian',
+  TACO_NIGHT: 'taco-night',
+} as const;
+
 const MOCK_SEARCH_RESULTS = {
   topPick: {
     id: MOCK_IDS.RECIPE_LASAGNA,
@@ -172,6 +182,72 @@ test.describe('Recipes Search Page', () => {
 
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('search-empty-state')).toBeVisible();
+  });
+
+  test('groups filter discovery choices and applies Main as a semantic preference', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    let lastSearch: Record<string, unknown> | null = null;
+    await page.unroute('**/api/recipes/search/filters');
+    await page.route('**/api/recipes/search/filters', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          generatedAt: '2026-09-20T00:00:00Z',
+          main: [
+            { id: FILTER_MAIN_IDS.BEEF, concept: 'beef', label: null },
+            { id: FILTER_MAIN_IDS.POULTRY, concept: 'poultry', label: null },
+            { id: FILTER_MAIN_IDS.PORK, concept: 'pork', label: null },
+            { id: FILTER_MAIN_IDS.FISH, concept: 'fish', label: null },
+            { id: FILTER_MAIN_IDS.PASTA, concept: 'pasta', label: null },
+            { id: FILTER_MAIN_IDS.VEGETARIAN, concept: 'vegetarian', label: null },
+            { id: FILTER_MAIN_IDS.TACO_NIGHT, concept: 'tacos', label: 'Taco night' },
+          ],
+          mealTypes: ['Supper', 'Lunch', 'Breakfast', 'Dessert'],
+          cuisines: { promoted: ['Japanese'], all: ['French', 'Japanese'] },
+        }),
+      });
+    });
+    await page.unroute('**/api/recipes/search');
+    await page.route('**/api/recipes/search', async (route) => {
+      lastSearch = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: null,
+            results: [],
+            appliedFilters: {},
+            searchMode: 'standard',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes');
+    await page.getByTestId('mobile-filters-button').click();
+    await expect(page.getByTestId('mobile-filter-quick')).toBeVisible();
+    await expect(page.getByTestId('mobile-filter-reported')).not.toBeVisible();
+    await page.getByTestId('mobile-more-filters').click();
+    await expect(page.getByTestId('mobile-filter-reported')).toBeVisible();
+    await page.getByTestId('mobile-all-main-filters').click();
+    await expect(page.getByTestId('mobile-filter-main-taco-night')).toBeVisible();
+    await page.getByTestId('mobile-all-cuisines').click();
+    await page.getByTestId('mobile-filter-main-taco-night').click();
+    await page.getByTestId('mobile-filter-meal-Supper').click();
+    await page.getByTestId('mobile-filter-cuisine-French').click();
+    await page.getByTestId('mobile-filter-apply').click();
+
+    await expect
+      .poll(() => lastSearch)
+      .toMatchObject({
+        filters: { mealTypes: ['Supper'], cuisines: ['French'] },
+        preferences: { concepts: ['tacos'] },
+      });
   });
 
   test('opens and closes the recipe detail sheet without losing the search results', async ({

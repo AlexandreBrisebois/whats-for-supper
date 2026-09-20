@@ -6,7 +6,7 @@
 #@recipeId = e6fdbb5a-ae0b-429a-8e99-e23122b52e4f
 #@recipeId = 3fe040b3-29e8-4e26-90b6-1401c0bf3d03
 
-@instanceId = 207241a0-55c3-4374-a5c0-61fb40a5355b
+@instanceId = 666ebd55-6ac3-410e-b5d3-8c55d131e830
 @taskId = 5042beb0-19d8-46ce-abc4-a8c85dae2ef5
 
 ### 1. Trigger recipe-import workflow execution
@@ -25,6 +25,19 @@ X-Hearth-Secret: {{hearthSecret}}
 ### 1aa. Trigger url-import workflow execution
 # Triggers the url-import workflow for a recipe with a SourceUrl.
 POST {{baseUrl}}/api/workflows/url-import/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {
+    "recipeId": "{{recipeId}}",
+    "url": "https://www.ricardocuisine.com/en/recipes/4725-honey-glazed-rack-of-lamb-"
+  }
+}
+
+### 1ab. Trigger search-reconciliation workflow execution
+# Triggers the search-reconciliation workflow for a recipe with a SourceUrl.
+POST {{baseUrl}}/api/workflows/search-reconciliation/trigger
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
 

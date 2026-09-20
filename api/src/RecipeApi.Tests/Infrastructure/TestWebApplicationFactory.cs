@@ -9,8 +9,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
-
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
@@ -44,16 +44,19 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     private readonly string _dataRoot = Path.Combine(Path.GetTempPath(), $"wfs-test-{Guid.NewGuid():N}");
     private readonly bool _enableAuth;
     private readonly IChatClient? _chatClient;
+    private readonly IClock? _clock;
     private readonly Dictionary<string, string?> _configurationOverrides = [];
 
     private ISearchTelemetry? _telemetry;
     private TestWebApplicationFactory(
         bool enableAuth = false,
         Dictionary<string, string?>? configurationOverrides = null,
-        IChatClient? chatClient = null)
+        IChatClient? chatClient = null,
+        IClock? clock = null)
     {
         _enableAuth = enableAuth;
         _chatClient = chatClient;
+        _clock = clock;
         if (configurationOverrides is not null)
         {
             _configurationOverrides = configurationOverrides;
@@ -78,6 +81,14 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     public static async Task<TestWebApplicationFactory> CreateAsync(IChatClient chatClient)
     {
         var factory = new TestWebApplicationFactory(enableAuth: false, chatClient: chatClient);
+        await factory.StartAsync();
+        return factory;
+    }
+
+    /// <summary>Factory with a deterministic application clock for calendar-sensitive integration tests.</summary>
+    public static async Task<TestWebApplicationFactory> CreateAsync(IClock clock)
+    {
+        var factory = new TestWebApplicationFactory(enableAuth: false, clock: clock);
         await factory.StartAsync();
         return factory;
     }
@@ -169,6 +180,9 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipePurgeService>();
         builder.Services.AddScoped<CaptureFailureService>();
         builder.Services.AddScoped<RecipeSearchService>();
+        builder.Services.AddSingleton(sp => new RecipeSearchFilterOptions(
+            builder.Configuration,
+            sp.GetRequiredService<ILogger<RecipeSearchFilterOptions>>()));
         builder.Services.AddSingleton<RecipeSearchContinuationStore>();
         builder.Services.AddSingleton<InventoryCaptureService>();
         
@@ -184,7 +198,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipeImportReportService>();
         builder.Services.AddScoped<RecipeImportBulkService>();
         builder.Services.AddScoped<SettingsService>();
-        builder.Services.AddSingleton<IClock, SystemClock>();
+        builder.Services.AddSingleton<IClock>(_clock ?? new SystemClock());
         builder.Services.AddSingleton<CronScheduleCalculator>();
         builder.Services.AddSingleton<DemoModeOptions>();
         builder.Services.AddScoped<ManagementService>();

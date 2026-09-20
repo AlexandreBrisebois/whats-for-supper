@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
@@ -20,7 +21,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await TestWebApplicationFactory.CreateAsync();
+        _factory = await TestWebApplicationFactory.CreateAsync(new FixedClock(new DateTimeOffset(2026, 9, 20, 12, 0, 0, TimeSpan.Zero)));
         _client = _factory.CreateClient();
     }
 
@@ -209,6 +210,71 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains("Restart the search", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Browse_Promotes_Liked_LongUncooked_Recipes_But_Not_Disliked_Or_NeverCooked_Likes()
+    {
+        var favorite = CreateRecipe("Forgotten favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
+        favorite.CreatedAt = DateTimeOffset.UtcNow.AddDays(-90);
+        var disliked = CreateRecipe("Old dislike", "Not a favorite", "30 min", CreateDietaryProfile("ProteinFoods"));
+        disliked.CreatedAt = DateTimeOffset.UtcNow.AddDays(-80);
+        var neverCookedLiked = CreateRecipe("Never cooked liked", "Still new", "30 min", CreateDietaryProfile("ProteinFoods"));
+        neverCookedLiked.CreatedAt = DateTimeOffset.UtcNow;
+        await SeedRecipeAsync(favorite);
+        await SeedRecipeAsync(disliked);
+        await SeedRecipeAsync(neverCookedLiked);
+        await SeedAffinityFactsAsync(
+            (favorite.Id, 3, new DateOnly(2026, 8, 1)),
+            (disliked.Id, -2, new DateOnly(2026, 7, 1)),
+            (neverCookedLiked.Id, 2, null));
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new { query = "", limit = 12 }));
+
+        Assert.Equal(favorite.Id, document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
+        Assert.Contains(disliked.Id, SearchResultIds(document.RootElement));
+        Assert.Contains(neverCookedLiked.Id, SearchResultIds(document.RootElement));
+    }
+
+    [Fact]
+    public async Task Browse_CalendarGuards_Block_ActiveFuture_And_SameWeekCooked_Favorites_Without_Hiding_Them()
+    {
+        var favorite = CreateRecipe("Guarded favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var fallback = CreateRecipe("Available favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
+        await SeedRecipeAsync(favorite);
+        await SeedRecipeAsync(fallback);
+        await SeedAffinityFactsAsync(
+            (favorite.Id, 4, new DateOnly(2026, 8, 1)),
+            (fallback.Id, 2, new DateOnly(2026, 7, 1)));
+        await SeedCalendarEventsAsync(
+            (favorite.Id, new DateOnly(2026, 9, 20), CalendarEventStatus.Planned),
+            (favorite.Id, new DateOnly(2026, 10, 12), CalendarEventStatus.Locked),
+            (favorite.Id, new DateOnly(2026, 9, 17), CalendarEventStatus.Cooked));
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new { query = "", limit = 12, weekOffset = 0 }));
+
+        Assert.Equal(fallback.Id, document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
+        Assert.Contains(favorite.Id, SearchResultIds(document.RootElement));
+    }
+
+    [Fact]
+    public async Task Browse_Skipped_Assignment_Does_Not_Block_But_Another_Active_Assignment_Does()
+    {
+        var favorite = CreateRecipe("Duplicated favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var fallback = CreateRecipe("Fallback favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
+        await SeedRecipeAsync(favorite);
+        await SeedRecipeAsync(fallback);
+        await SeedAffinityFactsAsync((favorite.Id, 4, new DateOnly(2026, 8, 1)), (fallback.Id, 2, new DateOnly(2026, 7, 1)));
+        await SeedCalendarEventsAsync(
+            (favorite.Id, new DateOnly(2026, 9, 21), CalendarEventStatus.Skipped),
+            (favorite.Id, new DateOnly(2026, 9, 22), CalendarEventStatus.AwaitingConsensus));
+
+        using var blocked = await ReadDataAsync(await PostSearchAsync(new { query = "", limit = 12 }));
+        Assert.Equal(fallback.Id, blocked.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
+
+        await RemoveCalendarEventsAsync(favorite.Id, CalendarEventStatus.AwaitingConsensus);
+        using var restored = await ReadDataAsync(await PostSearchAsync(new { query = "", limit = 12 }));
+        Assert.Equal(favorite.Id, restored.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
     }
 
     [Fact]
@@ -985,6 +1051,44 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         return await _client.PostAsJsonAsync("/api/recipes/search", payload);
     }
 
+    private async Task SeedAffinityFactsAsync(params (Guid RecipeId, int Affinity, DateOnly? LastCookedOn)[] facts)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        db.RecipeSearchAffinityFacts.AddRange(facts.Select(fact => new RecipeSearchAffinityFact
+        {
+            RecipeId = fact.RecipeId,
+            Affinity = fact.Affinity,
+            LastCookedOn = fact.LastCookedOn,
+            GeneratedAt = new DateTimeOffset(2026, 9, 20, 12, 0, 0, TimeSpan.Zero)
+        }));
+        await db.SaveChangesAsync();
+    }
+
+    private async Task SeedCalendarEventsAsync(params (Guid RecipeId, DateOnly Date, CalendarEventStatus Status)[] events)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        db.CalendarEvents.AddRange(events.Select(@event => new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = @event.RecipeId,
+            Date = @event.Date,
+            Status = @event.Status,
+            MealSlot = 0
+        }));
+        await db.SaveChangesAsync();
+    }
+
+    private async Task RemoveCalendarEventsAsync(Guid recipeId, CalendarEventStatus status)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var events = await db.CalendarEvents.Where(@event => @event.RecipeId == recipeId && @event.Status == status).ToListAsync();
+        db.CalendarEvents.RemoveRange(events);
+        await db.SaveChangesAsync();
+    }
+
     private async Task<JsonDocument> ReadDataAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadAsStringAsync();
@@ -1064,6 +1168,11 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             .EnumerateArray()
             .Select(result => result.GetProperty("id").GetGuid())
             .ToList();
+
+    private sealed class FixedClock(DateTimeOffset now) : IClock
+    {
+        public DateTimeOffset UtcNow => now;
+    }
 
     private async Task SeedWeekAsync(int weekOffset, IReadOnlyList<Guid> assignedRecipeIds, WeeklyBalanceSummary balanceSummary)
     {

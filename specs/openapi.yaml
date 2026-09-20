@@ -243,7 +243,7 @@ components:
 
     RecipeSearchResultDto:
       type: object
-      required: [id, rating, isDiscoverable, reasons]
+      required: [id, rating, isDiscoverable, isPromotionEligible, reasons]
       properties:
         id: { type: string, format: uuid }
         name: { type: [string, 'null'] }
@@ -251,6 +251,7 @@ components:
         totalTime: { type: [string, 'null'] }
         rating: { type: integer }
         isDiscoverable: { type: boolean }
+        isPromotionEligible: { type: boolean, description: Search browse-only server-vetted candidate eligibility for Top Pick and Surprise Me. }
         notes: { type: [string, 'null'] }
         reasons:
           type: array
@@ -263,7 +264,7 @@ components:
     RecipeSearchRequestDto:
       type: object
       properties:
-        query: { type: [string, 'null'], description: Original caller query; omit or empty for browse. }
+        query: { type: [string, 'null'], description: Original caller query. Omit or leave empty for browse only when preferences.concepts has no usable value; concept-only requests are ranked searches. }
         mode: { type: string, enum: [standard, agent], default: standard }
         similarToRecipeId: { type: [string, 'null'], format: uuid }
         pantrySnapshotId: { type: [string, 'null'], format: uuid }
@@ -279,7 +280,36 @@ components:
       properties:
         ingredients: { type: array, items: { type: string } }
         cuisines: { type: array, items: { type: string } }
-        concepts: { type: array, items: { type: string } }
+        concepts: { type: array, items: { type: string }, description: Semantic preferences. With an empty query and non-blank concepts, semantic retrieval is attempted; disabled/unavailable/timeout/error lexical fallback uses the non-blank selected concepts. A successful semantic zero-match remains empty. }
+
+    RecipeSearchFilterDiscoveryDto:
+      type: object
+      required: [generatedAt, main, mealTypes, cuisines]
+      properties:
+        generatedAt: { type: [string, 'null'], format: date-time, description: Timestamp of the cuisine materialization only; null when no materialized state exists. }
+        main:
+          type: array
+          description: Configured order; no score or promotion fields are exposed.
+          items: { $ref: '#/components/schemas/RecipeSearchMainDefinitionDto' }
+        mealTypes:
+          type: array
+          items: { type: string, enum: [Supper, Lunch, Breakfast, Dessert] }
+        cuisines: { $ref: '#/components/schemas/RecipeSearchCuisineOptionsDto' }
+
+    RecipeSearchMainDefinitionDto:
+      type: object
+      required: [id, concept, label]
+      properties:
+        id: { type: string }
+        concept: { type: string }
+        label: { type: [string, 'null'], description: Non-null only for a configured custom ID; built-in IDs use PWA translations. }
+
+    RecipeSearchCuisineOptionsDto:
+      type: object
+      required: [promoted, all]
+      properties:
+        promoted: { type: array, items: { type: string } }
+        all: { type: array, items: { type: string } }
 
     RecipeSearchResponseDto:
       type: object
@@ -2131,7 +2161,7 @@ paths:
   /api/recipes/search:
     post:
       summary: Search recipes
-      description: Searches ready, non-soft-deleted recipes only. Query is preserved verbatim; empty query browses the eligible library. Excluded ingredients are not supported and return 400.
+      description: Searches ready, non-soft-deleted recipes only. Query is preserved verbatim. Empty query browses the eligible library only without usable preference concepts; concept-only requests are ranked searches. Excluded ingredients are not supported and return 400.
       operationId: searchRecipes
       requestBody:
         required: true
@@ -2155,6 +2185,31 @@ paths:
           description: Malformed request, out-of-range limit, or unsupported excludedIngredients filter.
         '409':
           description: Continuation expired; retain displayed cards and restart the search.
+
+  /api/recipes/search/filters:
+    get:
+      summary: Get Search filter vocabulary
+      description: Returns configured Main definitions, fixed Meal Types, and the latest materialized cuisine state. It does not aggregate votes/calendar history or query the recipe catalog at request time.
+      operationId: getRecipeSearchFilters
+      responses:
+        '200':
+          description: Filter vocabulary. Without materialized cuisine state, generatedAt is null and both cuisine arrays are empty.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeSearchFilterDiscoveryDto' }
+              example:
+                generatedAt: null
+                main:
+                  - { id: beef, concept: beef, label: null }
+                  - { id: poultry, concept: poultry, label: null }
+                  - { id: pork, concept: pork, label: null }
+                  - { id: fish, concept: fish, label: null }
+                  - { id: pasta, concept: pasta, label: null }
+                  - { id: vegetarian, concept: vegetarian, label: null }
+                mealTypes: [Supper, Lunch, Breakfast, Dessert]
+                cuisines:
+                  promoted: []
+                  all: []
 
   /api/schedule:
     get:

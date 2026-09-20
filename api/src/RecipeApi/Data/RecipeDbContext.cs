@@ -24,6 +24,8 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<HealthEvent> HealthEvents => Set<HealthEvent>();
     public DbSet<HealthRecipeProfile> HealthRecipeProfiles => Set<HealthRecipeProfile>();
     public DbSet<HealthWeekSummary> HealthWeekSummaries => Set<HealthWeekSummary>();
+    public DbSet<RecipeSearchFilterState> RecipeSearchFilterStates => Set<RecipeSearchFilterState>();
+    public DbSet<RecipeSearchAffinityFact> RecipeSearchAffinityFacts => Set<RecipeSearchAffinityFact>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -314,6 +316,25 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.Property(e => e.FopWeekSummary).HasColumnType("jsonb");
             entity.Property(e => e.LastRecomputedAt).HasDefaultValueSql("NOW()");
             entity.ToTable("health_week_summaries");
+        });
+
+        modelBuilder.Entity<RecipeSearchFilterState>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CuisinePayload).HasColumnType("jsonb");
+            entity.ToTable("recipe_search_filter_state", table =>
+                table.HasCheckConstraint("CK_recipe_search_filter_state_singleton", "id = 1"));
+        });
+
+        modelBuilder.Entity<RecipeSearchAffinityFact>(entity =>
+        {
+            entity.HasKey(e => e.RecipeId);
+            entity.HasOne(e => e.Recipe)
+                .WithOne()
+                .HasForeignKey<RecipeSearchAffinityFact>(e => e.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.GeneratedAt).HasDatabaseName("idx_recipe_search_affinity_facts_generated_at");
+            entity.ToTable("recipe_search_affinity_facts");
         });
     }
 

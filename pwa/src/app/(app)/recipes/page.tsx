@@ -19,14 +19,22 @@ import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api/api-client';
 import { searchRecipes, type RecipeSearchResponse, type Recipe } from '@/lib/api/recipes';
 import { submitPhotoSearch } from '@/lib/api/inventory';
-import type { RecipeSearchFiltersDto } from '@/lib/api/generated/models/index';
+import type {
+  RecipeSearchFilterDiscoveryDto,
+  RecipeSearchFiltersDto,
+  RecipeSearchPreferencesDto,
+} from '@/lib/api/generated/models/index';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecipeImportIssueBadge } from '@/components/recipes/RecipeImportIssueBadge';
-import { RecipeFiltersSheet, RECIPE_FILTER_OPTIONS } from '@/components/recipes/RecipeFiltersSheet';
+import {
+  RecipeFiltersSheet,
+  RECIPE_FILTER_OPTIONS,
+  type RecipeFilterDraft,
+} from '@/components/recipes/RecipeFiltersSheet';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import {
   assignRecipeToEmptySlot,
@@ -38,6 +46,7 @@ import {
 } from '@/lib/planner/slotAssignment';
 import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
+import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 
 type SearchMode = 'standard' | 'agent' | 'camera';
 
@@ -66,7 +75,9 @@ function resolveDayName(weekOffset: number, dayIndex: number): string {
 }
 
 const INITIAL_LIMIT = 12;
-const PAGE_SIZE = 12;
+const RANKED_CONTINUATION_LIMIT = 12;
+const BROWSE_CONTINUATION_LIMIT = 24;
+const BROWSE_PREFETCH_MARGIN = '400px 0px';
 const SEARCH_DEBOUNCE_MS = 500;
 
 export default function RecipesPage() {
@@ -93,6 +104,8 @@ export default function RecipesPage() {
     searchParams.get('similarTo')
   );
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
+  const [activePreferences, setActivePreferences] = useState<RecipeSearchPreferencesDto>({});
+  const [filterMetadata, setFilterMetadata] = useState<RecipeSearchFilterDiscoveryDto | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [limit, setLimit] = useState(INITIAL_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -108,11 +121,15 @@ export default function RecipesPage() {
     recipe: AssignmentRecipe;
     navigateTo: { weekOffset: number; dayIndex: number; home?: boolean };
   } | null>(null);
+  const searchPromotionVersion = useSearchPromotionStore((state) => state.version);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const resultsSentinelRef = useRef<HTMLDivElement | null>(null);
   const requestGenerationRef = useRef(0);
+  const continuationGenerationRef = useRef<number | null>(null);
+  const filterMetadataRequestRef = useRef(0);
+  const filterMetadataRequestedRef = useRef(false);
   const detailScrollYRef = useRef(0);
 
   const addToDay = searchParams.get('addToDay');
@@ -123,6 +140,12 @@ export default function RecipesPage() {
 
   const isAgentSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_AGENT_SEARCH === 'true';
   const isPhotoSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_PHOTO_SEARCH === 'true';
+
+  useEffect(() => {
+    return () => {
+      filterMetadataRequestRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -176,12 +199,15 @@ export default function RecipesPage() {
       nextSimilarToRecipeId?: string | null,
       nextFilters?: RecipeSearchFiltersDto,
       nextPantrySnapshotId?: string | null,
-      nextLimit?: number
+      nextLimit?: number,
+      nextPreferences?: RecipeSearchPreferencesDto
     ) => {
       const generation = ++requestGenerationRef.current;
+      continuationGenerationRef.current = null;
       setIsLoading(true);
       try {
         const filters = nextFilters ?? activeFilters;
+        const preferences = nextPreferences ?? activePreferences;
         const snapshotId = nextPantrySnapshotId ?? pantrySnapshotId;
         const resolvedLimit = nextLimit ?? limit;
         const response = await searchRecipes({
@@ -193,6 +219,7 @@ export default function RecipesPage() {
           similarToRecipeId: nextSimilarToRecipeId ?? undefined,
           pantrySnapshotId: snapshotId ?? undefined,
           filters: Object.keys(filters).length > 0 ? filters : undefined,
+          preferences: Object.keys(preferences).length > 0 ? preferences : undefined,
         });
         if (generation !== requestGenerationRef.current) return;
         setData(response);
@@ -212,11 +239,13 @@ export default function RecipesPage() {
         if (generation === requestGenerationRef.current) setIsLoading(false);
       }
     },
-    [activeFilters, pantrySnapshotId, limit, parsedWeekOffset, parsedDayIndex]
+    [activeFilters, activePreferences, pantrySnapshotId, limit, parsedWeekOffset, parsedDayIndex]
   );
 
   useEffect(() => {
     let isActive = true;
+    const generation = ++requestGenerationRef.current;
+    continuationGenerationRef.current = null;
 
     void (async () => {
       try {
@@ -229,10 +258,10 @@ export default function RecipesPage() {
           similarToRecipeId: similarToRecipeId ?? undefined,
         });
 
-        if (!isActive) return;
+        if (!isActive || generation !== requestGenerationRef.current) return;
         setData(response);
       } catch (error) {
-        if (!isActive) return;
+        if (!isActive || generation !== requestGenerationRef.current) return;
         console.error('Failed to search recipes', error);
         setData({
           topPick: null,
@@ -243,7 +272,7 @@ export default function RecipesPage() {
           nextCursor: null,
         });
       } finally {
-        if (isActive) {
+        if (isActive && generation === requestGenerationRef.current) {
           setIsLoading(false);
         }
       }
@@ -253,6 +282,30 @@ export default function RecipesPage() {
       isActive = false;
     };
   }, [parsedDayIndex, parsedWeekOffset, similarToRecipeId]);
+
+  useEffect(() => {
+    if (searchPromotionVersion === 0 || data?.resultPath !== 'browse') return;
+    const refreshTimer = window.setTimeout(() => {
+      void runSearch(
+        query,
+        similarToRecipeId,
+        activeFilters,
+        pantrySnapshotId,
+        INITIAL_LIMIT,
+        activePreferences
+      );
+    }, 0);
+    return () => window.clearTimeout(refreshTimer);
+  }, [
+    activeFilters,
+    activePreferences,
+    data?.resultPath,
+    pantrySnapshotId,
+    query,
+    runSearch,
+    searchPromotionVersion,
+    similarToRecipeId,
+  ]);
 
   // Adjust state when URL 'open' parameter changes
   const openIdFromUrl = searchParams.get('open');
@@ -490,26 +543,33 @@ export default function RecipesPage() {
     void runSearch(query, similarToRecipeId, next);
   };
 
-  const handleApplyFilters = (filters: RecipeSearchFiltersDto) => {
+  const handleApplyFilters = ({ filters, preferences }: RecipeFilterDraft) => {
     setActiveFilters(filters);
+    setActivePreferences(preferences);
     setIsFiltersOpen(false);
-    void runSearch(query, similarToRecipeId, filters);
+    void runSearch(query, similarToRecipeId, filters, undefined, undefined, preferences);
   };
 
   const { topPick, results } = data ?? { topPick: null, results: [] };
-  const hasActiveFilters = Object.keys(activeFilters).length > 0;
-  const activeFilterCount = Object.values(activeFilters).filter(Boolean).length;
+  const activeFilterCount =
+    Object.values(activeFilters).reduce(
+      (count, value) => count + (Array.isArray(value) ? value.length : value ? 1 : 0),
+      0
+    ) + (activePreferences.concepts?.length ?? 0);
+  const hasActiveFilters = activeFilterCount > 0;
   const hasReviewFilters = Boolean(activeFilters.reportedOnly || activeFilters.readyToReviewOnly);
   const displayedTopPick = hasReviewFilters ? null : topPick;
   const showEmptyState = !isLoading && displayedTopPick == null && results.length === 0;
   const hasMoreResults = Boolean(data?.nextCursor);
 
   const handleShowMore = useCallback(async () => {
-    if (isLoadingMore || isLoading || !hasMoreResults) return;
+    if (isLoading || !hasMoreResults) return;
 
     const cursor = data?.nextCursor;
     if (!cursor) return;
     const generation = requestGenerationRef.current;
+    if (continuationGenerationRef.current === generation) return;
+    continuationGenerationRef.current = generation;
     setIsLoadingMore(true);
     setLoadMoreError(false);
     setLoadMoreExpired(false);
@@ -517,13 +577,15 @@ export default function RecipesPage() {
       const response = await searchRecipes({
         query,
         mode: 'standard',
-        limit: PAGE_SIZE,
+        limit:
+          data?.resultPath === 'browse' ? BROWSE_CONTINUATION_LIMIT : RANKED_CONTINUATION_LIMIT,
         continuationToken: cursor,
         weekOffset: parsedWeekOffset,
         dayIndex: parsedDayIndex,
         similarToRecipeId: similarToRecipeId ?? undefined,
         pantrySnapshotId: pantrySnapshotId ?? undefined,
         filters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
+        preferences: Object.keys(activePreferences).length > 0 ? activePreferences : undefined,
       });
       if (generation !== requestGenerationRef.current) return;
       setData((current) => {
@@ -539,20 +601,23 @@ export default function RecipesPage() {
         };
       });
     } catch (error) {
+      if (generation !== requestGenerationRef.current) return;
       // keep existing results
       const continuationExpired =
         error instanceof Error && 'status' in error && error.status === 409;
       setLoadMoreExpired(continuationExpired);
       setLoadMoreError(!continuationExpired);
     } finally {
-      setIsLoadingMore(false);
+      if (continuationGenerationRef.current === generation)
+        continuationGenerationRef.current = null;
+      if (generation === requestGenerationRef.current) setIsLoadingMore(false);
     }
   }, [
     activeFilters,
+    activePreferences,
+    data,
     hasMoreResults,
     isLoading,
-    isLoadingMore,
-    data?.nextCursor,
     pantrySnapshotId,
     parsedDayIndex,
     parsedWeekOffset,
@@ -567,7 +632,9 @@ export default function RecipesPage() {
         return currentData;
       }
 
-      const eligibleResults = currentData.results.filter((recipe) => !recipe.importIssueStatus);
+      const eligibleResults = currentData.results.filter(
+        (recipe) => recipe.isPromotionEligible && !recipe.importIssueStatus
+      );
       if (eligibleResults.length === 0) {
         return currentData;
       }
@@ -599,7 +666,7 @@ export default function RecipesPage() {
           void handleShowMore();
         }
       },
-      { rootMargin: '600px 0px' }
+      { rootMargin: BROWSE_PREFETCH_MARGIN }
     );
 
     observer.observe(sentinel);
@@ -923,7 +990,21 @@ export default function RecipesPage() {
           type="button"
           data-testid="mobile-filters-button"
           aria-label={`Filters, ${activeFilterCount} active`}
-          onClick={() => setIsFiltersOpen(true)}
+          onClick={() => {
+            setIsFiltersOpen(true);
+            if (filterMetadataRequestedRef.current) return;
+            filterMetadataRequestedRef.current = true;
+            const generation = ++filterMetadataRequestRef.current;
+            void apiClient.api.recipes.search.filters
+              .get()
+              .then((metadata) => {
+                if (generation === filterMetadataRequestRef.current && metadata)
+                  setFilterMetadata(metadata);
+              })
+              .catch(() => {
+                // Metadata is progressive enhancement; built-in filters remain usable.
+              });
+          }}
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-charcoal/10 bg-white/70 px-4 py-2 text-sm font-bold text-charcoal shadow-sm"
         >
           <SlidersHorizontal size={16} aria-hidden="true" />
@@ -984,7 +1065,7 @@ export default function RecipesPage() {
             <div className="flex gap-3 flex-wrap justify-center">
               <button
                 type="button"
-                onClick={() => handleApplyFilters({})}
+                onClick={() => handleApplyFilters({ filters: {}, preferences: {} })}
                 className="inline-flex rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white shadow-sm"
               >
                 {t('recipes.clearFilters', 'Clear Filters')}
@@ -1186,6 +1267,8 @@ export default function RecipesPage() {
       {isFiltersOpen && (
         <RecipeFiltersSheet
           activeFilters={activeFilters}
+          activePreferences={activePreferences}
+          filterMetadata={filterMetadata}
           onApply={handleApplyFilters}
           onClose={() => setIsFiltersOpen(false)}
         />

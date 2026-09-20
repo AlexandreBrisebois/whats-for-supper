@@ -39,4 +39,7 @@ public class RecipeSearchResultDto
 
     [JsonPropertyName("importIssueStatus")]
     public string? ImportIssueStatus { get; set; }
+
+    [JsonPropertyName("isPromotionEligible")]
+    public bool IsPromotionEligible { get; set; }
 }

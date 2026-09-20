@@ -26,6 +26,15 @@ export { MOCK_IDS, builders, currentMonday, toDateStr };
 
 const FIXED_E2E_TIMESTAMP = '2026-05-04T12:00:00.000Z';
 
+const FILTER_MAIN_IDS = {
+  BEEF: 'beef',
+  POULTRY: 'poultry',
+  PORK: 'pork',
+  FISH: 'fish',
+  PASTA: 'pasta',
+  VEGETARIAN: 'vegetarian',
+} as const;
+
 // ---------------------------------------------------------------------------
 // SSE helpers — internal
 // ---------------------------------------------------------------------------
@@ -302,6 +311,27 @@ export async function setupCommonRoutes(page: Page) {
           searchMode: 'standard',
           resultPath: 'lexical-only',
         },
+      }),
+    });
+  });
+
+  // GET /api/recipes/search/filters — materialized metadata fallback
+  await page.route('**/api/recipes/search/filters', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        generatedAt: null,
+        main: [
+          { id: FILTER_MAIN_IDS.BEEF, concept: 'beef', label: null },
+          { id: FILTER_MAIN_IDS.POULTRY, concept: 'poultry', label: null },
+          { id: FILTER_MAIN_IDS.PORK, concept: 'pork', label: null },
+          { id: FILTER_MAIN_IDS.FISH, concept: 'fish', label: null },
+          { id: FILTER_MAIN_IDS.PASTA, concept: 'pasta', label: null },
+          { id: FILTER_MAIN_IDS.VEGETARIAN, concept: 'vegetarian', label: null },
+        ],
+        mealTypes: ['Supper', 'Lunch', 'Breakfast', 'Dessert'],
+        cuisines: { promoted: [], all: [] },
       }),
     });
   });
