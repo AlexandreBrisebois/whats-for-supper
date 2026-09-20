@@ -1144,7 +1144,7 @@ describe('RecipesPage', () => {
       });
     });
 
-    it('uses one mobile Filters button with draft apply, cancel, clear, and active count', async () => {
+    it('uses one mobile Filters button with draft apply, dismiss, clear, and active count', async () => {
       await act(async () => {
         render(<RecipesPage />);
       });
@@ -1164,7 +1164,7 @@ describe('RecipesPage', () => {
 
       const callsBeforeCancel = mocks.searchRecipes.mock.calls.length;
       fireEvent.click(within(dialog).getByRole('button', { name: 'Reported' }));
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
       expect(mocks.searchRecipes).toHaveBeenCalledTimes(callsBeforeCancel);
       expect(filtersButton).toHaveTextContent('0');
 

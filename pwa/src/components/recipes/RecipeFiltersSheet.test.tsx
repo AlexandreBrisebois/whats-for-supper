@@ -145,14 +145,14 @@ describe('RecipeFiltersSheet', () => {
     });
   });
 
-  it('keeps draft Apply, Clear, and Cancel behavior with reachable actions', () => {
+  it('keeps draft Apply and Clear behavior with reachable actions and allows closing without applying', () => {
     const { onApply, onClose } = renderSheet();
     fireEvent.click(screen.getByRole('button', { name: 'Quick' }));
     fireEvent.click(screen.getByRole('button', { name: 'Clear Filters' }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
     expect(onApply).toHaveBeenCalledWith({ filters: {}, preferences: {} });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 });

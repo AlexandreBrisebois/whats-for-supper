@@ -394,13 +394,6 @@ export function RecipeFiltersSheet({
               {t('recipes.applyFilters', 'Apply filters')}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-2 min-h-11 w-full text-sm font-bold text-charcoal/60"
-          >
-            {t('recipes.cancel', 'Cancel')}
-          </button>
         </div>
       </section>
     </div>

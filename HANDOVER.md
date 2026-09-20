@@ -66,3 +66,12 @@ Authorized scope and source: User selected SFD-7 after preceding filters tasks; 
 Current checkpoint: Required OpenAPI requiredness, mock vocabulary, and Search-only deferred refresh corrections are made. Discovery source is unchanged.
 Verification evidence and content identity: [SFD-7 evidence](.kiro/specs/filters/sfd-7-evidence.md) records passing preparation, static reconciliation, API/PWA suites, 55 real PostgreSQL tests and 22 current-worktree E2E tests. Live endpoint parity and live browse-performance qualification remain blocked.
 Blocker or next action: Run production-equivalent API/browser performance measurements against the final source and representative dataset; do not represent static/mocked evidence as live qualification.
+
+## Search Surprise Me — promotion eligibility upgrade
+
+Task/spec: [filters SFD-5b / SFD-6](.kiro/specs/filters/tasks.md); Search Surprise Me control upgrade.
+Worktree/branch: `main`, starting HEAD `d4774657a816ac285985b7bc8d7514a29fb03556`.
+Authorized scope and source: User instructed verification and completion of the Search page "Surprise Me" control upgrade to respect server-vetted promotion eligibility (`isPromotionEligible`), preserve search/filter context, ensure deterministic testing and accessibility, and avoid promoting blocked or stale candidates.
+Current checkpoint: "Surprise Me" rotates only server-vetted, promotion-eligible candidates (`isPromotionEligible && !importIssueStatus && id !== currentData.topPick?.id`) in-memory, preserving query, active filters, Focus concepts, and planning context. Button is disabled with accessible description when no eligible alternate exists. Guarded by Search promotion version and generation against stale SSE/schedule states. Discovery mode remains unchanged.
+Verification evidence and content identity: 52 PWA unit tests passed (`src/app/(app)/recipes/page.test.tsx`); 13 Playwright E2E tests passed (`e2e/recipes.spec.ts`), including Surprise Me alternate promotion; 32 API integration tests passed (`RecipeSearchIntegrationTests`); PWA typecheck and lint passed; whitespace diff checks clean.
+Blocker or next action: Clean worktree ready for push/deployment review; live NAS/endpoint performance measurements remain separate standing items.
