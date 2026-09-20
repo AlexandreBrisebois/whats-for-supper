@@ -22,6 +22,7 @@ const MOCK_SEARCH_RESULTS = {
     notes: null,
     reasons: [{ source: 'name-match', label: 'Name matches your search' }],
     plannerFitNote: null,
+    isPromotionEligible: true,
   },
   secondary: [
     {
@@ -34,6 +35,7 @@ const MOCK_SEARCH_RESULTS = {
       notes: null,
       reasons: [{ source: 'name-match', label: 'Name matches your search' }],
       plannerFitNote: null,
+      isPromotionEligible: true,
     },
     {
       id: MOCK_IDS.RECIPE_TACOS,
@@ -45,6 +47,7 @@ const MOCK_SEARCH_RESULTS = {
       notes: null,
       reasons: [{ source: 'name-match', label: 'Name matches your search' }],
       plannerFitNote: null,
+      isPromotionEligible: true,
     },
   ],
 };
@@ -166,6 +169,24 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toContainText(
       /READY IN 20 MINS/i
     );
+  });
+
+  test('Surprise Me promotes a different server-eligible result from the current search', async ({
+    page,
+  }) => {
+    await page.goto('/recipes');
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+
+    const topPick = page.getByTestId('recipe-card-top-pick');
+    await expect(topPick).toContainText('Homemade Lasagna');
+    const surpriseMe = page.getByRole('button', { name: 'Surprise me — show a different pick' });
+    await expect(surpriseMe).toBeEnabled();
+
+    await surpriseMe.click();
+
+    await expect(topPick).not.toContainText('Homemade Lasagna');
+    await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible();
   });
 
   test('planning mode can be cancelled back to the planner', async ({ page }) => {

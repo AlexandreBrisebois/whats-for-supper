@@ -335,7 +335,7 @@ public partial class RecipeSearchService(
         var ranked = await GetBrowseRankedRecipesAsync(recipesQuery, filters, weekOffset, ct);
         var recipes = ranked.Take(limit + 2).Select(candidate => candidate.Recipe).ToList();
         var candidates = BuildDefaultCandidates(recipes, filters);
-        var promotionEligibleIds = ranked.Where(candidate => candidate.IsCalendarEligible).Select(candidate => candidate.Recipe.Id).ToHashSet();
+        var promotionEligibleIds = ranked.Where(candidate => candidate.IsPromotionEligible).Select(candidate => candidate.Recipe.Id).ToHashSet();
         var reportStatuses = await GetReportStatusesAsync(candidates.Select(candidate => candidate.Recipe.Id), ct);
         var reviewFilterActive = filters.ReportedOnly == true || filters.ReadyToReviewOnly == true;
         var topPick = reviewFilterActive ? null : candidates.FirstOrDefault(candidate =>
@@ -379,7 +379,7 @@ public partial class RecipeSearchService(
             afterPosition = afterPosition.Where(candidate => candidate.Recipe.Id != topPickId);
         var recipes = afterPosition.Take(limit + 1).Select(candidate => candidate.Recipe).ToList();
         var candidates = BuildDefaultCandidates(recipes, continuation.Response.AppliedFilters);
-        var promotionEligibleIds = ranked.Where(candidate => candidate.IsCalendarEligible).Select(candidate => candidate.Recipe.Id).ToHashSet();
+        var promotionEligibleIds = ranked.Where(candidate => candidate.IsPromotionEligible).Select(candidate => candidate.Recipe.Id).ToHashSet();
         var reportStatuses = await GetReportStatusesAsync(candidates.Select(candidate => candidate.Recipe.Id), ct);
         var results = candidates.Take(limit).Select(candidate => MapResult(candidate, reportStatuses, promotionEligibleIds.Contains(candidate.Recipe.Id))).ToList();
         var response = RecipeSearchContinuationStore.Clone(continuation.Response);

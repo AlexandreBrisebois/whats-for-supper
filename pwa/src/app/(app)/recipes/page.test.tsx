@@ -379,7 +379,7 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
   });
 
-  it('top-pick-feeling-lucky never promotes a recipe with an active import report', async () => {
+  it('top-pick-feeling-lucky ignores ineligible and import-issue results', async () => {
     mocks.searchRecipes.mockResolvedValue(
       makeSearchResponse({
         results: [
@@ -387,6 +387,11 @@ describe('RecipesPage', () => {
             ...makeSearchResult(2),
             name: 'Reported Chicken',
             importIssueStatus: 'reported',
+          },
+          {
+            ...makeSearchResult(4),
+            name: 'Ineligible Chicken',
+            isPromotionEligible: false,
           },
           {
             ...makeSearchResult(3),
@@ -411,6 +416,43 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Eligible Chicken');
     expect(screen.getByText('Reported Chicken')).toBeInTheDocument();
     randomSpy.mockRestore();
+  });
+
+  it('leaves the current result set intact and makes Surprise Me unavailable without an eligible alternate', async () => {
+    mocks.searchRecipes.mockResolvedValue(
+      makeSearchResponse({
+        results: [
+          {
+            ...makeSearchResult(2),
+            name: 'Ineligible Chicken',
+            isPromotionEligible: false,
+          },
+          {
+            ...makeSearchResult(3),
+            name: 'Reported Chicken',
+            importIssueStatus: 'readyToReview',
+          },
+        ],
+      })
+    );
+
+    await act(async () => {
+      render(<RecipesPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Chicken Soup');
+    });
+
+    const callsBefore = mocks.searchRecipes.mock.calls.length;
+    const surpriseMe = screen.getByTestId('top-pick-feeling-lucky');
+    expect(surpriseMe).toBeDisabled();
+    expect(surpriseMe).toHaveAccessibleDescription('No eligible alternate pick is available');
+
+    fireEvent.click(surpriseMe);
+
+    expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Chicken Soup');
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(callsBefore);
   });
 
   it('loads more search results from an infinite-scroll sentinel instead of a manual button', async () => {
@@ -617,6 +659,50 @@ describe('RecipesPage', () => {
       );
     });
     expect(await screen.findByText('Fresh after schedule change')).toBeInTheDocument();
+  });
+
+  it('retains active filters, Focus concepts, and planning context when promotion eligibility refreshes', async () => {
+    mocks.setSearchParams('addToDay=2&weekOffset=1');
+    mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ resultPath: 'browse' }));
+
+    await act(async () => {
+      render(<RecipesPage />);
+    });
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByTestId('mobile-filters-button'));
+    const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Supper' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Beef' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
+
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: '',
+          weekOffset: 1,
+          dayIndex: 2,
+          filters: { mealTypes: ['Supper'] },
+          preferences: { concepts: ['beef'] },
+        })
+      );
+    });
+
+    await act(async () => {
+      useSearchPromotionStore.getState().invalidate();
+    });
+
+    await waitFor(() => {
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: '',
+          weekOffset: 1,
+          dayIndex: 2,
+          filters: { mealTypes: ['Supper'] },
+          preferences: { concepts: ['beef'] },
+        })
+      );
+    });
   });
 
   it('renders the empty state when search returns no top pick and no results', async () => {

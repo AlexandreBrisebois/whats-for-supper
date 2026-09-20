@@ -232,8 +232,12 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         using var document = await ReadDataAsync(await PostSearchAsync(new { query = "", limit = 12 }));
 
         Assert.Equal(favorite.Id, document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
-        Assert.Contains(disliked.Id, SearchResultIds(document.RootElement));
-        Assert.Contains(neverCookedLiked.Id, SearchResultIds(document.RootElement));
+        Assert.True(document.RootElement.GetProperty("topPick").GetProperty("isPromotionEligible").GetBoolean());
+        var results = document.RootElement.GetProperty("results").EnumerateArray().ToList();
+        Assert.Contains(results, result => result.GetProperty("id").GetGuid() == disliked.Id &&
+            !result.GetProperty("isPromotionEligible").GetBoolean());
+        Assert.Contains(results, result => result.GetProperty("id").GetGuid() == neverCookedLiked.Id &&
+            !result.GetProperty("isPromotionEligible").GetBoolean());
     }
 
     [Fact]
@@ -254,7 +258,9 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         using var document = await ReadDataAsync(await PostSearchAsync(new { query = "", limit = 12, weekOffset = 0 }));
 
         Assert.Equal(fallback.Id, document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
-        Assert.Contains(favorite.Id, SearchResultIds(document.RootElement));
+        var guardedFavorite = document.RootElement.GetProperty("results").EnumerateArray()
+            .Single(result => result.GetProperty("id").GetGuid() == favorite.Id);
+        Assert.False(guardedFavorite.GetProperty("isPromotionEligible").GetBoolean());
     }
 
     [Fact]
@@ -357,8 +363,11 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = await ReadDataAsync(response);
-        var topPick = document.RootElement.GetProperty("topPick");
-        Assert.Equal("Newest Recipe", topPick.GetProperty("name").GetString());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("topPick").ValueKind);
+        Assert.Equal(
+            new[] { "Newest Recipe", "Older Recipe" },
+            document.RootElement.GetProperty("results").EnumerateArray()
+                .Select(result => result.GetProperty("name").GetString()));
     }
 
     [Fact]
@@ -527,12 +536,12 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = await ReadDataAsync(response);
-        var topPick = document.RootElement.GetProperty("topPick");
         var results = document.RootElement.GetProperty("results").EnumerateArray().ToList();
 
-        Assert.Equal(oldest.Id, topPick.GetProperty("id").GetGuid());
-        Assert.Equal(middle.Id, results[0].GetProperty("id").GetGuid());
-        Assert.Equal(newest.Id, results[1].GetProperty("id").GetGuid());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("topPick").ValueKind);
+        Assert.Equal(oldest.Id, results[0].GetProperty("id").GetGuid());
+        Assert.Equal(middle.Id, results[1].GetProperty("id").GetGuid());
+        Assert.Equal(newest.Id, results[2].GetProperty("id").GetGuid());
     }
 
     [Fact]

@@ -92,6 +92,7 @@ export default function RecipesPage() {
   const [isSubmittingPhotos, setIsSubmittingPhotos] = useState(false);
   const [pantrySnapshotId, setPantrySnapshotId] = useState<string | null>(null);
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
+  const [dataPromotionVersion, setDataPromotionVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(() =>
@@ -203,6 +204,7 @@ export default function RecipesPage() {
       nextPreferences?: RecipeSearchPreferencesDto
     ) => {
       const generation = ++requestGenerationRef.current;
+      const promotionVersion = useSearchPromotionStore.getState().version;
       continuationGenerationRef.current = null;
       setIsLoading(true);
       try {
@@ -221,12 +223,21 @@ export default function RecipesPage() {
           filters: Object.keys(filters).length > 0 ? filters : undefined,
           preferences: Object.keys(preferences).length > 0 ? preferences : undefined,
         });
-        if (generation !== requestGenerationRef.current) return;
+        if (
+          generation !== requestGenerationRef.current ||
+          promotionVersion !== useSearchPromotionStore.getState().version
+        )
+          return;
         setData(response);
+        setDataPromotionVersion(promotionVersion);
         setSimilarToRecipeId(nextSimilarToRecipeId ?? null);
       } catch (error) {
         console.error('Failed to search recipes', error);
-        if (generation !== requestGenerationRef.current) return;
+        if (
+          generation !== requestGenerationRef.current ||
+          promotionVersion !== useSearchPromotionStore.getState().version
+        )
+          return;
         setData({
           topPick: null,
           results: [],
@@ -235,6 +246,7 @@ export default function RecipesPage() {
           resultPath: 'lexical-only',
           nextCursor: null,
         });
+        setDataPromotionVersion(promotionVersion);
       } finally {
         if (generation === requestGenerationRef.current) setIsLoading(false);
       }
@@ -245,6 +257,7 @@ export default function RecipesPage() {
   useEffect(() => {
     let isActive = true;
     const generation = ++requestGenerationRef.current;
+    const promotionVersion = useSearchPromotionStore.getState().version;
     continuationGenerationRef.current = null;
 
     void (async () => {
@@ -258,10 +271,21 @@ export default function RecipesPage() {
           similarToRecipeId: similarToRecipeId ?? undefined,
         });
 
-        if (!isActive || generation !== requestGenerationRef.current) return;
+        if (
+          !isActive ||
+          generation !== requestGenerationRef.current ||
+          promotionVersion !== useSearchPromotionStore.getState().version
+        )
+          return;
         setData(response);
+        setDataPromotionVersion(promotionVersion);
       } catch (error) {
-        if (!isActive || generation !== requestGenerationRef.current) return;
+        if (
+          !isActive ||
+          generation !== requestGenerationRef.current ||
+          promotionVersion !== useSearchPromotionStore.getState().version
+        )
+          return;
         console.error('Failed to search recipes', error);
         setData({
           topPick: null,
@@ -271,6 +295,7 @@ export default function RecipesPage() {
           resultPath: 'lexical-only',
           nextCursor: null,
         });
+        setDataPromotionVersion(promotionVersion);
       } finally {
         if (isActive && generation === requestGenerationRef.current) {
           setIsLoading(false);
@@ -550,6 +575,7 @@ export default function RecipesPage() {
     void runSearch(query, similarToRecipeId, filters, undefined, undefined, preferences);
   };
 
+  const isPromotionDataCurrent = dataPromotionVersion === searchPromotionVersion;
   const { topPick, results } = data ?? { topPick: null, results: [] };
   const activeFilterCount =
     Object.values(activeFilters).reduce(
@@ -558,9 +584,14 @@ export default function RecipesPage() {
     ) + (activePreferences.concepts?.length ?? 0);
   const hasActiveFilters = activeFilterCount > 0;
   const hasReviewFilters = Boolean(activeFilters.reportedOnly || activeFilters.readyToReviewOnly);
-  const displayedTopPick = hasReviewFilters ? null : topPick;
-  const showEmptyState = !isLoading && displayedTopPick == null && results.length === 0;
-  const hasMoreResults = Boolean(data?.nextCursor);
+  const displayedTopPick = isPromotionDataCurrent && !hasReviewFilters ? topPick : null;
+  const displayedResults = isPromotionDataCurrent ? results : [];
+  const showEmptyState =
+    !isLoading &&
+    isPromotionDataCurrent &&
+    displayedTopPick == null &&
+    displayedResults.length === 0;
+  const hasMoreResults = isPromotionDataCurrent && Boolean(data?.nextCursor);
 
   const handleShowMore = useCallback(async () => {
     if (isLoading || !hasMoreResults) return;
@@ -568,6 +599,7 @@ export default function RecipesPage() {
     const cursor = data?.nextCursor;
     if (!cursor) return;
     const generation = requestGenerationRef.current;
+    const promotionVersion = useSearchPromotionStore.getState().version;
     if (continuationGenerationRef.current === generation) return;
     continuationGenerationRef.current = generation;
     setIsLoadingMore(true);
@@ -587,7 +619,11 @@ export default function RecipesPage() {
         filters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
         preferences: Object.keys(activePreferences).length > 0 ? activePreferences : undefined,
       });
-      if (generation !== requestGenerationRef.current) return;
+      if (
+        generation !== requestGenerationRef.current ||
+        promotionVersion !== useSearchPromotionStore.getState().version
+      )
+        return;
       setData((current) => {
         if (!current) return current;
         const known = new Set(current.results.map((recipe) => recipe.id));
@@ -627,13 +663,19 @@ export default function RecipesPage() {
 
   const handleFeelLucky = () => {
     setData((currentData) => {
-      if (!currentData || currentData.results.length === 0) {
-        void runSearch(query, null, activeFilters, pantrySnapshotId, limit);
+      if (
+        !currentData ||
+        dataPromotionVersion !== useSearchPromotionStore.getState().version ||
+        currentData.results.length === 0
+      ) {
         return currentData;
       }
 
       const eligibleResults = currentData.results.filter(
-        (recipe) => recipe.isPromotionEligible && !recipe.importIssueStatus
+        (recipe) =>
+          recipe.id !== currentData.topPick?.id &&
+          recipe.isPromotionEligible &&
+          !recipe.importIssueStatus
       );
       if (eligibleResults.length === 0) {
         return currentData;
@@ -655,6 +697,16 @@ export default function RecipesPage() {
       };
     });
   };
+
+  const hasEligibleAlternate = Boolean(
+    isPromotionDataCurrent &&
+    data?.results.some(
+      (recipe) =>
+        recipe.id !== displayedTopPick?.id &&
+        recipe.isPromotionEligible &&
+        !recipe.importIssueStatus
+    )
+  );
 
   useEffect(() => {
     const sentinel = resultsSentinelRef.current;
@@ -1045,7 +1097,7 @@ export default function RecipesPage() {
 
       {/* Results Section */}
       <div className="flex flex-col gap-4">
-        {isLoading ? (
+        {isLoading || !isPromotionDataCurrent ? (
           <div className="flex h-48 w-full items-center justify-center">
             <Loader2 className="animate-spin text-ochre" size={48} data-testid="recipe-loader" />
           </div>
@@ -1119,11 +1171,18 @@ export default function RecipesPage() {
                     e.stopPropagation();
                     handleFeelLucky();
                   }}
+                  disabled={!hasEligibleAlternate}
                   className="absolute top-5 right-5 z-20 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all"
                   aria-label="Surprise me — show a different pick"
+                  aria-describedby={!hasEligibleAlternate ? 'surprise-me-unavailable' : undefined}
                 >
                   <Dices size={16} />
                 </button>
+                {!hasEligibleAlternate && (
+                  <span id="surprise-me-unavailable" className="sr-only">
+                    No eligible alternate pick is available
+                  </span>
+                )}
 
                 <div className="relative w-full aspect-[16/10] min-h-[240px] rounded-[2.5rem] overflow-hidden shadow-2xl glass-solar border border-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1175,7 +1234,7 @@ export default function RecipesPage() {
 
             {/* Secondary Results */}
             <div className="grid grid-cols-2 gap-4">
-              {results.map((recipe, idx) => (
+              {displayedResults.map((recipe, idx) => (
                 <motion.div
                   key={recipe.id}
                   initial={{ opacity: 0, y: 20 }}
