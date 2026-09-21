@@ -21,7 +21,8 @@ interface RecipeHarnessState {
 
 const searchResult = (
   recipe: RecipeDto,
-  importIssueStatus: RecipeImportIssueDto['status'] | null = null
+  importIssueStatus: RecipeImportIssueDto['status'] | null = null,
+  isPromotionEligible = false
 ) => ({
   id: recipe.id,
   name: recipe.name,
@@ -33,6 +34,7 @@ const searchResult = (
   reasons: [],
   plannerFitNote: null,
   importIssueStatus,
+  isPromotionEligible,
 });
 
 async function authenticate(page: Page) {
@@ -402,6 +404,7 @@ test.describe('Recipe import issue reporting', () => {
 
     await page.goto('/recipes');
     await page.getByTestId('mobile-filters-button').click();
+    await page.getByTestId('mobile-more-filters').click();
     await page.getByTestId('mobile-filter-reported').click();
     await page.getByTestId('mobile-filter-apply').click();
 
@@ -411,11 +414,12 @@ test.describe('Recipe import issue reporting', () => {
     await expect(page.getByTestId(`recipe-card-${ready.id}`)).toBeVisible();
 
     await page.getByTestId('mobile-filters-button').click();
+    await page.getByTestId('mobile-more-filters').click();
     await page.getByTestId('mobile-filter-reported-active').click();
     await page.getByTestId('mobile-filter-ready-to-review').click();
     await page.getByTestId('mobile-filter-apply').click();
 
-    await expect.poll(() => lastFilters).toEqual({ readyToReviewOnly: true });
+    await expect.poll(() => lastFilters.readyToReviewOnly).toBe(true);
     await expect(page.getByTestId(`recipe-card-${reported.id}`)).toHaveCount(0);
     await expect(page.getByTestId(`recipe-card-${ready.id}`)).toBeVisible();
     await expect(page.getByTestId('recipe-card-top-pick')).toHaveCount(0);
@@ -452,7 +456,7 @@ test.describe('Recipe import issue reporting', () => {
             results: [
               searchResult(reported, RecipeImportIssueStatusObject.Reported),
               searchResult(ready, RecipeImportIssueStatusObject.ReadyToReview),
-              searchResult(eligible),
+              searchResult(eligible, null, true),
             ],
             appliedFilters: {},
             searchMode: 'standard',

@@ -16,12 +16,13 @@ namespace RecipeApi.Tests.Integration;
 
 public class RecipeSearchIntegrationTests : IAsyncLifetime
 {
+    private static readonly DateTimeOffset TestNow = new(2026, 9, 20, 12, 0, 0, TimeSpan.Zero);
     private TestWebApplicationFactory _factory = null!;
     private HttpClient _client = null!;
 
     public async Task InitializeAsync()
     {
-        _factory = await TestWebApplicationFactory.CreateAsync(new FixedClock(new DateTimeOffset(2026, 9, 20, 12, 0, 0, TimeSpan.Zero)));
+        _factory = await TestWebApplicationFactory.CreateAsync(new FixedClock(TestNow));
         _client = _factory.CreateClient();
     }
 
@@ -1246,7 +1247,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
     private static DateOnly GetMondayForWeekOffset(int weekOffset)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(TestNow.UtcDateTime);
         var monday = today.AddDays(-(7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7);
         return monday.AddDays(weekOffset * 7);
     }

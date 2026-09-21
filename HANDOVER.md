@@ -4,6 +4,15 @@ Load for resumption or active-state ambiguity via `task agent:status`. These
 checkpoints are context, not authority. Follow the shared
 [handoff procedure](.agents/core/execution-harness.md#evidence-and-meaningful-handoffs).
 
+## Discovery rotation — reviewed proposal
+
+Task/spec: [Discovery rotation](.kiro/specs/discovery-rotation/tasks.md), with [review](.kiro/specs/discovery-rotation/review.md).
+Worktree/branch: `/Users/alex/Code/whats-for-supper`; starting HEAD `419ae3f6ef65c8d9c8387c9178f718e36f12398a`; baseline `/private/tmp/wfs-discovery-spec-baseline-20260920T201801`.
+Authorized scope and source: User requested spec-writer/spec-reviewer output with minimal code changes, selected single active-vote-first ordering, and explicitly preserved the global vote purge. Specification only.
+Current checkpoint: Requirements/design/tasks reviewed; no unresolved blocking review findings. Existing API shapes, database, purge and planner ranking remain unchanged by the proposal; Discovery owns calendar exclusion, weekly rotation and live reconciliation.
+Verification evidence and content identity: Documentation checks and task-local scope review recorded in the spec review; final hashes in baseline `spec-final-scope.json`. No application edits or application/runtime checks. Unrelated staged and concurrent test changes preserved.
+Blocker or next action: Select DR-1 explicitly before implementation; no implementation task is selected by this handoff.
+
 ## Public Synology release
 
 Task/spec: [.kiro/specs/01-public-synology-release](.kiro/specs/01-public-synology-release/tasks.md).
