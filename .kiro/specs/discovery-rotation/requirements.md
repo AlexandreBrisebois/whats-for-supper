@@ -4,10 +4,11 @@ Status: reviewed proposal; specification only. Implementation is not selected.
 
 ## Outcome and decisions
 
-Discovery should help the household finish active voting decisions while rotating
-the remaining recipes by time since cooking or planning. The user selected a
-**single order: active votes first, then rotation**, and explicitly required the
-**existing global vote purge to remain unchanged**. Minimise code changes.
+Discovery should remain a continuous, low-pressure pre-voting activity while it
+helps the household finish an explicitly opened meal-plan vote. The user selected
+a **single order: active votes first, then rotation**, and explicitly required the
+**existing global vote purge to remain unchanged**. Closing a week must never
+open another week automatically. Minimise code changes.
 
 This proposal interprets active-vote priority as descending current Like count,
 retaining the existing API's convergence priority. Within equal counts, use weekly
@@ -22,17 +23,47 @@ represent favourites/likes. No new cooldown setting or preference model.
 
 ## Scope and non-goals
 
-Change Discovery eligibility, ordering, presentation order and reconciliation
-after existing vote/calendar events. Keep the Supper-only UI and existing filters,
-identity, voting controls, vote payloads and response shapes.
+Change Discovery eligibility, ordering, its authoritative voting-target context,
+presentation order and reconciliation after existing vote/calendar events. Keep
+the Supper-only UI, existing filters, identity and vote-write payloads.
 
 Do not change either global or per-recipe vote purge, vote expiry, consensus
 thresholds, planner smart-default ranking/assignment, Search/Surprise Me,
-Dreaming affinity, rating writes, database schema/views, generated clients, or
-navigation/visual design. No new endpoint, event type, queue service, background
-job, settings UI, migration or shared ranking framework.
+Dreaming affinity, rating writes, database schema/views, event types, queue
+service, background job, settings UI, migration or shared ranking framework.
+The additive Discovery response/context contract and its generated client are in
+scope because the UI must distinguish a full target plan from genuine recipe
+exhaustion. No new endpoint is required.
 
 ## Acceptance
+
+### DR-R0 — Continuous pre-votes and an explicit target week
+
+1. Discovery remains available and accepts votes when no planner week is open
+   for voting. Those votes are the standing pre-vote pool; do not hide the stack,
+   fabricate a target, or block the controls merely because no week is open.
+2. Locking a week preserves both existing global-purge implementations exactly.
+   It does not open another week. Votes cast after that purge remain available
+   when the planner later explicitly opens a week for voting.
+3. Explicitly opening a planner week for voting makes that one week the target
+   for the standing pre-vote pool. Opening does not clear, copy or recreate the
+   pool. The target is not assumed to be the next chronological week; it is the
+   actual week selected by the planner. Existing consensus/default processing
+   uses that target week rather than a hard-coded current-week offset; its
+   threshold, ranking and assignment rules otherwise remain unchanged.
+4. At most one week may be `VotingOpen`. An attempt to open another week while a
+   target is already open fails clearly and leaves both plans and the vote pool
+   unchanged. This is the smallest unambiguous policy for the existing global
+   `RecipeVotes` table.
+5. Discovery must receive an authoritative context on every load: no target, or
+   the target week's UTC Monday and its remaining actionable dinner-slot count.
+   A target is full when every Monday--Sunday dinner date has a recipe in a
+   non-`Skipped` calendar event. A null recipe and a skipped event leave a slot
+   available. Do not infer this state in the PWA.
+6. When the target is full, Discovery returns an intentional `TargetWeekFull`
+   empty reason and no cards for every category. This is capacity policy, not
+   recipe exhaustion. Removing a target-week recipe restores normal server
+   discovery on refresh or an existing invalidation.
 
 ### DR-R1 — Calendar eligibility independent of votes
 
@@ -77,13 +108,15 @@ job, settings UI, migration or shared ranking framework.
 
 ### DR-R3 — First API result is the first voting card
 
-1. Array index zero is the front throughout the store, rendering, top-four
+1. `recipes[0]` in the authoritative Discovery response is the front throughout
+   the store, rendering, top-four
    selection, visible-removal badge and both voting buttons/swipe callbacks.
 2. A fixture with at least six distinct recipes proves the first returned ID is
    displayed as front and submitted by the first vote, followed by the second ID.
    Seeing a recipe somewhere in the DOM is insufficient evidence.
 3. Preserve existing interaction labels, layout, swipe animations and pending-card
-   navigation indicator. Empty stacks retain the existing refresh action.
+   navigation indicator. Ordinary exhausted stacks retain the existing refresh
+   action; `TargetWeekFull` uses the separate completed-plan state in DR-R0.
 
 ### DR-R4 — Live convergence follows the server order
 
@@ -100,8 +133,11 @@ job, settings UI, migration or shared ranking framework.
 4. A positive vote on a recipe formerly below the visible four makes it next
    after the retained front when the server ranks it first. A zero Like count
    removes any event-driven interest flag and must not invent interest.
-5. Empty stacks can become nonempty after vote purge, plan removal or reconnect.
-   Supper remains the fetch context even when the store's active category is null.
+5. Empty stacks can become nonempty after vote purge, target-plan removal or
+   reconnect. Supper remains the fetch context even when the store's active
+   category is null. A `TargetWeekFull` state stops category wraparound and is
+   replaced only by a fresh authoritative context; genuine exhaustion retains
+   the existing category scan and refresh behaviour.
 6. Ignore responses from an earlier member/category/request or from before a newer
    invalidation. A vote during a refresh cannot resurrect the locally removed
    card. Cover invalidations during initial loading and empty states, overlapping
@@ -115,9 +151,11 @@ job, settings UI, migration or shared ranking framework.
 
 ### DR-R5 — Minimal scope and compatibility
 
-1. `GET /api/discovery` and `/categories` keep their existing response schemas;
-   vote POST and SSE payloads are unchanged. Describe ordering/eligibility in
-   OpenAPI prose only. Keep API-owned ranking out of the PWA.
+1. `GET /api/discovery` becomes an additive envelope containing the existing
+   ordered recipe DTOs plus the authoritative target context and empty reason.
+   `GET /categories`, vote POST and SSE payloads are unchanged. Document the
+   envelope, ordering and eligibility in OpenAPI; regenerate the client. Keep
+   API-owned ranking, capacity and target selection out of the PWA.
 2. Preserve both purge implementations and the existing planner threshold/event
    path. Reaching consensus still produces existing planner suggestions; changing
    their subsequent ranking or assignment is not part of this spec.
@@ -129,8 +167,9 @@ job, settings UI, migration or shared ranking framework.
 ## Boundaries and unresolved decisions
 
 No unresolved product decision blocks this reviewed proposal. The user-approved
-single-order tradeoff and unchanged purge are mandatory. Other explicit defaults
-above are proposed specification details, not a claim that implementation is
-approved. Planner smart defaults currently have their own recent-cooked-first
-tie-break and recipe-duplication concerns; those remain a separate investigation
-follow-up, not hidden tasks in this minimal Discovery change.
+single-order tradeoff, continuous pre-voting, explicit target selection and
+unchanged purge are mandatory. Other explicit defaults above are proposed
+specification details, not a claim that implementation is approved. Planner smart
+defaults currently have their own recent-cooked-first tie-break and
+recipe-duplication concerns; those remain a separate investigation follow-up,
+not hidden tasks in this bounded Discovery change.

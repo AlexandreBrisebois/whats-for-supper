@@ -10,15 +10,23 @@ CREATE TABLE IF NOT EXISTS recipe_search_filter_state (
     cuisine_payload jsonb NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS recipe_search_affinity_facts (
-    recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
-    affinity integer NOT NULL,
-    last_cooked_on date,
-    generated_at timestamptz NOT NULL
-);
+-- Compatibility runs before sqldef applies schema.sql. Existing installations
+-- already have recipes; fresh installs receive this table from schema.sql.
+DO $$
+BEGIN
+    IF to_regclass('public.recipes') IS NOT NULL THEN
+        CREATE TABLE IF NOT EXISTS recipe_search_affinity_facts (
+            recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
+            affinity integer NOT NULL,
+            last_cooked_on date,
+            generated_at timestamptz NOT NULL
+        );
 
-CREATE INDEX IF NOT EXISTS idx_recipe_search_affinity_facts_generated_at
-    ON recipe_search_affinity_facts (generated_at);
+        CREATE INDEX IF NOT EXISTS idx_recipe_search_affinity_facts_generated_at
+            ON recipe_search_affinity_facts (generated_at);
+    END IF;
+END
+$$;
 
 -- Task 2 search sidecar lifecycle is additive. Existing vectors have no
 -- trustworthy content fingerprint and are deliberately made semantically
