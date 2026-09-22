@@ -14,6 +14,15 @@ const MOCK_STACK = [
   builders.recipe({ id: MOCK_IDS.RECIPE_CARBONARA, name: 'Mock Comfort Classic' }),
 ];
 
+const ORDERED_SIX_RECIPE_STACK = [
+  builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Oldest ranked recipe' }),
+  builders.recipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Second ranked recipe' }),
+  builders.recipe({ id: MOCK_IDS.RECIPE_GNOCCHI, name: 'Third ranked recipe' }),
+  builders.recipe({ id: MOCK_IDS.RECIPE_CARBONARA, name: 'Fourth ranked recipe' }),
+  builders.recipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Fifth ranked recipe' }),
+  builders.recipe({ id: MOCK_IDS.RECIPE_TACOS, name: 'Recently cooked recipe' }),
+];
+
 test.describe('Discovery Flow', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -87,6 +96,51 @@ test.describe('Discovery Flow', () => {
     await page.goto('/discovery');
     await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('discovery-card').first()).toBeVisible();
+  });
+
+  test('presents and votes for the first server-ranked recipe', async ({ page }) => {
+    const voteIds: string[] = [];
+
+    await page.route(
+      (url) => url.pathname.endsWith('/api/discovery') && !url.pathname.includes('/vote'),
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: ORDERED_SIX_RECIPE_STACK }),
+        });
+      }
+    );
+    await page.route(
+      (url) => url.pathname.includes('/api/discovery/') && url.pathname.endsWith('/vote'),
+      async (route) => {
+        voteIds.push(route.request().url().split('/').at(-2) ?? '');
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
+
+    await page.goto('/discovery');
+    await expect(page.getByTestId('discovery-loader')).not.toBeVisible({ timeout: 15_000 });
+
+    const cards = page.getByTestId('discovery-card');
+    await expect(cards).toHaveCount(4);
+    await expect(page.locator('[data-testid="discovery-card"][data-front="true"]')).toContainText(
+      'Oldest ranked recipe'
+    );
+    await expect(
+      cards.evaluateAll((elements) => elements.map((element) => element.dataset.recipeId))
+    ).resolves.toEqual(ORDERED_SIX_RECIPE_STACK.slice(0, 4).map((recipe) => recipe.id));
+    await expect(page.getByText('Recently cooked recipe')).not.toBeVisible();
+
+    await page.getByTestId('like-button').click();
+    await expect.poll(() => voteIds).toEqual([MOCK_IDS.RECIPE_LASAGNA]);
+
+    await page.getByTestId('dislike-button').click();
+    await expect.poll(() => voteIds).toEqual([MOCK_IDS.RECIPE_LASAGNA, MOCK_IDS.RECIPE_CHICKEN]);
   });
 
   test('should swipe through pinned Supper stack and show summary', async ({ page }) => {

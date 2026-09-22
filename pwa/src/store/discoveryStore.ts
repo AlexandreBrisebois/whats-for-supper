@@ -65,41 +65,24 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
   discoveryStack: [],
 
   setStack(recipes) {
-    set({ discoveryStack: recipes });
+    set({ discoveryStack: recipes.map((recipe, queueOrder) => ({ ...recipe, queueOrder })) });
   },
 
-  applyVoteUpdate({ recipeId }) {
+  applyVoteUpdate({ recipeId, voteCount }) {
     const stack = get().discoveryStack;
     const idx = stack.findIndex((r) => r.id === recipeId);
     if (idx === -1) return; // recipe not in stack — no-op
 
-    const recipe = stack[idx];
-    const wasInterested = recipe.hasFamilyInterest ?? false;
-    const updated = { ...recipe, hasFamilyInterest: true };
-
-    // If interest didn't flip, just update in-place
-    if (wasInterested) {
-      const next = stack.map((r) => (r.id === recipeId ? updated : r));
-      set({ discoveryStack: next });
-      return;
-    }
-
-    // Interest flipped to true — apply re-rank rule
-    // Position 0 is locked (top card). Positions 1–3 can move up by at most 2.
-    // Positions 4+ are updated in-place only.
-    if (idx === 0 || idx >= 4) {
-      // Top card locked, or outside visible stack — update in-place only
-      const next = stack.map((r) => (r.id === recipeId ? updated : r));
-      set({ discoveryStack: next });
-      return;
-    }
-
-    // idx is 1, 2, or 3 — move up by at most 2, never to position 0
-    const targetIdx = Math.max(1, idx - 2);
-    const next = [...stack];
-    next.splice(idx, 1);
-    next.splice(targetIdx, 0, updated);
-    set({ discoveryStack: next });
+    const updated = stack.map((recipe) =>
+      recipe.id === recipeId ? { ...recipe, voteCount, hasFamilyInterest: voteCount > 0 } : recipe
+    );
+    const [front, ...tail] = updated;
+    if (!front) return;
+    tail.sort(
+      (left, right) =>
+        right.voteCount - left.voteCount || (left.queueOrder ?? 0) - (right.queueOrder ?? 0)
+    );
+    set({ discoveryStack: [front, ...tail] });
   },
 
   removeFromStack(recipeId) {

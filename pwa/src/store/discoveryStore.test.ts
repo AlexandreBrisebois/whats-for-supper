@@ -9,6 +9,7 @@ const makeRecipe = (id: string, hasFamilyInterest = false): DiscoveryRecipe => (
   imageUrl: '',
   totalTime: '',
   category: '',
+  voteCount: hasFamilyInterest ? 1 : 0,
   hasFamilyInterest,
 });
 
@@ -120,7 +121,7 @@ describe('discoveryStore — applyVoteUpdate', () => {
     expect(stack[0].hasFamilyInterest).toBe(true);
   });
 
-  it('does NOT re-rank a position-4+ card (updates in-place only)', () => {
+  it('re-ranks a position-4+ card across the full tail while keeping the front locked', () => {
     useDiscoveryStore.getState().setStack([
       makeRecipe('r0'),
       makeRecipe('r1'),
@@ -130,14 +131,9 @@ describe('discoveryStore — applyVoteUpdate', () => {
     ]);
     useDiscoveryStore.getState().applyVoteUpdate({ recipeId: 'r4', voteCount: 1 });
     const stack = useDiscoveryStore.getState().discoveryStack;
-    // r4 stays at index 4
-    expect(stack[4].id).toBe('r4');
-    expect(stack[4].hasFamilyInterest).toBe(true);
-    // Order of first 4 unchanged
+    expect(stack[1].id).toBe('r4');
+    expect(stack[1].hasFamilyInterest).toBe(true);
     expect(stack[0].id).toBe('r0');
-    expect(stack[1].id).toBe('r1');
-    expect(stack[2].id).toBe('r2');
-    expect(stack[3].id).toBe('r3');
   });
 });
 

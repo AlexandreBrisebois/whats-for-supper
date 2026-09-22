@@ -1,4 +1,4 @@
-FROM sqldef/psqldef:3.11.19 AS sqldef
+FROM sqldef/psqldef:3.11.23 AS sqldef
 
 FROM postgres:18
 

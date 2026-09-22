@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BUSL--1.1-CD5D45?style=flat-square" alt="Business Source License 1.1" /></a>
-  <img src="https://img.shields.io/badge/.NET-11_Preview-512BD4?style=flat-square&logo=dotnet" alt=".NET 11 Preview" />
+  <img src="https://img.shields.io/badge/.NET-11_RC1-512BD4?style=flat-square&logo=dotnet" alt=".NET 11 RC1" />
   <img src="https://img.shields.io/badge/Next.js-16.3-black?style=flat-square&logo=next.js" alt="Next.js 16.3" />
   <img src="https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql" alt="PostgreSQL 18" />
   <img src="https://img.shields.io/badge/AI-Gemini_Flash-4285F4?style=flat-square&logo=google" alt="Gemini Flash" />

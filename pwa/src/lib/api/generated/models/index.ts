@@ -1950,6 +1950,9 @@ export function deserializeIntoRecipeDto(
     totalTime: (n) => {
       recipeDto.totalTime = n.getStringValue();
     },
+    voteCount: (n) => {
+      recipeDto.voteCount = n.getNumberValue();
+    },
   };
 }
 /**
@@ -3727,6 +3730,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    * The totalTime property
    */
   totalTime?: string | null;
+  /**
+   * Aggregate Like count; populated by Discovery responses.
+   */
+  voteCount?: number | null;
 }
 export type RecipeDto_mealTypes =
   (typeof RecipeDto_mealTypesObject)[keyof typeof RecipeDto_mealTypesObject];
@@ -5111,6 +5118,7 @@ export function serializeRecipeDto(
   writer.writeEnumValue<RecipeDto_sourceType>('sourceType', recipeDto.sourceType);
   writer.writeStringValue('sourceUrl', recipeDto.sourceUrl);
   writer.writeStringValue('totalTime', recipeDto.totalTime);
+  writer.writeNumberValue('voteCount', recipeDto.voteCount);
   writer.writeAdditionalData(recipeDto.additionalData);
 }
 /**

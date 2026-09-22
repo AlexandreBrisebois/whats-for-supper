@@ -989,104 +989,37 @@ describe('RecipesPage', () => {
     expect(mocks.push).toHaveBeenCalledWith('/planner?success=1&dayIndex=2&weekOffset=0');
   });
 
-  describe('Quick filter pills', () => {
-    it('renders all 5 filter pills', async () => {
+  describe('Filter controls', () => {
+    it('uses the full filter chooser instead of desktop-only shortcut pills', async () => {
       await act(async () => {
         render(<RecipesPage />);
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('filter-new-recipes')).toBeInTheDocument();
+        expect(screen.getByTestId('mobile-filters-button')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
-      expect(screen.getByTestId('filter-family-favorite')).toBeInTheDocument();
-      expect(screen.getByTestId('filter-quick')).toBeInTheDocument();
-      expect(screen.getByTestId('filter-not-cooked-long-time')).toBeInTheDocument();
+      expect(screen.queryByTestId('desktop-recipe-filters')).not.toBeInTheDocument();
     });
 
-    it('tapping a filter pill marks it active and fires a new search with the filter', async () => {
+    it('applies a shortcut from the full filter chooser', async () => {
       await act(async () => {
         render(<RecipesPage />);
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
+        expect(screen.getByTestId('mobile-filters-button')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('filter-never-tried'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('filter-never-tried-active')).toBeInTheDocument();
-      });
+      fireEvent.click(screen.getByTestId('mobile-filters-button'));
+      const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Never Tried' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
 
       await waitFor(() => {
         expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
           expect.objectContaining({ filters: expect.objectContaining({ neverCooked: true }) })
         );
-      });
-    });
-
-    it('tapping an active filter pill deactivates it and re-runs search without that filter', async () => {
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('filter-quick')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('filter-quick'));
-      await waitFor(() => expect(screen.getByTestId('filter-quick-active')).toBeInTheDocument());
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('filter-quick-active'));
-      });
-      await waitFor(() => expect(screen.getByTestId('filter-quick')).toBeInTheDocument());
-      expect(screen.queryByTestId('filter-quick-active')).not.toBeInTheDocument();
-    });
-
-    it('combining two filters sends both in the request', async () => {
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('filter-never-tried'));
-      await waitFor(() =>
-        expect(screen.getByTestId('filter-never-tried-active')).toBeInTheDocument()
-      );
-
-      fireEvent.click(screen.getByTestId('filter-quick'));
-      await waitFor(() => expect(screen.getByTestId('filter-quick-active')).toBeInTheDocument());
-
-      await waitFor(() => {
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            filters: expect.objectContaining({ neverCooked: true, quickOnly: true }),
-          })
-        );
-      });
-    });
-
-    it('shows filter-no-results when filters are active and search returns empty', async () => {
-      mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ topPick: null, results: [] }));
-
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('filter-never-tried')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('filter-never-tried'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('filter-no-results')).toBeInTheDocument();
       });
     });
   });
@@ -1123,25 +1056,6 @@ describe('RecipesPage', () => {
       expect(
         within(readyCard).getByLabelText('Import issue status: Reimported — check recipe')
       ).toBeInTheDocument();
-    });
-
-    it('keeps desktop inline filters and adds both review options', async () => {
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      const desktopFilters = await screen.findByTestId('desktop-recipe-filters');
-      expect(within(desktopFilters).getByTestId('filter-healthy')).toBeInTheDocument();
-      expect(within(desktopFilters).getByTestId('filter-reported')).toBeInTheDocument();
-      expect(within(desktopFilters).getByTestId('filter-ready-to-review')).toBeInTheDocument();
-
-      fireEvent.click(within(desktopFilters).getByTestId('filter-reported'));
-
-      await waitFor(() => {
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-          expect.objectContaining({ filters: { reportedOnly: true } })
-        );
-      });
     });
 
     it('uses one mobile Filters button with draft apply, dismiss, clear, and active count', async () => {
@@ -1215,7 +1129,11 @@ describe('RecipesPage', () => {
         render(<RecipesPage />);
       });
 
-      fireEvent.click(await screen.findByTestId('filter-reported'));
+      fireEvent.click(await screen.findByTestId('mobile-filters-button'));
+      const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'More filters' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Reported' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
 
       await waitFor(() => {
         expect(screen.queryByTestId('recipe-card-top-pick')).not.toBeInTheDocument();

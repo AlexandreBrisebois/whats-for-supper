@@ -243,7 +243,7 @@ export function RecipeFiltersSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[140] flex items-end bg-charcoal/40 md:hidden"
+      className="fixed inset-0 z-[140] flex items-end bg-charcoal/40 md:items-center md:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -255,7 +255,7 @@ export function RecipeFiltersSheet({
         onKeyDown={(event) => {
           if (event.key === 'Escape') onClose();
         }}
-        className="flex max-h-[90dvh] w-full flex-col rounded-t-[2rem] bg-cream px-5 pt-5 shadow-2xl"
+        className="flex max-h-[90dvh] w-full flex-col rounded-t-[2rem] bg-cream px-5 pt-5 shadow-2xl md:max-w-2xl md:rounded-[2rem]"
       >
         <div className="mb-3 flex shrink-0 items-center justify-between">
           <h2 id="recipe-filters-title" className="font-heading text-xl font-black text-charcoal">

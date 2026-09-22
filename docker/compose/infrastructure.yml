@@ -1,7 +1,7 @@
 services:
   traefik:
     container_name: whats-for-supper-traefik
-    image: traefik:v3.1
+    image: traefik:v3.7
     restart: unless-stopped
     command:
       - "--api.insecure=true"
@@ -15,7 +15,7 @@ services:
   # ──────────────────────────────────────────────────────────────────────────
   postgres:
     container_name: whats-for-supper-postgres
-    image: pgvector/pgvector:pg18
+    image: pgvector/pgvector:pg18-trixie
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-recipe_app}

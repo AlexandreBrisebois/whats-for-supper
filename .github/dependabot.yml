@@ -13,6 +13,10 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 5
+    # eslint-config-next's current parser/plugin set is incompatible with ESLint 10.
+    ignore:
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions
   - package-ecosystem: "github-actions"

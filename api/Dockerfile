@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1 — Base (Chiseled for Production Runtime)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/aspnet:11.0-preview-resolute-chiseled AS base
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.1-resolute-chiseled AS base
 WORKDIR /app
 EXPOSE 9001
 ENV ASPNETCORE_URLS=http://+:9001
@@ -27,7 +27,7 @@ RUN LIB_PATH=$(find /usr/lib -name "libgssapi_krb5.so.2" | head -n 1 | xargs dir
 # =============================================================================
 # Stage 3 — Development (Hot Reload)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:11.0-preview-resolute AS development
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.1-resolute AS development
 WORKDIR /src
 # Workaround for JIT crashes under QEMU emulation (Mac ARM64 -> Linux AMD64)
 ENV DOTNET_EnableWriteXorExecute=0
@@ -40,7 +40,7 @@ ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls",
 # =============================================================================
 # Stage 4 — Build (Pinned SDK + QEMU Workaround)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:11.0-preview-resolute AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.1-resolute AS build
 WORKDIR /src
 # Workaround for JIT crashes under QEMU emulation (Mac ARM64 -> Linux AMD64)
 ENV DOTNET_EnableWriteXorExecute=0
@@ -70,5 +70,5 @@ ENTRYPOINT ["dotnet", "RecipeApi.dll"]
 # =============================================================================
 FROM production AS demo
 # Install AWS Lambda Web Adapter
-COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.4 /lambda-adapter /opt/extensions/lambda-adapter
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0 /lambda-adapter /opt/extensions/lambda-adapter
 # Inherits ENTRYPOINT and WORKDIR from the production stage

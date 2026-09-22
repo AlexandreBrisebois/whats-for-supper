@@ -154,12 +154,15 @@ class DockerSmokeTests(unittest.TestCase):
     def test_local_and_ci_share_runner_without_dev_overrides(self):
         task = yaml.safe_load((ROOT / 'Taskfile.yml').read_text())
         ci = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())
+        smoke_overrides = yaml.safe_load((ROOT / 'docker/compose/ci-overrides.yml').read_text())
         self.assertEqual(task['tasks']['test:smoke']['cmds'], ['python3 -B scripts/agent/docker_smoke.py'])
         steps = ci['jobs']['docker-smoke']['steps']
         self.assertTrue(any(s.get('run') == 'python3 -B scripts/agent/docker_smoke.py' for s in steps))
         command = self.smoke.compose_command()
         self.assertNotIn('docker/compose/dev-overrides.yml', command)
         self.assertEqual(command.count('-f'), 3)
+        self.assertIn('./traefik_dynamic.yml:/etc/traefik/dynamic.yml:ro',
+                      smoke_overrides['services']['traefik']['volumes'])
 
     def test_all_compose_interpolation_inputs_have_pinned_smoke_values(self):
         inputs = set()

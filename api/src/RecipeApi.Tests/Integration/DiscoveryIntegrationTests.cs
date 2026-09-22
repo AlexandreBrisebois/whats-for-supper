@@ -1,4 +1,5 @@
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
 using RecipeApi.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,7 +63,7 @@ public class DiscoveryIntegrationTests : IAsyncLifetime
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         var json = JsonDocument.Parse(content);
-        var recipes = json.RootElement.GetProperty("data").Deserialize<Recipe[]>(new JsonSerializerOptions 
+        var recipes = json.RootElement.GetProperty("data").Deserialize<RecipeDto[]>(new JsonSerializerOptions
         { 
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
         });
@@ -95,7 +96,7 @@ public class DiscoveryIntegrationTests : IAsyncLifetime
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         var json = JsonDocument.Parse(content);
-        var recipes = json.RootElement.GetProperty("data").Deserialize<Recipe[]>(new JsonSerializerOptions 
+        var recipes = json.RootElement.GetProperty("data").Deserialize<RecipeDto[]>(new JsonSerializerOptions
         { 
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
         });

@@ -429,7 +429,7 @@ test.describe('Recipes Search Page', () => {
     await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=2/);
   });
 
-  test('tapping a filter pill marks it active and includes the filter in the next search request', async ({
+  test('applying a filter from the chooser includes it in the next search request', async ({
     page,
   }) => {
     let lastSearchBody: Record<string, unknown> | null = null;
@@ -454,17 +454,16 @@ test.describe('Recipes Search Page', () => {
 
     await page.goto('/recipes');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId('filter-never-tried')).toBeVisible();
-
-    await page.getByTestId('filter-never-tried').click();
-
-    await expect(page.getByTestId('filter-never-tried-active')).toBeVisible();
+    await expect(page.getByTestId('mobile-filters-button')).toBeVisible();
+    await page.getByTestId('mobile-filters-button').click();
+    await page.getByTestId('mobile-filter-never-tried').click();
+    await page.getByTestId('mobile-filter-apply').click();
     await expect.poll(() => (lastSearchBody as any)?.filters).toMatchObject({ neverCooked: true });
 
     await expect(page.getByTestId('filter-no-results')).toBeVisible();
   });
 
-  test('combining two filter pills sends both filters in the request', async ({ page }) => {
+  test('combining two chooser filters sends both filters in the request', async ({ page }) => {
     let lastSearchBody: Record<string, unknown> | null = null;
 
     await page.unroute('**/api/recipes/search');
@@ -488,11 +487,10 @@ test.describe('Recipes Search Page', () => {
     await page.goto('/recipes');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
 
-    await page.getByTestId('filter-never-tried').click();
-    await expect(page.getByTestId('filter-never-tried-active')).toBeVisible();
-
-    await page.getByTestId('filter-quick').click();
-    await expect(page.getByTestId('filter-quick-active')).toBeVisible();
+    await page.getByTestId('mobile-filters-button').click();
+    await page.getByTestId('mobile-filter-never-tried').click();
+    await page.getByTestId('mobile-filter-quick').click();
+    await page.getByTestId('mobile-filter-apply').click();
 
     await expect
       .poll(() => (lastSearchBody as any)?.filters)

@@ -10,6 +10,9 @@ public class RecipeDto
     [JsonPropertyName("rating")]
     public int? Rating { get; set; }
 
+    [JsonPropertyName("voteCount")]
+    public int? VoteCount { get; set; }
+
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
 

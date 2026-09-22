@@ -132,6 +132,7 @@ components:
           type: array
           items: { type: integer }
         rating: { type: integer }
+        voteCount: { type: [integer, 'null'], description: 'Aggregate Like count; populated by Discovery responses.' }
         isVegetarian: { type: boolean }
         isHealthyChoice: { type: boolean }
         isDiscoverable: { type: boolean }

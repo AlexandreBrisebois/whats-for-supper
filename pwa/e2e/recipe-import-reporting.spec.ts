@@ -533,7 +533,10 @@ test.describe('Recipe import issue reporting', () => {
     });
 
     await page.goto('/recipes');
-    await page.getByTestId('filter-healthy').click();
+    await page.getByTestId('mobile-filters-button').click();
+    await page.getByTestId('mobile-more-filters').click();
+    await page.getByTestId('mobile-filter-healthy').click();
+    await page.getByTestId('mobile-filter-apply').click();
     await expect.poll(() => lastFilters).toEqual({ healthyOnly: true });
     await expect(page.getByTestId(`recipe-card-${synthesized.id}`)).toBeVisible();
 

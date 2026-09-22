@@ -303,7 +303,7 @@ export default function DiscoveryPage() {
 
   // Only render the top 4 cards for performance and visual clarity
   const visibleRecipes = useMemo(() => {
-    return recipes.slice(-4);
+    return recipes.slice(0, 4);
   }, [recipes]);
 
   if (isLoading && recipes.length === 0) {
@@ -340,17 +340,12 @@ export default function DiscoveryPage() {
           <AnimatePresence>
             {recipes.length > 0 ? (
               visibleRecipes.map((recipe, index) => {
-                const globalIndex = recipes.findIndex((r) => r.id === recipe.id);
-                const stackIndex = recipes.length - 1 - globalIndex;
-
-                if (stackIndex > 3) return null;
-
                 return (
                   <DiscoveryCard
                     key={recipe.id}
                     {...recipe}
-                    isFront={stackIndex === 0}
-                    stackIndex={stackIndex}
+                    isFront={index === 0}
+                    stackIndex={index}
                     onSwipeRight={() => handleSwipeRight(recipe.id)}
                     onSwipeLeft={() => handleSwipeLeft(recipe.id)}
                   />
@@ -410,7 +405,7 @@ export default function DiscoveryPage() {
         <button
           type="button"
           disabled={recipes.length === 0}
-          onClick={() => recipes.length > 0 && handleSwipeLeft(recipes[recipes.length - 1].id)}
+          onClick={() => recipes.length > 0 && handleSwipeLeft(recipes[0].id)}
           data-testid="dislike-button"
           aria-label="Dislike recipe"
           className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_rgba(205,93,69,0.15)] border border-terracotta/5 active:scale-90 transition-transform disabled:opacity-20"
@@ -435,7 +430,7 @@ export default function DiscoveryPage() {
         <button
           type="button"
           disabled={recipes.length === 0}
-          onClick={() => recipes.length > 0 && handleSwipeRight(recipes[recipes.length - 1].id)}
+          onClick={() => recipes.length > 0 && handleSwipeRight(recipes[0].id)}
           data-testid="like-button"
           aria-label="Like recipe"
           className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-sage shadow-[0_10px_25px_rgba(138,154,91,0.15)] border border-sage/5 active:scale-90 transition-transform disabled:opacity-20"

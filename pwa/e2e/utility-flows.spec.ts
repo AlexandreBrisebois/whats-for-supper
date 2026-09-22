@@ -260,7 +260,13 @@ test.describe("Cook's Mode and Grocery Flows", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByTestId('grocery-tab').click();
     await expect(checklist).toBeVisible({ timeout: 10_000 });
-    const refreshedItem = checklist.getByRole('checkbox', { name: itemName, exact: true });
+    const pantrySection = checklist.getByTestId('aisle-section-Pantry');
+    const pantryHeader = pantrySection.getByTestId('aisle-header-complete');
+    if ((await pantryHeader.getAttribute('aria-expanded')) === 'false') {
+      await pantryHeader.click();
+    }
+
+    const refreshedItem = pantrySection.getByRole('checkbox', { name: itemName, exact: true });
     await expect(refreshedItem).toBeVisible({ timeout: 10_000 });
     await expect(refreshedItem).toBeChecked();
     await expect(refreshedItem).toHaveAttribute('aria-checked', 'true');

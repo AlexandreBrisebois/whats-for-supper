@@ -1,4 +1,8 @@
 services:
+  traefik:
+    volumes:
+      - ./traefik_dynamic.yml:/etc/traefik/dynamic.yml:ro
+
   # Sidecar to prepare named volume permissions for the chiseled API image
   volume-fixer:
     image: alpine

@@ -32,7 +32,6 @@ import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecipeImportIssueBadge } from '@/components/recipes/RecipeImportIssueBadge';
 import {
   RecipeFiltersSheet,
-  RECIPE_FILTER_OPTIONS,
   type RecipeFilterDraft,
 } from '@/components/recipes/RecipeFiltersSheet';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
@@ -561,13 +560,6 @@ export default function RecipesPage() {
     event.target.value = '';
   };
 
-  const handleFilterToggle = (key: keyof RecipeSearchFiltersDto) => {
-    const next = { ...activeFilters, [key]: activeFilters[key] ? null : true };
-    if (!next[key]) delete next[key];
-    setActiveFilters(next);
-    void runSearch(query, similarToRecipeId, next);
-  };
-
   const handleApplyFilters = ({ filters, preferences }: RecipeFilterDraft) => {
     setActiveFilters(filters);
     setActivePreferences(preferences);
@@ -1036,8 +1028,7 @@ export default function RecipesPage() {
         </motion.div>
       )}
 
-      {/* Mobile filters */}
-      <div className="px-1 md:hidden">
+      <div className="px-1">
         <button
           type="button"
           data-testid="mobile-filters-button"
@@ -1065,34 +1056,6 @@ export default function RecipesPage() {
             {activeFilterCount}
           </span>
         </button>
-      </div>
-
-      {/* Desktop inline filters */}
-      <div data-testid="desktop-recipe-filters" className="hidden flex-col gap-2 px-1 md:flex">
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-charcoal/40">
-          {t('recipes.filterBy', 'Filter by')}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {RECIPE_FILTER_OPTIONS.map(({ key, labelKey, fallback, testId }) => {
-            const isActive = !!activeFilters[key];
-            return (
-              <button
-                key={key}
-                type="button"
-                data-testid={isActive ? `${testId}-active` : testId}
-                onClick={() => handleFilterToggle(key)}
-                className={cn(
-                  'rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
-                  isActive
-                    ? 'border-terracotta bg-terracotta text-white'
-                    : 'border-charcoal/10 bg-white/70 text-charcoal'
-                )}
-              >
-                {t(labelKey, fallback)}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Results Section */}

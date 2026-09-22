@@ -187,6 +187,7 @@ public class DiscoveryServiceTests
         // Assert
         Assert.Equal(4, results.Count);
         Assert.Equal(recipe3.Id, results[0].Id); // Top due to vote count (1 vote)
+        Assert.Equal(1, results[0].VoteCount);
         Assert.Equal(recipe4.Id, results[1].Id); // Never cooked (NULL → MinValue) comes first among 0-vote group
         Assert.Equal(recipe1.Id, results[2].Id); // Cooked yesterday (older) before today
         Assert.Equal(recipe2.Id, results[3].Id); // Cooked today (most recent) is last

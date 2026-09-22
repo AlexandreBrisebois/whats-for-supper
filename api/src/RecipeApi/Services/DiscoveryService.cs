@@ -11,7 +11,7 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly IScheduleEventPublisher _publisher = publisher;
 
-    public async Task<List<Recipe>> GetRecipesForDiscoveryAsync(Guid familyMemberId, string? category = null, string? cuisine = null)
+    public async Task<List<RecipeDto>> GetRecipesForDiscoveryAsync(Guid familyMemberId, string? category = null, string? cuisine = null)
     {
         var query = _dbContext.DiscoveryRecipes.AsQueryable();
 
@@ -39,7 +39,12 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
 
         var results = await query.ToListAsync();
 
-        return results.Select(r => r.ToRecipe()).ToList();
+        return results.Select(r =>
+        {
+            var dto = RecipeService.MapToDto(r.ToRecipe());
+            dto.VoteCount = r.VoteCount;
+            return dto;
+        }).ToList();
     }
 
     public async Task<List<string>> GetAvailableCategoriesAsync(Guid familyMemberId)

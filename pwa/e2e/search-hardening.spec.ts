@@ -406,25 +406,24 @@ test.describe('Scenario 7 — over-constrained filters: deactivate restores resu
     await page.goto('/recipes');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
 
-    // Activate never-tried
-    await page.getByTestId('filter-never-tried').click();
-    await expect(page.getByTestId('filter-never-tried-active')).toBeVisible();
-
-    // Activate quick
-    await page.getByTestId('filter-quick').click();
-    await expect(page.getByTestId('filter-quick-active')).toBeVisible();
+    // Apply never-tried and quick together from the full filter chooser.
+    await page.getByTestId('mobile-filters-button').click();
+    await page.getByTestId('mobile-filter-never-tried').click();
+    await page.getByTestId('mobile-filter-quick').click();
+    await page.getByTestId('mobile-filter-apply').click();
 
     // Empty state visible (both filters constrain results to empty)
     await expect(page.getByTestId('filter-no-results')).toBeVisible();
     await expect(page.getByTestId('recipe-card-top-pick')).not.toBeVisible();
 
-    // Deactivate never-tried
-    await page.getByTestId('filter-never-tried-active').click();
-    await expect(page.getByTestId('filter-never-tried-active')).not.toBeVisible();
+    // Remove each applied filter through the same chooser.
+    await page.getByTestId('mobile-filters-button').click();
+    await page.getByTestId('mobile-filter-never-tried-active').click();
+    await page.getByTestId('mobile-filter-apply').click();
 
-    // Deactivate quick
-    await page.getByTestId('filter-quick-active').click();
-    await expect(page.getByTestId('filter-quick-active')).not.toBeVisible();
+    await page.getByTestId('mobile-filters-button').click();
+    await page.getByTestId('mobile-filter-quick-active').click();
+    await page.getByTestId('mobile-filter-apply').click();
 
     // Results return
     await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
