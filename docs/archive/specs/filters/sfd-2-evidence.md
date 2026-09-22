@@ -1,5 +1,7 @@
 # SFD-2 contract/configuration evidence
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Scope: user-selected SFD-2, requested 2026-09-19. The task-file's
 specification-only notice is explicitly overridden only for this selected task.
 No endpoint, materializer, ranking, UI, generated client, mock, SFD-3 work,

@@ -1,5 +1,7 @@
 # Discovery live queue convergence — design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 The server remains the source of aggregate Like counts. Discovery loads a category once, assigning each returned recipe a client-only `queueOrder` equal to its response index.
 
 ~~~text
@@ -18,4 +20,3 @@ The discovery response continues to use the existing recipe representation with 
 ## Verification
 
 Use six valid fixture recipes with distinct initial counts. Assert the API response count, stable full-tail reorder after an SSE event for the sixth recipe, locked index zero, deterministic ties, duplicate delivery, no-op after local removal, and no Discovery GET following the event.
-

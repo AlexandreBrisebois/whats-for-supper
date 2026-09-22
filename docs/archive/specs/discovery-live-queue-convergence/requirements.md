@@ -1,5 +1,7 @@
 # Discovery live queue convergence — requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Outcome
 
 Concurrent voters shall converge their loaded Discovery queue without polling or refetching after every vote. The card currently being considered remains locked at index zero; every remaining loaded card follows the household's current Like count.
@@ -38,4 +40,3 @@ The first recipe remains at index zero through remote vote updates. Equal counts
 ### DQC-R4 — No request churn
 
 A `vote_updated` event performs no Discovery GET. Existing SSE, visible-card rendering, accessible controls, animations, empty state, and manual refresh behavior remain unchanged.
-

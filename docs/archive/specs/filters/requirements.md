@@ -1,5 +1,7 @@
 # Search Filter Discovery --- Requirements
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Outcome
 
 Make recipe filtering faster for a busy family without turning the

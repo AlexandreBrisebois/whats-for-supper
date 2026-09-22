@@ -1,5 +1,7 @@
 # Search Filter Discovery --- Design
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## Repository facts checked
 
 This design is based on the current default branch inspected on

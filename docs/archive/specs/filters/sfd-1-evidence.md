@@ -1,5 +1,7 @@
 # SFD-1 reconciliation and red integration coverage
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Scope: SFD-1 only, requested 2026-09-19. No production search, Discovery,
 contract, generated-client, or dormant-field implementation. SFD-2 and later
 slices remain unexecuted.

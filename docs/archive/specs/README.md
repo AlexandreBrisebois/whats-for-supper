@@ -26,6 +26,8 @@ The following packages were moved to `docs/archive/specs/` at the user’s direc
 - [cnf-cross-spec-review](../../../docs/archive/specs/cnf-cross-spec-review/tasks.md) — retired review package; the five CNF implementation packages remain active.
 - [contextual-reimport-feedback](contextual-reimport-feedback/tasks.md) — retired at owner request on 2026-09-13; partial implementation and recorded unchecked work preserved without revalidation.
 - [dreaming-next-week-defer](dreaming-next-week-defer/tasks.md) — retired at owner request on 2026-09-14; planned, unimplemented work preserved without revalidation.
+- [discovery-live-queue-convergence](discovery-live-queue-convergence/tasks.md) — retired at owner request on 2026-09-22; implementation review was pending DQC-1, with historical requirements and tasks preserved without revalidation.
+- [filters](filters/tasks.md) — retired at owner request on 2026-09-22; SFD evidence and approval checkpoints preserved without revalidation.
 
 ## Inventory
 
@@ -42,12 +44,14 @@ The notes describe the recorded documents, not verified current implementation. 
 | [demo-mode](demo-mode/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
 | [dev-loop-optimization](dev-loop-optimization/tasks.md) | 3 | 6 unchecked markers retained; not active work |
 | [discovery-vote-visual-simplification](discovery-vote-visual-simplification/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
+| [discovery-live-queue-convergence](discovery-live-queue-convergence/tasks.md) | 4 | Review pending DQC-1; historical record only |
 | [dreaming](dreaming/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
 | [dreaming-next-week-defer](dreaming-next-week-defer/tasks.md) | 3 | Retired at owner request 2026-09-14; planned, unimplemented work preserved without revalidation |
 | [e2e-route-handler-regression](e2e-route-handler-regression/tasks.md) | 3 | 2 unchecked markers retained; not active work |
 | [e2e-test-audit](e2e-test-audit/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
 | [e2e-test-failures](e2e-test-failures/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
 | [fix-family-goto-settings-reactivity.md](fix-family-goto-settings-reactivity.md) | 1 | Historical description; no checkbox completion record |
+| [filters](filters/tasks.md) | 9 | SFD evidence and approval checkpoints retained; not active work |
 | [grocery-item-check-off-404](grocery-item-check-off-404/bugfix.md) | 1 | Historical description; no checkbox completion record |
 | [grocery-reclassification](grocery-reclassification/tasks.md) | 3 | 1 unchecked markers retained; not active work |
 | [grocery-section-categorization](grocery-section-categorization/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |

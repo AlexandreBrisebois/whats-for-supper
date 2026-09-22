@@ -1,5 +1,7 @@
 # SFD-5 search semantics evidence
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Scope: user-selected SFD-5 only, requested 2026-09-19. This implements the
 missing behavior established by SFD-1 using the approved SFD-2 contract. No
 SFD-5a/5b browse or rediscovery work, Discovery change, commit, or deployment

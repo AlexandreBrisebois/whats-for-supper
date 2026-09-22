@@ -1,5 +1,7 @@
 # SFD-2 proposed contract and Search rediscovery policy
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Status: approved by user on 2026-09-19. This approval permits dependent work
 only when separately selected; it does not authorize SFD-3/SFD-4/SFD-5b, client
 generation, PWA work, or generated client/mock changes in this task.

@@ -1,5 +1,7 @@
 # SFD-5a empty-query browse evidence
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Scope: SFD-5a only, requested 2026-09-19. This record excludes SFD-5b
 rediscovery ranking, Discovery changes, commit, and deployment.
 

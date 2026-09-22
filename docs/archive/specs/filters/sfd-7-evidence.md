@@ -1,5 +1,7 @@
 # SFD-7 contract sync and regression verification
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 Scope: user-selected SFD-7 on 2026-09-20. The starting worktree was already
 dirty with the completed SFD feature slices. Its full staged/unstaged/untracked
 content was captured before SFD-7 work at

@@ -1,5 +1,7 @@
 # Discovery live queue convergence — tasks
 
+> **Archived — historical reference only.** Tasks, status, commands, and instructions below are historical, not an active work queue or current authority. See [archive guidance](../README.md).
+
 ## DQC-1 — Converge a loaded Discovery tail from absolute Like counts
 
 - [x] Implement this selected tracer-bullet only.
