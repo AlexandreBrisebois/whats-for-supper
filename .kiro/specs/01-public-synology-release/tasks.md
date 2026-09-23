@@ -7,14 +7,14 @@ Status: Planned
 **Goal:** a semantic stable or beta tag is the only way to publish exact multi-platform Docker Hub images.
 
 - [ ] Write focused workflow-validation tests first: accepted `dockerhub/v1.2.3` and `dockerhub/v1.2.3-beta.1`; rejected malformed and lightweight tags; `dockerhub/v` stripping; no `latest`; and all three image destinations.
-- [ ] Add `.github/workflows/publish-dockerhub.yml`, an independent GitHub-hosted, tag-push-only workflow that validates the tag, `main` ancestry, remote Docker Hub tag absence, and Docker Hub credentials before any push. Do not modify `.github/workflows/publish.yml`.
+- [ ] Add `.github/workflows/publish-dockerhub.yml`, an independent GitHub-hosted, tag-push-only workflow. Its credential-free validation job checks the tag and `main` ancestry. Its protected `dockerhub-publish` image-push job requires `github.actor` to equal `DOCKERHUB_PUBLISHER_GITHUB_LOGIN`, checks remote Docker Hub tag absence, and uses only environment-scoped Docker Hub credentials. Do not modify `.github/workflows/publish.yml`.
 - [ ] Build and push the API, PWA, and migration images for `linux/amd64,linux/arm64`, with exact derived tags and source/version OCI labels.
-- [ ] Document the two required Docker Hub secrets and the task invocations: `task release:dockerhub:tag` for the next stable release and `task release:dockerhub:beta` for the next beta.
+- [ ] Document required GitHub setup: `DOCKERHUB_PUBLISHER_GITHUB_LOGIN`, the `dockerhub-publish` protected environment with the owner as reviewer, and its Docker Hub username/token secrets. Also document `task release:dockerhub:tag` for the next stable release and `task release:dockerhub:beta` for the next beta.
 - [ ] Add `task release:dockerhub:tag` and `task release:dockerhub:beta` with focused tests. They fetch remote state, derive the next stable or beta version from SemVer tags, validate a clean `origin/main`-reachable `HEAD`, reject existing tags, print the target, ask for interactive confirmation, then create and push the annotated `dockerhub/v<version>` tag. The tasks themselves must not build or push images.
 
 **Allowed files:** `.github/workflows/publish-dockerhub.yml`, `Taskfile.yml`, focused workflow/Taskfile validation tests or scripts, and one short maintainer note if required.
 **Forbidden:** changes to `.github/workflows/publish.yml`; real tag/image/release publication during implementation; `latest`; use of the private registry or self-hosted runners by the new Docker Hub workflow; changes to application runtime code or Compose files.
-**Acceptance:** focused validation passes; the workflow contains no publishing trigger other than an accepted tag push; an actual Docker Hub publish remains not-run until explicitly authorized.
+**Acceptance:** focused validation passes; an unapproved actor cannot reach Docker Hub login/push; only the configured owner can reach the protected publish job; an actual Docker Hub publish remains not-run until explicitly authorized.
 
 ## Phase 2 — Synology Project template tracer bullet
 

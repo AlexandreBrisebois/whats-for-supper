@@ -1,0 +1,28 @@
+http:
+  routers:
+    api-stream:
+      rule: Path(`/api/stream`)
+      entryPoints:
+        - web
+      service: api
+      priority: 100
+    api:
+      rule: PathPrefix(`/api`)
+      entryPoints:
+        - web
+      service: api
+    pwa:
+      rule: PathPrefix(`/`)
+      entryPoints:
+        - web
+      service: pwa
+      priority: 1
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: http://api:9001
+    pwa:
+      loadBalancer:
+        servers:
+          - url: http://pwa:3000

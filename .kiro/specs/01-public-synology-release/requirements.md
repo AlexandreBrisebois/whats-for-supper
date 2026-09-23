@@ -44,6 +44,12 @@ On an accepted annotated tag, GitHub Actions shall:
 
 No branch, pull request, manual dispatch, private registry, self-hosted runner, or mutable image tag may publish the Docker Hub images from this new route. The existing private-registry workflow remains outside this route's scope. A failed validation or build must push nothing.
 
+## R1b — Owner-only publication
+
+Only the configured GitHub login may publish through the new Docker Hub route. The workflow reads the approved login from a repository Actions variable named `DOCKERHUB_PUBLISHER_GITHUB_LOGIN` and must fail the publish job unless `github.actor` exactly matches it.
+
+The image-push job must use a protected GitHub environment named `dockerhub-publish`, configured outside the repository with the same owner as required reviewer. Its Docker Hub credentials are environment secrets, not repository secrets. Tag validation may run for another contributor's matching tag, but it must not log in to Docker Hub or push an image. The task and maintainer note must identify this required repository/environment setup.
+
 ## R1a — Release tagging task
 
 The repository shall provide `task release:dockerhub:tag` to calculate, create, and push the next stable annotated Docker Hub trigger tag, and `task release:dockerhub:beta` for the next beta tag.
@@ -56,7 +62,7 @@ After fetching `origin/main` and tags, the task derives the next version from th
 
 Before creating a tag, the task must reject a dirty worktree, verify `HEAD` is reachable from `origin/main`, validate the derived version grammar, and reject an existing local or remote derived tag. It must print the exact tag and commit it will use, then ask for an interactive confirmation before it creates and pushes the annotated tag. The push to `origin` is the only trigger for the Docker Hub workflow.
 
-The task must not build images, publish directly to Docker Hub, alter the existing private publication route, or delete/overwrite a tag.
+The task must not build images, publish directly to Docker Hub, alter the existing private publication route, or delete/overwrite a tag. Its successful push authorizes workflow validation only; the owner-only environment gate authorizes image publication.
 
 ## R2 — Synology Project template
 

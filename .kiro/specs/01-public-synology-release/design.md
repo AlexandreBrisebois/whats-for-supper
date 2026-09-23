@@ -23,7 +23,7 @@ The new, independent `.github/workflows/publish-dockerhub.yml` workflow runs on 
 
 The build matrix is fixed to `linux/amd64,linux/arm64`. It produces API, PWA, and database-migration images, each tagged only with the exact version derived from the Git tag. It does not add `latest`, major/minor aliases, or beta promotion behavior.
 
-The workflow requires a Docker Hub username and token stored as GitHub secrets. It has no Docker Hub, GitHub Release, or NAS mutation during implementation tests; a real accepted tag is the separately authorized production publication action.
+The workflow has two boundaries. Tag validation has no Docker Hub credentials. The image-push job checks that `github.actor` equals repository variable `DOCKERHUB_PUBLISHER_GITHUB_LOGIN`, then uses the protected `dockerhub-publish` environment. Docker Hub credentials are environment secrets and that environment requires the same owner as reviewer. This prevents a matching tag created by another contributor from publishing. It has no Docker Hub, GitHub Release, or NAS mutation during implementation tests; a real accepted tag is the separately authorized production publication action.
 
 `task release:dockerhub:tag` is the operator entry point for the next stable release; `task release:dockerhub:beta` is the corresponding beta entry point. Both fetch tags, calculate the next SemVer tag, perform local and remote preflight checks, show the derived tag and `HEAD`, then ask for confirmation before creating and pushing the annotated tag. They do not build or push an image themselves; GitHub Actions owns image publication after the tag push.
 

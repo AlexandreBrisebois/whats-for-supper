@@ -1,0 +1,92 @@
+services:
+  traefik:
+    image: traefik:v3.7
+    restart: unless-stopped
+    command:
+      - --entrypoints.web.address=:80
+      - --providers.file.filename=/etc/traefik/traefik.yml
+    ports:
+      - ${WFS_HTTP_PORT:-9100}:80
+    volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - edge
+
+  pwa:
+    image: brisebois/whats-for-supper-pwa:${WFS_VERSION}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ""
+      API_INTERNAL_URL: http://api:9001
+      HEARTH_SECRET: ${HEARTH_SECRET:?HEARTH_SECRET must be set}
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+    networks:
+      - edge
+      - internal
+
+  api:
+    image: brisebois/whats-for-supper-api:${WFS_VERSION}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:9001
+      POSTGRES_CONNECTION_STRING: postgres://recipe_app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/recipe_app_db
+      DATA_ROOT: /data
+      HEARTH_SECRET: ${HEARTH_SECRET:?HEARTH_SECRET must be set}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY must be set}
+      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
+      GEMINI_MODEL_ID_HERO: ${GEMINI_MODEL_ID_HERO}
+      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID}
+    volumes:
+      - ./data/app:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: true
+      migration:
+        condition: service_completed_successfully
+        required: true
+    networks:
+      - edge
+      - internal
+
+  migration:
+    image: brisebois/whats-for-supper-db-migration:${WFS_VERSION}
+    restart: "no"
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: recipe_app
+      POSTGRES_DB: recipe_app_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: true
+    networks:
+      - internal
+
+  postgres:
+    image: pgvector/pgvector:pg18-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: recipe_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: recipe_app_db
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - internal
+
+networks:
+  edge:
+  internal:

@@ -449,6 +449,16 @@ tasks:
         git push origin "$VERSION"
         echo "✓ Tag $VERSION created and pushed."
 
+  release:dockerhub:tag:
+    desc: "Create and push the next stable Docker Hub annotated trigger tag"
+    cmds:
+      - python3 -B scripts/agent/dockerhub_release.py stable
+
+  release:dockerhub:beta:
+    desc: "Create and push the next beta Docker Hub annotated trigger tag"
+    cmds:
+      - python3 -B scripts/agent/dockerhub_release.py beta
+
 
   # ============================================================================
   # CONTAINER MANAGEMENT
