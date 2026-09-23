@@ -1099,7 +1099,7 @@ export default function MinimalCapture({
               ref={recipeFileInputRef}
               data-testid="import-recipe-file-input"
               type="file"
-              accept=".recipe,application/json"
+              accept=".txt,text/plain"
               aria-label="Import recipe file"
               title="Import recipe file"
               className="hidden"

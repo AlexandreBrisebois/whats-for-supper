@@ -1,0 +1,26 @@
+### Demo Mode health
+# Confirms whether the API is running with DEMO_MODE=true and whether the
+# configured restore cron is valid.
+GET {{baseUrl}}/api/health
+Accept: application/json
+
+### Demo Mode status
+# Check this after capture or restore. `demoSnapshotReady` must be true before
+# enabling scheduled restores.
+GET {{baseUrl}}/api/management/status
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### Capture the Demo Mode master snapshot
+# Replaces the existing snapshot with the current family, recipes, and search
+# documents. Configure the desired showcase state before sending this request.
+POST {{baseUrl}}/api/management/demo-capture
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### Restore the Demo Mode master snapshot
+# WARNING: Restores the saved Demo Mode snapshot over the active demo state.
+# Check status first to confirm that demoSnapshotReady is true.
+POST {{baseUrl}}/api/management/demo-restore
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}

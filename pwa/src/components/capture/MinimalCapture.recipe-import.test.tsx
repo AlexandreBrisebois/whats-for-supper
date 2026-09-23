@@ -145,9 +145,13 @@ describe('MinimalCapture recipe import', () => {
     ]);
 
     expect(screen.getByTestId('import-recipe-file-btn')).toBeVisible();
+    expect(screen.getByTestId('import-recipe-file-input')).toHaveAttribute(
+      'accept',
+      '.txt,text/plain'
+    );
   });
 
-  it('enters bundle review state after selecting a valid .recipe file', async () => {
+  it('enters bundle review state after selecting a valid .txt file', async () => {
     render(<MinimalCapture />);
 
     const input = screen.getByTestId('import-recipe-file-input') as HTMLInputElement;
@@ -175,8 +179,8 @@ describe('MinimalCapture recipe import', () => {
           originals: [],
         }),
       ],
-      'shared.recipe',
-      { type: 'application/json' }
+      'shared.txt',
+      { type: 'text/plain' }
     );
 
     fireEvent.change(input, { target: { files: [file] } });

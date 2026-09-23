@@ -520,6 +520,7 @@ describe('createRecipeBundleFile / privacy scrubbing', () => {
   it('slugifies the recipe name for the filename', () => {
     const bundle = builders.recipeShareBundle();
     const file = createRecipeBundleFile('Tarte Flambée', bundle);
-    expect(file.name).toBe('tarte-flambee.recipe');
+    expect(file.name).toBe('tarte-flambee.txt');
+    expect(file.type).toBe('text/plain');
   });
 });

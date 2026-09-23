@@ -520,8 +520,8 @@ export function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBu
     originals: (bundle.originals ?? []).map((image) => toPortableSharedImage(image)),
   };
 
-  return new File([JSON.stringify(payload, null, 2)], `${slugifyRecipeName(recipeName)}.recipe`, {
-    type: 'application/octet-stream',
+  return new File([JSON.stringify(payload, null, 2)], `${slugifyRecipeName(recipeName)}.txt`, {
+    type: 'text/plain',
   });
 }
 
