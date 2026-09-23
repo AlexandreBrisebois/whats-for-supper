@@ -71,6 +71,51 @@ def next_version(tags, kind):
     return f"{major}.{minor}.{patch}-beta.{beta + 1}"
 
 
+def release_versions(tags):
+    versions = []
+    for tag in tags:
+        try:
+            versions.append(image_version(tag))
+        except ValueError:
+            continue
+    return versions
+
+
+def next_beta_version(tags, package_bump=None, beta_bump=False, beta_number=None):
+    """Choose an explicit beta target without silently changing the requested axis."""
+    if beta_number is not None:
+        if package_bump is None:
+            raise ValueError("--beta requires --package-bump")
+        if beta_number < 1:
+            raise ValueError("--beta must be a positive integer")
+    if beta_bump and (package_bump is not None or beta_number is not None):
+        raise ValueError("--beta-bump cannot be combined with --package-bump or --beta")
+
+    versions = release_versions(tags)
+    latest = max(versions, key=version_precedence) if versions else None
+
+    if beta_bump:
+        if latest is None or parse_version(latest)[3] is None:
+            raise ReleasePreflightError(
+                "--beta-bump requires the latest Docker Hub release to be beta."
+            )
+        major, minor, patch, beta = parse_version(latest)
+        return f"{major}.{minor}.{patch}-beta.{beta + 1}"
+
+    if package_bump is None:
+        return next_version(tags, "beta")
+
+    major, minor, patch, _ = parse_version(latest) if latest else (0, 0, 0, None)
+    if package_bump == "major":
+        major, minor, patch = major + 1, 0, 0
+    elif package_bump == "minor":
+        minor, patch = minor + 1, 0
+    else:
+        patch += 1
+    beta = beta_number if beta_number is not None else 1
+    return f"{major}.{minor}.{patch}-beta.{beta}"
+
+
 def require_annotated_tag_object(object_type):
     if object_type != "tag":
         raise ReleasePreflightError("Docker Hub release tags must be annotated tags.")
@@ -104,11 +149,17 @@ def remote_tags():
     return tags
 
 
-def create_tag(kind):
+def create_tag(kind, package_bump=None, beta_bump=False, beta_number=None):
+    if kind != "beta" and (package_bump is not None or beta_bump or beta_number is not None):
+        raise ValueError("Beta version controls are only valid for beta releases.")
     git_run("fetch", "origin", "main", "--tags", "--quiet")
     local = set(git_output("tag", "--list", "dockerhub/v*").splitlines())
     remote = remote_tags()
-    version = next_version(local | remote, kind)
+    version = (
+        next_beta_version(local | remote, package_bump, beta_bump, beta_number)
+        if kind == "beta"
+        else next_version(local | remote, kind)
+    )
     tag = validate_target(version)
 
     if git_output("status", "--porcelain", "--untracked-files=all"):
@@ -138,10 +189,26 @@ def create_tag(kind):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("kind", choices=("stable", "beta"))
+    parser.add_argument(
+        "--package-bump",
+        choices=("major", "minor", "patch"),
+        help="Bump the package version for a beta release; beta resets to 1 unless --beta is set.",
+    )
+    parser.add_argument(
+        "--beta-bump",
+        action="store_true",
+        help="Increment only the beta number; requires the latest release to be beta.",
+    )
+    parser.add_argument(
+        "--beta",
+        type=int,
+        metavar="N",
+        help="Use beta number N with --package-bump.",
+    )
     args = parser.parse_args()
     try:
-        create_tag(args.kind)
-    except (ReleasePreflightError, subprocess.CalledProcessError) as error:
+        create_tag(args.kind, args.package_bump, args.beta_bump, args.beta)
+    except (ReleasePreflightError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Docker Hub release preflight failed: {error}", file=sys.stderr)
         raise SystemExit(1) from error
 

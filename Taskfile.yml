@@ -455,9 +455,9 @@ tasks:
       - python3 -B scripts/agent/dockerhub_release.py stable
 
   release:dockerhub:beta:
-    desc: "Create and push the next beta Docker Hub annotated trigger tag"
+    desc: "Create and push a beta Docker Hub tag (pass -- --package-bump patch|minor|major, --beta-bump, or --beta N)"
     cmds:
-      - python3 -B scripts/agent/dockerhub_release.py beta
+      - python3 -B scripts/agent/dockerhub_release.py beta {{.CLI_ARGS}}
 
 
   # ============================================================================

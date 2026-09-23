@@ -60,6 +60,42 @@ class DockerHubReleaseHelperTests(unittest.TestCase):
         self.assertEqual("1.2.4", self.release.next_version(tags, "stable"))
         self.assertEqual("1.2.4-beta.1", self.release.next_version(tags, "beta"))
 
+    def test_explicit_package_bumps_reset_or_set_the_beta_number(self):
+        tags = ["dockerhub/v1.2.3-beta.4", "dockerhub/v1.2.2"]
+        self.assertEqual(
+            "1.2.4-beta.1", self.release.next_beta_version(tags, package_bump="patch")
+        )
+        self.assertEqual(
+            "1.3.0-beta.2", self.release.next_beta_version(
+                tags, package_bump="minor", beta_number=2
+            )
+        )
+        self.assertEqual(
+            "2.0.0-beta.1", self.release.next_beta_version(tags, package_bump="major")
+        )
+
+    def test_explicit_beta_bump_never_changes_the_package_version(self):
+        self.assertEqual(
+            "1.2.3-beta.5",
+            self.release.next_beta_version(
+                ["dockerhub/v1.2.3-beta.4"], beta_bump=True
+            ),
+        )
+
+    def test_explicit_beta_bump_requires_a_current_beta_release(self):
+        with self.assertRaisesRegex(
+            self.release.ReleasePreflightError, "requires the latest Docker Hub release to be beta"
+        ):
+            self.release.next_beta_version(["dockerhub/v1.2.3"], beta_bump=True)
+
+    def test_beta_number_requires_a_package_bump_and_is_positive(self):
+        with self.assertRaisesRegex(ValueError, "requires --package-bump"):
+            self.release.next_beta_version(["dockerhub/v1.2.3-beta.4"], beta_number=2)
+        with self.assertRaisesRegex(ValueError, "positive integer"):
+            self.release.next_beta_version(
+                ["dockerhub/v1.2.3-beta.4"], package_bump="patch", beta_number=0
+            )
+
     def test_invalid_or_existing_targets_fail_before_tag_creation(self):
         with self.assertRaises(ValueError):
             self.release.validate_target("1.2.3-rc.1")
@@ -97,7 +133,7 @@ class DockerHubReleaseHelperTests(unittest.TestCase):
         self.assertIn("release:dockerhub:tag:", taskfile)
         self.assertIn("python3 -B scripts/agent/dockerhub_release.py stable", taskfile)
         self.assertIn("release:dockerhub:beta:", taskfile)
-        self.assertIn("python3 -B scripts/agent/dockerhub_release.py beta", taskfile)
+        self.assertIn("python3 -B scripts/agent/dockerhub_release.py beta {{.CLI_ARGS}}", taskfile)
 
 
 class DockerHubWorkflowContractTests(unittest.TestCase):
