@@ -1,10 +1,20 @@
 http:
+  middlewares:
+    sse-headers:
+      headers:
+        customResponseHeaders:
+          X-Accel-Buffering: "no"
+          Cache-Control: "no-cache"
+          Content-Type: text/event-stream
+          Connection: keep-alive
   routers:
     api-stream:
       rule: Path(`/api/stream`)
       entryPoints:
         - web
       service: api
+      middlewares:
+        - sse-headers
       priority: 100
     api:
       rule: PathPrefix(`/api`)

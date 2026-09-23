@@ -12,10 +12,11 @@ RULES:
 4. PERSONAL NOTES & VARIATIONS: If the input contains personal commentary (e.g., "Perso, j'ajoute...", "J'ai varié...") or suggested variations, DO NOT include them as recipe steps. Ignore them entirely.
 5. MISSING INSTRUCTIONS: If no instructions are provided, infer logical steps from the ingredient list and recipe type. Always produce at least one HowToSection with at least one HowToStep.
 6. recipeIngredient: Array of strings in format "[Quantity] [Unit] [Ingredient]" (e.g., "250 ml tomato sauce"). If quantity is unstated, use a reasonable default.
-7. totalTime: ISO 8601 duration (e.g., "PT45M"). Infer from recipe type if not stated.
-8. recipeYield: Reasonable serving size (e.g., "4 portions"). Infer if not stated.
-9. NUTRITION: Do NOT add nutrition data unless explicitly provided in the input.
-10. SCHEMA STRUCTURE — CRITICAL: `recipeInstructions` must contain ONLY `HowToSection` objects. NEVER place a bare `HowToStep` directly inside `recipeInstructions`. Every step must be nested inside a `HowToSection`.
+7. SUPPLY COMPLETENESS — REQUIRED: `supply` is the grocery-list source of truth. Produce exactly one `HowToSupply` entry for every `recipeIngredient` entry, in the same order. Never omit pantry staples, seasonings, oils, salt, pepper, bread, garnishes, or ingredients without a numeric quantity. Each `supply[].name` must contain only the ingredient name, without quantity, unit, or preparation wording. When a reliable numeric quantity and unit are available, set `requiredQuantity.value` and `requiredQuantity.unitText`; otherwise set `requiredQuantity` to `null`. Before returning, verify that `supply.length` equals `recipeIngredient.length`; correct `supply` if it does not.
+8. totalTime: ISO 8601 duration (e.g., "PT45M"). Infer from recipe type if not stated.
+9. recipeYield: Reasonable serving size (e.g., "4 portions"). Infer if not stated.
+10. NUTRITION: Do NOT add nutrition data unless explicitly provided in the input.
+11. SCHEMA STRUCTURE — CRITICAL: `recipeInstructions` must contain ONLY `HowToSection` objects. NEVER place a bare `HowToStep` directly inside `recipeInstructions`. Every step must be nested inside a `HowToSection`.
 
 EXAMPLES (study these before synthesizing):
 
@@ -44,6 +45,20 @@ EXAMPLES (study these before synthesizing):
 ❌ BAD — high-level intent left as empty/null ingredients and steps:
   "recipeIngredient": [],
   "recipeInstructions": []
+
+❌ BAD — partial supply list omits ingredients that must appear on the grocery list:
+  "recipeIngredient": ["500 g ground beef", "1 onion", "Salt"],
+  "supply": [
+    {"@type": "HowToSupply", "name": "Ground beef", "requiredQuantity": {"@type": "QuantitativeValue", "value": 500, "unitText": "g"}}
+  ]
+
+✅ GOOD — supply contains one corresponding entry for every ingredient:
+  "recipeIngredient": ["500 g ground beef", "1 onion", "Salt"],
+  "supply": [
+    {"@type": "HowToSupply", "name": "Ground beef", "requiredQuantity": {"@type": "QuantitativeValue", "value": 500, "unitText": "g"}},
+    {"@type": "HowToSupply", "name": "Onion", "requiredQuantity": {"@type": "QuantitativeValue", "value": 1, "unitText": null}},
+    {"@type": "HowToSupply", "name": "Salt", "requiredQuantity": null}
+  ]
 
 ✅ GOOD — fully synthesized from the concept "pasta with meat sauce and toasted garlic bread":
   "recipeIngredient": ["400 g spaghetti", "300 g ground beef", "400 ml tomato sauce", "2 garlic cloves", "1 baguette", "30 ml olive oil", "Salt", "Pepper"],

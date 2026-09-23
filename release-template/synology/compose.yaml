@@ -4,13 +4,28 @@ services:
     restart: unless-stopped
     command:
       - --entrypoints.web.address=:80
-      - --providers.file.filename=/etc/traefik/traefik.yml
+      - --providers.file.filename=/etc/traefik/dynamic.yml
     ports:
       - ${WFS_HTTP_PORT:-9100}:80
     volumes:
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik.yml:/etc/traefik/dynamic.yml:ro
     networks:
       - edge
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.1
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set}
+    depends_on:
+      traefik:
+        condition: service_started
+        required: true
+    network_mode: service:traefik
 
   pwa:
     image: brisebois/whats-for-supper-pwa:${WFS_VERSION}
@@ -36,10 +51,12 @@ services:
       POSTGRES_CONNECTION_STRING: postgres://recipe_app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/recipe_app_db
       DATA_ROOT: /data
       HEARTH_SECRET: ${HEARTH_SECRET:?HEARTH_SECRET must be set}
+      ELEVATED_ACTIONS_PIN: ${ELEVATED_ACTIONS_PIN:?ELEVATED_ACTIONS_PIN must be set}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY must be set}
       GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
       GEMINI_MODEL_ID_HERO: ${GEMINI_MODEL_ID_HERO}
       EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID}
+      DEMO_MODE: ${DEMO_MODE:-false}
     volumes:
       - ./data/app:/data
     depends_on:
@@ -61,6 +78,14 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_USER: recipe_app
       POSTGRES_DB: recipe_app_db
+    command:
+      - -h
+      - postgres
+      - -U
+      - recipe_app
+      - recipe_app_db
+      - -f
+      - /schema.sql
     depends_on:
       postgres:
         condition: service_healthy
