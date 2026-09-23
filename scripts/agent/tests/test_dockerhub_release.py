@@ -119,7 +119,9 @@ class DockerHubWorkflowContractTests(unittest.TestCase):
 
     def test_workflow_enforces_immutable_multi_arch_publication_preflight(self):
         self.assertIn("linux/amd64,linux/arm64", self.workflow)
-        self.assertIn("git cat-file -t \"$tag_object\"", self.workflow)
+        self.assertIn('git rev-parse -q --verify "refs/tags/$TAG^{tag}"', self.workflow)
+        self.assertNotIn("EVENT_SHA", self.workflow)
+        self.assertNotIn('"$tag_object" != "$EVENT_SHA"', self.workflow)
         self.assertIn("git merge-base --is-ancestor \"$tag_commit\" origin/main", self.workflow)
         self.assertIn("DOCKERHUB_USERNAME", self.workflow)
         self.assertIn("DOCKERHUB_TOKEN", self.workflow)

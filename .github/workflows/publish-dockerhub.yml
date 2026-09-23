@@ -28,7 +28,6 @@ jobs:
         id: validate
         env:
           TAG: ${{ github.ref_name }}
-          EVENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           git fetch origin main --tags --force
@@ -38,8 +37,7 @@ jobs:
             exit 1
           fi
 
-          tag_object="$(git rev-parse "$TAG")"
-          if [ "$tag_object" != "$EVENT_SHA" ] || [ "$(git cat-file -t "$tag_object")" != "tag" ]; then
+          if ! tag_object="$(git rev-parse -q --verify "refs/tags/$TAG^{tag}")"; then
             echo "Docker Hub releases require the pushed ref to be an annotated tag." >&2
             exit 1
           fi
