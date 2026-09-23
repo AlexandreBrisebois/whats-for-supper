@@ -79,6 +79,7 @@ export function QuickFindModal({
 
   const isNudgeCard = recipes.length > 0 && currentIndex === 4;
   const currentRecipe = recipes[currentIndex];
+  const hasAnotherSuggestion = recipes.length > 1;
 
   const searchUrl =
     dayIndex !== null ? `/recipes?addToDay=${dayIndex}&weekOffset=${weekOffset}` : '/recipes';
@@ -236,10 +237,10 @@ export function QuickFindModal({
               variant="secondary"
               className="h-16 rounded-3xl bg-charcoal/5 border-charcoal/10 text-charcoal font-black hover:bg-charcoal/10 active:scale-95 transition-all uppercase tracking-widest text-[11px]"
               onClick={handleNext}
-              disabled={isLoading}
+              disabled={isLoading || !hasAnotherSuggestion}
               data-testid="quick-find-next"
             >
-              {isNudgeCard ? 'Start Over' : 'Skip'}
+              {!hasAnotherSuggestion ? 'No more picks' : isNudgeCard ? 'Start Over' : 'Skip'}
             </Button>
             <Button
               className={cn(

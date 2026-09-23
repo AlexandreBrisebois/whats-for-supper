@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, act, waitFor, screen } from '@testing-library/react';
+import { render, act, fireEvent, waitFor, screen } from '@testing-library/react';
 import React from 'react';
 
 // ── Store mock ────────────────────────────────────────────────────────────────
@@ -112,6 +112,32 @@ describe('QuickFindModal — initial fetch', () => {
     await waitFor(() => {
       expect(screen.getByText(/READY IN 20 MINS/i)).toBeTruthy();
     });
+  });
+
+  it('disables Skip when the API returns only one suggestion', async () => {
+    renderModal();
+
+    await screen.findByText('Pasta');
+
+    const nextButton = screen.getByTestId('quick-find-next');
+    expect(nextButton).toBeDisabled();
+    expect(nextButton).toHaveTextContent('No more picks');
+  });
+
+  it('advances to the second suggestion when the API returns two suggestions', async () => {
+    mockGetFillTheGap.mockResolvedValue([
+      { id: 'r1', name: 'Pasta', image: '', description: '', totalTime: 'PT20M' },
+      { id: 'r2', name: 'Risotto', image: '', description: '', totalTime: 'PT30M' },
+    ]);
+    renderModal();
+
+    await screen.findByText('Pasta');
+    const nextButton = screen.getByTestId('quick-find-next');
+    expect(nextButton).toBeEnabled();
+
+    fireEvent.click(nextButton);
+
+    expect(await screen.findByText('Risotto')).toBeInTheDocument();
   });
 });
 

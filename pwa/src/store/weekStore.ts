@@ -57,7 +57,7 @@ export interface WeekState {
   assignRecipe: (
     dayIndex: number,
     recipe: { id: string; name: string | null; image: string }
-  ) => void;
+  ) => Promise<void>;
   removeRecipe: (dayIndex: number, date: string) => void;
   /**
    * Performs only the local state update (slot swap + day reconciliation +
@@ -221,7 +221,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   },
 
   // ── assignRecipe ──────────────────────────────────────────────────────────
-  assignRecipe(dayIndex, recipe) {
+  async assignRecipe(dayIndex, recipe) {
     const prev = get().schedule;
     const next = prev.map((d, i) =>
       i === dayIndex
@@ -237,19 +237,21 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         : d
     );
     set({ schedule: next, optimisticWriteAt: Date.now() });
-    assignRecipeToDay(get().weekOffset, dayIndex, recipe)
-      .then(async () => {
-        const data = await getSchedule(get().weekOffset);
-        if (!data) return;
+    try {
+      await assignRecipeToDay(get().weekOffset, dayIndex, recipe);
+      const data = await getSchedule(get().weekOffset);
+      if (!data) return;
 
-        set({
-          groceryItems: data.groceryItems ?? [],
-          balanceSummary: data.balanceSummary ?? null,
-          status: (data.status ?? 0) as 0 | 1 | 2,
-          lastSyncedAt: Date.now(),
-        });
-      })
-      .catch(() => set({ schedule: prev }));
+      set({
+        groceryItems: data.groceryItems ?? [],
+        balanceSummary: data.balanceSummary ?? null,
+        status: (data.status ?? 0) as 0 | 1 | 2,
+        lastSyncedAt: Date.now(),
+      });
+    } catch {
+      set({ schedule: prev });
+      throw new Error('Failed to assign recipe');
+    }
   },
 
   // ── removeRecipe ──────────────────────────────────────────────────────────

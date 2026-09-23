@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -135,6 +135,10 @@ vi.mock('@/lib/api/api-client', () => ({
   },
 }));
 
+vi.mock('@/lib/planner/slotAssignment', () => ({
+  resolveOccupiedSlot: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@microsoft/kiota-abstractions', () => ({
   DateOnly: { parse: (value: string) => value },
 }));
@@ -151,11 +155,13 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
     dayIndex,
     hasRecipe,
     onPlanLater,
+    onQuickFind,
   }: {
     isOpen: boolean;
     dayIndex: number;
     hasRecipe: boolean;
     onPlanLater?: () => void;
+    onQuickFind: () => void;
   }) =>
     isOpen ? (
       <div
@@ -163,12 +169,29 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
         data-day-index={dayIndex}
         data-has-recipe={hasRecipe ? 'true' : 'false'}
         data-has-plan-later={onPlanLater ? 'true' : 'false'}
-      />
+      >
+        <button data-testid="mock-pivot-quick-find" onClick={onQuickFind}>
+          Quick replace
+        </button>
+      </div>
     ) : null,
 }));
 
 vi.mock('@/components/planner/QuickFindModal', () => ({
-  QuickFindModal: () => null,
+  QuickFindModal: ({ onSelect }: { onSelect: (recipe: any) => void }) => (
+    <button
+      data-testid="mock-quick-find-select"
+      onClick={() =>
+        onSelect({
+          id: '22222222-2222-2222-2222-222222222222',
+          name: 'Replacement recipe',
+          image: '',
+        })
+      }
+    >
+      Select replacement
+    </button>
+  ),
 }));
 
 vi.mock('@/components/ui/SolarLoader', () => ({
@@ -198,7 +221,11 @@ vi.mock('@/components/planner/BalanceIndicator', () => ({
 }));
 
 vi.mock('@/components/home/SkipRecoveryDialog', () => ({
-  SkipRecoveryDialog: () => null,
+  SkipRecoveryDialog: ({ onAction }: { onAction: (action: 'tomorrow') => void }) => (
+    <button data-testid="mock-recovery-tomorrow" onClick={() => onAction('tomorrow')}>
+      Move to Tomorrow
+    </button>
+  ),
 }));
 
 import PlannerPage from './page';
@@ -532,5 +559,30 @@ describe('PlannerPage voting action row', () => {
     expect(pivotSheet).toBeInTheDocument();
     expect(pivotSheet.getAttribute('data-has-recipe')).toBe('true');
     expect(pivotSheet.getAttribute('data-has-plan-later')).toBe('false');
+  });
+});
+
+describe('PlannerPage quick replacement recovery', () => {
+  it('waits for the replacement assignment before refreshing the week', async () => {
+    renderPlanner(0);
+    await waitFor(() => expect(mocks.weekInit).toHaveBeenCalled());
+    const initCallsBeforeRecovery = mocks.weekInit.mock.calls.length;
+
+    let completeAssignment!: () => void;
+    mocks.assignRecipe.mockImplementation(
+      () => new Promise<void>((resolve) => (completeAssignment = resolve))
+    );
+
+    fireEvent.click(screen.getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    await screen.findByTestId('mock-quick-find-select');
+    fireEvent.click(screen.getByTestId('mock-quick-find-select'));
+    fireEvent.click(await screen.findByTestId('mock-recovery-tomorrow'));
+
+    await waitFor(() => expect(mocks.assignRecipe).toHaveBeenCalledTimes(1));
+    expect(mocks.weekInit).toHaveBeenCalledTimes(initCallsBeforeRecovery);
+
+    await act(async () => completeAssignment());
+    await waitFor(() => expect(mocks.weekInit).toHaveBeenCalledTimes(initCallsBeforeRecovery + 1));
   });
 });

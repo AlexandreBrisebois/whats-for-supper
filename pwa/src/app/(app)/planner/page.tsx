@@ -272,7 +272,7 @@ export default function PlannerPage() {
     if (action === 'next_week' && deferResult?.data?.message) {
       useUiStore.getState().addToast(deferResult.data.message);
     }
-    useWeekStore.getState().assignRecipe(slot.dayIndex, recipe);
+    await useWeekStore.getState().assignRecipe(slot.dayIndex, recipe);
 
     if (slot.weekOffset === 0 && slot.date === getTodayString()) {
       useTodayStore.getState().assignRecipe(recipe);
