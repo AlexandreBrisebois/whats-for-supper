@@ -521,7 +521,7 @@ export function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBu
   };
 
   return new File([JSON.stringify(payload, null, 2)], `${slugifyRecipeName(recipeName)}.recipe`, {
-    type: 'application/json',
+    type: 'application/octet-stream',
   });
 }
 
