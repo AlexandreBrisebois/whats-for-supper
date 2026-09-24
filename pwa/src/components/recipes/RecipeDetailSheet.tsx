@@ -122,6 +122,7 @@ export function RecipeDetailSheet({
   const [showImportIssueSheet, setShowImportIssueSheet] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
+  const removeToast = useUiStore((state) => state.removeToast);
   const familySettings = useFamilyStore((state) => state.familySettings);
   const loadGoTo = useFamilyStore((state) => state.loadGoTo);
   const saveGoTo = useFamilyStore((state) => state.saveGoTo);
@@ -469,6 +470,11 @@ export function RecipeDetailSheet({
 
     setIsSharingRecipe(true);
     setShareError(null);
+    const toastId = addToast({
+      type: 'loading',
+      message: t('recipes.preparingShare', 'Preparing recipe…'),
+      persistent: true,
+    });
 
     try {
       const bundle = await getRecipeShareBundle(recipe.id);
@@ -483,6 +489,7 @@ export function RecipeDetailSheet({
         );
       }
     } finally {
+      removeToast(toastId);
       setIsSharingRecipe(false);
     }
   };

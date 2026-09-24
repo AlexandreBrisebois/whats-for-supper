@@ -13,6 +13,7 @@ const mockRegenerateHero = vi.fn();
 const mockSaveRecipeImportIssue = vi.fn();
 const mockResolveRecipeImportIssue = vi.fn();
 const mockAddToast = vi.fn();
+const mockRemoveToast = vi.fn();
 
 vi.mock('@/lib/api/recipes', () => ({
   getRecipe: (...args: unknown[]) => mockGetRecipe(...args),
@@ -33,8 +34,12 @@ vi.mock('@/locales', () => ({
 }));
 
 vi.mock('@/store/uiStore', () => ({
-  useUiStore: (selector: (state: { addToast: (...args: unknown[]) => void }) => unknown) =>
-    selector({ addToast: mockAddToast }),
+  useUiStore: (
+    selector: (state: {
+      addToast: (...args: unknown[]) => string;
+      removeToast: (...args: unknown[]) => void;
+    }) => unknown
+  ) => selector({ addToast: mockAddToast, removeToast: mockRemoveToast }),
 }));
 
 vi.mock('@/store/familyStore', () => ({
@@ -53,6 +58,7 @@ vi.mock('@/lib/imageUtils', () => ({
 describe('RecipeDetailSheet', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAddToast.mockReturnValue('recipe-share-preparation');
     mockGetRecipe.mockResolvedValue({
       id: '550e8400-e29b-41d4-a716-446655440111',
       name: 'Shareable Pasta',
@@ -412,6 +418,65 @@ describe('RecipeDetailSheet', () => {
     await waitFor(() => {
       expect(screen.getByTestId('recipe-share-error')).toBeVisible();
     });
+  });
+
+  it('keeps a preparation toast visible through a slow share bundle and prevents duplicate shares', async () => {
+    let resolveBundle: (value: Record<string, unknown>) => void;
+    mockGetRecipeShareBundle.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveBundle = resolve;
+        })
+    );
+
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    const shareButton = await screen.findByTestId('recipe-share-btn');
+    fireEvent.click(shareButton);
+
+    expect(mockAddToast).toHaveBeenCalledWith({
+      type: 'loading',
+      message: 'Preparing recipe…',
+      persistent: true,
+    });
+    expect(shareButton).toBeDisabled();
+    expect(mockGetRecipeShareBundle).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(shareButton);
+    expect(mockGetRecipeShareBundle).toHaveBeenCalledTimes(1);
+    expect(mockRemoveToast).not.toHaveBeenCalled();
+
+    resolveBundle!({ version: '1.0' });
+
+    await waitFor(() => expect(mockDownloadRecipeBundleFile).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockRemoveToast).toHaveBeenCalledWith('recipe-share-preparation'));
+  });
+
+  it('removes the preparation toast before preserving the existing share failure message', async () => {
+    mockGetRecipeShareBundle.mockRejectedValue(new Error('share failed'));
+
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('recipe-share-btn'));
+
+    await waitFor(() => expect(mockRemoveToast).toHaveBeenCalledWith('recipe-share-preparation'));
+    expect(await screen.findByTestId('recipe-share-error')).toBeVisible();
   });
 
   it('hides action-view-original for synthesized recipes with no source URL', async () => {

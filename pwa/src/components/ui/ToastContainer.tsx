@@ -25,12 +25,14 @@ export function ToastContainer() {
 
 function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) => void }) {
   useEffect(() => {
+    if (toast.persistent) return;
+
     const timer = setTimeout(() => {
       onDismiss(toast.id);
     }, TOAST_DURATION);
 
     return () => clearTimeout(timer);
-  }, [toast.id, onDismiss]);
+  }, [toast.id, toast.persistent, onDismiss]);
 
   const icons = {
     success: <CheckCircle2 size={18} className="text-sage" />,
@@ -49,6 +51,8 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
   return (
     <motion.div
       data-testid="toast"
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
       initial={{ opacity: 0, y: -20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
