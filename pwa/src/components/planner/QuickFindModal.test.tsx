@@ -142,11 +142,32 @@ describe('QuickFindModal — initial fetch', () => {
     });
   });
 
-  it('disables Skip when the API returns only one suggestion', async () => {
+  it('uses Skip to advance one suggestion to the terminal card, then Start Over to restart', async () => {
     renderModal();
 
     await screen.findByText('Pasta');
 
+    const nextButton = screen.getByTestId('quick-find-next');
+    expect(nextButton).toBeEnabled();
+    expect(nextButton).toHaveTextContent('Skip');
+
+    fireEvent.click(nextButton);
+
+    expect(await screen.findByText("Didn't find a match?")).toBeInTheDocument();
+    expect(nextButton).toBeEnabled();
+    expect(nextButton).toHaveTextContent('Start Over');
+
+    fireEvent.click(nextButton);
+
+    expect(await screen.findByText('Pasta')).toBeInTheDocument();
+    expect(nextButton).toHaveTextContent('Skip');
+  });
+
+  it('does not offer an enabled Skip action when the API returns no suggestions', async () => {
+    mockGetFillTheGap.mockResolvedValue([]);
+    renderModal();
+
+    expect(await screen.findByText('No recipes found.')).toBeInTheDocument();
     const nextButton = screen.getByTestId('quick-find-next');
     expect(nextButton).toBeDisabled();
     expect(nextButton).toHaveTextContent('No more picks');
@@ -179,6 +200,11 @@ describe('QuickFindModal — initial fetch', () => {
     fireEvent.click(screen.getByTestId('quick-find-next'));
     expect(await screen.findByText("Didn't find a match?")).toBeInTheDocument();
     expect(screen.getByTestId('quick-find-search-library')).toHaveAttribute('href', '/recipes');
+    expect(screen.getByTestId('quick-find-next')).toHaveTextContent('Start Over');
+
+    fireEvent.click(screen.getByTestId('quick-find-next'));
+    expect(await screen.findByText('Recipe 1')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-find-next')).toHaveTextContent('Skip');
   });
 
   it('renders one progress indicator for each of four suggestions and the terminal card', async () => {
@@ -211,6 +237,7 @@ describe('QuickFindModal — initial fetch', () => {
     fireEvent.click(nextButton);
     expect(await screen.findByText("Didn't find a match?")).toBeInTheDocument();
     expect(screen.getByTestId('quick-find-search-library')).toBeInTheDocument();
+    expect(nextButton).toHaveTextContent('Start Over');
   });
 });
 
