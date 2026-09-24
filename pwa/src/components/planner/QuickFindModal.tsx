@@ -34,51 +34,73 @@ export function QuickFindModal({
   // BS-7: watch for fill-the-gap invalidation signals from SSE.
   // When another client assigns a recipe, the version increments and we silently
   // refetch so already-planned recipes disappear from the list.
-  const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
+  const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersions[weekOffset] ?? 0);
 
   // Track whether the initial fetch has completed so the invalidation effect
   // does not fire a redundant second fetch on mount (version 0 is the initial value).
   const initialFetchDone = useRef(false);
+  const lastHandledFillTheGapVersion = useRef(0);
+  const latestFetchId = useRef(0);
 
   const fetchSuggestions = async () => {
+    const fetchId = ++latestFetchId.current;
     try {
       const data = await getFillTheGap(weekOffset);
-      setRecipes(data || []);
+      if (fetchId !== latestFetchId.current) return false;
+
+      const nextRecipes = data || [];
+      setRecipes(nextRecipes);
+      setCurrentIndex((index) => Math.min(index, nextRecipes.length));
+      return true;
     } catch (error) {
       console.error('Failed to fetch fill-the-gap recipes:', error);
+      return fetchId === latestFetchId.current;
     } finally {
-      setIsLoading(false);
+      if (fetchId === latestFetchId.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   // Initial fetch on mount.
   useEffect(() => {
+    initialFetchDone.current = false;
+    lastHandledFillTheGapVersion.current = 0;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchSuggestions().then(() => {
-      initialFetchDone.current = true;
+    fetchSuggestions().then((didCommit) => {
+      if (didCommit) {
+        initialFetchDone.current = true;
+      }
     });
+    return () => {
+      latestFetchId.current += 1;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekOffset]);
 
   // Refetch when another client assigns or removes a recipe (BS-7).
   // Guard: only fire after the initial fetch has completed (modal is open and ready).
   useEffect(() => {
-    if (!initialFetchDone.current) return;
+    if (!initialFetchDone.current || fillTheGapVersion === 0) return;
+    if (fillTheGapVersion <= lastHandledFillTheGapVersion.current) return;
+    lastHandledFillTheGapVersion.current = fillTheGapVersion;
     fetchSuggestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fillTheGapVersion]);
+  }, [fillTheGapVersion, recipes.length]);
 
   const handleNext = () => {
     setIsFlipped(false);
-    if (currentIndex < recipes.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+    if (safeCurrentIndex < totalCards - 1) {
+      setCurrentIndex(safeCurrentIndex + 1);
     } else {
       setCurrentIndex(0);
     }
   };
 
-  const isNudgeCard = recipes.length > 0 && currentIndex === 4;
-  const currentRecipe = recipes[currentIndex];
+  const totalCards = recipes.length + 1;
+  const safeCurrentIndex = Math.min(currentIndex, recipes.length);
+  const isNudgeCard = recipes.length > 0 && safeCurrentIndex === recipes.length;
+  const currentRecipe = recipes[safeCurrentIndex];
   const hasAnotherSuggestion = recipes.length > 1;
 
   const searchUrl =
@@ -126,7 +148,7 @@ export function QuickFindModal({
             <div className="relative aspect-[4/5] mb-8 perspective-1000">
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={currentIndex}
+                  key={safeCurrentIndex}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1, rotateY: isFlipped ? 180 : 0 }}
                   exit={{ opacity: 0, scale: 0.8 }}
@@ -258,12 +280,13 @@ export function QuickFindModal({
           </div>
 
           <div className="mt-8 flex justify-center space-x-2">
-            {[0, 1, 2, 3, 4].map((i) => (
+            {Array.from({ length: totalCards }, (_, i) => (
               <motion.div
                 key={i}
+                data-testid="quick-find-progress-indicator"
                 animate={{
-                  width: i === currentIndex ? 32 : 8,
-                  backgroundColor: i === currentIndex ? '#E1AD01' : 'rgba(32, 24, 21, 0.12)',
+                  width: i === safeCurrentIndex ? 32 : 8,
+                  backgroundColor: i === safeCurrentIndex ? '#E1AD01' : 'rgba(32, 24, 21, 0.12)',
                 }}
                 className="h-2 rounded-full"
               />

@@ -85,7 +85,7 @@ test.describe('Recipe Share And Capture', () => {
     const downloadPromise = page.waitForEvent('download');
     await page.getByTestId('recipe-share-btn').click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/\.recipe$/);
+    expect(download.suggestedFilename()).toMatch(/\.txt$/);
 
     await page.getByTestId('action-gear-menu').click();
     await expect(page.getByTestId('action-edit-recipe')).toBeVisible();

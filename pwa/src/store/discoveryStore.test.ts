@@ -17,6 +17,7 @@ beforeEach(() => {
   useDiscoveryStore.setState({
     hasPendingCards: false,
     fillTheGapVersion: 0,
+    fillTheGapVersions: {},
     discoveryStack: [],
     activeCategory: null,
   });
@@ -49,6 +50,17 @@ describe('discoveryStore — invalidateFillTheGap', () => {
   it('increments regardless of weekOffset argument', () => {
     useDiscoveryStore.getState().invalidateFillTheGap(1);
     expect(useDiscoveryStore.getState().fillTheGapVersion).toBe(1);
+  });
+
+  it('increments only the invalidated week version', () => {
+    useDiscoveryStore.getState().invalidateFillTheGap(1);
+    expect(useDiscoveryStore.getState().fillTheGapVersions).toEqual({ 1: 1 });
+
+    useDiscoveryStore.getState().invalidateFillTheGap(0);
+    expect(useDiscoveryStore.getState().fillTheGapVersions).toEqual({ 0: 1, 1: 1 });
+
+    useDiscoveryStore.getState().invalidateFillTheGap(1);
+    expect(useDiscoveryStore.getState().fillTheGapVersions).toEqual({ 0: 1, 1: 2 });
   });
 
   it('does not affect hasPendingCards', () => {

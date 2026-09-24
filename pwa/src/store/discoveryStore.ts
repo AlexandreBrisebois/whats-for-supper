@@ -6,11 +6,13 @@ interface DiscoveryState {
   setHasPendingCards: (hasCards: boolean) => void;
   /**
    * Incremented each time a fill-the-gap invalidation SSE event is received.
-   * QuickFindModal watches this value and silently refetches its recipe list
-   * when it changes, ensuring already-planned recipes are removed from the list.
+   * Discovery consumers watch this global value. Quick Find uses the per-week
+   * version below so unrelated planner weeks do not trigger a refetch.
    * BS-7: was missing from the original stub.
    */
   fillTheGapVersion: number;
+  /** Per-week invalidation versions for week-scoped Quick Find refreshes. */
+  fillTheGapVersions: Record<number, number>;
   invalidateFillTheGap: (weekOffset: number) => void;
 
   // ── Live stack management (Task 29) ──────────────────────────────────────
@@ -56,11 +58,15 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
   hasPendingCards: false,
   setHasPendingCards: (hasCards) => set({ hasPendingCards: hasCards }),
   fillTheGapVersion: 0,
-  // weekOffset is accepted for future use (e.g. per-week invalidation),
-  // but currently the version counter is global — QuickFindModal refetches
-  // regardless of which week was affected.
-  invalidateFillTheGap: (_weekOffset: number) =>
-    set((s) => ({ fillTheGapVersion: s.fillTheGapVersion + 1 })),
+  fillTheGapVersions: {},
+  invalidateFillTheGap: (weekOffset) =>
+    set((s) => ({
+      fillTheGapVersion: s.fillTheGapVersion + 1,
+      fillTheGapVersions: {
+        ...s.fillTheGapVersions,
+        [weekOffset]: (s.fillTheGapVersions[weekOffset] ?? 0) + 1,
+      },
+    })),
 
   discoveryStack: [],
 
