@@ -71,6 +71,24 @@ beforeEach(() => {
   });
 });
 
+describe('weekStore — assignment rollback', () => {
+  it('restores the optimistic slot when assignment fails', async () => {
+    const existingDay = makeDay({ _uiId: 'existing-day' });
+    useWeekStore.setState({ schedule: [existingDay] });
+    vi.mocked(assignRecipeToDay).mockRejectedValue(new Error('assignment failed'));
+
+    await expect(
+      useWeekStore.getState().assignRecipe(0, {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'Replacement recipe',
+        image: '',
+      })
+    ).rejects.toThrow('Failed to assign recipe');
+
+    expect(useWeekStore.getState().schedule).toEqual([existingDay]);
+  });
+});
+
 describe('weekStore — grocery reclassification', () => {
   it('immutably replaces only the matching item section by normalizedKey', () => {
     const tomato = {

@@ -81,6 +81,8 @@ export default function PlannerPage() {
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
   const draggedUiIdRef = useRef<string | null>(null);
+  const recoverySubmissionRef = useRef(false);
+  const recoveryRecipeResolvedRef = useRef(false);
   const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const isWide = useMediaQuery('(min-width: 1024px)');
@@ -241,48 +243,79 @@ export default function PlannerPage() {
         },
         recipe: nextRecipe,
       });
+      recoveryRecipeResolvedRef.current = false;
       setShowQuickFind(false);
       return;
     }
 
-    useWeekStore.getState().assignRecipe(selectedDayIndex, {
-      id: nextRecipe.id,
-      name: nextRecipe.name,
-      image: nextRecipe.image,
-    });
+    try {
+      await useWeekStore.getState().assignRecipe(selectedDayIndex, {
+        id: nextRecipe.id,
+        name: nextRecipe.name,
+        image: nextRecipe.image,
+      });
 
-    // Propagate to todayStore if this is today's slot
-    const assignedDate = schedule[selectedDayIndex]?.date;
-    if (currentWeekOffset === 0 && assignedDate === getTodayString()) {
-      useTodayStore.getState().assignRecipe(nextRecipe);
+      // Propagate to todayStore if this is today's slot
+      const assignedDate = schedule[selectedDayIndex]?.date;
+      if (currentWeekOffset === 0 && assignedDate === getTodayString()) {
+        useTodayStore.getState().assignRecipe(nextRecipe);
+      }
+
+      setShowQuickFind(false);
+      setShowPivot(null);
+      setSelectedDayIndex(null);
+      setPendingQuickFindDayIndex(null);
+    } catch {
+      await useWeekStore.getState().init(currentWeekOffset);
+      useUiStore.getState().addToast({
+        type: 'error',
+        message: 'That recipe could not be added. Your plan was refreshed; please try again.',
+      });
     }
-
-    setShowQuickFind(false);
-    setShowPivot(null);
-    setSelectedDayIndex(null);
-    setPendingQuickFindDayIndex(null);
   };
 
   const handleRecoveryAction = async (action: string) => {
     if (!pendingRecovery) return;
     if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
+    if (recoverySubmissionRef.current) return;
 
     const { slot, recipe } = pendingRecovery;
-    const deferResult = await resolveOccupiedSlot(slot, action, action === 'next_week');
-    if (action === 'next_week' && deferResult?.data?.message) {
-      useUiStore.getState().addToast(deferResult.data.message);
-    }
-    await useWeekStore.getState().assignRecipe(slot.dayIndex, recipe);
+    recoverySubmissionRef.current = true;
+    let priorRecipeResolved = recoveryRecipeResolvedRef.current;
 
-    if (slot.weekOffset === 0 && slot.date === getTodayString()) {
-      useTodayStore.getState().assignRecipe(recipe);
-    }
+    try {
+      if (!priorRecipeResolved) {
+        const deferResult = await resolveOccupiedSlot(slot, action, action === 'next_week');
+        priorRecipeResolved = true;
+        recoveryRecipeResolvedRef.current = true;
+        if (action === 'next_week' && deferResult?.data?.message) {
+          useUiStore.getState().addToast(deferResult.data.message);
+        }
+      }
 
-    setPendingRecovery(null);
-    setShowPivot(null);
-    setSelectedDayIndex(null);
-    setPendingQuickFindDayIndex(null);
-    await useWeekStore.getState().init(currentWeekOffset);
+      await useWeekStore.getState().assignRecipe(slot.dayIndex, recipe);
+
+      if (slot.weekOffset === 0 && slot.date === getTodayString()) {
+        useTodayStore.getState().assignRecipe(recipe);
+      }
+
+      setPendingRecovery(null);
+      recoveryRecipeResolvedRef.current = false;
+      setShowPivot(null);
+      setSelectedDayIndex(null);
+      setPendingQuickFindDayIndex(null);
+      await useWeekStore.getState().init(currentWeekOffset);
+    } catch {
+      await useWeekStore.getState().init(currentWeekOffset);
+      useUiStore.getState().addToast({
+        type: 'error',
+        message: priorRecipeResolved
+          ? 'The previous meal was moved, but the replacement could not be added. Your plan was refreshed; please try again.'
+          : 'The current meal could not be moved. Your plan was refreshed; please try again.',
+      });
+    } finally {
+      recoverySubmissionRef.current = false;
+    }
   };
 
   const handleSearchPath = () => {
@@ -810,8 +843,14 @@ export default function PlannerPage() {
           <SkipRecoveryDialog
             isOpen={true}
             step={2}
-            onClose={() => setPendingRecovery(null)}
-            onBack={() => setPendingRecovery(null)}
+            onClose={() => {
+              setPendingRecovery(null);
+              recoveryRecipeResolvedRef.current = false;
+            }}
+            onBack={() => {
+              setPendingRecovery(null);
+              recoveryRecipeResolvedRef.current = false;
+            }}
             onAction={handleRecoveryAction}
           />
         )}

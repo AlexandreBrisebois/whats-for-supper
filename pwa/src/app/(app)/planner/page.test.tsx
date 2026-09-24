@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => {
   const assignRecipe = vi.fn();
   const removeRecipe = vi.fn();
   const reorderLocally = vi.fn();
+  const resolveOccupiedSlot = vi.fn();
+  const addToast = vi.fn();
   let weekState: any;
   let plannerState: any;
   let searchParams = '';
@@ -33,6 +35,8 @@ const mocks = vi.hoisted(() => {
     assignRecipe,
     removeRecipe,
     reorderLocally,
+    resolveOccupiedSlot,
+    addToast,
     getWeekState: () => weekState,
     getPlannerState: () => plannerState,
     setWeekState: (value: any) => {
@@ -115,6 +119,12 @@ vi.mock('@/store/todayStore', () => ({
   },
 }));
 
+vi.mock('@/store/uiStore', () => ({
+  useUiStore: {
+    getState: () => ({ addToast: mocks.addToast }),
+  },
+}));
+
 vi.mock('@/lib/api/planner', () => ({
   lockSchedule: vi.fn().mockResolvedValue(undefined),
   assignRecipeToDay: vi.fn().mockResolvedValue(undefined),
@@ -136,7 +146,7 @@ vi.mock('@/lib/api/api-client', () => ({
 }));
 
 vi.mock('@/lib/planner/slotAssignment', () => ({
-  resolveOccupiedSlot: vi.fn().mockResolvedValue(undefined),
+  resolveOccupiedSlot: (...args: unknown[]) => mocks.resolveOccupiedSlot(...args),
 }));
 
 vi.mock('@microsoft/kiota-abstractions', () => ({
@@ -301,6 +311,8 @@ describe('PlannerPage voting action row', () => {
     vi.clearAllMocks();
     mocks.setSearchParams('');
     mocks.getVotingLink.mockResolvedValue('http://example.com/discovery');
+    mocks.assignRecipe.mockResolvedValue(undefined);
+    mocks.resolveOccupiedSlot.mockResolvedValue(undefined);
 
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -563,6 +575,106 @@ describe('PlannerPage voting action row', () => {
 });
 
 describe('PlannerPage quick replacement recovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.assignRecipe.mockResolvedValue(undefined);
+    mocks.resolveOccupiedSlot.mockResolvedValue(undefined);
+  });
+
+  it('keeps Quick Find open, shows an error, and reconciles when an empty-slot assignment fails', async () => {
+    mocks.assignRecipe.mockRejectedValue(new Error('assignment failed'));
+    renderPlanner(0);
+    await waitFor(() => expect(mocks.weekInit).toHaveBeenCalled());
+    const initCallsBeforeAssignment = mocks.weekInit.mock.calls.length;
+
+    fireEvent.click(within(screen.getByTestId('day-card-1')).getByTestId('plan-meal-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    fireEvent.click(await screen.findByTestId('mock-quick-find-select'));
+
+    await waitFor(() => {
+      expect(mocks.addToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: expect.stringContaining('could not be added'),
+        })
+      );
+    });
+    expect(mocks.weekInit).toHaveBeenCalledTimes(initCallsBeforeAssignment + 1);
+    expect(screen.getByTestId('mock-quick-find-select')).toBeInTheDocument();
+  });
+
+  it('keeps recovery open, shows an error, and reconciles when moving the current recipe fails', async () => {
+    mocks.resolveOccupiedSlot.mockRejectedValue(new Error('move failed'));
+    renderPlanner(0);
+    await waitFor(() => expect(mocks.weekInit).toHaveBeenCalled());
+    const initCallsBeforeRecovery = mocks.weekInit.mock.calls.length;
+
+    fireEvent.click(screen.getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    fireEvent.click(await screen.findByTestId('mock-quick-find-select'));
+    fireEvent.click(await screen.findByTestId('mock-recovery-tomorrow'));
+
+    await waitFor(() => {
+      expect(mocks.addToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: expect.stringContaining('could not be moved'),
+        })
+      );
+    });
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    expect(mocks.weekInit).toHaveBeenCalledTimes(initCallsBeforeRecovery + 1);
+    expect(screen.getByTestId('mock-recovery-tomorrow')).toBeInTheDocument();
+  });
+
+  it('reconciles after a successful move when replacement assignment fails and keeps recovery open', async () => {
+    mocks.assignRecipe.mockRejectedValue(new Error('assignment failed'));
+    renderPlanner(0);
+    await waitFor(() => expect(mocks.weekInit).toHaveBeenCalled());
+    const initCallsBeforeRecovery = mocks.weekInit.mock.calls.length;
+
+    fireEvent.click(screen.getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    fireEvent.click(await screen.findByTestId('mock-quick-find-select'));
+    fireEvent.click(await screen.findByTestId('mock-recovery-tomorrow'));
+
+    await waitFor(() => {
+      expect(mocks.addToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: expect.stringContaining('could not be added'),
+        })
+      );
+    });
+    expect(mocks.resolveOccupiedSlot).toHaveBeenCalledTimes(1);
+    expect(mocks.weekInit).toHaveBeenCalledTimes(initCallsBeforeRecovery + 1);
+    expect(screen.getByTestId('mock-recovery-tomorrow')).toBeInTheDocument();
+
+    mocks.assignRecipe.mockResolvedValue(undefined);
+    fireEvent.click(screen.getByTestId('mock-recovery-tomorrow'));
+    await waitFor(() => expect(mocks.assignRecipe).toHaveBeenCalledTimes(2));
+    expect(mocks.resolveOccupiedSlot).toHaveBeenCalledTimes(1);
+  });
+
+  it('submits an occupied-slot recovery action only once while it is in flight', async () => {
+    let completeMove!: () => void;
+    mocks.resolveOccupiedSlot.mockImplementation(
+      () => new Promise<void>((resolve) => (completeMove = resolve))
+    );
+    renderPlanner(0);
+
+    fireEvent.click(screen.getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    fireEvent.click(await screen.findByTestId('mock-quick-find-select'));
+    const recoveryAction = await screen.findByTestId('mock-recovery-tomorrow');
+    fireEvent.click(recoveryAction);
+    fireEvent.click(recoveryAction);
+
+    await waitFor(() => expect(mocks.resolveOccupiedSlot).toHaveBeenCalledTimes(1));
+    await act(async () => completeMove());
+    await waitFor(() => expect(mocks.assignRecipe).toHaveBeenCalledTimes(1));
+  });
+
   it('waits for the replacement assignment before refreshing the week', async () => {
     renderPlanner(0);
     await waitFor(() => expect(mocks.weekInit).toHaveBeenCalled());

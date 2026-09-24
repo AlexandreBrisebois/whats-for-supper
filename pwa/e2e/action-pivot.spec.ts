@@ -180,8 +180,8 @@ test.describe('Recipe Action Pivot', () => {
     // Verify modal is open
     await expect(page.getByTestId('quick-find-modal')).toBeVisible();
 
-    // Go to the nudge card (5th card)
-    for (let i = 0; i < 4; i++) {
+    // Go to the nudge card after all five suggestions.
+    for (let i = 0; i < 5; i++) {
       await page.getByTestId('quick-find-next').click();
       await expect(page.getByTestId('quick-find-next')).toBeVisible();
     }
