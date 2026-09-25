@@ -4,6 +4,19 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+-- Phase 1 dietary separation: a NULL version is an explicit unknown state.
+-- Do not derive it from the legacy is_vegetarian default, which historically
+-- did not establish that a recipe had been classified from ingredients.
+DO $$
+BEGIN
+    IF to_regclass('public.recipes') IS NOT NULL THEN
+        ALTER TABLE public.recipes
+            ADD COLUMN IF NOT EXISTS vegetarian_classification_version integer,
+            ADD COLUMN IF NOT EXISTS vegetarian_classified_at timestamptz;
+    END IF;
+END
+$$;
+
 CREATE TABLE IF NOT EXISTS recipe_search_filter_state (
     id integer PRIMARY KEY CHECK (id = 1),
     generated_at timestamptz NOT NULL,

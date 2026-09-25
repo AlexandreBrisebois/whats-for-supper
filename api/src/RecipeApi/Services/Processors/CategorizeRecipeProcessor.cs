@@ -14,6 +14,7 @@ public class CategorizeRecipeProcessor(
     IHealthEventPublisher healthPublisher,
     ILogger<CategorizeRecipeProcessor> logger) : IWorkflowProcessor
 {
+    public const int VegetarianClassifierVersion = 1;
     public string ProcessorName => "CategorizeRecipe";
 
     private static readonly Regex SidesRegex = new(
@@ -34,6 +35,7 @@ public class CategorizeRecipeProcessor(
         public string? CuisineType { get; set; }
         public string[]? MealTypes { get; set; }
         public string? PrimaryMealType { get; set; }
+        public bool? IsVegetarian { get; set; }
     }
 
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
@@ -72,12 +74,13 @@ public class CategorizeRecipeProcessor(
         string? cuisineType = null;
         var mealTypesList = new List<string>();
         string? primaryMeal = null;
+        bool? isVegetarian = null;
 
         // 1. Call LLM
         try
         {
             var prompt = $$"""
-                You are a recipe categorization assistant. Given a recipe's name and description, identify its cuisine type and applicable meal types.
+                You are a recipe facts categorization assistant. Given a recipe's name, description, and ingredients, identify its cuisine type, applicable meal types, and whether its available ingredients make the prepared recipe vegetarian.
 
                 Cuisine Type: Choose the best-fitting cuisine from these options, or provide free text if none fit:
                 Italian, French-Canadian, Canadian, French, American, Mexican, Spanish, Greek, Mediterranean, Middle-Eastern, Indian, Chinese, Japanese, Korean, Thai, Vietnamese, Caribbean, Latin American
@@ -88,17 +91,21 @@ public class CategorizeRecipeProcessor(
 
                 Primary Meal Type: Select the single primary meal slot from the selected meal types.
 
+                Vegetarian: true only when the ingredients contain no meat, poultry, fish, shellfish, meat or fish stock/broth, lard, gelatin, fish sauce, anchovy, or meat drippings. Eggs and ordinary dairy are vegetarian. Use the ingredients, never the title alone. If ingredients are insufficient to decide, return null.
+
                 Return a JSON object exactly matching this schema:
                 {
                   "cuisineType": "string",
                   "mealTypes": ["string"],
-                  "primaryMealType": "string"
+                  "primaryMealType": "string",
+                  "isVegetarian": true | false | null
                 }
 
                 Return ONLY valid JSON. No markdown. No explanation.
 
                 Recipe Name: {{recipe.Name}}
                 Recipe Description: {{recipe.Description}}
+                Recipe Ingredients: {{recipe.Ingredients}}
                 """;
 
             var response = await chatClient.GetResponseAsync(prompt, cancellationToken: ct);
@@ -121,6 +128,7 @@ public class CategorizeRecipeProcessor(
             {
                 cuisineType = result.CuisineType;
                 primaryMeal = result.PrimaryMealType;
+                isVegetarian = result.IsVegetarian;
 
                 if (result.MealTypes != null)
                 {
@@ -170,6 +178,14 @@ public class CategorizeRecipeProcessor(
 
         recipe.CuisineType = cuisineType;
         recipe.MealTypes = mealTypesList.ToArray();
+        // Only a concrete response changes the WFS-owned fact. A failed or malformed
+        // result must not turn unknown into false or overwrite a valid prior result.
+        if (isVegetarian is bool classifiedVegetarian)
+        {
+            recipe.IsVegetarian = classifiedVegetarian;
+            recipe.VegetarianClassificationVersion = VegetarianClassifierVersion;
+            recipe.VegetarianClassifiedAt = DateTimeOffset.UtcNow;
+        }
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);

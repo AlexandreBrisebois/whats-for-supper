@@ -15,13 +15,14 @@ public interface IRecipeSearchDocumentBuilder
 /// <summary>The single, versioned projection from recipe-owned fields to search content.</summary>
 public sealed class RecipeSearchDocumentBuilder : IRecipeSearchDocumentBuilder
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public RecipeSearchContent Build(Recipe recipe)
     {
         var ingredients = NormalizeCollection(ReadIngredients(recipe.Ingredients));
         var mealTypes = NormalizeCollection(recipe.MealTypes ?? []);
         var dietaryProfiles = NormalizeCollection(ReadDietaryProfiles(recipe.DietaryProfile));
+        var hasVegetarianClassification = recipe.VegetarianClassificationVersion is not null;
         var metadata = new SortedDictionary<string, object?>(StringComparer.Ordinal)
         {
             ["category"] = Normalize(recipe.Category),
@@ -32,11 +33,13 @@ public sealed class RecipeSearchDocumentBuilder : IRecipeSearchDocumentBuilder
             ["tags"] = Array.Empty<string>(),
             ["totalTimeMinutes"] = ParseTotalMinutes(recipe.TotalTime)
         };
+        if (hasVegetarianClassification) metadata["isVegetarian"] = recipe.IsVegetarian;
         var text = new List<string>();
         Add(text, "Name", recipe.Name); Add(text, "Description", recipe.Description);
         AddMany(text, "Ingredients", ingredients); Add(text, "Notes", recipe.Notes);
         Add(text, "Category", recipe.Category); Add(text, "Cuisine", recipe.CuisineType);
         AddMany(text, "Meal types", mealTypes); AddMany(text, "Dietary profile", dietaryProfiles);
+        if (hasVegetarianClassification) text.Add($"Vegetarian: {recipe.IsVegetarian.ToString().ToLowerInvariant()}.");
         if (metadata["totalTimeMinutes"] is int minutes) text.Add($"Total time minutes: {minutes}.");
         return new RecipeSearchContent(string.Join("\n", text), JsonSerializer.Serialize(metadata), CurrentSchemaVersion);
     }

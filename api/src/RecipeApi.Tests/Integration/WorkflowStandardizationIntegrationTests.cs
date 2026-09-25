@@ -372,6 +372,7 @@ public class WorkflowStandardizationIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Spaghetti Carbonara",
             Description = "Creamy pasta with pancetta",
+            Ingredients = "[\"spaghetti\", \"eggs\", \"pancetta\"]",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
@@ -383,7 +384,8 @@ public class WorkflowStandardizationIntegrationTests : IAsyncLifetime
         {
           "cuisineType": "Italian",
           "mealTypes": ["Dinner", "Lunch"],
-          "primaryMealType": "Dinner"
+          "primaryMealType": "Dinner",
+          "isVegetarian": false
         }
         """;
         chatClientMock
@@ -426,6 +428,9 @@ public class WorkflowStandardizationIntegrationTests : IAsyncLifetime
         Assert.Contains("Supper", updatedRecipe.MealTypes); // mapped from Dinner
         Assert.Contains("Lunch", updatedRecipe.MealTypes);
         Assert.Equal("Supper", updatedRecipe.Category); // mapped from Dinner
+        Assert.False(updatedRecipe.IsVegetarian);
+        Assert.Equal(1, updatedRecipe.VegetarianClassificationVersion);
+        Assert.NotNull(updatedRecipe.VegetarianClassifiedAt);
 
         // Verify out-of-band health computation was triggered
         healthPublisherMock.Verify(h => h.PublishRecipeChangedAsync(recipeId, It.IsAny<CancellationToken>()), Times.Once);

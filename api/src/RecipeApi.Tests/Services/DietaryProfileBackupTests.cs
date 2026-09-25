@@ -219,4 +219,30 @@ public class DietaryProfileBackupTests : IAsyncLifetime
         Assert.Equal("Mexican", restoredProfile.CuisineType);
         Assert.True(restoredProfile.FopFlags?.HighInSugars);
     }
+
+    [Fact]
+    public async Task BackupRestoreRoundTrip_PreservesVegetarianClassificationMetadata()
+    {
+        var recipeId = Guid.NewGuid();
+        var classifiedAt = DateTimeOffset.Parse("2026-09-24T12:00:00Z");
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId, Name = "Eggplant parmigiana", IsSynthesized = true,
+            IsVegetarian = true, VegetarianClassificationVersion = 1,
+            VegetarianClassifiedAt = classifiedAt, CreatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.BackupAsync();
+        _db.Recipes.Remove(await _db.Recipes.FindAsync(recipeId) ?? throw new InvalidOperationException());
+        await _db.SaveChangesAsync();
+
+        await _service.RestoreAsync();
+
+        var restored = await _db.Recipes.FindAsync(recipeId);
+        Assert.NotNull(restored);
+        Assert.True(restored.IsVegetarian);
+        Assert.Equal(1, restored.VegetarianClassificationVersion);
+        Assert.Equal(classifiedAt, restored.VegetarianClassifiedAt);
+    }
 }

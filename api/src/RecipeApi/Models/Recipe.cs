@@ -70,6 +70,16 @@ public class Recipe
     [Column("is_vegetarian")]
     public bool IsVegetarian { get; set; } = false;
 
+    /// <summary>
+    /// Null means the WFS-owned ingredient classifier has not confirmed this value.
+    /// The value is deliberately separate from the legacy non-null boolean default.
+    /// </summary>
+    [Column("vegetarian_classification_version")]
+    public int? VegetarianClassificationVersion { get; set; }
+
+    [Column("vegetarian_classified_at")]
+    public DateTimeOffset? VegetarianClassifiedAt { get; set; }
+
     [Column("is_healthy_choice")]
     public bool IsHealthyChoice { get; set; } = false;
 

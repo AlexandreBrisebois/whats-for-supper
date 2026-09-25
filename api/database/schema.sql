@@ -35,6 +35,8 @@ CREATE TABLE recipes (
     is_discoverable boolean NOT NULL,
     category text,
     is_vegetarian boolean NOT NULL,
+    vegetarian_classification_version integer,
+    vegetarian_classified_at timestamptz,
     is_healthy_choice boolean NOT NULL,
     raw_metadata jsonb,
     ingredients jsonb,

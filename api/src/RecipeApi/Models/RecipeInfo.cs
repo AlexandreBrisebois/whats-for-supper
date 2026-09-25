@@ -23,6 +23,8 @@ public class RecipeInfo
     public bool IsDiscoverable { get; set; } = false;
     public bool IsHealthyChoice { get; set; } = false;
     public bool IsVegetarian { get; set; } = false;
+    public int? VegetarianClassificationVersion { get; set; }
+    public DateTimeOffset? VegetarianClassifiedAt { get; set; }
     public string? TotalTime { get; set; }
     public DateTimeOffset? LastCookedDate { get; set; }
     public string? SourceUrl { get; set; }

@@ -41,6 +41,34 @@ public class RecipeSearchDocumentBuilderTests
     }
 
     [Fact]
+    public void Build_ConfirmedVegetarianClassificationAddsRecipeOwnedFact()
+    {
+        var recipe = Recipe("[\"lentils\", \"eggs\"]");
+        recipe.IsVegetarian = true;
+        recipe.VegetarianClassificationVersion = 1;
+        recipe.VegetarianClassifiedAt = DateTimeOffset.Parse("2026-09-24T12:00:00Z");
+
+        var content = new RecipeSearchDocumentBuilder().Build(recipe);
+
+        using var metadata = JsonDocument.Parse(content.SearchMetadata);
+        Assert.True(metadata.RootElement.GetProperty("isVegetarian").GetBoolean());
+        Assert.Contains("Vegetarian: true.", content.DocumentText);
+    }
+
+    [Fact]
+    public void Build_UnknownVegetarianClassificationDoesNotIndexLegacyFalseDefault()
+    {
+        var recipe = Recipe("[\"lentils\"]");
+        recipe.IsVegetarian = false;
+
+        var content = new RecipeSearchDocumentBuilder().Build(recipe);
+
+        using var metadata = JsonDocument.Parse(content.SearchMetadata);
+        Assert.False(metadata.RootElement.TryGetProperty("isVegetarian", out _));
+        Assert.DoesNotContain("Vegetarian:", content.DocumentText);
+    }
+
+    [Fact]
     public void Fingerprint_ChangesForContentAndSchemaVersion()
     {
         var builder = new RecipeSearchDocumentBuilder();
