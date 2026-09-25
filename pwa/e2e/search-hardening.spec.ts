@@ -355,7 +355,16 @@ test.describe('Scenario 5 — failed capture → retry success lifecycle', () =>
       timeout: 5000,
     });
 
+    const retryResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().endsWith(
+          `/api/captures/failures/${MOCK_IDS.CAPTURE_FAILURE_URL}/retry`
+        )
+    );
+
     await page.getByTestId(`action-retry-${MOCK_IDS.CAPTURE_FAILURE_URL}`).click();
+    expect((await retryResponse).status()).toBe(202);
     expect(retryCallCount).toBe(1);
 
     // After retry, refresh — item gone, empty state shown
