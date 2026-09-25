@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('next/image', () => ({
   default: ({ fill: _fill, priority: _priority, unoptimized: _unoptimized, ...props }: any) => (
@@ -20,8 +20,10 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => routerMocks,
 }));
 
 vi.mock('@/locales', () => ({
@@ -63,7 +65,44 @@ describe('CooksMode', () => {
     updateRecipeMock.mockReset();
     saveRecipeImportIssueMock.mockReset();
     resolveRecipeImportIssueMock.mockReset();
+    routerMocks.push.mockReset();
     usePlannerStore.setState({ cookProgress: {} });
+  });
+
+  it('completes Cook Mode in place so the Home cooked state is not remounted', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      recipeInstructions: [{ name: 'Cook Pasta', text: 'Cook until al dente.' }],
+    });
+    const onCooked = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '/img/pasta.jpg' }}
+        onCooked={onCooked}
+        onClose={onClose}
+      />
+    );
+
+    const nextButton = await screen.findByTestId('cooks-mode-step-next');
+    fireEvent.click(nextButton);
+    await screen.findByRole('heading', { name: 'Cook Pasta' });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(nextButton);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600);
+      });
+
+      expect(onCooked).toHaveBeenCalledOnce();
+      expect(onClose).toHaveBeenCalledOnce();
+      expect(routerMocks.push).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('reports Ingredients from Check & Prep without losing checked ingredients or cook progress', async () => {

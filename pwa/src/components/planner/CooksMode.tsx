@@ -127,7 +127,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       setTimeout(() => {
         onCooked?.();
         onClose();
-        router.push('/home');
       }, 600);
     }
   };
