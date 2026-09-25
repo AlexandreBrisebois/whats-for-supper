@@ -17,7 +17,6 @@ test.describe('Demo Mode', () => {
           demoMode: true,
           demoModeRawValue: 'true',
           demoRestoreCronValid: true,
-          allowAgentSearch: false,
         }),
       });
     });
@@ -25,10 +24,7 @@ test.describe('Demo Mode', () => {
 
   // pre-populates the passphrase on the welcome page is covered by welcome/page.test.tsx
 
-  test('blocks agent search with explicit notice and keeps standard search available', async ({
-    page,
-    baseURL,
-  }) => {
+  test('keeps standard search available in demo mode', async ({ page, baseURL }) => {
     const baseUrl = baseURL || 'http://127.0.0.1:3000';
 
     // Simulate being logged in
@@ -47,18 +43,6 @@ test.describe('Demo Mode', () => {
 
     await expect(page.getByTestId('recipe-search-input')).toBeVisible();
 
-    // Attempt to trigger agent search in demo mode
-    const agentTrigger = page.getByTestId('demo-agent-search-toggle');
-    await expect(agentTrigger).toBeVisible();
-    await agentTrigger.click();
-
-    // Deterministic test-id-only notice path
-    const notice = page.getByTestId('demo-ai-notice');
-    await expect(notice).toBeVisible();
-    await expect(notice).toContainText(/disabled in Demo Mode/i);
-
-    // No dead-end: agent canvas remains blocked, standard input remains usable
-    await expect(page.getByTestId('agent-search-input')).not.toBeVisible();
     await expect(page.getByTestId('recipe-search-input')).toBeVisible();
   });
 });

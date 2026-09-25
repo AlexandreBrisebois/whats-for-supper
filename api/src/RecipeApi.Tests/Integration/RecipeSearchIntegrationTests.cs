@@ -1031,24 +1031,16 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AgentSearch_CannotPromoteAnActiveReport_EvenWhenAgentSelectsIt()
+    public async Task Search_CannotPromoteAnActiveReport()
     {
         var reported = CreateRecipe("Reported Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
         var ordinary = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-
-        await _factory.DisposeAsync();
-        _factory = await TestWebApplicationFactory.CreateAsync(new ReportSelectingChatClient(reported.Id));
-        _client = _factory.CreateClient();
 
         await SeedRecipeAsync(reported);
         await SeedRecipeAsync(ordinary);
         await SeedReportAsync(reported.Id, RecipeImportReportStatus.Reported);
 
-        using var document = await ReadDataAsync(await PostSearchAsync(new
-        {
-            query = "pick the reported chicken",
-            mode = "agent"
-        }));
+        using var document = await ReadDataAsync(await PostSearchAsync(new { query = "chicken" }));
 
         Assert.Equal(ordinary.Id, document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
         Assert.Contains(

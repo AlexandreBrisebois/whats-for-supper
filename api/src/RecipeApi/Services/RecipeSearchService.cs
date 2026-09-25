@@ -59,9 +59,7 @@ public partial class RecipeSearchService(
             ? "pantry-assisted"
             : dto.SimilarToRecipeId is not null
                 ? "similar"
-                : string.Equals(dto.Mode, "agent", StringComparison.OrdinalIgnoreCase)
-                    ? "agent"
-                    : "standard";
+                : "standard";
 
         telemetry?.Emit(SearchTelemetryEvents.SearchRequested, new()
         {
@@ -483,7 +481,7 @@ public partial class RecipeSearchService(
 
     private static string CreateContinuationFingerprint(RecipeSearchRequestDto dto, string query)
     {
-        var serialized = JsonSerializer.Serialize(new { query, dto.Mode, dto.SimilarToRecipeId, dto.PantrySnapshotId, dto.WeekOffset, dto.DayIndex, dto.Filters, dto.Preferences }, JsonDefaults.CamelCase);
+        var serialized = JsonSerializer.Serialize(new { query, dto.SimilarToRecipeId, dto.PantrySnapshotId, dto.WeekOffset, dto.DayIndex, dto.Filters, dto.Preferences }, JsonDefaults.CamelCase);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(serialized)));
     }
 

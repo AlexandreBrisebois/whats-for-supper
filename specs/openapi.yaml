@@ -266,7 +266,6 @@ components:
       type: object
       properties:
         query: { type: [string, 'null'], description: Original caller query. Omit or leave empty for browse only when preferences.concepts has no usable value; concept-only requests are ranked searches. }
-        mode: { type: string, enum: [standard, agent], default: standard }
         similarToRecipeId: { type: [string, 'null'], format: uuid }
         pantrySnapshotId: { type: [string, 'null'], format: uuid }
         weekOffset: { type: [integer, 'null'] }
@@ -326,7 +325,7 @@ components:
         appliedFilters: { $ref: '#/components/schemas/RecipeSearchFiltersDto' }
         searchMode:
           type: string
-          enum: [standard, agent, similar, pantry-assisted]
+          enum: [standard, similar, pantry-assisted]
         resultPath:
           type: string
           enum: [lexical-only, hybrid, fallback-lexical, browse]
@@ -821,7 +820,7 @@ components:
     # --- Health ---
     HealthCheckResponse:
       type: object
-      required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid, allowAgentSearch]
+      required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid]
       properties:
         status: { type: string }
         timestamp: { type: string, format: date-time }
@@ -835,16 +834,12 @@ components:
         demoRestoreCronValid:
           type: boolean
           description: True when DEMO_RESTORE_CRON_UTC parses as a valid cron schedule.
-        allowAgentSearch:
-          type: boolean
-          description: True when AI-backed agent search interactions are enabled for this runtime.
       example:
         status: healthy
         timestamp: '2026-05-09T12:00:00Z'
         demoMode: true
         demoModeRawValue: 'true'
         demoRestoreCronValid: true
-        allowAgentSearch: false
         checks:
           database: { status: healthy }
           schema: { status: healthy }

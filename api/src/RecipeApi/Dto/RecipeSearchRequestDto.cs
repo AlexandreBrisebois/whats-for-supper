@@ -7,9 +7,6 @@ public class RecipeSearchRequestDto
     [JsonPropertyName("query")]
     public string? Query { get; set; }
 
-    [JsonPropertyName("mode")]
-    public string? Mode { get; set; }
-
     [JsonPropertyName("similarToRecipeId")]
     public Guid? SimilarToRecipeId { get; set; }
 

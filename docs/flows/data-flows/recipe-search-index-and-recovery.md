@@ -1,11 +1,10 @@
 # Data Flow: Recipe Search Index And Recovery
 
-**Current spec:** `.kiro/specs/agent-friendly-hybrid-recipe-search`
+**Scope:** normal hybrid recipe search, indexing, recovery, and Find Similar.
 
 This document defines the data flow for:
 - hybrid recipe search (lexical + vector),
 - planner-aware and family-fit reranking,
-- agent-supplied requests that retain the original query,
 - pantry/fridge/freezer photo inventory search,
 - vector indexing workflow (`SearchIndexWorkflow`),
 - backup/restore-compatible index persistence (`search.index.json` sidecar),
@@ -16,7 +15,7 @@ This document defines the data flow for:
 
 ## Overview
 
-Every search path — standard field, agent caller, inventory photo, and similar-recipe — flows through the same `RecipeSearchService`. There is one truth source for ranking. Callers may set different request fields (`mode`, `similarToRecipeId`, `pantrySnapshotId`) but they receive the same `RecipeSearchResponseDto`; agent mode does not translate or replace the submitted query.
+Every search path — normal typed search, inventory photo, and Find Similar — flows through the same `RecipeSearchService`. There is one truth source for ranking. Callers may set `similarToRecipeId` or `pantrySnapshotId` while receiving the same `RecipeSearchResponseDto`.
 
 The implementation is staged:
 1. Canonical document indexing (`SearchIndexWorkflow`, `recipe_search_documents` table)
@@ -113,13 +112,6 @@ Top Pick = `results.First()` after scoring and sort. It must have a non-null `pl
 Every active modifier appears as a `RecipeSearchReasonDto` entry in the result's `reasons` array, with a `source` enum and a human-readable `label`.
 
 ---
-
-## Agent-supplied requests
-
-When `mode: "agent"` is set, the same deterministic search pipeline runs with
-the caller's original `query`. An agent may supply the approved structured
-filters and preferences, but search serving does not invoke an LLM to rewrite,
-rerank, or select a result.
 
 ---
 
@@ -385,14 +377,14 @@ Implementations must check `payload_version` before reconstructing the workflow 
 
 ```mermaid
 flowchart TD
-    A[Standard search field] --> C[RecipeSearchService]
-    B[Stars super-search — agent mode] --> C
-    D[Agent callers] --> C
+    A[Normal typed search] --> C[RecipeSearchService]
+    B[Find Similar — similarToRecipeId] --> C
+    D[Pantry-assisted search — pantrySnapshotId] --> C
     C --> E[Hybrid retrieval + reranking]
     E --> F[RecipeSearchResponseDto — grounded results + reasons]
 ```
 
-Do not build separate ranking logic for UI and agent callers. The caller requests different `mode` values, but the same `RecipeSearchService` answers all of them.
+Do not build separate ranking logic for callers. The same `RecipeSearchService` answers normal, similar, and pantry-assisted searches.
 
 ---
 
@@ -422,7 +414,6 @@ Latency targets (initial defaults, to be tuned after first production telemetry 
 |------|-----------|
 | Lexical-only | ≤ 350 ms |
 | Hybrid (lexical + vector) | ≤ 800 ms |
-| Agent-mode | ≤ 1200 ms |
 | Pantry-photo assisted | ≤ 15 s (or HTTP 202 busy) |
 | Vector budget inside request | ≤ 300 ms |
 

@@ -947,7 +947,6 @@ export async function setupCommonRoutes(page: Page) {
         demoMode: false,
         demoModeRawValue: 'false',
         demoRestoreCronValid: true,
-        allowAgentSearch: true,
       }),
     });
   });

@@ -613,7 +613,6 @@ export async function searchRecipes(
   request: Pick<
     RecipeSearchRequestDto,
     | 'query'
-    | 'mode'
     | 'limit'
     | 'weekOffset'
     | 'dayIndex'

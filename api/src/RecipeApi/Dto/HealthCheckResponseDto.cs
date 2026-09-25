@@ -22,7 +22,4 @@ public class HealthCheckResponseDto
     [JsonPropertyName("demoRestoreCronValid")]
     public required bool DemoRestoreCronValid { get; set; }
 
-    [JsonPropertyName("allowAgentSearch")]
-    public required bool AllowAgentSearch { get; set; }
-
 }

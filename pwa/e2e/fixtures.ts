@@ -87,7 +87,6 @@ export const test = base.extend({
               demoMode: false,
               demoModeRawValue: 'false',
               demoRestoreCronValid: true,
-              allowAgentSearch: true,
             }),
           });
         }

@@ -202,7 +202,6 @@ function makeSearchResult(index: number) {
 describe('RecipesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv('NEXT_PUBLIC_ENABLE_AGENT_SEARCH', 'true');
     mocks.setSearchParams('');
     mocks.setFamilySettings({});
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse());
@@ -252,16 +251,12 @@ describe('RecipesPage', () => {
     vi.unstubAllEnvs();
   });
 
-  it('renders the search input and mode controls after load', async () => {
+  it('renders the standard search input after load', async () => {
     await act(async () => {
       render(<RecipesPage />);
     });
 
     expect(screen.getByTestId('recipe-search-input')).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('demo-agent-search-toggle')).toBeInTheDocument();
-    });
   });
 
   it('fires recipe search on mount and again when Enter is pressed with the current query', async () => {
@@ -272,7 +267,6 @@ describe('RecipesPage', () => {
     await waitFor(() => {
       expect(mocks.searchRecipes).toHaveBeenCalledWith({
         query: '',
-        mode: 'standard',
         limit: 12,
         weekOffset: undefined,
         dayIndex: undefined,
@@ -292,7 +286,6 @@ describe('RecipesPage', () => {
     await waitFor(() => {
       expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
         query: 'chicken',
-        mode: 'standard',
         limit: 12,
         weekOffset: undefined,
         dayIndex: undefined,
@@ -502,7 +495,6 @@ describe('RecipesPage', () => {
       await waitFor(() => {
         expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
           query: '',
-          mode: 'standard',
           limit: 24,
           continuationToken: 'cursor-page-two',
           weekOffset: undefined,
@@ -1177,7 +1169,6 @@ describe('RecipesPage', () => {
     await waitFor(() => {
       expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
         query: '',
-        mode: 'standard',
         limit: 12,
         weekOffset: undefined,
         dayIndex: undefined,
@@ -1187,115 +1178,6 @@ describe('RecipesPage', () => {
 
     expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
     expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
-  });
-
-  // ── Task 12: Agent search UI ────────────────────────────────────────────────
-
-  it('demo-agent-search-toggle tap shows agent-search-input textarea', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-agent-search-toggle')).toBeInTheDocument());
-
-    expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-
-    expect(screen.getByTestId('agent-search-input')).toBeInTheDocument();
-  });
-
-  it('demo-agent-search-toggle shows demo notice instead of textarea in demo mode', async () => {
-    mocks.healthGet.mockResolvedValue({ demoMode: true });
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-agent-search-toggle')).toBeInTheDocument());
-    await waitFor(() => expect(mocks.healthGet).toHaveBeenCalled());
-
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-
-    expect(screen.getByTestId('demo-ai-notice')).toHaveTextContent(
-      'Semantic search translation is disabled in Demo Mode'
-    );
-    expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
-  });
-
-  it('disables and gates agent search when allowAgentSearch is false', async () => {
-    mocks.healthGet.mockResolvedValue({ demoMode: false, allowAgentSearch: false });
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-agent-search-toggle')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-
-    expect(screen.getByTestId('demo-ai-notice')).toBeInTheDocument();
-    expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
-  });
-
-  it('agent-search-submit calls searchRecipes with mode: "agent"', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-agent-search-toggle')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-    fireEvent.change(screen.getByTestId('agent-search-input'), {
-      target: { value: 'something fresh and quick my kids will like' },
-    });
-    fireEvent.click(screen.getByTestId('agent-search-submit'));
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({ mode: 'agent' })
-      );
-    });
-  });
-
-  it('agent search results render in the same recipe-card-top-pick template', async () => {
-    mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ searchMode: 'agent' }));
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-agent-search-toggle')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-    fireEvent.change(screen.getByTestId('agent-search-input'), {
-      target: { value: 'something warm' },
-    });
-    fireEvent.click(screen.getByTestId('agent-search-submit'));
-
-    await waitFor(() => expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument());
-  });
-
-  it('agent search does NOT render a chat UI element', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-agent-search-toggle')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-    fireEvent.change(screen.getByTestId('agent-search-input'), {
-      target: { value: 'something warm and filling' },
-    });
-    fireEvent.click(screen.getByTestId('agent-search-submit'));
-
-    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalled());
-
-    expect(screen.queryByTestId('chat-response')).not.toBeInTheDocument();
-  });
-
-  it('agent-search-close hides agent-search-input and keeps existing results visible', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-    expect(screen.getByTestId('agent-search-input')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('agent-search-close'));
-    expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
-    expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
   });
 
   it('blurs the search input when Enter is pressed', async () => {
@@ -1311,42 +1193,6 @@ describe('RecipesPage', () => {
     expect(input).not.toHaveFocus();
   });
 
-  it('submits and blurs the agent search textarea when Enter (without Shift) is pressed', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-
-    const textarea = screen.getByTestId('agent-search-input') as HTMLTextAreaElement;
-    textarea.focus();
-    expect(textarea).toHaveFocus();
-
-    fireEvent.change(textarea, { target: { value: 'healthy lunch' } });
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', shiftKey: false });
-
-    expect(textarea).not.toHaveFocus();
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({ query: 'healthy lunch', mode: 'agent' })
-      );
-    });
-  });
-
-  it('does NOT submit agent search when Shift+Enter is pressed in textarea', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    fireEvent.click(screen.getByTestId('demo-agent-search-toggle'));
-
-    const textarea = screen.getByTestId('agent-search-input') as HTMLTextAreaElement;
-    textarea.focus();
-
-    const callsBefore = mocks.searchRecipes.mock.calls.length;
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', shiftKey: true });
-
-    expect(textarea).toHaveFocus();
-    expect(mocks.searchRecipes.mock.calls.length).toBe(callsBefore);
-  });
   it('fires recipe search on mount with similarToRecipeId if provided in search params', async () => {
     mocks.setSearchParams('similarTo=recipe-123');
 

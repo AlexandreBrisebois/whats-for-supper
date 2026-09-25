@@ -25,6 +25,10 @@ CACHE_CONTEXT_FILES = (
     "pwa/package-lock.json",
 )
 VOLATILE_GENERATED_PATHS = {"pwa/next-env.d.ts"}
+# Test runners write result and transform caches beneath installed dependencies.
+# They are execution output, not installed dependency input, so including them
+# would make a successful verification invalidate its own content identity.
+RUNTIME_CACHE_DIRECTORIES = {".vite", ".cache"}
 
 
 class ImpactPlan(NamedTuple):
@@ -179,7 +183,7 @@ def runtime_identity() -> str:
     for root in roots:
         digest.update(str(root).encode())
         for path in sorted(root.rglob("*")) if root.exists() else []:
-            if path.is_file():
+            if path.is_file() and not RUNTIME_CACHE_DIRECTORIES.intersection(path.relative_to(root).parts):
                 add_file_to_digest(digest, root, str(path.relative_to(root)))
     # Framework dotenv inputs are ignored by Git but still affect tests.
     for directory in (ROOT, ROOT / "pwa", ROOT / "api"):

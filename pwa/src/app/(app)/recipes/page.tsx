@@ -44,8 +44,6 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
 import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 
-type SearchMode = 'standard' | 'agent';
-
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function resolveDayName(weekOffset: number, dayIndex: number): string {
@@ -81,8 +79,6 @@ export default function RecipesPage() {
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState('');
-  const [agentQuery, setAgentQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<SearchMode>('standard');
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [dataPromotionVersion, setDataPromotionVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,9 +100,6 @@ export default function RecipesPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [loadMoreExpired, setLoadMoreExpired] = useState(false);
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [allowAgentSearch, setAllowAgentSearch] = useState<boolean | null>(null);
-  const [showDemoAiNotice, setShowDemoAiNotice] = useState(false);
   const [pendingRecovery, setPendingRecovery] = useState<{
     slot: PlannerSlot;
     recipe: AssignmentRecipe;
@@ -127,42 +120,9 @@ export default function RecipesPage() {
   const parsedDayIndex = addToDay !== null ? parseInt(addToDay, 10) : undefined;
   const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
 
-  const isAgentSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_AGENT_SEARCH === 'true';
-
   useEffect(() => {
     return () => {
       filterMetadataRequestRef.current += 1;
-    };
-  }, []);
-
-  useEffect(() => {
-    let isActive = true;
-
-    void (async () => {
-      try {
-        const health = (await apiClient.api.health.get()) as
-          | {
-              demoMode?: boolean;
-              allowAgentSearch?: boolean;
-            }
-          | undefined;
-        if (isActive) {
-          const demoMode = Boolean(health?.demoMode);
-          setIsDemoMode(demoMode);
-          setAllowAgentSearch(
-            typeof health?.allowAgentSearch === 'boolean' ? health.allowAgentSearch : !demoMode
-          );
-        }
-      } catch {
-        if (isActive) {
-          setIsDemoMode(false);
-          setAllowAgentSearch(true);
-        }
-      }
-    })();
-
-    return () => {
-      isActive = false;
     };
   }, []);
 
@@ -194,7 +154,6 @@ export default function RecipesPage() {
         const resolvedLimit = nextLimit ?? limit;
         const response = await searchRecipes({
           query: nextQuery,
-          mode: 'standard',
           limit: resolvedLimit,
           weekOffset: parsedWeekOffset,
           dayIndex: parsedDayIndex,
@@ -243,7 +202,6 @@ export default function RecipesPage() {
       try {
         const response = await searchRecipes({
           query: '',
-          mode: 'standard',
           limit: INITIAL_LIMIT,
           weekOffset: parsedWeekOffset,
           dayIndex: parsedDayIndex,
@@ -460,39 +418,6 @@ export default function RecipesPage() {
     void runSearch('', recipeId);
   };
 
-  const isAgentSearchAllowed = isAgentSearchEnabled && allowAgentSearch === true;
-  const isCapabilitiesLoading = allowAgentSearch === null;
-
-  const handleAgentSubmit = () => {
-    if (!isAgentSearchAllowed) {
-      setShowDemoAiNotice(true);
-      setSearchMode('standard');
-      return;
-    }
-    if (!agentQuery.trim()) return;
-    setSearchMode('standard');
-    setIsLoading(true);
-    searchRecipes({
-      query: agentQuery,
-      mode: 'agent',
-      limit,
-      weekOffset: parsedWeekOffset,
-      dayIndex: parsedDayIndex,
-    })
-      .then((response) => setData(response))
-      .catch(() =>
-        setData({
-          topPick: null,
-          results: [],
-          appliedFilters: {},
-          searchMode: 'agent',
-          resultPath: 'lexical-only',
-          nextCursor: null,
-        })
-      )
-      .finally(() => setIsLoading(false));
-  };
-
   const handleApplyFilters = ({ filters, preferences }: RecipeFilterDraft) => {
     setActiveFilters(filters);
     setActivePreferences(preferences);
@@ -533,7 +458,6 @@ export default function RecipesPage() {
     try {
       const response = await searchRecipes({
         query,
-        mode: 'standard',
         limit:
           data?.resultPath === 'browse' ? BROWSE_CONTINUATION_LIMIT : RANKED_CONTINUATION_LIMIT,
         continuationToken: cursor,
@@ -683,126 +607,30 @@ export default function RecipesPage() {
         </motion.div>
       )}
 
-      {/* Mode selector */}
-      {isAgentSearchEnabled && (
-        <div className="flex flex-wrap gap-2 px-1">
-          {isAgentSearchEnabled && (
-            <button
-              type="button"
-              data-testid="demo-agent-search-toggle"
-              disabled={isCapabilitiesLoading}
-              onClick={() => {
-                if (!isAgentSearchAllowed) {
-                  setShowDemoAiNotice(true);
-                  setSearchMode('standard');
-                  return;
-                }
-                setSearchMode(searchMode === 'agent' ? 'standard' : 'agent');
-              }}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
-                (!isAgentSearchAllowed || isCapabilitiesLoading) && 'opacity-60',
-                searchMode === 'agent'
-                  ? 'border-terracotta bg-terracotta text-white'
-                  : 'border-charcoal/10 bg-white/70 text-charcoal'
-              )}
-            >
-              <Sparkles
-                size={16}
-                className={searchMode === 'agent' ? 'text-white' : 'text-terracotta'}
-              />
-              {t('recipes.agentSearch', 'Agent Search')}
-            </button>
-          )}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative group"
+      >
+        <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-charcoal/30 group-focus-within:text-terracotta transition-colors z-10">
+          <SearchIcon size={24} strokeWidth={2.5} />
         </div>
-      )}
-
-      {showDemoAiNotice && (
-        <div
-          data-testid="demo-ai-notice"
-          className="rounded-2xl border border-terracotta/20 bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta"
-        >
-          {t('recipes.demoAiNotice', 'Semantic search translation is disabled in Demo Mode')}
-        </div>
-      )}
-
-      {/* Single active canvas */}
-      {searchMode === 'standard' && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative group"
-        >
-          <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-charcoal/30 group-focus-within:text-terracotta transition-colors z-10">
-            <SearchIcon size={24} strokeWidth={2.5} />
-          </div>
-          <input
-            type="text"
-            value={query}
-            data-testid="recipe-search-input"
-            onChange={(e) => handleQueryChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                if (debounceRef.current) clearTimeout(debounceRef.current);
-                (e.target as HTMLInputElement).blur();
-                void runSearch(query);
-              }
-            }}
-            placeholder={t('recipes.searchPlaceholder', 'Something spicy for 4...')}
-            className="w-full bg-white/70 backdrop-blur-md border-2 border-charcoal/5 rounded-[2rem] py-5 pl-16 pr-8 text-lg font-bold text-charcoal placeholder:text-charcoal/20 focus:outline-none focus:border-terracotta/20 transition-all shadow-card focus:shadow-xl focus:bg-white"
-          />
-          {query && (
-            <div className="absolute right-6 top-1/2 -translate-y-1/2">
-              <Sparkles size={20} className="text-terracotta animate-pulse" />
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {searchMode === 'agent' && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-2"
-        >
-          <textarea
-            data-testid="agent-search-input"
-            value={agentQuery}
-            onChange={(e) => setAgentQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                (e.target as HTMLTextAreaElement).blur();
-                handleAgentSubmit();
-              }
-            }}
-            placeholder={t(
-              'recipes.agentSearchPlaceholder',
-              'Describe what you feel like tonight in your own words…'
-            )}
-            rows={3}
-            className="w-full rounded-2xl border-2 border-charcoal/5 bg-white/60 backdrop-blur-md p-4 text-base font-bold text-charcoal placeholder:text-charcoal/20 focus:border-terracotta/20 focus:outline-none resize-none shadow-sm transition-all"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              data-testid="agent-search-submit"
-              onClick={handleAgentSubmit}
-              className="rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm"
-            >
-              {t('recipes.agentSearchSubmit', 'Search')}
-            </button>
-            <button
-              type="button"
-              data-testid="agent-search-close"
-              onClick={() => setSearchMode('standard')}
-              className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
-            >
-              {t('recipes.cancel', 'Cancel')}
-            </button>
-          </div>
-        </motion.div>
-      )}
+        <input
+          type="text"
+          value={query}
+          data-testid="recipe-search-input"
+          onChange={(e) => handleQueryChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              (e.target as HTMLInputElement).blur();
+              void runSearch(query);
+            }
+          }}
+          placeholder={t('recipes.searchPlaceholder', 'Something spicy for 4...')}
+          className="w-full bg-white/70 backdrop-blur-md border-2 border-charcoal/5 rounded-[2rem] py-5 pl-16 pr-8 text-lg font-bold text-charcoal placeholder:text-charcoal/20 focus:outline-none focus:border-terracotta/20 transition-all shadow-card focus:shadow-xl focus:bg-white"
+        />
+      </motion.div>
 
       <div className="px-1">
         <button

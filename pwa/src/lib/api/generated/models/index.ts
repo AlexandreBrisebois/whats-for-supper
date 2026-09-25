@@ -1399,9 +1399,6 @@ export function deserializeIntoHealthCheckResponse(
   healthCheckResponse: Partial<HealthCheckResponse> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
-    allowAgentSearch: (n) => {
-      healthCheckResponse.allowAgentSearch = n.getBooleanValue();
-    },
     checks: (n) => {
       healthCheckResponse.checks = n.getObjectValue<HealthCheckResponse_checks>(
         createHealthCheckResponse_checksFromDiscriminatorValue
@@ -2298,11 +2295,6 @@ export function deserializeIntoRecipeSearchRequestDto(
     },
     limit: (n) => {
       recipeSearchRequestDto.limit = n.getNumberValue() ?? 12;
-    },
-    mode: (n) => {
-      recipeSearchRequestDto.mode =
-        n.getEnumValue<RecipeSearchRequestDto_mode>(RecipeSearchRequestDto_modeObject) ??
-        RecipeSearchRequestDto_modeObject.Standard;
     },
     pantrySnapshotId: (n) => {
       recipeSearchRequestDto.pantrySnapshotId = n.getGuidValue();
@@ -3226,10 +3218,6 @@ export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
 }
 export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
   /**
-   * True when AI-backed agent search interactions are enabled for this runtime.
-   */
-  allowAgentSearch?: boolean | null;
-  /**
    * The checks property
    */
   checks?: HealthCheckResponse_checks | null;
@@ -3946,10 +3934,6 @@ export interface RecipeSearchRequestDto extends AdditionalDataHolder, Parsable {
    */
   limit?: number | null;
   /**
-   * The mode property
-   */
-  mode?: RecipeSearchRequestDto_mode | null;
-  /**
    * The pantrySnapshotId property
    */
   pantrySnapshotId?: Guid | null;
@@ -3970,8 +3954,6 @@ export interface RecipeSearchRequestDto extends AdditionalDataHolder, Parsable {
    */
   weekOffset?: number | null;
 }
-export type RecipeSearchRequestDto_mode =
-  (typeof RecipeSearchRequestDto_modeObject)[keyof typeof RecipeSearchRequestDto_modeObject];
 export interface RecipeSearchResponseDto extends AdditionalDataHolder, Parsable {
   /**
    * The appliedFilters property
@@ -4605,7 +4587,6 @@ export function serializeHealthCheckResponse(
   if (!healthCheckResponse || isSerializingDerivedType) {
     return;
   }
-  writer.writeBooleanValue('allowAgentSearch', healthCheckResponse.allowAgentSearch);
   writer.writeObjectValue<HealthCheckResponse_checks>(
     'checks',
     healthCheckResponse.checks,
@@ -5399,10 +5380,6 @@ export function serializeRecipeSearchRequestDto(
     serializeRecipeSearchFiltersDto
   );
   writer.writeNumberValue('limit', recipeSearchRequestDto.limit ?? 12);
-  writer.writeEnumValue<RecipeSearchRequestDto_mode>(
-    'mode',
-    recipeSearchRequestDto.mode ?? RecipeSearchRequestDto_modeObject.Standard
-  );
   writer.writeGuidValue('pantrySnapshotId', recipeSearchRequestDto.pantrySnapshotId);
   writer.writeObjectValue<RecipeSearchPreferencesDto>(
     'preferences',
@@ -6551,10 +6528,6 @@ export const RecipeSearchReasonDto_sourceObject = {
   InventoryFit: 'inventory-fit',
   SemanticMatch: 'semantic-match',
 } as const;
-export const RecipeSearchRequestDto_modeObject = {
-  Standard: 'standard',
-  Agent: 'agent',
-} as const;
 export const RecipeSearchResponseDto_resultPathObject = {
   LexicalOnly: 'lexical-only',
   Hybrid: 'hybrid',
@@ -6563,7 +6536,6 @@ export const RecipeSearchResponseDto_resultPathObject = {
 } as const;
 export const RecipeSearchResponseDto_searchModeObject = {
   Standard: 'standard',
-  Agent: 'agent',
   Similar: 'similar',
   PantryAssisted: 'pantry-assisted',
 } as const;

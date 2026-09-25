@@ -144,7 +144,7 @@ describe('searchRecipes', () => {
       }),
     });
 
-    const result = await searchRecipes({ query: 'chicken', mode: 'standard', limit: 5 });
+    const result = await searchRecipes({ query: 'chicken', limit: 5 });
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:5052/api/recipes/search',
@@ -154,7 +154,7 @@ describe('searchRecipes', () => {
           'Content-Type': 'application/json',
           'X-Family-Member-Id': 'family-123',
         },
-        body: JSON.stringify({ query: 'chicken', mode: 'standard', limit: 5 }),
+        body: JSON.stringify({ query: 'chicken', limit: 5 }),
       })
     );
     expect(result.topPick?.name).toBe('Chicken Soup');
@@ -189,7 +189,7 @@ describe('searchRecipes', () => {
       }),
     });
 
-    const result = await searchRecipes({ query: 'chicken', mode: 'standard', limit: 5 });
+    const result = await searchRecipes({ query: 'chicken', limit: 5 });
 
     expect(result.topPick?.name).toBe('Chicken Soup');
     expect(result.results).toEqual([]);
@@ -222,7 +222,7 @@ describe('searchRecipes', () => {
       }),
     });
 
-    const recovered = await searchRecipes({ query: 'lasagna', mode: 'standard', limit: 5 });
+    const recovered = await searchRecipes({ query: 'lasagna', limit: 5 });
     expect(recovered.topPick?.name).toBe('Homemade Lasagna');
     expect(recovered.topPick?.reasons[0]?.label).toBe('Name matches your search');
 
@@ -239,7 +239,7 @@ describe('searchRecipes', () => {
       }),
     });
 
-    const emptyMarker = await searchRecipes({ query: 'missing', mode: 'standard', limit: 5 });
+    const emptyMarker = await searchRecipes({ query: 'missing', limit: 5 });
     expect(emptyMarker.topPick).toBeNull();
   });
 });

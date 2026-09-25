@@ -1,6 +1,7 @@
 import importlib.util
 import contextlib
 import io
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -49,6 +50,24 @@ class CompletionTests(unittest.TestCase):
             self.assertNotEqual(before, after)
             with mock.patch.object(test_ops, 'runtime_identity', return_value='runtime-two'):
                 self.assertNotEqual(after, test_ops.build_impact_digest(root, [], []))
+
+    def test_runtime_identity_ignores_vitest_cache_but_detects_installed_dependency_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / 'pwa/node_modules/.vite/vitest/results.json'
+            dependency = root / 'pwa/node_modules/example-package/index.js'
+            cache.parent.mkdir(parents=True)
+            dependency.parent.mkdir(parents=True)
+            cache.write_text('first result')
+            dependency.write_text('first dependency')
+            with mock.patch.object(test_ops, 'ROOT', root), \
+                 mock.patch.dict(os.environ, {'PLAYWRIGHT_BROWSERS_PATH': str(root / 'browsers')},
+                                 clear=True):
+                before = test_ops.runtime_identity()
+                cache.write_text('second result')
+                self.assertEqual(before, test_ops.runtime_identity())
+                dependency.write_text('second dependency')
+                self.assertNotEqual(before, test_ops.runtime_identity())
 
     def test_unavailable_service_is_blocked_not_zero_mismatches(self):
         with mock.patch('urllib.request.urlopen', side_effect=OSError('unavailable')) as probe:

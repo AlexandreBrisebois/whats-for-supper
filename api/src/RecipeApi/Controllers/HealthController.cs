@@ -56,8 +56,7 @@ public class HealthController(
             Checks = checks,
             DemoMode = demoMode.Enabled,
             DemoModeRawValue = demoMode.RawValue ?? string.Empty,
-            DemoRestoreCronValid = IsCronValid(demoMode.RestoreCronUtc, scheduleCalculator),
-            AllowAgentSearch = !demoMode.Enabled
+            DemoRestoreCronValid = IsCronValid(demoMode.RestoreCronUtc, scheduleCalculator)
         };
 
         return overallHealthy ? Ok(response) : StatusCode(503, response);

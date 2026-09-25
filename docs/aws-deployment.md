@@ -126,9 +126,7 @@ Run this checklist immediately after each Demo deployment:
 3. Verify `/api/management/status` shows a valid demo restore schedule:
    - `demoRestoreSeederHealthy: true`
    - `demoRestoreSeederErrorCode` is empty/null
-4. Verify PWA Demo UX behavior from `/recipes`:
-   - Clicking `demo-agent-search-toggle` shows `demo-ai-notice`
-   - Agent input (`agent-search-input`) does not open in demo mode
+4. Verify PWA Demo UX behavior from `/recipes`: normal recipe search remains available.
 
 If any check fails, treat the deployment as non-green and stop promotion.
 

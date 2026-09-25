@@ -22,13 +22,12 @@ describe('demo diagnostics contract', () => {
     const block = match![1];
 
     expect(block).toContain(
-      'required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid, allowAgentSearch]'
+      'required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid]'
     );
     expect(block).toContain('demoModeRawValue:');
     expect(block).toContain('type: string');
     expect(block).toContain('demoRestoreCronValid:');
     expect(block).toContain('type: boolean');
-    expect(block).toContain('allowAgentSearch:');
     expect(block).not.toContain('allowPhotoSearch:');
   });
 
@@ -60,7 +59,6 @@ describe('demo diagnostics contract', () => {
 
     expect(block).toContain('demoModeRawValue?: string | null;');
     expect(block).toContain('demoRestoreCronValid?: boolean | null;');
-    expect(block).toContain('allowAgentSearch?: boolean | null;');
     expect(block).not.toContain('allowPhotoSearch?: boolean | null;');
   });
 
