@@ -1,0 +1,10 @@
+name: vegetarian-classification-backfill
+parameters:
+  - cursor?
+  - force?
+tasks:
+  - name: classify_batch
+    processor: BackfillVegetarianClassification
+    payload:
+      cursor: "{{ cursor }}"
+      force: "{{ force }}"

@@ -80,6 +80,12 @@ public class Recipe
     [Column("vegetarian_classified_at")]
     public DateTimeOffset? VegetarianClassifiedAt { get; set; }
 
+    [Column("vegetarian_classification_failed_at")]
+    public DateTimeOffset? VegetarianClassificationFailedAt { get; set; }
+
+    [Column("vegetarian_classification_failure_reason")]
+    public string? VegetarianClassificationFailureReason { get; set; }
+
     [Column("is_healthy_choice")]
     public bool IsHealthyChoice { get; set; } = false;
 

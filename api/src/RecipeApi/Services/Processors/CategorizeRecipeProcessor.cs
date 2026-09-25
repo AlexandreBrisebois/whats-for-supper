@@ -12,7 +12,9 @@ public class CategorizeRecipeProcessor(
     RecipeDbContext db,
     IChatClient chatClient,
     IHealthEventPublisher healthPublisher,
-    ILogger<CategorizeRecipeProcessor> logger) : IWorkflowProcessor
+    ILogger<CategorizeRecipeProcessor> logger,
+    VegetarianClassificationPolicy? vegetarianPolicy = null,
+    VegetarianClassificationWriter? vegetarianWriter = null) : IWorkflowProcessor
 {
     public const int VegetarianClassifierVersion = 1;
     public string ProcessorName => "CategorizeRecipe";
@@ -91,7 +93,7 @@ public class CategorizeRecipeProcessor(
 
                 Primary Meal Type: Select the single primary meal slot from the selected meal types.
 
-                Vegetarian: true only when the ingredients contain no meat, poultry, fish, shellfish, meat or fish stock/broth, lard, gelatin, fish sauce, anchovy, or meat drippings. Eggs and ordinary dairy are vegetarian. Use the ingredients, never the title alone. If ingredients are insufficient to decide, return null.
+                Vegetarian: {{vegetarianPolicy?.BuildPromptRules() ?? "Return true only when ingredients establish the recipe is vegetarian. Eggs and ordinary dairy are vegetarian. Use ingredients, never the title alone. Return null when insufficient."}}
 
                 Return a JSON object exactly matching this schema:
                 {
@@ -146,6 +148,7 @@ public class CategorizeRecipeProcessor(
         catch (Exception ex)
         {
             logger.LogError(ex, "CategorizeRecipe: LLM call failed for recipe {RecipeId}", recipe.Id);
+            (vegetarianWriter ?? new VegetarianClassificationWriter()).ApplyFailure(recipe, ex.Message, DateTimeOffset.UtcNow);
         }
 
         // 2. Map primary meal type
@@ -182,9 +185,8 @@ public class CategorizeRecipeProcessor(
         // result must not turn unknown into false or overwrite a valid prior result.
         if (isVegetarian is bool classifiedVegetarian)
         {
-            recipe.IsVegetarian = classifiedVegetarian;
-            recipe.VegetarianClassificationVersion = VegetarianClassifierVersion;
-            recipe.VegetarianClassifiedAt = DateTimeOffset.UtcNow;
+            (vegetarianWriter ?? new VegetarianClassificationWriter()).ApplySuccess(
+                recipe, classifiedVegetarian, VegetarianClassifierVersion, DateTimeOffset.UtcNow);
         }
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 

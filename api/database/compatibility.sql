@@ -12,7 +12,9 @@ BEGIN
     IF to_regclass('public.recipes') IS NOT NULL THEN
         ALTER TABLE public.recipes
             ADD COLUMN IF NOT EXISTS vegetarian_classification_version integer,
-            ADD COLUMN IF NOT EXISTS vegetarian_classified_at timestamptz;
+            ADD COLUMN IF NOT EXISTS vegetarian_classified_at timestamptz,
+            ADD COLUMN IF NOT EXISTS vegetarian_classification_failed_at timestamptz,
+            ADD COLUMN IF NOT EXISTS vegetarian_classification_failure_reason varchar(500);
     END IF;
 END
 $$;

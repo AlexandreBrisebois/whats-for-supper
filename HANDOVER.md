@@ -10,9 +10,9 @@ checkpoints are context, not authority. Follow the shared
 Task/spec: User-pasted `WFS Dietary Separation Migration — Phase 1: EXPAND`; no repository spec package exists.
 Worktree/branch: `harness-upgrade`; baseline recorded at HEAD `6a2d2eac` in ignored `.task/dietary-separation-phase1/baseline.txt`.
 Authorized scope and source: Additive WFS-owned vegetarian classification only; preserve legacy health/dietary behavior and public API.
-Current checkpoint: Added nullable version/timestamp metadata, ingredient-bearing categorization response, confirmed-only search projection, and backup/restore round trip. Backfill/observability and exhaustive required workflow/test coverage are not implemented.
-Verification evidence and content identity: Focused search/categorization tests (7) and backup tests (6) passed. `task agent:prepare` blocked at Kiota 1.35.0 20-second timeout; it made no generated-file changes. `git diff --check` passed.
-Blocker or next action: Implement an explicit, side-effect-isolated, resumable backfill plus migration observability; add the requested failure/ingredient matrix and full workflow/Find Similar coverage. Then resolve the formal Kiota gate and run final completion.
+Current checkpoint: Added configurable server-owned ingredient policy, failure-preserving classification diagnostics, a quiet ingredient-only classifier, cursor-bounded persisted backfill/status workflows, description-regeneration recategorization, and an operator runbook. Search/backup additions remain from the preceding committed slice.
+Verification evidence and content identity: `task agent:prepare` passed with escalated access (Kiota 1.35.0 generation, API/PWA format). `task test:api` passed 727/750 with 23 existing skipped PostgreSQL/manual tests. `task agent:finish` passed documentation/lint/PWA format/typecheck/PWA unit/review contracts and content identity `59d1d6f244166cc4c8eb738fed4ac3b96aef0e8c479037bbf0a28c379f7f5dfc`; its impact/API/live-endpoint/database checks are blocked by runner qualification and unavailable infrastructure. `git diff --check` passed.
+Blocker or next action: Establish the intended Docker network/database and isolated runner for live migration evidence, then rerun the blocked finish checks. Trigger one intentional search reconciliation only after the catalogue backfill settles.
 
 ## Public Synology release
 

@@ -37,6 +37,8 @@ CREATE TABLE recipes (
     is_vegetarian boolean NOT NULL,
     vegetarian_classification_version integer,
     vegetarian_classified_at timestamptz,
+    vegetarian_classification_failed_at timestamptz,
+    vegetarian_classification_failure_reason varchar(500),
     is_healthy_choice boolean NOT NULL,
     raw_metadata jsonb,
     ingredients jsonb,

@@ -1,0 +1,6 @@
+name: vegetarian-classification-status
+parameters: []
+tasks:
+  - name: status
+    processor: VegetarianClassificationStatus
+    payload: {}

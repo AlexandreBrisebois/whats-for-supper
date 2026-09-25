@@ -12,3 +12,9 @@ tasks:
           - generate_description
       payload:
           recipeId: "{{ recipeId }}"
+    - name: categorize_recipe
+      processor: CategorizeRecipe
+      depends_on:
+          - sync_recipe
+      payload:
+          recipeId: "{{ recipeId }}"

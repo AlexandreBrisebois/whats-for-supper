@@ -1,0 +1,8 @@
+name: classify-recipe-vegetarian
+parameters:
+  - recipeId
+tasks:
+  - name: classify_vegetarian
+    processor: ClassifyRecipeVegetarian
+    payload:
+      recipeId: "{{ recipeId }}"

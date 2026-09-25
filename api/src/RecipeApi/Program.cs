@@ -151,6 +151,9 @@ try
     builder.Services.AddScoped<SettingsService>();
     builder.Services.AddScoped<GoToService>();
     builder.Services.AddSingleton<IClock, SystemClock>();
+    builder.Services.Configure<VegetarianClassificationOptions>(builder.Configuration.GetSection("VegetarianClassification"));
+    builder.Services.AddSingleton<VegetarianClassificationPolicy>();
+    builder.Services.AddSingleton<VegetarianClassificationWriter>();
     builder.Services.AddSingleton<CronScheduleCalculator>();
     builder.Services.AddSingleton<DemoModeOptions>();
 
@@ -223,6 +226,9 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, SyncRecipeProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CategorizeIngredientsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CategorizeRecipeProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, ClassifyRecipeVegetarianProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, BackfillVegetarianClassificationProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, VegetarianClassificationStatusProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, FinalizeOverdueMealsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, MaterializeRecipeSearchFiltersProcessor>();

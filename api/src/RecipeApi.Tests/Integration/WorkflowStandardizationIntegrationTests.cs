@@ -482,5 +482,7 @@ public class WorkflowStandardizationIntegrationTests : IAsyncLifetime
         Assert.Null(exception);
         var updatedRecipe = await _db.Recipes.FindAsync(recipeId);
         Assert.NotNull(updatedRecipe);
+        Assert.Null(updatedRecipe.VegetarianClassificationVersion);
+        Assert.NotNull(updatedRecipe.VegetarianClassificationFailedAt);
     }
 }
