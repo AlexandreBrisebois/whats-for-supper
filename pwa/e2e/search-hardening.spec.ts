@@ -358,9 +358,7 @@ test.describe('Scenario 5 — failed capture → retry success lifecycle', () =>
     const retryResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
-        response.url().endsWith(
-          `/api/captures/failures/${MOCK_IDS.CAPTURE_FAILURE_URL}/retry`
-        )
+        response.url().endsWith(`/api/captures/failures/${MOCK_IDS.CAPTURE_FAILURE_URL}/retry`)
     );
 
     await page.getByTestId(`action-retry-${MOCK_IDS.CAPTURE_FAILURE_URL}`).click();
