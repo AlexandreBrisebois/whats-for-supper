@@ -476,7 +476,37 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     let validateCalled = false;
 
-    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+    // The EventSource mock reconnects after every fulfilled response. Replay the
+    // current server state so a stale planned-slot event cannot overwrite the
+    // completed order-in validation while the planner initializes.
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      const isOrderedIn = validateCalled;
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        const dateStr = toDateStr(d);
+        return {
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+          date: dateStr,
+          status: dateStr === today && isOrderedIn ? 3 : 0,
+          recipe: dateStr === today && !isOrderedIn ? lasagnaRecipe : null,
+        };
+      });
+      const schedule = { weekOffset: 0, locked: false, status: 0, days };
+      const slotUpdate = {
+        type: 'slot_updated',
+        date: today,
+        recipe: isOrderedIn ? null : lasagnaRecipe,
+        status: isOrderedIn ? 3 : 0,
+      };
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: { 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
+        body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule })}\n\nevent: slot_updated\ndata: ${JSON.stringify(slotUpdate)}\n\n`,
+      });
+    });
 
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
@@ -554,7 +584,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Flow exits to planner with tonight marked ordered in
     await expect(page).toHaveURL(/\/planner/);
-    await expect(page.getByTestId('ordered-in-indicator')).toBeVisible({ timeout: 3000 });
+    const tonightCard = page.locator(`[data-date="${today}"]`);
+    await expect(tonightCard).toBeVisible({ timeout: 10_000 });
+    await expect(tonightCard.getByTestId('ordered-in-indicator')).toBeVisible();
   });
 
   test('Closing Quick Find after "Pick Something Else" exits without changing tonight', async ({
