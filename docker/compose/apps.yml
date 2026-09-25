@@ -59,6 +59,7 @@ services:
       context: ../../pwa
       dockerfile: Dockerfile
       args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
     restart: unless-stopped
     environment:
 
