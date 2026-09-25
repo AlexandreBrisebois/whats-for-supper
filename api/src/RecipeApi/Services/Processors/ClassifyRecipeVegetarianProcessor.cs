@@ -33,7 +33,7 @@ public sealed class ClassifyRecipeVegetarianProcessor(
                 Ingredients: {{string.Join("\n", ingredients)}}
                 """;
             var response = await chatClient.GetResponseAsync(prompt, cancellationToken: ct);
-            var result = JsonSerializer.Deserialize<Result>(response.Text?.Trim() ?? "", new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var result = JsonSerializer.Deserialize<Result>(ExtractJsonPayload(response.Text), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (result?.IsVegetarian is not bool isVegetarian)
                 return new { recipeId, outcome = "unknown-insufficient-ingredients" };
 
@@ -56,6 +56,18 @@ public sealed class ClassifyRecipeVegetarianProcessor(
         if (!json.RootElement.TryGetProperty("recipeId", out var id) || !id.TryGetGuid(out var recipeId))
             throw new ArgumentException("Task payload does not contain recipeId.");
         return recipeId;
+    }
+
+    private static string ExtractJsonPayload(string? response)
+    {
+        var trimmed = response?.Trim() ?? string.Empty;
+        if (!trimmed.StartsWith("```", StringComparison.Ordinal)) return trimmed;
+
+        var contentStart = trimmed.IndexOf('\n');
+        var contentEnd = trimmed.LastIndexOf("```", StringComparison.Ordinal);
+        if (contentStart < 0 || contentEnd <= contentStart) return trimmed;
+
+        return trimmed[(contentStart + 1)..contentEnd].Trim();
     }
 
     private static IEnumerable<string> ReadIngredients(string? value)

@@ -54,6 +54,28 @@ public class ClassifyRecipeVegetarianProcessorTests
         Assert.Contains("white beans", chat.Invocations.Single().Arguments.OfType<IEnumerable<ChatMessage>>().Single().Single().Text);
     }
 
+    [Theory]
+    [InlineData("```json\n{\"isVegetarian\":true}\n```", true)]
+    [InlineData("```\n{\"isVegetarian\":false}\n```", false)]
+    public async Task ExecuteAsync_AcceptsMarkdownFencedClassificationJson(string responseText, bool expected)
+    {
+        await using var db = TestDbContextFactory.Create();
+        var recipe = new Recipe { Id = Guid.NewGuid(), Ingredients = "[\"lentils\"]" };
+        db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+        var chat = new Mock<IChatClient>();
+        chat.Setup(client => client.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
+        var processor = new ClassifyRecipeVegetarianProcessor(db, chat.Object,
+            Policy(), new VegetarianClassificationWriter(), new FixedClock());
+
+        await processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
+
+        Assert.Equal(expected, recipe.IsVegetarian);
+        Assert.Equal(CategorizeRecipeProcessor.VegetarianClassifierVersion, recipe.VegetarianClassificationVersion);
+        Assert.Null(recipe.VegetarianClassificationFailedAt);
+    }
+
     [Fact]
     public async Task ExecuteAsync_MalformedResponsePreservesConfirmedFactAndRecordsFailure()
     {

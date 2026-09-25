@@ -1,5 +1,9 @@
 @workflowId = classify-recipe
 @recipeImportWorkflowId = classify-recipe
+@vegetarianBackfillWorkflowId = vegetarian-classification-backfill
+@vegetarianStatusWorkflowId = vegetarian-classification-status
+@vegetarianBackfillInstanceId = 44ad3b45-0f7d-45c0-89a6-894af1ad59fc
+@vegetarianStatusInstanceId = 15abae35-f3b0-4807-80e5-8a7881eb4521
 
 @recipeId = 7d4c50f3-a3b9-412d-8e8b-940809b9553e
 #@recipeId = 9b683c7b-9ba7-4fd6-ae8b-b95eee02b689
@@ -46,6 +50,51 @@ X-Hearth-Secret: {{hearthSecret}}
     "recipeId": "{{recipeId}}",
     "url": "https://www.ricardocuisine.com/en/recipes/4725-honey-glazed-rack-of-lamb-"
   }
+}
+
+### 1ac. Start vegetarian classification backfill
+# Safe initial migration: current-version rows are skipped. Copy data.instanceId
+# from the 202 response into @vegetarianBackfillInstanceId before polling below.
+POST {{baseUrl}}/api/workflows/{{vegetarianBackfillWorkflowId}}/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {}
+}
+
+### 1ad. Get vegetarian backfill instance details
+# A batch contains at most 25 recipes and schedules successor batches. Check
+# "Get all active workflows" until no vegetarian-classification-backfill remains.
+GET {{baseUrl}}/api/workflows/instances/{{vegetarianBackfillInstanceId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### 1ae. Get vegetarian classification migration status
+# Copy data.instanceId into @vegetarianStatusInstanceId, then poll the request below.
+POST {{baseUrl}}/api/workflows/{{vegetarianStatusWorkflowId}}/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {}
+}
+
+### 1af. Get vegetarian classification status result
+# The completed task result reports total/current/unknown/vegetarian/
+# non-vegetarian/failed counts and classification timestamps.
+GET {{baseUrl}}/api/workflows/instances/{{vegetarianStatusInstanceId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### 1ag. Reconcile search after vegetarian backfill settles
+# Run once only after no backfill workflow instances remain active.
+POST {{baseUrl}}/api/workflows/search-reconciliation/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {}
 }
 
 ### 1a. Trigger recipe-description-regeneration workflow execution
