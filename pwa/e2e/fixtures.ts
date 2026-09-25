@@ -88,7 +88,6 @@ export const test = base.extend({
               demoModeRawValue: 'false',
               demoRestoreCronValid: true,
               allowAgentSearch: true,
-              allowPhotoSearch: true,
             }),
           });
         }

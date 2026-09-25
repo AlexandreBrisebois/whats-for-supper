@@ -8,8 +8,6 @@ import {
   Clock,
   ChefHat,
   Loader2,
-  Camera,
-  Image as ImageIcon,
   BookOpen,
   Dices,
   Trash2,
@@ -18,7 +16,6 @@ import {
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api/api-client';
 import { searchRecipes, type RecipeSearchResponse, type Recipe } from '@/lib/api/recipes';
-import { submitPhotoSearch } from '@/lib/api/inventory';
 import type {
   RecipeSearchFilterDiscoveryDto,
   RecipeSearchFiltersDto,
@@ -47,7 +44,7 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
 import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 
-type SearchMode = 'standard' | 'agent' | 'camera';
+type SearchMode = 'standard' | 'agent';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -86,10 +83,6 @@ export default function RecipesPage() {
   const [query, setQuery] = useState('');
   const [agentQuery, setAgentQuery] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('standard');
-  const [isCameraBusy, setIsCameraBusy] = useState(false);
-  const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
-  const [isSubmittingPhotos, setIsSubmittingPhotos] = useState(false);
-  const [pantrySnapshotId, setPantrySnapshotId] = useState<string | null>(null);
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [dataPromotionVersion, setDataPromotionVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -113,9 +106,7 @@ export default function RecipesPage() {
   const [loadMoreExpired, setLoadMoreExpired] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [allowAgentSearch, setAllowAgentSearch] = useState<boolean | null>(null);
-  const [allowPhotoSearch, setAllowPhotoSearch] = useState<boolean | null>(null);
   const [showDemoAiNotice, setShowDemoAiNotice] = useState(false);
-  const [showDemoPhotoNotice, setShowDemoPhotoNotice] = useState(false);
   const [pendingRecovery, setPendingRecovery] = useState<{
     slot: PlannerSlot;
     recipe: AssignmentRecipe;
@@ -123,8 +114,6 @@ export default function RecipesPage() {
   } | null>(null);
   const searchPromotionVersion = useSearchPromotionStore((state) => state.version);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
   const resultsSentinelRef = useRef<HTMLDivElement | null>(null);
   const requestGenerationRef = useRef(0);
   const continuationGenerationRef = useRef<number | null>(null);
@@ -139,7 +128,6 @@ export default function RecipesPage() {
   const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
 
   const isAgentSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_AGENT_SEARCH === 'true';
-  const isPhotoSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_PHOTO_SEARCH === 'true';
 
   useEffect(() => {
     return () => {
@@ -156,7 +144,6 @@ export default function RecipesPage() {
           | {
               demoMode?: boolean;
               allowAgentSearch?: boolean;
-              allowPhotoSearch?: boolean;
             }
           | undefined;
         if (isActive) {
@@ -165,15 +152,11 @@ export default function RecipesPage() {
           setAllowAgentSearch(
             typeof health?.allowAgentSearch === 'boolean' ? health.allowAgentSearch : !demoMode
           );
-          setAllowPhotoSearch(
-            typeof health?.allowPhotoSearch === 'boolean' ? health.allowPhotoSearch : !demoMode
-          );
         }
       } catch {
         if (isActive) {
           setIsDemoMode(false);
           setAllowAgentSearch(true);
-          setAllowPhotoSearch(true);
         }
       }
     })();
@@ -198,7 +181,6 @@ export default function RecipesPage() {
       nextQuery: string,
       nextSimilarToRecipeId?: string | null,
       nextFilters?: RecipeSearchFiltersDto,
-      nextPantrySnapshotId?: string | null,
       nextLimit?: number,
       nextPreferences?: RecipeSearchPreferencesDto
     ) => {
@@ -209,7 +191,6 @@ export default function RecipesPage() {
       try {
         const filters = nextFilters ?? activeFilters;
         const preferences = nextPreferences ?? activePreferences;
-        const snapshotId = nextPantrySnapshotId ?? pantrySnapshotId;
         const resolvedLimit = nextLimit ?? limit;
         const response = await searchRecipes({
           query: nextQuery,
@@ -218,7 +199,6 @@ export default function RecipesPage() {
           weekOffset: parsedWeekOffset,
           dayIndex: parsedDayIndex,
           similarToRecipeId: nextSimilarToRecipeId ?? undefined,
-          pantrySnapshotId: snapshotId ?? undefined,
           filters: Object.keys(filters).length > 0 ? filters : undefined,
           preferences: Object.keys(preferences).length > 0 ? preferences : undefined,
         });
@@ -250,7 +230,7 @@ export default function RecipesPage() {
         if (generation === requestGenerationRef.current) setIsLoading(false);
       }
     },
-    [activeFilters, activePreferences, pantrySnapshotId, limit, parsedWeekOffset, parsedDayIndex]
+    [activeFilters, activePreferences, limit, parsedWeekOffset, parsedDayIndex]
   );
 
   useEffect(() => {
@@ -310,21 +290,13 @@ export default function RecipesPage() {
   useEffect(() => {
     if (searchPromotionVersion === 0 || data?.resultPath !== 'browse') return;
     const refreshTimer = window.setTimeout(() => {
-      void runSearch(
-        query,
-        similarToRecipeId,
-        activeFilters,
-        pantrySnapshotId,
-        INITIAL_LIMIT,
-        activePreferences
-      );
+      void runSearch(query, similarToRecipeId, activeFilters, INITIAL_LIMIT, activePreferences);
     }, 0);
     return () => window.clearTimeout(refreshTimer);
   }, [
     activeFilters,
     activePreferences,
     data?.resultPath,
-    pantrySnapshotId,
     query,
     runSearch,
     searchPromotionVersion,
@@ -343,7 +315,7 @@ export default function RecipesPage() {
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      void runSearch(value, similarToRecipeId, activeFilters, pantrySnapshotId, limit);
+      void runSearch(value, similarToRecipeId, activeFilters, limit);
     }, SEARCH_DEBOUNCE_MS);
   };
 
@@ -489,8 +461,7 @@ export default function RecipesPage() {
   };
 
   const isAgentSearchAllowed = isAgentSearchEnabled && allowAgentSearch === true;
-  const isPhotoSearchAllowed = isPhotoSearchEnabled && allowPhotoSearch === true;
-  const isCapabilitiesLoading = allowAgentSearch === null || allowPhotoSearch === null;
+  const isCapabilitiesLoading = allowAgentSearch === null;
 
   const handleAgentSubmit = () => {
     if (!isAgentSearchAllowed) {
@@ -522,49 +493,11 @@ export default function RecipesPage() {
       .finally(() => setIsLoading(false));
   };
 
-  const handleCameraSubmit = async () => {
-    if (!isPhotoSearchAllowed) {
-      setShowDemoPhotoNotice(true);
-      setSearchMode('standard');
-      return;
-    }
-    setIsCameraBusy(false);
-    setIsSubmittingPhotos(true);
-    try {
-      const result = await submitPhotoSearch(pendingPhotos);
-      if ('busy' in result) {
-        setIsCameraBusy(true);
-        return;
-      }
-      setPendingPhotos([]);
-      setSearchMode('standard');
-      if (result.intent === 'recipe') {
-        const photoQuery = result.query || result.inferredIngredients.join(' ');
-        setQuery(photoQuery);
-        setPantrySnapshotId(null);
-        void runSearch(photoQuery, null, activeFilters, null);
-        return;
-      }
-
-      setPantrySnapshotId(result.pantrySnapshotId);
-      void runSearch(query, similarToRecipeId, activeFilters, result.pantrySnapshotId);
-    } finally {
-      setIsSubmittingPhotos(false);
-    }
-  };
-
-  const handlePhotoInput = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []);
-    if (files.length === 0) return;
-    setPendingPhotos((prev) => [...prev, ...files]);
-    event.target.value = '';
-  };
-
   const handleApplyFilters = ({ filters, preferences }: RecipeFilterDraft) => {
     setActiveFilters(filters);
     setActivePreferences(preferences);
     setIsFiltersOpen(false);
-    void runSearch(query, similarToRecipeId, filters, undefined, undefined, preferences);
+    void runSearch(query, similarToRecipeId, filters, undefined, preferences);
   };
 
   const isPromotionDataCurrent = dataPromotionVersion === searchPromotionVersion;
@@ -607,7 +540,6 @@ export default function RecipesPage() {
         weekOffset: parsedWeekOffset,
         dayIndex: parsedDayIndex,
         similarToRecipeId: similarToRecipeId ?? undefined,
-        pantrySnapshotId: pantrySnapshotId ?? undefined,
         filters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
         preferences: Object.keys(activePreferences).length > 0 ? activePreferences : undefined,
       });
@@ -646,7 +578,6 @@ export default function RecipesPage() {
     data,
     hasMoreResults,
     isLoading,
-    pantrySnapshotId,
     parsedDayIndex,
     parsedWeekOffset,
     query,
@@ -753,7 +684,7 @@ export default function RecipesPage() {
       )}
 
       {/* Mode selector */}
-      {(isAgentSearchEnabled || isPhotoSearchEnabled) && (
+      {isAgentSearchEnabled && (
         <div className="flex flex-wrap gap-2 px-1">
           {isAgentSearchEnabled && (
             <button
@@ -783,34 +714,6 @@ export default function RecipesPage() {
               {t('recipes.agentSearch', 'Agent Search')}
             </button>
           )}
-          {isPhotoSearchEnabled && (
-            <button
-              type="button"
-              data-testid="demo-photo-search-toggle"
-              disabled={isCapabilitiesLoading}
-              onClick={() => {
-                if (!isPhotoSearchAllowed) {
-                  setShowDemoPhotoNotice(true);
-                  setSearchMode('standard');
-                  return;
-                }
-                setSearchMode(searchMode === 'camera' ? 'standard' : 'camera');
-              }}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold shadow-sm transition-colors',
-                (!isPhotoSearchAllowed || isCapabilitiesLoading) && 'opacity-60',
-                searchMode === 'camera'
-                  ? 'border-terracotta bg-terracotta text-white'
-                  : 'border-charcoal/10 bg-white/70 text-charcoal'
-              )}
-            >
-              <Camera
-                size={16}
-                className={searchMode === 'camera' ? 'text-white' : 'text-terracotta'}
-              />
-              {t('recipes.inventoryCamera', 'Photo Search')}
-            </button>
-          )}
         </div>
       )}
 
@@ -820,14 +723,6 @@ export default function RecipesPage() {
           className="rounded-2xl border border-terracotta/20 bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta"
         >
           {t('recipes.demoAiNotice', 'Semantic search translation is disabled in Demo Mode')}
-        </div>
-      )}
-      {showDemoPhotoNotice && (
-        <div
-          data-testid="demo-photo-notice"
-          className="rounded-2xl border border-terracotta/20 bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta"
-        >
-          {t('recipes.demoPhotoNotice', 'Photo search is disabled in Demo Mode')}
         </div>
       )}
 
@@ -901,125 +796,6 @@ export default function RecipesPage() {
               type="button"
               data-testid="agent-search-close"
               onClick={() => setSearchMode('standard')}
-              className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
-            >
-              {t('recipes.cancel', 'Cancel')}
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Hidden file inputs */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        data-testid="inventory-camera-input"
-        aria-label="Take a photo"
-        title="Take a photo"
-        className="hidden"
-        onChange={handlePhotoInput}
-      />
-      <input
-        ref={galleryInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        data-testid="inventory-gallery-input"
-        aria-label="Choose photos from your library"
-        title="Choose photos from your library"
-        className="hidden"
-        onChange={handlePhotoInput}
-      />
-
-      {/* Camera photo queue panel */}
-      {searchMode === 'camera' && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          data-testid="inventory-capture-popup"
-          className="flex flex-col gap-4 rounded-2xl border border-charcoal/10 bg-white/90 p-5 shadow-lg"
-        >
-          {/* Large Capture Button */}
-          <div className="flex flex-col items-center gap-6 py-4">
-            <button
-              type="button"
-              data-testid="inventory-take-photo"
-              onClick={() => cameraInputRef.current?.click()}
-              aria-label={t('recipes.takePhoto', 'Take Photo')}
-              className="flex h-24 w-24 items-center justify-center rounded-full bg-terracotta text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
-            >
-              <Camera size={32} strokeWidth={2} />
-            </button>
-
-            <button
-              type="button"
-              data-testid="inventory-choose-photos"
-              onClick={() => galleryInputRef.current?.click()}
-              className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
-            >
-              <ImageIcon size={14} />
-              {t('recipes.choosePhotos', 'Choose from Library')}
-            </button>
-          </div>
-
-          {/* Photo preview strip */}
-          {pendingPhotos.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {pendingPhotos.map((file, i) => (
-                <div key={i} className="relative h-20 w-20 overflow-hidden rounded-xl shadow-sm">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={`Photo ${i + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    data-testid={`remove-photo-${i}`}
-                    onClick={() => setPendingPhotos((prev) => prev.filter((_, j) => j !== i))}
-                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-charcoal/70 text-white text-xs font-black leading-none"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {isCameraBusy && (
-            <p className="text-sm text-terracotta font-medium">
-              {t('recipes.cameraBusy', "We're processing a lot right now. Try again in a moment.")}
-            </p>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              data-testid="inventory-capture-submit"
-              onClick={() => void handleCameraSubmit()}
-              disabled={isSubmittingPhotos}
-              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-40"
-            >
-              {isSubmittingPhotos
-                ? t('recipes.searching', 'Searching…')
-                : tWithVars(
-                    'recipes.searchWithPhotos',
-                    `Search with ${pendingPhotos.length} photos`,
-                    {
-                      count: pendingPhotos.length,
-                    }
-                  )}
-            </button>
-            <button
-              type="button"
-              data-testid="inventory-capture-cancel"
-              onClick={() => {
-                setSearchMode('standard');
-                setPendingPhotos([]);
-                setIsCameraBusy(false);
-              }}
               className="rounded-full border border-charcoal/10 bg-white/70 px-5 py-2 text-sm font-bold text-charcoal shadow-sm"
             >
               {t('recipes.cancel', 'Cancel')}
@@ -1261,13 +1037,7 @@ export default function RecipesPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      void runSearch(
-                        query,
-                        similarToRecipeId,
-                        activeFilters,
-                        pantrySnapshotId,
-                        INITIAL_LIMIT
-                      )
+                      void runSearch(query, similarToRecipeId, activeFilters, INITIAL_LIMIT)
                     }
                     className="text-sm font-bold text-ochre underline"
                     data-testid="search-restart-expired"

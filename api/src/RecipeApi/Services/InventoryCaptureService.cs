@@ -61,37 +61,6 @@ public sealed class InventoryCaptureService : IDisposable
         return (snapshot, false);
     }
 
-    /// <summary>
-    /// Single-shot photo search classification. Images are sent to the vision model once;
-    /// downstream recipe lookup/search is text/database-only.
-    /// </summary>
-    public async Task<(PhotoSearchResponseDto? Result, bool Busy)> ProcessPhotoSearchAsync(
-        IReadOnlyList<byte[]> photos,
-        CancellationToken ct = default)
-    {
-        var (analysis, busy) = await AnalyzePhotosAsync(photos, BuildPhotoSearchVisionPrompt(photos.Count), ct);
-        if (busy) return (null, true);
-
-        var intent = string.Equals(analysis.Intent, "recipe", StringComparison.OrdinalIgnoreCase)
-            ? "recipe"
-            : "inventory";
-
-        Guid? pantrySnapshotId = null;
-        if (intent == "inventory" && analysis.Ingredients.Count > 0)
-        {
-            pantrySnapshotId = StoreSnapshot(analysis.Ingredients, analysis.Confidence).SnapshotId;
-        }
-
-        return (new PhotoSearchResponseDto
-        {
-            Intent = intent,
-            Query = intent == "recipe" ? analysis.Query : string.Empty,
-            InferredIngredients = analysis.Ingredients,
-            Confidence = analysis.Confidence,
-            PantrySnapshotId = pantrySnapshotId
-        }, false);
-    }
-
     private async Task<(VisionAnalysis Analysis, bool Busy)> AnalyzePhotosAsync(
         IReadOnlyList<byte[]> photos,
         string prompt,
@@ -164,28 +133,6 @@ public sealed class InventoryCaptureService : IDisposable
         "List the visible ingredients as a JSON object: " +
         "{\"ingredients\": [\"item1\", \"item2\"], \"confidence\": 0.85}. " +
         "Only include clearly visible food items. Respond with valid JSON only.";
-
-    private string BuildPhotoSearchVisionPrompt(int photoCount)
-    {
-        var recipeStrategy = _promptRepository?.GetPrompt(PromptType.RecipeExtraction) ?? "Extract recipe name and ingredients.";
-        var inventoryStrategy = _promptRepository?.GetPrompt(PromptType.InventoryExtraction) ?? "Identify all food items.";
-
-        return $"You are analyzing {photoCount} food-related photo(s) for a recipe library search.\n\n" +
-               "CLASSIFICATION PROTOCOL:\n" +
-               "1. Classify the photos as exactly one intent: \"recipe\" or \"inventory\".\n" +
-               "   - \"recipe\": images showing a recipe card, handwritten recipe, cookbook page, meal kit card, or recipe screenshot.\n" +
-               "   - \"inventory\": images showing fridge, pantry, freezer, counter, table, or loose food items.\n\n" +
-               "STRATEGY A: RECIPE INTENT\n" +
-               "If intent is 'recipe', apply high-precision extraction. You MUST extract the recipe title/name for library verification.\n" +
-               $"Rules:\n{recipeStrategy}\n\n" +
-               "STRATEGY B: INVENTORY INTENT\n" +
-               "If intent is 'inventory', identify all visible food items and ingredients.\n" +
-               $"Rules:\n{inventoryStrategy}\n\n" +
-               "OUTPUT RULES:\n" +
-               "Respond with valid JSON only in this exact shape:\n" +
-               "{\"intent\":\"recipe\",\"query\":\"Extracted Recipe Title\",\"ingredients\":[\"item1\"],\"confidence\":0.85}\n\n" +
-               "IMPORTANT: For 'recipe' intent, the 'query' field MUST contain the primary recipe name.";
-    }
 
     private ChatClientAgentRunOptions GetChatOptions()
     {

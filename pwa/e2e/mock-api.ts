@@ -948,7 +948,6 @@ export async function setupCommonRoutes(page: Page) {
         demoModeRawValue: 'false',
         demoRestoreCronValid: true,
         allowAgentSearch: true,
-        allowPhotoSearch: true,
       }),
     });
   });
@@ -1055,27 +1054,6 @@ export async function setupCommonRoutes(page: Page) {
         body: JSON.stringify({ data: { key, value: body.value } }),
       });
     }
-  });
-
-  // POST /api/photo-search
-  await page.route('**/api/photo-search', async (route) => {
-    if (route.request().method() !== 'POST') {
-      await route.fallback();
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          intent: 'inventory',
-          query: 'chicken pasta tomatoes',
-          inferredIngredients: ['chicken', 'pasta', 'tomatoes'],
-          confidence: 0.85,
-          pantrySnapshotId: MOCK_IDS.INVENTORY_CAPTURE,
-        },
-      }),
-    });
   });
 
   // POST /api/inventory-captures (Task 13)

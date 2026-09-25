@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => {
   const saveSetting = vi.fn();
   const assignRecipeToDay = vi.fn();
   const getSchedule = vi.fn();
-  const submitPhotoSearch = vi.fn();
   const getTrashItems = vi.fn();
   const restoreRecipe = vi.fn();
   const purgeRecipe = vi.fn();
@@ -32,7 +31,6 @@ const mocks = vi.hoisted(() => {
     saveSetting,
     assignRecipeToDay,
     getSchedule,
-    submitPhotoSearch,
     getTrashItems,
     restoreRecipe,
     purgeRecipe,
@@ -105,10 +103,6 @@ vi.mock('@/store/familyStore', () => ({
     };
     return selector ? selector(state) : state;
   },
-}));
-
-vi.mock('@/lib/api/inventory', () => ({
-  submitPhotoSearch: (...args: unknown[]) => mocks.submitPhotoSearch(...args),
 }));
 
 vi.mock('@/lib/api/api-client', () => ({
@@ -209,7 +203,6 @@ describe('RecipesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('NEXT_PUBLIC_ENABLE_AGENT_SEARCH', 'true');
-    vi.stubEnv('NEXT_PUBLIC_ENABLE_PHOTO_SEARCH', 'true');
     mocks.setSearchParams('');
     mocks.setFamilySettings({});
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse());
@@ -234,13 +227,6 @@ describe('RecipesPage', () => {
         recipe: null,
         status: 0,
       })),
-    });
-    mocks.submitPhotoSearch.mockResolvedValue({
-      intent: 'inventory',
-      query: '',
-      inferredIngredients: ['chicken'],
-      confidence: 0.9,
-      pantrySnapshotId: 'snap-123',
     });
     mocks.getTrashItems.mockResolvedValue([]);
     mocks.restoreRecipe.mockResolvedValue(undefined);
@@ -276,8 +262,6 @@ describe('RecipesPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('demo-agent-search-toggle')).toBeInTheDocument();
     });
-
-    expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument();
   });
 
   it('fires recipe search on mount and again when Enter is pressed with the current query', async () => {
@@ -1205,172 +1189,6 @@ describe('RecipesPage', () => {
     expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
   });
 
-  // ── Task 13: Inventory camera popup ─────────────────────────────────────────
-
-  // ── Task 13: Inventory camera popup ─────────────────────────────────────────
-
-  it('demo-photo-search-toggle tap opens the inventory-capture-popup', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-
-    expect(screen.queryByTestId('inventory-capture-popup')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
-  });
-
-  it('inventory-capture-popup renders take photo, choose photos, submit and cancel buttons', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    expect(screen.getByTestId('inventory-take-photo')).toBeInTheDocument();
-    expect(screen.getByTestId('inventory-choose-photos')).toBeInTheDocument();
-    expect(screen.getByTestId('inventory-capture-submit')).toBeInTheDocument();
-    expect(screen.getByTestId('inventory-capture-cancel')).toBeInTheDocument();
-  });
-
-  it('submit button stays available and updates the photo count as photos are added', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    const submitBtn = screen.getByTestId('inventory-capture-submit');
-    expect(submitBtn).not.toBeDisabled();
-    expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
-
-    // Mock adding a photo
-    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
-    const input = screen.getByTestId('inventory-camera-input');
-    fireEvent.change(input, { target: { files: [file] } });
-
-    expect(submitBtn).toHaveTextContent(/Search with 1 photo/i);
-    expect(screen.getByTestId('remove-photo-0')).toBeInTheDocument();
-  });
-
-  it('removing a photo updates the count and keeps submit available when the queue becomes empty', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
-    const input = screen.getByTestId('inventory-camera-input');
-    fireEvent.change(input, { target: { files: [file] } });
-
-    const submitBtn = screen.getByTestId('inventory-capture-submit');
-    expect(submitBtn).not.toBeDisabled();
-
-    fireEvent.click(screen.getByTestId('remove-photo-0'));
-
-    expect(submitBtn).not.toBeDisabled();
-    expect(submitBtn).toHaveTextContent(/Search with 0 photos/i);
-  });
-
-  it('submitting inventory photos uses the pantry snapshot in the next search', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
-    const input = screen.getByTestId('inventory-camera-input');
-    fireEvent.change(input, { target: { files: [file] } });
-
-    fireEvent.click(screen.getByTestId('inventory-capture-submit'));
-
-    await waitFor(() => {
-      expect(mocks.submitPhotoSearch).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenCalledWith(
-        expect.objectContaining({ pantrySnapshotId: 'snap-123' })
-      );
-    });
-  });
-
-  it('submitting a recipe photo searches the library with extracted recipe text', async () => {
-    mocks.submitPhotoSearch.mockResolvedValueOnce({
-      intent: 'recipe',
-      query: 'Lemon Chicken rice',
-      inferredIngredients: ['chicken', 'lemon', 'rice'],
-      confidence: 0.91,
-      pantrySnapshotId: null,
-    });
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    const file = new File(['foo'], 'recipe.png', { type: 'image/png' });
-    const input = screen.getByTestId('inventory-camera-input');
-    fireEvent.change(input, { target: { files: [file] } });
-
-    fireEvent.click(screen.getByTestId('inventory-capture-submit'));
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenCalledWith(
-        expect.objectContaining({
-          query: 'Lemon Chicken rice',
-          pantrySnapshotId: undefined,
-        })
-      );
-    });
-  });
-
-  it('inventory-capture-cancel closes popup and clears queue', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
-    const input = screen.getByTestId('inventory-camera-input');
-    fireEvent.change(input, { target: { files: [file] } });
-
-    expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('inventory-capture-cancel'));
-
-    expect(screen.queryByTestId('inventory-capture-popup')).not.toBeInTheDocument();
-
-    // Re-open to check if queue was cleared
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-    expect(screen.getByTestId('inventory-capture-submit')).not.toBeDisabled();
-  });
-
-  it('popup shows busy message when capture returns busy status', async () => {
-    mocks.submitPhotoSearch.mockResolvedValueOnce({ busy: true, retryAfterSeconds: 30 });
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    const file = new File(['foo'], 'foo.png', { type: 'image/png' });
-    const input = screen.getByTestId('inventory-camera-input');
-    fireEvent.change(input, { target: { files: [file] } });
-
-    fireEvent.click(screen.getByTestId('inventory-capture-submit'));
-
-    await waitFor(() => {
-      // The popup should still be visible with a retry/busy message
-      expect(screen.getByTestId('inventory-capture-popup')).toBeInTheDocument();
-    });
-  });
-
   // ── Task 12: Agent search UI ────────────────────────────────────────────────
 
   it('demo-agent-search-toggle tap shows agent-search-input textarea', async () => {
@@ -1412,21 +1230,6 @@ describe('RecipesPage', () => {
 
     expect(screen.getByTestId('demo-ai-notice')).toBeInTheDocument();
     expect(screen.queryByTestId('agent-search-input')).not.toBeInTheDocument();
-  });
-
-  it('disables and gates photo search when allowPhotoSearch is false', async () => {
-    mocks.healthGet.mockResolvedValue({ demoMode: false, allowPhotoSearch: false });
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(screen.getByTestId('demo-photo-search-toggle')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('demo-photo-search-toggle'));
-
-    expect(screen.getByTestId('demo-photo-notice')).toHaveTextContent(
-      'Photo search is disabled in Demo Mode'
-    );
-    expect(screen.queryByTestId('inventory-capture-popup')).not.toBeInTheDocument();
   });
 
   it('agent-search-submit calls searchRecipes with mode: "agent"', async () => {

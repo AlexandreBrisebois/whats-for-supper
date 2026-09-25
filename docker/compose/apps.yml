@@ -60,7 +60,6 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_ENABLE_AGENT_SEARCH: ${NEXT_PUBLIC_ENABLE_AGENT_SEARCH:-false}
-        NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: ${NEXT_PUBLIC_ENABLE_PHOTO_SEARCH:-false}
     restart: unless-stopped
     environment:
 
@@ -70,7 +69,6 @@ services:
       HEARTH_SECRET: ${HEARTH_SECRET}
       NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-en}
       NEXT_PUBLIC_ENABLE_AGENT_SEARCH: ${NEXT_PUBLIC_ENABLE_AGENT_SEARCH:-false}
-      NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: ${NEXT_PUBLIC_ENABLE_PHOTO_SEARCH:-false}
     depends_on:
       - api
     networks:

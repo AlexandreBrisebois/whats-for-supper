@@ -3,7 +3,7 @@
 **Current spec:** `.kiro/specs/agent-friendly-hybrid-recipe-search`
 
 This document describes the user experience for:
-- hybrid recipe search (standard, agent-supplied, and pantry photo search),
+- hybrid recipe search (standard and agent-supplied),
 - planner-aware recipe selection,
 - recipe detail actions (notes, rating, discovery, similar),
 - soft delete and Recycle Bin restore / permanent purge,
@@ -29,9 +29,7 @@ The user should be able to answer "What should we eat?" in seconds, recover from
 flowchart TD
     A[User opens /recipes] --> B[Search field + quick filter pills + utility row]
     B --> C[Types short query and presses Enter]
-    B --> C3[Taps camera for pantry/fridge/freezer popup]
     C --> D[Short list returns — max 5 results]
-    C3 --> D
     D --> E[Top Pick — hero card]
     D --> F[Alternates 2–5]
     E --> G[Open recipe detail sheet]
@@ -68,17 +66,6 @@ flowchart TD
 - An agent may submit the user's original sentence with approved structured filters or preferences.
 - The API does not translate the query, use an LLM reranker, or make the final selection.
 - The result is the same normal recipe response as a standard search.
-
-### 3. Camera-triggered inventory search
-
-- `data-testid="inventory-camera-trigger"` opens `data-testid="inventory-capture-popup"`.
-- The user takes one or more photos of pantry, fridge, or freezer. No multi-step wizard before the camera.
-- Vision model extracts inferred ingredients into a request-scoped pantry snapshot.
-- Snapshot `id` is attached to the search call; recipes with high ingredient overlap are boosted.
-- Temporary photos are deleted immediately after snapshot extraction regardless of outcome.
-- If the model is busy, server returns HTTP 202 with a `retryAfterSeconds` hint — search still works using the query only.
-
----
 
 ## Planner-Aware Search Flow
 

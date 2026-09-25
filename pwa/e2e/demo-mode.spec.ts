@@ -18,7 +18,6 @@ test.describe('Demo Mode', () => {
           demoModeRawValue: 'true',
           demoRestoreCronValid: true,
           allowAgentSearch: false,
-          allowPhotoSearch: false,
         }),
       });
     });
@@ -60,38 +59,6 @@ test.describe('Demo Mode', () => {
 
     // No dead-end: agent canvas remains blocked, standard input remains usable
     await expect(page.getByTestId('agent-search-input')).not.toBeVisible();
-    await expect(page.getByTestId('recipe-search-input')).toBeVisible();
-  });
-
-  test('blocks photo search with explicit notice and does not open capture flow', async ({
-    page,
-    baseURL,
-  }) => {
-    const baseUrl = baseURL || 'http://127.0.0.1:3000';
-
-    await page.context().addCookies([
-      { name: 'x-hearth-secret', value: 'Swipe-Match-Cook', url: baseUrl },
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl },
-    ]);
-    await page.addInitScript((id) => {
-      localStorage.setItem(
-        'family-storage',
-        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
-      );
-    }, MOCK_IDS.MEMBER_ALEX);
-
-    await page.goto('/recipes');
-    await expect(page.getByTestId('recipe-search-input')).toBeVisible();
-
-    const photoTrigger = page.getByTestId('demo-photo-search-toggle');
-    await expect(photoTrigger).toBeVisible();
-    await photoTrigger.click();
-
-    const notice = page.getByTestId('demo-photo-notice');
-    await expect(notice).toBeVisible();
-    await expect(notice).toContainText(/disabled in Demo Mode/i);
-
-    await expect(page.getByTestId('inventory-capture-popup')).not.toBeVisible();
     await expect(page.getByTestId('recipe-search-input')).toBeVisible();
   });
 });

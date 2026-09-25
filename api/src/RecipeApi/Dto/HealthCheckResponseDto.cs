@@ -25,6 +25,4 @@ public class HealthCheckResponseDto
     [JsonPropertyName("allowAgentSearch")]
     public required bool AllowAgentSearch { get; set; }
 
-    [JsonPropertyName("allowPhotoSearch")]
-    public required bool AllowPhotoSearch { get; set; }
 }

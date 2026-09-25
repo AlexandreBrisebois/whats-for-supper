@@ -128,8 +128,7 @@ Run this checklist immediately after each Demo deployment:
    - `demoRestoreSeederErrorCode` is empty/null
 4. Verify PWA Demo UX behavior from `/recipes`:
    - Clicking `demo-agent-search-toggle` shows `demo-ai-notice`
-   - Clicking `demo-photo-search-toggle` shows `demo-photo-notice`
-   - Agent input (`agent-search-input`) and photo capture popup (`inventory-capture-popup`) do not open in demo mode
+   - Agent input (`agent-search-input`) does not open in demo mode
 
 If any check fails, treat the deployment as non-green and stop promotion.
 

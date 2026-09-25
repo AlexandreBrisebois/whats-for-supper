@@ -481,17 +481,17 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             ImageCount = 1
         });
 
-        using var photoContent = new MultipartFormDataContent();
+        using var captureContent = new MultipartFormDataContent();
         using var fileContent = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xD9]);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
-        photoContent.Add(fileContent, "files", "pantry.jpg");
+        captureContent.Add(fileContent, "photos", "pantry.jpg");
 
-        var photoResponse = await _client.PostAsync("/api/photo-search", photoContent);
+        var captureResponse = await _client.PostAsync("/api/inventory-captures", captureContent);
 
-        Assert.Equal(HttpStatusCode.OK, photoResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, captureResponse.StatusCode);
 
-        using var photoDocument = await ReadDataAsync(photoResponse);
-        var pantrySnapshotId = photoDocument.RootElement.GetProperty("pantrySnapshotId").GetGuid();
+        using var captureDocument = await ReadDataAsync(captureResponse);
+        var pantrySnapshotId = captureDocument.RootElement.GetProperty("snapshotId").GetGuid();
 
         var response = await PostSearchAsync(new
         {

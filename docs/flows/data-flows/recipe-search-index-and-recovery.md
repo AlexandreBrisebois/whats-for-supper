@@ -123,11 +123,11 @@ rerank, or select a result.
 
 ---
 
-## Inventory Photo Search Pipeline
+## Inventory Capture API Pipeline
 
 ```mermaid
 flowchart TD
-    A[User submits photos via inventory-capture-popup] --> B[POST /api/inventory-captures]
+    A[API client submits photos] --> B[POST /api/inventory-captures]
     B --> C[Write photos to tmp/pantry-captures/requestId/index.jpg]
     C --> D[Vision model extracts ingredient list]
     D --> E[Build PantrySnapshot — snapshotId + inferredIngredients + confidence]
@@ -387,7 +387,6 @@ Implementations must check `payload_version` before reconstructing the workflow 
 flowchart TD
     A[Standard search field] --> C[RecipeSearchService]
     B[Stars super-search — agent mode] --> C
-    B2[Inventory photo search] --> C
     D[Agent callers] --> C
     C --> E[Hybrid retrieval + reranking]
     E --> F[RecipeSearchResponseDto — grounded results + reasons]

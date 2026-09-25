@@ -30,8 +30,7 @@ namespace Aws
                     { "NEXT_PUBLIC_COOKIE_DOMAIN", cookieDomain },
                     { "NEXT_PUBLIC_AISLE_ORDER", aisleOrder },
                     { "NEXT_PUBLIC_DEFAULT_LOCALE", "en" },
-                    { "NEXT_PUBLIC_ENABLE_AGENT_SEARCH", "false" },
-                    { "NEXT_PUBLIC_ENABLE_PHOTO_SEARCH", "false" }
+                    { "NEXT_PUBLIC_ENABLE_AGENT_SEARCH", "false" }
                 },
                 BuildSpec = Amazon.CDK.AWS.CodeBuild.BuildSpec.FromObject(new Dictionary<string, object>
                 {

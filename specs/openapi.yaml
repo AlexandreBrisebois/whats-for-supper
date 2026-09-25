@@ -821,7 +821,7 @@ components:
     # --- Health ---
     HealthCheckResponse:
       type: object
-      required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid, allowAgentSearch, allowPhotoSearch]
+      required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid, allowAgentSearch]
       properties:
         status: { type: string }
         timestamp: { type: string, format: date-time }
@@ -838,9 +838,6 @@ components:
         allowAgentSearch:
           type: boolean
           description: True when AI-backed agent search interactions are enabled for this runtime.
-        allowPhotoSearch:
-          type: boolean
-          description: True when AI-backed photo search interactions are enabled for this runtime.
       example:
         status: healthy
         timestamp: '2026-05-09T12:00:00Z'
@@ -848,7 +845,6 @@ components:
         demoModeRawValue: 'true'
         demoRestoreCronValid: true
         allowAgentSearch: false
-        allowPhotoSearch: false
         checks:
           database: { status: healthy }
           schema: { status: healthy }
@@ -1043,35 +1039,6 @@ components:
           type: integer
         message:
           type: string
-
-    # --- Photo Search ---
-    PhotoSearchRequest:
-      type: object
-      properties:
-        photos:
-          type: array
-          items:
-            type: string
-            format: binary
-    PhotoSearchResponse:
-      type: object
-      required: [intent, query, inferredIngredients, confidence]
-      properties:
-        intent:
-          type: string
-          enum: [recipe, inventory]
-        query:
-          type: string
-          description: Extracted recipe lookup text. Empty for inventory photos.
-        inferredIngredients:
-          type: array
-          items:
-            type: string
-        confidence:
-          type: number
-        pantrySnapshotId:
-          type: [string, 'null']
-          format: uuid
 
 
     RecipeTrashItemDto:
@@ -3027,34 +2994,6 @@ paths:
                   data: { $ref: '#/components/schemas/InventoryCaptureResponse' }
         '404':
           description: Snapshot not found or expired
-
-  /api/photo-search:
-    post:
-      summary: Classify recipe or inventory photos for library search
-      description: Sends uploaded photos to the vision model once, then returns either an extracted recipe lookup query or a pantry snapshot for pantry-assisted search.
-      requestBody:
-        required: false
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PhotoSearchRequest'
-      responses:
-        '200':
-          description: Photo search analysis created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/PhotoSearchResponse' }
-        '202':
-          description: Vision model busy — retry later
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/InventoryCaptureBusyResponse' }
 
   /api/captures/failures:
     get:

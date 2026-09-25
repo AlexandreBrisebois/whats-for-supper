@@ -22,14 +22,14 @@ describe('demo diagnostics contract', () => {
     const block = match![1];
 
     expect(block).toContain(
-      'required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid, allowAgentSearch, allowPhotoSearch]'
+      'required: [status, timestamp, checks, demoMode, demoModeRawValue, demoRestoreCronValid, allowAgentSearch]'
     );
     expect(block).toContain('demoModeRawValue:');
     expect(block).toContain('type: string');
     expect(block).toContain('demoRestoreCronValid:');
     expect(block).toContain('type: boolean');
     expect(block).toContain('allowAgentSearch:');
-    expect(block).toContain('allowPhotoSearch:');
+    expect(block).not.toContain('allowPhotoSearch:');
   });
 
   it('requires demo diagnostics fields in ManagementTaskStatusResponse schema', () => {
@@ -61,7 +61,7 @@ describe('demo diagnostics contract', () => {
     expect(block).toContain('demoModeRawValue?: string | null;');
     expect(block).toContain('demoRestoreCronValid?: boolean | null;');
     expect(block).toContain('allowAgentSearch?: boolean | null;');
-    expect(block).toContain('allowPhotoSearch?: boolean | null;');
+    expect(block).not.toContain('allowPhotoSearch?: boolean | null;');
   });
 
   it('includes typed management diagnostics fields in generated models', () => {
