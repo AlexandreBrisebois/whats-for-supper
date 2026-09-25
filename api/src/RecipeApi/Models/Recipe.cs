@@ -87,6 +87,7 @@ public class Recipe
     public string? VegetarianClassificationFailureReason { get; set; }
 
     [Column("is_healthy_choice")]
+    [JsonIgnore]
     public bool IsHealthyChoice { get; set; } = false;
 
     // Phase 1+ fields — populated by import worker / AI pipeline

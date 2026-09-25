@@ -7,12 +7,11 @@ namespace RecipeApi.Tests.Integration;
 public class HybridRecipeSearchFactVocabularyTests
 {
     [Fact]
-    public void FactVocabulary_UsesExactIngredientsDirectDietaryFactsAndKnownDurations()
+    public void FactVocabulary_UsesExactIngredientsAndKnownDurations()
     {
         Assert.Equal("2026.09.15.1", HybridRecipeSearchBaselineFixture.Version);
         Assert.Equal(["chicken", "salmon"], HybridRecipeSearchBaselineFixture.NormalizeIncludedIngredients("[\"  Salmon \", {\"name\":\"CHICKEN\",\"amount\":\"500 g\"}]") );
         Assert.Empty(HybridRecipeSearchBaselineFixture.NormalizeIncludedIngredients("[{\"amount\":\"500 g\"}]"));
-        Assert.Equal(["proteinfoods", "seafood", "vegetablesandfruits"], HybridRecipeSearchBaselineFixture.ProjectDietaryProfiles(HybridRecipeSearchBaselineFixture.Recipes[0].DietaryProfileJson));
         Assert.Equal(90, HybridRecipeSearchBaselineFixture.ParseTotalTimeMinutes("PT1H30M"));
         Assert.Equal(65, HybridRecipeSearchBaselineFixture.ParseTotalTimeMinutes("PT1H5M"));
         Assert.Equal(30, HybridRecipeSearchBaselineFixture.ParseTotalTimeMinutes("30 mins"));

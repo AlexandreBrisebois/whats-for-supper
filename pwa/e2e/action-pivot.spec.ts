@@ -40,7 +40,6 @@ test.describe('Recipe Action Pivot', () => {
                 isDiscoverable: true,
                 notes: null,
                 reasons: [{ source: 'AI', label: 'Matches your craving' }],
-                plannerFitNote: 'Matches your craving',
               },
               results: [],
               appliedFilters: {},

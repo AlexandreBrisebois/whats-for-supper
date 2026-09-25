@@ -13,8 +13,7 @@ namespace RecipeApi.Services.Processors;
 public class RecipeReadyProcessor(
     RecipeDbContext db,
     ILogger<RecipeReadyProcessor> logger,
-    IScheduleEventPublisher publisher,
-    IHealthEventPublisher healthPublisher) : IWorkflowProcessor
+    IScheduleEventPublisher publisher) : IWorkflowProcessor
 {
     public string ProcessorName => "RecipeReady";
 
@@ -57,7 +56,6 @@ public class RecipeReadyProcessor(
         var name = recipe.Name ?? string.Empty;
         var imageUrl = recipe.ImageCount > 0 ? $"/api/recipes/{recipe.Id}/hero" : null;
         await publisher.PublishRecipeReadyAsync(recipeId, name, imageUrl);
-        await healthPublisher.PublishRecipeChangedAsync(recipeId, ct);
 
         return new { Status = "Ready", RecipeId = recipeId };
     }

@@ -67,7 +67,6 @@ public class SettingsService(RecipeDbContext dbContext, ILogger<SettingsService>
             Category = null,
             Rating = 0,
             IsVegetarian = false,
-            IsHealthyChoice = false,
             AddedBy = null,
             Ingredients = [],
             RecipeInstructions = null,

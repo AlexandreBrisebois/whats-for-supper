@@ -12,6 +12,8 @@ using Moq;
 using RecipeApi.Infrastructure;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace RecipeApi.Tests.Integration;
 
@@ -48,6 +50,22 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         _scope.Dispose();
         await _factory.DisposeAsync();
     }
+
+    private static DateOnly GetWeekMonday(int weekOffset = 0)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        return today.AddDays(-((int)today.DayOfWeek + 6) % 7).AddDays(weekOffset * 7);
+    }
+
+    private async Task<WeeklyPlan> ReloadWeeklyPlanAsync(DateOnly monday)
+    {
+        using var assertScope = _factory.Services.CreateScope();
+        var assertDb = assertScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        return await assertDb.WeeklyPlans.AsNoTracking().SingleAsync(plan => plan.WeekStartDate == monday);
+    }
+
+    private static IReadOnlyList<GroceryLineItemDto> ReadGroceryItems(WeeklyPlan plan) =>
+        JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems ?? "[]") ?? [];
 
     // ──────────────────────────────────────────────────────────────────────────────
     // Today Slot Persistence Tests (Tasks 1–3)
@@ -447,6 +465,147 @@ public class ScheduleIntegrationTests : IAsyncLifetime
 
         var countAfterVote2 = _db.RecipeVotes.Count(v => v.RecipeId == recipeId);
         Assert.Equal(2, countAfterVote2);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // Planner Grocery Persistence Tests
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AssignRecipe_RecomputesPersistedGroceryItems_AndPreservesGroceryState()
+    {
+        var monday = GetWeekMonday();
+        const string groceryState = "{\"assign-carrots\":true}";
+        _db.WeeklyPlans.Add(new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = monday,
+            GroceryState = groceryState,
+            GroceryItems = "[]"
+        });
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Assign grocery recipe",
+            Ingredients = "[\"assign carrots\"]"
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
+
+        var reloaded = await ReloadWeeklyPlanAsync(monday);
+        Assert.Equal(groceryState, reloaded.GroceryState);
+        Assert.Contains(ReadGroceryItems(reloaded), item => item.NormalizedKey == "assign carrots" && item.RecipeIds.Contains(recipeId));
+    }
+
+    [Fact]
+    public async Task RemoveRecipe_RecomputesPersistedGroceryItems_AndPreservesGroceryState()
+    {
+        var monday = GetWeekMonday();
+        const string groceryState = "{\"remove-onions\":true}";
+        var recipeId = Guid.NewGuid();
+        _db.WeeklyPlans.Add(new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = monday,
+            GroceryState = groceryState,
+            GroceryItems = "[]"
+        });
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Remove grocery recipe",
+            Ingredients = "[\"remove onions\"]"
+        });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = monday,
+            Status = CalendarEventStatus.Planned
+        });
+        await _db.SaveChangesAsync();
+
+        await _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, CancellationToken.None);
+        await _service.RemoveRecipeAsync(monday);
+
+        var reloaded = await ReloadWeeklyPlanAsync(monday);
+        Assert.Equal(groceryState, reloaded.GroceryState);
+        Assert.Empty(ReadGroceryItems(reloaded));
+    }
+
+    [Fact]
+    public async Task SameWeekMove_PreservesPersistedGroceryItems_AndGroceryState()
+    {
+        var monday = GetWeekMonday();
+        const string groceryState = "{\"same-week-peppers\":true}";
+        var recipeId = Guid.NewGuid();
+        _db.WeeklyPlans.Add(new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = monday,
+            GroceryState = groceryState,
+            GroceryItems = "[]"
+        });
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Same week grocery recipe",
+            Ingredients = "[\"same week peppers\"]"
+        });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = monday,
+            Status = CalendarEventStatus.Planned
+        });
+        await _db.SaveChangesAsync();
+
+        await _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, CancellationToken.None);
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "swap", FromIndex: 0));
+
+        var reloaded = await ReloadWeeklyPlanAsync(monday);
+        Assert.Equal(groceryState, reloaded.GroceryState);
+        Assert.Contains(ReadGroceryItems(reloaded), item => item.NormalizedKey == "same week peppers" && item.RecipeIds.Contains(recipeId));
+    }
+
+    [Fact]
+    public async Task CrossWeekMove_RecomputesBothPersistedGroceryLists_AndPreservesGroceryState()
+    {
+        var sourceMonday = GetWeekMonday();
+        var targetMonday = GetWeekMonday(1);
+        const string sourceState = "{\"cross-week-cabbage\":true}";
+        const string targetState = "{\"target-state\":false}";
+        var recipeId = Guid.NewGuid();
+        _db.WeeklyPlans.AddRange(
+            new WeeklyPlan { Id = Guid.NewGuid(), WeekStartDate = sourceMonday, GroceryState = sourceState, GroceryItems = "[]" },
+            new WeeklyPlan { Id = Guid.NewGuid(), WeekStartDate = targetMonday, GroceryState = targetState, GroceryItems = "[]" });
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Cross week grocery recipe",
+            Ingredients = "[\"cross week cabbage\"]"
+        });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            Date = sourceMonday,
+            Status = CalendarEventStatus.Planned
+        });
+        await _db.SaveChangesAsync();
+
+        await _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(sourceMonday, CancellationToken.None);
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 0, "swap", TargetWeekOffset: 1, FromIndex: 0));
+
+        var source = await ReloadWeeklyPlanAsync(sourceMonday);
+        var target = await ReloadWeeklyPlanAsync(targetMonday);
+        Assert.Equal(sourceState, source.GroceryState);
+        Assert.Empty(ReadGroceryItems(source));
+        Assert.Equal(targetState, target.GroceryState);
+        Assert.Contains(ReadGroceryItems(target), item => item.NormalizedKey == "cross week cabbage" && item.RecipeIds.Contains(recipeId));
     }
 
     // ──────────────────────────────────────────────────────────────────────────────
@@ -928,8 +1087,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var processor = new RecipeReadyProcessor(
             _db,
             NullLogger<RecipeReadyProcessor>.Instance,
-            publisherMock.Object,
-            new Mock<IHealthEventPublisher>().Object);
+            publisherMock.Object);
 
         var task = new WorkflowTask
         {
@@ -974,8 +1132,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var processor = new RecipeReadyProcessor(
             _db,
             NullLogger<RecipeReadyProcessor>.Instance,
-            publisherMock.Object,
-            new Mock<IHealthEventPublisher>().Object);
+            publisherMock.Object);
 
         var task = new WorkflowTask
         {
@@ -1002,95 +1159,4 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             Times.Once);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    // Task 7: GET /api/schedule returns balanceSummary
-    // ──────────────────────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task GetSchedule_AfterAssigningRecipeWithDietaryProfile_ReturnsBalanceSummary()
-    {
-        // Arrange: create a recipe with a known dietary_profile
-        var recipeId = Guid.NewGuid();
-        var dietaryProfile = new RecipeDietaryProfile(
-            PrimaryFoodGroup: "ProteinFoods",
-            SecondaryFoodGroups: new[] { "VegetablesAndFruits" },
-            ProteinSource: "Poultry",
-            CuisineType: "Canadian",
-            MealTypes: new[] { "Dinner" },
-            PrimaryMealType: "Dinner",
-            WholeGrainConfident: false,
-            Confidence: 0.95,
-            Source: "llm",
-            FopFlags: null
-        );
-
-        var recipe = new Recipe
-        {
-            Id = recipeId,
-            Name = "Grilled Chicken",
-            DietaryProfile = System.Text.Json.JsonSerializer.Serialize(dietaryProfile)
-        };
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
-
-        // Act: assign the recipe to the week
-        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
-
-        // Get the schedule
-        var schedule = await _service.GetScheduleAsync(0);
-
-        // Assert: balanceSummary is present with isBalanced field
-        Assert.NotNull(schedule.BalanceSummary);
-    }
-
-    [Fact]
-    public async Task GetSchedule_ForEmptyWeek_ReturnsNullBalanceSummary()
-    {
-        // Arrange: no recipes assigned to the week
-
-        // Act: get the schedule for week 0
-        var schedule = await _service.GetScheduleAsync(0);
-
-        // Assert: balanceSummary is null (no weekly plan exists yet)
-        Assert.Null(schedule.BalanceSummary);
-    }
-
-    [Fact]
-    public async Task GetSchedule_BalanceSummaryRecommendations_IsArrayNotNull()
-    {
-        // Arrange: create a recipe with dietary profile and assign it
-        var recipeId = Guid.NewGuid();
-        var dietaryProfile = new RecipeDietaryProfile(
-            PrimaryFoodGroup: "ProteinFoods",
-            SecondaryFoodGroups: new[] { "VegetablesAndFruits" },
-            ProteinSource: "Poultry",
-            CuisineType: "Canadian",
-            MealTypes: new[] { "Dinner" },
-            PrimaryMealType: "Dinner",
-            WholeGrainConfident: false,
-            Confidence: 0.95,
-            Source: "llm",
-            FopFlags: null
-        );
-
-        var recipe = new Recipe
-        {
-            Id = recipeId,
-            Name = "Grilled Chicken",
-            DietaryProfile = System.Text.Json.JsonSerializer.Serialize(dietaryProfile)
-        };
-        _db.Recipes.Add(recipe);
-        await _db.SaveChangesAsync();
-
-        // Act: assign the recipe
-        await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
-
-        // Get the schedule
-        var schedule = await _service.GetScheduleAsync(0);
-
-        // Assert: recommendations is an array (not null), even when isBalanced might be true or false
-        Assert.NotNull(schedule.BalanceSummary);
-        Assert.NotNull(schedule.BalanceSummary.Recommendations);
-        Assert.IsAssignableFrom<IEnumerable<string>>(schedule.BalanceSummary.Recommendations);
-    }
 }

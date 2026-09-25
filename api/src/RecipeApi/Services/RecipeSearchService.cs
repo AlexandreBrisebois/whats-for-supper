@@ -28,8 +28,6 @@ public partial class RecipeSearchService(
     private const int MaxLimit = 50;
     private const int LexicalCandidateLimit = 50;
     private const string QuickRecipePattern = "^(?:\\s*)(?:pt(?:0h(?:[0-2]?\\d|30)m?|(?:[0-2]?\\d|30)m)|(?:[1-9]|[12]\\d|30)\\s*(?:m|min|mins|minute|minutes))(?:\\s*)$";
-    private const double PlannerGapBoost = 0.20;
-    private const double PlannerUrgencyBoost = 0.10;
     private const double BoostLove = 0.15;
     private const double BoostLike = 0.08;
     private const double BoostDislike = 0.10;
@@ -83,7 +81,7 @@ public partial class RecipeSearchService(
         if (!string.IsNullOrWhiteSpace(dto.ContinuationToken))
             return await ContinueAsync(dto.ContinuationToken, continuationFingerprint, recipesQuery, limit, ct);
 
-        if (string.IsNullOrWhiteSpace(semanticQuery))
+        if (string.IsNullOrWhiteSpace(semanticQuery) && dto.SimilarToRecipeId is null)
             return await BrowseAsync(recipesQuery, appliedFilters, searchMode, limit, continuationFingerprint, dto.WeekOffset, ct);
 
         // 2. Retrieval
@@ -172,7 +170,7 @@ public partial class RecipeSearchService(
         var rerankingStopwatch = System.Diagnostics.Stopwatch.StartNew();
         if (dto.WeekOffset is not null && dto.DayIndex is not null)
         {
-            candidates = await ApplyPlannerAwareRerankingAsync(candidates, dto.WeekOffset.Value, query, ct);
+            candidates = await ApplyPlannerAwareRerankingAsync(candidates, dto.WeekOffset.Value, ct);
         }
 
         candidates = await ApplyFamilyFitRerankingAsync(candidates, ct);
@@ -222,11 +220,6 @@ public partial class RecipeSearchService(
             .Take(limit)
             .Select(candidate => MapResult(candidate, reportStatuses))
             .ToList();
-
-        if (dto.WeekOffset is not null && results.Count > 0 && string.IsNullOrWhiteSpace(results[0].PlannerFitNote))
-        {
-            results[0].PlannerFitNote = "Not yet planned this week";
-        }
 
         var response = new RecipeSearchResponseDto
         {
@@ -505,8 +498,7 @@ public partial class RecipeSearchService(
                 {
                     Source = "name-match",
                     Label = "Ready to revisit from your library"
-                }],
-                null))
+                }]))
             .ToList();
 
         return candidates;
@@ -581,7 +573,6 @@ public partial class RecipeSearchService(
     private async Task<List<RankedRecipe>> ApplyPlannerAwareRerankingAsync(
         List<RankedRecipe> candidates,
         int weekOffset,
-        string query,
         CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
@@ -596,153 +587,23 @@ public partial class RecipeSearchService(
             .Select(candidate =>
             {
                 var isPlanned = assignedRecipeIds.Contains(candidate.Recipe.Id);
-                var updated = ApplyPlannerSignals(candidate, schedule.BalanceSummary, query);
                 if (isPlanned)
                 {
-                    var reasons = updated.Reasons.ToList();
+                    var reasons = candidate.Reasons.ToList();
                     reasons.Add(new RecipeSearchReasonDto
                     {
                         Source = "planner-fit",
                         Label = "Already planned for this week"
                     });
-                    return updated with { Score = updated.Score + PlannedDemotion, Reasons = reasons, ScoreComponents = WithComponents(updated.ScoreComponents, ("schedule.already-planned", PlannedDemotion)) };
+                    return candidate with { Score = candidate.Score + PlannedDemotion, Reasons = reasons, ScoreComponents = WithComponents(candidate.ScoreComponents, ("schedule.already-planned", PlannedDemotion)) };
                 }
-                return updated;
+                return candidate;
             })
             .ToList();
 
         return reranked;
     }
 
-    private static RankedRecipe ApplyPlannerSignals(
-        RankedRecipe candidate,
-        WeeklyBalanceSummaryDto? balanceSummary,
-        string query)
-    {
-        var score = candidate.Score;
-        var plannerFitNote = candidate.PlannerFitNote;
-        var reasons = candidate.Reasons.ToList();
-        var dietaryProfile = DeserializeDietaryProfile(candidate.Recipe.DietaryProfile);
-
-        if (balanceSummary is not null)
-        {
-            var (gapBoost, gapNote) = GetBalanceGapAdjustment(balanceSummary, dietaryProfile);
-            if (gapBoost > 0)
-            {
-                score += gapBoost;
-                plannerFitNote ??= gapNote;
-                reasons.Add(new RecipeSearchReasonDto
-                {
-                    Source = "planner-fit",
-                    Label = gapNote!
-                });
-            }
-        }
-
-        if (IsUrgentQuery(query) && IsQuickRecipe(candidate.Recipe.TotalTime))
-        {
-            score += PlannerUrgencyBoost;
-            plannerFitNote = "Quick option for tonight";
-            reasons.Add(new RecipeSearchReasonDto
-            {
-                Source = "planner-fit",
-                Label = "Quick option for tonight"
-            });
-        }
-
-        return candidate with
-        {
-            Score = score,
-            Reasons = reasons,
-            PlannerFitNote = plannerFitNote,
-            ScoreComponents = WithComponents(candidate.ScoreComponents, ("planner.balance", balanceSummary is null ? 0 : GetBalanceGapAdjustment(balanceSummary, dietaryProfile).Boost), ("planner.urgency", IsUrgentQuery(query) && IsQuickRecipe(candidate.Recipe.TotalTime) ? PlannerUrgencyBoost : 0))
-        };
-    }
-
-    private static (double Boost, string? Note) GetBalanceGapAdjustment(
-        WeeklyBalanceSummaryDto balanceSummary,
-        RecipeDietaryProfile? dietaryProfile)
-    {
-        if (dietaryProfile is null)
-        {
-            return (0, null);
-        }
-
-        if (balanceSummary.VeggieDays < 4 && SupportsFoodGroup(dietaryProfile, "VegetablesAndFruits"))
-        {
-            return (PlannerGapBoost, "Helps add vegetables to this week");
-        }
-
-        if (balanceSummary.ProteinDays < 3 && SupportsFoodGroup(dietaryProfile, "ProteinFoods"))
-        {
-            return (PlannerGapBoost, "Helps add protein to this week");
-        }
-
-        if (balanceSummary.GrainDays < 2 && SupportsWholeGrains(dietaryProfile))
-        {
-            return (PlannerGapBoost, "Helps add whole grains to this week");
-        }
-
-        if (balanceSummary.PlantProteinDays < 1 && SupportsPlantProtein(dietaryProfile))
-        {
-            return (PlannerGapBoost, "Helps add a plant-protein night this week");
-        }
-
-        return (0, null);
-    }
-
-    private static bool SupportsFoodGroup(RecipeDietaryProfile dietaryProfile, string foodGroup)
-    {
-        return string.Equals(dietaryProfile.PrimaryFoodGroup, foodGroup, StringComparison.OrdinalIgnoreCase)
-            || dietaryProfile.SecondaryFoodGroups.Contains(foodGroup, StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static bool SupportsWholeGrains(RecipeDietaryProfile dietaryProfile)
-    {
-        return dietaryProfile.WholeGrainConfident
-            && SupportsFoodGroup(dietaryProfile, "WholeGrains");
-    }
-
-    private static bool SupportsPlantProtein(RecipeDietaryProfile dietaryProfile)
-    {
-        return string.Equals(dietaryProfile.ProteinSource, "PlantProtein", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(dietaryProfile.ProteinSource, "Mixed", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private record WeekDietaryContext(List<string> Names, List<string> Recommendations);
-
-    private async Task<WeekDietaryContext> GetWeekDietaryContextAsync(int weekOffset, CancellationToken ct)
-    {
-        var (monday, sunday) = GetWeekBounds(weekOffset);
-
-        var scheduledRecipes = await db.CalendarEvents
-            .AsNoTracking()
-            .Where(e => e.Date >= monday && e.Date <= sunday && e.RecipeId != null)
-            .Select(e => e.Recipe)
-            .ToListAsync(ct);
-
-        var names = scheduledRecipes
-            .Where(r => r != null)
-            .Select(r => r!.Name!)
-            .ToList();
-
-        var profiles = scheduledRecipes
-            .Select(r => r?.DietaryProfile != null ? JsonSerializer.Deserialize<RecipeDietaryProfile>(r.DietaryProfile) : null)
-            .ToList();
-
-        var balance = WeeklyBalanceScorer.Compute(profiles);
-
-        return new WeekDietaryContext(names, balance.Recommendations.ToList());
-    }
-
-    private static (DateOnly Monday, DateOnly Sunday) GetWeekBounds(int weekOffset)
-    {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
-        var monday = today.AddDays(-daysToMonday + weekOffset * 7);
-        var sunday = monday.AddDays(6);
-        return (monday, sunday);
-    }
 
     private static RecipeSearchResultDto MapResult(
         RankedRecipe candidate,
@@ -762,7 +623,6 @@ public partial class RecipeSearchService(
             IsDiscoverable = recipe.IsDiscoverable,
             Notes = recipe.Notes,
             Reasons = candidate.Reasons,
-            PlannerFitNote = candidate.PlannerFitNote,
             ImportIssueStatus = reportStatuses.TryGetValue(recipe.Id, out var status)
                 ? status == RecipeImportReportStatus.ReadyToReview ? "readyToReview" : "reported"
                 : null,
@@ -770,37 +630,8 @@ public partial class RecipeSearchService(
         };
     }
 
-    private static RecipeDietaryProfile? DeserializeDietaryProfile(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<RecipeDietaryProfile>(json, JsonDefaults.CamelCase);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
 
     private static string Normalize(string? value) => RecipeSearchDocumentBuilder.Normalize(value) ?? string.Empty;
-
-    private static bool IsUrgentQuery(string query)
-    {
-        var normalizedQuery = Normalize(query);
-        return normalizedQuery.Contains("quick", StringComparison.Ordinal)
-            || normalizedQuery.Contains("fast", StringComparison.Ordinal)
-            || normalizedQuery.Contains("tonight", StringComparison.Ordinal);
-    }
-
-    private static bool IsQuickRecipe(string? totalTime)
-    {
-        return RecipeSearchDocumentBuilder.ParseTotalMinutes(totalTime) is <= 30;
-    }
 
     private RecipeSemanticSearchOptions SemanticOptions => rolloutOptions?.Semantic ?? new RecipeSemanticSearchOptions();
 
@@ -825,7 +656,6 @@ public partial class RecipeSearchService(
                 recipes[candidate.RecipeId],
                 candidate.Score,
                 [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Matches the meaning of your search" }],
-                null,
                 new Dictionary<string, double> { ["retrieval.semantic.raw"] = candidate.Score }))
             .ToList();
     }
@@ -875,8 +705,7 @@ public partial class RecipeSearchService(
                 .Select(candidate => new RankedRecipe(
                     recipes[candidate.RecipeId],
                     candidate.Score,
-                    [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Similar to original" }],
-                    null))
+                    [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Similar to original" }]))
                 .ToList();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -932,7 +761,6 @@ public partial class RecipeSearchService(
                 recipesById[candidate.RecipeId],
                 candidate.Score,
                 [new RecipeSearchReasonDto { Source = "name-match", Label = "Matches your search" }],
-                null,
                 new Dictionary<string, double> { ["retrieval.lexical.raw"] = candidate.Score }))
             .ToList();
     }
@@ -959,7 +787,7 @@ public partial class RecipeSearchService(
                 }
                 if (reasons.Count == 0)
                     reasons.Add(new RecipeSearchReasonDto { Source = "name-match", Label = "Matches your search" });
-                return new RankedRecipe(recipe, score, reasons, null, new Dictionary<string, double> { ["retrieval.lexical.raw"] = score });
+                return new RankedRecipe(recipe, score, reasons, new Dictionary<string, double> { ["retrieval.lexical.raw"] = score });
             })
             .Where(candidate => candidate.Score >= 0.15)
             .OrderByDescending(candidate => candidate.Score)
@@ -1113,7 +941,6 @@ public partial class RecipeSearchService(
         Recipe Recipe,
         double Score,
         List<RecipeSearchReasonDto> Reasons,
-        string? PlannerFitNote,
         IReadOnlyDictionary<string, double>? ScoreComponents = null);
 
     private sealed record SearchIndexCoverage(

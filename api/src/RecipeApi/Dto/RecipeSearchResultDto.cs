@@ -34,9 +34,6 @@ public class RecipeSearchResultDto
     [JsonPropertyName("reasons")]
     public List<RecipeSearchReasonDto> Reasons { get; set; } = [];
 
-    [JsonPropertyName("plannerFitNote")]
-    public string? PlannerFitNote { get; set; }
-
     [JsonPropertyName("importIssueStatus")]
     public string? ImportIssueStatus { get; set; }
 

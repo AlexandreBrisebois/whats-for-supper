@@ -2,8 +2,8 @@
 @recipeImportWorkflowId = classify-recipe
 @vegetarianBackfillWorkflowId = vegetarian-classification-backfill
 @vegetarianStatusWorkflowId = vegetarian-classification-status
-@vegetarianBackfillInstanceId = 44ad3b45-0f7d-45c0-89a6-894af1ad59fc
-@vegetarianStatusInstanceId = 15abae35-f3b0-4807-80e5-8a7881eb4521
+@vegetarianBackfillInstanceId = 5c235e0e-2239-4445-87d0-66bb21fe17d9
+@vegetarianStatusInstanceId = 8410300e-e4a9-4a8a-a6c0-3f9e6eadd2e3
 
 @recipeId = 7d4c50f3-a3b9-412d-8e8b-940809b9553e
 #@recipeId = 9b683c7b-9ba7-4fd6-ae8b-b95eee02b689

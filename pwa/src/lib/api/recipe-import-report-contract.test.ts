@@ -22,14 +22,14 @@ function interfaceBlock(source: string, name: string): string {
 }
 
 describe('recipe import report contract', () => {
-  it('preserves healthyOnly through OpenAPI generation', () => {
+  it('removes the legacy healthyOnly filter from OpenAPI generation', () => {
     const spec = readOpenApiSpec();
     const schema = spec.match(/RecipeSearchFiltersDto:\n([\s\S]*?)\n\n    RecipeSearchReasonDto:/m);
     expect(schema, 'RecipeSearchFiltersDto should exist in OpenAPI').not.toBeNull();
-    expect(schema![1]).toContain('healthyOnly:');
+    expect(schema![1]).not.toContain('healthyOnly:');
 
     const generated = interfaceBlock(readGeneratedModels(), 'RecipeSearchFiltersDto');
-    expect(generated).toContain('healthyOnly?: boolean | null;');
+    expect(generated).not.toContain('healthyOnly?: boolean | null;');
   });
 
   it('generates the public report types and recipe detail projection', () => {

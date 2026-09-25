@@ -59,11 +59,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             ? JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)
             : null;
 
-        var balanceSummary = plan?.BalanceSummary != null
-            ? JsonSerializer.Deserialize<WeeklyBalanceSummaryDto>(plan.BalanceSummary)
-            : null;
-
-        return new ScheduleDays(weekOffset, isLocked, status, days, groceryState, groceryItems, balanceSummary);
+        return new ScheduleDays(weekOffset, isLocked, status, days, groceryState, groceryItems);
     }
 
     public async Task OpenVotingAsync(int weekOffset, string? excludeConnectionId = null)

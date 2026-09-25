@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using RecipeApi.Models;
 
 namespace RecipeApi.Tests.Integration.Fixtures;
 
@@ -16,15 +15,15 @@ public static partial class HybridRecipeSearchBaselineFixture
 
     public static readonly IReadOnlyList<FixtureRecipe> Recipes =
     [
-        Recipe("11111111-1111-1111-1111-111111111111", "Fresh Salmon with Vegetables", ["salmon", "zucchini", "tomato"], "Mediterranean", ["Supper"], "Main", "PT25M", Dietary("ProteinFoods", ["VegetablesAndFruits"], "Seafood"), "fresh-vegetables-fish", "{\"keywords\":[\"weeknight\"]}"),
-        Recipe("22222222-2222-2222-2222-222222222222", "Saumon frais aux légumes", ["saumon", "courgette", "tomate"], "French", ["Dinner"], "Main", "30 mins", Dietary("ProteinFoods", ["VegetablesAndFruits"], "Seafood"), "fresh-vegetables-fish"),
-        Recipe("33333333-3333-3333-3333-333333333333", "Hearty Beef Stew", ["beef", "potato", "carrot"], "Canadian", ["Supper"], "Stew", "PT1H30M", Dietary("ProteinFoods", ["VegetablesAndFruits"], "RedMeat"), "hearty-cold-evening"),
+        Recipe("11111111-1111-1111-1111-111111111111", "Fresh Salmon with Vegetables", ["salmon", "zucchini", "tomato"], "Mediterranean", ["Supper"], "Main", "PT25M", "fresh-vegetables-fish", "{\"keywords\":[\"weeknight\"]}"),
+        Recipe("22222222-2222-2222-2222-222222222222", "Saumon frais aux légumes", ["saumon", "courgette", "tomate"], "French", ["Dinner"], "Main", "30 mins", "fresh-vegetables-fish"),
+        Recipe("33333333-3333-3333-3333-333333333333", "Hearty Beef Stew", ["beef", "potato", "carrot"], "Canadian", ["Supper"], "Stew", "PT1H30M", "hearty-cold-evening"),
         // Representative French source shape copied from data/recipes/25f38bfb-33aa-4db6-abbd-e1545cab9090.
-        Recipe("44444444-4444-4444-4444-444444444444", "Riz au four au consommé de bœuf et curcuma", ["0.25 tasse d'huile végétale", "1.5 tasses de riz blanc", "1 boîte (284 ml) de consommé de bœuf", "1.5 tasses d'eau chaude", "1 pincée de sel", "1 pincée de poivre", "0.5 c. à thé de sel d'oignon", "0.5 c. à thé de sel d'ail", "1 c. à thé de curcuma"], "French-Canadian", ["Dinner"], "Main", "PT1H5M", Dietary("ProteinFoods", ["WholeGrains"], "RedMeat"), "hearty-cold-evening"),
-        Recipe("55555555-5555-5555-5555-555555555555", "Lemon Chicken", ["chicken", "lemon", "rice"], "Mediterranean", ["Supper"], "Main", "25m", Dietary("ProteinFoods", ["WholeGrains"], "Poultry"), "chicken"),
-        Recipe("66666666-6666-6666-6666-666666666666", "Poulet citronné", ["poulet", "citron", "riz"], "French", ["Dinner"], "Main", "PT25M", Dietary("ProteinFoods", ["WholeGrains"], "Poultry"), "chicken"),
-        Recipe("77777777-7777-7777-7777-777777777777", "Quick Tomato Pasta", ["pasta", "tomato"], "Italian", ["Lunch"], "Main", "20 minutes", Dietary("WholeGrains", [], "PlantProtein"), "near-match"),
-        Recipe("88888888-8888-8888-8888-888888888888", "Mystery Fish Dish", ["fish"], "Mediterranean", ["Supper"], "Main", "unknown", Dietary("ProteinFoods", [], "Seafood"), "near-match")
+        Recipe("44444444-4444-4444-4444-444444444444", "Riz au four au consommé de bœuf et curcuma", ["0.25 tasse d'huile végétale", "1.5 tasses de riz blanc", "1 boîte (284 ml) de consommé de bœuf", "1.5 tasses d'eau chaude", "1 pincée de sel", "1 pincée de poivre", "0.5 c. à thé de sel d'oignon", "0.5 c. à thé de sel d'ail", "1 c. à thé de curcuma"], "French-Canadian", ["Dinner"], "Main", "PT1H5M", "hearty-cold-evening"),
+        Recipe("55555555-5555-5555-5555-555555555555", "Lemon Chicken", ["chicken", "lemon", "rice"], "Mediterranean", ["Supper"], "Main", "25m", "chicken"),
+        Recipe("66666666-6666-6666-6666-666666666666", "Poulet citronné", ["poulet", "citron", "riz"], "French", ["Dinner"], "Main", "PT25M", "chicken"),
+        Recipe("77777777-7777-7777-7777-777777777777", "Quick Tomato Pasta", ["pasta", "tomato"], "Italian", ["Lunch"], "Main", "20 minutes", "near-match"),
+        Recipe("88888888-8888-8888-8888-888888888888", "Mystery Fish Dish", ["fish"], "Mediterranean", ["Supper"], "Main", "unknown", "near-match")
     ];
 
     public static readonly IReadOnlyList<FixtureCase> Cases =
@@ -76,25 +75,6 @@ public static partial class HybridRecipeSearchBaselineFixture
         catch (JsonException) { return []; }
     }
 
-    public static IReadOnlyList<string> ProjectDietaryProfiles(string? dietaryProfileJson)
-    {
-        if (string.IsNullOrWhiteSpace(dietaryProfileJson)) return [];
-        try
-        {
-            var profile = JsonSerializer.Deserialize<RecipeDietaryProfile>(dietaryProfileJson);
-            if (profile is null) return [];
-            return new[] { profile.PrimaryFoodGroup }
-                .Concat(profile.SecondaryFoodGroups ?? [])
-                .Append(profile.ProteinSource)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Select(NormalizeFact)
-                .Distinct(StringComparer.Ordinal)
-                .Order(StringComparer.Ordinal)
-                .ToArray();
-        }
-        catch (JsonException) { return []; }
-    }
-
     public static int? ParseTotalTimeMinutes(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
@@ -110,20 +90,17 @@ public static partial class HybridRecipeSearchBaselineFixture
 
     public static string NormalizeFact(string value) => Whitespace().Replace(value.Normalize(NormalizationForm.FormKC).Trim().ToLowerInvariant(), " ");
 
-    private static FixtureRecipe Recipe(string id, string name, string[] ingredients, string cuisine, string[] mealTypes, string category, string? totalTime, RecipeDietaryProfile dietary, string semanticGroup, string? rawMetadata = null) =>
-        new(Guid.Parse(id), name, JsonSerializer.Serialize(ingredients), cuisine, mealTypes, category, totalTime, JsonSerializer.Serialize(dietary), semanticGroup, rawMetadata);
+    private static FixtureRecipe Recipe(string id, string name, string[] ingredients, string cuisine, string[] mealTypes, string category, string? totalTime, string semanticGroup, string? rawMetadata = null) =>
+        new(Guid.Parse(id), name, JsonSerializer.Serialize(ingredients), cuisine, mealTypes, category, totalTime, semanticGroup, rawMetadata);
 
     private static FixtureCase Case(string query, string[] relevantIds, string embeddingSampleGroup, HardConstraints? hardConstraints = null) =>
         new(query, relevantIds.Select(Guid.Parse).ToArray(), embeddingSampleGroup, hardConstraints);
-
-    private static RecipeDietaryProfile Dietary(string primary, string[] secondary, string protein) =>
-        new(primary, secondary, protein, "", [], "", false, 0.42, "fixture", new(false, false, false));
 
     [GeneratedRegex("^PT(?:(?<hours>\\d+)H)?(?:(?<minutes>\\d+)M)?$", RegexOptions.IgnoreCase)] private static partial Regex IsoDuration();
     [GeneratedRegex("^(?<minutes>\\d+)\\s*(?:m|min|mins|minute|minutes)$", RegexOptions.IgnoreCase)] private static partial Regex LegacyMinutes();
     [GeneratedRegex("\\s+")] private static partial Regex Whitespace();
 
-    public sealed record FixtureRecipe(Guid Id, string Name, string IngredientsJson, string Cuisine, string[] MealTypes, string Category, string? TotalTime, string DietaryProfileJson, string SemanticGroup, string? RawMetadata);
+    public sealed record FixtureRecipe(Guid Id, string Name, string IngredientsJson, string Cuisine, string[] MealTypes, string Category, string? TotalTime, string SemanticGroup, string? RawMetadata);
     public sealed record FixtureCase(string Query, IReadOnlyList<Guid> RelevantRecipeIds, string EmbeddingSampleGroup, HardConstraints? HardConstraints);
     public sealed record HardConstraints(string? Cuisine = null, int? MaximumTotalTimeMinutes = null);
 }

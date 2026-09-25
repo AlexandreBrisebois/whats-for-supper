@@ -71,7 +71,6 @@ public class ManagementService(
                 existing.Name = recipe.Name;
                 existing.Category = recipe.Category;
                 existing.IsDiscoverable = recipe.IsDiscoverable;
-                existing.IsHealthyChoice = recipe.IsHealthyChoice;
                 existing.IsVegetarian = recipe.IsVegetarian;
                 existing.VegetarianClassificationVersion = recipe.VegetarianClassificationVersion;
                 existing.VegetarianClassifiedAt = recipe.VegetarianClassifiedAt;
@@ -81,11 +80,6 @@ public class ManagementService(
                 existing.SourceUrl = recipe.SourceUrl;
                 existing.CuisineType = recipe.CuisineType;
                 existing.MealTypes = recipe.MealTypes;
-
-                if (!string.IsNullOrEmpty(recipe.DietaryProfile))
-                {
-                    existing.DietaryProfile = JsonSerializer.Deserialize<RecipeDietaryProfile>(recipe.DietaryProfile, JsonDefaults.CamelCase);
-                }
 
                 await recipeStore.WriteInfoAsync(existing);
             }
@@ -104,7 +98,6 @@ public class ManagementService(
                     CreatedAt = recipe.CreatedAt,
                     Category = recipe.Category,
                     IsDiscoverable = recipe.IsDiscoverable,
-                    IsHealthyChoice = recipe.IsHealthyChoice,
                     IsVegetarian = recipe.IsVegetarian,
                     VegetarianClassificationVersion = recipe.VegetarianClassificationVersion,
                     VegetarianClassifiedAt = recipe.VegetarianClassifiedAt,
@@ -114,11 +107,6 @@ public class ManagementService(
                     CuisineType = recipe.CuisineType,
                     MealTypes = recipe.MealTypes
                 };
-
-                if (!string.IsNullOrEmpty(recipe.DietaryProfile))
-                {
-                    info.DietaryProfile = JsonSerializer.Deserialize<RecipeDietaryProfile>(recipe.DietaryProfile, JsonDefaults.CamelCase);
-                }
 
                 await recipeStore.WriteInfoAsync(info);
             }
@@ -778,6 +766,9 @@ public class ManagementService(
                     var info = await recipeStore.ReadInfoAsync(recipeId, ct);
                     if (info != null)
                     {
+                        if (info.Id != recipeId || string.IsNullOrWhiteSpace(info.Name))
+                            throw new InvalidDataException($"Recipe info for {recipeId} is missing its required current id or name.");
+
                         logger.LogDebug("Loaded recipe.info for {RecipeId}: name={Name}", recipeId, info.Name);
                         if (!Enum.IsDefined(typeof(RecipeRating), info.Rating))
                             info.Rating = RecipeRating.Unknown;
@@ -794,21 +785,17 @@ public class ManagementService(
                             IsSynthesized = info.IsSynthesized,
                             CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
                             UpdatedAt = DateTimeOffset.UtcNow,
-                            Category = info.DietaryProfile?.PrimaryFoodGroup ?? info.Category,
-                            CuisineType = info.CuisineType ?? info.DietaryProfile?.CuisineType,
-                            MealTypes = info.MealTypes ?? info.DietaryProfile?.MealTypes?.Select(MapMealType).Where(x => x != null).Cast<string>().Distinct().ToArray(),
+                            Category = info.Category,
+                            CuisineType = info.CuisineType,
+                            MealTypes = info.MealTypes,
                             IsDiscoverable = info.IsDiscoverable,
-                            IsHealthyChoice = info.IsHealthyChoice,
                             IsVegetarian = info.IsVegetarian,
                             VegetarianClassificationVersion = info.VegetarianClassificationVersion,
                             VegetarianClassifiedAt = info.VegetarianClassifiedAt,
                             TotalTime = info.TotalTime,
                             LastCookedDate = info.LastCookedDate,
                             SourceUrl = info.SourceUrl,
-                            IsReady = true,
-                            DietaryProfile = info.DietaryProfile != null
-                                ? JsonSerializer.Serialize(info.DietaryProfile, JsonDefaults.CamelCase)
-                                : null
+                            IsReady = true
                         };
                     }
                 }
@@ -842,6 +829,8 @@ public class ManagementService(
                             recipe.Name = nameProp.GetString();
                         if (string.IsNullOrEmpty(recipe.TotalTime) && rootElement.TryGetProperty("totalTime", out var timeProp))
                             recipe.TotalTime = timeProp.GetString();
+                        if (string.IsNullOrEmpty(recipe.SourceUrl) && rootElement.TryGetProperty("sourceUrl", out var sourceUrlProp))
+                            recipe.SourceUrl = sourceUrlProp.GetString();
                         if (recipe.ImageCount == 0 && rootElement.TryGetProperty("image_count", out var imgProp))
                             recipe.ImageCount = imgProp.GetInt32();
                     }
@@ -920,13 +909,11 @@ public class ManagementService(
                     existing.IsSynthesized = recipe.IsSynthesized;
                     existing.Category = recipe.Category;
                     existing.IsDiscoverable = recipe.IsDiscoverable;
-                    existing.IsHealthyChoice = recipe.IsHealthyChoice;
                     existing.IsVegetarian = recipe.IsVegetarian;
                     existing.VegetarianClassificationVersion = recipe.VegetarianClassificationVersion;
                     existing.VegetarianClassifiedAt = recipe.VegetarianClassifiedAt;
                     existing.LastCookedDate = recipe.LastCookedDate;
                     existing.SourceUrl = recipe.SourceUrl;
-                    existing.DietaryProfile = recipe.DietaryProfile;
                     existing.CuisineType = recipe.CuisineType;
                     existing.MealTypes = recipe.MealTypes;
                     existing.IsReady = true;
@@ -1367,14 +1354,6 @@ public class ManagementService(
             return $"\"{value.Replace("\"", "\"\"")}\"";
         return value;
     }
-
-    private static string? MapMealType(string? mealType) =>
-        mealType switch
-        {
-            null => null,
-            "Dinner" => "Supper",
-            _ => mealType
-        };
 
     private string GetSearchIndexSidecarPath(Guid recipeId)
     {

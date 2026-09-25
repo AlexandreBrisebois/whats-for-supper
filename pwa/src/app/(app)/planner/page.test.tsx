@@ -226,10 +226,6 @@ vi.mock('@/components/planner/GroceryList', () => ({
   GroceryList: () => null,
 }));
 
-vi.mock('@/components/planner/BalanceIndicator', () => ({
-  BalanceIndicator: () => null,
-}));
-
 vi.mock('@/components/home/SkipRecoveryDialog', () => ({
   SkipRecoveryDialog: ({ onAction }: { onAction: (action: 'tomorrow') => void }) => (
     <button data-testid="mock-recovery-tomorrow" onClick={() => onAction('tomorrow')}>
@@ -290,7 +286,6 @@ function renderPlanner(status: 0 | 1 | 2, sundayDate = '2026-05-17') {
     setGroceryState: mocks.setGroceryState,
   });
   mocks.setWeekState({
-    balanceSummary: null,
     schedule: makeSchedule(sundayDate),
     isLoading: false,
     status,
@@ -418,7 +413,6 @@ describe('PlannerPage voting action row', () => {
       setGroceryState: mocks.setGroceryState,
     });
     mocks.setWeekState({
-      balanceSummary: null,
       schedule: makeAssignedSchedule('2026-05-10', 0),
       isLoading: false,
       status: 0,
@@ -451,7 +445,6 @@ describe('PlannerPage voting action row', () => {
       setGroceryState: mocks.setGroceryState,
     });
     mocks.setWeekState({
-      balanceSummary: null,
       schedule: makeAssignedSchedule('2026-05-10', 0),
       isLoading: false,
       status: 0,
@@ -487,7 +480,6 @@ describe('PlannerPage voting action row', () => {
       setGroceryState: mocks.setGroceryState,
     });
     mocks.setWeekState({
-      balanceSummary: null,
       schedule,
       isLoading: false,
       status: 1,
@@ -516,7 +508,6 @@ describe('PlannerPage voting action row', () => {
       setGroceryState: mocks.setGroceryState,
     });
     mocks.setWeekState({
-      balanceSummary: null,
       schedule: makeAssignedSchedule('2026-05-10', 0),
       isLoading: false,
       status: 0,
@@ -548,7 +539,6 @@ describe('PlannerPage voting action row', () => {
       setGroceryState: mocks.setGroceryState,
     });
     mocks.setWeekState({
-      balanceSummary: null,
       schedule,
       isLoading: false,
       status: 0,

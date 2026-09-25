@@ -47,14 +47,8 @@ public class RecipeDto
     [JsonPropertyName("mealTypes")]
     public string[]? MealTypes { get; set; }
 
-    [JsonPropertyName("dietaryProfile")]
-    public RecipeDietaryProfileDto? DietaryProfile { get; set; }
-
     [JsonPropertyName("isVegetarian")]
     public bool? IsVegetarian { get; set; }
-
-    [JsonPropertyName("isHealthyChoice")]
-    public bool? IsHealthyChoice { get; set; }
 
     [JsonPropertyName("isDiscoverable")]
     public bool? IsDiscoverable { get; set; }

@@ -104,8 +104,6 @@ try
     builder.Services.AddSingleton<AisleMapper>();
     builder.Services.AddSingleton<SseConnectionManager>();
     builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
-    builder.Services.AddScoped<IHealthEventPublisher, DbHealthEventPublisher>();
-    builder.Services.AddScoped<HealthComputationService>();
     builder.Services.AddSingleton<DataRootResolver>();
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
@@ -273,7 +271,6 @@ try
     builder.Services.AddHostedService<RecipeSearchFilterBackfillHostedService>();
     builder.Services.AddHostedService<DemoWorkflowSeederHostedService>();
     builder.Services.AddHostedService<WorkflowWorker>();
-    builder.Services.AddHostedService<HealthWorker>();
     builder.Services.Configure<WorkflowRetryOptions>(builder.Configuration.GetSection("WorkflowRetry"));
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────

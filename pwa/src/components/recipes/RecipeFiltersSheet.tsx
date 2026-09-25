@@ -17,7 +17,6 @@ type RecipeBooleanFilterKey =
   | 'familyFavorite'
   | 'quickOnly'
   | 'notCookedInLongTime'
-  | 'healthyOnly'
   | 'reportedOnly'
   | 'readyToReviewOnly';
 
@@ -46,12 +45,6 @@ export const RECIPE_FILTER_OPTIONS = [
     labelKey: 'recipes.filterNotCookedLong',
     fallback: "It's Been a While",
     testId: 'filter-not-cooked-long-time',
-  },
-  {
-    key: 'healthyOnly',
-    labelKey: 'recipes.filterHealthy',
-    fallback: 'Healthy Choice',
-    testId: 'filter-healthy',
   },
   {
     key: 'reportedOnly',
@@ -89,7 +82,6 @@ const PRIMARY_EXISTING_FILTERS: RecipeBooleanFilterKey[] = [
 const SECONDARY_EXISTING_FILTERS: RecipeBooleanFilterKey[] = [
   'newRecipes',
   'notCookedInLongTime',
-  'healthyOnly',
   'reportedOnly',
   'readyToReviewOnly',
 ];

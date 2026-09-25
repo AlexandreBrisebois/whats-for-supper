@@ -577,7 +577,6 @@ describe('weekStore — preservation (Property 2)', () => {
           additionalData: {},
         } as any,
       ],
-      balanceSummary: null,
     } as any);
 
     const schedule = makeSevenDaySchedule();
@@ -589,7 +588,6 @@ describe('weekStore — preservation (Property 2)', () => {
       isLoading: false,
       lastSyncedAt: null,
       optimisticWriteAt: null,
-      balanceSummary: null,
     });
     vi.clearAllMocks();
     assignMock.mockResolvedValueOnce(undefined as any);
@@ -608,7 +606,6 @@ describe('weekStore — preservation (Property 2)', () => {
           additionalData: {},
         } as any,
       ],
-      balanceSummary: null,
     } as any);
 
     const recipe = { id: 'new-recipe-id', name: 'New Recipe', image: '/img/new' };

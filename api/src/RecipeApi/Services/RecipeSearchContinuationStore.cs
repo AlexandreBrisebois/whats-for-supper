@@ -57,7 +57,6 @@ public sealed class RecipeSearchContinuationStore
         Rating = result.Rating,
         IsDiscoverable = result.IsDiscoverable,
         Notes = result.Notes,
-        PlannerFitNote = result.PlannerFitNote,
         ImportIssueStatus = result.ImportIssueStatus,
         Reasons = result.Reasons.Select(reason => new RecipeSearchReasonDto { Source = reason.Source, Label = reason.Label }).ToList()
     };

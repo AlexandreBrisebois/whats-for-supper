@@ -13,9 +13,6 @@ public class RecipeSearchFiltersDto
     [JsonPropertyName("includedIngredients")]
     public List<string>? IncludedIngredients { get; set; }
 
-    [JsonPropertyName("dietaryProfiles")]
-    public List<string>? DietaryProfiles { get; set; }
-
     [JsonPropertyName("categories")]
     public List<string>? Categories { get; set; }
 
@@ -39,9 +36,6 @@ public class RecipeSearchFiltersDto
 
     [JsonPropertyName("notCookedInLongTime")]
     public bool? NotCookedInLongTime { get; set; }
-
-    [JsonPropertyName("healthyOnly")]
-    public bool? HealthyOnly { get; set; }
 
     [JsonPropertyName("reportedOnly")]
     public bool? ReportedOnly { get; set; }

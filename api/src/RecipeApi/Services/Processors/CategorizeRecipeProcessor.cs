@@ -11,7 +11,6 @@ namespace RecipeApi.Services.Processors;
 public class CategorizeRecipeProcessor(
     RecipeDbContext db,
     IChatClient chatClient,
-    IHealthEventPublisher healthPublisher,
     ILogger<CategorizeRecipeProcessor> logger,
     VegetarianClassificationPolicy? vegetarianPolicy = null,
     VegetarianClassificationWriter? vegetarianWriter = null) : IWorkflowProcessor
@@ -195,8 +194,6 @@ public class CategorizeRecipeProcessor(
         logger.LogInformation("CategorizeRecipe: categorized recipe {RecipeId} (Category: {Category}, CuisineType: {CuisineType}, MealTypes: {MealTypes})",
             recipe.Id, recipe.Category, recipe.CuisineType, string.Join(", ", recipe.MealTypes));
 
-        // 4. Trigger out-of-band health recomputation
-        await healthPublisher.PublishRecipeChangedAsync(recipe.Id, ct);
     }
 
     private static string? MapMealType(string? mealType)

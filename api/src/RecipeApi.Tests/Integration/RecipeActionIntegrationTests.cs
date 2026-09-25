@@ -79,6 +79,11 @@ public class RecipeActionIntegrationTests : IAsyncLifetime
             "recipe-hero-regeneration",
             It.Is<Dictionary<string, string>>(d => d["recipeId"] == recipeId.ToString())),
             Times.Once);
+        _factory.WorkflowOrchestratorMock.Verify(o => o.TriggerAsync(
+            "recipe_ready",
+            It.IsAny<Dictionary<string, string>>(),
+            It.IsAny<DateTimeOffset?>()),
+            Times.Never);
     }
 
     [Fact]
@@ -107,6 +112,11 @@ public class RecipeActionIntegrationTests : IAsyncLifetime
             "recipe-hero-regeneration",
             It.Is<Dictionary<string, string>>(d => d["recipeId"] == recipeId.ToString())),
             Times.Once);
+        _factory.WorkflowOrchestratorMock.Verify(o => o.TriggerAsync(
+            "recipe_ready",
+            It.IsAny<Dictionary<string, string>>(),
+            It.IsAny<DateTimeOffset?>()),
+            Times.Never);
     }
 
     [Fact]

@@ -167,8 +167,6 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddSingleton<AisleMapper>();
         builder.Services.AddSingleton<SseConnectionManager>();
         builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
-        builder.Services.AddScoped<IHealthEventPublisher, DbHealthEventPublisher>();
-        builder.Services.AddScoped<HealthComputationService>();
         builder.Services.AddScoped<GroceryRecomputeService>();
         builder.Services.AddScoped<IngredientCategoryService>();
         builder.Services.AddScoped<ScheduleService>();

@@ -17,7 +17,6 @@ export const REALISTIC_RECIPES: Record<string, RecipeDto> = {
     category: 'Burgers',
     rating: 4.5,
     isVegetarian: false,
-    isHealthyChoice: true,
     ingredients: [
       '250g Porc haché',
       '100g Carottes en juliennes',
@@ -50,7 +49,6 @@ export const REALISTIC_RECIPES: Record<string, RecipeDto> = {
     category: 'Asian',
     rating: 4.8,
     isVegetarian: false,
-    isHealthyChoice: true,
     ingredients: [
       '1½ lbs chicken thighs',
       '1 cup coconut milk',
@@ -79,7 +77,6 @@ export const REALISTIC_RECIPES: Record<string, RecipeDto> = {
     category: 'Italian',
     rating: 4.7,
     isVegetarian: true,
-    isHealthyChoice: false,
     ingredients: [
       '400 g spaghetti',
       '500 ml marinara sauce',

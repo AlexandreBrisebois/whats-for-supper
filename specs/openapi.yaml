@@ -123,18 +123,12 @@ components:
           items:
             type: string
             enum: [Breakfast, Brunch, Snack, Lunch, Supper, Sides, Dessert, Appetizer, Beverage]
-        dietaryProfile:
-          nullable: true
-          oneOf:
-            - { $ref: '#/components/schemas/RecipeDietaryProfileDto' }
-            - { type: 'null' }
         images:
           type: array
           items: { type: integer }
         rating: { type: integer }
         voteCount: { type: [integer, 'null'], description: 'Aggregate Like count; populated by Discovery responses.' }
         isVegetarian: { type: boolean }
-        isHealthyChoice: { type: boolean }
         isDiscoverable: { type: boolean }
         notes: { type: [string, 'null'] }
         sourceUrl: { type: [string, 'null'] }
@@ -212,7 +206,6 @@ components:
         cuisines: { type: array, items: { type: string } }
         mealTypes: { type: array, items: { type: string } }
         includedIngredients: { type: array, items: { type: string } }
-        dietaryProfiles: { type: array, items: { type: string } }
         categories: { type: array, items: { type: string } }
         maximumTotalMinutes: { type: integer, minimum: 1 }
         excludedIngredients: { type: array, items: { type: string }, description: Unsupported; requests containing it return 400. }
@@ -221,7 +214,6 @@ components:
         familyFavorite: { type: [boolean, 'null'] }
         quickOnly: { type: [boolean, 'null'] }
         notCookedInLongTime: { type: [boolean, 'null'] }
-        healthyOnly: { type: [boolean, 'null'] }
         discoverableOnly: { type: [boolean, 'null'] }
         reportedOnly: { type: [boolean, 'null'] }
         readyToReviewOnly: { type: [boolean, 'null'] }
@@ -257,7 +249,6 @@ components:
         reasons:
           type: array
           items: { $ref: '#/components/schemas/RecipeSearchReasonDto' }
-        plannerFitNote: { type: [string, 'null'] }
         importIssueStatus:
           $ref: '#/components/schemas/RecipeImportIssueStatus'
           nullable: true
@@ -350,58 +341,6 @@ components:
         totalTime: { type: string }
         image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
 
-    # --- Dietary Profile ---
-    FopFlagsDto:
-      type: object
-      required: [highInSaturatedFat, highInSugars, highInSodium]
-      properties:
-        highInSaturatedFat: { type: boolean }
-        highInSugars:       { type: boolean }
-        highInSodium:       { type: boolean }
-
-    FopWeekSummaryDto:
-      type: object
-      required: [highInSaturatedFatDays, highInSugarsDays, highInSodiumDays]
-      properties:
-        highInSaturatedFatDays: { type: integer }
-        highInSugarsDays:       { type: integer }
-        highInSodiumDays:       { type: integer }
-
-    RecipeDietaryProfileDto:
-      type: object
-      required: [primaryFoodGroup, secondaryFoodGroups, proteinSource, cuisineType,
-                 mealTypes, primaryMealType, wholeGrainConfident, confidence, source]
-      properties:
-        primaryFoodGroup:    { type: string }
-        secondaryFoodGroups: { type: array, items: { type: string } }
-        proteinSource:       { type: string }
-        cuisineType:         { type: string }
-        mealTypes:           { type: array, items: { type: string } }
-        primaryMealType:     { type: string }
-        wholeGrainConfident: { type: boolean }
-        confidence:          { type: number }
-        source:              { type: string }
-        fopFlags:
-          nullable: true
-          oneOf:
-            - { $ref: '#/components/schemas/FopFlagsDto' }
-            - { type: 'null' }
-
-    WeeklyBalanceSummaryDto:
-      type: object
-      required: [proteinDays, veggieDays, grainDays, plantProteinDays, redMeatDays,
-                 maxConsecutiveSame, isBalanced, recommendations, fopWeekSummary]
-      properties:
-        proteinDays:        { type: integer }
-        veggieDays:         { type: integer }
-        grainDays:          { type: integer }
-        plantProteinDays:   { type: integer }
-        redMeatDays:        { type: integer }
-        maxConsecutiveSame: { type: integer }
-        isBalanced:         { type: boolean }
-        recommendations:    { type: array, items: { type: string } }
-        fopWeekSummary:     { $ref: '#/components/schemas/FopWeekSummaryDto' }
-
     # --- Schedule ---
     ScheduleDays:
       type: object
@@ -423,12 +362,6 @@ components:
           type: [array, 'null']
           items: { $ref: '#/components/schemas/GroceryLineItemDto' }
           nullable: true
-        balanceSummary:
-          nullable: true
-          oneOf:
-            - { $ref: '#/components/schemas/WeeklyBalanceSummaryDto' }
-            - { type: 'null' }
-
 
     ScheduleDayDto:
       type: object

@@ -772,24 +772,7 @@ export default function RecipesPage() {
                     <h3 className="text-3xl font-black tracking-tighter leading-none mb-1">
                       {displayedTopPick.name}
                     </h3>
-                    {displayedTopPick.plannerFitNote && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-[0_0_30px_rgba(255,255,255,0.05)] relative overflow-hidden group/reason"
-                      >
-                        <div className="absolute top-0 left-0 w-1 h-full bg-ochre shadow-[0_0_10px_rgba(255,180,0,0.5)]" />
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5">
-                            <Sparkles size={16} className="text-ochre animate-pulse" />
-                          </div>
-                          <p className="text-white font-bold text-sm leading-snug tracking-tight">
-                            {displayedTopPick.plannerFitNote}
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                    {!displayedTopPick.plannerFitNote && displayedTopPick.reasons.length > 0 && (
+                    {displayedTopPick.reasons.length > 0 && (
                       <p className="text-white/70 text-sm font-medium line-clamp-2 max-w-[90%] leading-snug">
                         {displayedTopPick.reasons[0].label}
                       </p>

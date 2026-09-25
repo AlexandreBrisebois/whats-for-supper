@@ -21,7 +21,6 @@ const MOCK_SEARCH_RESULTS = {
     isDiscoverable: true,
     notes: null,
     reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-    plannerFitNote: null,
     isPromotionEligible: true,
   },
   secondary: [
@@ -34,7 +33,6 @@ const MOCK_SEARCH_RESULTS = {
       isDiscoverable: true,
       notes: null,
       reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-      plannerFitNote: null,
       isPromotionEligible: true,
     },
     {
@@ -46,7 +44,6 @@ const MOCK_SEARCH_RESULTS = {
       isDiscoverable: true,
       notes: null,
       reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-      plannerFitNote: null,
       isPromotionEligible: true,
     },
   ],
@@ -511,7 +508,6 @@ test.describe('Recipes Search Page', () => {
       isDiscoverable: true,
       notes: null,
       reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-      plannerFitNote: null,
     };
 
     await page.unroute('**/api/recipes/search');

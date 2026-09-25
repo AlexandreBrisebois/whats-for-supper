@@ -122,7 +122,6 @@ describe('searchRecipes', () => {
             isDiscoverable: true,
             notes: 'weeknight staple',
             reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-            plannerFitNote: null,
           },
           results: [
             {
@@ -134,7 +133,6 @@ describe('searchRecipes', () => {
               isDiscoverable: true,
               notes: null,
               reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-              plannerFitNote: null,
             },
           ],
           appliedFilters: {},
@@ -180,7 +178,6 @@ describe('searchRecipes', () => {
           isDiscoverable: true,
           notes: 'weeknight staple',
           reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-          plannerFitNote: null,
         },
         results: [],
         appliedFilters: {},
@@ -211,7 +208,6 @@ describe('searchRecipes', () => {
               isDiscoverable: true,
               notes: null,
               reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-              plannerFitNote: null,
             },
           },
           results: [],

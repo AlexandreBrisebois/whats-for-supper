@@ -39,7 +39,6 @@ export const builders = {
             category: 'Italian',
             rating: 0,
             isVegetarian: false,
-            isHealthyChoice: false,
             isDiscoverable: false,
             sourceType: RecipeDto_sourceTypeObject.Url,
             canReimport: true,

@@ -185,45 +185,7 @@ public class GroceryRecomputeService(
             logger.LogInformation("Created WeeklyPlan for week starting {Monday} during grocery recompute", monday);
         }
 
-        // Load previous balance_summary before overwriting
-        var previousBalanceSummaryJson = plan.BalanceSummary;
-        WeeklyBalanceSummary? previousSummary = null;
-        if (!string.IsNullOrEmpty(previousBalanceSummaryJson))
-        {
-            previousSummary = JsonSerializer.Deserialize<WeeklyBalanceSummary>(previousBalanceSummaryJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        }
-
-        // Load dietary profiles for each recipe assigned to the week's dinner slots
-        var dinnerProfiles = new List<RecipeDietaryProfile?>();
-        for (int i = 0; i < 7; i++)
-        {
-            var date = monday.AddDays(i);
-            var evt = await db.CalendarEvents
-                .Include(e => e.Recipe)
-                .FirstOrDefaultAsync(e => e.Date == date && e.RecipeId != null, ct);
-
-            if (evt?.Recipe?.DietaryProfile != null)
-            {
-                var profile = JsonSerializer.Deserialize<RecipeDietaryProfile>(evt.Recipe.DietaryProfile,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                dinnerProfiles.Add(profile);
-            }
-            else
-            {
-                dinnerProfiles.Add(null);
-            }
-        }
-
-        // Compute balance summary
-        var newSummary = WeeklyBalanceScorer.Compute(dinnerProfiles);
-        var balanceSummaryJson = JsonSerializer.Serialize(newSummary, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        });
-
         plan.GroceryItems = groceryItemsJson;
-        plan.BalanceSummary = balanceSummaryJson;
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
@@ -231,7 +193,6 @@ public class GroceryRecomputeService(
             monday, grouped.Count);
 
         _ = publisher;
-        _ = previousSummary;
     }
 
     /// <summary>

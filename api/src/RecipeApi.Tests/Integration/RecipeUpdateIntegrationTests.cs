@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
@@ -82,5 +83,16 @@ public class RecipeUpdateIntegrationTests : IAsyncLifetime
         var infoInstructions = (JsonElement)info.RecipeInstructions;
         Assert.Equal(3, infoInstructions.GetArrayLength());
         Assert.Equal("Updated Step 1", infoInstructions[0].GetString());
+
+        _factory.WorkflowOrchestratorMock.Verify(o => o.TriggerAsync(
+            "index-recipe-search",
+            It.Is<Dictionary<string, string>>(parameters => parameters["recipeId"] == recipeId.ToString()),
+            It.IsAny<DateTimeOffset?>()),
+            Times.Once);
+        _factory.WorkflowOrchestratorMock.Verify(o => o.TriggerAsync(
+            "recipe_ready",
+            It.IsAny<Dictionary<string, string>>(),
+            It.IsAny<DateTimeOffset?>()),
+            Times.Never);
     }
 }

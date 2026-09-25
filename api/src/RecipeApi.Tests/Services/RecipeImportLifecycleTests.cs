@@ -223,6 +223,42 @@ public class RecipeImportLifecycleTests
     }
 
     [Theory]
+    [InlineData("recipe-import", "categorize_recipe")]
+    [InlineData("url-import", "categorize_recipe")]
+    [InlineData("goto-synthesis", "categorize_recipe")]
+    [InlineData("recategorize-ingredients", "categorize_ingredients")]
+    public void CompletionWorkflow_ReachesRecipeReadyWithoutRetiredHealthProcessors(
+        string workflowId,
+        string expectedPredecessor)
+    {
+        var definition = ReadWorkflow(workflowId);
+
+        var ready = Assert.Single(
+            definition.Tasks,
+            task => task.Processor == "RecipeReady");
+
+        Assert.Equal([expectedPredecessor], ready.DependsOn);
+        Assert.Equal("{{ recipeId }}", ready.Payload["recipeId"]);
+        Assert.DoesNotContain(
+            definition.Tasks,
+            task => task.Processor.Contains("health", StringComparison.OrdinalIgnoreCase) ||
+                    task.Processor.Contains("dietary", StringComparison.OrdinalIgnoreCase) ||
+                    task.Processor.Contains("balance", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("recipe-hero-regeneration")]
+    [InlineData("index-recipe-search")]
+    public void UpdateOnlyWorkflow_DoesNotRepublishRecipeReady(string workflowId)
+    {
+        var definition = ReadWorkflow(workflowId);
+
+        Assert.DoesNotContain(
+            definition.Tasks,
+            task => task.Processor == "RecipeReady");
+    }
+
+    [Theory]
     [InlineData("recipe-import")]
     [InlineData("url-import")]
     public void ImportWorkflow_ForwardsOptionalRepairSnapshotOnlyToExtraction(string workflowId)

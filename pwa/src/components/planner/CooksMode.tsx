@@ -37,7 +37,6 @@ interface CooksModeProps {
     image: string;
     isVegetarian?: boolean;
     isCold?: boolean;
-    isHealthyChoice?: boolean;
   };
   onClose: () => void;
   /** Called when the user taps "Done" on the last step — marks the meal as cooked. */
@@ -285,12 +284,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     : `${currentStep} / ${steps.length}`}
                 </span>
               </div>
-              {!isPrepStep && initialRecipe.isHealthyChoice && (
-                <div className="inline-flex items-center bg-sage/20 backdrop-blur-md border border-sage/30 px-3 py-2 rounded-full text-sage shadow-xl">
-                  <Sparkles size={12} className="mr-1.5" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">HEALTHY</span>
-                </div>
-              )}
               {!isPrepStep && initialRecipe.isVegetarian && (
                 <div className="inline-flex items-center bg-sage/20 backdrop-blur-md border border-sage/30 px-3 py-2 rounded-full text-sage shadow-xl">
                   <span className="text-[10px] font-black uppercase tracking-widest">VEGGIE</span>

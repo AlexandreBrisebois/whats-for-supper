@@ -143,7 +143,6 @@ function makeSearchResponse(overrides: Record<string, unknown> = {}) {
       isDiscoverable: true,
       notes: null,
       reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-      plannerFitNote: null,
       isPromotionEligible: true,
     },
     results: [
@@ -156,7 +155,6 @@ function makeSearchResponse(overrides: Record<string, unknown> = {}) {
         isDiscoverable: true,
         notes: null,
         reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-        plannerFitNote: null,
         isPromotionEligible: true,
       },
     ],
@@ -194,7 +192,6 @@ function makeSearchResult(index: number) {
     isDiscoverable: true,
     notes: null,
     reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-    plannerFitNote: null,
     isPromotionEligible: true,
   };
 }

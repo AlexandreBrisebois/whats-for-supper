@@ -15,7 +15,6 @@ public class RecipeService(
     ImageService images,
     IRecipeStore recipeStore,
     IWorkflowOrchestrator orchestrator,
-    IHealthEventPublisher healthPublisher,
     ILogger<RecipeService> logger)
 {
     private const string RecipeShareBundleVersion = "1.0";
@@ -116,9 +115,6 @@ public class RecipeService(
         {
             logger.LogError(ex, "Failed to trigger recipe-import workflow for recipe {RecipeId}", recipeId);
         }
-
-        // Publish neutral health event (outbox pattern)
-        await healthPublisher.PublishRecipeChangedAsync(recipeId, default);
 
         return recipeId;
     }
@@ -359,9 +355,6 @@ public class RecipeService(
                 DecodeBase64ToStream(original.Base64));
         }
 
-        // Publish neutral health event (outbox pattern)
-        await healthPublisher.PublishRecipeChangedAsync(recipeId, default);
-
         return MapToDto(recipe);
     }
 
@@ -476,15 +469,6 @@ public class RecipeService(
             dto.Description is not null ? recipe.Description : null,
             dto.RecipeInstructions is not null ? dto.RecipeInstructions : null);
 
-        // Publish neutral health event (outbox pattern) if relevant fields changed
-        if (dto.Name is not null ||
-            dto.Description is not null ||
-            dto.Ingredients is not null ||
-            dto.RecipeInstructions is not null)
-        {
-            await healthPublisher.PublishRecipeChangedAsync(id, default);
-        }
-
         return new RecipeDetailResponseDto
         {
             UpdatedAt = recipe.UpdatedAt,
@@ -540,9 +524,6 @@ public class RecipeService(
         {
             logger.LogError(ex, "Failed to trigger goto-synthesis workflow for recipe {RecipeId}", recipeId);
         }
-
-        // Publish neutral health event (outbox pattern)
-        await healthPublisher.PublishRecipeChangedAsync(recipeId, default);
 
         return MapToDto(recipe);
     }
@@ -600,9 +581,6 @@ public class RecipeService(
         {
             logger.LogError(ex, "Failed to trigger url-import workflow for recipe {RecipeId} (URL: {Url})", recipeId, dto.Url);
         }
-
-        // Publish neutral health event (outbox pattern)
-        await healthPublisher.PublishRecipeChangedAsync(recipeId, default);
 
         return recipeId;
     }
@@ -719,9 +697,6 @@ public class RecipeService(
             logger.LogError(ex, "Failed to trigger search index for restored recipe {RecipeId}", id);
         }
 
-        // Publish neutral health event (outbox pattern)
-        await healthPublisher.PublishRecipeChangedAsync(id, default);
-
         return MapToDetailResponse(recipe);
     }
 
@@ -750,13 +725,11 @@ public class RecipeService(
             Category = r.Category,
             CuisineType = r.CuisineType,
             MealTypes = r.MealTypes,
-            DietaryProfile = DeserializeDietaryProfile(r.DietaryProfile),
             ImageUrl = $"/api/recipes/{r.Id}/hero",
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
             Ingredients = DeserializeIngredients(r.Ingredients),
             RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
             IsVegetarian = r.IsVegetarian,
-            IsHealthyChoice = r.IsHealthyChoice,
             IsDiscoverable = r.IsDiscoverable,
             CreatedAt = r.CreatedAt,
             DeletedAt = r.DeletedAt,
@@ -1049,32 +1022,6 @@ public class RecipeService(
 
     private static MemoryStream DecodeBase64ToStream(string base64)
         => new(Convert.FromBase64String(base64));
-
-    /// <summary>
-    /// Deserializes the dietary_profile JSONB column to a RecipeDietaryProfileDto.
-    /// Returns null if the column is null or unparseable.
-    /// </summary>
-    private static RecipeDietaryProfileDto? DeserializeDietaryProfile(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return null;
-
-        try
-        {
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                ReferenceHandler = ReferenceHandler.IgnoreCycles,
-                DefaultIgnoreCondition = JsonIgnoreCondition.Never,
-                Converters = { new JsonStringEnumConverter() }
-            };
-            return JsonSerializer.Deserialize<RecipeDietaryProfileDto>(json, options);
-        }
-        catch
-        {
-            // Silently return null if parsing fails
-            return null;
-        }
-    }
 
     /// <summary>
     /// Adds a single original image to an existing recipe.

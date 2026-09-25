@@ -53,7 +53,6 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
                 AddedBy = _factory.DefaultFamilyMemberId,
                 Notes = "Family note that must not leak",
                 Rating = RecipeRating.Love,
-                DietaryProfile = """{"primaryFoodGroup":"grain"}""",
                 IsSynthesized = false,
                 IsReady = true,
                 ImageCount = 6,

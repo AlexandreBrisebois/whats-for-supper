@@ -439,7 +439,6 @@ describe('CooksMode', () => {
       id: 'recipe-1',
       name: 'Pasta Night',
       isVegetarian: true,
-      isHealthyChoice: true,
       ingredients: ['Pasta'],
       recipeInstructions: [{ name: 'Step 1', text: 'Cook pasta.' }],
     });
@@ -451,7 +450,6 @@ describe('CooksMode', () => {
           name: 'Pasta Night',
           image: '/img/pasta.jpg',
           isVegetarian: true,
-          isHealthyChoice: true,
         }}
         onClose={vi.fn()}
       />

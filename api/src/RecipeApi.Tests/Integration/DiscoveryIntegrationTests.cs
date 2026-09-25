@@ -48,9 +48,7 @@ public class DiscoveryIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Test Recipe",
             Category = "ProteinFoods",
-            IsVegetarian = false,
-            IsHealthyChoice = false,
-            DietaryProfile = JsonSerializer.Serialize(new { cuisineType = "Italian" })
+            IsVegetarian = false
         };
         _db.DiscoveryRecipes.Add(discoveryRecipe);
         await _db.SaveChangesAsync();
@@ -82,8 +80,7 @@ public class DiscoveryIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Test Recipe",
             Category = "ProteinFoods",
-            IsVegetarian = false,
-            IsHealthyChoice = false
+            IsVegetarian = false
         };
         _db.DiscoveryRecipes.Add(discoveryRecipe);
         await _db.SaveChangesAsync();
@@ -116,9 +113,7 @@ public class DiscoveryIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Test Recipe",
             Category = "ProteinFoods",
-            IsVegetarian = false,
-            IsHealthyChoice = false,
-            DietaryProfile = JsonSerializer.Serialize(new { cuisineType = "Italian" })
+            IsVegetarian = false
         };
         _db.DiscoveryRecipes.Add(discoveryRecipe);
         await _db.SaveChangesAsync();
@@ -149,8 +144,7 @@ public class DiscoveryIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Test Recipe",
             Category = "ProteinFoods",
-            IsVegetarian = false,
-            IsHealthyChoice = false
+            IsVegetarian = false
         };
         _db.DiscoveryRecipes.Add(discoveryRecipe);
         await _db.SaveChangesAsync();

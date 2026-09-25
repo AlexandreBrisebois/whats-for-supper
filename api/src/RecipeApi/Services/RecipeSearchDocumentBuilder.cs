@@ -15,19 +15,17 @@ public interface IRecipeSearchDocumentBuilder
 /// <summary>The single, versioned projection from recipe-owned fields to search content.</summary>
 public sealed class RecipeSearchDocumentBuilder : IRecipeSearchDocumentBuilder
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     public RecipeSearchContent Build(Recipe recipe)
     {
         var ingredients = NormalizeCollection(ReadIngredients(recipe.Ingredients));
         var mealTypes = NormalizeCollection(recipe.MealTypes ?? []);
-        var dietaryProfiles = NormalizeCollection(ReadDietaryProfiles(recipe.DietaryProfile));
         var hasVegetarianClassification = recipe.VegetarianClassificationVersion is not null;
         var metadata = new SortedDictionary<string, object?>(StringComparer.Ordinal)
         {
             ["category"] = Normalize(recipe.Category),
             ["cuisineTypes"] = NormalizeCollection([recipe.CuisineType]),
-            ["dietaryProfiles"] = dietaryProfiles,
             ["ingredients"] = ingredients,
             ["mealTypes"] = mealTypes,
             ["tags"] = Array.Empty<string>(),
@@ -38,7 +36,7 @@ public sealed class RecipeSearchDocumentBuilder : IRecipeSearchDocumentBuilder
         Add(text, "Name", recipe.Name); Add(text, "Description", recipe.Description);
         AddMany(text, "Ingredients", ingredients); Add(text, "Notes", recipe.Notes);
         Add(text, "Category", recipe.Category); Add(text, "Cuisine", recipe.CuisineType);
-        AddMany(text, "Meal types", mealTypes); AddMany(text, "Dietary profile", dietaryProfiles);
+        AddMany(text, "Meal types", mealTypes);
         if (hasVegetarianClassification) text.Add($"Vegetarian: {recipe.IsVegetarian.ToString().ToLowerInvariant()}.");
         if (metadata["totalTimeMinutes"] is int minutes) text.Add($"Total time minutes: {minutes}.");
         return new RecipeSearchContent(string.Join("\n", text), JsonSerializer.Serialize(metadata), CurrentSchemaVersion);
@@ -76,22 +74,6 @@ public sealed class RecipeSearchDocumentBuilder : IRecipeSearchDocumentBuilder
                 if (item.ValueKind == JsonValueKind.String) yield return item.GetString()!;
                 else if (item.ValueKind == JsonValueKind.Object && item.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String) yield return name.GetString()!;
             }
-        }
-    }
-
-    private static IEnumerable<string> ReadDietaryProfiles(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) yield break;
-        JsonDocument? document = null;
-        try { document = JsonDocument.Parse(json); }
-        catch (JsonException) { yield break; }
-        using (document)
-        {
-            if (document.RootElement.ValueKind != JsonValueKind.Object) yield break;
-            foreach (var key in new[] { "primaryFoodGroup", "proteinSource" })
-                if (document.RootElement.TryGetProperty(key, out var property) && property.ValueKind == JsonValueKind.String) yield return property.GetString()!;
-            if (document.RootElement.TryGetProperty("secondaryFoodGroups", out var secondary) && secondary.ValueKind == JsonValueKind.Array)
-                foreach (var item in secondary.EnumerateArray()) if (item.ValueKind == JsonValueKind.String) yield return item.GetString()!;
         }
     }
 

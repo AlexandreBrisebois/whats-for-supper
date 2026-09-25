@@ -29,8 +29,6 @@ internal static class RecipeSearchPredicate
             query = query.Where(recipe => recipe.LastCookedDate != null);
         if (filters.DiscoverableOnly == true)
             query = query.Where(recipe => recipe.IsDiscoverable);
-        if (filters.HealthyOnly == true)
-            query = query.Where(recipe => recipe.IsHealthyChoice);
         if (filters.ReadyToReviewOnly == true)
             query = query.Where(recipe => db.RecipeImportReports.Any(report => report.RecipeId == recipe.Id && report.Status == RecipeImportReportStatus.ReadyToReview));
         else if (filters.ReportedOnly == true)
@@ -66,7 +64,6 @@ internal static class RecipeSearchPredicate
         if (filters.QuickOnly == true) predicates.Add("NULLIF(d.search_metadata ->> 'totalTimeMinutes', '')::integer <= 30");
         if (filters.NotCookedInLongTime == true) predicates.Add("r.last_cooked_date IS NOT NULL");
         if (filters.DiscoverableOnly == true) predicates.Add("r.is_discoverable = TRUE");
-        if (filters.HealthyOnly == true) predicates.Add("r.is_healthy_choice = TRUE");
         if (filters.ReadyToReviewOnly == true)
             predicates.Add("EXISTS (SELECT 1 FROM recipe_import_reports report WHERE report.recipe_id = r.id AND report.status = 'ready_to_review')");
         else if (filters.ReportedOnly == true)

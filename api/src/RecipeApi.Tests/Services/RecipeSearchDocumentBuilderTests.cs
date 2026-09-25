@@ -12,7 +12,6 @@ public class RecipeSearchDocumentBuilderTests
     {
         var recipe = Recipe(" [  \" Tomato  \", \"tomato\", {\"name\":\" Salmon \"}] ");
         recipe.MealTypes = ["Supper", " supper "];
-        recipe.DietaryProfile = """{"primaryFoodGroup":" Vegetables and Fruits ","secondaryFoodGroups":["Protein foods","protein foods"],"proteinSource":" Fish "}""";
 
         var builder = new RecipeSearchDocumentBuilder();
         var first = builder.Build(recipe);
@@ -21,8 +20,11 @@ public class RecipeSearchDocumentBuilderTests
         Assert.Equal(first.DocumentText, second.DocumentText);
         Assert.Equal(first.SearchMetadata, second.SearchMetadata);
         using var metadata = JsonDocument.Parse(first.SearchMetadata);
+        Assert.Equal("main", metadata.RootElement.GetProperty("category").GetString());
+        Assert.Equal(["italian"], metadata.RootElement.GetProperty("cuisineTypes").EnumerateArray().Select(x => x.GetString()!).ToArray());
         Assert.Equal(["salmon", "tomato"], metadata.RootElement.GetProperty("ingredients").EnumerateArray().Select(x => x.GetString()!).ToArray());
         Assert.Equal(["supper"], metadata.RootElement.GetProperty("mealTypes").EnumerateArray().Select(x => x.GetString()!).ToArray());
+        Assert.False(metadata.RootElement.TryGetProperty("dietaryProfile", out _));
         Assert.Equal(65, metadata.RootElement.GetProperty("totalTimeMinutes").GetInt32());
     }
 
@@ -30,13 +32,11 @@ public class RecipeSearchDocumentBuilderTests
     public void Build_MalformedOptionalJsonIsEmptyRatherThanInvented()
     {
         var recipe = Recipe("not-json");
-        recipe.DietaryProfile = "not-json";
 
         var content = new RecipeSearchDocumentBuilder().Build(recipe);
         using var metadata = JsonDocument.Parse(content.SearchMetadata);
 
         Assert.Equal(0, metadata.RootElement.GetProperty("ingredients").GetArrayLength());
-        Assert.Equal(0, metadata.RootElement.GetProperty("dietaryProfiles").GetArrayLength());
         Assert.Equal(0, metadata.RootElement.GetProperty("tags").GetArrayLength());
     }
 

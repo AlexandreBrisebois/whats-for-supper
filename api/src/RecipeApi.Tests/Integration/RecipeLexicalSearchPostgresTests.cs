@@ -50,16 +50,16 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
     [PostgresFact]
     public async Task SearchAsync_ReturnsBoundedCanonicalMatches_WithEligibilityAndHardFilters()
     {
-        var chicken = await SeedReadyDocumentAsync("Poulet rôti au citron", "[\"poulet\",\"citron\"]", healthy: true);
+        var chicken = await SeedReadyDocumentAsync("Poulet rôti au citron", "[\"poulet\",\"citron\"]");
         var reorderedPhrase = await SeedReadyDocumentAsync("Lemon chicken skillet", "[\"chicken\",\"lemon\"]");
-        await SeedReadyDocumentAsync("Hidden chicken", "[\"chicken\"]", healthy: false, deleted: true);
-        await SeedReadyDocumentAsync("Not ready chicken", "[\"chicken\"]", healthy: true, ready: false);
+        await SeedReadyDocumentAsync("Hidden chicken", "[\"chicken\"]", deleted: true);
+        await SeedReadyDocumentAsync("Not ready chicken", "[\"chicken\"]", ready: false);
         for (var index = 0; index < 60; index++)
-            await SeedReadyDocumentAsync($"Chicken candidate {index}", "[\"chicken\"]", healthy: index % 2 == 0);
+            await SeedReadyDocumentAsync($"Chicken candidate {index}", "[\"chicken\"]");
 
         var repository = new RecipeLexicalSearchRepository(_db);
-        var accented = await repository.SearchAsync("rôti", new RecipeSearchFiltersDto { HealthyOnly = true }, 50);
-        var bounded = await repository.SearchAsync("chicken", new RecipeSearchFiltersDto { HealthyOnly = true }, 5);
+        var accented = await repository.SearchAsync("rôti", new RecipeSearchFiltersDto(), 50);
+        var bounded = await repository.SearchAsync("chicken", new RecipeSearchFiltersDto(), 5);
         var partial = await repository.SearchAsync("chic", new RecipeSearchFiltersDto(), 50);
         var shortQuery = await repository.SearchAsync("ch", new RecipeSearchFiltersDto(), 50);
         var phrase = await repository.SearchAsync("chicken lemon", new RecipeSearchFiltersDto(), 50);
@@ -189,7 +189,7 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
         Semantic = new RecipeSemanticSearchOptions { CandidateLimit = candidateLimit, EmbeddingModel = "task4", EmbeddingVersion = "v1" }
     };
 
-    private async Task<Recipe> SeedReadyDocumentAsync(string name, string ingredients, bool healthy = false, bool ready = true, bool deleted = false, float[]? embedding = null, string embeddingModel = "task4", string? embeddingVersion = "v1", string? embeddingFingerprint = null, string embeddingStatus = "ready")
+    private async Task<Recipe> SeedReadyDocumentAsync(string name, string ingredients, bool ready = true, bool deleted = false, float[]? embedding = null, string embeddingModel = "task4", string? embeddingVersion = "v1", string? embeddingFingerprint = null, string embeddingStatus = "ready")
     {
         var recipe = new Recipe
         {
@@ -199,7 +199,6 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
             Ingredients = ingredients,
             IsReady = ready,
             IsDiscoverable = true,
-            IsHealthyChoice = healthy,
             DeletedAt = deleted ? DateTimeOffset.UtcNow : null,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow

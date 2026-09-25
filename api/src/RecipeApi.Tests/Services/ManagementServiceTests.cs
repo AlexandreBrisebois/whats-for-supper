@@ -713,32 +713,36 @@ public class ManagementServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RestoreAsync_WithLegacyDietaryProfile_FallsBackCuisineAndMealTypes()
+    public async Task RestoreAsync_ToleratesRetiredFieldsAndRestoresCurrentRecipeFields()
     {
         var recipeId = Guid.NewGuid();
         var memberId = _factory.DefaultFamilyMemberId;
-        var info = new RecipeInfo
-        {
-            Id = recipeId,
-            Name = "Legacy Recipe",
-            AddedBy = memberId,
-            ImageCount = 1,
-            IsSynthesized = false,
-            CreatedAt = DateTimeOffset.UtcNow,
-            DietaryProfile = new RecipeDietaryProfile(
-                PrimaryFoodGroup: "ProteinFoods",
-                SecondaryFoodGroups: [],
-                ProteinSource: "Poultry",
-                CuisineType: "Greek",
-                MealTypes: ["Dinner", "Sides"],
-                PrimaryMealType: "Dinner",
-                WholeGrainConfident: false,
-                Confidence: 0.8,
-                Source: "llm",
-                FopFlags: null)
-        };
+        var info = JsonSerializer.Deserialize<RecipeInfo>(
+            $$"""
+            {
+              "id": "{{recipeId}}",
+              "name": "Legacy Recipe",
+              "addedBy": "{{memberId}}",
+              "imageCount": 1,
+              "createdAt": "2026-09-25T12:00:00Z",
+              "category": "Supper",
+              "cuisineType": "Greek",
+              "mealTypes": ["Supper", "Sides"],
+              "isHealthyChoice": true,
+              "isVegetarian": true,
+              "vegetarianClassificationVersion": 1,
+              "vegetarianClassifiedAt": "2026-09-24T12:00:00Z",
+              "dietaryProfile": { "primaryFoodGroup": "ProteinFoods" },
+              "fopFlags": { "highSodium": true },
+              "balanceSummary": { "isBalanced": true }
+            }
+            """, JsonDefaults.CamelCase);
+        Assert.NotNull(info);
 
-        await _recipeStore.WriteInfoAsync(info);
+        await _recipeStore.WriteInfoAsync(info!);
+        await _recipeStore.WriteRecipeJsonAsync(recipeId, """
+            { "recipeIngredient": ["orzo", "tomato"], "sourceUrl": "https://example.test/legacy" }
+            """);
         await _service.RestoreAsync();
 
         var restored = await _db.Recipes.FindAsync(recipeId);
@@ -746,5 +750,62 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Equal("Greek", restored!.CuisineType);
         Assert.NotNull(restored.MealTypes);
         Assert.Equal(["Supper", "Sides"], restored.MealTypes!);
+        Assert.Equal("Legacy Recipe", restored.Name);
+        Assert.Equal("Supper", restored.Category);
+        Assert.Equal("[\"orzo\", \"tomato\"]", restored.Ingredients);
+        Assert.Equal("https://example.test/legacy", restored.SourceUrl);
+        Assert.True(restored.IsVegetarian);
+        Assert.Equal(1, restored.VegetarianClassificationVersion);
+        Assert.Equal(DateTimeOffset.Parse("2026-09-24T12:00:00Z"), restored.VegetarianClassifiedAt);
+        Assert.False(restored.IsHealthyChoice);
+        Assert.Null(restored.DietaryProfile);
+    }
+
+    [Fact]
+    public async Task BackupAsync_DoesNotEmitRetiredHealthDietaryOrBalanceFields()
+    {
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Current Recipe",
+            AddedBy = _factory.DefaultFamilyMemberId,
+            ImageCount = 1,
+            IsReady = true,
+            Category = "Supper",
+            CuisineType = "Greek",
+            MealTypes = ["Supper"],
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+            IsHealthyChoice = true,
+            Ingredients = "[\"lentils\"]",
+            DietaryProfile = "{\"legacy\":true}"
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.BackupAsync();
+
+        var info = await _recipeStore.ReadInfoAsync(recipeId);
+        var output = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
+        Assert.DoesNotContain("dietaryProfile", output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("fop", output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("balanceSummary", output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("isHealthyChoice", output, StringComparison.OrdinalIgnoreCase);
+
+        var recipeJson = await _recipeStore.ReadRecipeJsonAsync(recipeId);
+        Assert.NotNull(recipeJson);
+        Assert.DoesNotContain("isHealthyChoice", recipeJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RestoreAsync_MalformedCurrentRecipeInfo_RecordsClearError()
+    {
+        var recipeId = Guid.NewGuid();
+        await _recipeStore.WriteInfoAsync(new RecipeInfo { Id = recipeId, Name = null });
+
+        var result = await _service.RestoreAsync();
+
+        Assert.Equal(1, result.Errors);
+        Assert.Null(await _db.Recipes.FindAsync(recipeId));
     }
 }

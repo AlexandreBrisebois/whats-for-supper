@@ -29,7 +29,7 @@ public class SyncRecipeProcessorTests : IDisposable
         var aisleMapper = new AisleMapper();
         var groceryRecomputeService = new GroceryRecomputeService(
             _db, aisleMapper, new Mock<ILogger<GroceryRecomputeService>>().Object);
-        _processor = new SyncRecipeProcessor(_db, _recipeRepository, groceryRecomputeService, new Mock<IHealthEventPublisher>().Object, _loggerMock.Object);
+        _processor = new SyncRecipeProcessor(_db, _recipeRepository, groceryRecomputeService, _loggerMock.Object);
     }
 
     public void Dispose()

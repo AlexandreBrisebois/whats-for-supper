@@ -216,11 +216,11 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Browse_Promotes_Liked_LongUncooked_Recipes_But_Not_Disliked_Or_NeverCooked_Likes()
     {
-        var favorite = CreateRecipe("Forgotten favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var favorite = CreateRecipe("Forgotten favorite", "Loved long ago", "30 min");
         favorite.CreatedAt = DateTimeOffset.UtcNow.AddDays(-90);
-        var disliked = CreateRecipe("Old dislike", "Not a favorite", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var disliked = CreateRecipe("Old dislike", "Not a favorite", "30 min");
         disliked.CreatedAt = DateTimeOffset.UtcNow.AddDays(-80);
-        var neverCookedLiked = CreateRecipe("Never cooked liked", "Still new", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var neverCookedLiked = CreateRecipe("Never cooked liked", "Still new", "30 min");
         neverCookedLiked.CreatedAt = DateTimeOffset.UtcNow;
         await SeedRecipeAsync(favorite);
         await SeedRecipeAsync(disliked);
@@ -244,8 +244,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Browse_CalendarGuards_Block_ActiveFuture_And_SameWeekCooked_Favorites_Without_Hiding_Them()
     {
-        var favorite = CreateRecipe("Guarded favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var fallback = CreateRecipe("Available favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var favorite = CreateRecipe("Guarded favorite", "Loved long ago", "30 min");
+        var fallback = CreateRecipe("Available favorite", "Loved long ago", "30 min");
         await SeedRecipeAsync(favorite);
         await SeedRecipeAsync(fallback);
         await SeedAffinityFactsAsync(
@@ -267,8 +267,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Browse_Skipped_Assignment_Does_Not_Block_But_Another_Active_Assignment_Does()
     {
-        var favorite = CreateRecipe("Duplicated favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var fallback = CreateRecipe("Fallback favorite", "Loved long ago", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var favorite = CreateRecipe("Duplicated favorite", "Loved long ago", "30 min");
+        var fallback = CreateRecipe("Fallback favorite", "Loved long ago", "30 min");
         await SeedRecipeAsync(favorite);
         await SeedRecipeAsync(fallback);
         await SeedAffinityFactsAsync((favorite.Id, 4, new DateOnly(2026, 8, 1)), (fallback.Id, 2, new DateOnly(2026, 7, 1)));
@@ -282,6 +282,46 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         await RemoveCalendarEventsAsync(favorite.Id, CalendarEventStatus.AwaitingConsensus);
         using var restored = await ReadDataAsync(await PostSearchAsync(new { query = "", limit = 12 }));
         Assert.Equal(favorite.Id, restored.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task FindSimilar_UsesCurrentRecipeFacts_NotLegacyDietaryProfile()
+    {
+        var source = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Herbed Tomato Pasta",
+            Description = "Tomato pasta with basil",
+            Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato", "basil" }),
+            DietaryProfile = "{\"primaryFoodGroup\":\"ProteinFoods\",\"proteinSource\":\"Poultry\"}",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        var similar = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Tomato Basil Pasta",
+            Description = "Herbed pasta dinner",
+            Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato", "basil" }),
+            DietaryProfile = "{\"primaryFoodGroup\":\"VegetablesAndFruits\",\"proteinSource\":\"None\"}",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        await SeedRecipeAsync(source);
+        await SeedRecipeAsync(similar);
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new { query = "", similarToRecipeId = source.Id }));
+        var ids = SearchResultIds(document.RootElement)
+            .Append(document.RootElement.GetProperty("topPick").ValueKind == JsonValueKind.Null
+                ? Guid.Empty
+                : document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid())
+            .ToArray();
+
+        Assert.Equal("similar", document.RootElement.GetProperty("searchMode").GetString());
+        Assert.Contains(similar.Id, ids);
+        Assert.DoesNotContain(source.Id, ids);
     }
 
     [Fact]
@@ -512,15 +552,15 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Search_WithNotCookedInLongTime_Orders_By_Oldest_LastCookedDate()
     {
-        var oldest = CreateRecipe("Oldest Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var oldest = CreateRecipe("Oldest Chicken", "Chicken dinner", "30 min");
         oldest.LastCookedDate = DateTimeOffset.UtcNow.AddDays(-45);
         oldest.CreatedAt = DateTimeOffset.UtcNow.AddDays(-1);
 
-        var middle = CreateRecipe("Middle Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var middle = CreateRecipe("Middle Chicken", "Chicken dinner", "30 min");
         middle.LastCookedDate = DateTimeOffset.UtcNow.AddDays(-20);
         middle.CreatedAt = DateTimeOffset.UtcNow.AddDays(-2);
 
-        var newest = CreateRecipe("Newest Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var newest = CreateRecipe("Newest Chicken", "Chicken dinner", "30 min");
         newest.LastCookedDate = DateTimeOffset.UtcNow.AddDays(-3);
         newest.CreatedAt = DateTimeOffset.UtcNow.AddDays(-3);
 
@@ -551,30 +591,18 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         var assignedRecipe = CreateRecipe(
             "Assigned Chicken",
             "Chicken dinner already planned this week",
-            totalTime: "45 min",
-            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+            totalTime: "45 min");
 
         var availableRecipe = CreateRecipe(
             "Available Chicken",
             "Chicken dinner still available",
-            totalTime: "35 min",
-            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+            totalTime: "35 min");
 
         await SeedRecipeAsync(assignedRecipe);
         await SeedRecipeAsync(availableRecipe);
         await SeedWeekAsync(
             weekOffset: 0,
-            assignedRecipeIds: [assignedRecipe.Id],
-            balanceSummary: WeeklyBalanceScorer.Compute(new RecipeDietaryProfile?[]
-            {
-                CreateDietaryProfile("ProteinFoods"),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-            }));
+            assignedRecipeIds: [assignedRecipe.Id]);
 
         var response = await PostSearchAsync(new { query = "chicken", weekOffset = 0, dayIndex = 2 });
 
@@ -597,61 +625,17 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Search_WithPlannerContext_Promotes_Vegetable_Recipe_To_TopPick_When_Week_Has_Veggie_Gap()
-    {
-        var proteinRecipe = CreateRecipe(
-            "Comfort Bowl",
-            "Fresh dinner with bright flavors",
-            totalTime: "35 min",
-            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
-
-        var veggieRecipe = CreateRecipe(
-            "Garden Veggie Bowl",
-            "Fresh dinner with bright flavors",
-            totalTime: "40 min",
-            dietaryProfile: CreateDietaryProfile("VegetablesAndFruits"));
-
-        await SeedRecipeAsync(proteinRecipe);
-        await SeedRecipeAsync(veggieRecipe);
-        await SeedWeekAsync(
-            weekOffset: 0,
-            assignedRecipeIds: [proteinRecipe.Id],
-            balanceSummary: WeeklyBalanceScorer.Compute(new RecipeDietaryProfile?[]
-            {
-                CreateDietaryProfile("ProteinFoods"),
-                CreateDietaryProfile("ProteinFoods"),
-                null,
-                null,
-                null,
-                null,
-                null
-            }));
-
-        var response = await PostSearchAsync(new { query = "fresh dinner", weekOffset = 0, dayIndex = 2 });
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        using var document = await ReadDataAsync(response);
-        var topPick = document.RootElement.GetProperty("topPick");
-
-        Assert.Equal(veggieRecipe.Id, topPick.GetProperty("id").GetGuid());
-        Assert.False(string.IsNullOrWhiteSpace(topPick.GetProperty("plannerFitNote").GetString()));
-    }
-
-    [Fact]
     public async Task Search_WithoutPlannerContext_Keeps_TopPick_Based_On_QueryFit_Only()
     {
         var exactMatch = CreateRecipe(
             "Quick Chicken Tacos",
             "Fast and easy tacos",
-            totalTime: "35 min",
-            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
+            totalTime: "35 min");
 
         var veggieRecipe = CreateRecipe(
             "Garden Tacos",
             "Fast and easy tacos",
-            totalTime: "35 min",
-            dietaryProfile: CreateDietaryProfile("VegetablesAndFruits"));
+            totalTime: "35 min");
 
         await SeedRecipeAsync(exactMatch);
         await SeedRecipeAsync(veggieRecipe);
@@ -664,92 +648,16 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         var topPick = document.RootElement.GetProperty("topPick");
 
         Assert.Equal(exactMatch.Id, topPick.GetProperty("id").GetGuid());
-        Assert.True(topPick.GetProperty("plannerFitNote").ValueKind == JsonValueKind.Null);
-    }
-
-    [Fact]
-    public async Task Search_WithPlannerContext_Sets_PlannerFitNote_On_TopPick()
-    {
-        var veggieRecipe = CreateRecipe(
-            "Veggie Stir Fry",
-            "Fresh dinner",
-            totalTime: "40 min",
-            dietaryProfile: CreateDietaryProfile("VegetablesAndFruits"));
-
-        await SeedRecipeAsync(veggieRecipe);
-        await SeedWeekAsync(
-            weekOffset: 0,
-            assignedRecipeIds: [],
-            balanceSummary: WeeklyBalanceScorer.Compute(new RecipeDietaryProfile?[]
-            {
-                CreateDietaryProfile("ProteinFoods"),
-                CreateDietaryProfile("ProteinFoods"),
-                null,
-                null,
-                null,
-                null,
-                null
-            }));
-
-        var response = await PostSearchAsync(new { query = "fresh dinner", weekOffset = 0, dayIndex = 2 });
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        using var document = await ReadDataAsync(response);
-        var topPick = document.RootElement.GetProperty("topPick");
-
-        Assert.False(string.IsNullOrWhiteSpace(topPick.GetProperty("plannerFitNote").GetString()));
-    }
-
-    [Fact]
-    public async Task Search_WithQuickQuery_AndPlannerContext_Boosts_Quick_Recipes()
-    {
-        var slowerRecipe = CreateRecipe(
-            "Quick Chicken Pasta",
-            "Fast dinner on paper but still takes time",
-            totalTime: "45 min",
-            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
-
-        var fasterRecipe = CreateRecipe(
-            "Weeknight Pasta",
-            "Fast dinner on paper but actually quick",
-            totalTime: "25 min",
-            dietaryProfile: CreateDietaryProfile("ProteinFoods"));
-
-        await SeedRecipeAsync(slowerRecipe);
-        await SeedRecipeAsync(fasterRecipe);
-        await SeedWeekAsync(
-            weekOffset: 0,
-            assignedRecipeIds: [],
-            balanceSummary: WeeklyBalanceScorer.Compute(new RecipeDietaryProfile?[]
-            {
-                CreateDietaryProfile("ProteinFoods"),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-            }));
-
-        var response = await PostSearchAsync(new { query = "quick pasta tonight", weekOffset = 0, dayIndex = 2 });
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        using var document = await ReadDataAsync(response);
-        var topPick = document.RootElement.GetProperty("topPick");
-
-        Assert.Equal(fasterRecipe.Id, topPick.GetProperty("id").GetGuid());
-        Assert.Contains("quick", topPick.GetProperty("plannerFitNote").GetString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.False(topPick.TryGetProperty("plannerFitNote", out _));
     }
 
     [Fact]
     public async Task Search_Prefers_Love_Rated_Recipe_Over_Equivalent_Unrated_Recipe()
     {
-        var neutralRecipe = CreateRecipe("Chicken Pasta", "Bright lemon chicken pasta", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var neutralRecipe = CreateRecipe("Chicken Pasta", "Bright lemon chicken pasta", "30 min");
         neutralRecipe.Rating = RecipeRating.Unknown;
 
-        var lovedRecipe = CreateRecipe("Chicken Pasta Supreme", "Bright lemon chicken pasta", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var lovedRecipe = CreateRecipe("Chicken Pasta Supreme", "Bright lemon chicken pasta", "30 min");
         lovedRecipe.Rating = RecipeRating.Love;
 
         await SeedRecipeAsync(neutralRecipe);
@@ -770,10 +678,10 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Search_Demotes_Disliked_Recipe_Below_Equivalent_Unrated_Recipe()
     {
-        var neutralRecipe = CreateRecipe("Chicken Tacos", "Fast chicken taco night", "25 min", CreateDietaryProfile("ProteinFoods"));
+        var neutralRecipe = CreateRecipe("Chicken Tacos", "Fast chicken taco night", "25 min");
         neutralRecipe.Rating = RecipeRating.Unknown;
 
-        var dislikedRecipe = CreateRecipe("Chicken Tacos Deluxe", "Fast chicken taco night", "25 min", CreateDietaryProfile("ProteinFoods"));
+        var dislikedRecipe = CreateRecipe("Chicken Tacos Deluxe", "Fast chicken taco night", "25 min");
         dislikedRecipe.Rating = RecipeRating.Dislike;
 
         await SeedRecipeAsync(neutralRecipe);
@@ -796,10 +704,10 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Search_Prefers_Notes_Match_Over_Equivalent_NonNotes_Match()
     {
-        var plainRecipe = CreateRecipe("Cozy Pasta", "Creamy pasta for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var plainRecipe = CreateRecipe("Cozy Pasta", "Creamy pasta for busy nights", "30 min");
         plainRecipe.Notes = "Family likes this on weekends.";
 
-        var notesRecipe = CreateRecipe("Weeknight Pasta", "Creamy pasta for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var notesRecipe = CreateRecipe("Weeknight Pasta", "Creamy pasta for busy nights", "30 min");
         notesRecipe.Notes = "This is the soup mood pasta everyone asks for.";
 
         await SeedRecipeAsync(plainRecipe);
@@ -821,8 +729,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Search_Applies_Bounded_Vote_Boost_And_Emits_Vote_Reason()
     {
-        var neutralRecipe = CreateRecipe("Chicken Rice Bowl", "Fresh bowl for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var votedRecipe = CreateRecipe("Chicken Rice Bowl Plus", "Fresh bowl for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var neutralRecipe = CreateRecipe("Chicken Rice Bowl", "Fresh bowl for busy nights", "30 min");
+        var votedRecipe = CreateRecipe("Chicken Rice Bowl Plus", "Fresh bowl for busy nights", "30 min");
 
         await SeedRecipeAsync(neutralRecipe);
         await SeedRecipeAsync(votedRecipe);
@@ -845,8 +753,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Search_Caps_Vote_Boost_At_Maximum_Value()
     {
-        var cappedRecipe = CreateRecipe("Chicken Rice Bowl Capped", "Fresh bowl for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var baselineRecipe = CreateRecipe("Chicken Rice Bowl Baseline", "Fresh bowl for busy nights", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var cappedRecipe = CreateRecipe("Chicken Rice Bowl Capped", "Fresh bowl for busy nights", "30 min");
+        var baselineRecipe = CreateRecipe("Chicken Rice Bowl Baseline", "Fresh bowl for busy nights", "30 min");
 
         await SeedRecipeAsync(cappedRecipe);
         await SeedRecipeAsync(baselineRecipe);
@@ -883,9 +791,9 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Search_Love_Boost_Does_Not_Override_A_Completely_NonMatching_Query()
     {
-        var matchingRecipe = CreateRecipe("Chicken Soup", "Comforting chicken soup", "40 min", CreateDietaryProfile("ProteinFoods"));
+        var matchingRecipe = CreateRecipe("Chicken Soup", "Comforting chicken soup", "40 min");
 
-        var lovedNonMatch = CreateRecipe("Berry Pancakes", "Weekend breakfast favorite", "20 min", CreateDietaryProfile("WholeGrains"));
+        var lovedNonMatch = CreateRecipe("Berry Pancakes", "Weekend breakfast favorite", "20 min");
         lovedNonMatch.Rating = RecipeRating.Love;
 
         await SeedRecipeAsync(matchingRecipe);
@@ -906,10 +814,10 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Search_ReviewFilters_UseReportedSupersetAndReadySubset_WithoutTopPick()
     {
-        var reported = CreateRecipe("Reported Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var failed = CreateRecipe("Failed Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var ready = CreateRecipe("Ready Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var unreported = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var reported = CreateRecipe("Reported Chicken", "Chicken dinner", "30 min");
+        var failed = CreateRecipe("Failed Chicken", "Chicken dinner", "30 min");
+        var ready = CreateRecipe("Ready Chicken", "Chicken dinner", "30 min");
+        var unreported = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min");
 
         await SeedRecipeAsync(reported);
         await SeedRecipeAsync(failed);
@@ -947,20 +855,17 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Search_ReviewFilter_ComposesWithTextHealthyAndExistingFilters()
+    public async Task Search_ReviewFilter_ComposesWithTextAndExistingFilters()
     {
-        var match = CreateRecipe("Healthy Discoverable Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-        match.IsHealthyChoice = true;
+        var match = CreateRecipe("Healthy Discoverable Chicken", "Chicken dinner", "30 min");
         match.IsDiscoverable = true;
 
-        var unhealthy = CreateRecipe("Unhealthy Discoverable Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var unhealthy = CreateRecipe("Unhealthy Discoverable Chicken", "Chicken dinner", "30 min");
         unhealthy.IsDiscoverable = true;
 
-        var hidden = CreateRecipe("Healthy Hidden Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-        hidden.IsHealthyChoice = true;
+        var hidden = CreateRecipe("Healthy Hidden Chicken", "Chicken dinner", "30 min");
 
-        var wrongText = CreateRecipe("Healthy Discoverable Pasta", "Pasta dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-        wrongText.IsHealthyChoice = true;
+        var wrongText = CreateRecipe("Healthy Discoverable Pasta", "Pasta dinner", "30 min");
         wrongText.IsDiscoverable = true;
         wrongText.Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato" });
         wrongText.Notes = "Pasta dinner";
@@ -977,22 +882,21 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             filters = new
             {
                 reportedOnly = true,
-                healthyOnly = true,
                 discoverableOnly = true,
                 quickOnly = true
             }
         }));
 
-        Assert.Equal(new[] { match.Id }, SearchResultIds(document.RootElement));
+        Assert.Equal(new[] { unhealthy.Id, match.Id }.Order(), SearchResultIds(document.RootElement).Order());
     }
 
     [Fact]
     public async Task Search_ProjectsPublicStatus_KeepsReportedRecipeOrdinaryAndAssigned_ButNeverTopPick()
     {
-        var reported = CreateRecipe("Best Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var reported = CreateRecipe("Best Chicken", "Chicken dinner", "30 min");
         reported.Rating = RecipeRating.Love;
-        var ready = CreateRecipe("Ready Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var ordinary = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var ready = CreateRecipe("Ready Chicken", "Chicken dinner", "30 min");
+        var ordinary = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min");
 
         await SeedRecipeAsync(reported);
         await SeedRecipeAsync(ready);
@@ -1033,8 +937,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Search_CannotPromoteAnActiveReport()
     {
-        var reported = CreateRecipe("Reported Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
-        var ordinary = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min", CreateDietaryProfile("ProteinFoods"));
+        var reported = CreateRecipe("Reported Chicken", "Chicken dinner", "30 min");
+        var ordinary = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min");
 
         await SeedRecipeAsync(reported);
         await SeedRecipeAsync(ordinary);
@@ -1176,7 +1080,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         public DateTimeOffset UtcNow => now;
     }
 
-    private async Task SeedWeekAsync(int weekOffset, IReadOnlyList<Guid> assignedRecipeIds, WeeklyBalanceSummary balanceSummary)
+    private async Task SeedWeekAsync(int weekOffset, IReadOnlyList<Guid> assignedRecipeIds)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
@@ -1185,8 +1089,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         db.WeeklyPlans.Add(new WeeklyPlan
         {
             Id = Guid.NewGuid(),
-            WeekStartDate = monday,
-            BalanceSummary = JsonSerializer.Serialize(balanceSummary, JsonDefaults.CamelCase)
+            WeekStartDate = monday
         });
 
         for (var index = 0; index < assignedRecipeIds.Count; index++)
@@ -1204,7 +1107,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
-    private static Recipe CreateRecipe(string name, string description, string? totalTime, RecipeDietaryProfile dietaryProfile)
+    private static Recipe CreateRecipe(string name, string description, string? totalTime)
     {
         return new Recipe
         {
@@ -1215,26 +1118,10 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             TotalTime = totalTime,
             Ingredients = JsonSerializer.Serialize(new[] { "chicken", "garlic", "spinach" }),
             Notes = description,
-            DietaryProfile = JsonSerializer.Serialize(dietaryProfile, JsonDefaults.CamelCase),
             ImageCount = 1,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
-    }
-
-    private static RecipeDietaryProfile CreateDietaryProfile(string primaryFoodGroup)
-    {
-        return new RecipeDietaryProfile(
-            PrimaryFoodGroup: primaryFoodGroup,
-            SecondaryFoodGroups: [],
-            ProteinSource: primaryFoodGroup == "ProteinFoods" ? "Poultry" : "None",
-            CuisineType: "Canadian",
-            MealTypes: ["Dinner"],
-            PrimaryMealType: "Dinner",
-            WholeGrainConfident: false,
-            Confidence: 0.95,
-            Source: "test",
-            FopFlags: null);
     }
 
     private static DateOnly GetMondayForWeekOffset(int weekOffset)

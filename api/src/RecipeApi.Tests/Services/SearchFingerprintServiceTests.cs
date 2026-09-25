@@ -8,7 +8,7 @@ public class SearchFingerprintServiceTests
 {
     // Canonical expected SHA-256 for the fixed test input below.
     // Computed independently: SHA-256 of the canonical JSON with sorted keys and known values.
-    // Fields (alphabetical): category, description, dietaryProfile, ingredients, isDiscoverable, name, notes, rating, recipeId, totalTime
+    // Fields (alphabetical): category, description, ingredients, isDiscoverable, name, notes, rating, recipeId, totalTime
     private static readonly Guid TestRecipeId = new("11111111-1111-1111-1111-111111111111");
 
     private static Recipe BuildCanonicalRecipe() => new()
@@ -22,7 +22,6 @@ public class SearchFingerprintServiceTests
         Ingredients = """["chicken","broccoli"]""",
         Rating = RecipeRating.Like,
         IsDiscoverable = true,
-        DietaryProfile = null,
         CreatedAt = DateTimeOffset.UtcNow,
         UpdatedAt = DateTimeOffset.UtcNow
     };

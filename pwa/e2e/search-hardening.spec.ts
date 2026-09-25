@@ -30,7 +30,6 @@ const MOCK_SEARCH_TOP_PICK = {
   isDiscoverable: true,
   notes: null,
   reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-  plannerFitNote: null,
 };
 
 const MOCK_DETAIL_RECIPE = builders.recipe({

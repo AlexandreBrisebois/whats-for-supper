@@ -23,7 +23,6 @@ test.describe('Supper Planner', () => {
               isDiscoverable: true,
               notes: null,
               reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-              plannerFitNote: 'Not yet planned this week',
             },
             results: [],
             appliedFilters: {},

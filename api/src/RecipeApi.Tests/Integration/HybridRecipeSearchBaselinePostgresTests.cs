@@ -87,7 +87,7 @@ public class HybridRecipeSearchBaselinePostgresTests : IAsyncLifetime
     {
         foreach (var fixture in HybridRecipeSearchBaselineFixture.Recipes)
         {
-            var recipe = new Recipe { Id = fixture.Id, Name = fixture.Name, Ingredients = fixture.IngredientsJson, CuisineType = fixture.Cuisine, MealTypes = fixture.MealTypes, Category = fixture.Category, TotalTime = fixture.TotalTime, DietaryProfile = fixture.DietaryProfileJson, RawMetadata = fixture.RawMetadata, IsReady = true, IsDiscoverable = true, CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
+            var recipe = new Recipe { Id = fixture.Id, Name = fixture.Name, Ingredients = fixture.IngredientsJson, CuisineType = fixture.Cuisine, MealTypes = fixture.MealTypes, Category = fixture.Category, TotalTime = fixture.TotalTime, RawMetadata = fixture.RawMetadata, IsReady = true, IsDiscoverable = true, CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
             _db.Recipes.Add(recipe);
             _db.RecipeSearchDocuments.Add(new RecipeSearchDocument { RecipeId = recipe.Id, DocumentText = $"{recipe.Name}. Ingredients: {string.Join(", ", HybridRecipeSearchBaselineFixture.NormalizeIncludedIngredients(recipe.Ingredients))}.", SearchMetadata = "{}", Embedding = HybridRecipeSearchBaselineFixture.EmbeddingFor(fixture.SemanticGroup), EmbeddingModel = "fixture-v1", IndexStatus = "ready", SourceFingerprint = "fixture", LastIndexedAt = DateTimeOffset.UtcNow });
         }

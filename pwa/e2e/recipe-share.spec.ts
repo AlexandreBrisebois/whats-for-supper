@@ -43,7 +43,6 @@ test.describe('Recipe Share And Capture', () => {
               isDiscoverable: true,
               notes: null,
               reasons: [{ source: 'name-match', label: 'Name matches your search' }],
-              plannerFitNote: null,
             },
             results: [],
             appliedFilters: {},

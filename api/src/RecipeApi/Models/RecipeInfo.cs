@@ -21,13 +21,11 @@ public class RecipeInfo
     public string? CuisineType { get; set; }
     public string[]? MealTypes { get; set; }
     public bool IsDiscoverable { get; set; } = false;
-    public bool IsHealthyChoice { get; set; } = false;
     public bool IsVegetarian { get; set; } = false;
     public int? VegetarianClassificationVersion { get; set; }
     public DateTimeOffset? VegetarianClassifiedAt { get; set; }
     public string? TotalTime { get; set; }
     public DateTimeOffset? LastCookedDate { get; set; }
     public string? SourceUrl { get; set; }
-    public RecipeDietaryProfile? DietaryProfile { get; set; } = null;
     public object? RecipeInstructions { get; set; }
 }

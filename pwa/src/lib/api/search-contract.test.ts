@@ -28,7 +28,7 @@ describe('generated search contract', () => {
     expect(modelsSource).toContain('export interface RecipeSearchResponseDto');
   });
 
-  it('includes RecipeSearchResultDto with id, name, imageUrl, reasons, and plannerFitNote', () => {
+  it('includes RecipeSearchResultDto with WFS-owned discovery facts only', () => {
     const modelsSource = readGenerated('models/index.ts');
     const block = extractInterface(modelsSource, 'RecipeSearchResultDto');
 
@@ -36,7 +36,7 @@ describe('generated search contract', () => {
     expect(block).toContain('name?: string | null;');
     expect(block).toContain('imageUrl?: string | null;');
     expect(block).toContain('reasons?: RecipeSearchReasonDto[] | null;');
-    expect(block).toContain('plannerFitNote?: string | null;');
+    expect(block).not.toContain('plannerFitNote');
   });
 
   it('includes RecipeSearchReasonDto with source and label', () => {

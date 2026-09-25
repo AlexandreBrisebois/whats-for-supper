@@ -32,7 +32,6 @@ const searchResult = (
   isDiscoverable: recipe.isDiscoverable,
   notes: recipe.notes ?? null,
   reasons: [],
-  plannerFitNote: null,
   importIssueStatus,
   isPromotionEligible,
 });
@@ -474,18 +473,15 @@ test.describe('Recipe import issue reporting', () => {
     await expect(page.getByTestId('recipe-card-top-pick')).not.toContainText('Ready Tacos');
   });
 
-  test('allows duplicate-only reporting for synthesized recipes and preserves the Healthy filter contract', async ({
-    page,
-  }) => {
+  test('allows duplicate-only reporting for synthesized recipes', async ({ page }) => {
     await authenticate(page);
     await setupCommonRoutes(page);
 
     let synthesized = builders.recipe({
       id: MOCK_IDS.RECIPE_GOTO_STUB,
-      name: 'Synthesized Healthy Bowl',
+      name: 'Synthesized Vegetable Bowl',
       sourceType: RecipeDto_sourceTypeObject.Synthesized,
       canReimport: false,
-      isHealthyChoice: true,
     });
     let lastFilters: Record<string, boolean> = {};
 
@@ -533,11 +529,6 @@ test.describe('Recipe import issue reporting', () => {
     });
 
     await page.goto('/recipes');
-    await page.getByTestId('mobile-filters-button').click();
-    await page.getByTestId('mobile-more-filters').click();
-    await page.getByTestId('mobile-filter-healthy').click();
-    await page.getByTestId('mobile-filter-apply').click();
-    await expect.poll(() => lastFilters).toEqual({ healthyOnly: true });
     await expect(page.getByTestId(`recipe-card-${synthesized.id}`)).toBeVisible();
 
     await page.getByTestId(`recipe-card-${synthesized.id}`).click();

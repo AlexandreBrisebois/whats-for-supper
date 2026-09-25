@@ -32,7 +32,6 @@ export interface Recipe {
   isDiscoverable?: boolean;
   ingredients?: string[];
   isVegetarian?: boolean;
-  isHealthyChoice?: boolean;
   recipeInstructions?: unknown[];
   sourceType: 'url' | 'photos' | 'synthesized';
   canReimport: boolean;
@@ -96,7 +95,6 @@ export type RecipeSearchResult = {
   isDiscoverable: boolean;
   notes: string | null;
   reasons: Array<{ source: string; label: string }>;
-  plannerFitNote: string | null;
   importIssueStatus: RecipeImportIssueStatus | null;
   isPromotionEligible: boolean;
 };
@@ -159,7 +157,6 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     isDiscoverable: dto.isDiscoverable ?? false,
     ingredients: dto.ingredients ?? [],
     isVegetarian: dto.isVegetarian ?? false,
-    isHealthyChoice: dto.isHealthyChoice ?? false,
     recipeInstructions,
     sourceType: (dto.sourceType as any) || 'synthesized',
     canReimport: dto.canReimport ?? false,
@@ -187,14 +184,13 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
     dto,
     'reasons'
   );
-  const plannerFitNote = (readField<string | null>(dto, 'plannerFitNote') ?? null) as string | null;
   const importIssueStatus = (readField<RecipeImportIssueStatus | null>(dto, 'importIssueStatus') ??
     null) as RecipeImportIssueStatus | null;
   const isPromotionEligible = readField<boolean>(dto, 'isPromotionEligible') ?? false;
 
   // Kiota currently deserializes nullable union topPick into an empty marker object.
   // Treat that shape as null so the page can show the real empty state.
-  if (!id && !name && !imageUrl && !totalTime && !notes && !plannerFitNote) {
+  if (!id && !name && !imageUrl && !totalTime && !notes) {
     return null;
   }
 
@@ -210,7 +206,6 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
       source: reason?.source || '',
       label: reason?.label || '',
     })),
-    plannerFitNote,
     importIssueStatus,
     isPromotionEligible,
   };

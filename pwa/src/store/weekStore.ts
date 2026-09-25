@@ -14,7 +14,6 @@ import type {
   GroceryLineItemDto,
   ScheduleRecipeDto,
   SmartDefaultsDto,
-  WeeklyBalanceSummaryDto,
 } from '@/lib/api/generated/models';
 import type { ScheduleDay } from '@/lib/api/planner';
 import type { ScheduleDays } from '@/lib/api/generated/models';
@@ -45,8 +44,6 @@ export interface WeekState {
    * sync() will not overwrite schedule while this is within the 10-second window.
    */
   optimisticWriteAt: number | null;
-  /** Summary of Canada's Food Guide balance for the week's dinner slots */
-  balanceSummary: WeeklyBalanceSummaryDto | null;
 
   // Derived (not stored):
   // isVotingOpen = status === 1
@@ -170,7 +167,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   isLoading: false,
   lastSyncedAt: null,
   optimisticWriteAt: null,
-  balanceSummary: null,
 
   // ── init ──────────────────────────────────────────────────────────────────
   async init(weekOffset) {
@@ -211,7 +207,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         schedule: mergedDays,
         groceryItems: scheduleData.groceryItems ?? [],
         status,
-        balanceSummary: scheduleData.balanceSummary ?? null,
         lastSyncedAt: Date.now(),
         isLoading: false,
       });
@@ -244,7 +239,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
       set({
         groceryItems: data.groceryItems ?? [],
-        balanceSummary: data.balanceSummary ?? null,
         status: (data.status ?? 0) as 0 | 1 | 2,
         lastSyncedAt: Date.now(),
       });
@@ -427,7 +421,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         // Protect optimistic schedule; still update status (authoritative)
         set({
           status,
-          balanceSummary: data.balanceSummary ?? null,
           lastSyncedAt: Date.now(),
         });
       }
@@ -523,7 +516,6 @@ export const useWeekStore = create<WeekState>((set, get) => ({
       schedule: preserved,
       status:
         snapshotIsEmpty && prev.length > 0 ? get().status : ((schedule.status ?? 0) as 0 | 1 | 2),
-      balanceSummary: schedule.balanceSummary ?? null,
       groceryItems: schedule.groceryItems ?? [],
       lastSyncedAt: Date.now(),
     });
