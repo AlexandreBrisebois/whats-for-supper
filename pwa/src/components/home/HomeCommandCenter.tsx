@@ -68,12 +68,13 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [activeGoto, setActiveGoto] = useState<GoToItem | null>(null);
   const [hasCheckedActive, setHasCheckedActive] = useState(false);
 
-  const { isReady } = useGotoStore();
-
   const gotoDescription = activeGoto?.description ?? null;
   const gotoRecipeId = activeGoto?.recipeId ?? null;
   const gotoImageUrl = activeGoto?.imageUrl ?? null;
   const gotoStatus = hasCheckedActive ? (activeGoto?.status ?? null) : null;
+  const gotoReady = useGotoStore((state) =>
+    gotoRecipeId ? state.readyRecipeIds.has(gotoRecipeId) : false
+  );
 
   // ── Mount: load active GOTO and background sync ──────────────────────────
   useEffect(() => {
@@ -91,10 +92,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   // Fires when synthesis completes after this page was already loaded.
   // Re-fetches the active GOTO to transition from pending → ready.
   useEffect(() => {
-    if (activeGoto?.recipeId && activeGoto.status === 'pending' && isReady(activeGoto.recipeId)) {
-      loadActiveGoTo().then(setActiveGoto);
-    }
-  }, [activeGoto, isReady, loadActiveGoTo]);
+    if (!gotoReady || activeGoto?.status !== 'pending') return;
+
+    void loadActiveGoTo().then(setActiveGoto);
+  }, [activeGoto?.status, gotoRecipeId, gotoReady, loadActiveGoTo]);
 
   // ── Reset cookedDismissed when no longer cooked ───────────────────────────
   // Note: cookedDismissed is only visually meaningful when isCooked is true.

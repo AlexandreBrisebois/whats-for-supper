@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   addToast: vi.fn(),
   removeDelete: vi.fn().mockResolvedValue(undefined),
   validatePost: vi.fn().mockResolvedValue(undefined),
+  loadActiveGoTo: vi.fn().mockResolvedValue(null),
   currentRecipe: null as any,
   todayStatus: 0 as 0 | 2 | 3,
   todayString: '2026-05-07',
@@ -161,7 +162,7 @@ vi.mock('@/store/familyStore', () => ({
     const state = {
       selectedFamilyMemberId: 'member-1',
       loadSetting: mocks.loadSetting,
-      loadActiveGoTo: vi.fn().mockResolvedValue(null),
+      loadActiveGoTo: mocks.loadActiveGoTo,
       loadGoTo: vi.fn().mockResolvedValue({ items: [] }),
       saveGoTo: vi.fn().mockResolvedValue(undefined),
       familySettings: {},
@@ -171,10 +172,13 @@ vi.mock('@/store/familyStore', () => ({
 }));
 
 vi.mock('@/store/gotoStore', () => ({
-  useGotoStore: () => ({
-    readyRecipeId: null,
-    isReady: vi.fn().mockReturnValue(false),
-  }),
+  useGotoStore: (selector?: (state: any) => any) => {
+    const state = {
+      readyRecipeIds: new Set(['goto-recipe']),
+      isReady: vi.fn().mockReturnValue(false),
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 vi.mock('@/lib/api/api-client', () => ({
@@ -220,6 +224,27 @@ describe('HomeCommandCenter', () => {
     mocks.currentRecipe = null;
     mocks.todayStatus = 0;
     mocks.todayString = '2026-05-07';
+    mocks.loadActiveGoTo.mockResolvedValue(null);
+  });
+
+  it('re-fetches a pending GOTO when its recipe is already marked ready by SSE', async () => {
+    mocks.loadActiveGoTo
+      .mockResolvedValueOnce({
+        description: 'SSE recipe',
+        recipeId: 'goto-recipe',
+        imageUrl: null,
+        status: 'pending',
+      })
+      .mockResolvedValueOnce({
+        description: 'SSE recipe',
+        recipeId: 'goto-recipe',
+        imageUrl: null,
+        status: 'ready',
+      });
+
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={0} />);
+
+    await waitFor(() => expect(mocks.loadActiveGoTo).toHaveBeenCalledTimes(2));
   });
 
   it('marks today as ordered in in weekStore when ordering in from an empty home slot', () => {
