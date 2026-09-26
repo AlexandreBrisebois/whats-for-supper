@@ -371,6 +371,93 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FindSimilar_UsesStructuredSimilarityInsteadOfFamilySignals()
+    {
+        var source = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Tomato Basil Pasta",
+            Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato", "basil" }),
+            CuisineType = "Italian",
+            Category = "Dinner",
+            MealTypes = ["Supper"],
+            IsVegetarian = true,
+            TotalTime = "30 min",
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        var stronglySimilar = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Tomato Basil Pasta Garden",
+            Ingredients = JsonSerializer.Serialize(new[] { "basil", "tomato", "pasta" }),
+            CuisineType = "Italian",
+            Category = "Dinner",
+            MealTypes = ["Supper"],
+            IsVegetarian = true,
+            TotalTime = "30 min",
+            CreatedAt = TestNow.AddMinutes(-1),
+            UpdatedAt = TestNow
+        };
+        var lovedWeakMatch = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Tomato Basil Pasta Exact",
+            Ingredients = JsonSerializer.Serialize(new[] { "beef", "potato" }),
+            CuisineType = "French",
+            Category = "Lunch",
+            MealTypes = ["Lunch"],
+            IsVegetarian = false,
+            TotalTime = "90 min",
+            Rating = RecipeRating.Love,
+            CreatedAt = TestNow.AddMinutes(-2),
+            UpdatedAt = TestNow
+        };
+        await SeedRecipeAsync(source);
+        await SeedRecipeAsync(stronglySimilar);
+        await SeedRecipeAsync(lovedWeakMatch);
+        await SeedLikeVotesAsync(lovedWeakMatch.Id, 3);
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new { similarToRecipeId = source.Id }));
+        var topPick = document.RootElement.GetProperty("topPick");
+
+        Assert.Equal(stronglySimilar.Id, topPick.GetProperty("id").GetGuid());
+        Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() is "rating-boost" or "vote-boost" or "inventory-fit");
+    }
+
+    [Fact]
+    public async Task FindSimilar_WithPlannerContextRetainsOnlyPlannedRecipeDemotion()
+    {
+        var source = CreateRecipe("Tomato Pasta", "Tomato basil pasta", "30 min");
+        source.Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato", "basil" });
+        var planned = CreateRecipe("Tomato Pasta Planned", "Tomato basil pasta", "30 min");
+        planned.Ingredients = source.Ingredients;
+        planned.CreatedAt = TestNow;
+        var available = CreateRecipe("Tomato Pasta Available", "Tomato basil pasta", "30 min");
+        available.Ingredients = source.Ingredients;
+        available.CreatedAt = TestNow.AddMinutes(-1);
+        await SeedRecipeAsync(source);
+        await SeedRecipeAsync(planned);
+        await SeedRecipeAsync(available);
+        await SeedWeekAsync(0, [planned.Id]);
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new { similarToRecipeId = source.Id, weekOffset = 0, dayIndex = 1 }));
+        var topPick = document.RootElement.GetProperty("topPick");
+        var plannedResult = document.RootElement.GetProperty("results").EnumerateArray()
+            .Single(result => result.GetProperty("id").GetGuid() == planned.Id);
+
+        Assert.Equal(available.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Contains(plannedResult.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "planner-fit");
+        Assert.DoesNotContain(plannedResult.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() is "rating-boost" or "vote-boost" or "inventory-fit");
+    }
+
+    [Fact]
     public async Task Search_Returns_LexicalOnly_ResultPath_In_Phase1()
     {
         await SeedRecipeAsync(new Recipe

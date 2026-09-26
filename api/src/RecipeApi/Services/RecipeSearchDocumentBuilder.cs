@@ -59,7 +59,8 @@ public sealed class RecipeSearchDocumentBuilder : IRecipeSearchDocumentBuilder
         return legacy.Success ? int.Parse(legacy.Groups[1].Value, CultureInfo.InvariantCulture) : null;
     }
 
-    private static IEnumerable<string> ReadIngredients(string? json)
+    /// <summary>Reads string and legacy object-name ingredient representations without inventing values from malformed JSON.</summary>
+    public static IEnumerable<string> ReadIngredients(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) yield break;
         JsonDocument? document = null;

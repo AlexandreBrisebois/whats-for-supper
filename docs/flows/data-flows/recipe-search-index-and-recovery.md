@@ -15,7 +15,7 @@ This document defines the data flow for:
 
 ## Overview
 
-Every search path — normal typed search, inventory photo, and Find Similar — flows through the same `RecipeSearchService`. There is one truth source for ranking. Callers may set `similarToRecipeId` or `pantrySnapshotId` while receiving the same `RecipeSearchResponseDto`.
+Every search path — normal typed search, inventory photo, and Find Similar — flows through the same `RecipeSearchService` and returns the same `RecipeSearchResponseDto`. Retrieval and ranking semantics remain mode-specific: normal and pantry search use hybrid retrieval and their applicable modifiers, while Similar uses its source-recipe path.
 
 The implementation is staged:
 1. Canonical document indexing (`SearchIndexWorkflow`, `recipe_search_documents` table)
@@ -64,6 +64,14 @@ invoke lexical or vector retrieval.
 - Soft-deleted recipes (`deleted_at IS NOT NULL`) are always excluded.
 - Returns up to `limit × 3` candidates; merged with lexical pool, higher score kept.
 
+### Find Similar retrieval and ranking
+
+Find Similar uses semantic retrieval for bounded candidate generation and deterministic structured similarity for final ranking. The source recipe is excluded, and eligibility plus active hard filters are applied before either the semantic or lexical candidate limit.
+
+When the source has a compatible ready embedding, its embedding is used only to retrieve the bounded Similar candidate pool. The final score combines normalized semantic similarity with ingredient overlap, cuisine, category, meal type, nullable `IsVegetarian` compatibility, and preparation-time similarity. `IsVegetarian` is a conservative compatibility signal only when both recipes have a known equal value; Similar makes no protein claim.
+
+When the source embedding is missing, incompatible, or semantic retrieval fails, Similar builds a compact bounded lexical query from the source name, up to 12 ingredients, cuisine, category, and up to 6 meal types (at most 20 normalized terms and 300 characters). PostgreSQL applies the same filters and source exclusion before returning its bounded lexical candidates; those candidates receive zero semantic contribution and the same structured scorer. Family/vote and pantry boosts do not apply to Similar. Planner planned-recipe demotion applies only when a real planner context supplies both `weekOffset` and `dayIndex`. Ranked continuations retain the initial Similar order.
+
 ### `resultPath` values
 
 | Value | Meaning |
@@ -78,7 +86,7 @@ invoke lexical or vector retrieval.
 
 All score constants are named constants in `RecipeSearchService` — not magic numbers.
 
-### Family-fit modifiers (applied to all searches)
+### Family-fit modifiers (normal and pantry searches only)
 
 | Signal | Modifier | Constant |
 |--------|----------|----------|
@@ -379,11 +387,11 @@ flowchart TD
     A[Normal typed search] --> C[RecipeSearchService]
     B[Find Similar — similarToRecipeId] --> C
     D[Pantry-assisted search — pantrySnapshotId] --> C
-    C --> E[Hybrid retrieval + reranking]
+    C --> E[Mode-specific retrieval + ranking]
     E --> F[RecipeSearchResponseDto — grounded results + reasons]
 ```
 
-Do not build separate ranking logic for callers. The same `RecipeSearchService` answers normal, similar, and pantry-assisted searches.
+Do not build separate service logic for callers. The same `RecipeSearchService` answers normal, similar, and pantry-assisted searches, while retaining the mode-specific ranking semantics above.
 
 ---
 

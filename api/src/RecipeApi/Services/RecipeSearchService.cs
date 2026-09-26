@@ -91,7 +91,7 @@ public partial class RecipeSearchService(
         if (dto.SimilarToRecipeId is not null)
         {
             // Similar Mode: retrieve based on target recipe embedding
-            candidates = await SimilarSearchAsync(dto.SimilarToRecipeId.Value, recipesQuery, ct);
+            candidates = await SimilarSearchAsync(dto.SimilarToRecipeId.Value, recipesQuery, appliedFilters, ct);
             resultPath = "similar";
         }
         else
@@ -173,8 +173,11 @@ public partial class RecipeSearchService(
             candidates = await ApplyPlannerAwareRerankingAsync(candidates, dto.WeekOffset.Value, ct);
         }
 
-        candidates = await ApplyFamilyFitRerankingAsync(candidates, ct);
-        candidates = await ApplyPantryBoostAsync(candidates, dto.PantrySnapshotId, ct);
+        if (dto.SimilarToRecipeId is null)
+        {
+            candidates = await ApplyFamilyFitRerankingAsync(candidates, ct);
+            candidates = await ApplyPantryBoostAsync(candidates, dto.PantrySnapshotId, ct);
+        }
         rerankingStopwatch.Stop();
         rerankingDurationMs = rerankingStopwatch.ElapsedMilliseconds;
 
@@ -185,7 +188,7 @@ public partial class RecipeSearchService(
             .ThenBy(candidate => candidate.Recipe.Id)
             .ToList();
 
-        if (dto.Filters?.NotCookedInLongTime == true)
+        if (dto.SimilarToRecipeId is null && dto.Filters?.NotCookedInLongTime == true)
         {
             // If explicitly looking for recipes that have been away longest, prioritize by LastCookedDate ASC.
             finalCandidates = candidates
@@ -663,26 +666,35 @@ public partial class RecipeSearchService(
     private async Task<List<RankedRecipe>> SimilarSearchAsync(
         Guid similarToId,
         IQueryable<Recipe> recipesQuery,
+        RecipeSearchFiltersDto appliedFilters,
         CancellationToken ct)
     {
-        var targetDoc = await db.RecipeSearchDocuments
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.RecipeId == similarToId
-                && d.IndexStatus == "ready"
-                && d.EmbeddingStatus == "ready"
-                && d.EmbeddingFingerprint == d.SourceFingerprint
-                && d.EmbeddingModel == SemanticOptions.EmbeddingModel
-                && d.EmbeddingVersion == SemanticOptions.EmbeddingVersion, ct);
+        var source = await db.Recipes.AsNoTracking()
+            .Where(recipe => recipe.Id == similarToId && recipe.DeletedAt == null && recipe.IsReady)
+            .Select(recipe => new
+            {
+                Recipe = recipe,
+                Document = db.RecipeSearchDocuments.AsNoTracking().FirstOrDefault(document => document.RecipeId == recipe.Id)
+            })
+            .FirstOrDefaultAsync(ct);
+        if (source is null) return [];
 
-        if (targetDoc?.EmbeddingJson is null)
-        {
-            // Fallback to lexical if no embedding
-            var targetRecipe = await db.Recipes.FindAsync([similarToId], ct);
-            if (targetRecipe is null) return [];
-            return await GetLexicalCandidatesAsync(recipesQuery.Where(r => r.Id != similarToId), targetRecipe.Name ?? "", null, ct);
-        }
+        var sourceInput = ToSimilarityInput(source.Recipe);
+        var sourceEmbedding = source.Document?.Embedding;
+        var hasCompatibleSourceEmbedding = SemanticOptions.Enabled
+            && source.Document is
+            {
+                IndexStatus: "ready",
+                EmbeddingStatus: "ready",
+                EmbeddingJson: not null
+            }
+            && source.Document.EmbeddingFingerprint == source.Document.SourceFingerprint
+            && source.Document.EmbeddingModel == SemanticOptions.EmbeddingModel
+            && source.Document.EmbeddingVersion == SemanticOptions.EmbeddingVersion
+            && sourceEmbedding is { Length: var dimensions } && dimensions == SemanticOptions.EmbeddingDimensions;
 
-        if (semanticRepository is null || targetDoc.Embedding is null || targetDoc.Embedding.Length != SemanticOptions.EmbeddingDimensions) return [];
+        if (!hasCompatibleSourceEmbedding || semanticRepository is null)
+            return await SimilarLexicalFallbackAsync(source.Recipe, recipesQuery, appliedFilters, ct);
 
         try
         {
@@ -690,22 +702,20 @@ public partial class RecipeSearchService(
             semanticBudget.CancelAfter(TimeSpan.FromMilliseconds(300));
 
             var semanticCandidates = await semanticRepository.SearchAsync(
-                targetDoc.Embedding,
-                new RecipeSearchFiltersDto(),
+                sourceEmbedding!,
+                appliedFilters,
                 SemanticOptions,
                 similarToId,
                 semanticBudget.Token);
             var ids = semanticCandidates.Select(candidate => candidate.RecipeId).ToArray();
             var recipes = ids.Length == 0
                 ? new Dictionary<Guid, Recipe>()
-                : await recipesQuery.Where(recipe => ids.Contains(recipe.Id)).ToDictionaryAsync(recipe => recipe.Id, ct);
+                : await recipesQuery.Where(recipe => recipe.Id != similarToId && ids.Contains(recipe.Id)).ToDictionaryAsync(recipe => recipe.Id, ct);
+            var scorer = new RecipeSimilarityScorer();
 
             return semanticCandidates
                 .Where(candidate => recipes.ContainsKey(candidate.RecipeId))
-                .Select(candidate => new RankedRecipe(
-                    recipes[candidate.RecipeId],
-                    candidate.Score,
-                    [new RecipeSearchReasonDto { Source = "semantic-match", Label = "Similar to original" }]))
+                .Select(candidate => ToSimilarRankedRecipe(recipes[candidate.RecipeId], sourceInput, candidate.Score, scorer, "semantic-match"))
                 .ToList();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -714,19 +724,77 @@ public partial class RecipeSearchService(
         }
         catch (Exception)
         {
-            var sourceRecipe = await db.Recipes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(recipe => recipe.Id == similarToId, ct);
-            if (sourceRecipe is null)
-            {
-                return [];
-            }
+            return await SimilarLexicalFallbackAsync(source.Recipe, recipesQuery, appliedFilters, ct);
+        }
+    }
 
-            return await GetLexicalCandidatesAsync(
-                recipesQuery.Where(recipe => recipe.Id != similarToId),
-                sourceRecipe.Name ?? string.Empty,
-                null,
-                ct);
+    private async Task<List<RankedRecipe>> SimilarLexicalFallbackAsync(
+        Recipe source,
+        IQueryable<Recipe> recipesQuery,
+        RecipeSearchFiltersDto appliedFilters,
+        CancellationToken ct)
+    {
+        var query = BuildSimilarLexicalQuery(source);
+        if (string.IsNullOrWhiteSpace(query)) return [];
+
+        var lexicalCandidates = await GetLexicalCandidatesAsync(
+            recipesQuery.Where(recipe => recipe.Id != source.Id), query, appliedFilters, ct, source.Id);
+        var sourceInput = ToSimilarityInput(source);
+        var scorer = new RecipeSimilarityScorer();
+        return lexicalCandidates
+            .Select(candidate => ToSimilarRankedRecipe(candidate.Recipe, sourceInput, 0d, scorer, "lexical-match"))
+            .ToList();
+    }
+
+    private static RankedRecipe ToSimilarRankedRecipe(
+        Recipe recipe,
+        RecipeSimilarityInput source,
+        double semanticScore,
+        RecipeSimilarityScorer scorer,
+        string reasonSource)
+    {
+        var score = scorer.Score(source, ToSimilarityInput(recipe), semanticScore);
+        return new RankedRecipe(
+            recipe,
+            score.Total,
+            [new RecipeSearchReasonDto { Source = reasonSource, Label = "Similar to original" }],
+            new Dictionary<string, double>
+            {
+                ["similarity.total"] = score.Total,
+                ["similarity.semantic"] = score.Semantic,
+                ["similarity.ingredients"] = score.Ingredients,
+                ["similarity.cuisine"] = score.Cuisine,
+                ["similarity.category"] = score.Category,
+                ["similarity.meal-types"] = score.MealTypes,
+                ["similarity.vegetarian"] = score.VegetarianCompatibility,
+                ["similarity.preparation-time"] = score.PreparationTime
+            });
+    }
+
+    private static RecipeSimilarityInput ToSimilarityInput(Recipe recipe) => new(
+        recipe.Ingredients,
+        recipe.Category,
+        recipe.CuisineType,
+        recipe.MealTypes,
+        recipe.IsVegetarian,
+        recipe.TotalTime);
+
+    private static string BuildSimilarLexicalQuery(Recipe source)
+    {
+        var terms = new List<string>();
+        Add(source.Name);
+        foreach (var ingredient in RecipeSearchDocumentBuilder.ReadIngredients(source.Ingredients).Take(12)) Add(ingredient);
+        Add(source.CuisineType);
+        Add(source.Category);
+        foreach (var mealType in (source.MealTypes ?? []).Take(6)) Add(mealType);
+
+        var compact = string.Join(' ', terms.Distinct(StringComparer.Ordinal).Take(20)).Trim();
+        return compact.Length <= 300 ? compact : compact[..300];
+
+        void Add(string? value)
+        {
+            var normalized = RecipeSearchDocumentBuilder.Normalize(value);
+            if (normalized is not null) terms.Add(normalized);
         }
     }
 
@@ -734,7 +802,8 @@ public partial class RecipeSearchService(
         IQueryable<Recipe> recipesQuery,
         string query,
         RecipeSearchFiltersDto? filters,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid? excludedRecipeId = null)
     {
         if (lexicalRepository is null)
         {
@@ -749,7 +818,7 @@ public partial class RecipeSearchService(
         }
 
         var repository = lexicalRepository;
-        var databaseCandidates = await repository.SearchAsync(query, filters ?? new RecipeSearchFiltersDto(), LexicalCandidateLimit, ct);
+        var databaseCandidates = await repository.SearchAsync(query, filters ?? new RecipeSearchFiltersDto(), LexicalCandidateLimit, excludedRecipeId, ct);
         var candidateIds = databaseCandidates.Select(candidate => candidate.RecipeId).ToArray();
         var recipesById = candidateIds.Length == 0
             ? new Dictionary<Guid, Recipe>()

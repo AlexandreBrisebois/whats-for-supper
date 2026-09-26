@@ -11,7 +11,7 @@ namespace RecipeApi.Tests.Integration.Fixtures;
 /// </summary>
 public static partial class HybridRecipeSearchBaselineFixture
 {
-    public const string Version = "2026.09.15.1";
+    public const string Version = "2026.09.26.1";
 
     public static readonly IReadOnlyList<FixtureRecipe> Recipes =
     [
@@ -35,6 +35,15 @@ public static partial class HybridRecipeSearchBaselineFixture
         Case("fresh vegetables and fish", ["11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"], "fresh-vegetables-fish"),
         Case("something hearty for a cold evening", ["33333333-3333-3333-3333-333333333333", "44444444-4444-4444-4444-444444444444"], "hearty-cold-evening"),
         Case("salmon", ["11111111-1111-1111-1111-111111111111"], "fresh-vegetables-fish", new("Mediterranean", 30)),
+    ];
+
+    // Similar cases use pairwise and top-N relevance, rather than a universal exact order.
+    // SemanticGroup supplies the precomputed cross-language fixture embedding relation.
+    public static readonly IReadOnlyList<SimilarFixtureCase> SimilarCases =
+    [
+        SimilarCase("11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222", "33333333-3333-3333-3333-333333333333", 3),
+        SimilarCase("55555555-5555-5555-5555-555555555555", "66666666-6666-6666-6666-666666666666", "33333333-3333-3333-3333-333333333333", 3),
+        SimilarCase("44444444-4444-4444-4444-444444444444", "33333333-3333-3333-3333-333333333333", "77777777-7777-7777-7777-777777777777", 3),
     ];
 
     // This is a fixture embedding output table, not a word-to-word alias map.
@@ -96,12 +105,16 @@ public static partial class HybridRecipeSearchBaselineFixture
     private static FixtureCase Case(string query, string[] relevantIds, string embeddingSampleGroup, HardConstraints? hardConstraints = null) =>
         new(query, relevantIds.Select(Guid.Parse).ToArray(), embeddingSampleGroup, hardConstraints);
 
+    private static SimilarFixtureCase SimilarCase(string sourceId, string preferredId, string lowerId, int topN) =>
+        new(Guid.Parse(sourceId), Guid.Parse(preferredId), Guid.Parse(lowerId), topN);
+
     [GeneratedRegex("^PT(?:(?<hours>\\d+)H)?(?:(?<minutes>\\d+)M)?$", RegexOptions.IgnoreCase)] private static partial Regex IsoDuration();
     [GeneratedRegex("^(?<minutes>\\d+)\\s*(?:m|min|mins|minute|minutes)$", RegexOptions.IgnoreCase)] private static partial Regex LegacyMinutes();
     [GeneratedRegex("\\s+")] private static partial Regex Whitespace();
 
     public sealed record FixtureRecipe(Guid Id, string Name, string IngredientsJson, string Cuisine, string[] MealTypes, string Category, string? TotalTime, string SemanticGroup, string? RawMetadata);
     public sealed record FixtureCase(string Query, IReadOnlyList<Guid> RelevantRecipeIds, string EmbeddingSampleGroup, HardConstraints? HardConstraints);
+    public sealed record SimilarFixtureCase(Guid SourceId, Guid PreferredId, Guid LowerId, int TopN);
     public sealed record HardConstraints(string? Cuisine = null, int? MaximumTotalTimeMinutes = null);
 }
 

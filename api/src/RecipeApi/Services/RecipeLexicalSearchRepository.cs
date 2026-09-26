@@ -13,6 +13,7 @@ public sealed class RecipeLexicalSearchRepository(RecipeDbContext db)
         string query,
         RecipeSearchFiltersDto filters,
         int candidateLimit,
+        Guid? excludedRecipeId = null,
         CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
@@ -20,7 +21,8 @@ public sealed class RecipeLexicalSearchRepository(RecipeDbContext db)
         var parameters = new List<NpgsqlParameter>
         {
             new("query", trimmedQuery),
-            new("candidateLimit", candidateLimit)
+            new("candidateLimit", candidateLimit),
+            new("excludedRecipeId", (object?)excludedRecipeId ?? DBNull.Value)
         };
         var matchPredicates = new List<string>();
         AddPattern("phrase", trimmedQuery);
@@ -44,6 +46,7 @@ public sealed class RecipeLexicalSearchRepository(RecipeDbContext db)
               AND r.is_ready = TRUE
               AND d.index_status = 'ready'
               AND d.document_text <> ''
+              AND (@excludedRecipeId::uuid IS NULL OR d.recipe_id <> @excludedRecipeId)
               AND {matchPredicate}{hardFilters}
             ORDER BY word_similarity(@query, d.document_text) DESC, d.recipe_id
             LIMIT @candidateLimit

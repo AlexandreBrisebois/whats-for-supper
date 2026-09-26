@@ -192,13 +192,16 @@ sequenceDiagram
 flowchart TD
     A[User opens recipe detail sheet] --> B[Taps Find Similar — data-testid=action-find-similar]
     B --> C[Search reopens in similar mode — similarToRecipeId set in page state]
-    C --> D[API uses recipe embedding as query vector]
-    D --> E[Top Pick + up to 4 similar alternates returned]
-    E --> F[Same detail sheet and actions as normal search]
-    F --> G[User selects via planner CTA or discovery pivot]
+    C --> D[API applies active filters and excludes source before bounded retrieval]
+    D --> E[Semantic candidates are structurally ranked; compact lexical fallback uses the same scorer]
+    E --> F[Top Pick + up to 4 similar alternates returned]
+    F --> G[Same detail sheet and actions as normal search]
+    G --> H[User selects via planner CTA or discovery pivot]
 ```
 
-When the target recipe's embedding is not yet available (`index_status = pending` or `stale`), similar search falls back to lexical matching against the recipe's normalized document text.
+Find Similar uses semantic retrieval for bounded candidate generation and deterministic structured similarity for final ranking. A compatible ready source embedding generates candidates only; ingredient overlap, cuisine, category, meal type, nullable `IsVegetarian` compatibility, and preparation time determine the final Similar score. The nullable vegetarian signal is conservative (both values must be known and equal), and Similar makes no protein claim.
+
+When the target embedding is unavailable, incompatible, or semantic retrieval fails, the API uses a compact bounded lexical query derived from the source facts. Active filters and source exclusion apply before its candidate limit, and the same structured scorer ranks the fallback. Family/vote and pantry boosts are not part of Similar; planned-recipe demotion applies only in a real planner context. Continuing results preserves the first response's Similar ordering.
 
 ---
 
