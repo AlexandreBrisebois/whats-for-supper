@@ -163,6 +163,7 @@ class DockerSmokeTests(unittest.TestCase):
         self.assertEqual(command.count('-f'), 3)
         self.assertIn('./traefik_dynamic.yml:/etc/traefik/dynamic.yml:ro',
                       smoke_overrides['services']['traefik']['volumes'])
+        self.assertEqual(smoke_overrides['services']['api']['build']['target'], 'production')
 
     def test_all_compose_interpolation_inputs_have_pinned_smoke_values(self):
         inputs = set()

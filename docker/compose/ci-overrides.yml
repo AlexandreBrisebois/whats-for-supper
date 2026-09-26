@@ -11,6 +11,8 @@ services:
       - wfs_data:/data
 
   api:
+    build:
+      target: production
     depends_on:
       volume-fixer:
         condition: service_completed_successfully
