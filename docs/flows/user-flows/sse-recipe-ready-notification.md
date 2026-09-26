@@ -34,10 +34,10 @@ When multiple `recipe_ready` events arrive:
 1. Each is pushed to `libraryStore.notifications` independently
 2. The `LibraryToast` component renders ONE notification at a time (most recent on top)
 3. A count badge below shows "+2 more" if >1 is queued
-4. Tapping "more" opens a bottom drawer listing all pending notifications
-5. Each can be dismissed individually or "Add to this week" from the drawer
+4. The count badge is informational; it does not open a notification drawer
+5. Opening or dismissing the current notification leaves the remaining queue intact
 
-**Mère-Designer ruling:** No toast shower. No replace. One visible + count badge + expandable drawer. Keeps the UI calm while not hiding information.
+**Mère-Designer ruling:** No toast shower. No replace. One visible notification + count badge keeps the UI calm while not hiding information.
 
 ---
 
@@ -72,17 +72,20 @@ Auto-dismiss: 5s progress bar (sage, thin, bottom of toast)
 
 Framer Motion: `slide-in-from-bottom`, spring `stiffness: 300, damping: 30`. Exit: fade-out 200ms.
 
-### "Add to this week" placement
+### Interaction
 
-**Not in the toast itself.** The toast is confirmational, not transactional.
+The toast is confirmational. It does not start a planning workflow.
 
-On toast tap → open a bottom drawer with:
-- Recipe name + image (larger view)
-- Primary CTA: "Add to this week" → opens `QuickFindModal` filtered to this recipe
-- Secondary: "View recipe" → navigates to `/recipes/{id}`
-- Tertiary: "Dismiss"
+```
+✓ [Recipe Name] is ready!
+Tap to view recipe
+```
 
-**Mère-Designer ruling:** Toasts should confirm, not transact. Tap opens the action surface.
+- Tap toast → dismiss notification, then open the completed recipe
+- Tap X → dismiss notification without navigation
+- No interaction → auto-dismiss after 5 seconds
+
+Planning actions remain in Planner.
 
 ---
 
@@ -121,10 +124,10 @@ test('recipe_ready SSE → library toast with recipe name', async ({ page }) => 
   // 5. assert toast auto-dismisses after 5s
 });
 
-test('recipe_ready toast → tap opens action drawer', async ({ page }) => {
+test('recipe_ready toast → tap opens completed recipe', async ({ page }) => {
   // 1-3. same setup
   // 4. tap toast
-  // 5. assert drawer open with 'Add to this week' button visible
+  // 5. assert the completed recipe opens and the notification is dismissed
 });
 
 test('multiple recipe_ready events → count badge shown', async ({ page }) => {

@@ -750,7 +750,7 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
   // ── LibraryToast on recipe_ready ─────────────────────────────────────────
   // When SSE fires `recipe_ready` for a recipe that was submitted in this
   // session (captureStore has it), the LibraryToast appears at the top of
-  // the screen (inside notification-zone) with the recipe name and a "Tap to add to your week" hint.
+  // the screen (inside notification-zone) with the recipe name and a "Tap to view recipe" hint.
   //
   // Strategy: navigate to /home, then push a 'ready' notification directly to
   // libraryStore via window.__libraryStore (exposed in non-production builds).
@@ -785,12 +785,15 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
     await expect(toast).toBeVisible({ timeout: 5_000 });
     await expect(toast).toContainText(/is ready/i);
+    await expect(toast).toContainText('Tap to view recipe');
 
     // Ensure it's in the top notification zone
     await expect(page.getByTestId('notification-zone')).toContainText(recipeName);
   });
 
-  test('LibraryToast drawer actions let the user add a recipe to this week', async ({ page }) => {
+  test('LibraryToast tap opens the completed recipe and dismisses its notification', async ({
+    page,
+  }) => {
     const recipeId = MOCK_IDS.RECIPE_LASAGNA;
     const recipeName = 'Test Lasagna';
 
@@ -812,12 +815,105 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     );
 
     await expect(page.locator('[role="status"]').filter({ hasText: recipeName })).toBeVisible();
-    await page.locator('[role="status"]').filter({ hasText: recipeName }).click();
+    const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
+    await expect(toast).toBeVisible();
+    await toast.getByRole('button', { name: `View ${recipeName}` }).click();
 
-    await expect(page.getByTestId('library-toast-add-to-week')).toBeVisible();
-    await page.getByTestId('library-toast-add-to-week').dispatchEvent('click');
+    await expect(page).toHaveURL(new RegExp(`/recipes\\?open=${recipeId}`), { timeout: 15_000 });
+    await expect
+      .poll(() =>
+        page.evaluate((id) => {
+          return (window as any).__libraryStore
+            .getState()
+            .notifications.some(
+              (notification: { recipeId: string }) => notification.recipeId === id
+            );
+        }, recipeId)
+      )
+      .toBe(false);
+  });
 
-    await expect(page).toHaveURL(/\/planner/, { timeout: 15_000 });
+  test('LibraryToast X dismisses without opening the recipe', async ({ page }) => {
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const recipeName = 'Test Lasagna';
+
+    await page.setViewportSize({ width: 390, height: 1000 });
+    await page.goto('/home');
+    await expect(page.getByTestId('quick-capture-trigger')).toBeVisible({ timeout: 15_000 });
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 10_000 });
+
+    await page.evaluate(
+      ({ id, name }) => {
+        (window as any).__libraryStore.getState().pushNotification({
+          recipeId: id,
+          name,
+          type: 'ready',
+        });
+      },
+      { id: recipeId, name: recipeName }
+    );
+
+    const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
+    await expect(toast).toBeVisible();
+    await toast.getByRole('button', { name: 'Dismiss notification' }).click();
+
+    await expect(toast).toBeHidden();
+    await expect(page).toHaveURL(/\/home/);
+  });
+
+  test('LibraryToast auto-dismisses without navigation', async ({ page }) => {
+    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const recipeName = 'Test Lasagna';
+
+    await page.goto('/home');
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 10_000 });
+    await page.evaluate(
+      ({ id, name }) => {
+        (window as any).__libraryStore.getState().pushNotification({
+          recipeId: id,
+          name,
+          type: 'ready',
+        });
+      },
+      { id: recipeId, name: recipeName }
+    );
+
+    const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
+    await expect(toast).toBeVisible();
+    await expect(toast).toBeHidden({ timeout: 6_000 });
+    await expect(page).toHaveURL(/\/home/);
+  });
+
+  test('LibraryToast shows the newest ready notification and queued count', async ({ page }) => {
+    const olderRecipeName = 'Older Lasagna';
+    const newestRecipeName = 'Newest Pasta';
+
+    await page.goto('/home');
+    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 10_000 });
+
+    await page.evaluate(
+      ({ olderId, newerId, olderName, newerName }) => {
+        const store = (window as any).__libraryStore.getState();
+        store.pushNotification({ recipeId: olderId, name: olderName, type: 'ready' });
+        store.pushNotification({ recipeId: newerId, name: newerName, type: 'ready' });
+      },
+      {
+        olderId: MOCK_IDS.RECIPE_LASAGNA,
+        newerId: MOCK_IDS.RECIPE_SPAGHETTI,
+        olderName: olderRecipeName,
+        newerName: newestRecipeName,
+      }
+    );
+
+    const toast = page.locator('[role="status"]').filter({ hasText: newestRecipeName });
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText('+1 more');
+    await toast.getByRole('button', { name: `View ${newestRecipeName}` }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/recipes\\?open=${MOCK_IDS.RECIPE_SPAGHETTI}`));
+    await expect(
+      page.locator('[role="status"]').filter({ hasText: olderRecipeName })
+    ).toBeVisible();
   });
 
   // ── RecipeFailureBanner on recipe_failed ─────────────────────────────────
