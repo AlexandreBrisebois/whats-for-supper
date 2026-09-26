@@ -1023,11 +1023,9 @@ describe('RecipesPage', () => {
       const readyCard = screen.getByTestId(`recipe-card-${makeSearchResult(4).id}`);
 
       expect(within(noIssueCard).queryByLabelText(/Import issue status:/)).not.toBeInTheDocument();
+      expect(within(reportedCard).getByLabelText('Recipe reported')).toBeInTheDocument();
       expect(
-        within(reportedCard).getByLabelText('Import issue status: Reported')
-      ).toBeInTheDocument();
-      expect(
-        within(readyCard).getByLabelText('Import issue status: Reimported — check recipe')
+        within(readyCard).getByLabelText('Recipe updated — ready to review')
       ).toBeInTheDocument();
     });
 

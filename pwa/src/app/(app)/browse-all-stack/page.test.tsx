@@ -409,7 +409,7 @@ describe('BrowseAllStack — initial card display', () => {
       render(<BrowseAllStackPage />);
     });
 
-    expect(await screen.findByLabelText('Import issue status: Reported')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Recipe reported')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ready to review' })).not.toBeInTheDocument();
   });

@@ -512,23 +512,16 @@ export function RecipeDetailSheet({
         data-testid="recipe-detail-sheet"
         className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-[rgba(253,252,240,0.96)] shadow-[0_24px_80px_-24px_rgba(55,40,30,0.45)]"
       >
-        <div className="flex items-center justify-between px-6 pt-6">
-          <div>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 px-6 pt-6">
+          <div className="flex min-w-0 items-center gap-2">
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-terracotta/70">
               {t('recipes.detailTitle', 'Recipe detail')}
             </p>
             {recipe?.importIssue && (
-              <div className="mt-2">
-                <RecipeImportIssueBadge status={recipe.importIssue.status} />
-                {recipe.importIssue.reimportFailureMessage && (
-                  <p role="status" className="mt-2 max-w-sm text-sm font-bold text-terracotta-700">
-                    {recipe.importIssue.reimportFailureMessage}
-                  </p>
-                )}
-              </div>
+              <RecipeImportIssueBadge status={recipe.importIssue.status} variant="compact" />
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {!isLoading && recipe && !isEditing && (
               <button
                 type="button"
@@ -601,6 +594,11 @@ export function RecipeDetailSheet({
               <X size={18} />
             </button>
           </div>
+          {recipe?.importIssue?.reimportFailureMessage && (
+            <p role="status" className="basis-full text-sm font-bold text-terracotta-700">
+              {recipe.importIssue.reimportFailureMessage}
+            </p>
+          )}
         </div>
 
         {isLoading || !recipe ? (

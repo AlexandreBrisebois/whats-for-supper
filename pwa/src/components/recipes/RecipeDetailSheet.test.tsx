@@ -145,7 +145,7 @@ describe('RecipeDetailSheet', () => {
         { reasons: ['ingredients'], note: null }
       )
     );
-    expect(await screen.findByLabelText('Import issue status: Reported')).toBeVisible();
+    expect(await screen.findByLabelText('Recipe reported')).toBeVisible();
     fireEvent.click(screen.getByTestId('action-gear-menu'));
     expect(screen.getByRole('button', { name: 'Review issue' })).toBeVisible();
   });
@@ -167,7 +167,10 @@ describe('RecipeDetailSheet', () => {
       />
     );
 
-    await screen.findByLabelText('Import issue status: Reimported — check recipe');
+    expect(await screen.findByLabelText('Recipe updated — ready to review')).toHaveClass(
+      'shrink-0',
+      'whitespace-nowrap'
+    );
     fireEvent.click(screen.getByTestId('action-gear-menu'));
     fireEvent.click(screen.getByRole('button', { name: 'Review issue' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
@@ -176,7 +179,7 @@ describe('RecipeDetailSheet', () => {
       expect(mockResolveRecipeImportIssue).toHaveBeenCalledWith(recipeWithIssue.id)
     );
     expect(screen.queryByRole('dialog', { name: 'Review issue' })).toBeNull();
-    expect(screen.queryByLabelText(/Import issue status/)).toBeNull();
+    expect(screen.queryByLabelText(/Recipe (reported|updated)/)).toBeNull();
     expect(mockAddToast).toHaveBeenCalledWith({ type: 'success', message: 'Marked as resolved' });
   });
 
@@ -269,9 +272,7 @@ describe('RecipeDetailSheet', () => {
       message: 'Reimporting in background',
     });
     await waitFor(() => expect(mockGetRecipe).toHaveBeenCalledTimes(2));
-    expect(
-      await screen.findByLabelText('Import issue status: Reimported — check recipe')
-    ).toBeVisible();
+    expect(await screen.findByLabelText('Recipe updated — ready to review')).toBeVisible();
   });
 
   it('hides the share button if the recipe has no hero image', async () => {
