@@ -23,7 +23,7 @@ class WorkflowSecurityTests(unittest.TestCase):
     def test_reusable_validation_uses_only_a_non_production_test_auth_value(self):
         validation = self.text["validate.yml"]
         self.assertNotIn("secrets.", validation)
-        self.assertIn("HEARTH_SECRET: wfs-ci-test-only", validation)
+        self.assertIn("HEARTH_SECRET: Paris-Montreal", validation)
 
     def test_aws_secrets_are_confined_to_the_aws_delivery_workflow(self):
         aws_secret_names = (

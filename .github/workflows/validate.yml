@@ -186,7 +186,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CI: true
-      HEARTH_SECRET: wfs-ci-test-only
+      # Must match playwright.config.ts: its managed Next server validates the
+      # h_access cookie that the E2E fixture signs with this value.
+      HEARTH_SECRET: Paris-Montreal
     steps:
       - uses: actions/checkout@v7
         with:
