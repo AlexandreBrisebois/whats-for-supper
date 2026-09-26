@@ -168,10 +168,14 @@ class DockerHubWorkflowContractTests(unittest.TestCase):
         self.assertNotIn("192.168.1.226", self.workflow)
         self.assertNotIn("self-hosted", self.workflow)
 
-    def test_validation_job_has_no_docker_hub_credentials(self):
-        validation, _ = self.workflow.split("  publish:\n", 1)
-        self.assertNotIn("DOCKERHUB_USERNAME", validation)
-        self.assertNotIn("DOCKERHUB_TOKEN", validation)
+    def test_preflight_checks_credentials_and_tags_once_before_the_matrix(self):
+        preflight, publish = self.workflow.split("  publish:\n", 1)
+        self.assertIn("DOCKERHUB_USERNAME", preflight)
+        self.assertIn("DOCKERHUB_TOKEN", preflight)
+        self.assertIn("Reject existing Docker Hub image tags", preflight)
+        self.assertIn("publish-preflight", preflight)
+        self.assertNotIn("Require Docker Hub credentials", publish)
+        self.assertNotIn("Reject existing Docker Hub image tag", publish)
 
 
 if __name__ == "__main__":

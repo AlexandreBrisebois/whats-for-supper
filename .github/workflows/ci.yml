@@ -3,206 +3,23 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
 
-# Cancel in-progress runs for the same branch/PR when a new commit arrives.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
-  # ────────────────────────────────────────────────────────────────────────────
-  # API — build & unit tests
-  # ────────────────────────────────────────────────────────────────────────────
-  build-api:
-    name: API — build & test
-    runs-on: ubuntu-latest
+  validate:
+    name: Validate changed components
+    uses: ./.github/workflows/validate.yml
 
-    services:
-      postgres:
-        image: postgres:18-alpine3.23
-        env:
-          POSTGRES_USER: recipe_app
-          POSTGRES_PASSWORD: ci_password
-          POSTGRES_DB: recipe_app_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U recipe_app -d recipe_app_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up .NET 11 Preview
-        uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '11.0.100-preview.6.26359.118'
-          cache: true
-          cache-dependency-path: '**/*.csproj'
-
-      - name: Restore dependencies
-        run: dotnet restore src/RecipeApi.Tests/RecipeApi.Tests.csproj
-        working-directory: api
-
-      - name: Lint (C#)
-        run: dotnet format --verify-no-changes --verbosity diagnostic
-        working-directory: api
-
-
-      - name: Build
-        run: dotnet build src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --configuration Release
-        working-directory: api
-
-      - name: Test
-        run: >
-          dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj
-          --no-build
-          --configuration Release
-          --logger "trx;LogFileName=test-results.trx"
-          --results-directory ./test-results
-        working-directory: api
-        env:
-          POSTGRES_CONNECTION_STRING: postgres://recipe_app:ci_password@localhost:5432/recipe_app_test
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: api-test-results
-          path: api/test-results/*.trx
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # PWA — type-check, lint, and E2E tests
-  # ────────────────────────────────────────────────────────────────────────────
-  test-pwa:
-    name: PWA — typecheck, lint & E2E
-    runs-on: ubuntu-latest
-    needs: contract-integrity-gate
-    env:
-      CI: true
-      HEARTH_SECRET: ${{ secrets.HEARTH_SECRET || 'Paris-Montreal' }}
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Node 22
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: pwa/package-lock.json
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pwa/package-lock.json') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-
-
-      - name: Install PWA dependencies
-        run: npm ci
-        working-directory: pwa
-
-      - name: Type-check
-        run: npm run typecheck
-        working-directory: pwa
-
-      - name: Lint
-        run: npm run lint
-        working-directory: pwa
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-        working-directory: pwa
-
-      - name: Build PWA
-        run: npm run build
-        working-directory: pwa
-        env:
-          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5001
-          API_INTERNAL_URL: http://127.0.0.1:5001
-          NEXT_PUBLIC_ENABLE_AGENT_SEARCH: true
-          NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: true
-
-      - name: E2E — Playwright
-        run: npm run test:e2e
-        working-directory: pwa
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report
-          path: pwa/playwright-report/
-          if-no-files-found: ignore
-
-      - name: Upload service logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: service-logs
-          path: |
-            pwa/pwa.log
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Contract Integrity Gate — verify Spec ↔ Mock ↔ API parity
-  # (Phase 4 of Team Orchestrator: Reintegration & Merge)
-  # ────────────────────────────────────────────────────────────────────────────
-  contract-integrity-gate:
-    name: Integrity Gate — Contract Parity
-    runs-on: ubuntu-latest
-    needs: build-api
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: '3.x'
-
-      - name: Install Python dependencies
-        run: pip install pyyaml
-
-      - name: Verify API ↔ Spec ↔ Mock parity
-        run: python3 scripts/agent/api_tools.py
-        env:
-          SPEC_PATH: specs/openapi.yaml
-
-      - name: Schema drift — Tier 1 (spec vs C# DTOs)
-        run: python3 scripts/agent/drift.py --schema-only
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Docker Compose smoke test — verify all services start and pass health checks
-  # ────────────────────────────────────────────────────────────────────────────
-  docker-smoke:
-    name: Docker Compose — smoke test
-    runs-on: ubuntu-latest
-    needs: test-pwa
-    # Run on push to main or PRs that touch relevant code
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install smoke runner dependency
-        run: python3 -m pip install pyyaml
-
-      - name: Build, verify and tear down disposable Docker stack
-        run: python3 -B scripts/agent/docker_smoke.py
-
-      - name: Fallback teardown after runner cancellation
-        if: always()
-        run: python3 -B scripts/agent/docker_smoke.py --down
+  codeql:
+    name: Analyze validated source
+    needs: validate
+    uses: ./.github/workflows/codeql.yml

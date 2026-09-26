@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: dockerhub-publish
+  cancel-in-progress: false
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -56,9 +60,50 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "revision=$tag_commit" >> "$GITHUB_OUTPUT"
 
+  validate:
+    name: Validate release source
+    if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
+    uses: ./.github/workflows/validate.yml
+    with:
+      full-validation: true
+      ref: ${{ github.sha }}
+
+  publish-preflight:
+    name: Validate Docker Hub publication
+    needs: validate-tag
+    if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
+    runs-on: ubuntu-latest
+    environment: dockerhub-publish
+    steps:
+      - name: Require Docker Hub credentials
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$DOCKERHUB_USERNAME"
+          test -n "$DOCKERHUB_TOKEN"
+
+      - name: Reject existing Docker Hub image tags
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          for image in \
+            brisebois/whats-for-supper-api \
+            brisebois/whats-for-supper-pwa \
+            brisebois/whats-for-supper-db-migration; do
+            status="$(curl --fail-with-body --silent --show-error --output /dev/null --write-out '%{http_code}' "https://hub.docker.com/v2/repositories/${image}/tags/${VERSION}/" || true)"
+            case "$status" in
+              404) ;;
+              200) echo "Docker Hub image tag already exists: ${image}:${VERSION}" >&2; exit 1 ;;
+              *) echo "Could not verify Docker Hub image tag ${image}:${VERSION} (HTTP ${status:-none})." >&2; exit 1 ;;
+            esac
+          done
+
   publish:
     name: Build and push Docker Hub images
-    needs: validate-tag
+    needs: [validate-tag, validate, publish-preflight]
     if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
     runs-on: ubuntu-latest
     environment: dockerhub-publish
@@ -78,28 +123,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-
-      - name: Require Docker Hub credentials
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          test -n "$DOCKERHUB_USERNAME"
-          test -n "$DOCKERHUB_TOKEN"
-
-      - name: Reject existing Docker Hub image tag
-        env:
-          IMAGE: ${{ matrix.image }}
-          VERSION: ${{ needs.validate-tag.outputs.version }}
-        run: |
-          set -euo pipefail
-          status="$(curl --fail-with-body --silent --show-error --output /dev/null --write-out '%{http_code}' "https://hub.docker.com/v2/repositories/${IMAGE}/tags/${VERSION}/" || true)"
-          case "$status" in
-            404) ;;
-            200) echo "Docker Hub image tag already exists: ${IMAGE}:${VERSION}" >&2; exit 1 ;;
-            *) echo "Could not verify Docker Hub image tag ${IMAGE}:${VERSION} (HTTP ${status:-none})." >&2; exit 1 ;;
-          esac
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v4

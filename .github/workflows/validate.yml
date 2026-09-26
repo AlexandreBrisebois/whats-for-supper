@@ -1,0 +1,256 @@
+name: Validate
+
+on:
+  workflow_call:
+    inputs:
+      full-validation:
+        description: Run every validation job regardless of changed paths.
+        required: false
+        default: false
+        type: boolean
+      ref:
+        description: Commit or tag to validate. Defaults to the triggering SHA.
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  changes:
+    name: Determine affected validation
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      pwa: ${{ steps.filter.outputs.pwa }}
+      contract: ${{ steps.filter.outputs.contract }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.sha }}
+      - id: filter
+        env:
+          FULL_VALIDATION: ${{ inputs.full-validation }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$FULL_VALIDATION" = 'true' ] || { [ "$EVENT_NAME" != 'pull_request' ] && [ "$EVENT_NAME" != 'push' ]; }; then
+            files='all files selected'
+          elif [ "$EVENT_NAME" = 'pull_request' ]; then
+            files="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD)"
+          elif [ -n "$BEFORE" ] && ! echo "$BEFORE" | grep -Eq '^0+$'; then
+            files="$(git diff --name-only "$BEFORE" HEAD)"
+          else
+            files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+          fi
+          matches() { printf '%s\n' "$files" | grep -Eq "$1"; }
+          selected() {
+            if [ "$FULL_VALIDATION" = 'true' ] || matches "$1"; then echo true; else echo false; fi
+          }
+          echo "api=$(selected '^(api/|specs/openapi\.yaml$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "pwa=$(selected '^(pwa/|specs/openapi\.yaml$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "contract=$(selected '^(api/|pwa/|specs/openapi\.yaml$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "docker=$(selected '^(api/|pwa/|docker/|Taskfile\.yml$|scripts/agent/docker_smoke\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+
+  api-validate:
+    name: API — validate
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Set up .NET 11 Preview
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '11.0.100-preview.6.26359.118'
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+      - name: Restore dependencies
+        run: dotnet restore src/RecipeApi.Tests/RecipeApi.Tests.csproj
+        working-directory: api
+      - name: Lint (C#)
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+        working-directory: api
+      - name: Build
+        run: dotnet build src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --configuration Release
+        working-directory: api
+
+  api-test:
+    name: API — test
+    needs: [changes, api-validate]
+    if: needs.changes.outputs.api == 'true' && needs.api-validate.result == 'success'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine3.23
+        env:
+          POSTGRES_USER: recipe_app
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: recipe_app_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U recipe_app -d recipe_app_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Set up .NET 11 Preview
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '11.0.100-preview.6.26359.118'
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+      - name: Restore dependencies
+        run: dotnet restore src/RecipeApi.Tests/RecipeApi.Tests.csproj
+        working-directory: api
+      - name: Build
+        run: dotnet build src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore --configuration Release
+        working-directory: api
+      - name: Test
+        run: >
+          dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-build --configuration Release
+          --logger "trx;LogFileName=test-results.trx" --results-directory ./test-results
+        working-directory: api
+        env:
+          POSTGRES_CONNECTION_STRING: postgres://recipe_app:ci_password@localhost:5432/recipe_app_test
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-test-results
+          path: api/test-results/*.trx
+
+  pwa-validate:
+    name: PWA — validate
+    needs: changes
+    if: needs.changes.outputs.pwa == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Install PWA dependencies
+        run: npm ci
+        working-directory: pwa
+      - name: Type-check
+        run: npm run typecheck
+        working-directory: pwa
+      - name: Lint
+        run: npm run lint
+        working-directory: pwa
+
+  contract-integrity:
+    name: Integrity Gate — Contract Parity
+    needs: changes
+    if: needs.changes.outputs.contract == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - name: Install Python dependencies
+        run: pip install pyyaml
+      - name: Verify API ↔ Spec ↔ Mock parity
+        run: python3 scripts/agent/api_tools.py
+        env:
+          SPEC_PATH: specs/openapi.yaml
+      - name: Schema drift — Tier 1 (spec vs C# DTOs)
+        run: python3 scripts/agent/drift.py --schema-only
+
+  pwa-e2e:
+    name: PWA — build & E2E
+    needs: [changes, pwa-validate, contract-integrity]
+    if: >-
+      needs.changes.outputs.pwa == 'true' && needs.pwa-validate.result == 'success' &&
+      (needs.contract-integrity.result == 'success' || needs.contract-integrity.result == 'skipped')
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+      HEARTH_SECRET: wfs-ci-test-only
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pwa/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+      - name: Install PWA dependencies
+        run: npm ci
+        working-directory: pwa
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: pwa
+      - name: Build PWA
+        run: npm run build
+        working-directory: pwa
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5001
+          API_INTERNAL_URL: http://127.0.0.1:5001
+          NEXT_PUBLIC_ENABLE_AGENT_SEARCH: true
+          NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: true
+      - name: E2E — Playwright
+        run: npm run test:e2e
+        working-directory: pwa
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: pwa/playwright-report/
+          if-no-files-found: ignore
+      - name: Upload service logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: service-logs
+          path: pwa/pwa.log
+
+  docker-smoke:
+    name: Docker Compose — smoke test
+    needs: [changes, api-test, pwa-e2e]
+    if: >-
+      needs.changes.outputs.docker == 'true' &&
+      (needs.api-test.result == 'success' || needs.api-test.result == 'skipped') &&
+      (needs.pwa-e2e.result == 'success' || needs.pwa-e2e.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Install smoke runner dependency
+        run: python3 -m pip install pyyaml
+      - name: Build, verify and tear down disposable Docker stack
+        run: python3 -B scripts/agent/docker_smoke.py
+      - name: Fallback teardown after runner cancellation
+        if: always()
+        run: python3 -B scripts/agent/docker_smoke.py --down

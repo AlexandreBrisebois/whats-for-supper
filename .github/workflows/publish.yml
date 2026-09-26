@@ -6,10 +6,24 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: private-registry-publish
+  cancel-in-progress: false
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  validate:
+    name: Validate release source
+    uses: ./.github/workflows/validate.yml
+    with:
+      full-validation: true
+      ref: ${{ github.sha }}
+
   determine-runner:
     name: Determine Best Runner
     runs-on: ubuntu-latest
@@ -56,7 +70,7 @@ jobs:
 
   publish:
     name: Build & Push Images
-    needs: determine-runner
+    needs: [validate, determine-runner]
     # Only run if pushed by AlexandreBrisebois in the main repository
     if: >
       github.repository == 'AlexandreBrisebois/whats-for-supper' &&

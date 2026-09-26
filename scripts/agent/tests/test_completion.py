@@ -159,6 +159,13 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client']),
                                              mock.call(['task', 'format'])])
 
+    def test_github_workflows_are_harness_configuration_not_unknown(self):
+        f = self.finish()
+        self.assertEqual(f.classes_for(['.github/workflows/ci.yml']), {'harness'})
+        with mock.patch.object(f, 'run_command') as run:
+            self.assertEqual(f.prepare(['.github/workflows/ci.yml']), 0)
+        run.assert_not_called()
+
     def test_prepare_generation_and_format_precede_any_verification(self):
         f = self.finish()
         with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run:

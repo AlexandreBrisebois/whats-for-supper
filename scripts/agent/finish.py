@@ -28,7 +28,7 @@ def classes_for(paths):
                 or path.startswith(('api/src/RecipeApi/Dto/', 'api/src/RecipeApi/Controllers/',
                                     'api/src/RecipeApi/Data/', 'api/src/RecipeApi/Models/'))):
             classes.add('contract')
-        elif path == 'Taskfile.yml' or path.startswith(('scripts/agent/', '.agents/')):
+        elif path == 'Taskfile.yml' or path.startswith(('scripts/agent/', '.agents/', '.github/workflows/')):
             classes.add('harness')
         elif path.endswith('.md') or (path.startswith('.kiro/specs/')
                                         and path.endswith(('.yaml', '.yml', '.json', '.py', '.patch'))):

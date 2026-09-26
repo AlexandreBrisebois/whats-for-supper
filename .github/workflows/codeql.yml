@@ -4,15 +4,16 @@
 name: CodeQL
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_call:
   schedule:
     - cron: '0 2 * * 1'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   analyze:
@@ -24,7 +25,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        language: [ 'csharp', 'javascript', 'typescript' ]
+        language: [ 'csharp', 'javascript-typescript' ]
     steps:
     - name: Checkout repository
       uses: actions/checkout@v7
