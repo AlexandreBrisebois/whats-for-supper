@@ -34,6 +34,9 @@ public class RecipeSearchFiltersDto
     [JsonPropertyName("quickOnly")]
     public bool? QuickOnly { get; set; }
 
+    [JsonPropertyName("vegetarianOnly")]
+    public bool? VegetarianOnly { get; set; }
+
     [JsonPropertyName("notCookedInLongTime")]
     public bool? NotCookedInLongTime { get; set; }
 

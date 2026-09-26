@@ -212,6 +212,21 @@ export function RecipeFiltersSheet({
           : [...concepts, concept],
       };
     });
+  const isVegetarian = (item: RecipeSearchMainDefinitionDto) => item.id === 'vegetarian';
+  const isMainSelected = (item: RecipeSearchMainDefinitionDto) =>
+    isVegetarian(item)
+      ? Boolean(draftFilters.vegetarianOnly)
+      : Boolean(item.concept && selectedConcepts.includes(item.concept));
+  const toggleMain = (item: RecipeSearchMainDefinitionDto) => {
+    if (isVegetarian(item)) {
+      setDraftFilters((current) => ({
+        ...current,
+        vegetarianOnly: current.vegetarianOnly ? null : true,
+      }));
+      return;
+    }
+    if (item.concept) toggleConcept(item.concept);
+  };
   const existingVisible = [
     ...PRIMARY_EXISTING_FILTERS,
     ...SECONDARY_EXISTING_FILTERS.filter((key) => existingExpanded || Boolean(draftFilters[key])),
@@ -318,8 +333,8 @@ export function RecipeFiltersSheet({
                   <Chip
                     key={item.id ?? item.concept}
                     label={mainLabel(item)}
-                    selected={selectedConcepts.includes(item.concept)}
-                    onClick={() => toggleConcept(item.concept!)}
+                    selected={isMainSelected(item)}
+                    onClick={() => toggleMain(item)}
                     testId={`mobile-filter-main-${item.id ?? item.concept}`}
                   />
                 ) : null

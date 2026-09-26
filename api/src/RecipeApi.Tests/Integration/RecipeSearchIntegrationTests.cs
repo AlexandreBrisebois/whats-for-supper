@@ -85,6 +85,34 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Search_WithVegetarianOnly_Excludes_NonVegetarian_Recipes()
+    {
+        var vegetarian = CreateRecipe("Vegetarian chili", "Beans and vegetables", "30 min");
+        vegetarian.IsVegetarian = true;
+        vegetarian.VegetarianClassificationVersion = 1;
+        vegetarian.VegetarianClassifiedAt = TestNow;
+        var nonVegetarian = CreateRecipe("Beef chili", "Beef and beans", "30 min");
+        nonVegetarian.IsVegetarian = false;
+        nonVegetarian.VegetarianClassificationVersion = 1;
+        nonVegetarian.VegetarianClassifiedAt = TestNow;
+        await SeedRecipeAsync(vegetarian);
+        await SeedRecipeAsync(nonVegetarian);
+
+        var response = await PostSearchAsync(new
+        {
+            query = "chili",
+            filters = new { vegetarianOnly = true }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await ReadDataAsync(response);
+        var returned = SearchResultIds(document.RootElement)
+            .Append(document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid())
+            .ToHashSet();
+        Assert.Equal([vegetarian.Id], returned);
+    }
+
+    [Fact]
     public async Task Search_Matches_Query_From_Notes_And_Emits_NotesReason()
     {
         await SeedRecipeAsync(new Recipe

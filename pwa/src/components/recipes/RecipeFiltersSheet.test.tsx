@@ -137,6 +137,18 @@ describe('RecipeFiltersSheet', () => {
     });
   });
 
+  it('maps Vegetarian into the server-enforced filter instead of a semantic preference', () => {
+    const { onApply } = renderSheet();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vegetarian' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+
+    expect(onApply).toHaveBeenCalledWith({
+      filters: { vegetarianOnly: true },
+      preferences: {},
+    });
+  });
+
   it('keeps draft Apply and Clear behavior with reachable actions and allows closing without applying', () => {
     const { onApply, onClose } = renderSheet();
     fireEvent.click(screen.getByRole('button', { name: 'Quick' }));

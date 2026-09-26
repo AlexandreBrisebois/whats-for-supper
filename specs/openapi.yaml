@@ -213,6 +213,7 @@ components:
         neverCooked: { type: [boolean, 'null'] }
         familyFavorite: { type: [boolean, 'null'] }
         quickOnly: { type: [boolean, 'null'] }
+        vegetarianOnly: { type: [boolean, 'null'], description: Restricts results to recipes classified as vegetarian. }
         notCookedInLongTime: { type: [boolean, 'null'] }
         discoverableOnly: { type: [boolean, 'null'] }
         reportedOnly: { type: [boolean, 'null'] }

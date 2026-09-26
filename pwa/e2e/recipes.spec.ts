@@ -202,7 +202,7 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId('search-empty-state')).toBeVisible();
   });
 
-  test('groups filter discovery choices and applies Main as a semantic preference', async ({
+  test('groups filter discovery choices and applies Vegetarian as a hard filter', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -256,6 +256,7 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId('mobile-filter-main-taco-night')).toBeVisible();
     await page.getByTestId('mobile-all-cuisines').click();
     await page.getByTestId('mobile-filter-main-taco-night').click();
+    await page.getByTestId('mobile-filter-main-vegetarian').click();
     await page.getByTestId('mobile-filter-meal-Supper').click();
     await page.getByTestId('mobile-filter-cuisine-French').click();
     await page.getByTestId('mobile-filter-apply').click();
@@ -263,7 +264,7 @@ test.describe('Recipes Search Page', () => {
     await expect
       .poll(() => lastSearch)
       .toMatchObject({
-        filters: { mealTypes: ['Supper'], cuisines: ['French'] },
+        filters: { mealTypes: ['Supper'], cuisines: ['French'], vegetarianOnly: true },
         preferences: { concepts: ['tacos'] },
       });
   });

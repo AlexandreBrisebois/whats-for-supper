@@ -2063,6 +2063,9 @@ export function deserializeIntoRecipeSearchFiltersDto(
     reportedOnly: (n) => {
       recipeSearchFiltersDto.reportedOnly = n.getBooleanValue();
     },
+    vegetarianOnly: (n) => {
+      recipeSearchFiltersDto.vegetarianOnly = n.getBooleanValue();
+    },
   };
 }
 /**
@@ -3595,6 +3598,10 @@ export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
    * The reportedOnly property
    */
   reportedOnly?: boolean | null;
+  /**
+   * Restricts results to recipes classified as vegetarian.
+   */
+  vegetarianOnly?: boolean | null;
 }
 export interface RecipeSearchMainDefinitionDto extends AdditionalDataHolder, Parsable {
   /**
@@ -4920,6 +4927,7 @@ export function serializeRecipeSearchFiltersDto(
   writer.writeBooleanValue('quickOnly', recipeSearchFiltersDto.quickOnly);
   writer.writeBooleanValue('readyToReviewOnly', recipeSearchFiltersDto.readyToReviewOnly);
   writer.writeBooleanValue('reportedOnly', recipeSearchFiltersDto.reportedOnly);
+  writer.writeBooleanValue('vegetarianOnly', recipeSearchFiltersDto.vegetarianOnly);
   writer.writeAdditionalData(recipeSearchFiltersDto.additionalData);
 }
 /**

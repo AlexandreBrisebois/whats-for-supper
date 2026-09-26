@@ -11,6 +11,27 @@ namespace RecipeApi.Tests.Integration;
 
 public partial class RecipeLexicalSearchPostgresTests
 {
+    [PostgresTheory]
+    [InlineData("lexical")]
+    [InlineData("vector")]
+    public async Task VegetarianOnly_IsAppliedBeforeCandidateLimit_OnEveryDatabaseRetrievalPath(string path)
+    {
+        var vegetarian = await SeedFilterRecipe("Vegetarian chili", null, null);
+        vegetarian.IsVegetarian = true;
+        vegetarian.VegetarianClassificationVersion = 1;
+        var nonVegetarian = await SeedFilterRecipe("Beef chili", null, null);
+        nonVegetarian.IsVegetarian = false;
+        nonVegetarian.VegetarianClassificationVersion = 1;
+        await _db.SaveChangesAsync();
+
+        var filters = new RecipeSearchFiltersDto { VegetarianOnly = true };
+        var candidateIds = path == "lexical"
+            ? (await new RecipeLexicalSearchRepository(_db).SearchAsync("chili", filters, 1)).Select(candidate => candidate.RecipeId)
+            : (await new RecipeSemanticSearchRepository(_db).SearchAsync(UnitVector(0), filters, SearchOptions(1).Semantic, null)).Select(candidate => candidate.RecipeId);
+
+        Assert.Equal([vegetarian.Id], candidateIds);
+    }
+
     // SFD-1 reconciliation coverage, implemented by SFD-5.
     [PostgresTheory]
     [InlineData("lexical", "cuisine")]
