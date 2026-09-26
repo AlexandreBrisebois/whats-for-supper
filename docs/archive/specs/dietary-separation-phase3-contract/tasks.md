@@ -1,5 +1,8 @@
 # Tasks: Dietary separation migration — Phase 3 (CONTRACT)
 
+> **Archived — historical reference only.** Task status and checkboxes below
+> record the completed migration; they are not an active work queue.
+
 ## Specification baseline
 
 Captured before specification edits on 2026-09-25: the worktree already contained a large, uncommitted Phase 3 implementation attempt (86 files in `api/`, `pwa/`, and `specs/openapi.yaml`, including deletions). This specification owns only this new spec directory. Any later implementation task must capture its own content baseline before edits and must not overwrite or claim the pre-existing work.

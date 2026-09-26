@@ -1,5 +1,8 @@
 # T0 preflight and removal-vocabulary manifest
 
+> **Archived — historical evidence only.** Decisions and commands below record
+> the completed Phase 3 work and are not current authorization.
+
 **Date:** 2026-09-25 (America/Toronto)  
 **Task:** `dietary-separation-phase3-contract` / Task 0  
 **Decision:** **NO-GO — T1, T2, and T3 are not authorized.**
@@ -134,7 +137,7 @@ That zombie independently makes the R1 decision NO-GO.
 | Command | Result / scope | Status |
 | --- | --- | --- |
 | `git rev-parse HEAD`; inspect retry-baseline `head`, `status-short`, `untracked-paths`, and `phase3-spec-sha256` | HEAD and baseline content matched the controller-provided retry baseline; prior artifact identified as untracked | passed |
-| `shasum -a 256 .kiro/specs/dietary-separation-phase3-contract/t0-preflight-evidence.md` before editing | `3e345f35160d69b384e8827bd258958e2eed33236a4650f705ecca88a9c3546a` | passed |
+| `shasum -a 256` on the historical pre-archive `.kiro` path before editing | `3e345f35160d69b384e8827bd258958e2eed33236a4650f705ecca88a9c3546a` | passed |
 | `rg -n -i ... api pwa specs docs` with `docs/archive`, build output, dependencies, and coverage excluded | 21 active files matched the stated removal vocabulary; classifications recorded above | passed (static only) |
 | `rg -n -i 'HealthWorker|HealthComputationService|HealthEventPublisher|IHealthEvent|ClassifyDietaryProfile|WeeklyBalanceScorer|FopThresholds|RecipeDietaryProfile|WeeklyBalanceSummary' api/src pwa/src specs/openapi.yaml` | Only `FopThresholds.cs` matched in active source; no proof of a running process or database state | passed (static only) |
 | Repository scan for `supported client`, `client support`, `sunset`, and related policy language | No supported-client policy/sunset record found | passed discovery; policy condition blocked |

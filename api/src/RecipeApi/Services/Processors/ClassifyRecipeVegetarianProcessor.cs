@@ -11,7 +11,6 @@ public sealed class ClassifyRecipeVegetarianProcessor(
     RecipeDbContext db,
     IChatClient chatClient,
     VegetarianClassificationPolicy policy,
-    VegetarianClassificationWriter writer,
     IClock clock) : IWorkflowProcessor
 {
     public string ProcessorName => "ClassifyRecipeVegetarian";
@@ -37,15 +36,13 @@ public sealed class ClassifyRecipeVegetarianProcessor(
             if (result?.IsVegetarian is not bool isVegetarian)
                 return new { recipeId, outcome = "unknown-insufficient-ingredients" };
 
-            writer.ApplySuccess(recipe, isVegetarian, CategorizeRecipeProcessor.VegetarianClassifierVersion, clock.UtcNow);
+            recipe.IsVegetarian = isVegetarian;
             recipe.UpdatedAt = clock.UtcNow;
             await db.SaveChangesAsync(ct);
             return new { recipeId, outcome = "classified", isVegetarian };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            writer.ApplyFailure(recipe, ex.Message, clock.UtcNow);
-            await db.SaveChangesAsync(ct);
             throw;
         }
     }

@@ -186,7 +186,6 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
         recipe.CuisineType = "French";
         recipe.MealTypes = ["Supper"];
         recipe.IsVegetarian = true;
-        recipe.VegetarianClassificationVersion = 1;
         await SeedReadyDocumentAsync(recipe);
         await _management.BackupAsync();
 

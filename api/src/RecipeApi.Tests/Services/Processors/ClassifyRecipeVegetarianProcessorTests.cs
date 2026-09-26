@@ -29,7 +29,7 @@ public class ClassifyRecipeVegetarianProcessorTests
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
         var chat = ResponseChat(expected);
-        var processor = new ClassifyRecipeVegetarianProcessor(db, chat.Object, Policy(), new VegetarianClassificationWriter(), new FixedClock());
+        var processor = new ClassifyRecipeVegetarianProcessor(db, chat.Object, Policy(), new FixedClock());
 
         await processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
 
@@ -45,12 +45,11 @@ public class ClassifyRecipeVegetarianProcessorTests
         await db.SaveChangesAsync();
         var chat = ResponseChat(true);
         var processor = new ClassifyRecipeVegetarianProcessor(db, chat.Object,
-            Policy(), new VegetarianClassificationWriter(), new FixedClock());
+            Policy(), new FixedClock());
 
         var result = await processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
 
         Assert.True(recipe.IsVegetarian);
-        Assert.Equal(CategorizeRecipeProcessor.VegetarianClassifierVersion, recipe.VegetarianClassificationVersion);
         Assert.Contains("white beans", chat.Invocations.Single().Arguments.OfType<IEnumerable<ChatMessage>>().Single().Single().Text);
     }
 
@@ -67,33 +66,29 @@ public class ClassifyRecipeVegetarianProcessorTests
         chat.Setup(client => client.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
         var processor = new ClassifyRecipeVegetarianProcessor(db, chat.Object,
-            Policy(), new VegetarianClassificationWriter(), new FixedClock());
+            Policy(), new FixedClock());
 
         await processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
 
         Assert.Equal(expected, recipe.IsVegetarian);
-        Assert.Equal(CategorizeRecipeProcessor.VegetarianClassifierVersion, recipe.VegetarianClassificationVersion);
-        Assert.Null(recipe.VegetarianClassificationFailedAt);
     }
 
     [Fact]
-    public async Task ExecuteAsync_MalformedResponsePreservesConfirmedFactAndRecordsFailure()
+    public async Task ExecuteAsync_MalformedResponsePreservesConfirmedFact()
     {
         await using var db = TestDbContextFactory.Create();
-        var recipe = new Recipe { Id = Guid.NewGuid(), Ingredients = "[\"lentils\"]", IsVegetarian = true, VegetarianClassificationVersion = 1, VegetarianClassifiedAt = DateTimeOffset.UtcNow };
+        var recipe = new Recipe { Id = Guid.NewGuid(), Ingredients = "[\"lentils\"]", IsVegetarian = true };
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
         var chat = new Mock<IChatClient>();
         chat.Setup(client => client.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "not-json")));
         var processor = new ClassifyRecipeVegetarianProcessor(db, chat.Object,
-            Policy(), new VegetarianClassificationWriter(), new FixedClock());
+            Policy(), new FixedClock());
 
         await Assert.ThrowsAsync<JsonException>(() => processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None));
 
         Assert.True(recipe.IsVegetarian);
-        Assert.Equal(1, recipe.VegetarianClassificationVersion);
-        Assert.NotNull(recipe.VegetarianClassificationFailedAt);
     }
 
     private sealed class FixedClock : IClock { public DateTimeOffset UtcNow => DateTimeOffset.Parse("2026-09-24T12:00:00Z"); }

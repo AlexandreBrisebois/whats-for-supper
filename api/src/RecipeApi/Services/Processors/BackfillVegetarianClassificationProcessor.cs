@@ -19,7 +19,7 @@ public sealed class BackfillVegetarianClassificationProcessor(
         var (cursor, force) = ReadPayload(task.Payload);
         var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking()
             .Where(recipe => recipe.DeletedAt == null && (!cursor.HasValue || recipe.Id.CompareTo(cursor.Value) > 0))
-            .Where(recipe => force || recipe.VegetarianClassificationVersion != CategorizeRecipeProcessor.VegetarianClassifierVersion)
+            .Where(recipe => force || recipe.IsVegetarian == null)
             .OrderBy(recipe => recipe.Id).Take(BatchSize).Select(recipe => recipe.Id).ToListAsync(ct);
         foreach (var recipeId in recipes)
         {
@@ -46,12 +46,12 @@ public sealed class BackfillVegetarianClassificationProcessor(
     }
 }
 
-public sealed record VegetarianClassificationMetrics(int Total, int CurrentVersion, int Unknown, int Vegetarian, int NonVegetarian, int Failed, DateTimeOffset? OldestClassifiedAt, DateTimeOffset? NewestClassifiedAt, int Queued = 0, Guid? NextCursor = null)
+public sealed record VegetarianClassificationMetrics(int Total, int Classified, int Unknown, int Vegetarian, int NonVegetarian, int Queued = 0, Guid? NextCursor = null)
 {
     public static async Task<VegetarianClassificationMetrics> FromDatabaseAsync(RecipeDbContext db, CancellationToken ct)
     {
         var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking().Where(recipe => recipe.DeletedAt == null).ToListAsync(ct);
-        var current = recipes.Where(recipe => recipe.VegetarianClassificationVersion == CategorizeRecipeProcessor.VegetarianClassifierVersion).ToList();
-        return new(recipes.Count, current.Count, recipes.Count(recipe => recipe.VegetarianClassificationVersion is null && recipe.VegetarianClassificationFailedAt is null), current.Count(recipe => recipe.IsVegetarian), current.Count(recipe => !recipe.IsVegetarian), recipes.Count(recipe => recipe.VegetarianClassificationFailedAt is not null), current.Select(recipe => recipe.VegetarianClassifiedAt).Min(), current.Select(recipe => recipe.VegetarianClassifiedAt).Max());
+        var classified = recipes.Where(recipe => recipe.IsVegetarian.HasValue).ToList();
+        return new(recipes.Count, classified.Count, recipes.Count(recipe => !recipe.IsVegetarian.HasValue), classified.Count(recipe => recipe.IsVegetarian == true), classified.Count(recipe => recipe.IsVegetarian == false));
     }
 }

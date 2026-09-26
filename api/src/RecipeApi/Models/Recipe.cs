@@ -68,23 +68,7 @@ public class Recipe
     public string[]? MealTypes { get; set; }
 
     [Column("is_vegetarian")]
-    public bool IsVegetarian { get; set; } = false;
-
-    /// <summary>
-    /// Null means the WFS-owned ingredient classifier has not confirmed this value.
-    /// The value is deliberately separate from the legacy non-null boolean default.
-    /// </summary>
-    [Column("vegetarian_classification_version")]
-    public int? VegetarianClassificationVersion { get; set; }
-
-    [Column("vegetarian_classified_at")]
-    public DateTimeOffset? VegetarianClassifiedAt { get; set; }
-
-    [Column("vegetarian_classification_failed_at")]
-    public DateTimeOffset? VegetarianClassificationFailedAt { get; set; }
-
-    [Column("vegetarian_classification_failure_reason")]
-    public string? VegetarianClassificationFailureReason { get; set; }
+    public bool? IsVegetarian { get; set; }
 
     // Phase 1+ fields — populated by import worker / AI pipeline
     /// <summary>Raw metadata extracted by AI from recipe images (Phase 1).</summary>

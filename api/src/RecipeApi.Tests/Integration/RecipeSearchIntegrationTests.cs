@@ -73,8 +73,6 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             Description = "Lentil supper",
             Ingredients = JsonSerializer.Serialize(new[] { "lentils", "tomato" }),
             IsVegetarian = true,
-            VegetarianClassificationVersion = 1,
-            VegetarianClassifiedAt = TestNow,
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         });
@@ -89,14 +87,12 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     {
         var vegetarian = CreateRecipe("Vegetarian chili", "Beans and vegetables", "30 min");
         vegetarian.IsVegetarian = true;
-        vegetarian.VegetarianClassificationVersion = 1;
-        vegetarian.VegetarianClassifiedAt = TestNow;
         var nonVegetarian = CreateRecipe("Beef chili", "Beef and beans", "30 min");
         nonVegetarian.IsVegetarian = false;
-        nonVegetarian.VegetarianClassificationVersion = 1;
-        nonVegetarian.VegetarianClassifiedAt = TestNow;
+        var unknown = CreateRecipe("Unknown chili", "Beans and vegetables", "30 min");
         await SeedRecipeAsync(vegetarian);
         await SeedRecipeAsync(nonVegetarian);
+        await SeedRecipeAsync(unknown);
 
         var response = await PostSearchAsync(new
         {

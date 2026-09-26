@@ -5,9 +5,7 @@ fact after the retired dietary/health model was removed in Phase 3.
 
 ## Representation
 
-`recipes.is_vegetarian` remains the compatible public boolean. It is authoritative for the new WFS fact only when `vegetarian_classification_version` is the current classifier version. A null version is unknown, not non-vegetarian. `vegetarian_classified_at` records the successful classification time.
-
-`vegetarian_classification_failed_at` and `vegetarian_classification_failure_reason` record the latest failed attempt without replacing a prior confirmed fact. A successful result clears them.
+`recipes.is_vegetarian` is the WFS-owned nullable fact: `true` and `false` are confirmed classifications, while `null` is unknown. The public recipe response remains compatible by representing unknown as `false`; vegetarian filtering and search indexing use only confirmed `true` values.
 
 The server-owned policy is configured under `VegetarianClassification:NonVegetarianIngredients` in `api/appsettings.json`. Change that list to change the terms supplied to the classifier; no PWA or public API change is needed.
 
@@ -25,12 +23,12 @@ The migration-only `ClassifyRecipeVegetarian` processor reads normalized ingredi
 
 Use the existing workflow trigger endpoint with a `parameters` object:
 
-1. Trigger `vegetarian-classification-backfill` with no parameters, or `{ "force": "true" }` to reclassify current rows.
+1. Trigger `vegetarian-classification-backfill` with no parameters to classify unknown rows, or `{ "force": "true" }` to reclassify every row.
 2. Poll the returned workflow instance. Each batch has a fixed server-side maximum of 25 recipes and schedules a cursor-based successor batch when needed.
-3. Trigger `vegetarian-classification-status` and read its task result for live total/current/unknown/vegetarian/non-vegetarian/failed counts and classification timestamps.
+3. Trigger `vegetarian-classification-status` and read its task result for live total/classified/unknown/vegetarian/non-vegetarian counts.
 4. After backfill tasks have settled, trigger the existing `search-reconciliation` workflow once. This is intentionally separate so the migration does not create one embedding job per classified recipe.
 
-The persisted workflow tasks make interrupted work resumable. Current-version rows are skipped unless `force` is set. Failed classification tasks retain diagnostic state and can use the existing workflow-task reset/retry mechanism.
+The persisted workflow tasks make interrupted work resumable. Known rows are skipped unless `force` is set. Workflow-task state owns diagnostics and retry information.
 
 ## Boundary
 

@@ -730,8 +730,6 @@ public class ManagementServiceTests : IAsyncLifetime
               "mealTypes": ["Supper", "Sides"],
               "isHealthyChoice": true,
               "isVegetarian": true,
-              "vegetarianClassificationVersion": 1,
-              "vegetarianClassifiedAt": "2026-09-24T12:00:00Z",
               "dietaryProfile": { "primaryFoodGroup": "ProteinFoods" },
               "fopFlags": { "highSodium": true },
               "balanceSummary": { "isBalanced": true }
@@ -755,8 +753,6 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Equal("[\"orzo\", \"tomato\"]", restored.Ingredients);
         Assert.Equal("https://example.test/legacy", restored.SourceUrl);
         Assert.True(restored.IsVegetarian);
-        Assert.Equal(1, restored.VegetarianClassificationVersion);
-        Assert.Equal(DateTimeOffset.Parse("2026-09-24T12:00:00Z"), restored.VegetarianClassifiedAt);
     }
 
     [Fact]
@@ -858,8 +854,6 @@ public class ManagementServiceTests : IAsyncLifetime
             CuisineType = "French",
             MealTypes = ["Supper", "Weeknight"],
             IsVegetarian = true,
-            VegetarianClassificationVersion = 1,
-            VegetarianClassifiedAt = DateTimeOffset.Parse("2026-09-24T12:00:00Z"),
             Ingredients = "[\"lentils\",\"tomato\"]",
             SourceUrl = "https://example.test/lentils",
             CreatedAt = DateTimeOffset.Parse("2026-09-21T12:00:00Z"),
@@ -890,7 +884,6 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.NotNull(restoredRecipe.MealTypes);
         Assert.Equal(["Supper", "Weeknight"], restoredRecipe.MealTypes!);
         Assert.True(restoredRecipe.IsVegetarian);
-        Assert.Equal(1, restoredRecipe.VegetarianClassificationVersion);
         Assert.Equal("[\"lentils\",\"tomato\"]", restoredRecipe.Ingredients);
         Assert.Equal("https://example.test/lentils", restoredRecipe.SourceUrl);
         Assert.NotNull(restoredPlan);

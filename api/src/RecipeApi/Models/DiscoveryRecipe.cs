@@ -35,7 +35,7 @@ public class DiscoveryRecipe
     public string? TotalTime { get; set; }
 
     [Column("is_vegetarian")]
-    public bool IsVegetarian { get; set; } = false;
+    public bool? IsVegetarian { get; set; }
 
     [Column("last_cooked_date")]
     public DateTimeOffset? LastCookedDate { get; set; }

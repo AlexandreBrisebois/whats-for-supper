@@ -29,10 +29,10 @@ public class BackfillVegetarianClassificationProcessorTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_SkipsCurrentRowsUnlessForced()
+    public async Task ExecuteAsync_SkipsKnownRowsUnlessForced()
     {
         await using var db = TestDbContextFactory.Create();
-        db.Recipes.Add(new Recipe { Id = Guid.NewGuid(), VegetarianClassificationVersion = CategorizeRecipeProcessor.VegetarianClassifierVersion });
+        db.Recipes.Add(new Recipe { Id = Guid.NewGuid(), IsVegetarian = false });
         await db.SaveChangesAsync();
         var orchestrator = new RecordingOrchestrator();
         var processor = new BackfillVegetarianClassificationProcessor(db, orchestrator);
@@ -42,6 +42,26 @@ public class BackfillVegetarianClassificationProcessorTests
 
         await processor.ExecuteAsync(new WorkflowTask { Payload = "{\"force\":true}" }, CancellationToken.None);
         Assert.Single(orchestrator.Calls, call => call.WorkflowId == "classify-recipe-vegetarian");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_QueuesOnlyUnknownRows()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var unknown = new Recipe { Id = Guid.NewGuid() };
+        db.Recipes.AddRange(
+            unknown,
+            new Recipe { Id = Guid.NewGuid(), IsVegetarian = true },
+            new Recipe { Id = Guid.NewGuid(), IsVegetarian = false });
+        await db.SaveChangesAsync();
+        var orchestrator = new RecordingOrchestrator();
+
+        await new BackfillVegetarianClassificationProcessor(db, orchestrator)
+            .ExecuteAsync(new WorkflowTask { Payload = "{}" }, CancellationToken.None);
+
+        var classification = Assert.Single(orchestrator.Calls);
+        Assert.Equal("classify-recipe-vegetarian", classification.WorkflowId);
+        Assert.Equal(unknown.Id.ToString(), classification.Parameters["recipeId"]);
     }
 
     private sealed class RecordingOrchestrator : IWorkflowOrchestrator

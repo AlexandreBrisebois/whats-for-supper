@@ -18,10 +18,8 @@ public partial class RecipeLexicalSearchPostgresTests
     {
         var vegetarian = await SeedFilterRecipe("Vegetarian chili", null, null);
         vegetarian.IsVegetarian = true;
-        vegetarian.VegetarianClassificationVersion = 1;
         var nonVegetarian = await SeedFilterRecipe("Beef chili", null, null);
         nonVegetarian.IsVegetarian = false;
-        nonVegetarian.VegetarianClassificationVersion = 1;
         await _db.SaveChangesAsync();
 
         var filters = new RecipeSearchFiltersDto { VegetarianOnly = true };

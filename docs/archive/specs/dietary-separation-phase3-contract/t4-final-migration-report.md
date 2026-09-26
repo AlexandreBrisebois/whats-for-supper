@@ -1,5 +1,8 @@
 # Phase 3 final migration report
 
+> **Archived — historical evidence only.** This completed report is retained
+> for context and does not authorize further Phase 3 work.
+
 **Spec:** `dietary-separation-phase3-contract`  
 **Date:** 2026-09-25 (America/Toronto)  
 **Scope:** T4 audit, active-documentation boundary, archive handling, and
@@ -39,13 +42,8 @@ docker run --rm --entrypoint /usr/local/bin/sqldef \
 ```
 
 Observed: `sqldef v3.11.23` documents `--enable-drop`; deployed migration
-configuration passes that option. The operator then ran:
-
-```sh
-./api/database/verify-phase3-upgrade.sh
-```
-
-The verifier used a unique no-port disposable Docker cluster and the supported
+configuration passes that option. The retired verifier used a unique no-port
+disposable Docker cluster and the supported
 pre-Phase-3 snapshot `b21beba266144668ded790bbdb9db3a7f5376fc6`
 (`schema.sql` SHA-256
 `6edfd3241cb4bde79354e0c1ca62abfb1a2dc52ecd5224261b2ac4d9e11cd6c7`). Its
@@ -88,7 +86,7 @@ and package-lock text.
 | Classification | Paths and rationale |
 | --- | --- |
 | retained migration history | Selected Phase 3 requirements/design/tasks and T0/T3/T4 evidence; `api/database/compatibility.sql` is forward-only destructive upgrade history. |
-| explicitly evaluated legacy-backup compatibility | `ManagementService`, its tests, `SearchIndexBackupRestoreTests`, and the pre-Phase-3 fixture seed/absence assertions in `verify-phase3-upgrade.sh`. They tolerate old artifacts without restoring them. |
+| explicitly evaluated legacy-backup compatibility | `ManagementService`, its tests, `SearchIndexBackupRestoreTests`, and the former pre-Phase-3 fixture seed/absence assertions. They tolerate old artifacts without restoring them. |
 | REMOVE (negative removal assertions, not consumers) | `SchemaIntegrityTests`, `RecipeSearchDocumentBuilderTests`, and `RecipeShareIntegrationTests` name former keys only to assert their absence; none is a reader, writer, API, schema, or public-client contract. |
 | archived documentation | 20 former active Kiro documents and 3 current-facing retired flow/technical documents now reside under `docs/archive/specs/dietary-separation-retired-health-model/`, each with a historical-reference notice. |
 | zombie | **None.** `FopThresholds.cs`, the stale lexical seed field, and locale residue are removed. |

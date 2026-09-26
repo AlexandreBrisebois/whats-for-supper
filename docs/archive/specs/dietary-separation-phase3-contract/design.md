@@ -1,5 +1,8 @@
 # Design: Dietary separation migration — Phase 3 (CONTRACT)
 
+> **Archived — historical reference only.** This completed migration design is
+> not active implementation guidance or an authorization to repeat its steps.
+
 ## Current seam map
 
 The authoritative public contract is `specs/openapi.yaml`; the Kiota client is generated below `pwa/src/lib/api/generated/`. Active PWA adapters and state live in `pwa/src/lib/api/recipes.ts`, planner components/pages, and `pwa/src/store/weekStore.ts`. API models/services/DI are below `api/src/RecipeApi/`.

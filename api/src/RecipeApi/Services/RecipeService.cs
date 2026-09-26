@@ -729,7 +729,7 @@ public class RecipeService(
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
             Ingredients = DeserializeIngredients(r.Ingredients),
             RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
-            IsVegetarian = r.IsVegetarian,
+            IsVegetarian = r.IsVegetarian ?? false,
             IsDiscoverable = r.IsDiscoverable,
             CreatedAt = r.CreatedAt,
             DeletedAt = r.DeletedAt,

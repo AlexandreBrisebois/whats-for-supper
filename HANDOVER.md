@@ -7,12 +7,12 @@ checkpoints are context, not authority. Follow the shared
 
 ## Dietary separation Phase 1
 
-Task/spec: User-pasted `WFS Dietary Separation Migration — Phase 1: EXPAND`; no repository spec package exists.
-Worktree/branch: `harness-upgrade`; baseline recorded at HEAD `6a2d2eac` in ignored `.task/dietary-separation-phase1/baseline.txt`.
-Authorized scope and source: Additive WFS-owned vegetarian classification only; preserve legacy health/dietary behavior and public API.
-Current checkpoint: Added configurable server-owned ingredient policy, failure-preserving classification diagnostics, a quiet ingredient-only classifier, cursor-bounded persisted backfill/status workflows, description-regeneration recategorization, and an operator runbook. Search/backup additions remain from the preceding committed slice.
-Verification evidence and content identity: `task agent:prepare` passed with escalated access (Kiota 1.35.0 generation, API/PWA format). `task test:api` passed 727/750 with 23 existing skipped PostgreSQL/manual tests. `task agent:finish` passed documentation/lint/PWA format/typecheck/PWA unit/review contracts and content identity `59d1d6f244166cc4c8eb738fed4ac3b96aef0e8c479037bbf0a28c379f7f5dfc`; its impact/API/live-endpoint/database checks are blocked by runner qualification and unavailable infrastructure. `git diff --check` passed.
-Blocker or next action: Establish the intended Docker network/database and isolated runner for live migration evidence, then rerun the blocked finish checks. Trigger one intentional search reconciliation only after the catalogue backfill settles.
+Task/spec: User-directed simplification of the user-pasted `WFS Dietary Separation Migration — Phase 1: EXPAND`; no repository spec package exists.
+Worktree/branch: `harness-upgrade`; baseline recorded at HEAD `8bf3503d4a0db028ead78d6c3da73540f77e2130` in ignored `.task/dietary-lifecycle-removal/baseline.md`.
+Authorized scope and source: Remove vegetarian-classification lifecycle fields in favor of nullable `recipes.is_vegetarian`, while preserving confirmed data and the public boolean response.
+Current checkpoint: Implemented nullable storage, one-time legacy-data conversion guarded by a schema-column comment, removed version/timestamp/failure persistence and writer service, simplified backfill/status/search/backup paths, and updated workflow/docs/tests. Unknown remains internal and maps to `false` at the API boundary.
+Verification evidence and content identity: `dotnet build api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore` passed with zero warnings; `git diff --check` passed; `task agent:reconcile` passed static route/mock reconciliation. `task agent:drift` static schema checks passed but live endpoint parity is blocked. `task agent:prepare` and `task review` are blocked by Kiota generation/check timing out in the restricted runner; focused `dotnet test` is blocked by test-host local socket permission; `task db:schema:push DRY_RUN=true` is blocked by Docker socket permission.
+Blocker or next action: On a qualified local runner, complete Kiota generation/check, API tests, and standard database migration verification before running the single `task agent:finish` completion invocation. Review the schema comment guard after observing the sqldef dry-run.
 
 ## Public Synology release
 

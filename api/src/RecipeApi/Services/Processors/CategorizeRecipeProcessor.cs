@@ -12,10 +12,8 @@ public class CategorizeRecipeProcessor(
     RecipeDbContext db,
     IChatClient chatClient,
     ILogger<CategorizeRecipeProcessor> logger,
-    VegetarianClassificationPolicy? vegetarianPolicy = null,
-    VegetarianClassificationWriter? vegetarianWriter = null) : IWorkflowProcessor
+    VegetarianClassificationPolicy? vegetarianPolicy = null) : IWorkflowProcessor
 {
-    public const int VegetarianClassifierVersion = 1;
     public string ProcessorName => "CategorizeRecipe";
 
     private static readonly Regex SidesRegex = new(
@@ -147,7 +145,6 @@ public class CategorizeRecipeProcessor(
         catch (Exception ex)
         {
             logger.LogError(ex, "CategorizeRecipe: LLM call failed for recipe {RecipeId}", recipe.Id);
-            (vegetarianWriter ?? new VegetarianClassificationWriter()).ApplyFailure(recipe, ex.Message, DateTimeOffset.UtcNow);
         }
 
         // 2. Map primary meal type
@@ -184,8 +181,7 @@ public class CategorizeRecipeProcessor(
         // result must not turn unknown into false or overwrite a valid prior result.
         if (isVegetarian is bool classifiedVegetarian)
         {
-            (vegetarianWriter ?? new VegetarianClassificationWriter()).ApplySuccess(
-                recipe, classifiedVegetarian, VegetarianClassifierVersion, DateTimeOffset.UtcNow);
+            recipe.IsVegetarian = classifiedVegetarian;
         }
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 

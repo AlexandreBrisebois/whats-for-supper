@@ -1,5 +1,8 @@
 # Requirements: Dietary separation migration — Phase 3 (CONTRACT)
 
+> **Archived — historical reference only.** These requirements record the
+> completed migration and do not define current work.
+
 ## Outcome and boundary
 
 Phase 3 permanently removes the retired WFS health/dietary data model after Phase 1's WFS-owned vegetarian fact and the deployed Phase 2 consumer cutover. This is a destructive, contract-breaking migration. It does not add, connect, or prescribe an external dietary agent.

@@ -53,7 +53,7 @@ X-Hearth-Secret: {{hearthSecret}}
 }
 
 ### 1ac. Start vegetarian classification backfill
-# Safe initial migration: current-version rows are skipped. Copy data.instanceId
+# Safe initial migration: known rows are skipped. Copy data.instanceId
 # from the 202 response into @vegetarianBackfillInstanceId before polling below.
 POST {{baseUrl}}/api/workflows/{{vegetarianBackfillWorkflowId}}/trigger
 Content-Type: application/json
@@ -81,8 +81,8 @@ X-Hearth-Secret: {{hearthSecret}}
 }
 
 ### 1af. Get vegetarian classification status result
-# The completed task result reports total/current/unknown/vegetarian/
-# non-vegetarian/failed counts and classification timestamps.
+# The completed task result reports total/classified/unknown/vegetarian/
+# non-vegetarian counts.
 GET {{baseUrl}}/api/workflows/instances/{{vegetarianStatusInstanceId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}

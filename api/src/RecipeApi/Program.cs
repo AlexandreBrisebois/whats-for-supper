@@ -151,7 +151,6 @@ try
     builder.Services.AddSingleton<IClock, SystemClock>();
     builder.Services.Configure<VegetarianClassificationOptions>(builder.Configuration.GetSection("VegetarianClassification"));
     builder.Services.AddSingleton<VegetarianClassificationPolicy>();
-    builder.Services.AddSingleton<VegetarianClassificationWriter>();
     builder.Services.AddSingleton<CronScheduleCalculator>();
     builder.Services.AddSingleton<DemoModeOptions>();
 

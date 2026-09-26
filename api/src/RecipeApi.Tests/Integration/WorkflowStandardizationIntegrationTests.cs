@@ -105,8 +105,6 @@ public class WorkflowStandardizationIntegrationTests : IAsyncLifetime
         Assert.Contains("Lunch", updatedRecipe.MealTypes);
         Assert.Equal("Supper", updatedRecipe.Category); // mapped from Dinner
         Assert.False(updatedRecipe.IsVegetarian);
-        Assert.Equal(1, updatedRecipe.VegetarianClassificationVersion);
-        Assert.NotNull(updatedRecipe.VegetarianClassifiedAt);
 
     }
 
@@ -153,7 +151,6 @@ public class WorkflowStandardizationIntegrationTests : IAsyncLifetime
         Assert.Null(exception);
         var updatedRecipe = await _db.Recipes.FindAsync(recipeId);
         Assert.NotNull(updatedRecipe);
-        Assert.Null(updatedRecipe.VegetarianClassificationVersion);
-        Assert.NotNull(updatedRecipe.VegetarianClassificationFailedAt);
+        Assert.Null(updatedRecipe.IsVegetarian);
     }
 }

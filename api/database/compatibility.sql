@@ -4,17 +4,38 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
--- Phase 1 dietary separation: a NULL version is an explicit unknown state.
--- Do not derive it from the legacy is_vegetarian default, which historically
--- did not establish that a recipe had been classified from ingredients.
+-- Vegetarian classification is a nullable recipe fact. Existing rows without a
+-- classifier version were legacy defaults, not confirmed non-vegetarian recipes.
 DO $$
 BEGIN
     IF to_regclass('public.recipes') IS NOT NULL THEN
+        IF col_description('public.recipes'::regclass, (
+            SELECT attnum FROM pg_attribute
+            WHERE attrelid = 'public.recipes'::regclass AND attname = 'is_vegetarian'
+        )) IS DISTINCT FROM 'wfs-vegetarian-classification-nullable-v1' THEN
+            ALTER TABLE public.recipes
+                ALTER COLUMN is_vegetarian DROP NOT NULL;
+
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'recipes'
+                  AND column_name = 'vegetarian_classification_version'
+            ) THEN
+                UPDATE public.recipes
+                SET is_vegetarian = NULL
+                WHERE vegetarian_classification_version IS NULL;
+            ELSE
+                UPDATE public.recipes SET is_vegetarian = NULL;
+            END IF;
+
+            COMMENT ON COLUMN public.recipes.is_vegetarian IS 'wfs-vegetarian-classification-nullable-v1';
+        END IF;
+
         ALTER TABLE public.recipes
-            ADD COLUMN IF NOT EXISTS vegetarian_classification_version integer,
-            ADD COLUMN IF NOT EXISTS vegetarian_classified_at timestamptz,
-            ADD COLUMN IF NOT EXISTS vegetarian_classification_failed_at timestamptz,
-            ADD COLUMN IF NOT EXISTS vegetarian_classification_failure_reason varchar(500);
+            DROP COLUMN IF EXISTS vegetarian_classification_version,
+            DROP COLUMN IF EXISTS vegetarian_classified_at,
+            DROP COLUMN IF EXISTS vegetarian_classification_failed_at,
+            DROP COLUMN IF EXISTS vegetarian_classification_failure_reason;
     END IF;
 END
 $$;

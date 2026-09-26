@@ -12,10 +12,10 @@ public class VegetarianClassificationStatusProcessorTests
     {
         await using var db = TestDbContextFactory.Create();
         db.Recipes.AddRange(
-            new Recipe { Id = Guid.NewGuid(), IsVegetarian = true, VegetarianClassificationVersion = 1, VegetarianClassifiedAt = DateTimeOffset.Parse("2026-09-20T12:00:00Z") },
-            new Recipe { Id = Guid.NewGuid(), IsVegetarian = false, VegetarianClassificationVersion = 1, VegetarianClassifiedAt = DateTimeOffset.Parse("2026-09-24T12:00:00Z") },
+            new Recipe { Id = Guid.NewGuid(), IsVegetarian = true },
+            new Recipe { Id = Guid.NewGuid(), IsVegetarian = false },
             new Recipe { Id = Guid.NewGuid() },
-            new Recipe { Id = Guid.NewGuid(), VegetarianClassificationFailedAt = DateTimeOffset.UtcNow, VegetarianClassificationFailureReason = "LLM unavailable" });
+            new Recipe { Id = Guid.NewGuid() });
         await db.SaveChangesAsync();
         var processor = new VegetarianClassificationStatusProcessor(db);
 
@@ -23,10 +23,9 @@ public class VegetarianClassificationStatusProcessorTests
 
         var metrics = Assert.IsType<VegetarianClassificationMetrics>(result);
         Assert.Equal(4, metrics.Total);
-        Assert.Equal(2, metrics.CurrentVersion);
-        Assert.Equal(1, metrics.Unknown);
+        Assert.Equal(2, metrics.Classified);
+        Assert.Equal(2, metrics.Unknown);
         Assert.Equal(1, metrics.Vegetarian);
         Assert.Equal(1, metrics.NonVegetarian);
-        Assert.Equal(1, metrics.Failed);
     }
 }

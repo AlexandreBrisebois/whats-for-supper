@@ -34,11 +34,7 @@ CREATE TABLE recipes (
     is_synthesized boolean DEFAULT false NOT NULL,
     is_discoverable boolean NOT NULL,
     category text,
-    is_vegetarian boolean NOT NULL,
-    vegetarian_classification_version integer,
-    vegetarian_classified_at timestamptz,
-    vegetarian_classification_failed_at timestamptz,
-    vegetarian_classification_failure_reason varchar(500),
+    is_vegetarian boolean,
     raw_metadata jsonb,
     ingredients jsonb,
     cuisine_type text,
@@ -53,6 +49,8 @@ CREATE TABLE recipes (
     is_ready boolean DEFAULT false NOT NULL,
     CONSTRAINT recipes_rating_check CHECK (rating >= 0 AND rating <= 3)
 );
+
+COMMENT ON COLUMN recipes.is_vegetarian IS 'wfs-vegetarian-classification-nullable-v1';
 
 CREATE TABLE IF NOT EXISTS recipe_import_reports (
     recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,

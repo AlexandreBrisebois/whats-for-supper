@@ -84,8 +84,6 @@ public class ManagementService(
                 existing.Category = recipe.Category;
                 existing.IsDiscoverable = recipe.IsDiscoverable;
                 existing.IsVegetarian = recipe.IsVegetarian;
-                existing.VegetarianClassificationVersion = recipe.VegetarianClassificationVersion;
-                existing.VegetarianClassifiedAt = recipe.VegetarianClassifiedAt;
                 existing.TotalTime = recipe.TotalTime;
                 existing.LastCookedDate = recipe.LastCookedDate;
                 existing.IsSynthesized = recipe.IsSynthesized;
@@ -111,8 +109,6 @@ public class ManagementService(
                     Category = recipe.Category,
                     IsDiscoverable = recipe.IsDiscoverable,
                     IsVegetarian = recipe.IsVegetarian,
-                    VegetarianClassificationVersion = recipe.VegetarianClassificationVersion,
-                    VegetarianClassifiedAt = recipe.VegetarianClassifiedAt,
                     TotalTime = recipe.TotalTime,
                     LastCookedDate = recipe.LastCookedDate,
                     SourceUrl = recipe.SourceUrl,
@@ -860,8 +856,6 @@ public class ManagementService(
                             MealTypes = info.MealTypes,
                             IsDiscoverable = info.IsDiscoverable,
                             IsVegetarian = info.IsVegetarian,
-                            VegetarianClassificationVersion = info.VegetarianClassificationVersion,
-                            VegetarianClassifiedAt = info.VegetarianClassifiedAt,
                             TotalTime = info.TotalTime,
                             LastCookedDate = info.LastCookedDate,
                             SourceUrl = info.SourceUrl,
@@ -985,8 +979,6 @@ public class ManagementService(
                     existing.Category = recipe.Category;
                     existing.IsDiscoverable = recipe.IsDiscoverable;
                     existing.IsVegetarian = recipe.IsVegetarian;
-                    existing.VegetarianClassificationVersion = recipe.VegetarianClassificationVersion;
-                    existing.VegetarianClassifiedAt = recipe.VegetarianClassifiedAt;
                     existing.LastCookedDate = recipe.LastCookedDate;
                     existing.SourceUrl = recipe.SourceUrl;
                     existing.CuisineType = recipe.CuisineType;

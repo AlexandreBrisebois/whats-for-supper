@@ -41,12 +41,10 @@ public class RecipeSearchDocumentBuilderTests
     }
 
     [Fact]
-    public void Build_ConfirmedVegetarianClassificationAddsRecipeOwnedFact()
+    public void Build_KnownVegetarianClassificationAddsRecipeOwnedFact()
     {
         var recipe = Recipe("[\"lentils\", \"eggs\"]");
         recipe.IsVegetarian = true;
-        recipe.VegetarianClassificationVersion = 1;
-        recipe.VegetarianClassifiedAt = DateTimeOffset.Parse("2026-09-24T12:00:00Z");
 
         var content = new RecipeSearchDocumentBuilder().Build(recipe);
 
@@ -56,10 +54,10 @@ public class RecipeSearchDocumentBuilderTests
     }
 
     [Fact]
-    public void Build_UnknownVegetarianClassificationDoesNotIndexLegacyFalseDefault()
+    public void Build_UnknownVegetarianClassificationDoesNotIndexFact()
     {
         var recipe = Recipe("[\"lentils\"]");
-        recipe.IsVegetarian = false;
+        recipe.IsVegetarian = null;
 
         var content = new RecipeSearchDocumentBuilder().Build(recipe);
 

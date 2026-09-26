@@ -1,5 +1,8 @@
 # T3 physical schema and persistence evidence
 
+> **Archived — historical evidence only.** This records a completed isolated
+> migration check; it is not a current verification procedure.
+
 **Scope:** dietary-separation-phase3-contract / Task 3 only. This record does
 not authorize T4.
 
@@ -18,11 +21,10 @@ views, indexes, sequences, and types. The deployed migration-service source
 configuration now passes `--enable-drop`; its image continues to use the same
 sqldef version.
 
-The repeatable verifier is
-`api/database/verify-phase3-upgrade.sh`. It creates a unique
-`wfs-phase3-<pid>` Docker network/container with no published port, builds a
-candidate migration image from the current worktree, and targets only three
-databases inside that disposable cluster. It starts from the supported
+The retired verifier created a unique `wfs-phase3-<pid>` Docker
+network/container with no published port, built a candidate migration image
+from the worktree, and targeted only three databases inside that disposable
+cluster. It started from the supported
 pre-Phase-3 snapshot `b21beba266144668ded790bbdb9db3a7f5376fc6` at
 `api/database/schema.sql` (SHA-256
 `6edfd3241cb4bde79354e0c1ca62abfb1a2dc52ecd5224261b2ac4d9e11cd6c7`). It
@@ -37,12 +39,6 @@ column data only as data to be discarded; no retained fact is sourced solely
 from it.
 
 ## Observed isolated verification
-
-The operator ran:
-
-```sh
-./api/database/verify-phase3-upgrade.sh
-```
 
 The actual sqldef `--enable-drop --dry-run` emitted only the intended physical
 removal/recreation plan: drop/recreate `vw_discovery_recipes`; drop
@@ -87,7 +83,6 @@ retired facts, and that recovery is outside the supported Phase 3 model.
 | Populated pre-Phase-3 dry plan | passed | isolated fixture only |
 | Populated upgrade and retained-fact checks | passed | isolated fixture only |
 | Independent clean chain and retained-fact checks | passed | isolated fixture only |
-| `sh -n api/database/verify-phase3-upgrade.sh` | passed | local static shell syntax |
 | `dotnet build api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore` | passed | local compile; not PostgreSQL proof |
 | `task agent:reconcile` | passed | static route/mock coverage only; no live API/database claim |
 | `task agent:drift:schemas` | passed | static OpenAPI/DTO check only |
@@ -126,7 +121,7 @@ plus these T3 paths:
 | `api/src/RecipeApi.Tests/Integration/SchemaIntegrityTests.cs` | Replace retired-schema expectations with absence/model-mapping assertions. |
 | `api/src/RecipeApi.Tests/Integration/RecipeSearchIntegrationTests.cs` | Remove only legacy persistence-property seeds so Find Similar still tests current facts. |
 | `api/src/RecipeApi.Tests/Services/ManagementServiceTests.cs` | Remove only eliminated persistence-property setup/assertions; its legacy JSON compatibility coverage remains T2-owned. |
-| `api/database/verify-phase3-upgrade.sh` | Isolated real-PostgreSQL dry-plan, populated-upgrade, retained-fact, and clean-chain fixture. |
+| retired isolated verifier | Former real-PostgreSQL dry-plan, populated-upgrade, retained-fact, and clean-chain fixture; its observed result is preserved in this record. |
 | `t3-schema-evidence.md` | T3-only evidence, scope review, and rollback boundary. |
 
 Prepared content identity: `22da6830239cfc852d8773ea08b18195a767be2f139c3cbb15666f56929d8091`.

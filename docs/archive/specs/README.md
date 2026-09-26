@@ -29,6 +29,7 @@ The following packages were moved to `docs/archive/specs/` at the user’s direc
 - [discovery-live-queue-convergence](discovery-live-queue-convergence/tasks.md) — retired at owner request on 2026-09-22; implementation review was pending DQC-1, with historical requirements and tasks preserved without revalidation.
 - [filters](filters/tasks.md) — retired at owner request on 2026-09-22; SFD evidence and approval checkpoints preserved without revalidation.
 - [dietary-separation-retired-health-model](dietary-separation-retired-health-model/README.md) — retired Phase 3 health/dietary documentation and proposals, preserved on 2026-09-25 without revalidation.
+- [dietary-separation-phase3-contract](dietary-separation-phase3-contract/t4-final-migration-report.md) — completed Phase 3 contract and evidence package, archived on 2026-09-26; its retired disposable verifier was removed after preserving its observed results.
 
 ## Inventory
 
@@ -44,6 +45,7 @@ The notes describe the recorded documents, not verified current implementation. 
 | [contextual-reimport-feedback](contextual-reimport-feedback/tasks.md) | 3 | Retired at owner request 2026-09-13; partial implementation and unchecked work preserved without revalidation |
 | [demo-mode](demo-mode/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
 | [dev-loop-optimization](dev-loop-optimization/tasks.md) | 3 | 6 unchecked markers retained; not active work |
+| [dietary-separation-phase3-contract](dietary-separation-phase3-contract/t4-final-migration-report.md) | 6 | Completed Phase 3 contract and evidence package; archived 2026-09-26, with historical check records retained |
 | [discovery-vote-visual-simplification](discovery-vote-visual-simplification/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
 | [discovery-live-queue-convergence](discovery-live-queue-convergence/tasks.md) | 4 | Review pending DQC-1; historical record only |
 | [dreaming](dreaming/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
