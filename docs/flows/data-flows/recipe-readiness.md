@@ -12,8 +12,7 @@ A recipe is **ready** when the full capture-to-import pipeline has completed for
 3. `GenerateHero` — hero image created
 4. `SyncRecipe` — `recipe.json` imported to DB (name, ingredients, metadata)
 5. `CategorizeIngredients` — LLM normalises ingredient names to grocery sections
-6. `ClassifyDietaryProfile` — LLM classifies against Canada's Food Guide; FOP flags computed from schema.org nutrition
-7. `RecipeReady` — validates Name is set and `ImageCount > 0` → **ready**
+6. `RecipeReady` — validates Name is set and `ImageCount > 0` → **ready**
 
 **Describe path (goto-synthesis):**
 1. User submits name + description → `recipe.info` written with description, DB row inserted (`ImageCount = 0`, `IsSynthesized = false`)
@@ -21,8 +20,7 @@ A recipe is **ready** when the full capture-to-import pipeline has completed for
 3. `GenerateHero` — hero image created
 4. `SyncRecipe` — `recipe.json` imported to DB (name, ingredients, metadata)
 5. `CategorizeIngredients` — LLM normalises ingredient names to grocery sections
-6. `ClassifyDietaryProfile` — LLM classifies against Canada's Food Guide
-7. `RecipeReady` — validates Name is set and `IsSynthesized = true` → **ready**
+6. `RecipeReady` — validates Name is set and `IsSynthesized = true` → **ready**
 
 **URL import path:**
 1. User shares a recipe URL → DB row stub created, `recipe.info` written
@@ -30,8 +28,7 @@ A recipe is **ready** when the full capture-to-import pipeline has completed for
 3. `GenerateHero` — hero image created
 4. `SyncRecipe` — extracted metadata imported to DB
 5. `CategorizeIngredients` — LLM normalises ingredient names to grocery sections
-6. `ClassifyDietaryProfile` — LLM classifies against Canada's Food Guide; FOP flags from schema.org nutrition if published
-7. `RecipeReady` — validates readiness → **ready**
+6. `RecipeReady` — validates readiness → **ready**
 
 ## Computed rule
 
@@ -49,11 +46,11 @@ All three import workflows share the same enrichment tail that runs **after** th
 
 ```
 → CategorizeIngredients   (LLM: normalise ingredient names into grocery sections)
-→ ClassifyDietaryProfile  (LLM: classify against Canada's Food Guide, compute FOP flags)
 → RecipeReady             (validates readiness gate, emits SSE recipe_ready)
 ```
 
-`recipe-description-regeneration` is the only exception: it runs `ClassifyDietaryProfile` (with `forceReclassify: true`) but does **not** run `CategorizeIngredients` or `RecipeReady`.
+`recipe-description-regeneration` does not run `CategorizeIngredients` or
+`RecipeReady`.
 
 ```mermaid
 flowchart TD
@@ -88,8 +85,7 @@ flowchart TD
     I3 --> TAIL
 
     TAIL --> T1[CategorizeIngredients\nLLM: normalise ingredients\nto grocery sections]
-    T1 --> T2[ClassifyDietaryProfile\nLLM: Canada Food Guide classification\nFOP flags from schema.org nutrition]
-    T2 --> T3[RecipeReady\nName set AND ImageCount > 0 OR IsSynthesized]
+    T1 --> T3[RecipeReady\nName set AND ImageCount > 0 OR IsSynthesized]
 
     T3 --> R([Status: ready\nSSE: recipe_ready emitted])
 ```
@@ -117,5 +113,4 @@ Returns `RecipeStatusDto { Id, Name, Status, ImageCount, IsSynthesized }`.
 | Processor | Workflow(s) | What it writes |
 |-----------|-------------|----------------|
 | `CategorizeIngredients` | recipe-import, url-import, goto-synthesis | Grocery section per ingredient into `ingredient_categories` |
-| `ClassifyDietaryProfile` | all four (forceReclassify on description-regen) | `recipes.dietary_profile` (JSONB), `recipes.category` |
 | `RecipeReady` | recipe-import, url-import, goto-synthesis | Emits `recipe_ready` SSE event |

@@ -37,9 +37,6 @@ public class DiscoveryRecipe
     [Column("is_vegetarian")]
     public bool IsVegetarian { get; set; } = false;
 
-    [Column("is_healthy_choice")]
-    public bool IsHealthyChoice { get; set; } = false;
-
     [Column("last_cooked_date")]
     public DateTimeOffset? LastCookedDate { get; set; }
 
@@ -48,9 +45,6 @@ public class DiscoveryRecipe
 
     [Column("vote_count")]
     public int VoteCount { get; set; }
-
-    [Column("dietary_profile", TypeName = "jsonb")]
-    public string? DietaryProfile { get; set; } = null;
 
     // Map to Recipe for easy conversion if needed
     public Recipe ToRecipe() => new()
@@ -64,7 +58,6 @@ public class DiscoveryRecipe
         ImageCount = ImageCount,
         TotalTime = TotalTime,
         IsVegetarian = IsVegetarian,
-        IsHealthyChoice = IsHealthyChoice,
         LastCookedDate = LastCookedDate,
         CreatedAt = CreatedAt,
         Ingredients = Ingredients

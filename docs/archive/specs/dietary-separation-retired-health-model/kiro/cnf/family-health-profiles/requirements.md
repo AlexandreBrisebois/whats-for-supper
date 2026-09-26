@@ -1,0 +1,155 @@
+> **Historical reference — retired 2026-09-25.** Phase 3 removed this health-profile proposal. This document is preserved as history and is not active implementation guidance.
+
+# Requirements Document: Family Health Profiles
+
+## Introduction
+
+The app plans meals for a whole family. Family members may have pre-existing health conditions — high cholesterol, hypertension, diabetes, food allergies, intolerances, or dietary preferences — that make certain recipes worth a second look. Today the app has no awareness of this.
+
+This feature adds a health profile to each family member and uses it to decorate recipe cards and planner slots with calm warnings and review reminders. It does not block the user from planning any meal — it informs without being paternalistic. A meal may still be planned when a warning exists; warnings help the household plan with awareness, and the household decides whether a warning matters for that meal. The actual dietary classification of recipes (`dietary_profile`, `proteinSource`) was built in the `recipe-categorization` spec and is one data source this feature reads.
+
+This is a **display and warning** feature. It does not call any LLM. It does not modify recipe data. It does not change plan assignment logic. All health-profile logic is deterministic rule matching.
+
+**Dependency:** `recipe-categorization` and `cnf-data-ingestion` must be complete. `recipes.dietary_profile`, provider-backed ingredient identity, and `recipes.category` must be populated for the strongest warnings to appear.
+
+---
+
+## Glossary
+
+- **HealthProfile**: A JSONB record stored on `family_members.health_profile`. Contains conditions, allergies, intolerances, and preferences for one family member.
+- **Condition**: A named health state that the system knows how to map to dietary caution rules. Examples: `HighCholesterol`, `Hypertension`, `Diabetes`, `HeartDisease`.
+- **Allergy**: A food that causes an immune response. The system treats allergen matches as prominent review reminders, not proof that a recipe is unsafe or safe.
+- **Intolerance**: A food that causes discomfort but not an immune response (e.g. lactose, gluten). Surfaced as a soft warning.
+- **Preference**: A voluntary dietary choice (e.g. vegetarian, vegan, halal, kosher). Surfaced as an informational note, not a warning.
+- **RecipeWarning**: A structured object attached to a recipe card or planner slot explaining why a recipe deserves review for a specific family member. It is not a planning block.
+- **WarningLevel**: `hard` (possible allergy match — always shown prominently as a "check ingredients" reminder), `soft` (intolerance or condition caution — shown but dismissable), `info` (preference mismatch — subtle note).
+- **ConditionRuleEngine**: The deterministic, code-only service that maps a `HealthProfile` + `RecipeDietaryProfile` to a list of `RecipeWarning` objects.
+
+---
+
+## Requirements
+
+### Requirement 1: HealthProfile data model
+
+**User Story:** As a family manager, I want to record each family member's health conditions, allergies, intolerances, and dietary preferences in one place, so the app can use this information to guide meal planning.
+
+#### Acceptance Criteria
+
+1. THE `family_members` table SHALL have a `health_profile` column of type `jsonb`, nullable, defaulting to `null`.
+2. THE `HealthProfile` shape SHALL be:
+   ```
+   {
+     conditions:    string[]   // e.g. ["HighCholesterol", "Hypertension"]
+     allergies:     string[]   // e.g. ["Peanuts", "Shellfish", "TreeNuts"]
+     intolerances:  string[]   // e.g. ["Lactose", "Gluten"]
+     preferences:   string[]   // e.g. ["Vegetarian", "Halal"]
+   }
+   ```
+3. ALL four arrays SHALL default to `[]` when not provided. A `null` `health_profile` is equivalent to all-empty arrays.
+4. THE supported `conditions` values and their dietary implications SHALL be:
+   | Condition | Caution signals on recipe |
+   |---|---|
+   | `HighCholesterol` | Warns when `proteinSource` is `RedMeat`; warns when `DairyAndEggs` is a primary grocery section |
+   | `Hypertension` | Warns when recipe sodium exceeds `FopThresholds.SodiumMg` (345 mg per portion), using CNF-derived estimated nutrition when available and `raw_metadata.nutrition` as fallback |
+   | `Diabetes` | Warns when recipe `sugarContent` exceeds 15 g per portion OR `carbohydrateContent` exceeds 60 g per portion |
+   | `HeartDisease` | Warns when `proteinSource` is `RedMeat`; same as `HighCholesterol` |
+5. THE supported `allergies`, `intolerances`, and `preferences` SHALL be free-text strings. The system does NOT validate them against a closed set — the user enters what is relevant. Ingredient-level allergy/intolerance matching SHALL use provider identity, localized names, and deterministic synonym tables before allergy reminders are shown in recipe cards or planner slots.
+6. THE `HealthProfile` SHALL NOT be sent to any LLM. All rule matching is deterministic code.
+
+---
+
+### Requirement 2: CRUD for family member health profiles
+
+**User Story:** As a family manager, I want to set, update, and clear a health profile for each family member from the app, so I can keep it current as conditions change.
+
+#### Acceptance Criteria
+
+1. `PUT /api/family/{id}/health-profile` SHALL accept a `HealthProfileDto` body and upsert `family_members.health_profile`.
+2. `GET /api/family/{id}` SHALL include the `healthProfile` field in the `FamilyMemberDto` response (nullable).
+3. `DELETE /api/family/{id}/health-profile` SHALL set `family_members.health_profile = null`.
+4. THE `PUT` endpoint SHALL validate that all four arrays are present (defaulting to `[]` if omitted) before writing.
+5. `GET /api/family` (list all) SHALL include `healthProfile` on each member in the response.
+
+---
+
+### Requirement 3: Recipe warning computation
+
+**User Story:** As a family manager, I want to see a warning on a recipe card when it may not be suitable for a specific family member, so I can make an informed choice before adding it to the plan.
+
+#### Acceptance Criteria
+
+1. A `ConditionRuleEngine` service SHALL accept a `HealthProfile` and a `RecipeDietaryProfile` (plus optional per-portion nutrition data sourced from CNF-derived estimates when available, falling back to `raw_metadata.nutrition`) and return a list of `RecipeWarning` objects.
+2. THE `RecipeWarning` shape SHALL be:
+   ```
+   {
+     familyMemberId: string (uuid)
+     familyMemberName: string
+     level:  "hard" | "soft" | "info"
+     reason: string   // plain-language explanation, e.g. "High in saturated fat — caution for Alex's cholesterol."
+     condition: string  // the condition/allergy/intolerance/preference that triggered this
+   }
+   ```
+3. ALLERGY warnings SHALL have `level: "hard"` only when deterministic ingredient-level or provider-backed fallback matching finds a possible match. The reason SHALL name the allergen and use reminder copy such as `"Check ingredients for {allergy}: possible match in {ingredient}."`
+4. INTOLERANCE and CONDITION warnings SHALL have `level: "soft"`.
+5. PREFERENCE mismatches SHALL have `level: "info"`.
+6. WHEN `dietary_profile` is null for a recipe, the engine SHALL return no warnings (cannot warn on unclassified data).
+7. Warnings SHALL be member-specific and non-blocking. The app SHALL NOT prevent planning, voting, grocery generation, or cooking flow because a warning exists.
+8. Explicit allergy/intolerance review reminders SHALL remain visible even when the family-wide `health_guidance_enabled` setting is disabled. That setting gates derived wellness steering, not household-entered "check ingredients" reminders.
+9. THE engine SHALL be a pure function — no DB access, no LLM calls.
+
+---
+
+### Requirement 4: Recipe card and discovery decoration
+
+**User Story:** As a family member voting on recipes in the discovery stack, I want to see a health caution badge on a recipe card when it conflicts with my profile, so I can factor that in when voting.
+
+#### Acceptance Criteria
+
+1. `GET /api/discovery` SHALL return `warnings: RecipeWarning[]` on each recipe in the response, computed for the requesting family member's health profile.
+2. WHEN a recipe has no warnings for the requesting member, `warnings` SHALL be an empty array (not null).
+3. THE PWA discovery card SHALL display a caution badge when `warnings` contains at least one `hard` or `soft` warning. For allergy warnings, the badge/detail copy SHALL use "possible match" / "check ingredients" language, not an allergy-safe or unsafe assertion.
+4. TAPPING the badge SHALL show a tooltip or sheet listing all warnings for that recipe.
+5. `info`-level warnings SHALL NOT show a badge — they MAY be surfaced in the detail view only.
+
+---
+
+### Requirement 5: Planner slot decoration
+
+**User Story:** As a family manager reviewing the weekly plan, I want to see health warnings on planner slots, so I can proactively swap out unsuitable meals before cook day.
+
+#### Acceptance Criteria
+
+1. `GET /api/schedule` SHALL return `warnings: RecipeWarning[]` on each `ScheduleRecipeDto` that has a recipe assigned, computed for all family members who have a health profile.
+2. WHEN multiple family members have conflicting profiles, all their warnings SHALL be included.
+3. WHEN an assigned recipe has no warnings for any family member, `warnings` SHALL be an empty array (not null).
+4. THE PWA planner day card SHALL display a caution indicator when the slot's recipe has any `hard` or `soft` warnings. For allergy warnings, the indicator/detail copy SHALL use "possible match" / "check ingredients" language, not an allergy-safe or unsafe assertion.
+5. THE caution indicator SHALL NOT block any action — it is informational only. Users may keep the meal planned if they decide the recipe is acceptable for their household.
+6. WHEN the recipe in a slot has no warnings for any family member, no indicator is shown.
+7. WHEN a planner slot has no assigned recipe, the slot SHALL continue to use `recipe = null`; the contract SHALL NOT use `warnings = null` on a non-null `ScheduleRecipeDto` to represent "no recipe".
+
+---
+
+### Requirement 6: Backup and restore
+
+**User Story:** As a user, I want health profiles to survive a database restore.
+
+#### Acceptance Criteria
+
+1. `ManagementService.BackupAsync()` SHALL write `health_profile` for each family member to the existing `family-members.json` backup (or a new `family-health-profiles.json` if separation is cleaner).
+2. `ManagementService.RestoreAsync()` SHALL read and upsert `health_profile` back to `family_members.health_profile`.
+3. WHEN a family member's backup entry has no `healthProfile` field, the restore SHALL leave `health_profile = null` without error.
+
+---
+
+## Risks and Questions
+
+- **Allergy reminder confidence**: Ingredient-level matching improves recall, but the app must never claim a recipe is allergy-safe. Allergy copy should prompt review, e.g. `"Check ingredients for Shellfish: possible match in shrimp."`
+- **Nutrition data availability and confidence**: Hypertension and Diabetes rules read per-portion nutrition values produced by the categorization pipeline. CNF-derived nutrition is an estimate from ingredient matches, units, and yield; when CNF has no usable matches, the pipeline falls back to `raw_metadata.nutrition` if present. When no nutrition values are available, those rules cannot fire — the engine silently skips them. User-facing copy should treat nutrition warnings as cautions, not clinical precision.
+- **`ScheduleRecipeDto` shape change**: Adding `warnings` to `ScheduleRecipeDto` touches the existing schedule contract. See seam inventory in design.md.
+- **Performance**: Computing warnings for all members on every `GET /api/schedule` requires loading all `health_profile` values and all `dietary_profile` values. With a typical family of 2–6 and 7 slots, this is ~42 rule evaluations — negligible. No caching needed.
+- **Attendance scope**: The planner does not model per-meal attendance. Schedule warnings are therefore computed for all family members with health profiles and shown as household planning awareness, not suppressed by a hidden attendance rule.
+
+## Notes / Decisions
+
+- **2026-05-11**: `health_guidance_enabled` does not suppress explicit family-entered allergy/intolerance review reminders. It only gates derived wellness steering and recommendation behavior owned by other specs.
+- **2026-05-11**: Do not add meal-attendance tracking in this slice. Planner warnings remain member-specific and non-blocking, but schedule evaluation is not scoped by a recorded attendance model.

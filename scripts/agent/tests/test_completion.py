@@ -97,6 +97,20 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(results['database-behavior']['status'], 'blocked')
         self.assertEqual(results['test:agent']['status'], 'passed')
 
+    def test_impact_tests_run_without_an_isolated_runner_assertion(self):
+        f = self.finish()
+        with mock.patch.dict(os.environ, {}, clear=True), \
+             mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run:
+            self.assertEqual(f.run_check('agent:test:impact'), ('passed', 'ok'))
+        run.assert_called_once_with(['task', 'agent:test:impact'])
+
+    def test_api_tests_run_without_an_isolated_runner_assertion(self):
+        f = self.finish()
+        with mock.patch.dict(os.environ, {}, clear=True), \
+             mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run:
+            self.assertEqual(f.run_check('test:api'), ('passed', 'ok'))
+        run.assert_called_once_with(['task', 'test:api'])
+
     def test_timeout_stops_process_group_once_without_retry(self):
         f = self.finish()
         child = mock.Mock(pid=9876)
@@ -136,6 +150,14 @@ class CompletionTests(unittest.TestCase):
         with mock.patch.object(f, 'run_command') as run:
             self.assertEqual(f.prepare(['unknown.bin']), 2)
         run.assert_not_called()
+
+    def test_docker_compose_migration_configuration_is_contract_not_unknown(self):
+        f = self.finish()
+        self.assertEqual(f.classes_for(['docker/compose/infrastructure.yml']), {'contract'})
+        with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run:
+            self.assertEqual(f.prepare(['docker/compose/infrastructure.yml']), 0)
+        self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client']),
+                                             mock.call(['task', 'format'])])
 
     def test_prepare_generation_and_format_precede_any_verification(self):
         f = self.finish()

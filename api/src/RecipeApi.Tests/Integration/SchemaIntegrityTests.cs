@@ -45,28 +45,37 @@ public class SchemaIntegrityTests
     }
 
     [Fact]
-    public void HealthEvents_Schema_Matches_Model()
+    public void RetiredHealthStorageAndDiscoveryProjections_AreAbsent()
     {
-        var tableDefinition = GetTableDefinition("health_events");
-        
-        Assert.Contains("event_type", tableDefinition);
-        Assert.Contains("error_message", tableDefinition);
-        Assert.Contains("updated_at", tableDefinition);
-        
-        // Negative assertions to explicitly fail on old names (TDD Red phase)
-        Assert.DoesNotContain("entity_type", tableDefinition);
-        Assert.DoesNotContain("last_error", tableDefinition);
+        Assert.DoesNotContain("health_events", _schemaContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("health_recipe_profiles", _schemaContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("health_week_summaries", _schemaContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("is_healthy_choice", _schemaContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("dietary_profile", _schemaContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("balance_summary", _schemaContent, StringComparison.OrdinalIgnoreCase);
+
+        var discoveryView = GetViewDefinition("vw_discovery_recipes");
+        Assert.DoesNotContain("is_healthy_choice", discoveryView, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("dietary_profile", discoveryView, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void HealthRecipeProfiles_Schema_Matches_Model()
+    public async Task RetiredHealthStorage_HasNoEfModelMapping()
     {
-        var tableDefinition = GetTableDefinition("health_recipe_profiles");
-        
-        Assert.Contains("is_healthy_choice", tableDefinition);
-        Assert.Contains("is_vegetarian", tableDefinition);
-        Assert.Contains("primary_food_group", tableDefinition);
-        Assert.Contains("version", tableDefinition);
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var designTimeModel = db.GetService<IDesignTimeModel>().Model;
+        var mappedStores = designTimeModel.GetEntityTypes()
+            .SelectMany(entity => new[] { entity.GetTableName(), entity.GetViewName() })
+            .Where(name => name is not null)
+            .ToArray();
+
+        Assert.DoesNotContain(mappedStores, name => name!.StartsWith("health_", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(designTimeModel.FindEntityType(typeof(Recipe))!.GetProperties(), property =>
+            property.GetColumnName() is "is_healthy_choice" or "dietary_profile");
+        Assert.DoesNotContain(designTimeModel.FindEntityType(typeof(WeeklyPlan))!.GetProperties(), property =>
+            property.GetColumnName() == "balance_summary");
     }
 
     [Fact]
@@ -154,6 +163,13 @@ public class SchemaIntegrityTests
     {
         // Simple regex to extract the CREATE TABLE block for a specific table
         var pattern = $@"CREATE TABLE IF NOT EXISTS {tableName} \((.*?)\);";
+        var match = Regex.Match(_schemaContent, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        return match.Success ? match.Groups[1].Value : string.Empty;
+    }
+
+    private string GetViewDefinition(string viewName)
+    {
+        var pattern = $@"CREATE OR REPLACE VIEW {viewName} AS(.*?);";
         var match = Regex.Match(_schemaContent, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         return match.Success ? match.Groups[1].Value : string.Empty;
     }

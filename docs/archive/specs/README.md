@@ -28,6 +28,7 @@ The following packages were moved to `docs/archive/specs/` at the user’s direc
 - [dreaming-next-week-defer](dreaming-next-week-defer/tasks.md) — retired at owner request on 2026-09-14; planned, unimplemented work preserved without revalidation.
 - [discovery-live-queue-convergence](discovery-live-queue-convergence/tasks.md) — retired at owner request on 2026-09-22; implementation review was pending DQC-1, with historical requirements and tasks preserved without revalidation.
 - [filters](filters/tasks.md) — retired at owner request on 2026-09-22; SFD evidence and approval checkpoints preserved without revalidation.
+- [dietary-separation-retired-health-model](dietary-separation-retired-health-model/README.md) — retired Phase 3 health/dietary documentation and proposals, preserved on 2026-09-25 without revalidation.
 
 ## Inventory
 

@@ -180,6 +180,39 @@ public class SearchIndexBackupRestoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RestoreAsync_LegacySidecarHealthTermsAreNotRehydrated()
+    {
+        var recipe = BuildReadyRecipe();
+        recipe.CuisineType = "French";
+        recipe.MealTypes = ["Supper"];
+        recipe.IsVegetarian = true;
+        recipe.VegetarianClassificationVersion = 1;
+        await SeedReadyDocumentAsync(recipe);
+        await _management.BackupAsync();
+
+        var sidecarPath = GetSidecarPath(recipe.Id);
+        var legacySidecar = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(await File.ReadAllTextAsync(sidecarPath))!;
+        legacySidecar["documentText"] = JsonDocument.Parse("\"Chicken Stir Fry. FOP high sodium. Dietary profile: legacy.\"").RootElement;
+        legacySidecar["searchMetadata"] = JsonDocument.Parse("{\"dietaryProfile\":{\"legacy\":true}}").RootElement;
+        await File.WriteAllTextAsync(sidecarPath, JsonSerializer.Serialize(legacySidecar));
+
+        _db.RecipeSearchDocuments.Remove((await _db.RecipeSearchDocuments.FindAsync(recipe.Id))!);
+        await _db.SaveChangesAsync();
+
+        await _management.RestoreAsync();
+
+        var restored = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
+        Assert.NotNull(restored);
+        Assert.Contains("Ingredients: broccoli, chicken.", restored!.DocumentText);
+        Assert.Contains("Cuisine: french.", restored.DocumentText);
+        Assert.Contains("Meal types: supper.", restored.DocumentText);
+        Assert.Contains("Vegetarian: true.", restored.DocumentText);
+        Assert.DoesNotContain("fop", restored.DocumentText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("dietary", restored.DocumentText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("dietaryProfile", restored.SearchMetadata, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RestoreAsync_WithMissingSidecar_SetsPending()
     {
         var recipe = BuildReadyRecipe("No Sidecar Recipe");

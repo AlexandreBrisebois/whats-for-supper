@@ -108,9 +108,14 @@ test.describe('Capture Flow', () => {
   test('large photo uploads show immediate upload feedback and a delayed overlay', async ({
     page,
   }) => {
+    let releaseUpload!: () => void;
+    const uploadHeld = new Promise<void>((resolve) => {
+      releaseUpload = resolve;
+    });
+
     await page.route('**/api/recipes', async (route) => {
       if (route.request().method() === 'POST') {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await uploadHeld;
         await route.fulfill({
           status: 202,
           contentType: 'application/json',
@@ -142,6 +147,7 @@ test.describe('Capture Flow', () => {
     await expect(page.getByTestId('capture-photo-upload-overlay')).toBeVisible();
     await expect(page.getByTestId('capture-upload-keep-open')).toBeVisible();
 
+    releaseUpload();
     await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
   });
 

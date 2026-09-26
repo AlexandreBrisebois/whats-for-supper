@@ -78,8 +78,8 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
         await using var connection = new NpgsqlConnection(_connection.ConnectionString);
         await connection.OpenAsync();
         await new NpgsqlCommand("""
-            INSERT INTO recipes (id, rating, is_discoverable, is_vegetarian, is_healthy_choice, is_ready, name)
-            SELECT gen_random_uuid(), 0, TRUE, FALSE, FALSE, TRUE, 'Candidate ' || series
+            INSERT INTO recipes (id, rating, is_discoverable, is_vegetarian, is_ready, name)
+            SELECT gen_random_uuid(), 0, TRUE, FALSE, TRUE, 'Candidate ' || series
             FROM generate_series(1, 100000) AS series;
             INSERT INTO recipe_search_documents (recipe_id, document_text, embedding_model, index_status)
             SELECT id,

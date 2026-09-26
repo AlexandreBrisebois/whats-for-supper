@@ -86,10 +86,6 @@ public class Recipe
     [Column("vegetarian_classification_failure_reason")]
     public string? VegetarianClassificationFailureReason { get; set; }
 
-    [Column("is_healthy_choice")]
-    [JsonIgnore]
-    public bool IsHealthyChoice { get; set; } = false;
-
     // Phase 1+ fields — populated by import worker / AI pipeline
     /// <summary>Raw metadata extracted by AI from recipe images (Phase 1).</summary>
     [Column("raw_metadata", TypeName = "jsonb")]
@@ -98,10 +94,6 @@ public class Recipe
     /// <summary>Structured ingredient list extracted by AI (Phase 1).</summary>
     [Column("ingredients", TypeName = "jsonb")]
     public string? Ingredients { get; set; }
-
-    /// <summary>Dietary profile classification aligned with Canada's Food Guide (Phase 1).</summary>
-    [Column("dietary_profile", TypeName = "jsonb")]
-    public string? DietaryProfile { get; set; } = null;
 
     [Column("deleted_at")]
     public DateTimeOffset? DeletedAt { get; set; }

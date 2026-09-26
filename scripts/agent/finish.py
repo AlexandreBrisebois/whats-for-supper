@@ -24,7 +24,7 @@ def classes_for(paths):
     classes = set()
     for path in paths:
         # Runtime schemas beat documentation/spec-directory shortcuts.
-        if (path == 'specs/openapi.yaml' or path.endswith('.sql')
+        if (path == 'specs/openapi.yaml' or path.endswith('.sql') or path.startswith('docker/compose/')
                 or path.startswith(('api/src/RecipeApi/Dto/', 'api/src/RecipeApi/Controllers/',
                                     'api/src/RecipeApi/Data/', 'api/src/RecipeApi/Models/'))):
             classes.add('contract')
@@ -121,10 +121,7 @@ def run_check(check):
     if check == 'database-behavior':
         return 'blocked', ('Task-specific real database behavior evidence required; '
                            'static parity and generic test:api do not establish it. '
-                           'Record the approved isolated database check in task evidence.')
-    if check in ('agent:test:impact', 'test:api') and os.environ.get('WFS_ISOLATED_RUNNER') != '1':
-        return 'blocked', ('Requires a disposable runner with dedicated processes/ports/data; '
-                           'WFS_ISOLATED_RUNNER=1 is an operator assertion after setup, not qualification.')
+                           'Record the approved task-specific database check in task evidence.')
     # Invoke scripts directly where Task wraps distinct exits as 201, preserving
     # blocked live/Kiota evidence. Public commands remain Taskfile entrypoints.
     if check == 'agent:drift:endpoints':

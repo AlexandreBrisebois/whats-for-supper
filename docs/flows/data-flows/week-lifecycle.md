@@ -42,7 +42,7 @@ stateDiagram-v2
 ```
 POST /api/schedule/assign
   → DB: INSERT CalendarEvent
-  → GroceryRecomputeService: recompute grocery + balance_summary
+  → GroceryRecomputeService: recompute grocery state
   → SSE: slot_updated { date, recipe, status: 0 }
   → SSE: fill_the_gap_invalidated { weekOffset }
   → SSE: discovery_nudge { nextFoodGroup, reason } (conditional — only when a group newly hits its target)

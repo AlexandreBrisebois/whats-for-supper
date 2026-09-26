@@ -52,6 +52,7 @@ services:
       -h postgres
       -U ${POSTGRES_USER:-recipe_app}
       ${POSTGRES_DB:-recipe_app_db}
+      --enable-drop
       -f /schema.sql
     depends_on:
       postgres:

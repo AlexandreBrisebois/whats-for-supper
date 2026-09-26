@@ -118,4 +118,27 @@ BEGIN
 END
 $$;
 
+-- Phase 3 dietary separation is intentionally irreversible: these stores contain
+-- retired nutritional interpretation only. The dependency order keeps the
+-- discovery view valid while psqldef reconciles the final schema.
+DROP VIEW IF EXISTS public.vw_discovery_recipes;
+DROP TABLE IF EXISTS public.health_events;
+DROP TABLE IF EXISTS public.health_recipe_profiles;
+DROP TABLE IF EXISTS public.health_week_summaries;
+
+DO $$
+BEGIN
+    IF to_regclass('public.recipes') IS NOT NULL THEN
+        ALTER TABLE public.recipes
+            DROP COLUMN IF EXISTS is_healthy_choice,
+            DROP COLUMN IF EXISTS dietary_profile;
+    END IF;
+
+    IF to_regclass('public.weekly_plans') IS NOT NULL THEN
+        ALTER TABLE public.weekly_plans
+            DROP COLUMN IF EXISTS balance_summary;
+    END IF;
+END
+$$;
+
 COMMIT;

@@ -757,8 +757,6 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.True(restored.IsVegetarian);
         Assert.Equal(1, restored.VegetarianClassificationVersion);
         Assert.Equal(DateTimeOffset.Parse("2026-09-24T12:00:00Z"), restored.VegetarianClassifiedAt);
-        Assert.False(restored.IsHealthyChoice);
-        Assert.Null(restored.DietaryProfile);
     }
 
     [Fact]
@@ -777,9 +775,7 @@ public class ManagementServiceTests : IAsyncLifetime
             MealTypes = ["Supper"],
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
-            IsHealthyChoice = true,
-            Ingredients = "[\"lentils\"]",
-            DietaryProfile = "{\"legacy\":true}"
+            Ingredients = "[\"lentils\"]"
         });
         await _db.SaveChangesAsync();
 
@@ -795,6 +791,113 @@ public class ManagementServiceTests : IAsyncLifetime
         var recipeJson = await _recipeStore.ReadRecipeJsonAsync(recipeId);
         Assert.NotNull(recipeJson);
         Assert.DoesNotContain("isHealthyChoice", recipeJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("dietaryProfile", recipeJson, StringComparison.OrdinalIgnoreCase);
+
+        var demoRecipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe
+        {
+            Id = demoRecipeId,
+            Name = "Demo Lentil Stew",
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Ingredients = "[\"lentils\"]",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.CaptureDemoStateAsync(CancellationToken.None);
+
+        var demoJson = await File.ReadAllTextAsync(Path.Combine(DemoRoot, "recipes.json"));
+        Assert.DoesNotContain("dietaryProfile", demoJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RestoreAsync_ToleratesLegacyWeeklyPlanBalanceSummaryAndPreservesGroceryState()
+    {
+        var planId = Guid.NewGuid();
+        var weekStart = new DateOnly(2026, 9, 21);
+        await File.WriteAllTextAsync(Path.Combine(DataRoot, "weekly-plans.json"), $$"""
+            [
+              {
+                "id": "{{planId}}",
+                "weekStartDate": "{{weekStart:yyyy-MM-dd}}",
+                "status": 2,
+                "groceryState": "{\"Tomatoes\":\"Pantry\"}",
+                "groceryItems": "[{\"name\":\"Tomatoes\"}]",
+                "balanceSummary": { "isBalanced": true },
+                "createdAt": "2026-09-21T12:00:00Z"
+              }
+            ]
+            """);
+
+        var result = await _service.RestoreAsync();
+
+        var restored = await _db.WeeklyPlans.FindAsync(planId);
+        Assert.Equal(1, result.WeeklyPlansRestored);
+        Assert.NotNull(restored);
+        Assert.Equal(weekStart, restored!.WeekStartDate);
+        Assert.Equal(WeeklyPlanStatus.Locked, restored.Status);
+        Assert.Equal("{\"Tomatoes\":\"Pantry\"}", restored.GroceryState);
+        Assert.Equal("[{\"name\":\"Tomatoes\"}]", restored.GroceryItems);
+    }
+
+    [Fact]
+    public async Task BackupRestoreRoundTrip_PreservesCurrentRecipeAndWeeklyPlanFacts()
+    {
+        var recipeId = Guid.NewGuid();
+        var planId = Guid.NewGuid();
+        var weekStart = new DateOnly(2026, 9, 21);
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Current Lentil Supper",
+            AddedBy = _factory.DefaultFamilyMemberId,
+            ImageCount = 1,
+            IsReady = true,
+            Category = "Supper",
+            CuisineType = "French",
+            MealTypes = ["Supper", "Weeknight"],
+            IsVegetarian = true,
+            VegetarianClassificationVersion = 1,
+            VegetarianClassifiedAt = DateTimeOffset.Parse("2026-09-24T12:00:00Z"),
+            Ingredients = "[\"lentils\",\"tomato\"]",
+            SourceUrl = "https://example.test/lentils",
+            CreatedAt = DateTimeOffset.Parse("2026-09-21T12:00:00Z"),
+            UpdatedAt = DateTimeOffset.Parse("2026-09-21T12:00:00Z")
+        });
+        _db.WeeklyPlans.Add(new WeeklyPlan
+        {
+            Id = planId,
+            WeekStartDate = weekStart,
+            Status = WeeklyPlanStatus.Locked,
+            GroceryState = "{\"Lentils\":\"Pantry\"}",
+            GroceryItems = "[{\"name\":\"Lentils\"}]"
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.BackupAsync();
+        _db.Recipes.Remove((await _db.Recipes.FindAsync(recipeId))!);
+        _db.WeeklyPlans.Remove((await _db.WeeklyPlans.FindAsync(planId))!);
+        await _db.SaveChangesAsync();
+
+        await _service.RestoreAsync();
+
+        var restoredRecipe = await _db.Recipes.FindAsync(recipeId);
+        var restoredPlan = await _db.WeeklyPlans.FindAsync(planId);
+        Assert.NotNull(restoredRecipe);
+        Assert.Equal("Current Lentil Supper", restoredRecipe!.Name);
+        Assert.Equal("French", restoredRecipe.CuisineType);
+        Assert.NotNull(restoredRecipe.MealTypes);
+        Assert.Equal(["Supper", "Weeknight"], restoredRecipe.MealTypes!);
+        Assert.True(restoredRecipe.IsVegetarian);
+        Assert.Equal(1, restoredRecipe.VegetarianClassificationVersion);
+        Assert.Equal("[\"lentils\",\"tomato\"]", restoredRecipe.Ingredients);
+        Assert.Equal("https://example.test/lentils", restoredRecipe.SourceUrl);
+        Assert.NotNull(restoredPlan);
+        Assert.Equal(weekStart, restoredPlan!.WeekStartDate);
+        Assert.Equal(WeeklyPlanStatus.Locked, restoredPlan.Status);
+        Assert.Equal("{\"Lentils\":\"Pantry\"}", restoredPlan.GroceryState);
+        Assert.Equal("[{\"name\":\"Lentils\"}]", restoredPlan.GroceryItems);
     }
 
     [Fact]

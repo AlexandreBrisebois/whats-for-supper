@@ -149,7 +149,6 @@ The fingerprint is the SHA-256 hex digest of the following canonical JSON string
   "category": "<value or null>",
   "description": "<value or null>",
   "difficulty": "<value or null>",
-  "dietaryProfile": "<serialized or null>",
   "ingredients": ["<sorted array of strings>"],
   "isDiscoverable": true,
   "name": "<value>",
@@ -166,7 +165,7 @@ This exact field set and sort order is the single source of truth, implemented i
 
 A `SearchIndexWorkflow` workflow is triggered when a recipe is:
 - created,
-- updated in: `name`, `description`, `ingredients`, `notes`, `rating`, `isDiscoverable`, `dietaryProfile`, `category`, `totalTime`,
+- updated in: `name`, `description`, `ingredients`, `notes`, `rating`, `isDiscoverable`, `category`, `totalTime`,
 - restored from the Recycle Bin.
 
 The trigger uses the `IWorkflowOrchestrator` to enqueue an `index-recipe-search` workflow.

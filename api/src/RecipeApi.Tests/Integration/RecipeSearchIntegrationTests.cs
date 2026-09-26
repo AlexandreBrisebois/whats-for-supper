@@ -60,6 +60,30 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("name").GetString() == "Chicken Stir Fry");
     }
 
+    [Theory]
+    [InlineData("végétarien")]
+    [InlineData("vegetarien")]
+    public async Task Search_MatchesFrenchVegetarianSpelling(string query)
+    {
+        await SeedRecipeAsync(new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            Name = "Curry végétarien de lentilles",
+            Description = "Lentil supper",
+            Ingredients = JsonSerializer.Serialize(new[] { "lentils", "tomato" }),
+            IsVegetarian = true,
+            VegetarianClassificationVersion = 1,
+            VegetarianClassifiedAt = TestNow,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        });
+
+        using var document = await ReadDataAsync(await PostSearchAsync(new { query }));
+
+        Assert.Equal("Curry végétarien de lentilles", document.RootElement.GetProperty("topPick").GetProperty("name").GetString());
+    }
+
     [Fact]
     public async Task Search_Matches_Query_From_Notes_And_Emits_NotesReason()
     {
@@ -285,7 +309,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task FindSimilar_UsesCurrentRecipeFacts_NotLegacyDietaryProfile()
+    public async Task FindSimilar_UsesCurrentRecipeFacts()
     {
         var source = new Recipe
         {
@@ -294,7 +318,6 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             Name = "Herbed Tomato Pasta",
             Description = "Tomato pasta with basil",
             Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato", "basil" }),
-            DietaryProfile = "{\"primaryFoodGroup\":\"ProteinFoods\",\"proteinSource\":\"Poultry\"}",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
@@ -305,7 +328,6 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             Name = "Tomato Basil Pasta",
             Description = "Herbed pasta dinner",
             Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato", "basil" }),
-            DietaryProfile = "{\"primaryFoodGroup\":\"VegetablesAndFruits\",\"proteinSource\":\"None\"}",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

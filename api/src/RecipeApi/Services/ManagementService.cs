@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
@@ -26,6 +27,17 @@ public class ManagementService(
     IClock clock,
     ILogger<ManagementService> logger)
 {
+    private static readonly HashSet<string> RetiredRecipeBackupFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "isHealthyChoice",
+        "dietaryProfile",
+        "fopFlags",
+        "fopClassification",
+        "healthProfile",
+        "healthEvent",
+        "balanceSummary"
+    };
+
     private string DataRoot => dataRoot.Root;
 
     private static readonly JsonSerializerOptions _cycleIgnoreOptions = new()
@@ -115,7 +127,7 @@ public class ManagementService(
             if (!await recipeStore.RecipeJsonExistsAsync(recipe.Id) &&
                 (!string.IsNullOrEmpty(recipe.RawMetadata) || !string.IsNullOrEmpty(recipe.Ingredients)))
             {
-                var recipeJson = JsonSerializer.Serialize(recipe, _cycleIgnoreOptions);
+                var recipeJson = SerializeRecipeBackup(recipe);
                 await recipeStore.WriteRecipeJsonAsync(recipe.Id, recipeJson);
             }
 
@@ -158,28 +170,36 @@ public class ManagementService(
         logger.LogInformation("Backed up {Count} ingredient categories to {Path}", ingredientCategories.Count, categoriesPath);
 
         // 6. Backup search index sidecars (only for recipes with index_status = 'ready')
-        var readyDocs = await db.RecipeSearchDocuments
-            .AsNoTracking()
-            .Where(d => d.IndexStatus == "ready")
+        var readyDocs = await (
+            from document in db.RecipeSearchDocuments.AsNoTracking()
+            join recipe in db.Recipes.AsNoTracking() on document.RecipeId equals recipe.Id
+            where document.IndexStatus == "ready"
+            select new { Document = document, Recipe = recipe })
             .ToListAsync();
 
         int sidecarCount = 0;
-        foreach (var doc in readyDocs)
+        foreach (var readyDocument in readyDocs)
         {
             try
             {
+                var doc = readyDocument.Document;
+                var content = new RecipeSearchDocumentBuilder().Build(readyDocument.Recipe);
+                var sourceFingerprint = SearchFingerprintService.ComputeSourceFingerprint(readyDocument.Recipe, content);
+                var canReuseEmbedding = doc.EmbeddingStatus == "ready"
+                    && doc.SourceFingerprint == sourceFingerprint
+                    && doc.EmbeddingFingerprint == sourceFingerprint;
                 // Build sidecar manually to avoid EF navigation cycle issues
                 var sidecarDict = new Dictionary<string, object?>
                 {
                     ["schemaVersion"] = doc.SchemaVersion,
                     ["recipeId"] = doc.RecipeId.ToString(),
-                    ["documentText"] = doc.DocumentText,
-                    ["searchMetadata"] = doc.SearchMetadata ?? "{}",
+                    ["documentText"] = content.DocumentText,
+                    ["searchMetadata"] = JsonSerializer.Deserialize<JsonElement>(content.SearchMetadata),
                     ["embeddingModel"] = doc.EmbeddingModel,
                     ["embeddingVersion"] = (object?)doc.EmbeddingVersion,
-                    ["embeddingStatus"] = doc.EmbeddingStatus,
-                    ["embeddingFingerprint"] = doc.EmbeddingFingerprint,
-                    ["sourceFingerprint"] = doc.SourceFingerprint,
+                    ["embeddingStatus"] = canReuseEmbedding ? "ready" : "pending",
+                    ["embeddingFingerprint"] = canReuseEmbedding ? sourceFingerprint : null,
+                    ["sourceFingerprint"] = sourceFingerprint,
                     ["exportedAt"] = DateTimeOffset.UtcNow.ToString("O")
                 };
 
@@ -201,7 +221,7 @@ public class ManagementService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to write search.index.json for recipe {RecipeId}", doc.RecipeId);
+                logger.LogError(ex, "Failed to write search.index.json for recipe {RecipeId}", readyDocument.Document.RecipeId);
             }
         }
 
@@ -235,7 +255,7 @@ public class ManagementService(
         var searchDocuments = await db.RecipeSearchDocuments.AsNoTracking().ToListAsync(ct);
 
         await WriteJsonAsync(Path.Combine(DemoRoot, "family-members.json"), familyMembers, ct);
-        await WriteJsonAsync(Path.Combine(DemoRoot, "recipes.json"), recipes, ct);
+        await File.WriteAllTextAsync(Path.Combine(DemoRoot, "recipes.json"), SerializeRecipeBackups(recipes), ct);
         await WriteJsonAsync(Path.Combine(DemoRoot, "recipe-search-documents.json"), searchDocuments, ct);
 
         var demoRecipesRoot = Path.Combine(DemoRoot, "recipes");
@@ -667,6 +687,56 @@ public class ManagementService(
         await File.WriteAllTextAsync(path, json, ct);
     }
 
+    private static string SerializeRecipeBackup(Recipe recipe)
+    {
+        var root = JsonSerializer.SerializeToNode(recipe, _cycleIgnoreOptions)?.AsObject()
+            ?? throw new InvalidOperationException("Recipe backup serialization did not produce an object.");
+        RemoveRetiredRecipeFields(root);
+        return root.ToJsonString(_cycleIgnoreOptions);
+    }
+
+    private static string SerializeRecipeBackups(IEnumerable<Recipe> recipes)
+    {
+        var root = JsonSerializer.SerializeToNode(recipes, _cycleIgnoreOptions)?.AsArray()
+            ?? throw new InvalidOperationException("Recipe backup serialization did not produce an array.");
+        foreach (var recipe in root.OfType<JsonObject>())
+            RemoveRetiredRecipeFields(recipe);
+        return root.ToJsonString(_cycleIgnoreOptions);
+    }
+
+    private static string RemoveRetiredRecipeFields(string json)
+    {
+        var root = JsonNode.Parse(json);
+        if (root is not JsonObject recipe)
+            return json;
+        var retiredFields = recipe.Select(property => property.Key).Where(RetiredRecipeBackupFields.Contains).ToArray();
+        if (retiredFields.Length == 0)
+            return json;
+        foreach (var field in retiredFields)
+            recipe.Remove(field);
+        return recipe.ToJsonString(_cycleIgnoreOptions);
+    }
+
+    private static void RemoveRetiredRecipeFields(JsonObject recipe)
+    {
+        foreach (var field in recipe.Select(property => property.Key).Where(RetiredRecipeBackupFields.Contains).ToArray())
+            recipe.Remove(field);
+    }
+
+    private static bool IsJsonArray(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        try
+        {
+            using var document = JsonDocument.Parse(value);
+            return document.RootElement.ValueKind == JsonValueKind.Array;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     private static async Task<T?> ReadJsonAsync<T>(string path, CancellationToken ct)
     {
         var json = await File.ReadAllTextAsync(path, ct);
@@ -809,19 +879,24 @@ public class ManagementService(
                     // This mismatch causes JsonException.
                     if (json5 != null)
                     {
-                        using var doc = JsonDocument.Parse(json5);
+                        var currentJson = RemoveRetiredRecipeFields(json5);
+                        using var doc = JsonDocument.Parse(currentJson);
                         var rootElement = doc.RootElement;
 
                         recipe ??= new Recipe { Id = recipeId };
 
                         logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeId);
 
-                        recipe.RawMetadata = json5;
+                        recipe.RawMetadata = currentJson;
 
                         if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
                             recipe.Ingredients = ingProp.GetRawText();
                         else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
                             recipe.Ingredients = legacyIngProp.GetRawText();
+                        else if (rootElement.TryGetProperty("ingredients", out var serializedIngredients)
+                            && serializedIngredients.ValueKind == JsonValueKind.String
+                            && IsJsonArray(serializedIngredients.GetString()))
+                            recipe.Ingredients = serializedIngredients.GetString();
 
                         if (string.IsNullOrEmpty(recipe.Category) && rootElement.TryGetProperty("category", out var catProp))
                             recipe.Category = catProp.GetString();
@@ -958,7 +1033,6 @@ public class ManagementService(
                 var schemaVersion = root.TryGetProperty("schemaVersion", out var sv) ? sv.GetInt32() : 0;
                 var embeddingModel = root.TryGetProperty("embeddingModel", out var em) ? em.GetString() : null;
 
-                var sourceFingerprint = root.TryGetProperty("sourceFingerprint", out var fp) ? fp.GetString() : null;
                 if (schemaVersion != RecipeSearchDocumentBuilder.CurrentSchemaVersion)
                 {
                     await UpsertSearchDocumentPendingAsync(recipe.Id, ct);
@@ -966,7 +1040,8 @@ public class ManagementService(
                     continue;
                 }
 
-                var documentText = root.TryGetProperty("documentText", out var dt) ? dt.GetString() ?? string.Empty : string.Empty;
+                var content = new RecipeSearchDocumentBuilder().Build(recipe);
+                var sourceFingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe, content);
                 var embeddingVersion = root.TryGetProperty("embeddingVersion", out var ev) ? ev.GetString() : null;
                 var embeddingFingerprint = root.TryGetProperty("embeddingFingerprint", out var ef) ? ef.GetString() : null;
                 var embeddingStatus = root.TryGetProperty("embeddingStatus", out var es) ? es.GetString() : "pending";
@@ -980,14 +1055,14 @@ public class ManagementService(
                     db.RecipeSearchDocuments.Add(new RecipeSearchDocument
                     {
                         RecipeId = recipe.Id,
-                        DocumentText = documentText,
-                        SearchMetadata = root.TryGetProperty("searchMetadata", out var sm) ? sm.GetRawText() : "{}",
+                        DocumentText = content.DocumentText,
+                        SearchMetadata = content.SearchMetadata,
                         IndexStatus = "ready",
                         EmbeddingJson = embeddingJson,
                         EmbeddingModel = embeddingModel ?? configuredModel,
                         EmbeddingVersion = embeddingVersion,
-                        EmbeddingStatus = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && sourceFingerprint == SearchFingerprintService.ComputeSourceFingerprint(recipe) && embeddingStatus == "ready" ? "ready" : "pending",
-                        EmbeddingFingerprint = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && sourceFingerprint == SearchFingerprintService.ComputeSourceFingerprint(recipe) ? embeddingFingerprint : null,
+                        EmbeddingStatus = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && embeddingStatus == "ready" ? "ready" : "pending",
+                        EmbeddingFingerprint = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint ? embeddingFingerprint : null,
                         SourceFingerprint = sourceFingerprint,
                         LastIndexedAt = DateTimeOffset.UtcNow,
                         SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
@@ -995,14 +1070,14 @@ public class ManagementService(
                 }
                 else
                 {
-                    existing.DocumentText = documentText;
-                    existing.SearchMetadata = root.TryGetProperty("searchMetadata", out var restoredMetadata) ? restoredMetadata.GetRawText() : "{}";
+                    existing.DocumentText = content.DocumentText;
+                    existing.SearchMetadata = content.SearchMetadata;
                     existing.IndexStatus = "ready";
                     existing.EmbeddingJson = embeddingJson;
                     existing.EmbeddingModel = embeddingModel ?? configuredModel;
                     existing.EmbeddingVersion = embeddingVersion;
-                    existing.EmbeddingStatus = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && sourceFingerprint == SearchFingerprintService.ComputeSourceFingerprint(recipe) && embeddingStatus == "ready" ? "ready" : "pending";
-                    existing.EmbeddingFingerprint = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && sourceFingerprint == SearchFingerprintService.ComputeSourceFingerprint(recipe) ? embeddingFingerprint : null;
+                    existing.EmbeddingStatus = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && embeddingStatus == "ready" ? "ready" : "pending";
+                    existing.EmbeddingFingerprint = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint ? embeddingFingerprint : null;
                     existing.SourceFingerprint = sourceFingerprint;
                     existing.LastIndexedAt = DateTimeOffset.UtcNow;
                     existing.SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion;

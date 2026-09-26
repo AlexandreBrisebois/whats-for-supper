@@ -1,6 +1,7 @@
 # Dietary separation migration — Phase 1
 
-Phase 1 adds a WFS-owned vegetarian recipe fact without removing or changing the legacy dietary/health system.
+Phase 1 established the WFS-owned vegetarian recipe fact. It remains a recipe
+fact after the retired dietary/health model was removed in Phase 3.
 
 ## Representation
 
@@ -31,6 +32,8 @@ Use the existing workflow trigger endpoint with a `parameters` object:
 
 The persisted workflow tasks make interrupted work resumable. Current-version rows are skipped unless `force` is set. Failed classification tasks retain diagnostic state and can use the existing workflow-task reset/retry mechanism.
 
-## Legacy comparison
+## Boundary
 
-`HealthComputationService` copies `Recipe.IsVegetarian` into `HealthRecipeProfile`; it does not independently classify vegetarian status. Phase 1 therefore preserves legacy data but has no independent legacy vegetarian signal for an apples-to-apples comparison in Phase 2.
+Vegetarian classification is a WFS-owned recipe fact. Nutritional and dietetic
+interpretation is outside WFS; this record does not prescribe an external
+integration.

@@ -17,6 +17,7 @@ flowchart LR
 
 - The PWA is the family-facing web application.
 - The Recipe API owns household data, recipe workflows, planning, and grocery state.
+- WFS retains recipe facts (including ingredients, cuisine, meal types, and the vegetarian classifier) but does not interpret nutritional or dietetic health data. Any dietary interpretation is outside this application boundary.
 - PostgreSQL stores relational data; recipe files are stored on persistent local storage.
 - Traefik gives the browser one origin: `/api` reaches the API and other paths reach the PWA.
 - Gemini supports recipe-processing work when it is configured; core household data remains local.

@@ -50,9 +50,9 @@ unknown/unmapped application paths. Cache identity covers all tracked/untracked 
 configuration, installed dependencies/browser bytes, tool executables and hashed
 runtime/environment inputs. Success is stored only under the pre-test identity when
 post-test identity agrees. CI and `WFS_DISABLE_TEST_CACHE=1` disable reuse, not mutation
-detection. Reuse additionally requires `WFS_ISOLATED_RUNNER=1` and no external
-`BASE_URL`. The cache cannot prove external live-service state; E2E must use the
-repository's mocked API boundary.
+detection. Reuse follows the impact runner cache policy and additionally requires no external
+`BASE_URL`. The cache cannot prove external live-service state; E2E must use the repository's
+mocked API boundary.
 
 ## Effects, blockers and supporting commands
 
@@ -61,10 +61,10 @@ repository's mocked API boundary.
   `agent:drift:mocks` audits ID/GUID patterns. None proves live API/database behavior.
 - `task agent:drift:endpoints` probes the generated live API specification once.
   Unavailable service is blocked (script exit 2), not zero mismatches.
-- Finish requires dedicated processes/ports/data for E2E/API tests. Set
-  `WFS_ISOLATED_RUNNER=1` only after establishing them; this is an operator assertion,
-  not host/model qualification. Missing task-specific real database evidence remains
-  explicitly blocked and must be recorded with its actual command and tested identity.
+- Finish runs both `agent:test:impact` and `test:api` locally. Impact Playwright suites use
+  the repository's mocked API boundary. Their results do not establish task-specific real
+  database behavior, which remains explicitly blocked until recorded with its actual command
+  and tested identity.
 - A timed-out/interrupted finish child group is stopped and reaped without retry.
   Kiota retains its compatible runtime, clean-output and one-shot timeout behavior.
   Correct the cause before a new authorized attempt; monitor a running command only.
