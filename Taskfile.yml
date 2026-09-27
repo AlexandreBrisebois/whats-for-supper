@@ -15,8 +15,8 @@ vars:
   PWA_PORT: '3000'
   DB_PORT: '5432'
   DB_NAME: 'recipe_app_db'
-  # Registry for image distribution
-  WFS_REGISTRY: '{{.WFS_REGISTRY | default "192.168.1.226:5050"}}'
+  # Docker Hub namespace for image distribution
+  WFS_REGISTRY: '{{.WFS_REGISTRY | default "brisebois"}}'
   # Default platform (GitHub Actions: amd64, Local: arm64)
   PLATFORMS: '{{if .PLATFORMS}}{{.PLATFORMS}}{{else if .GITHUB_ACTIONS}}linux/amd64{{else}}linux/arm64{{end}}'
   TAG: 'v0.1'
@@ -325,7 +325,6 @@ tasks:
         {{.NOCACHE_FLAG}}
         --platform {{.PLATFORMS}}
         -t {{.WFS_REGISTRY}}/whats-for-supper-api:{{.TAG}}
-        -t {{.WFS_REGISTRY}}/whats-for-supper-api:latest
         ./api
         {{.CACHE_FLAGS}}
         {{.PUSH_FLAG}}
@@ -348,7 +347,6 @@ tasks:
         --platform {{.PLATFORMS}}
         --build-arg NEXT_PUBLIC_API_BASE_URL={{.PWA_API_URL}}
         -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:{{.TAG}}
-        -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:latest
         ./pwa
         {{.CACHE_FLAGS}}
         {{.PUSH_FLAG}}
@@ -368,7 +366,6 @@ tasks:
         {{.NOCACHE_FLAG}}
         --platform {{.PLATFORMS}}
         -t {{.WFS_REGISTRY}}/whats-for-supper-db-migration:{{.TAG}}
-        -t {{.WFS_REGISTRY}}/whats-for-supper-db-migration:latest
         ./api/database
         {{.CACHE_FLAGS}}
         {{.PUSH_FLAG}}
@@ -388,76 +385,9 @@ tasks:
   # ============================================================================
 
   tag:
-    desc: "🏷️ Tag and push. Usage: task tag [patch|minor|major] [hints...] or task tag -- v1.2.3"
+    desc: "🏷️ Publish an annotated Docker Hub trigger tag: stable on main, beta on every other branch"
     cmds:
-      - |
-        # 1. Fetch all tags from origin
-        git fetch --tags --quiet
-
-        # 2. Find the latest semver tag
-        LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
-        if [ -z "$LATEST" ]; then
-          LATEST="v0.0.0"
-        fi
-
-        # 3. Parse args — first arg is bump type OR explicit version
-        ARGS=({{.CLI_ARGS}})
-        FIRST=${ARGS[0]:-patch}
-
-        if [[ "$FIRST" == v* ]]; then
-          # Explicit override
-          VERSION="$FIRST"
-          HINT_START=1
-        else
-          # Auto-bump from latest tag
-          BUMP="${FIRST:-patch}"
-          HINT_START=1
-
-          # Strip leading 'v', split semver (handles v0.1 and v1.2.3)
-          SEMVER="${LATEST#v}"
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$SEMVER"
-          MAJOR=${MAJOR:-0}
-          MINOR=${MINOR:-0}
-          PATCH=${PATCH:-0}
-
-          case "$BUMP" in
-            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
-            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
-            patch|*) PATCH=$((PATCH+1)) ;;
-          esac
-
-          VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-        fi
-
-        # 4. Build message with hints
-        MSG="Release $VERSION"
-        for HINT in "${ARGS[@]:$HINT_START}"; do
-          MSG="$MSG [$HINT]"
-        done
-
-        # 5. Branch check
-        CURRENT_BRANCH=$(git branch --show-current)
-        if [ "$CURRENT_BRANCH" != "main" ] && [ "$CURRENT_BRANCH" != "master" ]; then
-          echo "❌ Error: Tags must be pushed from the 'main' branch (current: $CURRENT_BRANCH)"
-          exit 1
-        fi
-
-        echo "Latest tag: $LATEST"
-        echo "New tag:    $VERSION"
-        echo "Message:    $MSG"
-        git tag -a "$VERSION" -m "$MSG"
-        git push origin "$VERSION"
-        echo "✓ Tag $VERSION created and pushed."
-
-  release:dockerhub:tag:
-    desc: "Create and push the next stable Docker Hub annotated trigger tag"
-    cmds:
-      - python3 -B scripts/agent/dockerhub_release.py stable
-
-  release:dockerhub:beta:
-    desc: "Create and push a beta Docker Hub tag (pass -- --package-bump patch|minor|major, --beta-bump, or --beta N)"
-    cmds:
-      - python3 -B scripts/agent/dockerhub_release.py beta {{.CLI_ARGS}}
+      - python3 -B scripts/agent/dockerhub_release.py auto {{.CLI_ARGS}}
 
 
   # ============================================================================

@@ -3,7 +3,7 @@ services:
   # API Production Overrides
   # ──────────────────────────────────────────────────────────────────────────
   api:
-    image: ${WFS_REGISTRY:-192.168.1.226:5050}/whats-for-supper-api:${TAG:-latest}
+    image: ${WFS_REGISTRY:-brisebois}/whats-for-supper-api:${TAG:?TAG must be set to a published release version}
     build: null # Disable local build in production
     environment:
       ASPNETCORE_ENVIRONMENT: Production
@@ -24,7 +24,7 @@ services:
   # PWA Production Overrides
   # ──────────────────────────────────────────────────────────────────────────
   pwa:
-    image: ${WFS_REGISTRY:-192.168.1.226:5050}/whats-for-supper-pwa:${TAG:-latest}
+    image: ${WFS_REGISTRY:-brisebois}/whats-for-supper-pwa:${TAG:?TAG must be set to a published release version}
     build: null # Disable local build in production
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
@@ -49,7 +49,7 @@ services:
   # DB Migration Production Overrides
   # ──────────────────────────────────────────────────────────────────────────
   migration:
-    image: ${WFS_REGISTRY:-192.168.1.226:5050}/whats-for-supper-db-migration:${TAG:-latest}
+    image: ${WFS_REGISTRY:-brisebois}/whats-for-supper-db-migration:${TAG:?TAG must be set to a published release version}
 
   # ──────────────────────────────────────────────────────────────────────────
   # Traefik Production Overrides

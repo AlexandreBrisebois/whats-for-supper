@@ -66,7 +66,18 @@ public class ExtractRecipeProcessorTests : IDisposable
             Payload = $"{{\"recipeId\": \"{_recipeId}\"}}"
         };
 
-        var jsonResponse = "{\"name\": \"Test Recipe\", \"recipeIngredient\": [\"Ing 1\"]}";
+        var jsonResponse = """
+            {
+              "name": "Test Recipe",
+              "recipeIngredient": ["Ing 1"],
+              "recipeInstructions": [
+                {
+                  "@type": "HowToSection",
+                  "itemListElement": [{ "@type": "HowToStep", "text": "Mix the ingredients." }]
+                }
+              ]
+            }
+            """;
         _chatClientMock.Setup(c => c.GetResponseAsync(
             It.IsAny<IEnumerable<ChatMessage>>(),
             It.IsAny<ChatOptions>(),

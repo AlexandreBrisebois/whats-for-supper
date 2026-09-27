@@ -128,12 +128,22 @@ class DockerHubReleaseHelperTests(unittest.TestCase):
 
         git_run.assert_called_once_with("fetch", "origin", "main", "--tags", "--quiet")
 
-    def test_taskfile_exposes_only_the_two_interactive_release_helpers(self):
+    def test_main_creates_stable_tags_and_other_branches_create_beta_tags(self):
+        self.assertEqual("stable", self.release.release_kind_for_branch("main"))
+        self.assertEqual("beta", self.release.release_kind_for_branch("feature/docker-release"))
+
+    def test_stable_requires_main_but_beta_requires_a_non_main_branch(self):
+        self.release.assert_branch_matches_release_kind("main", "stable")
+        self.release.assert_branch_matches_release_kind("feature/docker-release", "beta")
+
+        with self.assertRaisesRegex(self.release.ReleasePreflightError, "main branch"):
+            self.release.assert_branch_matches_release_kind("feature/docker-release", "stable")
+        with self.assertRaisesRegex(self.release.ReleasePreflightError, "non-main branch"):
+            self.release.assert_branch_matches_release_kind("main", "beta")
+
+    def test_taskfile_routes_tagging_by_current_branch(self):
         taskfile = (ROOT / "Taskfile.yml").read_text()
-        self.assertIn("release:dockerhub:tag:", taskfile)
-        self.assertIn("python3 -B scripts/agent/dockerhub_release.py stable", taskfile)
-        self.assertIn("release:dockerhub:beta:", taskfile)
-        self.assertIn("python3 -B scripts/agent/dockerhub_release.py beta {{.CLI_ARGS}}", taskfile)
+        self.assertIn("python3 -B scripts/agent/dockerhub_release.py auto {{.CLI_ARGS}}", taskfile)
 
 
 class DockerHubWorkflowContractTests(unittest.TestCase):
@@ -158,6 +168,7 @@ class DockerHubWorkflowContractTests(unittest.TestCase):
         self.assertIn('git rev-parse -q --verify "refs/tags/$TAG^{tag}"', self.workflow)
         self.assertNotIn("EVENT_SHA", self.workflow)
         self.assertNotIn('"$tag_object" != "$EVENT_SHA"', self.workflow)
+        self.assertIn('if [[ "$VERSION" == *-beta.* ]]', self.workflow)
         self.assertIn("git merge-base --is-ancestor \"$tag_commit\" origin/main", self.workflow)
         self.assertIn("DOCKERHUB_USERNAME", self.workflow)
         self.assertIn("DOCKERHUB_TOKEN", self.workflow)
@@ -167,6 +178,10 @@ class DockerHubWorkflowContractTests(unittest.TestCase):
         self.assertNotIn(":latest", self.workflow)
         self.assertNotIn("192.168.1.226", self.workflow)
         self.assertNotIn("self-hosted", self.workflow)
+
+    def test_workflow_accepts_beta_tags_from_non_main_branches(self):
+        self.assertIn("Beta Docker Hub tag accepted from its source branch.", self.workflow)
+        self.assertIn("Stable Docker Hub tags must point to a commit reachable from origin/main.", self.workflow)
 
     def test_preflight_checks_credentials_and_tags_once_before_the_matrix(self):
         preflight, publish = self.workflow.split("  publish:\n", 1)

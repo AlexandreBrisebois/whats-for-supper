@@ -40,7 +40,7 @@ class WorkflowSecurityTests(unittest.TestCase):
 
     def test_synology_and_validation_workflows_do_not_reference_aws_delivery(self):
         forbidden = ("infrastructure/aws", "aws-actions/", "aws-cdk", "amazon-ecr")
-        for name in ("ci.yml", "validate.yml", "publish.yml", "publish-dockerhub.yml"):
+        for name in ("ci.yml", "validate.yml", "publish-dockerhub.yml"):
             for token in forbidden:
                 with self.subTest(workflow=name, token=token):
                     self.assertNotIn(token, self.text[name].lower())
@@ -48,6 +48,11 @@ class WorkflowSecurityTests(unittest.TestCase):
     def test_docker_hub_preflight_is_environment_protected_before_credentials(self):
         preflight = self.yaml["publish-dockerhub.yml"]["jobs"]["publish-preflight"]
         self.assertEqual(preflight["environment"], "dockerhub-publish")
+
+    def test_legacy_private_registry_delivery_paths_are_removed(self):
+        self.assertFalse((WORKFLOWS / "publish.yml").exists())
+        self.assertFalse((ROOT / "docker" / "actions-runner" / "compose.yml").exists())
+        self.assertFalse((ROOT / "docker" / "actions-runner" / "DockerFile").exists())
 
 
 if __name__ == "__main__":

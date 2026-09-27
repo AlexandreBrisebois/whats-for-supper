@@ -163,19 +163,17 @@ RULES:
         var sanitizedExtraction = JsonUtils.SanitizeJson(extractionJson ?? string.Empty);
 
         // Validation & Refinement
-        SchemaOrgRecipe? initialRecipe = null;
+        RecipeExtractionParseResult? initialExtraction = null;
         try
         {
-            initialRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(sanitizedExtraction, JsonDefaults.CaseInsensitive);
+            initialExtraction = RecipeExtractionParser.ParseAndNormalize(sanitizedExtraction);
         }
         catch (JsonException ex)
         {
             logger.LogError(ex, "Failed to deserialize initial extraction for {RecipeId}. JSON (first 500 chars): {JsonSample}", recipeId, sanitizedExtraction.Length > 500 ? sanitizedExtraction[..500] : sanitizedExtraction);
         }
 
-        bool isInitialValid = !string.IsNullOrWhiteSpace(initialRecipe?.Name) &&
-                               initialRecipe?.RecipeIngredient != null &&
-                               initialRecipe.RecipeIngredient.Count > 0;
+        bool isInitialValid = initialExtraction?.IsSemanticallyComplete == true;
 
         string finalJson = sanitizedExtraction;
         if (!isInitialValid)
@@ -184,19 +182,14 @@ RULES:
             finalJson = await RefineExtractionAsync(recipeId, messages, ct) ?? sanitizedExtraction;
         }
 
-        // Final validation and normalization to ensure consistent schema on disk
-        var finalRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(finalJson, JsonDefaults.CaseInsensitive);
-
-        if (string.IsNullOrWhiteSpace(finalRecipe?.Name) && !string.IsNullOrWhiteSpace(initialRecipe?.Name))
+        // Normalize and validate every candidate immediately before persistence.
+        var finalExtraction = RecipeExtractionParser.ParseAndNormalize(finalJson);
+        if (!finalExtraction.IsSemanticallyComplete || finalExtraction.Recipe is null)
         {
-            // Fallback to initial if refinement wiped out the name
-            finalRecipe = initialRecipe;
+            throw new Exception($"Extraction failed for {recipeId}: Final JSON is missing a name, ingredient, or usable instruction step.");
         }
 
-        if (string.IsNullOrWhiteSpace(finalRecipe?.Name))
-        {
-            throw new Exception($"Extraction failed for {recipeId}: Final JSON does not match the required Recipe schema (missing name).");
-        }
+        var finalRecipe = finalExtraction.Recipe;
 
         // Re-serialize to ensure we save in our standard format, not the model's hallucinated schema
         var normalizedJson = JsonSerializer.Serialize(finalRecipe, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
