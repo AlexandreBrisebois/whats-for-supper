@@ -6,6 +6,10 @@ All implementation prompts for What's For Supper, organized by phase and session
 
 Each prompt is self-contained and designed to run in its own Claude Code session using **Claude 3.5 Sonnet**.
 
+## Retired standalone prompts
+
+- [diet-agent](diet-agent/README.md) — superseded agent-search implementation prompts; preserved as historical reference on 2026-09-27.
+
 ---
 
 ## Phase Overview
@@ -174,4 +178,3 @@ Track Phase 0 progress in this table:
 - [ ] Session 10: Integration
 
 Update checkbox as you complete each session.
-

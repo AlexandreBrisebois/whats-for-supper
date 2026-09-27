@@ -1,3 +1,8 @@
+> **Archived — historical reference only.** This prompt describes a superseded
+> agent-search design. Its tasks, API details, paths, and verification steps are
+> not current authority. Consult `specs/openapi.yaml` and the current
+> implementation for active behavior.
+
 # Prompt 08: API Vector Search Agent & Endpoint (Backend)
 
 **Context:** The PWA now has a "Search" tab intended for an agentic, natural-language search experience. We need the backend capability to perform vector-based semantic searches on recipes using `pgvector` and an AI agent (SearchRecipesAgent).

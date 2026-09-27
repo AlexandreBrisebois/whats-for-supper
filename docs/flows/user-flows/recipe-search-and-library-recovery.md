@@ -1,6 +1,6 @@
 # Flow: Recipe Search And Library Recovery
 
-**Current spec:** `.kiro/specs/agent-friendly-hybrid-recipe-search`
+**Historical spec:** [agent-friendly-hybrid-recipe-search](../../archive/specs/agent-friendly-hybrid-recipe-search/requirements.md)
 
 This document describes the user experience for:
 - hybrid recipe search (standard and agent-supplied),

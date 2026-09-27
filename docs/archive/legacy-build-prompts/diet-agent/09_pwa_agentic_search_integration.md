@@ -1,3 +1,8 @@
+> **Archived — historical reference only.** This prompt describes a superseded
+> agent-search design. Its tasks, API details, paths, and verification steps are
+> not current authority. Consult `specs/openapi.yaml` and the current
+> implementation for active behavior.
+
 # Prompt 09: PWA Agentic Search Integration (Frontend)
 
 **Context:** The backend search endpoint `/api/recipes/search` is now available. We need to replace the mocked logic in the `/recipes` page with a real integration that communicates with the `SearchRecipesAgent`.

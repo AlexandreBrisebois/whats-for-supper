@@ -133,13 +133,13 @@ Recipe data (images, `recipe.info` files) lives in the directory mapped to `DATA
 ```
 POST /api/management/backup
 ```
-Writes the current DB state back to disk (updates `recipe.info` files, including dietary profiles).
+Writes the current DB state back to disk (updates `recipe.info` files with the current WFS-owned recipe facts, including confirmed vegetarian-classifier metadata).
 
 **Restore (after a DB wipe or migration):**
 ```
 POST /api/management/seed
 ```
-Reads all `recipe.info` files from `DATA_ROOT` and reconstructs the database. Dietary profiles are restored from disk — **no AI re-classification is needed**.
+Reads all `recipe.info` files from `DATA_ROOT` and reconstructs the database. Older retired dietary/health fields are ignored; current WFS-owned recipe facts are restored from disk.
 
 > **NAS tip:** Point `DATA_ROOT` at a shared folder on your NAS that is already covered by your regular backup routine (e.g. Synology Hyper Backup). Recipe images are large; factor them into your backup storage estimates.
 
