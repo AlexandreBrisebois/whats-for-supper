@@ -71,6 +71,25 @@ public class WorkflowController(
     }
 
     /// <summary>
+    /// GET /api/workflows/tasks/{taskId}/diagnostics — get internal failure diagnostics for one task.
+    /// </summary>
+    /// <param name="taskId">The task ID from the workflow instance's task list.</param>
+    /// <returns>200 OK with the stored error and stack trace.</returns>
+    [HttpGet("tasks/{taskId:guid}/diagnostics")]
+    public async Task<IActionResult> GetTaskDiagnostics(Guid taskId)
+    {
+        var task = await db.WorkflowTasks
+            .Include(t => t.Instance)
+            .FirstOrDefaultAsync(t => t.TaskId == taskId);
+        if (task == null)
+        {
+            return NotFound(new { message = "Task not found." });
+        }
+
+        return Ok(WorkflowTaskDiagnosticsDto.FromModel(task));
+    }
+
+    /// <summary>
     /// POST /api/workflows/tasks/{taskId}/reset — reset a failed task to Pending.
     /// </summary>
     /// <param name="taskId">The task ID to reset.</param>

@@ -32,6 +32,7 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE_URL: ""
+      WFS_VERSION: ${WFS_VERSION}
       API_INTERNAL_URL: http://api:9001
       HEARTH_SECRET: ${HEARTH_SECRET:?HEARTH_SECRET must be set}
     depends_on:

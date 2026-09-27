@@ -11,10 +11,12 @@ import { RecipeImportIssueReasonObject } from '@/lib/api/generated/models/index'
 
 interface RecipeImportIssueSheetProps {
   issue: RecipeImportIssue | null;
+  recipeId?: string;
   contextualReason?: RecipeImportIssueReason;
   canReportContentIssues?: boolean;
   isReimporting?: boolean;
   reimportFailureMessage?: string | null;
+  reimportFailureImportId?: string | null;
   onClose: () => void;
   onSave: (draft: RecipeImportIssueDraft) => Promise<void>;
   onResolve: () => Promise<void>;
@@ -31,10 +33,12 @@ function mergeReasons(
 
 export function RecipeImportIssueSheet({
   issue,
+  recipeId,
   contextualReason,
   canReportContentIssues = true,
   isReimporting = false,
   reimportFailureMessage = null,
+  reimportFailureImportId = null,
   onClose,
   onSave,
   onResolve,
@@ -47,10 +51,17 @@ export function RecipeImportIssueSheet({
   const [noteOpen, setNoteOpen] = useState(Boolean(issue?.note));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [copiedId, setCopiedId] = useState<'recipe' | 'import' | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const existing = issue !== null;
   const title = existing ? 'Review issue' : 'Report issue';
+
+  const copyId = async (kind: 'recipe' | 'import', value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopiedId(kind);
+    window.setTimeout(() => setCopiedId(null), 1500);
+  };
 
   useEffect(() => closeRef.current?.focus(), []);
 
@@ -227,9 +238,34 @@ export function RecipeImportIssueSheet({
           </p>
         )}
         {reimportFailureMessage && (
-          <p role="status" className="mt-3 text-sm font-bold text-terracotta-700">
-            {reimportFailureMessage}
-          </p>
+          <div
+            role="status"
+            className="mt-3 rounded-2xl bg-terracotta-50 p-3 text-sm text-terracotta-700"
+          >
+            <p className="font-bold">{reimportFailureMessage}</p>
+            {reimportFailureImportId && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {recipeId && (
+                  <button
+                    type="button"
+                    data-testid="copy-recipe-id"
+                    onClick={() => void copyId('recipe', recipeId)}
+                    className="min-h-11 rounded-full border border-terracotta-200 bg-white px-3 text-sm font-bold"
+                  >
+                    {copiedId === 'recipe' ? 'Copied' : 'Copy recipe ID'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  data-testid="copy-import-id"
+                  onClick={() => void copyId('import', reimportFailureImportId)}
+                  className="min-h-11 rounded-full border border-terracotta-200 bg-white px-3 text-sm font-bold"
+                >
+                  {copiedId === 'import' ? 'Copied' : 'Copy import ID'}
+                </button>
+              </div>
+            )}
+          </div>
         )}
         {issue?.status === 'readyToReview' && (
           <p className="mt-3 text-sm text-charcoal/70">

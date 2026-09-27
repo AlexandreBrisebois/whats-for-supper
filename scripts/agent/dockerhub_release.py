@@ -116,6 +116,20 @@ def next_beta_version(tags, package_bump=None, beta_bump=False, beta_number=None
     return f"{major}.{minor}.{patch}-beta.{beta}"
 
 
+def release_kind_for_branch(branch):
+    """Main is stable; every named non-main branch publishes a beta."""
+    return "stable" if branch == "main" else "beta"
+
+
+def assert_branch_matches_release_kind(branch, kind):
+    if not branch:
+        raise ReleasePreflightError("Docker Hub release tags require a named branch.")
+    if kind == "stable" and branch != "main":
+        raise ReleasePreflightError("Stable Docker Hub releases must be created from the main branch.")
+    if kind == "beta" and branch == "main":
+        raise ReleasePreflightError("Beta Docker Hub releases must be created from a non-main branch.")
+
+
 def require_annotated_tag_object(object_type):
     if object_type != "tag":
         raise ReleasePreflightError("Docker Hub release tags must be annotated tags.")
@@ -150,9 +164,15 @@ def remote_tags():
 
 
 def create_tag(kind, package_bump=None, beta_bump=False, beta_number=None):
-    if kind != "beta" and (package_bump is not None or beta_bump or beta_number is not None):
+    if kind not in {"auto", "beta"} and (package_bump is not None or beta_bump or beta_number is not None):
         raise ValueError("Beta version controls are only valid for beta releases.")
     git_run("fetch", "origin", "main", "--tags", "--quiet")
+    if git_output("status", "--porcelain", "--untracked-files=all"):
+        raise ReleasePreflightError("Worktree is dirty; Docker Hub release tags require a clean worktree.")
+    branch = git_output("branch", "--show-current")
+    if kind == "auto":
+        kind = release_kind_for_branch(branch)
+    assert_branch_matches_release_kind(branch, kind)
     local = set(git_output("tag", "--list", "dockerhub/v*").splitlines())
     remote = remote_tags()
     version = (
@@ -162,13 +182,11 @@ def create_tag(kind, package_bump=None, beta_bump=False, beta_number=None):
     )
     tag = validate_target(version)
 
-    if git_output("status", "--porcelain", "--untracked-files=all"):
-        raise ReleasePreflightError("Worktree is dirty; Docker Hub release tags require a clean worktree.")
-
-    try:
-        git_run("merge-base", "--is-ancestor", "HEAD", "origin/main")
-    except subprocess.CalledProcessError as error:
-        raise ReleasePreflightError("HEAD must be reachable from origin/main.") from error
+    if kind == "stable":
+        try:
+            git_run("merge-base", "--is-ancestor", "HEAD", "origin/main")
+        except subprocess.CalledProcessError as error:
+            raise ReleasePreflightError("HEAD must be reachable from origin/main.") from error
 
     assert_target_absent(tag, local, remote)
     commit = git_output("rev-parse", "HEAD")
@@ -188,7 +206,7 @@ def create_tag(kind, package_bump=None, beta_bump=False, beta_number=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("kind", choices=("stable", "beta"))
+    parser.add_argument("kind", choices=("auto", "stable", "beta"))
     parser.add_argument(
         "--package-bump",
         choices=("major", "minor", "patch"),

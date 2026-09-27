@@ -44,15 +44,23 @@ vi.mock('@/components/profile/FailedCapturesSection', () => ({
 // ---------------------------------------------------------------------------
 // Import component under test AFTER mocks
 // ---------------------------------------------------------------------------
-import SettingsPage from './page';
+import { getBuildVersion, SettingsPageContent } from './page';
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('SettingsPage', () => {
+  it('uses the Compose WFS_VERSION over the legacy deployment tag', () => {
+    expect(getBuildVersion({ WFS_VERSION: '0.1.0-beta.1', TAG: 'latest' })).toBe('0.1.0-beta.1');
+  });
+
+  it('falls back to the legacy deployment tag when WFS_VERSION is not provided', () => {
+    expect(getBuildVersion({ TAG: '0.1.0-beta.1' })).toBe('0.1.0-beta.1');
+  });
+
   it('renders all settings sections', () => {
-    render(<SettingsPage />);
+    render(<SettingsPageContent />);
 
     expect(screen.getByTestId('family-management-stub')).toBeDefined();
     expect(screen.getByTestId('family-goto-stub')).toBeDefined();
@@ -60,10 +68,22 @@ describe('SettingsPage', () => {
   });
 
   it('does not render language selection', () => {
-    render(<SettingsPage />);
+    render(<SettingsPageContent />);
 
     expect(screen.queryByText('Language')).toBeNull();
     expect(screen.queryByText('English')).toBeNull();
     expect(screen.queryByText('French')).toBeNull();
+  });
+
+  it('renders the deployed build version discreetly when supplied', () => {
+    render(<SettingsPageContent buildVersion="0.1.0-beta.1" />);
+
+    expect(screen.getByTestId('build-version')).toHaveTextContent('Build 0.1.0-beta.1');
+  });
+
+  it('does not render a version indicator when no deployed version is available', () => {
+    render(<SettingsPageContent />);
+
+    expect(screen.queryByTestId('build-version')).toBeNull();
   });
 });

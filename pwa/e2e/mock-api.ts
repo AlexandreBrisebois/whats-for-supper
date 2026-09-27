@@ -908,6 +908,29 @@ export async function setupCommonRoutes(page: Page) {
     });
   });
 
+  // GET /api/workflows/tasks/{taskId}/diagnostics
+  await page.route('**/api/workflows/tasks/*/diagnostics', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          taskId: MOCK_IDS.RECIPE_LASAGNA,
+          instanceId: MOCK_IDS.RECIPE_LASAGNA,
+          workflowId: 'recipe-import',
+          taskName: 'extract-recipe',
+          processorName: 'RecipeExtractionProcessor',
+          status: 'Failed',
+          retryCount: 1,
+          errorMessage: 'The extractor returned no steps.',
+          stackTrace: 'System.InvalidOperationException: missing steps',
+          createdAt: FIXED_E2E_TIMESTAMP,
+          updatedAt: FIXED_E2E_TIMESTAMP,
+        },
+      }),
+    });
+  });
+
   // POST /api/workflows/tasks/{taskId}/reset
   await page.route('**/api/workflows/tasks/*/reset', async (route) => {
     await route.fulfill({

@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate annotated tag and main ancestry
+      - name: Validate annotated tag and release branch policy
         id: validate
         env:
           TAG: ${{ github.ref_name }}
@@ -51,13 +51,15 @@ jobs:
             echo "Docker Hub release tags must point directly to a commit." >&2
             exit 1
           fi
-          if ! git merge-base --is-ancestor "$tag_commit" origin/main; then
-            echo "Docker Hub release tag commit must be reachable from origin/main." >&2
+          VERSION="${TAG#dockerhub/v}"
+          if [[ "$VERSION" == *-beta.* ]]; then
+            echo "Beta Docker Hub tag accepted from its source branch."
+          elif ! git merge-base --is-ancestor "$tag_commit" origin/main; then
+            echo "Stable Docker Hub tags must point to a commit reachable from origin/main." >&2
             exit 1
           fi
 
-          version="${TAG#dockerhub/v}"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "revision=$tag_commit" >> "$GITHUB_OUTPUT"
 
   validate:

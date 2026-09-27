@@ -908,6 +908,17 @@ export function createWorkflowInstanceSummaryDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {WorkflowTaskDiagnosticsDto}
+ */
+// @ts-ignore
+export function createWorkflowTaskDiagnosticsDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoWorkflowTaskDiagnosticsDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {WorkflowTaskDto}
  */
 // @ts-ignore
@@ -1790,6 +1801,9 @@ export function deserializeIntoRecipeImportIssueDto(
       recipeImportIssueDto.reasons = n.getCollectionOfEnumValues<RecipeImportIssueReason>(
         RecipeImportIssueReasonObject
       );
+    },
+    reimportFailureImportId: (n) => {
+      recipeImportIssueDto.reimportFailureImportId = n.getGuidValue();
     },
     reimportFailureMessage: (n) => {
       recipeImportIssueDto.reimportFailureMessage = n.getStringValue();
@@ -2844,6 +2858,51 @@ export function deserializeIntoWorkflowInstanceSummaryDto(
 }
 /**
  * The deserialization information for the current model
+ * @param WorkflowTaskDiagnosticsDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoWorkflowTaskDiagnosticsDto(
+  workflowTaskDiagnosticsDto: Partial<WorkflowTaskDiagnosticsDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    createdAt: (n) => {
+      workflowTaskDiagnosticsDto.createdAt = n.getDateValue();
+    },
+    errorMessage: (n) => {
+      workflowTaskDiagnosticsDto.errorMessage = n.getStringValue();
+    },
+    instanceId: (n) => {
+      workflowTaskDiagnosticsDto.instanceId = n.getGuidValue();
+    },
+    processorName: (n) => {
+      workflowTaskDiagnosticsDto.processorName = n.getStringValue();
+    },
+    retryCount: (n) => {
+      workflowTaskDiagnosticsDto.retryCount = n.getNumberValue();
+    },
+    stackTrace: (n) => {
+      workflowTaskDiagnosticsDto.stackTrace = n.getStringValue();
+    },
+    status: (n) => {
+      workflowTaskDiagnosticsDto.status = n.getStringValue();
+    },
+    taskId: (n) => {
+      workflowTaskDiagnosticsDto.taskId = n.getGuidValue();
+    },
+    taskName: (n) => {
+      workflowTaskDiagnosticsDto.taskName = n.getStringValue();
+    },
+    updatedAt: (n) => {
+      workflowTaskDiagnosticsDto.updatedAt = n.getDateValue();
+    },
+    workflowId: (n) => {
+      workflowTaskDiagnosticsDto.workflowId = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param WorkflowTaskDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -3400,6 +3459,10 @@ export interface RecipeImportIssueDto extends AdditionalDataHolder, Parsable {
    * The reasons property
    */
   reasons?: RecipeImportIssueReason[] | null;
+  /**
+   * The reimportFailureImportId property
+   */
+  reimportFailureImportId?: Guid | null;
   /**
    * The reimportFailureMessage property
    */
@@ -4666,6 +4729,7 @@ export function serializeRecipeImportIssueDto(
       'reasons',
       recipeImportIssueDto.reasons
     );
+  writer.writeGuidValue('reimportFailureImportId', recipeImportIssueDto.reimportFailureImportId);
   writer.writeStringValue('reimportFailureMessage', recipeImportIssueDto.reimportFailureMessage);
   writer.writeEnumValue<RecipeImportIssueStatus>('status', recipeImportIssueDto.status);
   writer.writeAdditionalData(recipeImportIssueDto.additionalData);
@@ -5677,6 +5741,34 @@ export function serializeWorkflowInstanceSummaryDto(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param WorkflowTaskDiagnosticsDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeWorkflowTaskDiagnosticsDto(
+  writer: SerializationWriter,
+  workflowTaskDiagnosticsDto: Partial<WorkflowTaskDiagnosticsDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!workflowTaskDiagnosticsDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeDateValue('createdAt', workflowTaskDiagnosticsDto.createdAt);
+  writer.writeStringValue('errorMessage', workflowTaskDiagnosticsDto.errorMessage);
+  writer.writeGuidValue('instanceId', workflowTaskDiagnosticsDto.instanceId);
+  writer.writeStringValue('processorName', workflowTaskDiagnosticsDto.processorName);
+  writer.writeNumberValue('retryCount', workflowTaskDiagnosticsDto.retryCount);
+  writer.writeStringValue('stackTrace', workflowTaskDiagnosticsDto.stackTrace);
+  writer.writeStringValue('status', workflowTaskDiagnosticsDto.status);
+  writer.writeGuidValue('taskId', workflowTaskDiagnosticsDto.taskId);
+  writer.writeStringValue('taskName', workflowTaskDiagnosticsDto.taskName);
+  writer.writeDateValue('updatedAt', workflowTaskDiagnosticsDto.updatedAt);
+  writer.writeStringValue('workflowId', workflowTaskDiagnosticsDto.workflowId);
+  writer.writeAdditionalData(workflowTaskDiagnosticsDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param WorkflowTaskDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -5950,6 +6042,55 @@ export interface WorkflowInstanceSummaryDto extends AdditionalDataHolder, Parsab
 }
 export type WorkflowInstanceSummaryDto_status =
   (typeof WorkflowInstanceSummaryDto_statusObject)[keyof typeof WorkflowInstanceSummaryDto_statusObject];
+/**
+ * Internal task diagnostics. Contains a stored exception stack trace and is not family-facing.
+ */
+export interface WorkflowTaskDiagnosticsDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The createdAt property
+   */
+  createdAt?: Date | null;
+  /**
+   * The errorMessage property
+   */
+  errorMessage?: string | null;
+  /**
+   * The instanceId property
+   */
+  instanceId?: Guid | null;
+  /**
+   * The processorName property
+   */
+  processorName?: string | null;
+  /**
+   * The retryCount property
+   */
+  retryCount?: number | null;
+  /**
+   * The stackTrace property
+   */
+  stackTrace?: string | null;
+  /**
+   * The status property
+   */
+  status?: string | null;
+  /**
+   * The taskId property
+   */
+  taskId?: Guid | null;
+  /**
+   * The taskName property
+   */
+  taskName?: string | null;
+  /**
+   * The updatedAt property
+   */
+  updatedAt?: Date | null;
+  /**
+   * The workflowId property
+   */
+  workflowId?: string | null;
+}
 export interface WorkflowTaskDto extends AdditionalDataHolder, Parsable {
   /**
    * The createdAt property

@@ -25,7 +25,11 @@ public class RecipeAgentPromptSelectionTests
     // ── Factory helpers ───────────────────────────────────────────────────────
 
     private static (RecipeAgent agent, InMemoryStorageProvider storage, RecipeRepository repo, Mock<IPromptRepository> promptRepoMock, Mock<IChatClient> chatClientMock, List<IEnumerable<ChatMessage>> capturedMessages)
-        CreateSut(string aiExtractionResponse, string aiDescriptionResponse = "A delicious recipe.", string? targetLanguage = null)
+        CreateSut(
+            string aiExtractionResponse,
+            string aiDescriptionResponse = "A delicious recipe.",
+            string? targetLanguage = null,
+            string? aiRefinementResponse = null)
     {
         var storage = new InMemoryStorageProvider();
         var repo = new RecipeRepository(storage);
@@ -43,7 +47,12 @@ public class RecipeAgentPromptSelectionTests
             .ReturnsAsync(() =>
             {
                 callCount++;
-                var text = callCount == 1 ? aiExtractionResponse : aiDescriptionResponse;
+                var text = callCount switch
+                {
+                    1 => aiExtractionResponse,
+                    2 when aiRefinementResponse is not null => aiRefinementResponse,
+                    _ => aiDescriptionResponse
+                };
                 return new ChatResponse(new ChatMessage(ChatRole.Assistant, text));
             });
 
@@ -97,7 +106,14 @@ public class RecipeAgentPromptSelectionTests
         JsonSerializer.Serialize(new SchemaOrgRecipe
         {
             Name = name,
-            RecipeIngredient = ["1 cup flour", "2 eggs"]
+            RecipeIngredient = ["1 cup flour", "2 eggs"],
+            RecipeInstructions =
+            [
+                new HowToSection
+                {
+                    ItemListElement = [new HowToStep { Text = "Mix the flour and eggs." }]
+                }
+            ]
         }, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
 
     private static string ExtractionText(List<IEnumerable<ChatMessage>> capturedMessages) =>
@@ -141,6 +157,91 @@ public class RecipeAgentPromptSelectionTests
         // Assert
         promptRepoMock.Verify(p => p.GetPrompt(PromptType.RecipeExtraction), Times.AtLeastOnce);
         promptRepoMock.Verify(p => p.GetPrompt(PromptType.WebRecipeExtraction), Times.Never);
+    }
+
+    [Fact]
+    public async Task ImageExtraction_FlatSteps_PersistsCanonicalInstructionsWithoutRefinement()
+    {
+        var recipeId = Guid.NewGuid();
+        const string flatSteps = """
+            {
+              "name": "BBQ Québec",
+              "recipeIngredient": ["500 g boeuf"],
+              "recipeInstructions": [
+                { "@type": "HowToStep", "text": "Préchauffer le BBQ à 250 °F." },
+                { "@type": "HowToStep", "text": "Déposer la viande sur la grille." }
+              ]
+            }
+            """;
+        var (agent, storage, _, _, _, capturedMessages) = CreateSut(flatSteps);
+        await WriteRecipeInfo(storage, recipeId, imageCount: 1);
+        await WriteImage(storage, recipeId);
+
+        await agent.DoExtractRecipeAsync(recipeId, CancellationToken.None);
+
+        var recipeJson = await storage.LoadAsync("recipes", $"{recipeId}/recipe.json");
+        using var recipe = JsonDocument.Parse(recipeJson!);
+        var instructions = recipe.RootElement.GetProperty("recipeInstructions");
+        var section = Assert.Single(instructions.EnumerateArray());
+        Assert.Equal(JsonValueKind.Null, section.GetProperty("name").ValueKind);
+        Assert.Equal("Préchauffer le BBQ à 250 °F.", section.GetProperty("itemListElement")[0].GetProperty("text").GetString());
+        Assert.Equal(2, capturedMessages.Count);
+    }
+
+    [Fact]
+    public async Task ImageExtraction_UnusableInitialInstructions_RefinesBeforePersisting()
+    {
+        var recipeId = Guid.NewGuid();
+        const string unusableInstructions = """
+            {
+              "name": "Test Recipe",
+              "recipeIngredient": ["flour"],
+              "recipeInstructions": [{ "@type": "HowToStep", "text": "   " }]
+            }
+            """;
+        const string refinedInstructions = """
+            {
+              "name": "Test Recipe",
+              "recipeIngredient": ["flour"],
+              "recipeInstructions": [{ "@type": "HowToStep", "text": "Mix the flour." }]
+            }
+            """;
+        var (agent, storage, _, _, _, capturedMessages) = CreateSut(
+            unusableInstructions,
+            aiRefinementResponse: refinedInstructions);
+        await WriteRecipeInfo(storage, recipeId, imageCount: 1);
+        await WriteImage(storage, recipeId);
+
+        await agent.DoExtractRecipeAsync(recipeId, CancellationToken.None);
+
+        var recipeJson = await storage.LoadAsync("recipes", $"{recipeId}/recipe.json");
+        using var recipe = JsonDocument.Parse(recipeJson!);
+        Assert.Equal("Mix the flour.", recipe.RootElement.GetProperty("recipeInstructions")[0]
+            .GetProperty("itemListElement")[0].GetProperty("text").GetString());
+        Assert.Equal(3, capturedMessages.Count);
+    }
+
+    [Fact]
+    public async Task ImageExtraction_UnusableRefinement_DoesNotPersistRecipe()
+    {
+        var recipeId = Guid.NewGuid();
+        const string unusableInstructions = """
+            {
+              "name": "Test Recipe",
+              "recipeIngredient": ["flour"],
+              "recipeInstructions": [{ "@type": "HowToStep", "text": null }]
+            }
+            """;
+        var (agent, storage, _, _, _, _) = CreateSut(
+            unusableInstructions,
+            aiRefinementResponse: unusableInstructions);
+        await WriteRecipeInfo(storage, recipeId, imageCount: 1);
+        await WriteImage(storage, recipeId);
+
+        var exception = await Assert.ThrowsAsync<Exception>(() => agent.DoExtractRecipeAsync(recipeId, CancellationToken.None));
+
+        Assert.Contains("usable instruction step", exception.Message);
+        Assert.Null(await storage.LoadAsync("recipes", $"{recipeId}/recipe.json"));
     }
 
     [Fact]
@@ -353,6 +454,21 @@ public class RecipeAgentPromptSelectionTests
         {
             name = recipeName,
             recipeIngredient = new[] { ingredient },
+            recipeInstructions = new object[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["@type"] = "HowToSection",
+                    ["itemListElement"] = new object[]
+                    {
+                        new Dictionary<string, object>
+                        {
+                            ["@type"] = "HowToStep",
+                            ["text"] = "Mix the ingredients."
+                        }
+                    }
+                }
+            },
             rawHtml = "<html>should be stripped</html>"
         });
 
@@ -454,7 +570,7 @@ public class RecipeAgentPromptSelectionTests
 
     // Feature: url-import-html-capture, Property 5: Both prompts produce valid SchemaOrgRecipe output
     /// <summary>
-    /// For any mocked AI response returning a valid SchemaOrgRecipe JSON (minimal: name + ingredients;
+    /// For any mocked AI response returning a valid SchemaOrgRecipe JSON (minimal: name + ingredients + instructions;
     /// full: all fields): after DoExtractRecipeAsync on both web and photo paths, recipe.json
     /// deserializes to SchemaOrgRecipe with non-null/non-empty name and non-null recipeIngredient.
     /// </summary>
@@ -488,7 +604,14 @@ public class RecipeAgentPromptSelectionTests
         var aiResponse = JsonSerializer.Serialize(new SchemaOrgRecipe
         {
             Name = recipeName,
-            RecipeIngredient = ingredients.ToList()
+            RecipeIngredient = ingredients.ToList(),
+            RecipeInstructions =
+            [
+                new HowToSection
+                {
+                    ItemListElement = [new HowToStep { Text = "Mix the ingredients." }]
+                }
+            ]
         }, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
 
         // ── Web path (content.html present) ──────────────────────────────────
@@ -510,6 +633,7 @@ public class RecipeAgentPromptSelectionTests
             Encoding.UTF8.GetString(webJsonBytes), JsonDefaults.CaseInsensitive);
         if (string.IsNullOrWhiteSpace(webRecipe?.Name)) return false;
         if (webRecipe.RecipeIngredient == null) return false;
+        if (webRecipe.RecipeInstructions == null) return false;
 
         // ── Photo path (images only) ──────────────────────────────────────────
         var photoRecipeId = Guid.NewGuid();
@@ -530,6 +654,7 @@ public class RecipeAgentPromptSelectionTests
             Encoding.UTF8.GetString(photoJsonBytes), JsonDefaults.CaseInsensitive);
         if (string.IsNullOrWhiteSpace(photoRecipe?.Name)) return false;
         if (photoRecipe.RecipeIngredient == null) return false;
+        if (photoRecipe.RecipeInstructions == null) return false;
 
         return true;
         });

@@ -51,6 +51,7 @@ export interface RecipeImportIssue {
   status: RecipeImportIssueStatus;
   isReimporting?: boolean;
   reimportFailureMessage?: string | null;
+  reimportFailureImportId?: string | null;
 }
 export interface RecipeImportIssueDraft {
   reasons: RecipeImportIssueReason[];
@@ -65,6 +66,9 @@ function mapImportIssue(issue: RecipeImportIssueDto | null | undefined): RecipeI
     status: issue.status,
     isReimporting: issue.isReimporting ?? false,
     reimportFailureMessage: issue.reimportFailureMessage ?? null,
+    reimportFailureImportId: issue.reimportFailureImportId
+      ? String(issue.reimportFailureImportId)
+      : null,
   };
 }
 

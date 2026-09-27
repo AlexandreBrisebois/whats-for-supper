@@ -30,6 +30,9 @@ public class RecipeImportIssueDto
 
     [JsonPropertyName("reimportFailureMessage")]
     public required string? ReimportFailureMessage { get; set; }
+
+    [JsonPropertyName("reimportFailureImportId")]
+    public required Guid? ReimportFailureImportId { get; set; }
 }
 
 public class RecipeImportReportSubmissionResponseDto

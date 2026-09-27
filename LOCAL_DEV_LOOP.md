@@ -549,43 +549,9 @@ jobs:
 
 ---
 
-### Workflow 4: Self-Hosted NAS Runner
+### Workflow 4: Docker Hub publication
 
-For production deployments on a Synology NAS, a self-hosted runner executes the `publish.yml` workflow to build and push images to a local registry.
-
-#### Connectivity & Troubleshooting
-
-If you encounter `i/o timeout` errors when pushing to the local registry (e.g., `192.168.1.226:5050`), it is likely a loopback networking issue where the builder container cannot reach the host IP.
-
-If you encounter `server gave HTTP response to HTTPS client`, your registry is not using TLS and you must explicitly allow insecure connections.
-
-**Current CI Fix:**
-- The Runner container uses `network_mode: host` in `docker/actions-runner/compose.yml`.
-- The Buildx instance uses `driver-opts: network=host` in `.github/workflows/publish.yml`.
-- The Buildx instance also has `buildkitd-config-inline` to allow the HTTP registry.
-
-**Developer Machine Fix:**
-If you run `task publish` from your own machine, you must add the registry to your Docker Engine settings:
-1. Open **Docker Desktop Settings**.
-2. Go to **Docker Engine**.
-3. Add the registry to `insecure-registries`:
-   ```json
-   {
-     "insecure-registries": ["192.168.1.226:5050"]
-   }
-   ```
-4. **Apply & Restart**.
-
-**Future-Proofing & Overrides:**
-If you change your runner environment or networking stack and `network: host` is no longer viable, you can override the registry target without changing code by setting the `WFS_REGISTRY` environment variable on the runner:
-
-| Override Strategy | Value | Use Case |
-|-------------------|-------|----------|
-| **Localhost** | `WFS_REGISTRY=localhost:5050` | Registry and Runner share the same network stack. |
-| **Docker Bridge** | `WFS_REGISTRY=172.17.0.1:5050` | Registry bound to the bridge gateway. |
-| **Custom IP** | `WFS_REGISTRY=192.168.1.x:5050` | Moving the registry to a different machine. |
-
-This variable is supported by the `publish` task in `Taskfile.yml`.
+Run `task tag` on `main` to publish the next stable Docker Hub release. Run it on another named branch to publish the next beta build. The GitHub-hosted workflow builds and pushes immutable `linux/amd64` and `linux/arm64` images; it does not use a private registry or self-hosted runner.
 
 ---
 
@@ -754,7 +720,7 @@ task clean
 2. ✅ **LOCAL_DEV_LOOP.md**: This document.
 3. ✅ **.env.example**: Environment template in `docker/`.
 4. ✅ **ci.yml**: PR validation and smoke tests.
-5. ✅ **publish.yml**: Container builds and registry distribution.
+5. ✅ **publish-dockerhub.yml**: GitHub-hosted Docker Hub image publication.
 6. ⏭️ **Observability**: Add Prometheus/Grafana dashboard tasks.
 
 ## Working with AI Agents
