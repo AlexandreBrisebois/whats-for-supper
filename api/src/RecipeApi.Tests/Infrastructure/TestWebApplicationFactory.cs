@@ -182,15 +182,13 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             builder.Configuration,
             sp.GetRequiredService<ILogger<RecipeSearchFilterOptions>>()));
         builder.Services.AddSingleton<RecipeSearchContinuationStore>();
-        builder.Services.AddSingleton<InventoryCaptureService>();
         
         var mockEmbedding = new Mock<IEmbeddingProvider>();
         mockEmbedding.Setup(e => e.GenerateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new float[1536]);
         builder.Services.AddSingleton<IEmbeddingProvider>(mockEmbedding.Object);
 
-        // Stub IChatClient so InventoryCaptureService can be resolved in tests.
-        // The default stub inspects the prompt and returns shape-correct payloads for each test path.
+        // The default stub inspects prompts and returns shape-correct payloads for each test path.
         builder.Services.AddSingleton<IChatClient>(_chatClient ?? new StubChatClient(null));
         builder.Services.AddScoped<RecipeImportService>();
         builder.Services.AddScoped<RecipeImportReportService>();

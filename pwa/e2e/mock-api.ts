@@ -1078,44 +1078,6 @@ export async function setupCommonRoutes(page: Page) {
     }
   });
 
-  // POST /api/inventory-captures (Task 13)
-  await page.route('**/api/inventory-captures', async (route) => {
-    if (route.request().method() !== 'POST') {
-      await route.fallback();
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          snapshotId: MOCK_IDS.INVENTORY_CAPTURE,
-          inferredIngredients: ['chicken', 'pasta', 'tomatoes'],
-          confidence: 0.85,
-        },
-      }),
-    });
-  });
-
-  // GET /api/inventory-captures/{id} (Task 13)
-  await page.route('**/api/inventory-captures/*', async (route) => {
-    if (route.request().method() !== 'GET') {
-      await route.fallback();
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          snapshotId: MOCK_IDS.INVENTORY_CAPTURE,
-          inferredIngredients: ['chicken', 'pasta', 'tomatoes'],
-          confidence: 0.85,
-        },
-      }),
-    });
-  });
-
   // GET /api/captures/failures (Task 18)
   await page.route('**/api/captures/failures', async (route) => {
     if (route.request().method() !== 'GET') {

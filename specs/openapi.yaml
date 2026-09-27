@@ -232,7 +232,6 @@ components:
             - rating-boost
             - vote-boost
             - planner-fit
-            - inventory-fit
             - semantic-match
         label: { type: string }
 
@@ -260,7 +259,6 @@ components:
       properties:
         query: { type: [string, 'null'], description: Original caller query. Omit or leave empty for browse only when preferences.concepts has no usable value; concept-only requests are ranked searches. }
         similarToRecipeId: { type: [string, 'null'], format: uuid }
-        pantrySnapshotId: { type: [string, 'null'], format: uuid }
         weekOffset: { type: [integer, 'null'] }
         dayIndex: { type: [integer, 'null'] }
         limit: { type: integer, minimum: 1, maximum: 50, default: 12, description: Number of alternatives only; topPick is not counted. }
@@ -318,7 +316,7 @@ components:
         appliedFilters: { $ref: '#/components/schemas/RecipeSearchFiltersDto' }
         searchMode:
           type: string
-          enum: [standard, similar, pantry-assisted]
+          enum: [standard, similar]
         resultPath:
           type: string
           enum: [lexical-only, hybrid, fallback-lexical, browse]
@@ -952,40 +950,6 @@ components:
             - Beverages
             - Deli
             - Grocery
-
-    # --- Inventory Captures ---
-    InventoryCaptureRequest:
-      type: object
-      properties:
-        photos:
-          type: array
-          items:
-            type: string
-            format: binary
-    InventoryCaptureResponse:
-      type: object
-      required: [snapshotId, inferredIngredients, confidence]
-      properties:
-        snapshotId:
-          type: string
-          format: uuid
-        inferredIngredients:
-          type: array
-          items:
-            type: string
-        confidence:
-          type: number
-    InventoryCaptureBusyResponse:
-      type: object
-      required: [status, retryAfterSeconds, message]
-      properties:
-        status:
-          type: string
-          enum: [busy]
-        retryAfterSeconds:
-          type: integer
-        message:
-          type: string
 
 
     RecipeTrashItemDto:
@@ -2915,53 +2879,6 @@ paths:
                   data: { $ref: '#/components/schemas/GoToItem' }
         '404':
           description: No ready GOTO recipes found
-
-  /api/inventory-captures:
-    post:
-      summary: Submit pantry photos and get an inventory snapshot
-      requestBody:
-        required: false
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/InventoryCaptureRequest'
-      responses:
-        '200':
-          description: Snapshot created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/InventoryCaptureResponse' }
-        '202':
-          description: Vision model busy — retry later
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/InventoryCaptureBusyResponse' }
-
-  /api/inventory-captures/{id}:
-    get:
-      summary: Retrieve a pantry snapshot by ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      responses:
-        '200':
-          description: Snapshot found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/InventoryCaptureResponse' }
-        '404':
-          description: Snapshot not found or expired
 
   /api/captures/failures:
     get:

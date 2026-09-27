@@ -139,7 +139,6 @@ try
     builder.Services.AddSingleton(sp => new RecipeSearchFilterOptions(
         builder.Configuration,
         sp.GetRequiredService<ILogger<RecipeSearchFilterOptions>>()));
-    builder.Services.AddSingleton<InventoryCaptureService>();
     builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddScoped<RecipeImportReportService>();
     builder.Services.AddScoped<DiscoveryService>();

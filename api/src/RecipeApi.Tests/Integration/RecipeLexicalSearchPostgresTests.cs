@@ -118,13 +118,11 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
     public async Task SearchAsync_ReturnsDatabaseLexicalResults_WhenEmbeddingProviderFails()
     {
         var recipe = await SeedReadyDocumentAsync("Chicken soup", "[\"chicken\"]");
-        var inventory = new InventoryCaptureService(new StubChatClient(null), NullLogger<InventoryCaptureService>.Instance);
         var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance);
         var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery);
         var service = new RecipeSearchService(
             _db,
             schedule,
-            inventory,
             new FailingEmbeddingProvider(),
             lexicalRepository: new RecipeLexicalSearchRepository(_db),
             semanticRepository: new RecipeSemanticSearchRepository(_db),
@@ -178,10 +176,9 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
 
     private RecipeSearchService CreateService(IEmbeddingProvider provider, int candidateLimit = 50)
     {
-        using var inventory = new InventoryCaptureService(new StubChatClient(null), NullLogger<InventoryCaptureService>.Instance);
         var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance);
         var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery);
-        return new RecipeSearchService(_db, schedule, inventory, provider, lexicalRepository: new RecipeLexicalSearchRepository(_db), semanticRepository: new RecipeSemanticSearchRepository(_db), rolloutOptions: SearchOptions(candidateLimit));
+        return new RecipeSearchService(_db, schedule, provider, lexicalRepository: new RecipeLexicalSearchRepository(_db), semanticRepository: new RecipeSemanticSearchRepository(_db), rolloutOptions: SearchOptions(candidateLimit));
     }
 
     private static RecipeSearchRolloutOptions SearchOptions(int candidateLimit = 50) => new()

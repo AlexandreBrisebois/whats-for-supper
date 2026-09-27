@@ -1,7 +1,31 @@
-# Docker Hub publication setup
+# Docker Hub publication
+
+This is a maintainer runbook for publishing container images. It does not make a Synology deployment supported; see the [Synology release plan](../../.kiro/specs/01-public-synology-release/requirements.md) for that qualification boundary.
+
+## Prerequisites
 
 Set the repository Actions variable `DOCKERHUB_PUBLISHER_GITHUB_LOGIN` to the one GitHub login allowed to publish. Create the protected `dockerhub-publish` environment, require that same owner as its reviewer, and store `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` only as environment secrets there.
 
-Run `task tag` from `main` to create the next stable annotated trigger tag. Run the same command from any named non-`main` branch to create the next beta tag; beta numbers are automatically incremented. To start a beta for a specific package-version bump, use `task tag -- --package-bump patch|minor|major`. Each invocation fetches remote state and asks before creating and pushing a tag; it never builds or publishes an image directly.
+## Create a release tag
 
-The tag push triggers GitHub-hosted multi-platform Docker Hub builds. Stable tags must point to a commit reachable from `main`; beta tags can point to their source branch. Published tags are immutable—there is no `latest` tag.
+Run `task tag` from `main` to create the next stable annotated trigger tag. Run the same command from any named non-`main` branch to create the next beta tag; beta numbers are automatically incremented. To start a beta for a specific package-version bump, use:
+
+```bash
+task tag -- --package-bump patch|minor|major
+```
+
+The command fetches remote state, prints the target tag and commit, and asks for confirmation before creating and pushing the tag. It never builds or publishes an image directly.
+
+## What the tag publishes
+
+Pushing the tag starts the GitHub-hosted multi-platform Docker Hub workflow. Stable tags must point to a commit reachable from `main`; beta tags can point to their source branch. The workflow publishes immutable `linux/amd64` and `linux/arm64` images at one derived version:
+
+- `brisebois/whats-for-supper-api:<version>`
+- `brisebois/whats-for-supper-pwa:<version>`
+- `brisebois/whats-for-supper-db-migration:<version>`
+
+There is no `latest` tag. The Synology template consumes one explicit `WFS_VERSION` across all three images.
+
+## Qualification boundary
+
+Publication demonstrates that the workflow built and pushed images. It does not demonstrate a physical Synology deployment, HTTPS and Cloudflare cookie behaviour, backup and restore, update or rollback. Do not promote the template in `release-template/synology/` as a public installer until those checks have passed.

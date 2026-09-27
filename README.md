@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BUSL--1.1-CD5D45?style=flat-square" alt="Business Source License 1.1" /></a>
-  <img src="https://img.shields.io/badge/.NET-11_RC1-512BD4?style=flat-square&logo=dotnet" alt=".NET 11 RC1" />
+  <img src="https://img.shields.io/badge/.NET-11_Preview_6-512BD4?style=flat-square&logo=dotnet" alt=".NET 11 Preview 6" />
   <img src="https://img.shields.io/badge/Next.js-16.3-black?style=flat-square&logo=next.js" alt="Next.js 16.3" />
   <img src="https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql" alt="PostgreSQL 18" />
   <img src="https://img.shields.io/badge/AI-Gemini_Flash-4285F4?style=flat-square&logo=google" alt="Gemini Flash" />
@@ -25,13 +25,14 @@ What's for Supper? keeps the small, everyday decisions in one calm place: choose
 - Plan dinners for the week and keep a live grocery list in sync across the household.
 - Let family members vote on recipes, then turn favourites into a plan.
 - Save recipes from a photo, link, or short description instead of retyping them.
+- Filter for confirmed vegetarian recipes and find similar dishes from a favourite.
 - Use Cook's Mode for simple, step-by-step help when it is time to make dinner.
 
 Recipes and household planning stay on your own server. There are no individual accounts to manage; a household shares access to its private app.
 
 ## Synology release status
 
-The public Synology release is in preparation and is **not available to install yet**. Its first supported path will be a versioned beta for Synology DSM 7.2+ Container Manager on 64-bit Intel/AMD and ARM systems. Until it has completed release qualification, this repository is for contributors rather than a public installation guide.
+The public Synology release is in preparation and is **not available to install yet**. Docker Hub publication and a Container Manager template are being prepared, but neither makes a public installation supported. Its first supported path will be a versioned beta for Synology DSM 7.2+ Container Manager on 64-bit Intel/AMD and ARM systems. Until it has completed physical deployment and recovery qualification, this repository is for contributors rather than a public installation guide.
 
 ## Read on
 

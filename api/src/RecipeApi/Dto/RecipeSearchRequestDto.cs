@@ -10,9 +10,6 @@ public class RecipeSearchRequestDto
     [JsonPropertyName("similarToRecipeId")]
     public Guid? SimilarToRecipeId { get; set; }
 
-    [JsonPropertyName("pantrySnapshotId")]
-    public Guid? PantrySnapshotId { get; set; }
-
     [JsonPropertyName("weekOffset")]
     public int? WeekOffset { get; set; }
 

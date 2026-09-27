@@ -22,7 +22,7 @@ If tonight's plan changes, tap **Skip**, choose **Order In** or another backup, 
 
 Overnight, the app marks missed planned meals from earlier days as cooked so recipe rotation stays useful. Meals marked Ordered In, meals already cooked, and future plans are left alone.
 
-If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. You can also use **Quick Find** for a short stack of suggestions, or search your library when you already know what you want.
+If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. You can also use **Quick Find** for a short stack of up to five suggestions. **Skip** moves to the next suggestion; after the stack, you can search your library or start over.
 
 This screen saves you from opening the fridge, staring blankly, and ordering pizza for the third time this week.
 
@@ -68,9 +68,9 @@ When you know exactly what you're looking for, or have a specific craving, use t
 
 You don't need to be precise. Type like you talk: "chicken pasta tonight", "quick fish", or "the salmon bowls we liked." The app uses semantic search to find the best matches even if the words don't match perfectly.
 
-Search is **planner-aware**. If you open search from a day in your planner, it automatically hides recipes you've already planned for other days.
+Search is **planner-aware**. If you open search from a day in your planner, recipes already planned that week are shown lower in the results so you can avoid accidental repeats while still finding a recipe you need.
 
-Use the **"Healthy"** filter to quickly find light and nutritious meals.
+Use the **Vegetarian** filter to find recipes that WFS has confirmed as vegetarian. It is a recipe classification, not nutritional or dietetic advice.
 
 Tap any search result to open its recipe detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, or tap the **star** to add it to your family's GOTO list.
 
@@ -132,6 +132,8 @@ You only need to tap **Save**. The app decides the safe next step. A report with
 When a re-import starts, you can close the sheet and keep using the app. The recipe shows **Reimporting in background** while it works. When it finishes, it is marked **Reimported — check recipe**. Review the recipe, then choose **Mark as resolved** when it looks right.
 
 If re-import cannot finish, your report stays saved. Add or change a detail and tap **Save** to request another attempt. Saving unchanged feedback will not repeatedly restart it.
+
+If an import fails before it creates a usable recipe, open **Settings → Failed Captures** to see the friendly reason and retry it when you are ready. When a recipe-level re-import fails, the issue sheet shows the failure details and an import ID that can help an administrator investigate; it does not expose technical diagnostics in the normal family experience.
 
 In **Cook's Mode**, use the flag beside ingredients or a step to open this same reporting flow. Check the result later from the recipe detail screen.
 

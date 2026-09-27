@@ -59,12 +59,18 @@ describe('generated search contract', () => {
     expect(block).toContain('discoverableOnly?: boolean | null;');
   });
 
-  it('includes inventory-fit in the RecipeSearchReasonDto source enum', () => {
+  it('excludes retired pantry-assisted search symbols from generated output', () => {
     const modelsSource = readGenerated('models/index.ts');
+    const apiSource = readGenerated('api/index.ts');
 
-    // Match regardless of quote style (Kiota may generate single or double quotes)
-    expect(modelsSource).toMatch(/InventoryFit:\s*['"]inventory-fit['"]/);
-    expect(modelsSource).not.toMatch(/PantryMatch:\s*['"]pantry-match['"]/);
+    expect(modelsSource).not.toContain('InventoryCaptureResponse');
+    expect(modelsSource).not.toMatch(/InventoryFit:\s*['"]inventory-fit['"]/);
+    expect(modelsSource).not.toMatch(/PantryAssisted:\s*['"]pantry-assisted['"]/);
+    expect(modelsSource).not.toContain('pantrySnapshotId');
+    expect(apiSource).not.toContain('inventoryCaptures');
+    expect(existsSync(resolve(currentDir, 'generated', 'api/inventoryCaptures/index.ts'))).toBe(
+      false
+    );
   });
 
   it('includes the /api/recipes/search request builder in the generated client', () => {

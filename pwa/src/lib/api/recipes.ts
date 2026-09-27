@@ -616,7 +616,6 @@ export async function searchRecipes(
     | 'weekOffset'
     | 'dayIndex'
     | 'similarToRecipeId'
-    | 'pantrySnapshotId'
     | 'filters'
     | 'preferences'
     | 'continuationToken'

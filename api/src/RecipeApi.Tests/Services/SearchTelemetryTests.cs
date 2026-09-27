@@ -76,7 +76,7 @@ public class SearchTelemetryTests : IAsyncLifetime
         Assert.True(evt.Payload.ContainsKey("mode"));
         Assert.True(evt.Payload.ContainsKey("hasPlanner"));
         Assert.True(evt.Payload.ContainsKey("hasFilters"));
-        Assert.True(evt.Payload.ContainsKey("hasPantry"));
+        Assert.False(evt.Payload.ContainsKey("hasPantry"));
     }
 
     [Fact]

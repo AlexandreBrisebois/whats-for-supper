@@ -5,7 +5,6 @@
 This document defines the data flow for:
 - hybrid recipe search (lexical + vector),
 - planner-aware and family-fit reranking,
-- pantry/fridge/freezer photo inventory search,
 - vector indexing workflow (`SearchIndexWorkflow`),
 - backup/restore-compatible index persistence (`search.index.json` sidecar),
 - recycle-bin soft delete and hard delete purge,
@@ -15,13 +14,13 @@ This document defines the data flow for:
 
 ## Overview
 
-Every search path — normal typed search, inventory photo, and Find Similar — flows through the same `RecipeSearchService` and returns the same `RecipeSearchResponseDto`. Retrieval and ranking semantics remain mode-specific: normal and pantry search use hybrid retrieval and their applicable modifiers, while Similar uses its source-recipe path.
+Every search path — normal typed search and Find Similar — flows through the same `RecipeSearchService` and returns the same `RecipeSearchResponseDto`. Retrieval and ranking semantics remain mode-specific: normal search uses hybrid retrieval and its applicable modifiers, while Similar uses its source-recipe path.
 
 The implementation is staged:
 1. Canonical document indexing (`SearchIndexWorkflow`, `recipe_search_documents` table)
 2. Bounded PostgreSQL lexical retrieval
 3. Optional pgvector retrieval fused with lexical candidates
-4. Planner-aware, family-fit, and pantry reranking
+4. Planner-aware and family-fit reranking
 5. Recovery systems (Recycle Bin, Failed Captures)
 
 That sequence keeps the product shippable at every step.
@@ -34,15 +33,14 @@ That sequence keeps the product shippable at every step.
 flowchart TD
     A[POST /api/recipes/search] --> B[Validate + clamp limit: default 12, minimum 1, maximum 50]
     B --> C[Apply eligibility and hard filters]
-    C --> D[Load planner context if weekOffset + dayIndex present]
-    D --> E[Load pantry snapshot if pantrySnapshotId present]
-    E[Bounded PostgreSQL lexical retrieval from canonical documents] --> F
-    E2[Optional vector retrieval if index ready — 300 ms budget] --> F
+    C --> E[Bounded PostgreSQL lexical retrieval from canonical documents]
+    C --> E2[Optional vector retrieval if index ready — 300 ms budget]
+    E --> F
+    E2 --> F
     F[Merge bounded candidate union by recipeId] --> G
-    G[Planner-aware reranker — exclude assigned, apply balance gap + urgency] --> H
-    H[Family-fit reranker — rating boost, vote boost, notes boost] --> I
-    I[Inventory-fit boost if pantry snapshot present] --> J
-    J[Sort by score desc, take limit, select Top Pick = results.First] --> K
+    G[Planner-aware reranker — demote recipes already planned that week] --> H
+    H[Family-fit reranker — rating boost, vote boost, notes boost] --> J
+    J[Sort by score desc, take limit, select eligible Top Pick] --> K
     K[Return RecipeSearchResponseDto — topPick + results + reasons + resultPath]
 ```
 
@@ -70,7 +68,7 @@ Find Similar uses semantic retrieval for bounded candidate generation and determ
 
 When the source has a compatible ready embedding, its embedding is used only to retrieve the bounded Similar candidate pool. The final score combines normalized semantic similarity with ingredient overlap, cuisine, category, meal type, nullable `IsVegetarian` compatibility, and preparation-time similarity. `IsVegetarian` is a conservative compatibility signal only when both recipes have a known equal value; Similar makes no protein claim.
 
-When the source embedding is missing, incompatible, or semantic retrieval fails, Similar builds a compact bounded lexical query from the source name, up to 12 ingredients, cuisine, category, and up to 6 meal types (at most 20 normalized terms and 300 characters). PostgreSQL applies the same filters and source exclusion before returning its bounded lexical candidates; those candidates receive zero semantic contribution and the same structured scorer. Family/vote and pantry boosts do not apply to Similar. Planner planned-recipe demotion applies only when a real planner context supplies both `weekOffset` and `dayIndex`. Ranked continuations retain the initial Similar order.
+When the source embedding is missing, incompatible, or semantic retrieval fails, Similar builds a compact bounded lexical query from the source name, up to 12 ingredients, cuisine, category, and up to 6 meal types (at most 20 normalized terms and 300 characters). PostgreSQL applies the same filters and source exclusion before returning its bounded lexical candidates; those candidates receive zero semantic contribution and the same structured scorer. Family/vote boosts do not apply to Similar. Planner planned-recipe demotion applies only when a real planner context supplies both `weekOffset` and `dayIndex`. Ranked continuations retain the initial Similar order.
 
 ### `resultPath` values
 
@@ -86,7 +84,7 @@ When the source embedding is missing, incompatible, or semantic retrieval fails,
 
 All score constants are named constants in `RecipeSearchService` — not magic numbers.
 
-### Family-fit modifiers (normal and pantry searches only)
+### Family-fit modifiers (normal searches only)
 
 | Signal | Modifier | Constant |
 |--------|----------|----------|
@@ -95,54 +93,19 @@ All score constants are named constants in `RecipeSearchService` — not magic n
 | `rating == 1` (Dislike) | `−0.10` | `BoostDislike` |
 | Positive discovery votes (normalised) | `+min(0.15, voteCount × 0.05)` | `BoostVotesMax / BoostVotesRate` |
 
-### Planner-fit modifiers (only when `weekOffset` + `dayIndex` provided)
+### Planner-aware modifier (when `weekOffset` is provided)
 
 | Signal | Modifier |
 |--------|----------|
-| Recipe closes weekly veggie gap (`VeggieDays < 4`) | `+0.20` |
-| Recipe closes weekly protein gap (`ProteinDays < 3`) | `+0.20` |
-| Recipe closes weekly grain gap (`GrainDays < 2`) | `+0.20` |
-| Recipe closes plant-protein gap (`PlantProteinDays < 1`) | `+0.20` |
-| Recipe `totalTime ≤ 30 min` AND query implies urgency | `+0.10` |
-| Recipe already assigned in target week | Excluded entirely |
-
-### Inventory-fit modifier (only when `pantrySnapshotId` provided)
-
-```
-+min(0.20, overlapRatio × 0.25)
-where overlapRatio = matchedIngredients / totalIngredients
-```
+| Recipe already assigned in the selected week | Demoted, with an "Already planned for this week" reason |
 
 ### Top Pick rule
 
-Top Pick = `results.First()` after scoring and sort. It must have a non-null `plannerFitNote` when planner context is present. If no explicit note was assigned, the fallback is `"Not yet planned this week"`.
+Top Pick = the highest-ranked promotion-eligible result after scoring and sort. It is omitted when no result is eligible for promotion.
 
 Every active modifier appears as a `RecipeSearchReasonDto` entry in the result's `reasons` array, with a `source` enum and a human-readable `label`.
 
 ---
-
----
-
-## Inventory Capture API Pipeline
-
-```mermaid
-flowchart TD
-    A[API client submits photos] --> B[POST /api/inventory-captures]
-    B --> C[Write photos to tmp/pantry-captures/requestId/index.jpg]
-    C --> D[Vision model extracts ingredient list]
-    D --> E[Build PantrySnapshot — snapshotId + inferredIngredients + confidence]
-    E --> F[Hold snapshot in in-memory map keyed by snapshotId]
-    E --> G[Delete temp photos immediately]
-    F --> H[Client receives snapshotId]
-    H --> I[Client includes pantrySnapshotId in POST /api/recipes/search]
-    I --> J[Search service loads snapshot and applies ingredient-overlap boost]
-
-    D --> K[Model busy / timeout]
-    K --> G
-    K --> L[Return HTTP 202 — status: busy + retryAfterSeconds: 30]
-```
-
-The pantry snapshot is **request-scoped and in-memory only**. It is never persisted to the database, never included in backup/restore, and never retained between sessions. In-memory entries expire after 60 seconds (TTL). If the API process restarts, orphaned entries are gone naturally.
 
 ---
 
@@ -386,12 +349,11 @@ Implementations must check `payload_version` before reconstructing the workflow 
 flowchart TD
     A[Normal typed search] --> C[RecipeSearchService]
     B[Find Similar — similarToRecipeId] --> C
-    D[Pantry-assisted search — pantrySnapshotId] --> C
     C --> E[Mode-specific retrieval + ranking]
     E --> F[RecipeSearchResponseDto — grounded results + reasons]
 ```
 
-Do not build separate service logic for callers. The same `RecipeSearchService` answers normal, similar, and pantry-assisted searches, while retaining the mode-specific ranking semantics above.
+Do not build separate service logic for callers. The same `RecipeSearchService` answers normal and Similar searches while retaining the mode-specific ranking semantics above.
 
 ---
 
@@ -401,7 +363,7 @@ All events are structured log entries via `ISearchTelemetry` (default impl: `Log
 
 | Event | Payload |
 |-------|---------|
-| `recipe_search_requested` | `{ mode, hasPlanner, hasFilters, hasPantry }` |
+| `recipe_search_requested` | `{ mode, hasPlanner, hasFilters }` |
 | `recipe_search_completed` | `{ mode, resultPath, resultCount, topPickPresent, durationMs }` |
 | `recipe_search_fallback_served` | `{ reason: "vector_timeout \| vector_unavailable" }` |
 | `recipe_search_empty_results` | `{ mode, filtersApplied }` |

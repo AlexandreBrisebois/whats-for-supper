@@ -35,8 +35,6 @@ export const MOCK_IDS = {
   RECIPE_BACKUP: '660e8400-e29b-41d4-a716-446655440021', // recipe for backup fidelity testing
   RECIPE_SHARED: '660e8400-e29b-41d4-a716-446655440022', // recipe for share scrubbing testing
 
-  // Inventory captures (Task 13)
-  INVENTORY_CAPTURE: '770e8400-e29b-41d4-a716-446655440030',
   PHOTO_NEW: '770e8400-e29b-41d4-a716-446655440031',
 
   // Recycle Bin (Task 14)

@@ -347,17 +347,6 @@ export function createImportedRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {InventoryCaptureResponse}
- */
-// @ts-ignore
-export function createInventoryCaptureResponseFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoInventoryCaptureResponse;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ManagementBackfillSearchAcceptedResponse}
  */
 // @ts-ignore
@@ -1462,28 +1451,6 @@ export function deserializeIntoImportedRecipeDto(
 }
 /**
  * The deserialization information for the current model
- * @param InventoryCaptureResponse The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoInventoryCaptureResponse(
-  inventoryCaptureResponse: Partial<InventoryCaptureResponse> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    confidence: (n) => {
-      inventoryCaptureResponse.confidence = n.getNumberValue();
-    },
-    inferredIngredients: (n) => {
-      inventoryCaptureResponse.inferredIngredients =
-        n.getCollectionOfPrimitiveValues<string>('string');
-    },
-    snapshotId: (n) => {
-      inventoryCaptureResponse.snapshotId = n.getGuidValue();
-    },
-  };
-}
-/**
- * The deserialization information for the current model
  * @param ManagementBackfillSearchAcceptedResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -2167,9 +2134,6 @@ export function deserializeIntoRecipeSearchRequestDto(
     },
     limit: (n) => {
       recipeSearchRequestDto.limit = n.getNumberValue() ?? 12;
-    },
-    pantrySnapshotId: (n) => {
-      recipeSearchRequestDto.pantrySnapshotId = n.getGuidValue();
     },
     preferences: (n) => {
       recipeSearchRequestDto.preferences = n.getObjectValue<RecipeSearchPreferencesDto>(
@@ -3171,20 +3135,6 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
 }
 export type ImportedRecipeDto_mealTypes =
   (typeof ImportedRecipeDto_mealTypesObject)[keyof typeof ImportedRecipeDto_mealTypesObject];
-export interface InventoryCaptureResponse extends AdditionalDataHolder, Parsable {
-  /**
-   * The confidence property
-   */
-  confidence?: number | null;
-  /**
-   * The inferredIngredients property
-   */
-  inferredIngredients?: string[] | null;
-  /**
-   * The snapshotId property
-   */
-  snapshotId?: Guid | null;
-}
 export interface ManagementBackfillSearchAcceptedResponse extends AdditionalDataHolder, Parsable {
   /**
    * The message property
@@ -3723,10 +3673,6 @@ export interface RecipeSearchRequestDto extends AdditionalDataHolder, Parsable {
    * Number of alternatives only; topPick is not counted.
    */
   limit?: number | null;
-  /**
-   * The pantrySnapshotId property
-   */
-  pantrySnapshotId?: Guid | null;
   /**
    * The preferences property
    */
@@ -4448,29 +4394,6 @@ export function serializeImportedRecipeDto(
 }
 /**
  * Serializes information the current object
- * @param InventoryCaptureResponse The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeInventoryCaptureResponse(
-  writer: SerializationWriter,
-  inventoryCaptureResponse: Partial<InventoryCaptureResponse> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!inventoryCaptureResponse || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeNumberValue('confidence', inventoryCaptureResponse.confidence);
-  writer.writeCollectionOfPrimitiveValues<string>(
-    'inferredIngredients',
-    inventoryCaptureResponse.inferredIngredients
-  );
-  writer.writeGuidValue('snapshotId', inventoryCaptureResponse.snapshotId);
-  writer.writeAdditionalData(inventoryCaptureResponse.additionalData);
-}
-/**
- * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param ManagementBackfillSearchAcceptedResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
@@ -5079,7 +5002,6 @@ export function serializeRecipeSearchRequestDto(
     serializeRecipeSearchFiltersDto
   );
   writer.writeNumberValue('limit', recipeSearchRequestDto.limit ?? 12);
-  writer.writeGuidValue('pantrySnapshotId', recipeSearchRequestDto.pantrySnapshotId);
   writer.writeObjectValue<RecipeSearchPreferencesDto>(
     'preferences',
     recipeSearchRequestDto.preferences,
@@ -6224,7 +6146,6 @@ export const RecipeSearchReasonDto_sourceObject = {
   RatingBoost: 'rating-boost',
   VoteBoost: 'vote-boost',
   PlannerFit: 'planner-fit',
-  InventoryFit: 'inventory-fit',
   SemanticMatch: 'semantic-match',
 } as const;
 export const RecipeSearchResponseDto_resultPathObject = {
@@ -6236,7 +6157,6 @@ export const RecipeSearchResponseDto_resultPathObject = {
 export const RecipeSearchResponseDto_searchModeObject = {
   Standard: 'standard',
   Similar: 'similar',
-  PantryAssisted: 'pantry-assisted',
 } as const;
 export const RecipeShareInfoDto_bundleSourceObject = {
   WfsShare: 'wfs-share',

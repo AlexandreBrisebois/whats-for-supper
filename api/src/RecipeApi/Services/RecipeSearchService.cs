@@ -13,7 +13,6 @@ namespace RecipeApi.Services;
 public partial class RecipeSearchService(
     RecipeDbContext db,
     ScheduleService scheduleService,
-    InventoryCaptureService inventoryCaptureService,
     IEmbeddingProvider? embeddingProvider = null,
     ISearchTelemetry? telemetry = null,
     RecipeLexicalSearchRepository? lexicalRepository = null,
@@ -23,7 +22,6 @@ public partial class RecipeSearchService(
     IClock? clock = null,
     RecipeSearchFilterOptions? filterOptions = null)
 {
-    private const double PantryMatchBoost = 0.25;
     private const int DefaultLimit = 12;
     private const int MaxLimit = 50;
     private const int LexicalCandidateLimit = 50;
@@ -53,11 +51,7 @@ public partial class RecipeSearchService(
         var appliedFilters = dto.Filters ?? new RecipeSearchFiltersDto();
         var continuationFingerprint = CreateContinuationFingerprint(dto, query);
 
-        var searchMode = dto.PantrySnapshotId is not null
-            ? "pantry-assisted"
-            : dto.SimilarToRecipeId is not null
-                ? "similar"
-                : "standard";
+        var searchMode = dto.SimilarToRecipeId is not null ? "similar" : "standard";
 
         telemetry?.Emit(SearchTelemetryEvents.SearchRequested, new()
         {
@@ -65,8 +59,7 @@ public partial class RecipeSearchService(
             ["configurationVersion"] = configurationVersion,
             ["mode"] = searchMode,
             ["hasPlanner"] = dto.WeekOffset is not null,
-            ["hasFilters"] = dto.Filters is not null,
-            ["hasPantry"] = dto.PantrySnapshotId is not null
+            ["hasFilters"] = dto.Filters is not null
         });
 
         // 1. Build Base Query with Filters
@@ -96,7 +89,7 @@ public partial class RecipeSearchService(
         }
         else
         {
-            // Standard/Agent/Pantry Hybrid Search
+            // Standard/Agent Hybrid Search
             var conceptOnly = string.IsNullOrWhiteSpace(query);
             var lexicalCandidates = new List<RankedRecipe>();
             if (!conceptOnly)
@@ -176,7 +169,6 @@ public partial class RecipeSearchService(
         if (dto.SimilarToRecipeId is null)
         {
             candidates = await ApplyFamilyFitRerankingAsync(candidates, ct);
-            candidates = await ApplyPantryBoostAsync(candidates, dto.PantrySnapshotId, ct);
         }
         rerankingStopwatch.Stop();
         rerankingDurationMs = rerankingStopwatch.ElapsedMilliseconds;
@@ -477,7 +469,7 @@ public partial class RecipeSearchService(
 
     private static string CreateContinuationFingerprint(RecipeSearchRequestDto dto, string query)
     {
-        var serialized = JsonSerializer.Serialize(new { query, dto.SimilarToRecipeId, dto.PantrySnapshotId, dto.WeekOffset, dto.DayIndex, dto.Filters, dto.Preferences }, JsonDefaults.CamelCase);
+        var serialized = JsonSerializer.Serialize(new { query, dto.SimilarToRecipeId, dto.WeekOffset, dto.DayIndex, dto.Filters, dto.Preferences }, JsonDefaults.CamelCase);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(serialized)));
     }
 
@@ -956,47 +948,6 @@ public partial class RecipeSearchService(
         var components = current is null ? new Dictionary<string, double>() : new Dictionary<string, double>(current);
         foreach (var (name, value) in additions) components[name] = value;
         return components;
-    }
-
-    private async Task<List<RankedRecipe>> ApplyPantryBoostAsync(
-        List<RankedRecipe> candidates,
-        Guid? pantrySnapshotId,
-        CancellationToken ct)
-    {
-        if (pantrySnapshotId == null || candidates.Count == 0) return candidates;
-
-        var snapshot = inventoryCaptureService.GetSnapshot(pantrySnapshotId.Value);
-        if (snapshot == null || snapshot.InferredIngredients.Count == 0) return candidates;
-
-        var pantryIngredients = snapshot.InferredIngredients
-            .Select(Normalize)
-            .ToHashSet();
-
-        return candidates.Select(candidate =>
-        {
-            var ingredientsJson = candidate.Recipe.Ingredients;
-            if (string.IsNullOrWhiteSpace(ingredientsJson)) return candidate;
-
-            var recipeIngredients = RecipeService.DeserializeIngredients(ingredientsJson)
-                .Select(Normalize)
-                .ToList();
-
-            var matches = recipeIngredients.Where(pantryIngredients.Contains).ToList();
-            if (matches.Count > 0)
-            {
-                var score = candidate.Score + PantryMatchBoost;
-                var reasons = candidate.Reasons.ToList();
-                reasons.Add(new RecipeSearchReasonDto
-                {
-                    Source = "inventory-fit",
-                    Label = $"Uses {matches.Count} ingredients from your camera photos"
-                });
-
-                return candidate with { Score = score, Reasons = reasons, ScoreComponents = WithComponents(candidate.ScoreComponents, ("pantry.match", PantryMatchBoost)) };
-            }
-
-            return candidate;
-        }).ToList();
     }
 
     private sealed record BrowseRankedRecipe(

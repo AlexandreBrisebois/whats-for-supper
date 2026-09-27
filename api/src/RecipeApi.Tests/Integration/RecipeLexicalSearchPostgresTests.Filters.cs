@@ -223,10 +223,9 @@ public partial class RecipeLexicalSearchPostgresTests
 
     private RecipeSearchService CreateFilterService(IEmbeddingProvider? provider, bool enabled = true, int candidateLimit = 50)
     {
-        var inventory = new InventoryCaptureService(new StubChatClient(null), NullLogger<InventoryCaptureService>.Instance);
         var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance);
         var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery);
-        return new RecipeSearchService(_db, schedule, inventory, provider,
+        return new RecipeSearchService(_db, schedule, provider,
             lexicalRepository: new RecipeLexicalSearchRepository(_db), semanticRepository: new RecipeSemanticSearchRepository(_db),
             rolloutOptions: new() { Semantic = new() { Enabled = enabled, CandidateLimit = candidateLimit, EmbeddingModel = "task4", EmbeddingVersion = "v1" } },
             continuationStore: new RecipeSearchContinuationStore());

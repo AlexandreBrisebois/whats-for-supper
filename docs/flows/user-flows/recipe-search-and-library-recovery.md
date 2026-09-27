@@ -94,10 +94,9 @@ sequenceDiagram
 
 ### Planner reranking rules
 
-- Recipes already assigned in the target week are excluded entirely.
-- Recipes that close a weekly nutritional gap (e.g. "Helps add vegetables to this week") receive a `+0.20` score boost.
-- Queries containing "quick", "fast", or "tonight" boost recipes with `totalTime ≤ 30 min` by `+0.10`.
-- The Top Pick's `plannerFitNote` carries a human-readable explanation when planner context is present.
+- Recipes already assigned in the selected week are demoted rather than hidden, with an "Already planned for this week" reason.
+- Planner context does not apply nutritional-gap or urgency scoring.
+- Top Pick is shown only when the API has a promotion-eligible result; otherwise search still returns the ranked results without a Top Pick.
 
 ### No-dead-end rules
 

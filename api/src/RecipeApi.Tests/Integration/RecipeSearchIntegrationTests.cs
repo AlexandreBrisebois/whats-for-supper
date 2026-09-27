@@ -58,6 +58,8 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         var results = data.GetProperty("results");
         Assert.DoesNotContain(results.EnumerateArray(), result => result.GetProperty("name").GetString() == "Chicken Stir Fry");
+        Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "inventory-fit");
     }
 
     [Theory]
@@ -426,7 +428,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         Assert.Equal(stronglySimilar.Id, topPick.GetProperty("id").GetGuid());
         Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
-            reason.GetProperty("source").GetString() is "rating-boost" or "vote-boost" or "inventory-fit");
+            reason.GetProperty("source").GetString() is "rating-boost" or "vote-boost");
     }
 
     [Fact]
@@ -454,7 +456,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         Assert.Contains(plannedResult.GetProperty("reasons").EnumerateArray(), reason =>
             reason.GetProperty("source").GetString() == "planner-fit");
         Assert.DoesNotContain(plannedResult.GetProperty("reasons").EnumerateArray(), reason =>
-            reason.GetProperty("source").GetString() is "rating-boost" or "vote-boost" or "inventory-fit");
+            reason.GetProperty("source").GetString() is "rating-boost" or "vote-boost");
     }
 
     [Fact]
@@ -640,46 +642,13 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Search_WithPantrySnapshot_Emits_InventoryFit_Reason()
+    public async Task InventoryCaptures_Route_IsNotFound()
     {
-        await SeedRecipeAsync(new Recipe
-        {
-            Id = Guid.NewGuid(),
-            AddedBy = _factory.DefaultFamilyMemberId,
-            Name = "Tomato Pasta",
-            Description = "Pantry dinner",
-            Ingredients = JsonSerializer.Serialize(new[] { "tomatoes", "pasta", "olive oil" }),
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow,
-            ImageCount = 1
-        });
+        using var postResponse = await _client.PostAsync("/api/inventory-captures", new MultipartFormDataContent());
+        using var getResponse = await _client.GetAsync($"/api/inventory-captures/{Guid.NewGuid()}");
 
-        using var captureContent = new MultipartFormDataContent();
-        using var fileContent = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xD9]);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
-        captureContent.Add(fileContent, "photos", "pantry.jpg");
-
-        var captureResponse = await _client.PostAsync("/api/inventory-captures", captureContent);
-
-        Assert.Equal(HttpStatusCode.OK, captureResponse.StatusCode);
-
-        using var captureDocument = await ReadDataAsync(captureResponse);
-        var pantrySnapshotId = captureDocument.RootElement.GetProperty("snapshotId").GetGuid();
-
-        var response = await PostSearchAsync(new
-        {
-            query = "pasta",
-            pantrySnapshotId
-        });
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        using var document = await ReadDataAsync(response);
-        var topPick = document.RootElement.GetProperty("topPick");
-
-        Assert.Contains(topPick.GetProperty("reasons").EnumerateArray(), reason =>
-            reason.GetProperty("source").GetString() == "inventory-fit" &&
-            reason.GetProperty("label").GetString() == "Uses 1 ingredients from your camera photos");
+        Assert.Equal(HttpStatusCode.NotFound, postResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 
     [Fact]

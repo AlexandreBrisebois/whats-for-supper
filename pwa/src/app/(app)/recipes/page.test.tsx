@@ -287,7 +287,6 @@ describe('RecipesPage', () => {
         weekOffset: undefined,
         dayIndex: undefined,
         similarToRecipeId: undefined,
-        pantrySnapshotId: undefined,
         filters: undefined,
       });
     });
@@ -497,7 +496,6 @@ describe('RecipesPage', () => {
           weekOffset: undefined,
           dayIndex: undefined,
           similarToRecipeId: undefined,
-          pantrySnapshotId: undefined,
           filters: undefined,
         });
       });
