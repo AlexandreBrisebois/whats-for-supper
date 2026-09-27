@@ -112,6 +112,9 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
                 IsReimporting = report.Status == RecipeImportReportStatus.Reimporting,
                 ReimportFailureMessage = report.Status == RecipeImportReportStatus.ReimportFailed
                     ? "We couldn’t re-import this recipe. Your report is saved. Add or change a detail, then Save to try again."
+                    : null,
+                ReimportFailureImportId = report.Status == RecipeImportReportStatus.ReimportFailed
+                    ? report.LastWorkflowInstanceId
                     : null
             };
 

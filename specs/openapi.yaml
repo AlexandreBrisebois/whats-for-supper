@@ -73,7 +73,7 @@ components:
 
     RecipeImportIssueDto:
       type: object
-      required: [reasons, note, status, isReimporting, reimportFailureMessage]
+      required: [reasons, note, status, isReimporting, reimportFailureMessage, reimportFailureImportId]
       properties:
         reasons:
           type: array
@@ -87,6 +87,7 @@ components:
           $ref: '#/components/schemas/RecipeImportIssueStatus'
         isReimporting: { type: boolean }
         reimportFailureMessage: { type: [string, 'null'] }
+        reimportFailureImportId: { type: [string, 'null'], format: uuid }
       examples:
         - reasons: [duplicate]
           note: 'This is the same recipe as our family lasagna.'
@@ -875,6 +876,23 @@ components:
         retryCount: { type: integer }
         scheduledAt: { type: [string, 'null'], format: date-time }
         errorMessage: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    WorkflowTaskDiagnosticsDto:
+      type: object
+      description: Internal task diagnostics. Contains a stored exception stack trace and is not family-facing.
+      required: [taskId, instanceId, workflowId, taskName, processorName, status, retryCount, createdAt, updatedAt]
+      properties:
+        taskId: { type: string, format: uuid }
+        instanceId: { type: string, format: uuid }
+        workflowId: { type: string }
+        taskName: { type: string }
+        processorName: { type: string }
+        status: { type: string }
+        retryCount: { type: integer }
+        errorMessage: { type: [string, 'null'] }
+        stackTrace: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -2763,6 +2781,27 @@ paths:
                     createdAt: '2026-04-26T09:00:00Z'
                     updatedAt: '2026-04-26T09:45:00Z'
                     taskCount: 3
+
+  /api/workflows/tasks/{taskId}/diagnostics:
+    get:
+      summary: Get internal failure diagnostics for a workflow task
+      description: Returns the task's persisted error message and stack trace. This is for Hearth administration only.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/WorkflowTaskDiagnosticsDto' }
+        '404':
+          description: Task not found
 
   /api/workflows/tasks/{taskId}/reset:
     post:

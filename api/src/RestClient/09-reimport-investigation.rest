@@ -1,0 +1,27 @@
+# Re-import investigation
+#
+# Copy these values from the recipe's "Review issue" sheet.
+# The import ID identifies the exact workflow that failed; do not substitute a
+# newer workflow for the same recipe.
+
+@recipeId = 662c52c2-466e-4247-9fbc-ae49285f9d6a
+@importId = 83fb33f8-2c30-4b05-88d0-c971d1d88484
+# Copy the failed taskId from the `tasks` array in the workflow response below.
+@taskId = 00000000-0000-0000-0000-000000000000
+
+### Get the failed re-import workflow and its task error details
+GET {{baseUrl}}/api/recipe-imports/{{importId}}
+Accept: application/json
+X-Family-Member-Id: {{familyMemberId}}
+X-Hearth-Secret: {{hearthSecret}}
+
+### Get the failed task's internal diagnostics, including its stored stack trace
+GET {{baseUrl}}/api/workflows/tasks/{{taskId}}/diagnostics
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### Get the affected recipe and its current import-report state
+GET {{baseUrl}}/api/recipes/{{recipeId}}
+Accept: application/json
+X-Family-Member-Id: {{familyMemberId}}
+X-Hearth-Secret: {{hearthSecret}}

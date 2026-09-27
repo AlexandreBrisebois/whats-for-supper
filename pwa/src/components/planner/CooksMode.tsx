@@ -555,10 +555,12 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       {reportContext && recipeDetails && (
         <RecipeImportIssueSheet
           issue={recipeDetails.importIssue ?? null}
+          recipeId={recipeDetails.id}
           contextualReason={reportContext}
           canReportContentIssues={recipeDetails.canReimport}
           isReimporting={recipeDetails.importIssue?.isReimporting}
           reimportFailureMessage={recipeDetails.importIssue?.reimportFailureMessage}
+          reimportFailureImportId={recipeDetails.importIssue?.reimportFailureImportId}
           onClose={() => setReportContext(null)}
           onSave={handleSaveImportIssue}
           onResolve={handleResolveImportIssue}
