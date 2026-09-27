@@ -330,6 +330,62 @@ Start with Wave 1 (API seams & backend), Wave 2 (Client gen), Wave 3 (PWA UI), a
 
 ---
 
+## Future Session — Failed Capture Recovery UX
+
+**Reference flow:** `docs/flows/user-flows/recipe-search-and-library-recovery.md` — Failed Captures in Settings
+**Effort:** Small–Medium
+**Status:** [ ] Planned
+
+**Why:** Failed Captures currently exposes a friendly reason and retry, but it makes
+the user infer what failed, whether the retry was accepted, and what clearing the
+item will do. Recovery needs the same recognition-first, compact-action treatment
+as the Report Issue sheet.
+
+**What this session should add:**
+- show the capture source (`webpage`, `photos`, or `description`) and its available
+  safe preview before the friendly failure reason;
+- disable Retry synchronously on the first tap and show distinct `Retrying`,
+  accepted, and failed-again states;
+- distinguish a failed queue load from a genuinely empty queue, with an explicit
+  reload action;
+- replace the icon-only clear action and generic browser confirmation with a
+  labelled `Remove` action and an in-context consequence;
+- provide a source-appropriate next action when retry alone is unlikely to help
+  (for example, open/edit a webpage source or capture photos again);
+- preserve the API as the authority for retry idempotency. The server must make
+  concurrent retries safe; UI disabling is feedback, not the concurrency guard.
+
+**Constraints:**
+- Keep the row compact and recognition-first: one primary action, quiet secondary
+  action, no technical diagnostics in the household-facing UI.
+- Do not expose stored raw photo data or technical failure details.
+- Treat source-specific recovery as a contract decision: update `specs/openapi.yaml`,
+  generated client, API, mocks, and tests together only if the current response
+  cannot support the required next action.
+- Preserve the active queue after reload and remove an item only when server state
+  says it is no longer active.
+
+**Kick-off prompt:**
+```
+Plan and implement the Failed Capture Recovery UX session only.
+
+Start by tracing Settings > Failed Captures through the PWA API wrapper, OpenAPI,
+CapturesController, CaptureFailureService, and workflow state. Confirm which source
+context and retry states are already available before changing the contract.
+
+Make the smallest vertical slice that gives each row source context, immediate retry
+feedback, a distinct queue-load failure state, and a labelled removal confirmation.
+Keep server-owned retry idempotency authoritative. Add source-specific recovery only
+where the existing stored context makes it actionable; do not invent a stale fallback.
+
+Write tests first. Cover immediate double-tap prevention, 409/in-progress handling,
+retry acceptance, retry failure and reappearance, load failure versus empty state,
+and removal confirmation. Update the flow document after the implementation proves
+the final behavior. Run the affected API and PWA checks plus the relevant E2E seam.
+```
+
+---
+
 ## Status Overview
 
 | # | Session | Spec | Groups/Reqs | Effort | Status |
@@ -343,6 +399,7 @@ Start with Wave 1 (API seams & backend), Wave 2 (Client gen), Wave 3 (PWA UI), a
 | 7 | Flow doc updates | `home-command-center-hardening` | D | Small | [x] Complete |
 | 8 | Capture optional E2E tests | `capture-describe-entry` | 5.2–5.4 | Small | [~] Deferred |
 | 9 | Duplicate Recipe Prevention | `capture-duplicate-detection` | Req 1–5 | Medium | [x] Complete |
+| 10 | Failed Capture Recovery UX | flow-backed planned session | recovery queue | Small–Med | [ ] Planned |
 
 Active implementation status belongs in `HANDOVER.md`; this table records the historical outcome.
 
