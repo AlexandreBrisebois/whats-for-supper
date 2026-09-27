@@ -1,6 +1,6 @@
 # Maintainer Deployment Reference
 
-> **Not a public installation guide.** The qualified public Synology bundle is still in preparation. Do not use these maintainer-specific commands for a new household installation; follow the [Synology release plan](.kiro/specs/01-public-synology-release/requirements.md) and wait for its versioned release bundle.
+> **Not a public installation guide.** The qualified public Synology bundle is still in preparation. Do not use these maintainer-specific commands for a new household installation; the current template is documented in the [Synology operator guide](release-template/synology/README.md), but a supported release still requires separate physical-deployment and recovery qualification.
 
 This reference records the current maintainer deployment configuration while the public installation, Cloudflare, backup, update, and rollback guides are being reconciled.
 

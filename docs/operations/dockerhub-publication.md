@@ -1,6 +1,6 @@
 # Docker Hub publication
 
-This is a maintainer runbook for publishing container images. It does not make a Synology deployment supported; see the [Synology release plan](../../.kiro/specs/01-public-synology-release/requirements.md) for that qualification boundary.
+This is a maintainer runbook for publishing container images. It does not make a Synology deployment supported; see the [Synology operator guide](../../release-template/synology/README.md). Physical deployment, recovery, and public-release qualification remain separate work.
 
 ## Prerequisites
 

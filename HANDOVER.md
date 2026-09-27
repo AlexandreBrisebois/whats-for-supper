@@ -14,15 +14,6 @@ Current checkpoint: Implemented nullable storage, one-time legacy-data conversio
 Verification evidence and content identity: `dotnet build api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore` passed with zero warnings; `git diff --check` passed; `task agent:reconcile` passed static route/mock reconciliation. `task agent:drift` static schema checks passed but live endpoint parity is blocked. `task agent:prepare` and `task review` are blocked by Kiota generation/check timing out in the restricted runner; focused `dotnet test` is blocked by test-host local socket permission; `task db:schema:push DRY_RUN=true` is blocked by Docker socket permission.
 Blocker or next action: On a qualified local runner, complete Kiota generation/check, API tests, and standard database migration verification before running the single `task agent:finish` completion invocation. Review the schema comment guard after observing the sqldef dry-run.
 
-## Public Synology release
-
-Task/spec: [.kiro/specs/01-public-synology-release](.kiro/specs/01-public-synology-release/tasks.md).
-Worktree/branch: Current checkout `harness-upgrade`; original task branch not recorded.
-Authorized scope and source: Prior checkpoint records owner-approved beta planning; no release execution selected by HM-E.
-Current checkpoint: Review requirements/design/tasks/workstream map before implementation; current tasks say planned. First release target remains `0.1.0-beta.1`.
-Verification evidence and content identity: HM-E verified the current spec path/status; it did not run release gates or certify physical NAS behavior. See [salvage evidence](docs/archive/specs/harness-modernization/hm-e-ledger.md).
-Blocker or next action: Resume release planning when selected; publication remains subject to release gates and separate explicit authorization.
-
 ## Find Similar deterministic scorer
 
 Task/spec: User-directed IMPLEMENT slice for `POST /api/recipes/search` `similarToRecipeId` scoring; no spec package selected.

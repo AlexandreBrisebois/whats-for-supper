@@ -1,5 +1,7 @@
 # Tagged Docker Hub and Synology Template Workstream Map
 
+> **Historical reference — archived 2026-09-27 at owner direction.** This package records the original Docker Hub and Synology template tracer-bullet scope. The canonical release-template topology is now [`release-template/synology/compose.yaml`](../../../../release-template/synology/compose.yaml), with operator guidance in its adjacent README and `.env.example`. This record is not active work and does not certify a supported public release; physical NAS, security, recovery, update, and rollback qualification require separately scoped current work.
+
 ## Spec manifest
 
 - [Requirements](requirements.md)

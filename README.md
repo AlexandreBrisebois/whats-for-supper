@@ -38,7 +38,7 @@ The public Synology release is in preparation and is **not available to install 
 
 - [Family guide](docs/user-guide.md) — how planning, shopping, choosing, and cooking fit together.
 - [Architecture](docs/architecture.md) — a concise technical view for contributors and operators.
-- [Synology release plan](.kiro/specs/01-public-synology-release/requirements.md) — the supported beta boundary and what must be proven before release.
+- [Synology operator guide](release-template/synology/README.md) — the current template; physical deployment, recovery, and public-release qualification remain outstanding.
 - [Local development guide](LOCAL_DEV_LOOP.md) — contributor setup and day-to-day development.
 - [Contributor guide](AGENT.md) — project conventions for human and AI collaborators.
 

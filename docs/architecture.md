@@ -1,6 +1,6 @@
 # Architecture
 
-This is a concise technical reference for contributors and operators. It describes the current application shape, not a public installation path. For the release boundary, see the [Synology release plan](../.kiro/specs/01-public-synology-release/requirements.md).
+This is a concise technical reference for contributors and operators. It describes the current application shape, not a public installation path. The current template is documented in the [Synology operator guide](../release-template/synology/README.md); physical deployment, recovery, and public-release qualification remain separate work.
 
 ```mermaid
 flowchart LR
