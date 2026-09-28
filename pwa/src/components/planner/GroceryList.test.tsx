@@ -9,7 +9,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
+
+const { mockToggleGroceryItem } = vi.hoisted(() => ({
+  mockToggleGroceryItem: vi.fn(),
+}));
 
 // ── Store mock ────────────────────────────────────────────────────────────────
 
@@ -30,7 +34,7 @@ vi.mock('@/store/plannerStore', () => ({
 
 vi.mock('@/lib/api/schedule', () => ({
   useSchedule: () => ({
-    toggleGroceryItem: vi.fn().mockResolvedValue({}),
+    toggleGroceryItem: mockToggleGroceryItem,
     updateGroceryState: vi.fn().mockResolvedValue({}),
   }),
 }));
@@ -116,6 +120,8 @@ function renderStoreBacked(items: GroceryLineItemDto[], weekOffset = 0) {
 beforeEach(() => {
   mockGroceryState = {};
   mockSetGroceryItemToggle.mockClear();
+  mockToggleGroceryItem.mockReset();
+  mockToggleGroceryItem.mockResolvedValue(undefined);
   vi.mocked(reclassifyIngredient).mockReset();
   useWeekStore.setState({ weekOffset: 0, groceryItems: [] });
 });
@@ -168,6 +174,133 @@ describe('GroceryList — checked item ordering', () => {
     rerender(<GroceryList weekOffset={0} items={items} />);
 
     expect(orderedNames()).toEqual(['tomato', 'lettuce', 'carrot']);
+  });
+});
+
+describe('GroceryList — duplicate display names', () => {
+  it('keeps every duplicate row rendered exactly once while toggling its shared grocery state', async () => {
+    const duplicateItems = [
+      makeItem('Eau', 'Pantry', 'water-cup', { quantity: 0.25, unitText: 'tasse' }),
+      makeItem('Eau', 'Pantry', 'water-ml', { quantity: 250, unitText: 'ml' }),
+      makeItem('Eau', 'Pantry', 'water-litre', { quantity: 0.25, unitText: 'L' }),
+    ];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { rerender } = render(<GroceryList weekOffset={0} items={duplicateItems} />);
+
+    const rows = () => screen.getAllByTestId('grocery-item-checkbox');
+    const labels = () => screen.getAllByTestId('grocery-item-label');
+
+    expect(rows()).toHaveLength(3);
+    expect(labels()).toHaveLength(3);
+    expect(screen.getByText('0/3 items')).toBeInTheDocument();
+
+    fireEvent.click(rows()[0]);
+    rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
+
+    expect(rows()).toHaveLength(3);
+    expect(labels()).toHaveLength(3);
+    expect(screen.getByText('3/3 items')).toBeInTheDocument();
+    expect(rows().every((row) => row.getAttribute('aria-checked') === 'true')).toBe(true);
+
+    fireEvent.click(rows()[0]);
+    rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
+
+    expect(rows()).toHaveLength(3);
+    expect(labels()).toHaveLength(3);
+    expect(screen.getByText('0/3 items')).toBeInTheDocument();
+    expect(rows().every((row) => row.getAttribute('aria-checked') === 'false')).toBe(true);
+
+    fireEvent.click(rows()[0]);
+    rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
+
+    expect(rows()).toHaveLength(3);
+    expect(labels()).toHaveLength(3);
+    expect(screen.getByText('3/3 items')).toBeInTheDocument();
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+});
+
+describe('GroceryList — optimistic grocery state synchronization', () => {
+  const items = [makeItem('Tomato', 'Produce'), makeItem('Lettuce', 'Produce')];
+  const rowCount = () => screen.getAllByTestId('grocery-item-checkbox').length;
+
+  it('preserves row cardinality and ordering after a successful optimistic toggle', async () => {
+    mockGroceryState = { Tomato: false, Lettuce: false };
+    const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Tomato/ }));
+    rerender(<GroceryList weekOffset={0} items={items} />);
+
+    expect(mockToggleGroceryItem).toHaveBeenCalledWith(0, 'Tomato', true);
+    expect(rowCount()).toBe(2);
+    expect(screen.getAllByTestId('grocery-item-label').map((label) => label.textContent)).toEqual([
+      'Lettuce',
+      'Tomato',
+    ]);
+    expect(screen.getByText('1/2 items')).toBeInTheDocument();
+  });
+
+  it('rolls back a failed optimistic toggle without changing row cardinality', async () => {
+    mockGroceryState = { Tomato: false, Lettuce: false };
+    mockToggleGroceryItem.mockRejectedValueOnce(new Error('Network error'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Tomato/ }));
+    await waitFor(() => expect(mockGroceryState.Tomato).toBe(false));
+    rerender(<GroceryList weekOffset={0} items={items} />);
+
+    expect(rowCount()).toBe(2);
+    expect(screen.getAllByTestId('grocery-item-label').map((label) => label.textContent)).toEqual([
+      'Tomato',
+      'Lettuce',
+    ]);
+    expect(screen.getByText('0/2 items')).toBeInTheDocument();
+    expect(screen.getByTestId('grocery-item-error')).toBeInTheDocument();
+
+    consoleError.mockRestore();
+  });
+
+  it('reconciles repeated remote states without changing duplicate-row cardinality', () => {
+    const duplicateItems = [
+      makeItem('Flour', 'Pantry', 'flour-grams', { quantity: 200, unitText: 'g' }),
+      makeItem('Flour', 'Pantry', 'flour-volume', { quantity: 240, unitText: 'ml' }),
+    ];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { rerender } = render(<GroceryList weekOffset={0} items={duplicateItems} />);
+
+    mockGroceryState = { Flour: true };
+    rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
+    rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
+
+    expect(rowCount()).toBe(2);
+    expect(screen.getByText('2/2 items')).toBeInTheDocument();
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+});
+
+describe('GroceryList — replacement and remount consistency', () => {
+  it('renders the same duplicate rows after an equivalent replacement and remount', () => {
+    const items = [
+      makeItem('Eau', 'Pantry', 'water-cup', { quantity: 0.25, unitText: 'tasse' }),
+      makeItem('Eau', 'Pantry', 'water-ml', { quantity: 250, unitText: 'ml' }),
+    ];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { rerender, unmount } = render(<GroceryList weekOffset={0} items={items} />);
+
+    rerender(<GroceryList weekOffset={0} items={items.map((item) => ({ ...item }))} />);
+    expect(screen.getAllByTestId('grocery-item-checkbox')).toHaveLength(2);
+
+    unmount();
+    render(<GroceryList weekOffset={0} items={items.map((item) => ({ ...item }))} />);
+    expect(screen.getAllByTestId('grocery-item-checkbox')).toHaveLength(2);
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
   });
 });
 
@@ -436,6 +569,26 @@ describe('GroceryList — reclassify affordance', () => {
     await act(async () => fireEvent.click(screen.getByTestId('section-option-Pantry')));
 
     expect(screen.getByTestId('grocery-item-checkbox')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('moves only the selected duplicate-display-name line without cloning either row', async () => {
+    vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
+    renderStoreBacked([
+      makeItem('Flour', 'Produce', 'flour-grams', { quantity: 200, unitText: 'g' }),
+      makeItem('Flour', 'Produce', 'flour-volume', { quantity: 240, unitText: 'ml' }),
+    ]);
+
+    fireEvent.click(screen.getAllByTestId('reclassify-btn')[0]);
+    await act(async () => fireEvent.click(screen.getByTestId('section-option-Pantry')));
+
+    expect(useWeekStore.getState().groceryItems).toHaveLength(2);
+    expect(within(screen.getByTestId('aisle-section-Produce')).getAllByText('Flour')).toHaveLength(
+      1
+    );
+    expect(within(screen.getByTestId('aisle-section-Pantry')).getAllByText('Flour')).toHaveLength(
+      1
+    );
+    expect(screen.getAllByTestId('grocery-item-checkbox')).toHaveLength(2);
   });
 
   it('prevents a second selection while the item PATCH is pending', async () => {

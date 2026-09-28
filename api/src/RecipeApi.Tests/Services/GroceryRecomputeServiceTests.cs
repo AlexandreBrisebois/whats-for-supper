@@ -161,6 +161,29 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ThreeRecipes_EquivalentWaterSupplies_AggregateToOneLineWithAllContributors()
+    {
+        var monday = new DateOnly(2025, 1, 21);
+        var recipeIds = new[]
+        {
+            await SeedRecipeWithSupplyAsync(monday, [("Eau", 0.25, "cup")]),
+            await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("Eau", 0.25, "cup")]),
+            await SeedRecipeWithSupplyAsync(monday.AddDays(2), [("Eau", 0.25, "cup")]),
+        };
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var waterItems = (await GetGroceryItemsAsync(monday))
+            .Where(item => item.NormalizedKey == "eau")
+            .ToList();
+
+        var water = Assert.Single(waterItems);
+        Assert.Equal(180.0, water.Quantity);
+        Assert.Equal("ml", water.UnitText);
+        Assert.Equal(recipeIds.OrderBy(id => id), water.RecipeIds.OrderBy(id => id));
+    }
+
+    [Fact]
     public async Task TwoSupplyItems_SameName_DifferentUnits_ProducesTwoLineItems()
     {
         var monday = new DateOnly(2025, 1, 27);

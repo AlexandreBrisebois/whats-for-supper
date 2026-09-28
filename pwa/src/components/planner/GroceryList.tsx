@@ -272,9 +272,21 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                   const aisleItems = grouped[aisle] || [];
                   if (aisleItems.length === 0) return null;
 
+                  // The API's check-state contract is keyed by displayName, but a grocery
+                  // line is identified by its normalized ingredient and unit bucket. Retain
+                  // the source position too so stale/legacy payloads with exact duplicate
+                  // lines still have distinct, stable reconciliation identities.
+                  const itemsWithRenderKeys = aisleItems.map((item, sourceIndex) => ({
+                    item,
+                    renderKey: `${item.normalizedKey ?? ''}\u0000${item.unitText ?? ''}\u0000${sourceIndex}`,
+                  }));
                   const displayedItems = [
-                    ...aisleItems.filter((item) => !groceryState[item.displayName ?? '']),
-                    ...aisleItems.filter((item) => groceryState[item.displayName ?? '']),
+                    ...itemsWithRenderKeys.filter(
+                      ({ item }) => !groceryState[item.displayName ?? '']
+                    ),
+                    ...itemsWithRenderKeys.filter(
+                      ({ item }) => groceryState[item.displayName ?? '']
+                    ),
                   ];
 
                   const checkedCount = aisleItems.filter(
@@ -365,7 +377,7 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                         hidden={isCollapsed}
                         aria-hidden={isCollapsed}
                       >
-                        {displayedItems.map((item) => {
+                        {displayedItems.map(({ item, renderKey }) => {
                           const key = item.displayName ?? '';
                           const quantityHint = formatQuantityHint(item.quantity, item.unitText);
                           const isChecked = groceryState[key] ?? false;
@@ -377,7 +389,7 @@ export function GroceryList({ weekOffset, items, onClose, isEmbedded }: GroceryL
                           );
 
                           return (
-                            <div key={key} className="relative">
+                            <div key={renderKey} className="relative">
                               <div
                                 className={`flex items-center p-4 rounded-2xl transition-all ${
                                   isChecked
