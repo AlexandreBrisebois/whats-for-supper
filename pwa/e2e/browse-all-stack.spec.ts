@@ -79,7 +79,10 @@ const LARGE_LIBRARY_RECIPES = Array.from({ length: 180 }, (_, index) =>
  * Drags from the card centre rightward by 200px — well beyond the 80px threshold.
  */
 async function swipeRight(page: Page): Promise<void> {
-  const card = page.getByTestId('stack-card-front');
+  // AnimatePresence retains the outgoing front card during its exit animation.
+  // Wait for that card to leave so this gesture cannot target its stale callback.
+  await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
+  const card = page.getByTestId('stack-card-front').first();
   await card.waitFor({ state: 'visible' });
   // Poll until the bounding box is stable (entrance spring animation settled)
   const box = await card.boundingBox();
