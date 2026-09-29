@@ -117,7 +117,22 @@ public class IngredientNormalizerTests
     [InlineData("zucchini(s)", "zucchini")]
     [InlineData("zucchini (s)", "zucchini")]
     [InlineData("zucchinis", "zucchini")]
-    public void Normalize_EnumeratedOptionalPluralForms_ProduceTheSpecifiedSingularKey(
+    [InlineData("carrot(s)", "carrot")]
+    [InlineData("chicken broth cube(s)", "chicken broth cube")]
+    [InlineData("concombre(s) anglais", "concombre anglais")]
+    [InlineData("cube(s) de bouillon de légumes", "cube de bouillon de legumes")]
+    [InlineData("green bell pepper(s)", "green bell pepper")]
+    [InlineData("green onion(s)", "green onion")]
+    [InlineData("oignon(s) jaune(s)", "oignon jaune")]
+    [InlineData("whole wheat tortilla(s)", "whole wheat tortilla")]
+    [InlineData("red baby potato(es)", "red baby potato")]
+    [InlineData("white potato(es)", "white potato")]
+    [InlineData("garlic clove(s)", "garlic clove")]
+    [InlineData("garlic cloves", "garlic clove")]
+    [InlineData("gousse(s) d'ail", "gousse d'ail")]
+    [InlineData("gousse(s) d’ail", "gousse d'ail")]
+    [InlineData("gousses d'ail", "gousse d'ail")]
+    public void Normalize_OptionalPluralForms_ProduceTheSpecifiedSingularKey(
         string source,
         string expected)
     {
@@ -128,9 +143,20 @@ public class IngredientNormalizerTests
     [InlineData("peas")]
     [InlineData("glass")]
     [InlineData("chickpeas")]
+    [InlineData("green onions")]
+    [InlineData("bell peppers")]
     public void Normalize_DoesNotApplyGenericTrailingSSingularization(string source)
     {
         Assert.Equal(source, IngredientNormalizer.Normalize(source));
+    }
+
+    [Theory]
+    [InlineData("zucchini (vert, jaune ou ancestral)", "zucchini (vert jaune ou ancestral)")]
+    [InlineData("spice mix (brown sugar, garlic powder)", "spice mix (brown sugar garlic powder)")]
+    [InlineData("carottes (orange ou multicolores)", "carottes (orange ou multicolores)")]
+    public void Normalize_PreservesNonPluralParentheticalContent(string source, string expected)
+    {
+        Assert.Equal(expected, IngredientNormalizer.Normalize(source));
     }
 
     [Fact]

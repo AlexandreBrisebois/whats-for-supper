@@ -38,6 +38,7 @@ public class GroceryRecomputeService(
         string NormalizedKey,
         string LegacyNormalizedKey,
         string Section,
+        int CategoryMatchPriority,
         double? Quantity,
         string? UnitText,
         Guid RecipeId);
@@ -155,13 +156,16 @@ public class GroceryRecomputeService(
             var legacyNormalizedKey = LegacyNormalize(displayName);
 
             string section;
+            var categoryMatchPriority = 0;
             if (categoryMap.TryGetValue(normalizedKey, out var dbSection))
             {
                 section = dbSection;
+                categoryMatchPriority = 2;
             }
             else if (categoryMap.TryGetValue(legacyNormalizedKey, out var legacyDbSection))
             {
                 section = legacyDbSection;
+                categoryMatchPriority = 1;
             }
             else
             {
@@ -170,7 +174,7 @@ public class GroceryRecomputeService(
                 section = SectionDisplayNames[grocerySection];
             }
 
-            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, quantity, unitText, recipeId));
+            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId));
         }
 
         // 5. Group by (normalizedKey, canonicalUnit): sum quantities after unit conversion.
@@ -192,6 +196,13 @@ public class GroceryRecomputeService(
             .Select(g =>
             {
                 var first = g.First();
+                var section = g
+                    .Where(item => item.CategoryMatchPriority > 0)
+                    .OrderByDescending(item => item.CategoryMatchPriority)
+                    .ThenBy(item => item.LegacyNormalizedKey, StringComparer.Ordinal)
+                    .ThenBy(item => item.Section, StringComparer.Ordinal)
+                    .Select(item => item.Section)
+                    .FirstOrDefault() ?? first.Section;
 
                 var nu = UnitNormalizer.Normalize(first.UnitText);
 
@@ -218,7 +229,7 @@ public class GroceryRecomputeService(
                     new GroceryLineItemDto(
                         DisplayName: first.NormalizedKey,
                         NormalizedKey: first.NormalizedKey,
-                        Section: first.Section,
+                        Section: section,
                         Quantity: totalQuantity,
                         UnitText: emittedUnit,
                         RecipeIds: recipeIds),

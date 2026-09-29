@@ -39,6 +39,8 @@ public static class UnitNormalizer
             // Count -> piece (null/blank handled in Normalize)
             ["piece"] = new("piece", 1),
             ["pieces"] = new("piece", 1),
+            ["clove"] = new("piece", 1),
+            ["cloves"] = new("piece", 1),
             ["whole"] = new("piece", 1),
             ["unit"] = new("piece", 1),
             ["units"] = new("piece", 1),

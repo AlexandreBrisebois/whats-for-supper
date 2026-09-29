@@ -206,6 +206,48 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task OptionalPluralGarlicForms_WithCountUnits_Aggregate()
+    {
+        var monday = new DateOnly(2025, 2, 24);
+        await SeedRecipeWithSupplyAsync(monday, [("garlic clove(s)", 2.0, "piece")]);
+        await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("garlic cloves", 3.0, "cloves")]);
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var garlic = (await GetGroceryItemsAsync(monday))
+            .Where(item => item.NormalizedKey == "garlic clove")
+            .ToList();
+
+        var line = Assert.Single(garlic);
+        Assert.Equal(5.0, line.Quantity);
+        Assert.Equal("piece", line.UnitText);
+    }
+
+    [Fact]
+    public async Task OptionalPluralNotation_AggregatesUnrelatedIngredientNames()
+    {
+        var monday = new DateOnly(2025, 3, 3);
+        _db.IngredientCategories.Add(new IngredientCategory
+        {
+            NormalizedKey = "green onion(s)",
+            GrocerySection = "Deli",
+            Confidence = 1.0,
+            Source = "manual",
+        });
+        await _db.SaveChangesAsync();
+        await SeedRecipeWithSupplyAsync(monday, [("green onion(s)", 1.0, "piece")]);
+        await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("green onion", 2.0, "piece")]);
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var line = Assert.Single(await GetGroceryItemsAsync(monday),
+            item => item.NormalizedKey == "green onion");
+        Assert.Equal(3.0, line.Quantity);
+        Assert.Equal("piece", line.UnitText);
+        Assert.Equal("Deli", line.Section);
+    }
+
+    [Fact]
     public async Task SupplyItem_NotInIngredientCategories_FallsBackToAisleMapper()
     {
         var monday = new DateOnly(2025, 2, 3);

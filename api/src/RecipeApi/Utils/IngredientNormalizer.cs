@@ -8,9 +8,12 @@ public static class IngredientNormalizer
 {
     private static readonly Regex CollapseWhitespace = new(@"\s+", RegexOptions.Compiled);
     private static readonly Regex PunctuationSeparators = new(@"[,;:]", RegexOptions.Compiled);
+    private static readonly Regex OptionalPluralSuffix = new(@"(?<!\p{L})(?<singular>\p{L}+)\s*\((?:s|es)\)(?!\p{L})", RegexOptions.Compiled);
     private static readonly Regex PitaOptionalPlural = new(@"(?<!\p{L})pita\s*\(s\)(?!\p{L})|(?<!\p{L})pitas(?!\p{L})", RegexOptions.Compiled);
     private static readonly Regex TomatoOptionalPlural = new(@"(?<!\p{L})tomato\s*\(es\)(?!\p{L})|(?<!\p{L})tomatoes(?!\p{L})", RegexOptions.Compiled);
     private static readonly Regex ZucchiniOptionalPlural = new(@"(?<!\p{L})zucchini\s*\(s\)(?!\p{L})|(?<!\p{L})zucchinis(?!\p{L})", RegexOptions.Compiled);
+    private static readonly Regex GarlicClovePlural = new(@"(?<!\p{L})garlic\s+cloves(?!\p{L})", RegexOptions.Compiled);
+    private static readonly Regex FrenchGarlicClovePlural = new(@"(?<!\p{L})gousses\s+d'ail(?!\p{L})", RegexOptions.Compiled);
 
     /// <summary>
     /// Normalizes a raw ingredient name to a canonical key.
@@ -45,10 +48,13 @@ public static class IngredientNormalizer
         // Step 5: Trim and collapse consecutive whitespace to a single space.
         var normalized = CollapseWhitespace.Replace(punctuationNormalized.Trim(), " ");
 
-        // Step 6: Normalize only the explicitly enumerated optional plural forms.
+        // Step 6: Parenthesized (s)/(es) is mechanical notation; ordinary written plurals stay explicit.
+        normalized = OptionalPluralSuffix.Replace(normalized, "${singular}");
         normalized = PitaOptionalPlural.Replace(normalized, "pita");
         normalized = TomatoOptionalPlural.Replace(normalized, "tomato");
         normalized = ZucchiniOptionalPlural.Replace(normalized, "zucchini");
+        normalized = GarlicClovePlural.Replace(normalized, "garlic clove");
+        normalized = FrenchGarlicClovePlural.Replace(normalized, "gousse d'ail");
 
         return normalized;
     }
