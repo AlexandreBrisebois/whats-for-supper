@@ -53,9 +53,9 @@ def get_changed_files() -> list[str]:
     return sorted(set(filter(None, changed)) - VOLATILE_GENERATED_PATHS)
 
 
-def get_task_files() -> list[str]:
-    """Return only changes made since the active task-session baseline."""
-    return session.task_delta()["owned"]
+def get_session_files() -> list[str]:
+    """Return content differences since begin; the writer cannot be proven."""
+    return session.task_delta()["changed_since_begin"]
 
 
 def matching_specs(prefix: str) -> set[str]:
@@ -225,7 +225,7 @@ def has_success_cache(cache_path: Path, digest: str, tests: list[str]) -> bool:
 
 
 def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) -> None:
-    changed_files = get_task_files() if changed_files is None else changed_files
+    changed_files = get_session_files() if changed_files is None else changed_files
     plan = (
         ImpactPlan((str(E2E_DIR),), ("--all explicitly requested",), True)
         if run_all
@@ -263,7 +263,7 @@ def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) 
         print(f"{status}: impact tests: {detail}")
         raise SystemExit(2 if status == 'blocked' else 1)
 
-    post_test_changed_files = get_task_files()
+    post_test_changed_files = get_session_files()
     post_test_digest = build_impact_digest(ROOT, post_test_changed_files, tests)
     if post_test_digest != digest:
         CACHE_PATH.unlink(missing_ok=True)

@@ -119,7 +119,7 @@ def documentation_check(paths):
             'blocked' if 'blocked' in (worktree[0], staged[0]) else 'passed')
         detail = f'worktree {worktree[1]}; staged {staged[1]}'
     else:
-        status, detail = 'passed', 'no task-owned paths'
+        status, detail = 'passed', 'no paths changed since session begin'
     if problems:
         return 'failed', '; '.join(problems)
     return status, 'introduced links/Python syntax and ' + detail
@@ -214,8 +214,9 @@ def main():
     except RuntimeError as error:
         print(f'blocked: {error}', file=sys.stderr)
         return 2
-    paths = delta['owned']
-    print(f"Task-owned paths: {len(paths)}; ambient paths excluded: {len(delta['ambient'])}; "
+    paths = delta['changed_since_begin']
+    print(f"Paths changed since begin (writer unverified): {len(paths)}; "
+          f"unchanged pre-begin paths excluded: {len(delta['ambient'])}; "
           f"overlapping baseline paths: {len(delta['overlap'])}", flush=True)
     if args.prepare:
         return prepare(paths)
@@ -223,7 +224,7 @@ def main():
     print('Change classes: ' + ', '.join(sorted(classes_for(paths))), flush=True)
     print('Checks: ' + ', '.join(selected), flush=True)
     results = verify(selected, paths)
-    record = {'task_id': session.load_manifest()['task_id'], 'task_delta': delta,
+    record = {'task_id': session.load_manifest()['task_id'], 'session_delta': delta,
               'checks': results, 'automated_checks_passed': bool(selected) and all(
         value['status'] in ('passed', 'not-applicable') for value in results.values())}
     record['task_acceptance'] = 'not-evaluated: reconcile selected task/fixture/host evidence separately'

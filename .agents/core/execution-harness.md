@@ -8,18 +8,23 @@ processes, ports or databases.
 ## Completion and preparation
 
 Start implementation work with `task agent:begin -- <task-id>`. The ignored private
-session separates task-owned edits from ambient worktree changes; it grants no new
-authorization. `task agent:session:status` reports owned, ambient and overlapping
-paths. `task agent:abort` removes only session metadata and never resets source.
+session separates post-begin content differences from ambient worktree changes; it
+does not prove which process or actor wrote a difference and grants no new
+authorization. `task agent:session:status` reports post-begin differences, ambient
+paths, overlap, and this attribution limit. Before status, preparation, impact
+selection, or finish uses that delta, a changed HEAD, branch, repository, or worktree
+identity blocks with the baseline/current commits and non-destructive recovery
+guidance. Distinct Git worktrees keep independent private sessions.
+`task agent:abort` removes only session metadata and never resets source.
 
 Use `task gate` for development feedback and retain the broad final checks below.
 Its adaptive E2E selection does not replace backend tests or the scope review.
 
 `task agent:finish` is the single applicable implementation completion entrypoint.
-It selects checks from the task-owned delta relative to the active session baseline;
-mixed task-owned classes take their union and unknown task-owned paths select the
+It selects checks from the session delta relative to the active session baseline;
+mixed change classes take their union and unknown post-begin paths select the
 conservative union. Ambient changes are reported and preserved but do not select
-checks. Task-local attribution does not mean file-local testing: every task-owned
+checks. Session-based selection does not mean file-local testing: every post-begin
 path receives the conservative architectural impact checks below. No-change/review-
 only work records findings without implying tested implementation. Task-specific
 acceptance and isolated model/host qualification remain separate obligations.
@@ -33,10 +38,10 @@ acceptance and isolated model/host qualification remain separate obligations.
 | Unknown | Union of all classes; never silently reduce verification |
 
 Before final verification, run `task agent:prepare`. It generates the client for
-contract changes and formats only task-owned application files. Generated output is
+contract changes and formats only post-begin application files. Generated output is
 an allowed calculated closure of an authorized contract edit; unexpected preparation
 writes block rather than being silently adopted. Unknown preparation blocks before
-writes until task-owned paths/effects are classified; unknown final verification
+writes until post-begin paths/effects are classified; unknown final verification
 still selects the full union.
 Documentation/harness preparation requires no application generation or formatting;
 fix relevant syntax/whitespace before final checks. Review the resulting diff and
@@ -55,8 +60,8 @@ not-run. Its JSON record is `.task/agent-finish/last-run.json`; later edits inva
 that identity and require new applicable verification. Record evidence-file updates
 as later documentation content rather than attaching old success to a new digest.
 
-`agent:test:impact` uses the task-owned delta and falls back to all E2E for
-unknown/unmapped task-owned application paths. Cache identity still covers repository
+`agent:test:impact` uses the session delta and falls back to all E2E for
+unknown/unmapped post-begin application paths. Cache identity still covers repository
 source, configuration, installed dependencies/browser bytes, tool executables and
 hashed runtime/environment inputs. Success is stored only under the pre-test identity when
 post-test identity agrees. CI and `WFS_DISABLE_TEST_CACHE=1` disable reuse, not mutation
@@ -91,12 +96,14 @@ acceptance, fixture or loading evidence is missing.
 ## Scope review
 
 After preparation and before `agent:finish`, inspect `task agent:session:status` and
-the actual task-owned diff, including new/deleted files and changes within files that
+the actual post-begin diff, including new/deleted files and changes within files that
 were already dirty. Ambient changes are not task changes merely because they differ
-from HEAD. Overlap requires enough evidence to distinguish the task edit from the
-pre-existing content before reverting or claiming preservation.
+from HEAD. Neither a post-begin timestamp nor content difference proves actor
+ownership. Overlap remains a useful signal but requires enough evidence to distinguish
+the intended edit, pre-existing content, and possible concurrent writes before
+reverting or claiming preservation.
 
-Account for each task-changed file in task evidence or the final report: what changed,
+Account for each post-begin file attributed to the task in evidence or the final report: what changed,
 why the requested outcome needs it, and any incidental formatter/generated changes.
 Review semantic scope within expected files too: unrelated refactors, changed
 defaults, removed behavior and weakened tests can pass broad checks. Investigate
@@ -113,8 +120,9 @@ limit, recover available history and resolve ambiguous ownership before revertin
 Do not claim preservation or scope verification without evidence; continue independent
 authorized work while consequential uncertainty is resolved.
 
-Task attribution limits which edits the task owns; it does not limit verification to
-edited files. Shared, seam, contract, persistence and unknown impact expands checks.
+Attribution review determines which edits can be claimed for the task; session timing
+alone does not. It does not limit verification to edited files. Shared, seam,
+contract, persistence and unknown impact expands checks.
 The pilot retains the broad application check matrix while task-boundary behavior is
 qualified; later narrowing must be subsystem-aware and separately approved. CI,
 release and explicitly requested full-repository gates remain broader safety nets.

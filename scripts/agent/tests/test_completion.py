@@ -13,6 +13,7 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 import test_ops
 import drift
+import session
 
 
 class CompletionTests(unittest.TestCase):
@@ -25,6 +26,35 @@ class CompletionTests(unittest.TestCase):
                      'api/src/RecipeApi/Services/NewService.cs', 'pwa/e2e/new-helper.ts']:
             with self.subTest(path=path):
                 self.assertTrue(test_ops.build_impact_plan([path]).run_all)
+
+    def test_prepare_and_finish_block_before_using_delta_after_head_change(self):
+        f = self.finish()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+            subprocess.run(['git', 'config', 'user.email', 'tests@example.com'], cwd=root, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Tests'], cwd=root, check=True)
+            (root / '.gitignore').write_text('.task/\n')
+            (root / 'file.txt').write_text('a\n')
+            subprocess.run(['git', 'add', '.'], cwd=root, check=True)
+            subprocess.run(['git', 'commit', '-qm', 'A'], cwd=root, check=True)
+            session_dir = root / '.task/agent-session'
+            session.begin('pilot', root, session_dir)
+            (root / 'file.txt').write_text('b\n')
+            subprocess.run(['git', 'commit', '-am', 'B', '-q'], cwd=root, check=True)
+
+            task_delta = session.task_delta
+            stale_delta = lambda: task_delta(root, session_dir)
+            for prepare in (True, False):
+                with self.subTest(prepare=prepare), \
+                     mock.patch.object(sys, 'argv', ['finish.py'] + (['--prepare'] if prepare else [])), \
+                     mock.patch.object(f.session, 'task_delta', side_effect=stale_delta), \
+                     mock.patch.object(f, 'prepare') as prepare_work, \
+                     mock.patch.object(f, 'verify') as verify_work, \
+                     contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(f.main(), 2)
+                    prepare_work.assert_not_called()
+                    verify_work.assert_not_called()
 
     def test_documentation_has_no_e2e_impact(self):
         self.assertFalse(test_ops.build_impact_plan(['docs/help.md']).tests)
@@ -173,7 +203,7 @@ class CompletionTests(unittest.TestCase):
             self.assertEqual(f.prepare(['specs/openapi.yaml']), 0)
         self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client'], cwd=None)])
 
-    def test_prepare_formats_only_task_owned_application_files(self):
+    def test_prepare_formats_only_post_begin_application_files(self):
         f = self.finish()
         paths = ['pwa/src/example.ts', 'api/src/RecipeApi/Example.cs']
         with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run, \
