@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 import test_ops
+import session
 
 ROOT = Path(__file__).resolve().parents[2]
 CHECKS = ('documentation', 'test:agent', 'lint', 'format:check:pwa', 'typecheck', 'test:unit',
@@ -54,6 +55,8 @@ def checks_for(paths):
 
 
 def identity():
+    # Phase one deliberately retains the broad repository/runtime identity. Task
+    # attribution narrows check selection, not the dependency boundary being tested.
     return test_ops.build_impact_digest(ROOT, test_ops.get_changed_files(), [])
 
 
@@ -85,10 +88,10 @@ def introduced_links(current, baseline):
     return [link for link in re.findall(pattern, current) if link not in existing]
 
 
-def documentation_check():
+def documentation_check(paths):
     """Check changed Markdown links and Python syntax without writing bytecode."""
     problems = []
-    for name in test_ops.get_changed_files():
+    for name in paths:
         path = ROOT / name
         if not path.is_file():
             continue
@@ -109,15 +112,22 @@ def documentation_check():
                 target = link.split('#')[0]
                 if target and not (path.parent / target).exists():
                     problems.append(f'{name}: unresolved {link}')
-    status, detail = run_command(['git', 'diff', '--check'])
+    if paths:
+        worktree = run_command(['git', 'diff', '--check', '--', *paths])
+        staged = run_command(['git', 'diff', '--cached', '--check', '--', *paths])
+        status = 'failed' if 'failed' in (worktree[0], staged[0]) else (
+            'blocked' if 'blocked' in (worktree[0], staged[0]) else 'passed')
+        detail = f'worktree {worktree[1]}; staged {staged[1]}'
+    else:
+        status, detail = 'passed', 'no task-owned paths'
     if problems:
         return 'failed', '; '.join(problems)
     return status, 'introduced links/Python syntax and ' + detail
 
 
-def run_check(check):
+def run_check(check, paths=()):
     if check == 'documentation':
-        return documentation_check()
+        return documentation_check(paths)
     if check == 'database-behavior':
         return 'blocked', ('Task-specific real database behavior evidence required; '
                            'static parity and generic test:api do not establish it. '
@@ -138,13 +148,13 @@ def run_check(check):
     return run_command(['task', check])
 
 
-def verify(checks):
+def verify(checks, paths=()):
     tested = identity()
     results = {check: {'status': 'not-run' if check in checks else 'not-applicable'}
                for check in CHECKS}
     results['content'] = {'status': 'passed', 'tested_identity': tested}
     for check in checks:
-        status, detail = run_check(check)
+        status, detail = run_check(check, paths)
         results[check] = {'status': status, 'detail': detail, 'tested_identity': tested}
         if identity() != tested:
             results['content']['status'] = 'failed'
@@ -155,21 +165,42 @@ def verify(checks):
 
 def prepare(paths):
     classes = classes_for(paths)
-    commands = []
     print('Preparation classes: ' + ', '.join(sorted(classes)), flush=True)
     if 'unknown' in classes:
         print('blocked: classify unknown paths and inspect preparation effects before writes; '
               'final verification still requires the conservative union.')
         return 2
-    if classes & {'contract', 'unknown'}:
-        commands.append('gen:client')
-    if classes & {'application', 'contract', 'unknown'}:
-        commands.append('format')
-    for command in commands:
-        status, detail = run_command(['task', command])
-        print(f'{command}: {status}: {detail}', flush=True)
+    commands = []
+    if 'contract' in classes:
+        commands.append(('gen:client', ['task', 'gen:client']))
+    pwa_paths = [path[4:] for path in paths if path.startswith('pwa/') and path.endswith(
+        ('.js', '.jsx', '.ts', '.tsx', '.css', '.scss', '.json', '.yaml', '.yml'))]
+    api_paths = [path[4:] for path in paths if path.startswith('api/') and path.endswith('.cs')]
+    if pwa_paths:
+        commands.append(('format:pwa:task',
+                         ['npm', 'exec', '--', 'prettier', '--write', '--', *pwa_paths],
+                         ROOT / 'pwa'))
+    if api_paths:
+        commands.append(('format:api:task',
+                         ['dotnet', 'format', '--include', *api_paths], ROOT / 'api'))
+    for item in commands:
+        name, command, *cwd = item
+        before = session.snapshot(ROOT)
+        status, detail = run_command(command, cwd=cwd[0] if cwd else None)
+        print(f'{name}: {status}: {detail}', flush=True)
         if status != 'passed':
             return 2 if status == 'blocked' else 1
+        writes = set(session.changed_between(before, session.snapshot(ROOT)))
+        if name == 'gen:client':
+            allowed = {path for path in writes if path.startswith('pwa/src/lib/api/generated/')}
+        elif name == 'format:pwa:task':
+            allowed = {'pwa/' + path for path in pwa_paths}
+        else:
+            allowed = {'api/' + path for path in api_paths}
+        unexpected = sorted(writes - allowed)
+        if unexpected:
+            print('blocked: preparation changed unexpected paths: ' + ', '.join(unexpected))
+            return 2
     print('Preparation finished; inspect diff before task agent:finish. No verification claim.')
     return 0
 
@@ -178,14 +209,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--prepare', action='store_true')
     args = parser.parse_args()
-    paths = test_ops.get_changed_files()
+    try:
+        delta = session.task_delta()
+    except RuntimeError as error:
+        print(f'blocked: {error}', file=sys.stderr)
+        return 2
+    paths = delta['owned']
+    print(f"Task-owned paths: {len(paths)}; ambient paths excluded: {len(delta['ambient'])}; "
+          f"overlapping baseline paths: {len(delta['overlap'])}", flush=True)
     if args.prepare:
         return prepare(paths)
     selected = checks_for(paths)
     print('Change classes: ' + ', '.join(sorted(classes_for(paths))), flush=True)
     print('Checks: ' + ', '.join(selected), flush=True)
-    results = verify(selected)
-    record = {'checks': results, 'automated_checks_passed': bool(selected) and all(
+    results = verify(selected, paths)
+    record = {'task_id': session.load_manifest()['task_id'], 'task_delta': delta,
+              'checks': results, 'automated_checks_passed': bool(selected) and all(
         value['status'] in ('passed', 'not-applicable') for value in results.values())}
     record['task_acceptance'] = 'not-evaluated: reconcile selected task/fixture/host evidence separately'
     # .task is ignored output, never part of the tested input. Never cache finish.

@@ -7,14 +7,22 @@ processes, ports or databases.
 
 ## Completion and preparation
 
+Start implementation work with `task agent:begin -- <task-id>`. The ignored private
+session separates task-owned edits from ambient worktree changes; it grants no new
+authorization. `task agent:session:status` reports owned, ambient and overlapping
+paths. `task agent:abort` removes only session metadata and never resets source.
+
 Use `task gate` for development feedback and retain the broad final checks below.
 Its adaptive E2E selection does not replace backend tests or the scope review.
 
 `task agent:finish` is the single applicable implementation completion entrypoint.
-It selects checks from tracked, staged and untracked paths; mixed classes take their
-union and unknown paths select the conservative union. No-change/review-only work
-records findings without implying tested implementation. Task-specific acceptance
-and isolated model/host qualification remain separate obligations in the task evidence.
+It selects checks from the task-owned delta relative to the active session baseline;
+mixed task-owned classes take their union and unknown task-owned paths select the
+conservative union. Ambient changes are reported and preserved but do not select
+checks. Task-local attribution does not mean file-local testing: every task-owned
+path receives the conservative architectural impact checks below. No-change/review-
+only work records findings without implying tested implementation. Task-specific
+acceptance and isolated model/host qualification remain separate obligations.
 
 | Change class | Applicable checks |
 |---|---|
@@ -24,10 +32,12 @@ and isolated model/host qualification remain separate obligations in the task ev
 | Contract/schema | Application checks plus live endpoint parity and task-specific real database behavior |
 | Unknown | Union of all classes; never silently reduce verification |
 
-Before final verification, run `task agent:prepare` after inspecting its effects.
-It generates the client for contract changes, then formats application code. Unknown
-preparation blocks before writes until paths/effects are classified; unknown final
-verification still selects the full union.
+Before final verification, run `task agent:prepare`. It generates the client for
+contract changes and formats only task-owned application files. Generated output is
+an allowed calculated closure of an authorized contract edit; unexpected preparation
+writes block rather than being silently adopted. Unknown preparation blocks before
+writes until task-owned paths/effects are classified; unknown final verification
+still selects the full union.
 Documentation/harness preparation requires no application generation or formatting;
 fix relevant syntax/whitespace before final checks. Review the resulting diff and
 preserve unrelated work. `gen:client:sync` also stages files and is not preparation.
@@ -45,10 +55,10 @@ not-run. Its JSON record is `.task/agent-finish/last-run.json`; later edits inva
 that identity and require new applicable verification. Record evidence-file updates
 as later documentation content rather than attaching old success to a new digest.
 
-`agent:test:impact` includes tracked/untracked changes and falls back to all E2E for
-unknown/unmapped application paths. Cache identity covers all tracked/untracked source,
-configuration, installed dependencies/browser bytes, tool executables and hashed
-runtime/environment inputs. Success is stored only under the pre-test identity when
+`agent:test:impact` uses the task-owned delta and falls back to all E2E for
+unknown/unmapped task-owned application paths. Cache identity still covers repository
+source, configuration, installed dependencies/browser bytes, tool executables and
+hashed runtime/environment inputs. Success is stored only under the pre-test identity when
 post-test identity agrees. CI and `WFS_DISABLE_TEST_CACHE=1` disable reuse, not mutation
 detection. Reuse follows the impact runner cache policy and additionally requires no external
 `BASE_URL`. The cache cannot prove external live-service state; E2E must use the repository's
@@ -80,10 +90,11 @@ acceptance, fixture or loading evidence is missing.
 
 ## Scope review
 
-After preparation and before `agent:finish`, compare the current worktree with the
-starting baseline recorded under [context loading](context-loading.md#bound-the-work).
-Inspect the actual diff, including new/deleted files and changes within files that
-were already dirty. Do not attribute all differences from HEAD to the current task.
+After preparation and before `agent:finish`, inspect `task agent:session:status` and
+the actual task-owned diff, including new/deleted files and changes within files that
+were already dirty. Ambient changes are not task changes merely because they differ
+from HEAD. Overlap requires enough evidence to distinguish the task edit from the
+pre-existing content before reverting or claiming preservation.
 
 Account for each task-changed file in task evidence or the final report: what changed,
 why the requested outcome needs it, and any incidental formatter/generated changes.
@@ -93,7 +104,7 @@ unexpected edits; retain only changes justified by the existing authorization.
 Remove your own unnecessary edits while preserving pre-existing and concurrent work;
 never reset or restore a whole dirty file to discard a task-local change.
 
-Record the baseline reference, reviewed final content identity, per-file rationale
+Record the task-session ID, reviewed final content identity, per-file rationale
 and unresolved differences. Recheck the scope review if preparation, fixes or later
 edits change the reviewed content. The review is an agent assessment, not automated
 proof of authorization, and must not narrow the checks selected by `agent:finish`.
@@ -101,6 +112,12 @@ If the baseline is missing or concurrent edits cannot be distinguished, report t
 limit, recover available history and resolve ambiguous ownership before reverting.
 Do not claim preservation or scope verification without evidence; continue independent
 authorized work while consequential uncertainty is resolved.
+
+Task attribution limits which edits the task owns; it does not limit verification to
+edited files. Shared, seam, contract, persistence and unknown impact expands checks.
+The pilot retains the broad application check matrix while task-boundary behavior is
+qualified; later narrowing must be subsystem-aware and separately approved. CI,
+release and explicitly requested full-repository gates remain broader safety nets.
 
 ## Evidence and meaningful handoffs
 

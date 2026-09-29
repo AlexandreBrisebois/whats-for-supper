@@ -13,6 +13,8 @@ import platform
 import shutil
 from typing import NamedTuple
 
+import session
+
 
 ROOT = Path(__file__).resolve().parents[2]
 E2E_DIR = ROOT / "pwa" / "e2e"
@@ -49,6 +51,11 @@ def get_changed_files() -> list[str]:
         *git_lines("ls-files", "--others", "--exclude-standard", "-z"),
     ]
     return sorted(set(filter(None, changed)) - VOLATILE_GENERATED_PATHS)
+
+
+def get_task_files() -> list[str]:
+    """Return only changes made since the active task-session baseline."""
+    return session.task_delta()["owned"]
 
 
 def matching_specs(prefix: str) -> set[str]:
@@ -217,8 +224,8 @@ def has_success_cache(cache_path: Path, digest: str, tests: list[str]) -> bool:
     return cached == {"digest": digest, "tests": sorted(tests)}
 
 
-def run_impacted(run_all: bool = False) -> None:
-    changed_files = get_changed_files()
+def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) -> None:
+    changed_files = get_task_files() if changed_files is None else changed_files
     plan = (
         ImpactPlan((str(E2E_DIR),), ("--all explicitly requested",), True)
         if run_all
@@ -256,7 +263,7 @@ def run_impacted(run_all: bool = False) -> None:
         print(f"{status}: impact tests: {detail}")
         raise SystemExit(2 if status == 'blocked' else 1)
 
-    post_test_changed_files = get_changed_files()
+    post_test_changed_files = get_task_files()
     post_test_digest = build_impact_digest(ROOT, post_test_changed_files, tests)
     if post_test_digest != digest:
         CACHE_PATH.unlink(missing_ok=True)

@@ -1176,9 +1176,24 @@ tasks:
         vars: { AREA: "{{.AREA}}" }
 
   agent:test:impact:
-    desc: "🤖 Impact-Aware Test Runner (Only run tests affected by git changes)"
+    desc: "🤖 Impact-Aware Test Runner (tests affected by the active task delta)"
     cmds:
       - python3 -B scripts/agent/test_ops.py --impact
+
+  agent:begin:
+    desc: "Start a private task baseline. Usage: task agent:begin -- <task-id>"
+    cmds:
+      - python3 -B scripts/agent/session.py --begin {{.CLI_ARGS}}
+
+  agent:session:status:
+    desc: "Show task-owned, ambient, and overlapping paths for the active session"
+    cmds:
+      - python3 -B scripts/agent/session.py --status
+
+  agent:abort:
+    desc: "Remove only private task-session metadata; never reset source files"
+    cmds:
+      - python3 -B scripts/agent/session.py --abort
 
   agent:prepare:
     desc: "Prepare applicable formatting/generation before final validation (inspect effects first)"
