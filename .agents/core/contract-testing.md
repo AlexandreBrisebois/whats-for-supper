@@ -61,8 +61,8 @@ This eliminates the race entirely: when the stack loads the effect re-fires auto
 Classify each required check as passed, failed, blocked, not-run or not-applicable.
 A failure calls for diagnosis: application defects, stale tests, infrastructure and
 permissions are distinct possibilities. Logs and tests do not authorize changing
-approved intent. Unknown task-owned impact takes conservative checks; mixed task-owned
-changes take the union. Ambient worktree changes do not add task obligations unless
+approved intent. Unknown post-begin impact takes conservative checks; mixed post-begin
+changes take the union. A session delta does not prove actor ownership. Ambient worktree changes do not add task obligations unless
 they overlap or alter a selected dependency/runtime input. Missing services,
 interrupted checks and unqualified runners cannot become
 passed evidence. Cache success belongs only to the actual tested identity.

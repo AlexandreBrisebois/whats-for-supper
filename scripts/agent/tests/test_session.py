@@ -3,6 +3,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import contextlib
+import io
 
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -23,7 +25,7 @@ class TaskSessionTests(unittest.TestCase):
         subprocess.run(["git", "commit", "-qm", "initial"], cwd=root, check=True)
         return root
 
-    def test_begin_separates_ambient_and_task_owned_changes(self):
+    def test_begin_separates_ambient_and_post_begin_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = self.repo(tmp)
             session_dir = root / ".task" / "agent-session"
@@ -35,7 +37,7 @@ class TaskSessionTests(unittest.TestCase):
             (root / "clean.txt").write_text("task edit\n")
             delta = session.task_delta(root, session_dir)
 
-            self.assertEqual(delta["owned"], ["clean.txt"])
+            self.assertEqual(delta["changed_since_begin"], ["clean.txt"])
             self.assertEqual(delta["ambient"], ["dirty.txt"])
             self.assertEqual(delta["overlap"], [])
 
@@ -49,11 +51,11 @@ class TaskSessionTests(unittest.TestCase):
             (root / "dirty.txt").write_text("task changed ambient file\n")
             delta = session.task_delta(root, session_dir)
 
-            self.assertEqual(delta["owned"], ["dirty.txt"])
+            self.assertEqual(delta["changed_since_begin"], ["dirty.txt"])
             self.assertEqual(delta["ambient"], [])
             self.assertEqual(delta["overlap"], ["dirty.txt"])
 
-    def test_new_and_deleted_files_are_task_owned(self):
+    def test_new_and_deleted_files_are_changed_since_begin(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = self.repo(tmp)
             session_dir = root / ".task" / "agent-session"
@@ -62,8 +64,73 @@ class TaskSessionTests(unittest.TestCase):
             (root / "clean.txt").unlink()
             (root / "new.txt").write_text("new\n")
 
-            self.assertEqual(session.task_delta(root, session_dir)["owned"],
+            self.assertEqual(session.task_delta(root, session_dir)["changed_since_begin"],
                              ["clean.txt", "new.txt"])
+
+    def test_staging_only_does_not_claim_a_content_change(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.repo(tmp)
+            session_dir = root / ".task" / "agent-session"
+            (root / "dirty.txt").write_text("ambient\n")
+            session.begin("pilot", root, session_dir)
+
+            subprocess.run(["git", "add", "dirty.txt"], cwd=root, check=True)
+
+            self.assertEqual(session.task_delta(root, session_dir), {
+                "changed_since_begin": [], "ambient": ["dirty.txt"], "overlap": []})
+
+    def test_head_change_blocks_delta_and_status_with_recovery_details(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.repo(tmp)
+            session_dir = root / ".task" / "agent-session"
+            manifest = session.begin("pilot", root, session_dir)
+            (root / "second.txt").write_text("second\n")
+            subprocess.run(["git", "add", "second.txt"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-qm", "second"], cwd=root, check=True)
+            current = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+
+            pattern = f"baseline HEAD {manifest['head']}.*current HEAD {current}.*preserve"
+            with self.assertRaisesRegex(RuntimeError, pattern):
+                session.task_delta(root, session_dir)
+            with contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaisesRegex(RuntimeError, pattern):
+                    session.print_status(root, session_dir)
+
+    def test_post_begin_writer_is_reported_as_unattributed_difference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.repo(tmp)
+            session_dir = root / ".task" / "agent-session"
+            session.begin("pilot", root, session_dir)
+
+            subprocess.run([sys.executable, "-c",
+                            "from pathlib import Path; Path('concurrent.txt').write_text('other\\n')"],
+                           cwd=root, check=True)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                session.print_status(root, session_dir)
+
+            self.assertIn("changed since begin (writer unverified): 1", output.getvalue())
+            self.assertNotIn("task-owned", output.getvalue().lower())
+
+    def test_distinct_worktrees_support_independent_sessions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            primary_path = Path(tmp) / "primary"
+            primary_path.mkdir()
+            primary = self.repo(str(primary_path))
+            secondary = Path(tmp) / "secondary"
+            subprocess.run(["git", "worktree", "add", "-q", "-b", "secondary",
+                            str(secondary)], cwd=primary, check=True)
+            primary_session = primary / ".task/agent-session"
+            secondary_session = secondary / ".task/agent-session"
+
+            first = session.begin("first", primary, primary_session)
+            second = session.begin("second", secondary, secondary_session)
+
+            self.assertNotEqual(first["repository"]["git_dir"],
+                                second["repository"]["git_dir"])
+            self.assertEqual(session.task_delta(primary, primary_session)["changed_since_begin"], [])
+            self.assertEqual(session.task_delta(secondary, secondary_session)["changed_since_begin"], [])
 
     def test_changed_between_reports_edits_additions_and_deletions(self):
         before = {"edited": {"sha256": "one"}, "deleted": {"sha256": "old"}}

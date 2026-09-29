@@ -1176,7 +1176,7 @@ tasks:
         vars: { AREA: "{{.AREA}}" }
 
   agent:test:impact:
-    desc: "🤖 Impact-Aware Test Runner (tests affected by the active task delta)"
+    desc: "🤖 Impact-Aware Test Runner (tests affected by the active session delta)"
     cmds:
       - python3 -B scripts/agent/test_ops.py --impact
 
@@ -1186,7 +1186,7 @@ tasks:
       - python3 -B scripts/agent/session.py --begin {{.CLI_ARGS}}
 
   agent:session:status:
-    desc: "Show task-owned, ambient, and overlapping paths for the active session"
+    desc: "Show post-begin differences, ambient paths, overlap, and attribution limits"
     cmds:
       - python3 -B scripts/agent/session.py --status
 

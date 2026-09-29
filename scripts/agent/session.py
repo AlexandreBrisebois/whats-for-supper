@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private task-session baselines for attributing edits in a dirty worktree."""
+"""Private session baselines for observing edits in a dirty worktree."""
 from __future__ import annotations
 
 import argparse
@@ -69,6 +69,39 @@ def load_manifest(session_dir: Path = SESSION_DIR) -> dict:
         raise RuntimeError(f"invalid task session manifest: {error}") from error
 
 
+def repository_identity(root: Path) -> dict[str, str]:
+    """Return minimal private identity used to reject a stale session baseline."""
+    def git_value(*args: str) -> str:
+        return subprocess.check_output(["git", *args], cwd=root, text=True).strip()
+
+    git_dir = Path(git_value("rev-parse", "--path-format=absolute", "--git-dir")).resolve()
+    branch = subprocess.run(
+        ["git", "symbolic-ref", "--quiet", "--short", "HEAD"], cwd=root,
+        text=True, stdout=subprocess.PIPE, check=False).stdout.strip()
+    return {
+        "head": git_value("rev-parse", "HEAD"),
+        "branch": branch or "<detached>",
+        "worktree": str(Path(git_value("rev-parse", "--show-toplevel")).resolve()),
+        "git_dir": str(git_dir),
+    }
+
+
+def validate_identity(manifest: dict, root: Path = ROOT) -> dict[str, str]:
+    current = repository_identity(root)
+    baseline = manifest.get("repository") or {"head": manifest.get("head", "<unknown>")}
+    if any(key in baseline and baseline[key] != current[key]
+           for key in ("head", "branch", "worktree", "git_dir")):
+        raise RuntimeError(
+            "session repository/worktree identity changed: "
+            f"baseline HEAD {baseline.get('head', '<unknown>')} "
+            f"({baseline.get('branch', '<unknown>')}), current HEAD {current['head']} "
+            f"({current['branch']}); preserve current changes, then return to the baseline "
+            "branch/commit in its original worktree, or explicitly abort the session if the "
+            "task is being abandoned"
+        )
+    return current
+
+
 def begin(task_id: str, root: Path = ROOT, session_dir: Path = SESSION_DIR) -> dict:
     if not task_id.strip():
         raise RuntimeError("task id must not be empty")
@@ -91,10 +124,12 @@ def begin(task_id: str, root: Path = ROOT, session_dir: Path = SESSION_DIR) -> d
             destination = snapshot_dir / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
+    repository = repository_identity(root)
     manifest = {
-        "version": 1,
+        "version": 2,
         "task_id": task_id,
-        "head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root).decode().strip(),
+        "head": repository["head"],
+        "repository": repository,
         "baseline": baseline,
         "ambient_at_start": ambient,
     }
@@ -104,17 +139,18 @@ def begin(task_id: str, root: Path = ROOT, session_dir: Path = SESSION_DIR) -> d
 
 def task_delta(root: Path = ROOT, session_dir: Path = SESSION_DIR) -> dict[str, list[str]]:
     manifest = load_manifest(session_dir)
+    validate_identity(manifest, root)
     baseline = manifest["baseline"]
     current_names = set(visible_paths(root))
     all_names = current_names | set(baseline)
-    owned = sorted(
+    changed_since_begin = sorted(
         name for name in all_names
         if fingerprint(root / name) != baseline.get(name, {"kind": "missing"})
     )
     ambient_start = set(manifest.get("ambient_at_start", []))
-    ambient = sorted(ambient_start - set(owned))
-    overlap = sorted(ambient_start & set(owned))
-    return {"owned": owned, "ambient": ambient, "overlap": overlap}
+    ambient = sorted(ambient_start - set(changed_since_begin))
+    overlap = sorted(ambient_start & set(changed_since_begin))
+    return {"changed_since_begin": changed_since_begin, "ambient": ambient, "overlap": overlap}
 
 
 def abort(session_dir: Path = SESSION_DIR) -> None:
@@ -127,8 +163,11 @@ def print_status(root: Path = ROOT, session_dir: Path = SESSION_DIR) -> int:
     delta = task_delta(root, session_dir)
     print(f"Task session: {manifest['task_id']}")
     print(f"Baseline HEAD: {manifest['head']}")
-    for label in ("owned", "ambient", "overlap"):
-        paths = delta[label]
+    labels = (("changed_since_begin", "changed since begin (writer unverified)"),
+              ("ambient", "unchanged pre-begin differences"),
+              ("overlap", "pre-begin paths also changed since begin"))
+    for key, label in labels:
+        paths = delta[key]
         print(f"{label}: {len(paths)}")
         for path in paths:
             print(f"  {path}")

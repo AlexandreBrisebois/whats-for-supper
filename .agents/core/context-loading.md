@@ -35,17 +35,18 @@ end-to-end acceptance. Do not fold adjacent cleanup into the task. A selected
 slice stays bounded even if later dependencies or unrelated failures are visible.
 
 Before the first edit, run `task agent:begin -- <task-id>`. Its private ignored
-session records HEAD and enough worktree content identity to distinguish task-owned
-edits from pre-existing tracked/untracked work, including later edits to an already
-dirty file. Do not print or copy untracked content into logs or shared artifacts.
+session records HEAD, worktree identity, and enough content identity to distinguish
+post-begin differences from pre-existing tracked/untracked work, including later
+edits to an already dirty file. A post-begin difference does not prove which actor
+wrote it. Do not print or copy untracked content into logs or shared artifacts.
 Reuse the active session when resuming the same task; do not replace its baseline
 and thereby hide task changes. If the harness is unavailable, record an equivalent
 private baseline manually and report that limitation.
 
-Before completion, use `task agent:session:status` and review the task-owned delta
+Before completion, use `task agent:session:status` and review the session delta
 against the requested outcome using the [scope review](execution-harness.md#scope-review).
-Ambient paths are preserved rather than adopted. Overlap means the task modified a
-path that was already dirty and requires particular attribution care. This review
+Ambient paths are preserved rather than adopted. Overlap means a path was dirty at
+begin and then changed again; it requires particular attribution care. This review
 supplements broad impact checks; tests cannot establish whether an edit was authorized.
 
 Resolve consequential unknowns about intent or scope before dependent work.
