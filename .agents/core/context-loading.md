@@ -34,17 +34,19 @@ tracked and untracked work. For application behavior, prefer vertical slices thr
 end-to-end acceptance. Do not fold adjacent cleanup into the task. A selected
 slice stays bounded even if later dependencies or unrelated failures are visible.
 
-Before the first edit, record the requested outcome and a starting worktree baseline
-in task-local evidence. Include HEAD, staged/unstaged changes and untracked paths;
-retain enough content evidence to distinguish later edits from pre-existing work,
-including edits within an already-dirty file. Use a temporary snapshot or equivalent
-host history; keep untracked content out of logs and shared artifacts. A list of
-filenames alone is insufficient. Reuse the baseline when resuming the same task;
-do not replace it with the current state and thereby hide task changes.
+Before the first edit, run `task agent:begin -- <task-id>`. Its private ignored
+session records HEAD and enough worktree content identity to distinguish task-owned
+edits from pre-existing tracked/untracked work, including later edits to an already
+dirty file. Do not print or copy untracked content into logs or shared artifacts.
+Reuse the active session when resuming the same task; do not replace its baseline
+and thereby hide task changes. If the harness is unavailable, record an equivalent
+private baseline manually and report that limitation.
 
-Before completion, review changes since that baseline against the requested outcome
-using the [scope review](execution-harness.md#scope-review). This review supplements
-the broad final checks; tests cannot establish whether an edit was authorized.
+Before completion, use `task agent:session:status` and review the task-owned delta
+against the requested outcome using the [scope review](execution-harness.md#scope-review).
+Ambient paths are preserved rather than adopted. Overlap means the task modified a
+path that was already dirty and requires particular attribution care. This review
+supplements broad impact checks; tests cannot establish whether an edit was authorized.
 
 Resolve consequential unknowns about intent or scope before dependent work.
 Existing authorization remains valid within its stated scope. Load targeted

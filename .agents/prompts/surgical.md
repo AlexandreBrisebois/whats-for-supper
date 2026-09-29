@@ -21,6 +21,9 @@ on spec changes and no automatic rewrite to match code.
 
 Preserve unrelated tracked/untracked work. Avoid adjacent refactors and arbitrary
 file/line thresholds; include every dependency needed for the bounded fix.
+Before the first edit, start or reuse the task session required by the execution
+harness. Inspect its task-owned and overlap report before completion; a narrow fix
+may still require broad tests when it touches shared or cross-layer behavior.
 For UI tests use stable `data-testid` interactions and semantic accessibility
 assertions where appropriate. For async issues test event ordering, readiness,
 stale results and duplicate effects, not just the final happy state.

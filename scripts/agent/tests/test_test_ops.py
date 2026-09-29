@@ -112,7 +112,7 @@ class ImpactPlanningTests(unittest.TestCase):
 
             with mock.patch.object(module, "ROOT", root), \
                 mock.patch.object(module, "CACHE_PATH", cache_path), \
-                mock.patch.object(module, "get_changed_files", return_value=["changed.ts"]), \
+                mock.patch.object(module, "get_task_files", return_value=["changed.ts"]), \
                 mock.patch.object(module, "build_impact_plan", return_value=plan), \
                 mock.patch("finish.run_command", side_effect=run_and_mutate), \
                 mock.patch.dict(os.environ, {"WFS_DISABLE_TEST_CACHE": "1"}, clear=True):
@@ -127,7 +127,7 @@ class ImpactPlanningTests(unittest.TestCase):
         module = load_module()
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp) / 'cache.json'
-            with mock.patch.object(module, 'get_changed_files', return_value=['unknown.ts']), \
+            with mock.patch.object(module, 'get_task_files', return_value=['unknown.ts']), \
                  mock.patch.object(module, 'build_impact_digest', return_value='tested'), \
                  mock.patch.object(module, 'CACHE_PATH', cache), \
                  mock.patch.dict(os.environ, {'WFS_ISOLATED_RUNNER': '1'}, clear=True), \
@@ -141,7 +141,7 @@ class ImpactPlanningTests(unittest.TestCase):
         module = load_module()
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp) / 'cache.json'
-            with mock.patch.object(module, 'get_changed_files', return_value=['unknown.ts']), \
+            with mock.patch.object(module, 'get_task_files', return_value=['unknown.ts']), \
                  mock.patch.object(module, 'build_impact_digest', return_value='before'), \
                  mock.patch.object(module, 'CACHE_PATH', cache), \
                  mock.patch('finish.run_command', return_value=('blocked', 'TimeoutExpired')) as run:

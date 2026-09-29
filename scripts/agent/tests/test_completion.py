@@ -154,10 +154,10 @@ class CompletionTests(unittest.TestCase):
     def test_docker_compose_migration_configuration_is_contract_not_unknown(self):
         f = self.finish()
         self.assertEqual(f.classes_for(['docker/compose/infrastructure.yml']), {'contract'})
-        with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run:
+        with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run, \
+             mock.patch.object(f.session, 'snapshot', return_value={}):
             self.assertEqual(f.prepare(['docker/compose/infrastructure.yml']), 0)
-        self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client']),
-                                             mock.call(['task', 'format'])])
+        self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client'], cwd=None)])
 
     def test_github_workflows_are_harness_configuration_not_unknown(self):
         f = self.finish()
@@ -168,10 +168,33 @@ class CompletionTests(unittest.TestCase):
 
     def test_prepare_generation_and_format_precede_any_verification(self):
         f = self.finish()
-        with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run:
+        with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run, \
+             mock.patch.object(f.session, 'snapshot', return_value={}):
             self.assertEqual(f.prepare(['specs/openapi.yaml']), 0)
-        self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client']),
-                                             mock.call(['task', 'format'])])
+        self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client'], cwd=None)])
+
+    def test_prepare_formats_only_task_owned_application_files(self):
+        f = self.finish()
+        paths = ['pwa/src/example.ts', 'api/src/RecipeApi/Example.cs']
+        with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run, \
+             mock.patch.object(f.session, 'snapshot', return_value={}):
+            self.assertEqual(f.prepare(paths), 0)
+        self.assertEqual(run.call_args_list, [
+            mock.call(['npm', 'exec', '--', 'prettier', '--write', '--', 'src/example.ts'],
+                      cwd=f.ROOT / 'pwa'),
+            mock.call(['dotnet', 'format', '--include', 'src/RecipeApi/Example.cs'],
+                      cwd=f.ROOT / 'api'),
+        ])
+
+    def test_prepare_blocks_writes_outside_the_calculated_formatter_closure(self):
+        f = self.finish()
+        with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')), \
+             mock.patch.object(f.session, 'snapshot', side_effect=[
+                 {'pwa/src/example.ts': {'sha256': 'before'}},
+                 {'pwa/src/example.ts': {'sha256': 'after'},
+                  'api/src/RecipeApi/Unexpected.cs': {'sha256': 'new'}},
+             ]):
+            self.assertEqual(f.prepare(['pwa/src/example.ts']), 2)
 
     def test_documentation_checks_new_links_without_expanding_legacy_cleanup(self):
         f = self.finish()
@@ -193,6 +216,8 @@ class CompletionTests(unittest.TestCase):
         import yaml
         tasks = yaml.safe_load((SCRIPTS.parents[1] / 'Taskfile.yml').read_text())['tasks']
         self.assertEqual(tasks['agent:finish']['cmds'], ['python3 -B scripts/agent/finish.py'])
+        self.assertEqual(tasks['agent:begin']['cmds'],
+                         ['python3 -B scripts/agent/session.py --begin {{.CLI_ARGS}}'])
         self.assertIn('python3 -B -m unittest', tasks['test:agent']['cmds'][0])
         self.assertNotIn({'task': 'format'}, tasks['review']['cmds'])
         self.assertIn('format:check:pwa', tasks['review:validate']['deps'])

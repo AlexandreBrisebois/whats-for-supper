@@ -13,8 +13,8 @@ correctness or permission rules.
 - **Authorization source:** <current request/selected task and approved intent;
   distinguish proposed work from authorized execution>
 - **Scope:** <allowed files/effects, exclusions; preserve unrelated work>
-- **Starting baseline:** <reference to pre-edit worktree evidence, including existing
-  dirty/untracked work; reuse on resumption; see shared scope review>
+- **Task session:** <stable task ID initialized before edits with `task agent:begin`;
+  reuse on resumption; identify any ambient overlap or manual-baseline fallback>
 - **Dependencies:** <immediate prerequisites, actual status and unresolved blockers>
 - **Acceptance:** <requirement IDs and observable done conditions>
 - **Required context:** <exact spec sections, contract/source paths and relevant

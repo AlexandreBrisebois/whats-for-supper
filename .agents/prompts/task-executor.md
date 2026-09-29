@@ -39,6 +39,10 @@ permission to rewrite the spec. Authorized spec changes are allowed within scope
 ## Commands and stopping point
 
 Inspect current Taskfile definitions and runtime requirements before execution.
+Before the first edit, start the task-local baseline with
+`task agent:begin -- <task-id>`; reuse an existing matching session on resumption.
+Use `task agent:session:status` before completion to distinguish task-owned, ambient
+and overlapping paths. Do not start a replacement session to hide earlier edits.
 Schema preview is `task db:schema:push DRY_RUN=true`; application is `task migrate`.
 The database procedure explains their different coverage. Schema application never
 implies reset, seed, volume removal or destructive repair; those effects need
@@ -49,7 +53,9 @@ Use `task test:api`, `task test:unit` and `task test:e2e` for the applicable lay
 `task agent:reconcile` and `task agent:drift` support seam validation.
 The [execution harness](../core/execution-harness.md) owns check selection and
 completion via `task agent:finish`; do not invent a second completion protocol.
-Follow its targeted-debugging exception and timeout handling.
+Run `task agent:prepare` before the final scope review and finish. Follow the
+harness's impact expansion and timeout handling; task-local attribution never means
+that tests are limited to edited files.
 
 Stop at the selected acceptance boundary with a reviewable diff, actual check
 inputs/content identity/results and limitations. Mark task evidence truthfully:
