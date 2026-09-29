@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
@@ -17,8 +19,35 @@ public class GroceryRecomputeService(
     RecipeDbContext db,
     AisleMapper aisleMapper,
     ILogger<GroceryRecomputeService> logger,
-    IScheduleEventPublisher? publisher = null)
+    IScheduleEventPublisher? publisher = null,
+    IClock? clock = null)
 {
+    private readonly IClock _clock = clock ?? new SystemClock();
+
+    public GroceryRecomputeService(
+        RecipeDbContext db,
+        AisleMapper aisleMapper,
+        ILogger<GroceryRecomputeService> logger,
+        IScheduleEventPublisher? publisher)
+        : this(db, aisleMapper, logger, publisher, null)
+    {
+    }
+
+    private sealed record IntermediateItem(
+        string DisplayName,
+        string NormalizedKey,
+        string LegacyNormalizedKey,
+        string Section,
+        int CategoryMatchPriority,
+        double? Quantity,
+        string? UnitText,
+        Guid RecipeId);
+
+    private sealed record RecomputedGroup(
+        GroceryLineItemDto Line,
+        IReadOnlySet<string> LegacyNormalizedKeys,
+        string BucketUnit);
+
     // Maps GrocerySection enum values to the display strings used in GroceryLineItemDto.
     private static readonly Dictionary<GrocerySection, string> SectionDisplayNames = new()
     {
@@ -46,6 +75,8 @@ public class GroceryRecomputeService(
         var events = await db.CalendarEvents
             .Include(e => e.Recipe)
             .Where(e => e.Date >= monday && e.Date <= sunday && e.RecipeId != null)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.Id)
             .ToListAsync(ct);
 
         // 2. Extract supply[] from each recipe's raw_metadata.
@@ -71,7 +102,11 @@ public class GroceryRecomputeService(
                 logger.LogDebug("Recipe {RecipeId} has no structured supply — fell back to {Count} raw ingredients", recipe.Id, ingredients.Count);
             }
 
-            supplyEntries.AddRange(supplies);
+            supplyEntries.AddRange(supplies
+                .OrderBy(s => s.DisplayName, StringComparer.Ordinal)
+                .ThenBy(s => s.UnitText, StringComparer.Ordinal)
+                .ThenBy(s => s.Quantity)
+                .ThenBy(s => s.RecipeId));
         }
 
         if (supplyEntries.Count == 0)
@@ -84,14 +119,26 @@ public class GroceryRecomputeService(
         var normalizedKeys = supplyEntries
             .Select(s => IngredientNormalizer.Normalize(s.DisplayName))
             .Where(k => !string.IsNullOrEmpty(k))
-            .Distinct()
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+        var legacyNormalizedKeys = supplyEntries
+            .Select(s => LegacyNormalize(s.DisplayName))
+            .Where(k => !string.IsNullOrEmpty(k))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+        var categoryLookupKeys = normalizedKeys
+            .Concat(legacyNormalizedKeys)
+            .Distinct(StringComparer.Ordinal)
             .ToList();
 
         Dictionary<string, string> categoryMap = new(StringComparer.Ordinal);
-        if (normalizedKeys.Count > 0)
+        if (categoryLookupKeys.Count > 0)
         {
             var dbCategories = await db.IngredientCategories
-                .Where(ic => normalizedKeys.Contains(ic.NormalizedKey))
+                .Where(ic => categoryLookupKeys.Contains(ic.NormalizedKey))
+                .OrderBy(ic => ic.NormalizedKey)
                 .ToListAsync(ct);
 
             foreach (var cat in dbCategories)
@@ -99,18 +146,26 @@ public class GroceryRecomputeService(
         }
 
         // 4. Build intermediate items with section resolved.
-        var intermediate = new List<(string DisplayName, string NormalizedKey, string Section, double? Quantity, string? UnitText, Guid RecipeId)>();
+        var intermediate = new List<IntermediateItem>();
 
         foreach (var (displayName, quantity, unitText, recipeId) in supplyEntries)
         {
             var normalizedKey = IngredientNormalizer.Normalize(displayName);
             if (string.IsNullOrEmpty(normalizedKey))
                 continue;
+            var legacyNormalizedKey = LegacyNormalize(displayName);
 
             string section;
+            var categoryMatchPriority = 0;
             if (categoryMap.TryGetValue(normalizedKey, out var dbSection))
             {
                 section = dbSection;
+                categoryMatchPriority = 2;
+            }
+            else if (categoryMap.TryGetValue(legacyNormalizedKey, out var legacyDbSection))
+            {
+                section = legacyDbSection;
+                categoryMatchPriority = 1;
             }
             else
             {
@@ -119,12 +174,19 @@ public class GroceryRecomputeService(
                 section = SectionDisplayNames[grocerySection];
             }
 
-            intermediate.Add((displayName, normalizedKey, section, quantity, unitText, recipeId));
+            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId));
         }
 
         // 5. Group by (normalizedKey, canonicalUnit): sum quantities after unit conversion.
         //    Entries with unknown units stay in their own bucket keyed by the raw unitText.
         var grouped = intermediate
+            .OrderBy(item => item.NormalizedKey, StringComparer.Ordinal)
+            .ThenBy(item => UnitNormalizer.Normalize(item.UnitText)?.CanonicalUnit ?? item.UnitText ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(item => item.DisplayName, StringComparer.Ordinal)
+            .ThenBy(item => item.Section, StringComparer.Ordinal)
+            .ThenBy(item => item.UnitText, StringComparer.Ordinal)
+            .ThenBy(item => item.Quantity)
+            .ThenBy(item => item.RecipeId)
             .GroupBy(item =>
             {
                 var nu = UnitNormalizer.Normalize(item.UnitText);
@@ -134,6 +196,13 @@ public class GroceryRecomputeService(
             .Select(g =>
             {
                 var first = g.First();
+                var section = g
+                    .Where(item => item.CategoryMatchPriority > 0)
+                    .OrderByDescending(item => item.CategoryMatchPriority)
+                    .ThenBy(item => item.LegacyNormalizedKey, StringComparer.Ordinal)
+                    .ThenBy(item => item.Section, StringComparer.Ordinal)
+                    .Select(item => item.Section)
+                    .FirstOrDefault() ?? first.Section;
 
                 var nu = UnitNormalizer.Normalize(first.UnitText);
 
@@ -154,20 +223,26 @@ public class GroceryRecomputeService(
                 // Emit canonical unit for known families; raw unit for unknowns.
                 var emittedUnit = nu?.CanonicalUnit ?? first.UnitText;
 
-                var recipeIds = g.Select(x => x.RecipeId).Distinct().ToList();
+                var recipeIds = g.Select(x => x.RecipeId).Distinct().OrderBy(id => id).ToList();
 
-                return new GroceryLineItemDto(
-                    DisplayName: first.DisplayName,
-                    NormalizedKey: first.NormalizedKey,
-                    Section: first.Section,
-                    Quantity: totalQuantity,
-                    UnitText: emittedUnit,
-                    RecipeIds: recipeIds);
+                return new RecomputedGroup(
+                    new GroceryLineItemDto(
+                        DisplayName: first.NormalizedKey,
+                        NormalizedKey: first.NormalizedKey,
+                        Section: section,
+                        Quantity: totalQuantity,
+                        UnitText: emittedUnit,
+                        RecipeIds: recipeIds),
+                    g.Select(item => item.LegacyNormalizedKey).ToHashSet(StringComparer.Ordinal),
+                    g.Key.BucketUnit);
             })
+            .OrderBy(group => group.Line.NormalizedKey, StringComparer.Ordinal)
+            .ThenBy(group => group.BucketUnit, StringComparer.Ordinal)
+            .ThenBy(group => group.Line.DisplayName, StringComparer.Ordinal)
             .ToList();
 
         // 6. Serialize and persist to weekly_plans.grocery_items.
-        var groceryItemsJson = JsonSerializer.Serialize(grouped, new JsonSerializerOptions
+        var groceryItemsJson = JsonSerializer.Serialize(grouped.Select(group => group.Line), new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         });
@@ -185,14 +260,21 @@ public class GroceryRecomputeService(
             logger.LogInformation("Created WeeklyPlan for week starting {Monday} during grocery recompute", monday);
         }
 
+        var previousItems = DeserializeGroceryItems(plan.GroceryItems);
+        var groceryState = DeserializeGroceryState(plan.GroceryState);
+        var changedState = ApplyMergedStateTransitions(previousItems, grouped, groceryState);
+
         plan.GroceryItems = groceryItemsJson;
+        if (changedState)
+            plan.GroceryState = JsonSerializer.Serialize(groceryState);
         await db.SaveChangesAsync(ct);
+
+        if (changedState && publisher != null)
+            await publisher.PublishGroceryUpdatedAsync(GetWeekOffset(monday), groceryState);
 
         logger.LogInformation(
             "Recomputed grocery_items for week starting {Monday}: {Count} line items",
             monday, grouped.Count);
-
-        _ = publisher;
     }
 
     /// <summary>
@@ -371,5 +453,86 @@ public class GroceryRecomputeService(
         // DayOfWeek: Sunday=0, Monday=1, ..., Saturday=6
         var daysFromMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
         return date.AddDays(-daysFromMonday);
+    }
+
+    private static string LegacyNormalize(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return string.Empty;
+
+        var decomposed = raw.Normalize(NormalizationForm.FormD);
+        var stripped = new StringBuilder(decomposed.Length);
+        foreach (var character in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+                stripped.Append(character);
+        }
+
+        return string.Join(' ', stripped.ToString().ToLowerInvariant().Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static List<GroceryLineItemDto> DeserializeGroceryItems(string? json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<GroceryLineItemDto>>(json ?? "[]") ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static Dictionary<string, bool> DeserializeGroceryState(string? json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, bool>>(json ?? "{}") ?? new(StringComparer.Ordinal);
+        }
+        catch (JsonException)
+        {
+            return new(StringComparer.Ordinal);
+        }
+    }
+
+    private static bool ApplyMergedStateTransitions(
+        IReadOnlyList<GroceryLineItemDto> previousItems,
+        IReadOnlyList<RecomputedGroup> recomputedGroups,
+        Dictionary<string, bool> groceryState)
+    {
+        var changed = false;
+        foreach (var group in recomputedGroups)
+        {
+            var predecessors = previousItems
+                .Where(item => group.LegacyNormalizedKeys.Contains(item.NormalizedKey)
+                    && (UnitNormalizer.Normalize(item.UnitText)?.CanonicalUnit ?? item.UnitText ?? string.Empty) == group.BucketUnit)
+                .OrderBy(item => item.DisplayName, StringComparer.Ordinal)
+                .ToList();
+            if (predecessors.Count == 0)
+                continue;
+
+            var isNewMerge = predecessors.Count > 1;
+            var isDisplayNameRename = predecessors.Count == 1
+                && !string.Equals(predecessors[0].DisplayName, group.Line.DisplayName, StringComparison.Ordinal);
+            if (!isNewMerge && !isDisplayNameRename)
+                continue;
+
+            var isChecked = isNewMerge
+                ? predecessors.All(item => groceryState.TryGetValue(item.DisplayName, out var checked_) && checked_)
+                : groceryState.TryGetValue(predecessors[0].DisplayName, out var priorChecked) && priorChecked;
+            foreach (var predecessor in predecessors)
+                groceryState.Remove(predecessor.DisplayName);
+            groceryState[group.Line.DisplayName] = isChecked;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private int GetWeekOffset(DateOnly monday)
+    {
+        var today = DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime);
+        var days = monday.DayNumber - GetMonday(today).DayNumber;
+        return days / 7;
     }
 }

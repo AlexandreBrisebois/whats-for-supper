@@ -93,6 +93,104 @@ public class IngredientNormalizerTests
         Assert.Equal("creme brulee", result);
     }
 
+    [Theory]
+    [InlineData("huile d'olive", "huile d’olive", "huile d'olive")]
+    [InlineData("all-purpose flour", "all‑purpose flour", "all-purpose flour")]
+    [InlineData("basil®", "basil", "basil")]
+    [InlineData("tomato, paste", "tomato paste", "tomato paste")]
+    public void Normalize_ApprovedMechanicalVariants_ProduceTheSameKey(
+        string first,
+        string second,
+        string expected)
+    {
+        Assert.Equal(expected, IngredientNormalizer.Normalize(first));
+        Assert.Equal(expected, IngredientNormalizer.Normalize(second));
+    }
+
+    [Theory]
+    [InlineData("pita(s)", "pita")]
+    [InlineData("pita (s)", "pita")]
+    [InlineData("pitas", "pita")]
+    [InlineData("tomato(es)", "tomato")]
+    [InlineData("tomato (es)", "tomato")]
+    [InlineData("tomatoes", "tomato")]
+    [InlineData("zucchini(s)", "zucchini")]
+    [InlineData("zucchini (s)", "zucchini")]
+    [InlineData("zucchinis", "zucchini")]
+    [InlineData("carrot(s)", "carrot")]
+    [InlineData("chicken broth cube(s)", "chicken broth cube")]
+    [InlineData("concombre(s) anglais", "concombre anglais")]
+    [InlineData("cube(s) de bouillon de légumes", "cube de bouillon de legumes")]
+    [InlineData("green bell pepper(s)", "green bell pepper")]
+    [InlineData("green onion(s)", "green onion")]
+    [InlineData("oignon(s) jaune(s)", "oignon jaune")]
+    [InlineData("whole wheat tortilla(s)", "whole wheat tortilla")]
+    [InlineData("red baby potato(es)", "red baby potato")]
+    [InlineData("white potato(es)", "white potato")]
+    [InlineData("garlic clove(s)", "garlic clove")]
+    [InlineData("garlic cloves", "garlic clove")]
+    [InlineData("gousse(s) d'ail", "gousse d'ail")]
+    [InlineData("gousse(s) d’ail", "gousse d'ail")]
+    [InlineData("gousses d'ail", "gousse d'ail")]
+    public void Normalize_OptionalPluralForms_ProduceTheSpecifiedSingularKey(
+        string source,
+        string expected)
+    {
+        Assert.Equal(expected, IngredientNormalizer.Normalize(source));
+    }
+
+    [Theory]
+    [InlineData("peas")]
+    [InlineData("glass")]
+    [InlineData("chickpeas")]
+    [InlineData("green onions")]
+    [InlineData("bell peppers")]
+    public void Normalize_DoesNotApplyGenericTrailingSSingularization(string source)
+    {
+        Assert.Equal(source, IngredientNormalizer.Normalize(source));
+    }
+
+    [Theory]
+    [InlineData("zucchini (vert, jaune ou ancestral)", "zucchini (vert jaune ou ancestral)")]
+    [InlineData("spice mix (brown sugar, garlic powder)", "spice mix (brown sugar garlic powder)")]
+    [InlineData("carottes (orange ou multicolores)", "carottes (orange ou multicolores)")]
+    public void Normalize_PreservesNonPluralParentheticalContent(string source, string expected)
+    {
+        Assert.Equal(expected, IngredientNormalizer.Normalize(source));
+    }
+
+    [Fact]
+    public void Normalize_PreservesProtectedDescriptorsAsDistinctIdentities()
+    {
+        var protectedPairs = new[]
+        {
+            ("blueberries", "fresh blueberries"),
+            ("blueberries", "frozen blueberries"),
+            ("fresh blueberries", "frozen blueberries"),
+            ("salted butter", "unsalted butter"),
+            ("2% milk", "3% milk"),
+            ("red pepper", "yellow pepper"),
+            ("vanilla yogurt", "strawberry yogurt"),
+            ("diced tomatoes", "whole tomatoes"),
+            ("cooked chicken", "raw chicken"),
+            ("butter or margarine", "butter"),
+            ("400 g spaghetti", "500 g spaghetti"),
+            ("400 g spaghetti", "400 ml spaghetti"),
+            ("onion, chopped", "onion"),
+        };
+
+        foreach (var (first, second) in protectedPairs)
+            Assert.NotEqual(IngredientNormalizer.Normalize(first), IngredientNormalizer.Normalize(second));
+    }
+
+    [Theory]
+    [InlineData("apple", "pomme")]
+    [InlineData("broccoli", "brocoli")]
+    public void Normalize_DoesNotMergeCrossLanguageNames(string first, string second)
+    {
+        Assert.NotEqual(IngredientNormalizer.Normalize(first), IngredientNormalizer.Normalize(second));
+    }
+
     // ── Property-based tests (FsCheck) ────────────────────────────────────────
 
     // Feature: grocery-section-categorization, Property 4: accent-insensitive equivalence

@@ -100,6 +100,9 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
     }
 
+    private async Task<WeeklyPlan> GetWeeklyPlanAsync(DateOnly monday) =>
+        await _db.WeeklyPlans.SingleAsync(p => p.WeekStartDate == monday);
+
     /// <summary>
     /// Returns a deterministic Monday offset from a base date using a hash seed,
     /// ensuring no two property test iterations share the same week.
@@ -203,6 +206,48 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task OptionalPluralGarlicForms_WithCountUnits_Aggregate()
+    {
+        var monday = new DateOnly(2025, 2, 24);
+        await SeedRecipeWithSupplyAsync(monday, [("garlic clove(s)", 2.0, "piece")]);
+        await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("garlic cloves", 3.0, "cloves")]);
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var garlic = (await GetGroceryItemsAsync(monday))
+            .Where(item => item.NormalizedKey == "garlic clove")
+            .ToList();
+
+        var line = Assert.Single(garlic);
+        Assert.Equal(5.0, line.Quantity);
+        Assert.Equal("piece", line.UnitText);
+    }
+
+    [Fact]
+    public async Task OptionalPluralNotation_AggregatesUnrelatedIngredientNames()
+    {
+        var monday = new DateOnly(2025, 3, 3);
+        _db.IngredientCategories.Add(new IngredientCategory
+        {
+            NormalizedKey = "green onion(s)",
+            GrocerySection = "Deli",
+            Confidence = 1.0,
+            Source = "manual",
+        });
+        await _db.SaveChangesAsync();
+        await SeedRecipeWithSupplyAsync(monday, [("green onion(s)", 1.0, "piece")]);
+        await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("green onion", 2.0, "piece")]);
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var line = Assert.Single(await GetGroceryItemsAsync(monday),
+            item => item.NormalizedKey == "green onion");
+        Assert.Equal(3.0, line.Quantity);
+        Assert.Equal("piece", line.UnitText);
+        Assert.Equal("Deli", line.Section);
+    }
+
+    [Fact]
     public async Task SupplyItem_NotInIngredientCategories_FallsBackToAisleMapper()
     {
         var monday = new DateOnly(2025, 2, 3);
@@ -237,6 +282,195 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         var items = await GetGroceryItemsAsync(monday);
         Assert.Single(items);
         Assert.Equal("Deli", items[0].Section);
+    }
+
+    [Fact]
+    public async Task ApprovedMechanicalPair_WithCompatibleUnits_Aggregates_AndIncompatibleUnitsRemainSeparate()
+    {
+        var monday = new DateOnly(2025, 2, 17);
+        await SeedRecipeWithSupplyAsync(monday, [("huile d'olive", 1.0, "cup")]);
+        await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("huile d’olive", 2.0, "cup")]);
+        await SeedRecipeWithSupplyAsync(monday.AddDays(2), [("huile d’olive", 3.0, "g")]);
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var items = (await GetGroceryItemsAsync(monday))
+            .Where(item => item.NormalizedKey == "huile d'olive")
+            .ToList();
+
+        Assert.Equal(2, items.Count);
+        Assert.Contains(items, item => item.UnitText == "ml" && item.Quantity == 720.0);
+        Assert.Contains(items, item => item.UnitText == "g" && item.Quantity == 3.0);
+    }
+
+    [Fact]
+    public async Task ProtectedDescriptors_RemainSeparateGroceryLines()
+    {
+        var monday = new DateOnly(2025, 2, 24);
+        await SeedRecipeWithSupplyAsync(monday,
+        [
+            ("blueberries", 1.0, "pcs"),
+            ("fresh blueberries", 1.0, "pcs"),
+            ("frozen blueberries", 1.0, "pcs"),
+            ("salted butter", 1.0, "pcs"),
+            ("unsalted butter", 1.0, "pcs"),
+        ]);
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var keys = (await GetGroceryItemsAsync(monday)).Select(item => item.NormalizedKey).ToList();
+        Assert.Equal(5, keys.Count);
+        Assert.Contains("blueberries", keys);
+        Assert.Contains("fresh blueberries", keys);
+        Assert.Contains("frozen blueberries", keys);
+        Assert.Contains("salted butter", keys);
+        Assert.Contains("unsalted butter", keys);
+    }
+
+    [Fact]
+    public async Task LegacyManualCategory_IsUsedWhenTheNewNormalizedKeyHasNoCategory()
+    {
+        var monday = new DateOnly(2025, 3, 3);
+        _db.IngredientCategories.Add(new IngredientCategory
+        {
+            NormalizedKey = "basil®",
+            GrocerySection = "Deli",
+            Confidence = 1.0,
+            Source = "manual",
+        });
+        await _db.SaveChangesAsync();
+        await SeedRecipeWithSupplyAsync(monday, [("basil®", 1.0, "pcs")]);
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var item = Assert.Single(await GetGroceryItemsAsync(monday));
+        Assert.Equal("basil", item.NormalizedKey);
+        Assert.Equal("Deli", item.Section);
+        var category = await _db.IngredientCategories.SingleAsync();
+        Assert.Equal("basil®", category.NormalizedKey);
+        Assert.Equal("manual", category.Source);
+    }
+
+    [Fact]
+    public async Task ReorderedSources_ProduceIdenticalDisplaySectionUnitRecipeOrderAndPersistedLineOrder()
+    {
+        var firstMonday = new DateOnly(2025, 3, 10);
+        var secondMonday = firstMonday.AddDays(7);
+        var firstRecipeId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var secondRecipeId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        _db.Recipes.AddRange(
+            new Recipe { Id = firstRecipeId, Name = "First", RawMetadata = BuildRawMetadata([("huile d’olive", 1.0, "cup"), ("zucchini(s)", 1.0, "pcs")]) },
+            new Recipe { Id = secondRecipeId, Name = "Second", RawMetadata = BuildRawMetadata([("huile d'olive", 2.0, "cup"), ("zucchinis", 2.0, "pcs")]) });
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = firstRecipeId, Date = firstMonday, Status = CalendarEventStatus.Planned },
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = secondRecipeId, Date = firstMonday.AddDays(1), Status = CalendarEventStatus.Planned },
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = secondRecipeId, Date = secondMonday, Status = CalendarEventStatus.Planned },
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = firstRecipeId, Date = secondMonday.AddDays(1), Status = CalendarEventStatus.Planned });
+        await _db.SaveChangesAsync();
+
+        await _service.RecomputeForWeekAsync(firstMonday, CancellationToken.None);
+        await _service.RecomputeForWeekAsync(secondMonday, CancellationToken.None);
+
+        var first = await GetWeeklyPlanAsync(firstMonday);
+        var second = await GetWeeklyPlanAsync(secondMonday);
+        Assert.Equal(first.GroceryItems, second.GroceryItems);
+        var lines = await GetGroceryItemsAsync(firstMonday);
+        Assert.Equal(["huile d'olive", "zucchini"], lines.Select(line => line.DisplayName));
+        Assert.All(lines, line => Assert.Equal([firstRecipeId, secondRecipeId], line.RecipeIds));
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, null, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, false)]
+    [InlineData(false, null, false)]
+    [InlineData(null, true, false)]
+    [InlineData(null, false, false)]
+    [InlineData(null, null, false)]
+    public async Task NewlyMergedLines_RequireEveryPredecessorChecked_ReplaceObsoleteState_AndPublishResult(
+        bool? straightChecked,
+        bool? curlyChecked,
+        bool expectedChecked)
+    {
+        var monday = new DateOnly(2025, 3, 3);
+        var publisher = new Mock<IScheduleEventPublisher>();
+        var service = new GroceryRecomputeService(
+            _db,
+            new AisleMapper(),
+            _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(),
+            publisher.Object,
+            new FixedClock(new DateTimeOffset(2025, 3, 4, 12, 0, 0, TimeSpan.Zero)));
+        var predecessorLines = new List<GroceryLineItemDto>
+        {
+            new("huile d'olive", "huile d'olive", "Pantry", 1, "ml", []),
+            new("huile d’olive", "huile d’olive", "Pantry", 1, "ml", []),
+        };
+        _db.WeeklyPlans.Add(new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = monday,
+            GroceryItems = JsonSerializer.Serialize(predecessorLines),
+            GroceryState = JsonSerializer.Serialize(BuildPredecessorState(straightChecked, curlyChecked)),
+        });
+        await SeedRecipeWithSupplyAsync(monday, [("huile d'olive", 1.0, "ml")]);
+        await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("huile d’olive", 1.0, "ml")]);
+
+        await service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var plan = await GetWeeklyPlanAsync(monday);
+        var state = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!;
+        Assert.Equal(expectedChecked, state["huile d'olive"]);
+        Assert.DoesNotContain("huile d’olive", state.Keys);
+        Assert.True(state["unrelated"]);
+        publisher.Verify(p => p.PublishGroceryUpdatedAsync(
+            0,
+            It.Is<Dictionary<string, bool>>(published => MatchesState(published, state)),
+            null),
+            Times.Once);
+    }
+
+    private static Dictionary<string, bool> BuildPredecessorState(bool? straightChecked, bool? curlyChecked)
+    {
+        var state = new Dictionary<string, bool> { ["unrelated"] = true };
+        if (straightChecked.HasValue) state["huile d'olive"] = straightChecked.Value;
+        if (curlyChecked.HasValue) state["huile d’olive"] = curlyChecked.Value;
+        return state;
+    }
+
+    [Fact]
+    public async Task RenamedSinglePredecessor_PreservesCheckedStateUnderTheNormalizedDisplayName()
+    {
+        var monday = new DateOnly(2025, 3, 3);
+        _db.WeeklyPlans.Add(new WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            WeekStartDate = monday,
+            GroceryItems = JsonSerializer.Serialize(new[]
+            {
+                new GroceryLineItemDto("Zucchini(s)", "zucchini(s)", "Produce", 1, "pcs", []),
+            }),
+            GroceryState = JsonSerializer.Serialize(new Dictionary<string, bool> { ["Zucchini(s)"] = true }),
+        });
+        await SeedRecipeWithSupplyAsync(monday, [("Zucchini(s)", 1.0, "pcs")]);
+
+        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+
+        var plan = await GetWeeklyPlanAsync(monday);
+        var state = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!;
+        Assert.True(state["zucchini"]);
+        Assert.DoesNotContain("Zucchini(s)", state.Keys);
+        Assert.Equal("zucchini", Assert.Single(await GetGroceryItemsAsync(monday)).DisplayName);
+    }
+
+    private static bool MatchesState(Dictionary<string, bool> published, Dictionary<string, bool> expected) =>
+        published.Count == expected.Count
+        && published.All(entry => expected.TryGetValue(entry.Key, out var value) && value == entry.Value);
+
+    private sealed class FixedClock(DateTimeOffset now) : IClock
+    {
+        public DateTimeOffset UtcNow => now;
     }
 
     [Fact]

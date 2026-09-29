@@ -31,6 +31,7 @@ The following packages were moved to `docs/archive/specs/` at the user’s direc
 - [dietary-separation-retired-health-model](dietary-separation-retired-health-model/README.md) — retired Phase 3 health/dietary documentation and proposals, preserved on 2026-09-25 without revalidation.
 - [dietary-separation-phase3-contract](dietary-separation-phase3-contract/t4-final-migration-report.md) — completed Phase 3 contract and evidence package, archived on 2026-09-26; its retired disposable verifier was removed after preserving its observed results.
 - [01-public-synology-release](01-public-synology-release/README.md) — owner-directed archive on 2026-09-27; the original Docker Hub and Synology tracer-bullet package is superseded by the canonical `release-template/synology/` template, while public-release qualification remains separate work.
+- [multilingual-ingredient-canonicalization](multilingual-ingredient-canonicalization/tasks.md) — owner-directed archive on 2026-09-29; planned conservative ingredient-normalization work preserved without revalidation or task completion.
 
 ## Inventory
 
@@ -69,6 +70,7 @@ The notes describe the recorded documents, not verified current implementation. 
 | [home-recovery-flow-hardening](home-recovery-flow-hardening/task.md) | 3 | 3 unchecked markers retained; not active work |
 | [home-today-sync](home-today-sync/bugfix.md) | 1 | Historical description; no checkbox completion record |
 | [image-caching-fix](image-caching-fix/tasks.md) | 3 | Checked markers recorded; current behavior not re-audited |
+| [multilingual-ingredient-canonicalization](multilingual-ingredient-canonicalization/tasks.md) | 5 | Owner-directed archive on 2026-09-29; planned tasks retained without revalidation or completion |
 | [phase-12-no-menu.md](phase-12-no-menu.md) | 1 | 30 unchecked markers retained; not active work |
 | [phase-13-goto-synthesis.md](phase-13-goto-synthesis.md) | 1 | 1 unchecked markers retained; not active work |
 | [phase-14-ux-hardening.md](phase-14-ux-hardening.md) | 1 | 24 unchecked markers retained; not active work |
