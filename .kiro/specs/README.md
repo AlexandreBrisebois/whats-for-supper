@@ -5,10 +5,12 @@ for writing, reviewing and decomposing specifications. It owns the format and
 procedure; [AGENT.md](../../AGENT.md) owns authority and scope.
 
 New feature specifications use `.kiro/specs/<feature-slug>/requirements.md`,
-`design.md` and `tasks.md`. Existing grouped directories may remain. Bounded
-maintenance can use an [execution packet](../../.agents/templates/execution-packet.md)
-without an artificial feature spec. Load only the selected task and its immediate
-context. Review can end with findings only; planning does not authorize execution.
+`design.md` and `tasks.md`. Existing grouped directories may remain. The
+current-capability baseline is indexed in
+[FEATURE_CATALOG.md](FEATURE_CATALOG.md). Bounded maintenance can use an
+[execution packet](../../.agents/templates/execution-packet.md) without an
+artificial feature spec. Load only the selected task and its immediate context.
+Review can end with findings only; planning does not authorize execution.
 
 Keep acceptance, design and task references aligned when authorized decisions
 change. Record actual task evidence and blockers; do not check off work based on
