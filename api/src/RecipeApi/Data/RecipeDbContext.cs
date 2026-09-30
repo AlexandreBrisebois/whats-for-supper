@@ -23,6 +23,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<MaintenanceCommand> MaintenanceCommands => Set<MaintenanceCommand>();
     public DbSet<RecipeSearchFilterState> RecipeSearchFilterStates => Set<RecipeSearchFilterState>();
     public DbSet<RecipeSearchAffinityFact> RecipeSearchAffinityFacts => Set<RecipeSearchAffinityFact>();
+    public DbSet<FeatureFlagOverride> FeatureFlagOverrides => Set<FeatureFlagOverride>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -42,6 +43,17 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                 t.HasCheckConstraint(
                     "CK_family_members_browse_view_mode",
                     "browse_view_mode IN ('stack', 'list')"));
+        });
+
+        modelBuilder.Entity<FeatureFlagOverride>(entity =>
+        {
+            entity.HasKey(value => new { value.MemberId, value.FlagKey });
+            entity.Property(value => value.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.HasOne(value => value.Member)
+                  .WithMany()
+                  .HasForeignKey(value => value.MemberId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable("feature_flag_overrides");
         });
 
         modelBuilder.Entity<Recipe>(entity =>

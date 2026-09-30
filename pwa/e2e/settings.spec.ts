@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, setupCommonRoutes, builders } from './mock-api';
+import { MOCK_IDS, setupCommonRoutes, builders, mockFeatureFlags } from './mock-api';
 
 // ── Failed Captures section ─────────────────────────────────────────────────
 // Component-level behaviour (render, retry state, clear, empty state) is fully
@@ -42,6 +42,37 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
   });
 
   // GOTO ready/pending rendering is covered by FamilyGOTOSettings.test.tsx.
+
+  test('hides Preview features when no opt-in flags are available', async ({ page }) => {
+    await page.goto('/profile/settings');
+    await expect(page.getByTestId('preview-features-section')).toHaveCount(0);
+  });
+
+  test('shows Recipe on one page as a collapsed preview disclosure', async ({ page }) => {
+    await mockFeatureFlags(page, [
+      {
+        key: 'single-page-recipe-steps',
+        enabled: false,
+        mode: 'opt-in',
+        memberEnabled: false,
+        displayName: 'Recipe on one page',
+        description: 'After getting ready, scroll through all the cooking steps on one page.',
+      },
+    ]);
+    await page.setViewportSize({ width: 1180, height: 820 });
+    await page.goto('/profile/settings');
+    const disclosure = page.getByRole('button', { name: /Preview features/i });
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    await disclosure.click();
+    const previewSwitch = page.getByRole('switch', { name: /Recipe on one page/i });
+    await expect(previewSwitch).toBeVisible();
+    await previewSwitch.check();
+    await expect(previewSwitch).toBeChecked();
+    await page.reload();
+    await page.getByRole('button', { name: /Preview features/i }).click();
+    await expect(page.getByRole('switch', { name: /Recipe on one page/i })).toBeChecked();
+    await page.screenshot({ path: 'test-results/settings-preview-ipad.png', fullPage: true });
+  });
 
   test('language toggle selection persists on navigation', async ({ page }) => {
     // 1. Mock the GET /api/family call to return French for subsequent loads

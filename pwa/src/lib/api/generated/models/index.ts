@@ -259,6 +259,28 @@ export function createDisplacedRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FeatureFlagDto}
+ */
+// @ts-ignore
+export function createFeatureFlagDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFeatureFlagDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FeatureFlagListDto}
+ */
+// @ts-ignore
+export function createFeatureFlagListDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFeatureFlagListDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GoToItem}
  */
 // @ts-ignore
@@ -831,6 +853,17 @@ export function createTopPickDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {UpdateFeatureFlagRequest}
+ */
+// @ts-ignore
+export function createUpdateFeatureFlagRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoUpdateFeatureFlagRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdateRecipeDto}
  */
 // @ts-ignore
@@ -1229,6 +1262,53 @@ export function deserializeIntoDisplacedRecipeDto(
     },
     name: (n) => {
       displacedRecipeDto.name = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param FeatureFlagDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFeatureFlagDto(
+  featureFlagDto: Partial<FeatureFlagDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    description: (n) => {
+      featureFlagDto.description = n.getStringValue();
+    },
+    displayName: (n) => {
+      featureFlagDto.displayName = n.getStringValue();
+    },
+    enabled: (n) => {
+      featureFlagDto.enabled = n.getBooleanValue();
+    },
+    key: (n) => {
+      featureFlagDto.key = n.getStringValue();
+    },
+    memberEnabled: (n) => {
+      featureFlagDto.memberEnabled = n.getBooleanValue();
+    },
+    mode: (n) => {
+      featureFlagDto.mode = n.getEnumValue<FeatureFlagMode>(FeatureFlagModeObject);
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param FeatureFlagListDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFeatureFlagListDto(
+  featureFlagListDto: Partial<FeatureFlagListDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    items: (n) => {
+      featureFlagListDto.items = n.getCollectionOfObjectValues<FeatureFlagDto>(
+        createFeatureFlagDtoFromDiscriminatorValue
+      );
     },
   };
 }
@@ -2666,6 +2746,21 @@ export function deserializeIntoTopPickDto(
 }
 /**
  * The deserialization information for the current model
+ * @param UpdateFeatureFlagRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoUpdateFeatureFlagRequest(
+  updateFeatureFlagRequest: Partial<UpdateFeatureFlagRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    enabled: (n) => {
+      updateFeatureFlagRequest.enabled = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param UpdateRecipeDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -2969,6 +3064,39 @@ export interface DisplacedRecipeDto extends AdditionalDataHolder, Parsable {
    */
   name?: string | null;
 }
+export interface FeatureFlagDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The description property
+   */
+  description?: string | null;
+  /**
+   * The displayName property
+   */
+  displayName?: string | null;
+  /**
+   * The enabled property
+   */
+  enabled?: boolean | null;
+  /**
+   * The key property
+   */
+  key?: string | null;
+  /**
+   * The memberEnabled property
+   */
+  memberEnabled?: boolean | null;
+  /**
+   * The mode property
+   */
+  mode?: FeatureFlagMode | null;
+}
+export interface FeatureFlagListDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The items property
+   */
+  items?: FeatureFlagDto[] | null;
+}
+export type FeatureFlagMode = (typeof FeatureFlagModeObject)[keyof typeof FeatureFlagModeObject];
 export interface GoToItem extends AdditionalDataHolder, Parsable {
   /**
    * The description property
@@ -4197,6 +4325,51 @@ export function serializeDisplacedRecipeDto(
   writer.writeNumberValue('movedToWeekOffset', displacedRecipeDto.movedToWeekOffset);
   writer.writeStringValue('name', displacedRecipeDto.name);
   writer.writeAdditionalData(displacedRecipeDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param FeatureFlagDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFeatureFlagDto(
+  writer: SerializationWriter,
+  featureFlagDto: Partial<FeatureFlagDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!featureFlagDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('description', featureFlagDto.description);
+  writer.writeStringValue('displayName', featureFlagDto.displayName);
+  writer.writeBooleanValue('enabled', featureFlagDto.enabled);
+  writer.writeStringValue('key', featureFlagDto.key);
+  writer.writeBooleanValue('memberEnabled', featureFlagDto.memberEnabled);
+  writer.writeEnumValue<FeatureFlagMode>('mode', featureFlagDto.mode);
+  writer.writeAdditionalData(featureFlagDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param FeatureFlagListDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFeatureFlagListDto(
+  writer: SerializationWriter,
+  featureFlagListDto: Partial<FeatureFlagListDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!featureFlagListDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<FeatureFlagDto>(
+    'items',
+    featureFlagListDto.items,
+    serializeFeatureFlagDto
+  );
+  writer.writeAdditionalData(featureFlagListDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5518,6 +5691,23 @@ export function serializeTopPickDto(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param UpdateFeatureFlagRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeUpdateFeatureFlagRequest(
+  writer: SerializationWriter,
+  updateFeatureFlagRequest: Partial<UpdateFeatureFlagRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!updateFeatureFlagRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('enabled', updateFeatureFlagRequest.enabled);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdateRecipeDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -5851,6 +6041,12 @@ export interface TopPickDto extends AdditionalDataHolder, Parsable {
    */
   totalTime?: string | null;
 }
+export interface UpdateFeatureFlagRequest extends Parsable {
+  /**
+   * The enabled property
+   */
+  enabled?: boolean | null;
+}
 export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The cuisineType property
@@ -6077,6 +6273,11 @@ export const CaptureFailureDto_sourceTypeObject = {
 } as const;
 export const CaptureFailureDto_statusObject = {
   Failed: 'failed',
+} as const;
+export const FeatureFlagModeObject = {
+  Off: 'off',
+  OptIn: 'opt-in',
+  On: 'on',
 } as const;
 export const GoToItem_statusObject = {
   Pending: 'pending',

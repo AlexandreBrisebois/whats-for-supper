@@ -4,6 +4,14 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS feature_flag_overrides (
+    member_id uuid NOT NULL REFERENCES family_members(id) ON DELETE CASCADE,
+    flag_key text NOT NULL,
+    enabled boolean NOT NULL,
+    updated_at timestamptz DEFAULT now() NOT NULL,
+    PRIMARY KEY (member_id, flag_key)
+);
+
 -- Vegetarian classification is a nullable recipe fact. Existing rows without a
 -- classifier version were legacy defaults, not confirmed non-vegetarian recipes.
 DO $$

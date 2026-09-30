@@ -12,6 +12,8 @@ describe('Step Parser Logic', () => {
       index: 1,
       title: 'Step 1',
       instruction: 'Chop onions',
+      editableInstruction: 'Chop onions',
+      sourcePath: [0],
     });
   });
 
@@ -48,6 +50,8 @@ describe('Step Parser Logic', () => {
 
     // Cooking is NOT generic, so it adds a prefix
     expect(result[2].instruction).toBe('Cooking: Sauté onions and garlic');
+    expect(result[2].editableInstruction).toBe('Sauté onions and garlic');
+    expect(result[2].sourcePath).toEqual([1, 0]);
   });
 
   it('handles empty or null input', () => {

@@ -29,6 +29,7 @@ import { t } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { getImageUrl } from '@/lib/imageUtils';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useFeatureFlag } from '@/store/featureFlagStore';
 
 interface CooksModeProps {
   recipe: {
@@ -66,6 +67,14 @@ const getFallbackSteps = (): CookingStep[] => [
   },
 ];
 
+function updateInstructionValue(value: unknown, instruction: string): unknown {
+  if (typeof value === 'string') return instruction;
+  if (typeof value !== 'object' || value === null) return value;
+  const step = value as Record<string, unknown>;
+  if ('text' in step) return { ...step, text: instruction };
+  return { ...step, name: instruction };
+}
+
 export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksModeProps) {
   const router = useRouter();
   const [recipeDetails, setRecipeDetails] = useState<Recipe | null>(null);
@@ -78,6 +87,11 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [reimportAcknowledgement, setReimportAcknowledgement] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingValue, setEditingValue] = useState('');
+  const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
+  const [editPending, setEditPending] = useState(false);
+  const [editError, setEditError] = useState(false);
+  const [editAnnouncement, setEditAnnouncement] = useState('');
+  const singlePageEnabled = useFeatureFlag('single-page-recipe-steps');
   const { cookProgress, setCookProgress } = usePlannerStore();
   const currentStep = cookProgress[initialRecipe.id] ?? 0;
 
@@ -115,6 +129,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const steps = parsedSteps.length > 0 ? parsedSteps : getFallbackSteps();
   const isPrepStep = currentStep === 0;
   const activeRecipeStepIndex = Math.max(currentStep - 1, 0);
+  const editingStep = editingStepIndex === null ? null : steps[editingStepIndex];
 
   const nextStep = () => {
     if (isPrepStep) {
@@ -137,29 +152,29 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   };
 
   const handleSaveEdit = async () => {
-    if (!recipeDetails || editingValue === currentStepData.instruction) {
+    if (!recipeDetails || !editingStep || editingValue === editingStep.editableInstruction) {
       setIsEditing(false);
+      setEditingStepIndex(null);
       return;
     }
 
+    setEditPending(true);
+    setEditError(false);
     try {
       const originalInstructions = [...(recipeDetails.recipeInstructions || [])];
-
-      // Simple mapping for flat arrays (string[] or HowToStep[])
-      const updatedInstructions = originalInstructions.map((step, idx) => {
-        if (idx === activeRecipeStepIndex) {
-          if (typeof step === 'string') {
-            return editingValue;
-          } else if (typeof step === 'object' && step !== null) {
-            const stepObj = step as any;
-            if ('text' in stepObj) {
-              return { ...stepObj, text: editingValue };
-            } else {
-              return { ...stepObj, name: editingValue };
-            }
-          }
+      const [outerIndex, innerIndex] = editingStep.sourcePath ?? [editingStepIndex ?? 0];
+      const updatedInstructions = originalInstructions.map((entry, index) => {
+        if (index !== outerIndex) return entry;
+        if (innerIndex !== undefined && typeof entry === 'object' && entry !== null) {
+          const section = entry as { itemListElement?: unknown[] };
+          return {
+            ...section,
+            itemListElement: (section.itemListElement ?? []).map((step, stepIndex) =>
+              stepIndex === innerIndex ? updateInstructionValue(step, editingValue) : step
+            ),
+          };
         }
-        return step;
+        return updateInstructionValue(entry, editingValue);
       });
 
       await updateRecipe(initialRecipe.id, {
@@ -177,14 +192,28 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         setParsedSteps(newSteps);
       }
       setIsEditing(false);
+      setEditingStepIndex(null);
+      setEditAnnouncement('Step saved');
     } catch (error) {
       console.error('[CooksMode] Failed to save instruction edit:', error);
+      setEditError(true);
+    } finally {
+      setEditPending(false);
     }
   };
 
   const handleCancelEdit = () => {
+    const stepIndex = editingStep?.index;
     setIsEditing(false);
-    setEditingValue(currentStepData.instruction);
+    setEditingStepIndex(null);
+    setEditError(false);
+    if (stepIndex !== undefined) {
+      requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLButtonElement>(`[data-testid="single-page-edit-step-${stepIndex}"]`)
+          ?.focus();
+      });
+    }
   };
 
   const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
@@ -311,14 +340,17 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     <Flag size={20} aria-hidden="true" />
                   </button>
                 )}
-                {!isPrepStep && (
+                {!isPrepStep && !singlePageEnabled && (
                   <button
                     type="button"
                     data-testid="cooks-mode-edit-step"
                     onClick={(event) => {
                       event.stopPropagation();
                       setIsEditing(true);
-                      setEditingValue(currentStepData.instruction);
+                      setEditingStepIndex(activeRecipeStepIndex);
+                      setEditingValue(
+                        currentStepData.editableInstruction ?? currentStepData.instruction
+                      );
                     }}
                     className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
                     aria-label="Edit step"
@@ -462,6 +494,102 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                       </div>
                     )}
                   </div>
+                ) : singlePageEnabled ? (
+                  <div data-testid="single-page-recipe-steps" className="space-y-8 pb-10">
+                    <div className="border-b border-charcoal/10 pb-5">
+                      <h3 className="font-heading text-3xl font-black text-charcoal md:text-4xl">
+                        Cooking steps
+                      </h3>
+                    </div>
+                    <ol className="space-y-6">
+                      {steps.map((step, index) => {
+                        const rowEditing = editingStepIndex === index;
+                        return (
+                          <li
+                            key={step.index}
+                            className="rounded-[2rem] border border-charcoal/5 bg-white/70 p-6 shadow-sm md:p-8"
+                          >
+                            <div className="flex items-start gap-5">
+                              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-terracotta text-lg font-black text-white">
+                                {step.index}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-3">
+                                  <h4 className="font-heading text-xl font-black text-charcoal md:text-2xl">
+                                    {step.title}
+                                  </h4>
+                                  {!rowEditing && (
+                                    <button
+                                      type="button"
+                                      disabled={isEditing}
+                                      data-testid={`single-page-edit-step-${step.index}`}
+                                      aria-label={`Edit step ${step.index}`}
+                                      onClick={() => {
+                                        setIsEditing(true);
+                                        setEditingStepIndex(index);
+                                        setEditingValue(
+                                          step.editableInstruction ?? step.instruction
+                                        );
+                                        setEditError(false);
+                                      }}
+                                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-charcoal/10 bg-white text-charcoal/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:opacity-40"
+                                    >
+                                      <Pencil size={18} aria-hidden="true" />
+                                    </button>
+                                  )}
+                                </div>
+                                {rowEditing ? (
+                                  <div className="mt-4 space-y-3">
+                                    <textarea
+                                      autoFocus
+                                      aria-label={`Edit step ${step.index} instructions`}
+                                      value={editingValue}
+                                      onChange={(event) => setEditingValue(event.target.value)}
+                                      className="min-h-40 w-full rounded-2xl border-2 border-charcoal/10 bg-white p-4 text-lg text-charcoal outline-none focus:border-terracotta"
+                                    />
+                                    <div className="flex flex-wrap gap-3">
+                                      <button
+                                        type="button"
+                                        disabled={editPending}
+                                        onClick={() => void handleSaveEdit()}
+                                        className="min-h-11 rounded-full bg-terracotta px-6 font-bold text-white disabled:opacity-50"
+                                      >
+                                        {editPending ? 'Saving…' : 'Save'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={editPending}
+                                        onClick={handleCancelEdit}
+                                        className="min-h-11 rounded-full border border-charcoal/15 bg-white px-6 font-bold text-charcoal"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                    {editError && (
+                                      <p role="alert" className="font-semibold text-terracotta">
+                                        Couldn&apos;t save this step.{' '}
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleSaveEdit()}
+                                          className="min-h-11 underline"
+                                        >
+                                          Try again
+                                        </button>
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="mt-3 text-xl font-semibold leading-relaxed text-charcoal/80">
+                                    {step.instruction}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
                 ) : isEditing ? (
                   <div className="space-y-6 w-full">
                     <textarea
@@ -514,6 +642,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         >
           <Button
             variant="secondary"
+            style={!isPrepStep && singlePageEnabled ? { display: 'none' } : undefined}
             disabled={currentStep === 0}
             onClick={prevStep}
             data-testid="cooks-mode-step-prev"
@@ -523,16 +652,28 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             <span>{t('cook.back', 'Back')}</span>
           </Button>
           <Button
-            onClick={nextStep}
+            onClick={
+              !isPrepStep && singlePageEnabled
+                ? () => {
+                    setShowCelebration(true);
+                    setTimeout(() => {
+                      onCooked?.();
+                      onClose();
+                    }, 600);
+                  }
+                : nextStep
+            }
             data-testid="cooks-mode-step-next"
             className="h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] bg-terracotta text-white text-xl md:text-2xl font-black flex items-center justify-center space-x-2 md:space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
           >
             <span>
-              {currentStep === steps.length
+              {!isPrepStep && singlePageEnabled
                 ? t('cook.done', 'Done')
-                : isPrepStep
-                  ? t('cook.letsCook', "Let's Cook")
-                  : t('cook.next', 'Next')}
+                : currentStep === steps.length
+                  ? t('cook.done', 'Done')
+                  : isPrepStep
+                    ? t('cook.letsCook', "Let's Cook")
+                    : t('cook.next', 'Next')}
             </span>
             <ChevronRight size={24} />
           </Button>
@@ -552,6 +693,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           }}
         />
       )}
+      <p className="sr-only" aria-live="polite">
+        {editAnnouncement}
+      </p>
       {reportContext && recipeDetails && (
         <RecipeImportIssueSheet
           issue={recipeDetails.importIssue ?? null}

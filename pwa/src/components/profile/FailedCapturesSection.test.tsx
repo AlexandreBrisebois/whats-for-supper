@@ -71,12 +71,11 @@ describe('FailedCapturesSection', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
-  // Unit test 1: Settings page renders failed-captures-section
-  it('renders failed-captures-section', async () => {
+  it('hides the section when no failures are available', async () => {
     await act(async () => {
       render(<FailedCapturesSection />);
     });
-    expect(screen.getByTestId('failed-captures-section')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByTestId('failed-captures-section')).toBeNull());
   });
 
   // Unit test 2: Each failure row renders failed-capture-<id> with friendly reason visible
@@ -137,17 +136,14 @@ describe('FailedCapturesSection', () => {
     });
   });
 
-  // Unit test 5: Empty state renders failed-captures-empty
-  it('renders failed-captures-empty when items array is empty', async () => {
+  it('does not render an empty recovery card', async () => {
     mockGetCaptureFailures.mockResolvedValue([]);
 
     await act(async () => {
       render(<FailedCapturesSection />);
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('failed-captures-empty')).toBeInTheDocument();
-    });
+    expect(screen.queryByTestId('failed-captures-section')).toBeNull();
   });
 
   it('action-clear-<id> tap calls clearCaptureFailure and removes the row', async () => {

@@ -8,6 +8,7 @@ import { FailedCapturesSection } from '@/components/profile/FailedCapturesSectio
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 import { useFamilyStore } from '@/store/familyStore';
+import { PreviewFeaturesSection } from '@/components/profile/PreviewFeaturesSection';
 
 interface SettingsPageContentProps {
   buildVersion?: string;
@@ -42,14 +43,29 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
       </div>
 
       <div className="flex flex-col gap-8">
-        {/* Family Management */}
-        <FamilyManagement />
+        <section aria-labelledby="settings-household-heading" className="space-y-3">
+          <h2
+            id="settings-household-heading"
+            className="px-2 font-heading text-lg font-bold text-charcoal"
+          >
+            Your household
+          </h2>
+          <FamilyManagement />
+        </section>
 
-        {/* Family GOTO */}
-        <FamilyGOTOSettings />
+        <section aria-labelledby="settings-meal-defaults-heading" className="space-y-3">
+          <h2
+            id="settings-meal-defaults-heading"
+            className="px-2 font-heading text-lg font-bold text-charcoal"
+          >
+            Meal defaults
+          </h2>
+          <FamilyGOTOSettings />
+        </section>
 
-        {/* Failed Captures */}
         <FailedCapturesSection />
+
+        <PreviewFeaturesSection />
       </div>
 
       {buildVersion && (

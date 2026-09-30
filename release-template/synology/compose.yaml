@@ -58,6 +58,7 @@ services:
       GEMINI_MODEL_ID_HERO: ${GEMINI_MODEL_ID_HERO}
       EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID}
       DEMO_MODE: ${DEMO_MODE:-false}
+      WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS: ${WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS:-off}
     volumes:
       - ./data/app:/data
     depends_on:

@@ -58,6 +58,7 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
 
 import { CooksMode } from './CooksMode';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useFeatureFlagStore } from '@/store/featureFlagStore';
 
 describe('CooksMode', () => {
   beforeEach(() => {
@@ -67,6 +68,46 @@ describe('CooksMode', () => {
     resolveRecipeImportIssueMock.mockReset();
     routerMocks.push.mockReset();
     usePlannerStore.setState({ cookProgress: {} });
+    useFeatureFlagStore.setState({ flags: {} });
+  });
+
+  it('keeps preparation and then renders every editable step on one page when enabled', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      ingredients: ['Pasta'],
+      recipeInstructions: ['Boil water', 'Cook pasta'],
+    });
+    updateRecipeMock.mockResolvedValue(undefined);
+    useFeatureFlagStore.setState({
+      flags: {
+        'single-page-recipe-steps': {
+          key: 'single-page-recipe-steps',
+          mode: 'opt-in',
+          enabled: true,
+          memberEnabled: true,
+        },
+      },
+    });
+
+    render(
+      <CooksMode recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '' }} onClose={vi.fn()} />
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Check & Prep' })).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByTestId('single-page-recipe-steps')).toHaveTextContent('Boil water');
+    expect(screen.getByTestId('single-page-recipe-steps')).toHaveTextContent('Cook pasta');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit step 2' }));
+    fireEvent.change(screen.getByLabelText('Edit step 2 instructions'), {
+      target: { value: 'Cook gently' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(updateRecipeMock).toHaveBeenCalledWith('recipe-1', {
+        recipeInstructions: ['Boil water', 'Cook gently'],
+      })
+    );
   });
 
   it('completes Cook Mode in place so the Home cooked state is not remounted', async () => {

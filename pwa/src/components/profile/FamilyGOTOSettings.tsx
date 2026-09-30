@@ -86,7 +86,7 @@ export function FamilyGOTOSettings() {
 
   return (
     <>
-      <div className="w-full max-w-sm rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-8 shadow-glass">
+      <div className="w-full rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-8 shadow-glass">
         <div className="flex items-center gap-3 mb-8">
           <Sparkles className="h-4 w-4 text-ochre" />
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-ochre">

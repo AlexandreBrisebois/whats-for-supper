@@ -16,6 +16,7 @@ import { useCaptureStore } from '@/store/captureStore';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 import { ToastContainer } from '@/components/ui';
 import { LanguageSwitchProposal } from '@/components/common/LanguageSwitchProposal';
+import { FeatureFlagProvider } from '@/components/featureFlags/FeatureFlagProvider';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -83,7 +84,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     pathname === '/profile/settings';
 
   return (
-    <>
+    <FeatureFlagProvider>
       {/* Pre-seed weekStore for weekOffset=0 on app load (BS-2 fix) */}
       <WeekStoreInitializer />
       {/* Notification layer — fixed at the top, stackable flex column */}
@@ -106,6 +107,6 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
       >
         {children}
       </Layout>
-    </>
+    </FeatureFlagProvider>
   );
 }

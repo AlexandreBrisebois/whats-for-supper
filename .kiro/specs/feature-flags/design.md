@@ -1,6 +1,6 @@
 # Feature Flags — Design
 
-**Status:** Proposed
+**Status:** Approved for implementation on 2026-09-30
 
 **Requirements:** [requirements.md](requirements.md)
 
@@ -75,13 +75,13 @@ Add a backend registry whose code entries are immutable deployment metadata:
 
 ```csharp
 new FeatureFlagDefinition(
-    Key: "example-feature",
-    EnvironmentVariable: "WFS_FEATURE_EXAMPLE_FEATURE",
-    Owner: "product-area",
-    DisplayNameKey: "featureFlags.exampleFeature.name",
-    DescriptionKey: "featureFlags.exampleFeature.description",
-    IntroducedOn: new DateOnly(2026, 9, 29),
-    GraduationCriterion: "approved after production feedback");
+    Key: "single-page-recipe-steps",
+    EnvironmentVariable: "WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS",
+    Owner: "cooking-experience",
+    DisplayNameKey: "featureFlags.singlePageRecipeSteps.name",
+    DescriptionKey: "featureFlags.singlePageRecipeSteps.description",
+    IntroducedOn: new DateOnly(2026, 9, 30),
+    GraduationCriterion: "responsive and accessibility acceptance passes and the owner approves graduation after the opt-in observation period");
 ```
 
 The API parses all registered modes once during startup into an immutable snapshot.
@@ -105,12 +105,12 @@ Authenticated by the existing family-member identity. Suggested response:
 {
   "data": [
     {
-      "key": "example-feature",
+      "key": "single-page-recipe-steps",
       "mode": "opt-in",
       "enabled": false,
       "memberEnabled": false,
-      "displayName": "Faster weekly planning",
-      "description": "Try a shorter way to shape next week's meals."
+      "displayName": "Recipe on one page",
+      "description": "After getting ready, scroll through all the cooking steps on one page."
     }
   ]
 }

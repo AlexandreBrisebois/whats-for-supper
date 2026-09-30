@@ -623,6 +623,36 @@ components:
           additionalProperties: true
           description: Opaque JSON value. Structure depends on the setting key.
 
+    FeatureFlagMode:
+      type: string
+      enum: [off, opt-in, on]
+
+    FeatureFlagDto:
+      type: object
+      required: [key, enabled, mode]
+      properties:
+        key: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }
+        enabled: { type: boolean }
+        mode: { $ref: '#/components/schemas/FeatureFlagMode' }
+        memberEnabled: { type: boolean }
+        displayName: { type: string }
+        description: { type: string }
+
+    FeatureFlagListDto:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/FeatureFlagDto' }
+
+    UpdateFeatureFlagRequest:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+
     # --- SSE Stream Events ---
     # Base discriminated union for all SSE event payloads.
     # EventSource delivers these as JSON in the `data:` field of each SSE frame.
@@ -2830,6 +2860,60 @@ paths:
                 type: object
                 properties:
                   data: { $ref: '#/components/schemas/SettingsDto' }
+
+  /api/feature-flags:
+    get:
+      summary: Get the effective feature-flag snapshot for the authenticated member
+      security: [{ FamilyMemberId: [] }]
+      responses:
+        '200':
+          description: Effective registered feature flags
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FeatureFlagListDto' }
+              example:
+                data:
+                  items:
+                    - key: single-page-recipe-steps
+                      enabled: false
+                      mode: opt-in
+                      memberEnabled: false
+                      displayName: Recipe on one page
+                      description: After getting ready, scroll through all the cooking steps on one page.
+        '401': { description: Family member identity is required }
+
+  /api/feature-flags/{key}:
+    parameters:
+      - name: key
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      summary: Update the authenticated member's opt-in choice
+      security: [{ FamilyMemberId: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateFeatureFlagRequest' }
+      responses:
+        '200':
+          description: Updated effective feature flag
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/FeatureFlagDto' }
+        '400': { description: Malformed request }
+        '401': { description: Family member identity is required }
+        '404': { description: Feature flag or family member not found }
+        '409': { description: Feature flag is not available for opt-in }
 
   /api/goto:
     get:

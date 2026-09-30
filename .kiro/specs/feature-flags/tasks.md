@@ -1,6 +1,6 @@
 # Feature Flags — Tasks
 
-**Status:** Proposed backlog; no task is approved for implementation.
+**Status:** Tasks 1–6 approved for coupled implementation on 2026-09-30.
 
 **Requirements:** [requirements.md](requirements.md)
 
@@ -8,9 +8,10 @@
 
 ## Approval gate
 
-Before selecting Task 1, resolve the three open questions in the requirements and
-name the first real feature that will prove the system. Do not build a flag platform
-with a fake or unused consumer.
+The approval gate is resolved in the requirements. The implementation must deliver
+the feature-flag capability and the `single-page-recipe-steps` proving feature from
+[`../single-page-recipe-view/tasks.md`](../single-page-recipe-view/tasks.md) together.
+Task 7 remains a later lifecycle task and is not authorized now.
 
 ## Task 1 — Approve the proving slice and contract
 

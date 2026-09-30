@@ -17,6 +17,7 @@ import {
   type FamilyGetResponse,
   type FamilyGetResponse_data,
 } from '../src/lib/api/generated/api/family/index';
+import type { FeatureFlagDto } from '../src/lib/api/generated/models/index';
 import { type UntypedNode } from '@microsoft/kiota-abstractions';
 import { MOCK_IDS } from '../src/testing/mock-ids';
 import { REALISTIC_RECIPES, REALISTIC_SCHEDULE_RECIPES } from '../src/testing/realistic-recipes';
@@ -97,12 +98,78 @@ export async function mockSseWithConnectedSchedule(
 }
 
 /**
+ * Stateful feature-flag API mock. PATCH updates the selected member's override,
+ * and subsequent GET requests return the confirmed effective state.
+ */
+export async function mockFeatureFlags(
+  page: Page,
+  initialFlags: FeatureFlagDto[] = []
+): Promise<void> {
+  const definitions = new Map(
+    initialFlags.filter((flag) => flag.key).map((flag) => [flag.key as string, { ...flag }])
+  );
+  const overrides = new Map<string, Map<string, boolean>>();
+
+  const memberIdFor = (request: { headers(): Record<string, string> }) =>
+    request.headers()['x-family-member-id'] || MOCK_IDS.MEMBER_ALEX;
+
+  const snapshotFor = (memberId: string) =>
+    [...definitions.values()].map((definition) => {
+      if (definition.mode === 'on') return { ...definition, enabled: true };
+      if (definition.mode === 'off') return { ...definition, enabled: false };
+      const memberEnabled =
+        overrides.get(memberId)?.get(definition.key as string) ?? definition.memberEnabled ?? false;
+      return { ...definition, enabled: memberEnabled, memberEnabled };
+    });
+
+  await page.route('**/api/feature-flags/*', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    const key = decodeURIComponent(new URL(route.request().url()).pathname.split('/').pop() ?? '');
+    const definition = definitions.get(key);
+    if (!definition) {
+      return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+    }
+    if (definition.mode !== 'opt-in') {
+      return route.fulfill({ status: 409, contentType: 'application/json', body: '{}' });
+    }
+
+    const body = route.request().postDataJSON() as { enabled?: unknown };
+    if (typeof body.enabled !== 'boolean') {
+      return route.fulfill({ status: 400, contentType: 'application/json', body: '{}' });
+    }
+
+    const memberId = memberIdFor(route.request());
+    const memberOverrides = overrides.get(memberId) ?? new Map<string, boolean>();
+    memberOverrides.set(key, body.enabled);
+    overrides.set(memberId, memberOverrides);
+    const updated = snapshotFor(memberId).find((flag) => flag.key === key);
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: updated }),
+    });
+  });
+
+  await page.route('**/api/feature-flags', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const items = snapshotFor(memberIdFor(route.request()));
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { items } }),
+    });
+  });
+}
+
+/**
  * Setup common API routes with sane defaults.
  */
 export async function setupCommonRoutes(page: Page) {
   let activeImportIssue: RecipeImportIssueDto | null = null;
   let activeImportId: string | null = null;
   let importStatusReads = 0;
+
+  await mockFeatureFlags(page);
 
   // GET /api/family
   await page.route('**/api/family', async (route) => {

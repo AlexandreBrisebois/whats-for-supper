@@ -25,6 +25,7 @@ services:
       HEARTH_SECRET: ${HEARTH_SECRET}
       DEMO_MODE: ${DEMO_MODE:-false}
       DEMO_RESTORE_CRON_UTC: "${DEMO_RESTORE_CRON_UTC:-0 3 * * *}"
+      WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS: ${WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS:-off}
 
     depends_on:
       postgres:

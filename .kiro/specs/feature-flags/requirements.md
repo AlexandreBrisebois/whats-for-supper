@@ -6,7 +6,7 @@
 
 **Source:** Product direction in the 2026-09-29 settings-page review
 
-**Status:** Proposed; implementation is not authorized by this specification
+**Status:** Approved for implementation on 2026-09-30
 
 ## Outcome
 
@@ -197,12 +197,13 @@ enable a disabled server capability.
 8. After graduation, a repository search finds neither the flag key nor its
    environment variable, and only the promoted implementation remains.
 
-## Open questions before implementation
+## Approved proving slice
 
-1. **Feedback destination:** approve an existing feedback URL/channel, or defer
-   FF-10's action as an optional follow-up.
-2. **Initial proving flag:** select one small, reversible feature to validate the
-   framework end to end. Building infrastructure with no real consumer would create
-   speculative code.
-3. **Operational ownership:** identify who may change production deployment modes
-   and where that change is audited in the chosen deployment platform.
+- **Feature:** `single-page-recipe-steps`, specified independently in
+  [`../single-page-recipe-view/requirements.md`](../single-page-recipe-view/requirements.md).
+- **Member copy:** **Recipe on one page** — “After getting ready, scroll through all
+  the cooking steps on one page.”
+- **Feedback:** defer FF-10's action to optional Task 5A; do not invent or reuse a
+  recipe-content feedback destination.
+- **Operational ownership:** the administrator deploying each local or Synology
+  installation owns deployment-mode changes. AWS is not an active deployment.

@@ -146,6 +146,8 @@ try
     builder.Services.AddScoped<GroceryRecomputeService>();
     builder.Services.AddScoped<IngredientCategoryService>();
     builder.Services.AddScoped<SettingsService>();
+    builder.Services.AddSingleton<FeatureFlagRegistry>();
+    builder.Services.AddScoped<FeatureFlagService>();
     builder.Services.AddScoped<GoToService>();
     builder.Services.AddSingleton<IClock, SystemClock>();
     builder.Services.Configure<VegetarianClassificationOptions>(builder.Configuration.GetSection("VegetarianClassification"));
