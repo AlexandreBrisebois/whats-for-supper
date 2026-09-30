@@ -1,3 +1,4 @@
+from git_fixture import IsolatedGitTestCase
 import importlib.util
 import contextlib
 import io
@@ -16,7 +17,7 @@ import drift
 import session
 
 
-class CompletionTests(unittest.TestCase):
+class CompletionTests(IsolatedGitTestCase):
     def finish(self):
         import finish
         return finish

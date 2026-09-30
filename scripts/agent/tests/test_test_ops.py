@@ -1,3 +1,4 @@
+from git_fixture import IsolatedGitTestCase
 import contextlib
 import importlib.util
 import io
@@ -21,7 +22,7 @@ def load_module():
     return module
 
 
-class ImpactPlanningTests(unittest.TestCase):
+class ImpactPlanningTests(IsolatedGitTestCase):
     def test_impact_selection_blocks_on_changed_head_before_planning(self):
         module = load_module()
         with tempfile.TemporaryDirectory() as tmp:

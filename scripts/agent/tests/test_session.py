@@ -5,6 +5,8 @@ import tempfile
 import unittest
 import contextlib
 import io
+import os
+from git_fixture import IsolatedGitTestCase
 
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -12,7 +14,21 @@ sys.path.insert(0, str(SCRIPTS))
 import session
 
 
-class TaskSessionTests(unittest.TestCase):
+class HookEnvironmentTests(unittest.TestCase):
+    def test_worktree_fixture_ignores_inherited_hook_environment(self):
+        environment = dict(os.environ, GIT_INDEX_FILE=".git/index",
+                           GIT_CONFIG_COUNT="1",
+                           GIT_CONFIG_KEY_0="commit.gpgsign",
+                           GIT_CONFIG_VALUE_0="true")
+        result = subprocess.run(
+            [sys.executable, "-B", "-m", "unittest",
+             "test_session.TaskSessionTests.test_distinct_worktrees_support_independent_sessions"],
+            cwd=Path(__file__).parent, env=environment,
+            capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
+class TaskSessionTests(IsolatedGitTestCase):
     def repo(self, directory: str) -> Path:
         root = Path(directory)
         subprocess.run(["git", "init", "-q"], cwd=root, check=True)

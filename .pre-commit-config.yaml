@@ -1,6 +1,13 @@
 repos:
   - repo: local
     hooks:
+      - id: agent-harness
+        name: Agent harness tests
+        language: system
+        entry: task test:agent
+        files: ^(scripts/agent/|\.agents/|Taskfile\.yml$|\.pre-commit-config\.yaml$)
+        pass_filenames: false
+
       - id: openapi-schema-drift
         name: OpenAPI schema drift (spec vs C# DTOs)
         language: python

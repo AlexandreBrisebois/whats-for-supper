@@ -1000,7 +1000,7 @@ tasks:
   hooks:install:
     desc: "Install git pre-commit hook"
     cmds:
-      - pre-commit install
+      - pre-commit install --overwrite
       - echo "✓ Pre-commit hooks installed via pre-commit framework"
 
   # ============================================================================
