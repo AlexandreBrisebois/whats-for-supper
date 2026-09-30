@@ -1,0 +1,289 @@
+version: 1
+entries:
+  - slug: shared-household-authentication
+    name: Shared household authentication
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/id-01-shared-household-authentication
+    aliases: [household access, passphrase]
+  - slug: member-onboarding-and-switching
+    name: Member onboarding and switching
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/id-02-member-onboarding-switching
+  - slug: household-member-administration
+    name: Household member administration and invitations
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/id-03-member-administration-invitations
+  - slug: tonights-meal-status
+    name: Tonight's meal status
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/home-01-tonights-meal-status
+  - slug: empty-night-fallback
+    name: Empty-night fallback
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/home-02-empty-night-fallback
+  - slug: changed-plan-recovery
+    name: Changed-plan recovery
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/home-03-changed-plan-recovery
+  - slug: goto-fallback-rotation
+    name: GOTO fallback rotation
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/home-04-goto-fallback-rotation
+  - slug: week-navigation-and-status
+    name: Week navigation and status
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plan-01-week-navigation-status
+  - slug: meal-assignment-and-replacement
+    name: Meal assignment and replacement
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plan-02-meal-assignment-replacement
+  - slug: schedule-movement-and-exceptions
+    name: Schedule movement and exceptions
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plan-03-schedule-movement-exceptions
+  - slug: family-voting-cycle
+    name: Family voting cycle
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plan-04-family-voting-cycle
+  - slug: automatic-schedule-maintenance
+    name: Automatic schedule maintenance
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plan-05-automatic-schedule-maintenance
+  - slug: derived-weekly-grocery-list
+    name: Derived weekly grocery list
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/groc-01-derived-weekly-grocery-list
+  - slug: collaborative-shopping-state
+    name: Collaborative shopping state
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/groc-02-collaborative-shopping-state
+    depends_on: [shared-real-time-state]
+  - slug: ingredient-aisle-correction
+    name: Ingredient aisle correction
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/groc-03-ingredient-aisle-correction
+  - slug: swipe-discovery-queue
+    name: Swipe discovery queue
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/disc-01-swipe-discovery-queue
+  - slug: household-matching-feedback
+    name: Household matching feedback
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/disc-02-household-matching-feedback
+  - slug: discoverability-controls
+    name: Discoverability controls
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/disc-03-discoverability-controls
+  - slug: conversational-hybrid-search
+    name: Conversational hybrid search
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/search-01-conversational-hybrid-search
+  - slug: browse-and-incremental-results
+    name: Browse and incremental results
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/search-02-browse-incremental-results
+  - slug: faceted-filters
+    name: Faceted filters
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/search-03-faceted-filters
+  - slug: context-aware-search
+    name: Context-aware search
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/search-04-context-aware-search
+  - slug: immersive-library-browsing
+    name: Immersive library browsing
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/lib-01-immersive-library-browsing
+  - slug: recipe-detail-and-metadata
+    name: Recipe detail and metadata
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/lib-02-recipe-detail-metadata
+  - slug: recipe-actions
+    name: Recipe actions
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/lib-03-recipe-actions
+  - slug: recipe-imagery-and-provenance
+    name: Recipe imagery and provenance
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/lib-04-recipe-imagery-provenance
+  - slug: soft-deletion-and-recycle-bin
+    name: Soft deletion and recycle bin
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/lib-05-soft-deletion-recycle-bin
+  - slug: portable-recipe-sharing
+    name: Portable recipe sharing
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/lib-06-portable-recipe-sharing
+  - slug: photo-capture
+    name: Photo capture
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cap-01-photo-capture
+  - slug: recipe-url-capture
+    name: Recipe URL capture and PWA share target
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cap-02-url-capture-share-target
+    aliases: [share target, link ingestion, capture url]
+  - slug: description-based-creation
+    name: Description-based recipe creation
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cap-03-description-creation
+  - slug: recipe-bundle-import
+    name: Recipe bundle import
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cap-04-recipe-bundle-import
+  - slug: duplicate-prevention
+    name: Duplicate prevention
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cap-05-duplicate-prevention
+  - slug: import-progress-and-completion
+    name: Import progress and completion
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cap-06-import-progress-completion
+  - slug: import-failure-recovery
+    name: Import failure recovery
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cap-07-import-failure-recovery
+  - slug: step-by-step-cooks-mode
+    name: Step-by-step Cook's Mode
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cook-01-step-by-step-cooks-mode
+  - slug: in-cook-recipe-feedback
+    name: In-cook recipe feedback
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/cook-02-in-cook-feedback
+  - slug: import-issue-reporting
+    name: Import issue reporting
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/qual-01-import-issue-reporting
+  - slug: contextual-reimport
+    name: Contextual re-import
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/qual-02-contextual-reimport
+  - slug: processing-language-configuration
+    name: Processing-language configuration
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/qual-03-processing-language
+  - slug: interface-localization
+    name: Interface localization
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/pref-01-interface-localization
+  - slug: installable-pwa-and-device-integration
+    name: Installable PWA and device integration
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/pref-02-installable-pwa-device-integration
+  - slug: responsive-and-accessible-interaction
+    name: Responsive and accessible interaction
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/pref-03-responsive-accessible-interaction
+  - slug: shared-real-time-state
+    name: Shared real-time state
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plat-01-shared-real-time-state
+  - slug: background-workflow-engine
+    name: Background workflow engine
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plat-02-background-workflow-engine
+  - slug: recipe-search-indexing
+    name: Recipe search indexing
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plat-03-recipe-search-indexing
+  - slug: ingredient-categorization
+    name: Ingredient categorization
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plat-04-ingredient-categorization
+  - slug: storage-backup-and-recovery
+    name: Storage backup and recovery
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plat-05-storage-backup-recovery
+  - slug: managed-demo-mode
+    name: Managed demo mode
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plat-06-managed-demo-mode
+  - slug: health-authentication-and-response-conventions
+    name: Health, authentication, and response conventions
+    kind: capability-baseline
+    lifecycle: current
+    path: .kiro/specs/plat-07-health-auth-response-conventions
+  - slug: feature-flags
+    name: Feature flags
+    kind: planned-feature
+    lifecycle: planned
+    path: .kiro/specs/feature-flags
+    next_action: Select the first bounded implementation task.
+  - slug: single-page-recipe-view
+    name: Recipe on one page
+    kind: planned-feature
+    lifecycle: planned
+    path: .kiro/specs/single-page-recipe-view
+    depends_on: [feature-flags]
+    next_action: Implement after the feature-flag decision boundary exists.
+  - slug: model-routing
+    name: Model routing
+    kind: platform-initiative
+    lifecycle: planned
+    path: .kiro/specs/model-routing
+    aliases: [ai provider routing, gemini fallback]
+    next_action: Select increment 1 only.
+  - slug: pwa-cache-coherence
+    name: PWA cache coherence
+    kind: platform-initiative
+    lifecycle: planned
+    path: .kiro/specs/pwa-caching
+    aliases: [pwa caching, request memoization, state preservation]
+    next_action: Normalize legacy session prompts before selecting work.
+  - slug: dietary-preferences-and-planning
+    name: Dietary preferences and planning exploration
+    kind: exploration
+    lifecycle: planned
+    path: .kiro/specs/diet-agent
+    aliases: [diet agent, dietary agent]
+    next_action: Reconcile legacy prompts into one approved outcome before implementation.

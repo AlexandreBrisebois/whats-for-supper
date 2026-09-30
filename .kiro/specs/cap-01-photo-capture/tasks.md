@@ -31,22 +31,10 @@ The old spec incorrectly listed `/capture/confirm`, `CameraView`, and `ImageRevi
 | R5 | `photoSubmitLockRef` and `MinimalCapture.submit-lock.test.tsx` | Local activation only; no cross-client idempotency. |
 | R6, R7 | Rendered control definitions and locale call sites | F4/F5; full accessibility/localization/privacy acceptance remains open. |
 
-## Verification record — 2026-09-30
+## Using this baseline for future work
 
-- **Passed:** from `pwa/`, `npm run test:unit -- src/components/capture/MinimalCapture.test.tsx src/components/capture/MinimalCapture.submit-lock.test.tsx src/store/captureStore.test.ts` — 3 files, 26 tests passed. Submission is mocked; these are focused UI/store checks.
-- **Reviewed:** OpenAPI, current upload/service/workflow/SSE source, and cited test scope. `RecipeImportLifecycleTests` covers import-report lifecycle rather than proving initial upload/launch reliability.
-- **Not run:** API/integration, real-database, browser E2E, live model/workflow, and live contract parity checks. This documentation-only change does not claim those outcomes.
-- **Harness blocked:** `task agent:begin -- cap-01-spec-review` found the existing `restore-precommit-ci-checks` session. `task agent:session:status` also reported that its baseline HEAD is stale. It was preserved. Standard `task agent:prepare` / `task agent:finish` were not run against that unrelated baseline.
-- **Passed:** harness `documentation_check` directly on these three Markdown files — introduced links and staged/worktree diff whitespace. No application formatting/generation is applicable. The check was repeated after this evidence update.
-
-## Scope and private baseline
-
-A separate baseline was created using the existing session module at `/private/tmp/wfs-cap-01-spec-review-session`, task ID `cap-01-spec-review`, source HEAD `44f28900ff019ebcfd05d59c2b6cd43916528c47`. It preserves the repository's active session rather than replacing it. Final scope/content hashes are recorded privately alongside that baseline.
-
-| Authorized file | Reason for change |
-|---|---|
-| `requirements.md` | Mark implemented status, retain R1–R8, replace generic claims with concrete behavior and explicit gaps. |
-| `design.md` | Record actual entry, native upload boundary, persistence/launch order and SSE ownership. |
-| `tasks.md` | Replace future implementation boilerplate with review findings, traceability and actual check evidence. |
-
-The four pre-existing dirty files in shared spec guidance and loading probes are outside this task. The spec remains at its requested path; no archival, implementation, commit, or deployment was performed.
+Select one finding as a bounded correction. The resulting task must update the
+affected requirements/design wording, name the relevant client/API/E2E seam and its
+mock owner, and add tests before code. Do not treat the implementation baseline as a
+certificate that upload, workflow, real-database, browser, or model behavior has
+been newly qualified.

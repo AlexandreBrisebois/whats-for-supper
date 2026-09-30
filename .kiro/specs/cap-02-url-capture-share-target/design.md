@@ -1,22 +1,22 @@
 # CAP-02 — URL capture and PWA share target design
 
-> **Status:** Proposed design derived from `CAP-02` requirements and verified current sources. Implementation is not authorized.
+> **Status:** Implemented design baseline derived from current source. It explains the shipped path and does not authorize changes.
 
 ## Integration map
 
 1. **UI/entry:** `/capture`; share-target query/form handling in the capture route and `pwa/public/manifest.json`/`pwa/public/sw.js`.
-2. **Client boundary:** API helpers in `pwa/src/lib/api/recipes.ts` or `pwa/src/lib/api/captures.ts`; generated models under `pwa/src/lib/api/generated/`.
+2. **Client boundary:** `pwa/src/lib/api/recipes.ts` uses the generated capture-url request builder; `MinimalCapture` owns review, duplicate lookup, busy/error, and pending state.
 3. **Contract:** `specs/openapi.yaml`: `POST /api/recipes/capture-url`, returning 202 with a recipe identifier.
 4. **Server/workflow:** `RecipeController.cs`, `url-import.yaml`, and web-acquisition agents/services.
-5. **Evidence:** `MinimalCapture.test.tsx`, `pwa/src/lib/api/recipes.test.ts`, and `WebAcquisitionAgentTests.cs`.
+5. **Browser seam:** `pwa/e2e/capture-flow.spec.ts` uses the shared `pwa/e2e/mock-api.ts` capture-url route for normal acceptance and test-local routes for failure cases.
 
 ## State and data flow
 
 1. The member enters with authenticated household/member context. Device-local draft and busy/error state remain owned by the initiating UI/store.
 2. Client validation rejects structurally invalid input before transport and locks submission during the request.
-3. The generated/manual API adapter sends the documented representation. The controller validates identity and maps the request to service/persistence or a workflow trigger.
+3. The generated API adapter sends the documented representation. The controller validates identity and maps the request to URL capture and its workflow trigger.
 4. A synchronous success updates from the response. A 202 response stores its recipe/import/workflow identifier and represents **pending**, never ready.
-5. Workflow processors update durable recipe/import state. Polling, refetch, or household-scoped SSE reconciles the client; ready entities enter normal recipe surfaces only when readiness rules pass.
+5. Workflow processors update durable recipe/import state. The existing capture notification/SSE path handles later completion; this URL-capture path does not add independent polling.
 6. Errors are separated into local validation, HTTP authorization/conflict/not-found, workflow launch failure, and later processing failure. Retry never assumes the prior attempt had no effect.
 
 ## Behavioral design decisions
@@ -24,8 +24,8 @@
 - Reuse the existing capture/detail/cook/issue components and OpenAPI-generated boundary; do not introduce a parallel state model.
 - Treat server responses as authoritative after every mutation. Guard async callbacks by recipe/import/attempt identity.
 - Preserve draft/navigation state until the accepted result or explicit cancel makes it safe to clear.
-- one-client submit locking exists; duplicate submissions across share target and paste are governed by duplicate handling, not assumed atomic
-- 202 is pending; acquisition, extraction, and readiness complete after navigation
+- One-client submit locking exists; duplicate submissions across share target and paste are governed by duplicate handling, not assumed atomic.
+- `202` is pending; acquisition, extraction, and readiness complete after navigation.
 
 ## Security, privacy, and household isolation
 

@@ -29,6 +29,11 @@ Task 7 remains a later lifecycle task and is not authorized now.
 **Meaningful assertions:** required/nullable fields are exact; authenticated member
 identity is not accepted from request data; generated client and mocks match OpenAPI.
 
+**Test seam:** `pwa/e2e/mock-api.ts` owns stateful `GET /api/feature-flags` and
+`PATCH /api/feature-flags/{key}` routes through `mockFeatureFlags`. It must return
+the contracted `{ data: FeatureFlagDto[] }` snapshot and confirmed mutation envelope
+before Settings or the proving feature's Playwright scenario is added.
+
 **Checks:** OpenAPI validation, generated-client drift, mock drift, API/PWA compile.
 
 **Stop if:** ownership or exact behavior of the proving flag is not approved.
@@ -92,6 +97,11 @@ authorities.
 **Meaningful assertions:** exactly one path renders; stale identity state never
 renders for a newly selected member; failed loading leaves the legacy workflow
 usable; no code below the boundary reads the key.
+
+**Test seam:** feature-flag provider tests cover loading, identity change, and
+mutation failure; browser tests use `mockFeatureFlags` rather than an unmocked API.
+The proving feature's own route/mock seam is owned by
+[`single-page-recipe-view/tasks.md`](../single-page-recipe-view/tasks.md).
 
 **Checks:** focused Vitest suites, PWA lint/typecheck, and relevant impact tests.
 

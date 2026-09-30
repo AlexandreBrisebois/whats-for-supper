@@ -4,12 +4,14 @@ Use the [shared specification workflow](../../.agents/core/specification-workflo
 for writing, reviewing and decomposing specifications. It owns the format and
 procedure; [AGENT.md](../../AGENT.md) owns authority and scope.
 
-New feature specifications use `.kiro/specs/<feature-slug>/requirements.md`,
-`design.md` and `tasks.md`. Existing grouped directories may remain. The
-current-capability baseline is indexed in
-[FEATURE_CATALOG.md](FEATURE_CATALOG.md). Bounded maintenance can use an
-[execution packet](../../.agents/templates/execution-packet.md) without an
-artificial feature spec. Load only the selected task and its immediate context.
+New active feature specifications use `.kiro/specs/<feature-slug>/requirements.md`,
+`design.md` and `tasks.md`. New slugs are descriptive lowercase kebab-case names;
+do not extend legacy category/number prefixes. Search the canonical
+[specification index](SPEC_INDEX.md) before creating or revising a package, then
+register the resulting package in [spec-registry.yaml](spec-registry.yaml).
+Existing grouped directories and legacy prefixes may remain. Bounded maintenance
+can use an [execution packet](../../.agents/templates/execution-packet.md) without
+an artificial feature spec. Load only the selected task and its immediate context.
 Review can end with findings only; planning does not authorize execution.
 
 Keep acceptance, design and task references aligned when authorized decisions

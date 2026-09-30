@@ -16,6 +16,11 @@ point. Reuse existing authorization. Classify new work as a feature specificatio
 defect-correction specification or maintenance packet using the ontology. For a
 feature specification, select and record a behavior-first or design-first derivation
 direction, a gated or accelerated approval cadence, and its source artifact.
+Before creating a package, search `.kiro/specs/spec-registry.yaml`; determine whether
+to revise an existing package, add a dependency, promote an exploration, or create a
+new descriptive lowercase kebab-case package. Existing numbered/category paths are
+stable legacy names, not a naming scheme for new work. Register active packages and
+validate the rendered index with `task spec:check`.
 Read selected requirements, design, tasks and immediate dependencies, then only
 the contracts and source needed to resolve affected seams. For every new feature
 specification, review the current implementation before drafting any of its three
@@ -54,6 +59,11 @@ Use that evidence throughout the specification, not only as design background:
   makes any new or changed boundary explicit; and
 - tasks follow the actual dependency order across those seams, identify file/effect
   ownership and include checks at the boundaries they change.
+
+When a future task changes a browser/API seam, its task description must name the
+unit/API tests, Playwright scenario, mock owner, route/method, and contract envelope.
+The mock belongs to the implementation vertical slice. Current capability baselines
+may identify relevant coverage but do not need to become command-result reports.
 
 Do not finalize requirements, design or tasks when a material implementation seam is
 still assumed. Mark the affected statement as an assumption or open question and

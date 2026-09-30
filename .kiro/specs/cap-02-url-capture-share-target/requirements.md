@@ -1,6 +1,6 @@
 # CAP-02 — URL capture and PWA share target requirements
 
-> **Status:** Proposed documentation of current behavior; behavior-first, accelerated cadence. This specification does **not** authorize implementation. Source artifact: `docs/feature-inventory.md` CAP-02.
+> **Status:** Implemented capability baseline; behavior-first, accelerated cadence. This specification describes the shipped URL/share-target path and does not authorize changes. Source artifact: `docs/feature-inventory.md` CAP-02.
 
 ## Outcome
 
@@ -30,14 +30,14 @@ A member can paste or share a recipe URL, add appreciation and notes, and contin
 
 ## Requirements
 
-- **CAP-02-R1 — Entry and eligibility.** When an authenticated member enters this capability in an eligible state, the system shall expose the relevant action and enough context to understand its effect; when ineligible, it shall hide or disable it with a truthful explanation.
-- **CAP-02-R2 — Accepted outcome.** When valid input is confirmed, the system shall perform only the scoped action, return/retain a durable correlation identifier where background work exists, and distinguish acceptance from completion.
-- **CAP-02-R3 — Validation and failure.** When input, authorization, network, source, or processing fails, the system shall preserve recoverable member input/state, show a family-safe actionable message, and avoid claiming success or readiness.
-- **CAP-02-R4 — Async consistency.** While work is pending, the member may navigate away; polling/events/refetch shall reconcile to authoritative server state, and stale or late results shall not overwrite a newer attempt.
-- **CAP-02-R5 — Concurrency.** Repeat activation shall be locked while a request is active. Cross-device conflicts shall converge on server state, and unsupported atomicity shall not be represented as guaranteed.
-- **CAP-02-R6 — Accessibility and responsive use.** Every pointer/gesture action shall have a labeled keyboard/touch alternative, dialogs shall expose name and focus containment/restoration, progress/error changes shall be announced without focus theft, and controls shall remain usable on phone and larger layouts.
-- **CAP-02-R7 — Privacy and localization.** Family UI shall not reveal technical diagnostics, secrets, or another household's data. User-facing copy shall use supported locale resources; recipe processing language shall remain distinct from interface locale.
-- **CAP-02-R8 — Preserved behavior.** shared title/text may help recover the URL, metadata is optional, and capture does not block on extraction
+- **CAP-02-R1 — Entry.** `/capture` accepts a pasted URL and PWA share-target `url`, `text`, and `title` parameters. A URL recovered from shared text opens the same review form as a pasted link.
+- **CAP-02-R2 — Review and submission.** The member reviews the URL, may add appreciation and notes, and explicitly saves before capture begins. Optional metadata stays in the existing capture form.
+- **CAP-02-R3 — Accepted outcome.** `POST /api/recipes/capture-url` returns a recipe ID with `202 Accepted`. The UI records that ID as pending and presents queued processing, never a ready recipe.
+- **CAP-02-R4 — Failure and retry.** Invalid or failed submission leaves the review form available, exposes a family-facing error, and does not claim that acquisition completed.
+- **CAP-02-R5 — Pending behavior.** The member can leave after acceptance while acquisition/import continues. Existing capture notification and recipe readiness behavior owns later completion feedback.
+- **CAP-02-R6 — Duplicate and concurrency boundary.** The review form locks its Save action while submitting and performs its existing duplicate check. Cross-device idempotency is not an implemented guarantee.
+- **CAP-02-R7 — Privacy and localization boundary.** The request uses authenticated family-member context; family-facing errors exclude operational diagnostics. Processing language remains independent of interface locale.
+- **CAP-02-R8 — Preserved behavior.** Shared title/text may help recover the URL, metadata is optional, and capture does not block on extraction.
 
 ## Observable acceptance states
 
