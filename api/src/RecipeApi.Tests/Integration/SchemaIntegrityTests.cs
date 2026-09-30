@@ -116,6 +116,22 @@ public class SchemaIntegrityTests
     }
 
     [Fact]
+    public void FeatureFlagOverrides_Compatibility_WaitsForFamilyMembers()
+    {
+        var compatibilityTable = GetCompatibilityTableDefinition("feature_flag_overrides");
+        var familyMembersGuard = _compatibilityContent.IndexOf(
+            "IF to_regclass('public.family_members') IS NOT NULL THEN",
+            StringComparison.OrdinalIgnoreCase);
+        var featureFlagTable = _compatibilityContent.IndexOf(
+            "CREATE TABLE IF NOT EXISTS feature_flag_overrides",
+            StringComparison.OrdinalIgnoreCase);
+
+        Assert.True(familyMembersGuard >= 0, "The feature-flag compatibility transition must guard its family_members dependency.");
+        Assert.True(familyMembersGuard < featureFlagTable);
+        Assert.Contains("REFERENCES family_members(id) ON DELETE CASCADE", compatibilityTable, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RecipeImportReport_Model_UsesCascadeAndNullableMemberReferences()
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync();
@@ -165,6 +181,13 @@ public class SchemaIntegrityTests
         var pattern = $@"CREATE TABLE IF NOT EXISTS {tableName} \((.*?)\);";
         var match = Regex.Match(_schemaContent, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         return match.Success ? match.Groups[1].Value : string.Empty;
+    }
+
+    private string GetCompatibilityTableDefinition(string tableName)
+    {
+        var pattern = $@"CREATE TABLE IF NOT EXISTS {tableName} \((.*?)\);";
+        var match = Regex.Match(_compatibilityContent, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        return match.Success ? match.Value : string.Empty;
     }
 
     private string GetViewDefinition(string viewName)
