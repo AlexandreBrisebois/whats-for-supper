@@ -1,59 +1,38 @@
 # CAP-01 — Photo capture requirements
 
-> **Status:** Proposed documentation of current behavior; behavior-first, accelerated cadence. This specification does **not** authorize implementation. Source artifact: `docs/feature-inventory.md` CAP-01.
+> **Status:** Implemented capability; current-behavior specification reviewed on 2026-09-30. Behavior-first, accelerated documentation update, originating from `docs/feature-inventory.md` CAP-01. This review does not authorize application or contract changes. Implementation is not a claim that every quality requirement below is satisfied; see [review findings and evidence](tasks.md).
 
-## Outcome
+## Outcome and scope
 
-A member can submit one or more recipe-card photos with a chosen finished-dish image, appreciation, and notes, then leave while processing continues.
+A family member can upload recipe photos, optionally designate a finished-dish image, add appreciation and notes, and leave after the upload is accepted while processing continues.
 
-## Scope
+The implemented entry and inline review are on `/capture`, rendered by `MinimalCapture` and `useCapture`. `/capture/confirm` is a placeholder, not a required step. `CameraView` and `ImageReview` are not used by this route. URL capture, description capture, recipe bundles, and import-report repair are adjacent capabilities, not new work in this spec.
 
-- Family-facing behavior described above, its current API/workflow seams, async states, and recovery.
-- Actor: an authenticated household member unless explicitly identified as operator configuration. Recipe/library effects are household-shared; transient UI state is member/device-local.
-- Entry: `/capture` and `/capture/confirm` through `MinimalCapture`, `CameraView`, `ImageReview`, and `useCapture`.
+## Requirements and implementation status
 
-## Non-goals
+Stable IDs are retained from the original baseline. Concrete behavior below replaces generic planning language; unmet quality expectations remain explicit rather than being marked complete.
 
-- Redesigning adjacent recipe, planner, identity, workflow administration, or localization capabilities.
-- Treating current implementation details as newly approved product policy.
-- Implementing, migrating, or correcting behavior as part of this documentation packet.
+- **CAP-01-R1 — Entry and eligibility (implemented).** Camera/file selection, gallery selection, and image drag/drop feed an inline photo review. The request carries `X-Family-Member-Id`; the API rejects a missing member ID and the service verifies that the member exists. This establishes member attribution, not proof of cross-household isolation.
+- **CAP-01-R2 — Accepted outcome (implemented with launch caveat).** Save submits images, appreciation, optional dish selection, and non-blank notes. A returned recipe ID is registered in the client pending queue and the UI shows queued/processing, not ready. Leaving is supported after acceptance; during upload the UI asks the member to keep the screen open. A 202 proves recipe persistence but does not guarantee successful workflow launch (F2).
+- **CAP-01-R3 — Validation and failure (partially satisfied).** The client accepts 1–20 JPEG, PNG, or WebP files, each at most 20 MiB. It validates image count, rating 0–3, and a selected index within the image array, or `-1` for no dish image. The service independently validates input. A failed request retains the mounted component's draft, displays an error, and unlocks Save. Safe retry after an uncertain response and launch-failure recovery are not guaranteed (F2, F3).
+- **CAP-01-R4 — Async consistency (partially satisfied).** After acceptance, processing can continue independently of navigation. Session pending entries match `recipe_ready` / `recipe_failed` events by recipe ID. Ready notifications can update the success screen or appear through library notifications. The active capture path has no polling/reconnect reconciliation guarantee and its pending queue is not persisted (F3).
+- **CAP-01-R5 — Concurrency (local lock implemented).** A synchronous UI ref lock and busy state prevent repeated Save activation while a photo request is active. Failure releases the lock. Server idempotency and cross-device duplicate prevention are not implemented guarantees.
+- **CAP-01-R6 — Accessibility and responsive use (partially satisfied).** Camera/gallery/remove actions have labeled controls and the route uses a phone-sized responsive layout. The retained quality expectation is keyboard-equivalent selection and accessible progress/error announcements. Dish selection currently uses a clickable non-keyboard `div`, and the upload overlay lacks dialog/status semantics and focus management (F4); full accessibility acceptance is not complete.
+- **CAP-01-R7 — Privacy and localization (partially verified).** Selected member identity accompanies the upload, and several capture labels use locale resources. The retained quality expectation is localized, family-safe copy with protected diagnostics. Hard-coded English upload/error text remains; this review does not establish household isolation or complete failure-message sanitization (F5). Processing language must not be inferred from interface locale.
+- **CAP-01-R8 — Preserved draft behavior (implemented in source).** The first added image is initially the dish selection. Clicking the selected image clears the designation; the wire value is then `-1`. Removal repairs the index or clears it when empty. Appreciation defaults to `0` (unknown), with choices 1–3. Notes are trimmed and omitted when blank. Draft images/metadata belong to `useCapture`, not the pending-recipe store, and are not persisted across reloads.
 
-## Verified baseline
+## Observable states
 
-- Contract: `POST /api/recipes` (multipart form: files/images, rating, finishedDishImageIndex, notes) and `GET /api/recipes/{id}/status`.
-- Ownership: `api/src/RecipeApi/Controllers/RecipeController.cs`, `api/src/RecipeApi/Workflows/recipe-import.yaml`, and recipe/import persistence.
-- Evidence: `pwa/src/components/capture/MinimalCapture.test.tsx`, `pwa/src/store/captureStore.test.ts`, and `api/src/RecipeApi.Tests/Services/RecipeImportLifecycleTests.cs`.
-- Happy path: valid images are reviewed, one may be designated as the dish photo, metadata is submitted once, and a 202 recipe identifier releases the UI from the request.
-- Failure path: invalid type/count/index/rating is rejected before submission; transport or workflow failure remains recoverable and does not imply readiness.
-- Concurrency: the submit lock prevents repeat taps in one client; server idempotency across clients is not established.
-- Async: acceptance means queued, not ready; readiness is learned from recipe status/live state and later library visibility.
-
-## Requirements
-
-- **CAP-01-R1 — Entry and eligibility.** When an authenticated member enters this capability in an eligible state, the system shall expose the relevant action and enough context to understand its effect; when ineligible, it shall hide or disable it with a truthful explanation.
-- **CAP-01-R2 — Accepted outcome.** When valid input is confirmed, the system shall perform only the scoped action, return/retain a durable correlation identifier where background work exists, and distinguish acceptance from completion.
-- **CAP-01-R3 — Validation and failure.** When input, authorization, network, source, or processing fails, the system shall preserve recoverable member input/state, show a family-safe actionable message, and avoid claiming success or readiness.
-- **CAP-01-R4 — Async consistency.** While work is pending, the member may navigate away; polling/events/refetch shall reconcile to authoritative server state, and stale or late results shall not overwrite a newer attempt.
-- **CAP-01-R5 — Concurrency.** Repeat activation shall be locked while a request is active. Cross-device conflicts shall converge on server state, and unsupported atomicity shall not be represented as guaranteed.
-- **CAP-01-R6 — Accessibility and responsive use.** Every pointer/gesture action shall have a labeled keyboard/touch alternative, dialogs shall expose name and focus containment/restoration, progress/error changes shall be announced without focus theft, and controls shall remain usable on phone and larger layouts.
-- **CAP-01-R7 — Privacy and localization.** Family UI shall not reveal technical diagnostics, secrets, or another household's data. User-facing copy shall use supported locale resources; recipe processing language shall remain distinct from interface locale.
-- **CAP-01-R8 — Preserved behavior.** first image is initially selected; removing images repairs the selected index; blank notes are omitted; rating 0 means unknown
-
-## Observable acceptance states
-
-| State | Observable result |
+| State | Current behavior |
 |---|---|
-| Ready/empty | Valid entry controls are available; absence of optional data is explained without fabricating content. |
-| Pending | Inputs that could duplicate work are locked and status says queued/processing rather than complete. |
-| Success | The authoritative result is visible or reachable and the next destination is explicit. |
-| Validation failure | The offending field/action is identified; no server-side effect is claimed. |
-| Service/workflow failure | Recoverable state remains; retry/refresh guidance is safe and diagnostics stay behind the operations boundary. |
-| Stale/concurrent | A refetch/versioned response wins over late optimistic state; destructive replacement is not silent. |
-| Unauthorized/not found | No household data is disclosed and the member is returned to a safe state. |
+| Empty / review | Add photos; choose or clear dish selection; remove photos; set appreciation and notes. |
+| Uploading | Save locks immediately; helper text appears and an overlay appears after 800 ms if still pending. |
+| Accepted | Register the recipe ID, show queued state and navigation controls; normal capture starts a 10-second Home countdown. |
+| Ready event | Matching ready notification provides the recipe name and stops the queued countdown behavior. |
+| Invalid input / request error | Display an error, retain the mounted draft, and allow a corrected/retried request. |
+| Later workflow failure | A matching SSE event removes the session pending entry and queues a failed notification; no readiness is implied. |
+| Reload / missed event / uncertain request | No persisted client draft, durable client pending queue, or exactly-once retry guarantee. |
 
-## Open questions / blockers for future change
+## Remaining decisions
 
-1. What server idempotency key or version policy, if any, should be guaranteed across devices? Current evidence is insufficient for a stronger requirement.
-2. Which SSE event names and polling intervals are product commitments versus current implementation choices?
-3. Should pending work survive sign-out/member switching on the same device, and which member receives completion notification?
-4. Product approval is required before resolving these questions or implementing any task below.
+Cross-device idempotency, durable pending-state recovery, member-switch notification policy, and any strengthened isolation contract require separately scoped decisions. Exact event names and timer values above describe current implementation, not permanent product commitments. These are not prerequisites for recognizing the existing photo-capture capability as implemented.

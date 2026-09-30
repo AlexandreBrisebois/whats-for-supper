@@ -14,8 +14,17 @@ cadence and source artifact, then produce `requirements.md`, `design.md` and
 and expected behavior, root-cause evidence and preserved behavior. For explicitly
 bounded maintenance, use the workflow's proportionate packet path.
 
-Explore affected implementation patterns and contracts before committing to design
-detail. Make acceptance observable, evidence and assumptions distinct, integration
+For every new feature specification, first review the existing implementation and
+trace affected entry points, data/control flow, seams, ownership boundaries,
+contracts, integrations, side effects and nearby tests. If no direct implementation
+exists, review the intended insertion points and adjacent boundaries. Record the
+supporting source paths and unresolved gaps. Do not draft the three artifacts from a
+greenfield assumption.
+
+Carry that review into all three artifacts: use current behavior and boundary
+constraints to shape requirements, map existing and proposed seams and reused
+patterns in design, and order tasks with owned effects and checks at each changed
+boundary. Make acceptance observable, evidence and assumptions distinct, integration
 and ownership explicit, and failure and recovery paths testable. Maintain
 requirement → design → task → check traceability, label tasks required or optional,
 and mark derived artifacts stale until synchronized after source changes. Apply UI,

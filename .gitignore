@@ -97,3 +97,4 @@ scripts/agent/__pycache__/test_ops.cpython-314.pyc
 scripts/agent/tests/__pycache__/test_kiota_client.cpython-314.pyc
 scripts/agent/tests/__pycache__/test_taskfile_contract_gate.cpython-314.pyc
 scripts/agent/tests/__pycache__/test_test_ops.cpython-314.pyc
+scripts/agent/__pycache__/session.cpython-314.pyc

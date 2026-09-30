@@ -1,57 +1,55 @@
 # CAP-01 — Photo capture design
 
-> **Status:** Proposed design derived from `CAP-01` requirements and verified current sources. Implementation is not authorized.
+> **Status:** Implemented design, reviewed 2026-09-30 against current source. Derived from [requirements](requirements.md); deviations and verification limits are recorded in [tasks](tasks.md). No implementation changes are authorized by this document.
 
 ## Integration map
 
-1. **UI/entry:** `/capture` and `/capture/confirm` through `MinimalCapture`, `CameraView`, `ImageReview`, and `useCapture`.
-2. **Client boundary:** API helpers in `pwa/src/lib/api/recipes.ts` or `pwa/src/lib/api/captures.ts`; generated models under `pwa/src/lib/api/generated/`.
-3. **Contract:** `specs/openapi.yaml`: `POST /api/recipes` (multipart form: files/images, rating, finishedDishImageIndex, notes) and `GET /api/recipes/{id}/status`.
-4. **Server/workflow:** `api/src/RecipeApi/Controllers/RecipeController.cs`, `api/src/RecipeApi/Workflows/recipe-import.yaml`, and recipe/import persistence.
-5. **Evidence:** `pwa/src/components/capture/MinimalCapture.test.tsx`, `pwa/src/store/captureStore.test.ts`, and `api/src/RecipeApi.Tests/Services/RecipeImportLifecycleTests.cs`.
+All source paths below are repository-relative.
 
-## State and data flow
+| Boundary / owner | Source | Current responsibility |
+|---|---|---|
+| Route | `pwa/src/app/(app)/capture/page.tsx` | Renders `MinimalCapture`; passes capture mode/intent. Review happens inline. |
+| Interaction | `pwa/src/components/capture/MinimalCapture.tsx` | File inputs/drop, preview/selection, metadata controls, synchronous Save lock, delayed overlay, queued/ready screen and navigation. |
+| Draft / validation | `pwa/src/hooks/useCapture.ts`, `pwa/src/lib/imageUtils.ts` | Local `File[]`, dish index, rating, notes, validation, multipart construction, request errors. |
+| HTTP adapter | `pwa/src/lib/api/recipes.ts` (`createRecipe`) | Native `fetch` for multipart; adds member header; accepts either `data.id` or top-level `id`. This upload bypasses Kiota serialization. |
+| Contract | `specs/openapi.yaml`, `POST /api/recipes` | Documents `images` and a `data.id` response envelope; the upload field differs from the current client (F1). |
+| Server | `api/src/RecipeApi/Controllers/RecipeController.cs`, `api/src/RecipeApi/Services/RecipeService.cs` | Member/input checks, image and metadata storage, recipe/search-sidecar persistence, workflow launch, 202 response. |
+| Processing | `api/src/RecipeApi/Workflows/recipe-import.yaml` | Extract → generate hero → sync → categorize ingredients → categorize recipe → recipe ready → complete import report. |
+| Pending / notifications | `pwa/src/store/captureStore.ts`, `pwa/src/hooks/useScheduleStream.ts`, `pwa/src/store/libraryStore.ts` | In-memory pending IDs; SSE matches and removes pending entries, then queues ready/failed notifications. |
 
-1. The member enters with authenticated household/member context. Device-local draft and busy/error state remain owned by the initiating UI/store.
-2. Client validation rejects structurally invalid input before transport and locks submission during the request.
-3. The generated/manual API adapter sends the documented representation. The controller validates identity and maps the request to service/persistence or a workflow trigger.
-4. A synchronous success updates from the response. A 202 response stores its recipe/import/workflow identifier and represents **pending**, never ready.
-5. Workflow processors update durable recipe/import state. Polling, refetch, or household-scoped SSE reconciles the client; ready entities enter normal recipe surfaces only when readiness rules pass.
-6. Errors are separated into local validation, HTTP authorization/conflict/not-found, workflow launch failure, and later processing failure. Retry never assumes the prior attempt had no effect.
+## Request and persistence flow
 
-## Behavioral design decisions
+1. `useCapture` validates added images and maintains the mounted draft. The first image defaults to the dish selection; selecting it again clears the designation.
+2. `MinimalCapture.handleSave` acquires a synchronous ref lock before awaiting the hook. Busy state disables Save immediately; a still-running request gets an overlay after 800 ms.
+3. The hook appends every image under multipart key `files`, adds `rating` and `finishedDishImageIndex` (`-1` when absent), and includes trimmed `notes` only when non-blank.
+4. `createRecipe` uses native fetch to `POST /api/recipes` with `X-Family-Member-Id`. The controller binds `CreateRecipeDto` and `IFormFileCollection`; the service verifies member existence and validates input.
+5. The service creates a recipe UUID, writes images and `recipe.info`, and saves the recipe with its pending search-document sidecar in one database save. Filesystem writes and database persistence are not one atomic transaction; failed persistence can leave files behind.
+6. Search indexing and `recipe-import` are triggered after persistence. Both launch exceptions are logged and swallowed. The controller still returns `Accepted(new { id = recipeId })`; the globally registered `api/src/RecipeApi/Infrastructure/SuccessWrappingFilter.cs` wraps this as `data.id`, matching OpenAPI. Acceptance must not be described as proof of a queued workflow.
+7. The adapter tolerates both response envelopes. For a non-empty ID, the normal photo path adds an in-memory pending entry, checks existing ready notifications, and displays its success/queued screen. The GOTO intent also saves a pending GOTO item before this registration; that extra save is a separate operation, not an atomic part of recipe creation.
 
-- Reuse the existing capture/detail/cook/issue components and OpenAPI-generated boundary; do not introduce a parallel state model.
-- Treat server responses as authoritative after every mutation. Guard async callbacks by recipe/import/attempt identity.
-- Preserve draft/navigation state until the accepted result or explicit cancel makes it safe to clear.
-- the submit lock prevents repeat taps in one client; server idempotency across clients is not established
-- acceptance means queued, not ready; readiness is learned from recipe status/live state and later library visibility
+## Background state and navigation
 
-## Security, privacy, and household isolation
+`useScheduleStream` handles `recipe_ready` and `recipe_failed`. If the recipe is in the session's pending queue, it removes the entry and pushes a notification. `MinimalCapture` subscribes to ready notifications matching its pending ID and dismisses the notification it handles inline. It also checks the existing notification queue immediately after adding the pending entry.
 
-Protected mutations carry family-member identity according to `specs/openapi.yaml`; controllers must re-establish authorization and never trust a client recipe/import association. Asset/source access and import diagnostics remain household-scoped. Logs may retain correlation IDs and technical causes, while normal UI receives allow-listed family-safe reasons. Uploaded/shared content must be treated as untrusted input.
+Normal capture starts a 10-second Home countdown and provides an immediate Done action. Ready state replaces queued messaging. GOTO has a distinct success presentation; its metadata save and navigation are shared behavior, not a new policy defined here.
 
-## Accessibility, devices, and localization
+`GET /api/recipes/{id}/status` exists as an adjacent status seam, but the reviewed capture path does not poll it. Pending entries use plain Zustand memory without persistence. SSE is not replay/refresh proof: an event arriving before pending registration, a lost event, reload, or an uncertain HTTP result can leave the client without completion correlation (F3).
 
-Use semantic buttons/inputs/fieldset/dialog naming, visible focus, focus restoration, keyboard escape where cancellation is safe, and live status for async outcomes. Do not make swipe, camera, hover, or color the only mechanism. Preserve safe-area and touch targets. Route copy through `pwa/src/locales/en/common.json` and `pwa/src/locales/fr/common.json` when future changes are approved; never infer recipe processing language from UI locale.
+## Failure, accessibility, and privacy boundaries
 
-## Failure and recovery
+Validation prevents invalid submission and request failure leaves the mounted draft available. The hook displays an `Error.message` from the adapter, or a generic fallback, and returns `null`; the UI releases its lock in `finally`. There is no server idempotency key or authoritative lookup before retry. Later workflow failures travel through the notification path; launch failure before a workflow exists is not covered by that mechanism.
 
-- Client validation: retain draft, focus/associate the error, make no request.
-- Request uncertainty: retain identifier/draft, disable blind duplicate resubmission until authoritative lookup/refetch.
-- 401/403/404: disclose no cross-household existence; return to a safe surface.
-- 409/concurrent action: explain the active/conflicting state and refetch.
-- Accepted workflow failure: retain durable failure/report state and correlation ID; expose only safe retry/clear actions.
-- Offline/reconnect: do not claim cancellation; reconcile status before permitting a duplicate action.
+Labeled camera/gallery/remove buttons coexist with a pointer-only dish-selection container. The upload overlay is a plain `div`, without focus containment or a live status role. Some labels are localized; upload helper and error messages include literal English. Member attribution is verified in this flow, but this source review is not a security audit of household isolation. These are retained acceptance gaps, not newly approved design choices.
 
-## Verification strategy
+## Verification map
 
-- Component tests assert entry, validation, keyboard/focus, pending locks, family-safe errors, and late-result guards.
-- API contract tests assert exact request/response/error shapes and generated-client parity.
-- Server unit/integration tests assert authorization, eligibility, persistence transitions, idempotency/conflicts, and workflow launch failure.
-- Real-database tests cover concurrent updates and durable status where the feature writes workflow/import state.
-- End-to-end tests cover the complete happy path plus one recoverable failure without mocking away the selected seam.
+| Coverage source | What it supports | Limit |
+|---|---|---|
+| `pwa/src/components/capture/MinimalCapture.test.tsx` | Capture controls, mocked acceptance/navigation, drop handling, adjacent modes | Hook/network are mocked; not upload or workflow qualification. |
+| `pwa/src/components/capture/MinimalCapture.submit-lock.test.tsx` | Rapid duplicate Save activation and failure unlock | Mocked submission; not server idempotency. |
+| `pwa/src/store/captureStore.test.ts` | Pending add/remove/get semantics | In-memory behavior only. |
+| `api/src/RecipeApi.Tests/Services/ValidationServiceTests.cs` | Server validation cases | Not rerun in this documentation review. |
+| `api/src/RecipeApi.Tests/Services/RecipeImportLifecycleTests.cs` | Import-report lifecycle, newest attempt, guarded transitions | Not proof of initial photo upload/launch success; not rerun. |
+| `pwa/e2e/capture-flow.spec.ts` | Existing browser journey coverage | Not rerun; no live model/database claim. |
 
-## Alternatives and unresolved decisions
-
-A purely client-side duplicate/concurrency policy is simpler but cannot guarantee cross-device correctness; a server idempotency/version contract is preferred if product requires that guarantee. SSE-only feedback is lower latency but polling/refetch remains necessary for reconnect and missed events. Exact policies remain blocked by the open questions in `requirements.md`.
+Current results and review findings belong in [tasks](tasks.md). A future correction must use the approved contract → tests → implementation sequence; this baseline does not silently resolve drift in favor of code.

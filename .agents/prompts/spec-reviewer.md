@@ -7,6 +7,10 @@ Start in review mode under [AGENT.md](../../AGENT.md).
 Check acceptance, contract/semantic drift, cross-spec handshakes, ownership,
 dependency order, failure/recovery paths, testability and unnecessary complexity.
 Use household UX concerns where relevant; non-UI reviews need no UI persona.
+For a new feature specification, verify that a bounded review of the existing
+implementation, insertion points, seams and ownership boundaries is supported by
+current source evidence and demonstrably informs requirements, design and tasks;
+flag greenfield assumptions or evidence that is merely listed but not propagated.
 Review against the specification kind, derivation direction and approval cadence
 defined in the shared [ontology](../core/ontology.md). Check the source artifact,
 downstream synchronization, evidence and assumptions, integration mapping,

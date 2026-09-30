@@ -17,8 +17,11 @@ defect-correction specification or maintenance packet using the ontology. For a
 feature specification, select and record a behavior-first or design-first derivation
 direction, a gated or accelerated approval cadence, and its source artifact.
 Read selected requirements, design, tasks and immediate dependencies, then only
-the contracts and source needed to resolve affected seams. Verify technical facts
-from current files before asking the user; history is evidence, not a requirement.
+the contracts and source needed to resolve affected seams. For every new feature
+specification, review the current implementation before drafting any of its three
+artifacts; a greenfield assumption is not a substitute for checking the repository.
+Verify technical facts from current files before asking the user; history is
+evidence, not a requirement.
 Use the minimum current evidence sufficient to establish a claim. Distinguish
 verified facts, user decisions, assumptions and open questions; absence of evidence
 is not evidence of absence. Stop exploring when the affected path, ownership,
@@ -33,8 +36,29 @@ decisions remain explicit blockers to affected tasks, not guessed requirements.
 
 ## Explore before committing to design
 
-Trace relevant existing patterns, entry points, data and control flow, contracts,
-ownership, integrations and side effects before committing to file-level design.
+Perform a bounded implementation reconnaissance for every new feature specification.
+Trace the affected behavior from its existing entry points through relevant data and
+control flow. Identify current ownership, contracts, persistence and external
+integrations; the boundaries where representations or responsibility change; and
+observable side effects. Review nearby tests, mocks and established patterns that
+constrain or enable the change. When the feature is genuinely new, inspect its
+intended insertion points and adjacent boundaries rather than declaring that there
+is no implementation to review. Record the source paths and facts that support the
+resulting integration map, plus material gaps that remain unknown.
+
+Use that evidence throughout the specification, not only as design background:
+
+- requirements preserve or intentionally change verified current behavior and state
+  boundary-derived compatibility, failure and ownership constraints;
+- design maps the proposed behavior across existing seams, names reused patterns and
+  makes any new or changed boundary explicit; and
+- tasks follow the actual dependency order across those seams, identify file/effect
+  ownership and include checks at the boundaries they change.
+
+Do not finalize requirements, design or tasks when a material implementation seam is
+still assumed. Mark the affected statement as an assumption or open question and
+block dependent tasks until the evidence or a user decision resolves it.
+
 In behavior-first work, establish observable behavior before deriving a design from
 that evidence. In design-first work, capture the proposed constraints or architecture,
 validate them against the current system, then derive requirements. Derived
@@ -52,19 +76,22 @@ feature specification. Existing grouped locations may remain.
 
 - `requirements.md`: intended outcome, scope/non-goals, stable acceptance IDs,
   functional and relevant non-functional requirements, observable success/failure
-  and preserved behavior, decisions and consequential open questions. Prefer
+  and preserved behavior, constraints learned from the implementation review,
+  decisions and consequential open questions. Prefer
   structured condition/event and system-response statements when they improve
   clarity and testability; do not force syntax that obscures meaning.
 - `design.md`: how acceptance is met, ownership and affected interfaces, relevant
   alternatives/tradeoffs, failure/recovery behavior and verification strategy.
-  Include a proportionate integration map, existing patterns reused, data/state
-  flow and security, privacy, compatibility, performance and operational concerns
-  when relevant. Specify exact paths, fields and transitions needed for execution;
-  verify them rather than inventing precision.
+  Include a proportionate, source-grounded integration map of existing and proposed
+  seams, existing patterns reused, data/state flow and security, privacy,
+  compatibility, performance and operational concerns when relevant. Specify exact
+  paths, fields and transitions needed for execution; verify them rather than
+  inventing precision.
 - `tasks.md`: dependency-ordered bounded tasks with requirement IDs, outcome,
   design references, required/optional status, authorized files/effects, required
-  context, meaningful assertions, named checks and stop conditions. Record actual
-  evidence and remaining blockers here or in linked evidence.
+  implementation-review context, meaningful seam assertions, named checks and stop
+  conditions. Record actual evidence and remaining blockers here or in linked
+  evidence.
 
 Prefer vertical slices for application behavior. Bounded documentation, harness,
 maintenance or client-state changes need not invent API, database or UI work to
@@ -121,6 +148,12 @@ Check acceptance coverage, contract/semantic consistency, ownership, cross-spec
 handshakes, dependencies, failure paths, unnecessary complexity and testability.
 Use product/UX lenses where relevant. Divergent tests or code do not authorize
 rewriting an approved contract.
+
+For a new feature specification, reject ungrounded greenfield planning: confirm that
+current implementation, insertion points, seams and boundaries were reviewed and
+that cited evidence materially shaped requirements, design and task ordering/checks.
+Missing evidence is a gap, and a list of source paths without downstream influence
+does not satisfy the review.
 
 Review against the recorded specification kind, derivation direction and approval
 cadence. Check that the source artifact is identifiable, derived artifacts are
