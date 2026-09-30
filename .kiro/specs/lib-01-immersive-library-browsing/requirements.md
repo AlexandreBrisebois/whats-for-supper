@@ -1,67 +1,16 @@
 # LIB-01 — Immersive library browsing: requirements
 
-> Status: **Proposed current-behavior specification**. Behavior-first, accelerated cadence.
-> Source: `docs/feature-inventory.md`. This documents observed behavior; it does not authorize implementation.
+## Status
 
-## Outcome
+**Implemented capability baseline.** Canonical owner of the `/recipes` browse/search surface.
 
-Members explore the whole library in their preferred view without losing position or context.
+## Current behavior
 
-## Scope
+- **LIB-01-AC1.** `/recipes` performs an initial `POST /api/recipes/search` and renders ranked/browse results, optional Top Pick, filters, detail-sheet opening, and continuation loading. URL `open`, `similarTo`, `addToDay`, and `weekOffset` carry detail, similarity, and planning context.
+- **LIB-01-AC2.** Query input is debounced; filters/preferences and similar-recipe input are sent through the search request. Request generations and promotion versions reject stale initial/search responses; continuation has separate loading/error/expired states.
+- **LIB-01-AC3.** A recipe opens `RecipeDetailSheet`; the page records scroll position and retains query/filter/assignment context while the sheet is open.
+- **LIB-01-AC4.** Search failures are converted to an empty response, not a user-visible error. The page differentiates initial loading and continuation failure, but an initial outage is visually indistinguishable from no results.
 
-- Specify the current family-facing **immersive library browsing** behavior and its direct API/state seams.
-- Specify observable loading, empty, success, failure, retry, concurrency, navigation, localization, and accessibility behavior.
-- Preserve household isolation, active-member attribution, ready/non-deleted eligibility, and unrelated planner/library state.
+## Boundaries and limitations
 
-## Non-goals
-
-- Approving UI, API, schema, ranking, workflow, or persistence changes.
-- Defining adjacent capture, planner, identity, or operations features except where this feature hands off to them.
-- Treating implementation comments, tests, or this proposed baseline as a product decision.
-
-## Verified baseline
-
-- `pwa/src/app/(app)/browse-all-stack/page.tsx`
-- `pwa/src/store/browseStackStore.ts`
-- `pwa/src/components/recipes/RecipeStackCard.tsx`
-- `api/src/RecipeApi/Controllers/RecipeController.cs`
-- `pwa/e2e/browse-all-stack.spec.ts`
-
-The current OpenAPI authority is `specs/openapi.yaml`; relevant operations are: `GET /api/recipes`, `GET /api/recipes/library-summary`.
-
-## Acceptance criteria
-
-### LIB-01-AC1
-
-The library supports card-stack and list views, paginates ready non-deleted recipes, and orders them using the API explore ordering intended to resurface less-recently-cooked recipes.
-
-### LIB-01-AC2
-
-The member can switch All/Discoverable and view modes; the selected view preference persists and a stale page response cannot cross-contaminate the active filter.
-
-### LIB-01-AC3
-
-Opening and closing details or invoking supported planning/cooking/management actions preserves the applicable browse position and context.
-
-### LIB-01-AC4
-
-Initial loading, empty library, filter-empty, pagination, wrap, and retry states are distinct and all navigation/actions are keyboard operable and labeled.
-
-## Preserved behavior
-
-- Household/member credentials remain required where the current contract requires them; data must not cross household boundaries.
-- Unsupported or ineligible records remain excluded rather than made actionable by presentation state.
-- Existing routes and unrelated state remain stable on cancellation or failure.
-- English and French copy continue through the repository localization layer; no new hard-coded user-facing copy is implied.
-
-## Decisions
-
-- **Derivation:** behavior-first from the inventory, verified current source, OpenAPI, and tests.
-- **Cadence:** accelerated; requirements, design, and tasks are delivered together without an approval gate.
-- **Baseline:** proposed documentation of current behavior, not approval to preserve every behavior or begin work.
-
-## Open questions
-
-- Product must confirm whether every observed behavior is intended before an implementation packet is authorized.
-- Accessibility wording, performance budgets, telemetry retention, and destructive-operation policy require explicit product/security acceptance if changed.
-- Any contract divergence found during a future audit must be resolved against approved intent; implementation alone is not authority.
+Search ranking, eligibility, continuation, and promotion are server-owned by recipe search; LIB-02 owns details, LIB-03 actions, and HOME-03 planner recovery. The browser does not use `libraryStore` for browse records. Browser-local day naming uses local time. Contract: `POST /api/recipes/search` and filter metadata route in `specs/openapi.yaml`.

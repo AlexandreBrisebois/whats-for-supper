@@ -1,12 +1,12 @@
 # CAP-01 — Photo capture requirements
 
-> **Status:** Implemented capability; current-behavior specification reviewed on 2026-09-30. Behavior-first, accelerated documentation update, originating from `docs/feature-inventory.md` CAP-01. This review does not authorize application or contract changes. Implementation is not a claim that every quality requirement below is satisfied; see [review findings and evidence](tasks.md).
+> **Status:** Implemented capability baseline. Behavior-first, accelerated documentation update, originating from `docs/feature-inventory.md` CAP-01. This packet describes current source behavior and boundaries; it does not authorize application or contract changes, or certify every retained quality expectation.
 
 ## Outcome and scope
 
 A family member can upload recipe photos, optionally designate a finished-dish image, add appreciation and notes, and leave after the upload is accepted while processing continues.
 
-The implemented entry and inline review are on `/capture`, rendered by `MinimalCapture` and `useCapture`. `/capture/confirm` is a placeholder, not a required step. `CameraView` and `ImageReview` are not used by this route. URL capture, description capture, recipe bundles, and import-report repair are adjacent capabilities, not new work in this spec.
+The implemented entry and inline review are on `/capture`, rendered by `MinimalCapture` and `useCapture`. `/capture/confirm` is a placeholder, not a required step. `CameraView` and `ImageReview` are not used by this route. URL capture, description capture, recipe bundles, and import-report repair are adjacent capabilities, not new work in this spec. Completion feedback and workflow reliability are shared boundaries, not new guarantees made by photo capture.
 
 ## Requirements and implementation status
 
@@ -33,6 +33,8 @@ Stable IDs are retained from the original baseline. Concrete behavior below repl
 | Later workflow failure | A matching SSE event removes the session pending entry and queues a failed notification; no readiness is implied. |
 | Reload / missed event / uncertain request | No persisted client draft, durable client pending queue, or exactly-once retry guarantee. |
 
-## Remaining decisions
+## Current limitations and decisions for future change
 
-Cross-device idempotency, durable pending-state recovery, member-switch notification policy, and any strengthened isolation contract require separately scoped decisions. Exact event names and timer values above describe current implementation, not permanent product commitments. These are not prerequisites for recognizing the existing photo-capture capability as implemented.
+The active request uses multipart part name `files`, while OpenAPI currently documents `images`; no authoritative representation has been selected by this baseline. A returned `202` means the recipe was persisted and accepted by the controller, not that the `recipe-import` trigger succeeded. Filesystem writes precede the database save, so failed persistence can leave recoverable orphaned files.
+
+Cross-device idempotency, durable pending-state recovery, member-switch notification policy, launch-failure recovery, and any strengthened household-isolation contract require separately scoped decisions. Exact event names and timer values describe current implementation, not permanent product commitments. These limitations are not prerequisites for recognizing the existing capability as implemented.

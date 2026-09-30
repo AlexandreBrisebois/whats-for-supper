@@ -1,51 +1,12 @@
-# PLAN-01 — Week navigation and status: proposed future tasks
+# PLAN-01 — Week navigation and status: follow-up candidates
 
-**Requirements:** [requirements.md](requirements.md)
+This implemented baseline has no implementation work selected. The items below are optional, separately authorized improvements.
 
-**Design:** [design.md](design.md)
+- [ ] **T1 (optional) — Define and enforce week-offset input policy.** Decide whether offsets must be whole, bounded weeks; then align URL parsing and API validation without changing the server’s clock-derived identity implicitly.
+  **Test seam:** `pwa/src/app/(app)/planner/page.test.tsx` and schedule API validation tests; Playwright scenario: paste invalid/out-of-range `weekOffset` then use navigation; mock owner: the planner vertical slice; route/method: `GET /api/schedule?weekOffset=<integer>`; expected contract: `{ data: ScheduleDays }`, with an explicitly approved validation-error envelope if rejected.
 
-## Status and execution boundary
+- [ ] **T2 (optional) — Provide recoverable week-load failure UI.** Preserve the last confirmed view and add localized retry/accessibility behavior for a failed schedule fetch.
+  **Test seam:** `weekStore.test.ts` and planner-page tests; Playwright scenario: schedule request fails then retry restores the same selected week; mock owner: the planner vertical slice; route/method: `GET /api/schedule?weekOffset=<integer>`; expected contract: `{ data: ScheduleDays }` on success and the existing approved API error envelope on failure.
 
-This is a dependency-ordered proposal for a future audit/change cycle. Every item is unchecked because this documentation effort did not execute implementation. **These tasks do not authorize implementation.** Select and approve a bounded task before changing code, contracts, data, or deployment.
-
-## Proposed tasks
-
-- [ ] **T1 (required) — Confirm baseline and resolve decisions**
-  **Requirements:** PLAN-01-AC-01, PLAN-01-AC-02, PLAN-01-AC-03, PLAN-01-AC-04, PLAN-01-AC-05, PLAN-01-AC-06, PLAN-01-AC-07.
-  Review the listed current paths with product/engineering owners, classify each observed behavior as preserve/change/reject, answer consequential open questions, and record approved success/failure copy and state ownership.
-  **Assertions/checks:** path existence/link check; acceptance review; contract-operation inventory; decision record.
-  **Stop:** do not begin contract or implementation work while behavior, destructive-action policy, or ownership is unresolved.
-
-- [ ] **T2 (conditional, contract owner) — Approve contract changes**
-  **Requirements:** PLAN-01-AC-01, PLAN-01-AC-02, PLAN-01-AC-03, PLAN-01-AC-04, PLAN-01-AC-07.
-  Only if T1 identifies contract drift, update the approved OpenAPI source first, validate examples/error responses/member scope, regenerate clients, and prove zero drift before consumer work.
-  **Assertions/checks:** OpenAPI validation; generated-client clean regeneration; controller contract tests for success, validation, authorization, conflict, and not-found outcomes.
-  **Stop:** skip this task when the approved contract already expresses the accepted behavior; stop on generated/manual client divergence.
-
-- [ ] **T3 (required for an approved change) — Establish failing behavioral evidence**
-  **Requirements:** PLAN-01-AC-01, PLAN-01-AC-02, PLAN-01-AC-03, PLAN-01-AC-04, PLAN-01-AC-05, PLAN-01-AC-06, PLAN-01-AC-07.
-  Add or identify focused tests at the owner seams for outcome, empty/loading/error/retry, preserved state, concurrency/late results, localization, keyboard/focus/name semantics, and non-target preservation.
-  **Assertions/checks:** tests must fail for the approved missing behavior for the expected reason; use a controllable clock/date and deterministic events where time or streaming participates.
-  **Stop:** do not alter production behavior until the expected failure and ownership seam are demonstrated.
-
-- [ ] **T4 (required for an approved change) — Implement the smallest vertical slice**
-  **Requirements:** PLAN-01-AC-01, PLAN-01-AC-02, PLAN-01-AC-03, PLAN-01-AC-04, PLAN-01-AC-07.
-  Change only the approved route/component, state/API seam, and server service/persistence boundary needed for the accepted outcome. Preserve unrelated state and generated-file ownership.
-  **Assertions/checks:** focused UI/unit tests; controller/service tests; accepted response is the only durable-success signal; failure restores confirmed state.
-  **Stop:** stop on an unapproved schema/contract/authentication change or when displaced/concurrent state cannot be preserved.
-
-- [ ] **T5 (required for shared/async behavior) — Prove reconciliation and accessibility**
-  **Requirements:** PLAN-01-AC-04, PLAN-01-AC-05, PLAN-01-AC-06, PLAN-01-AC-07.
-  Exercise two-client updates, echoes, reconnect/snapshot, stale responses, rapid repeated action, navigation during pending work, keyboard-only flow, focus recovery, live announcements, and supported locales.
-  **Assertions/checks:** deterministic store/hook tests and relevant browser scenario; no stale overwrite, duplicate mutation, secret leakage, inaccessible action, or context loss.
-  **Stop:** do not claim completion if only the happy path or one client was checked.
-
-- [ ] **T6 (required) — Full validation and evidence handoff**
-  **Requirements:** all accepted `PLAN-01-AC-*`.
-  Run repository-prescribed focused and broad checks, review scope delta, record exact commands/results and remaining blockers, and obtain review against requirements/design/tasks traceability.
-  **Assertions/checks:** formatting/type/lint/test/build as applicable; OpenAPI drift check when T2 ran; local Markdown link check; scope review.
-  **Stop:** failures, skipped required evidence, unresolved open decisions, or changes outside the approved packet prevent completion.
-
-## Dependency order
-
-`T1 → (T2 when needed) → T3 → T4 → T5 → T6`. Contract ownership is exclusive during T2; consumer work follows successful regeneration. Read-only review may run in parallel, but writers must not share files.
+- [ ] **T3 (optional) — Review non-current-week stream convergence.** Determine whether remote changes to a viewed nonzero week need a new subscription/refetch mechanism; retain current week-0 stream semantics unless a contract owner approves a change.
+  **Test seam:** `useScheduleStream.test.ts`, `weekStore.test.ts`, and schedule integration tests; Playwright scenario: view next week while another client changes it and verify the approved refresh behavior; mock owner: the planner/SSE vertical slice; route/method: `GET /api/schedule?weekOffset=<integer>` and `GET /api/stream`; expected contract: `ScheduleDays` snapshot and `week_updated { schedule, echoSeq? }` event.

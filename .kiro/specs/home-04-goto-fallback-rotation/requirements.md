@@ -1,72 +1,18 @@
 # HOME-04 — GOTO fallback rotation: requirements
 
-## Status and derivation
+## Status
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), HOME-04.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+**Implemented capability baseline.** Canonical owner of household GOTO list, active-ready selection, and capture readiness handoff.
 
-## Outcome
+## Current behavior
 
-A household can maintain several dependable fallback meals and use only ready entries as active suggestions.
+- **HOME-04-AC-01 — List management.** Profile settings and recipe detail load `GET /api/goto`, edit `{ items: GoToItem[] }`, then replace it via `PUT /api/goto`. Settings also links to library, text capture, and photo capture.
+- **HOME-04-AC-02 — Active selection.** `GET /api/goto/active` reads `family_goto`, filters undeleted `IsReady` recipes, randomly selects one ready ID, and returns 404 if none exists. Home consumes this result; it has no rotation policy.
+- **HOME-04-AC-03 — Capture readiness.** GOTO settings links to capture with `intent=goto`. Text description creates a pending recipe and triggers `goto-synthesis`; `recipe_ready` adds its ID to `gotoStore`, causing settings/Home re-queries where applicable.
 
-## Terms and state ownership
+## Limitations and boundaries
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is server GOTO list with pending/ready lifecycle and client gotoStore. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
-
-## Scope
-
-### In scope
-
-- Recipe detail and settings surfaces add or remove recipes from the household GOTO list.
-- The active fallback is chosen from eligible ready entries rather than a single permanent favorite.
-- Photo or description capture may create a pending entry; it becomes eligible only after background recipe processing succeeds.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
-
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/components/profile/FamilyGOTOSettings.tsx`
-- `pwa/src/components/recipes/RecipeDetailSheet.tsx`
-- `pwa/src/store/gotoStore.ts`
-- `pwa/src/lib/gotoUtils.ts`
-- `api/src/RecipeApi/Controllers/GoToController.cs`
-- `api/src/RecipeApi/Services/GoToService.cs`
-- `api/src/RecipeApi/Workflows/goto-synthesis.yaml`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **HOME-04-AC-01 — Primary outcome.** Recipe detail and settings surfaces add or remove recipes from the household GOTO list.
-- **HOME-04-AC-02 — Complete path.** The active fallback is chosen from eligible ready entries rather than a single permanent favorite.
-- **HOME-04-AC-03 — Boundary behavior.** Photo or description capture may create a pending entry; it becomes eligible only after background recipe processing succeeds.
-- **HOME-04-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **HOME-04-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **HOME-04-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **HOME-04-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
-
-## Preserved behavior
-
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `HOME-04-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+- “Rotation” is random selection per request: no persisted cursor, cooldown, weighting, or non-repeat guarantee exists.
+- A whole JSON list lives in one `FamilySettings` row; concurrent PUTs can overwrite one another. Invalid stored JSON is logged then read as empty. `gotoUtils` still accepts legacy single-object/array formats.
+- Active GOTO never returns a pending item; client pending presentation is not a full lifecycle API.
+- HOME-02 owns the Home offer. Capture/import own recipe production. Contract owner: `GET`/`PUT /api/goto`, active GOTO, recipe describe/status, and `recipe_ready` stream payload.

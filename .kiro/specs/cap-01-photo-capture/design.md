@@ -1,6 +1,6 @@
 # CAP-01 — Photo capture design
 
-> **Status:** Implemented design, reviewed 2026-09-30 against current source. Derived from [requirements](requirements.md); deviations and verification limits are recorded in [tasks](tasks.md). No implementation changes are authorized by this document.
+> **Status:** Implemented capability baseline. Derived from [requirements](requirements.md); current limitations and bounded follow-up candidates are recorded in [tasks](tasks.md). No implementation changes are authorized by this document.
 
 ## Integration map
 
@@ -16,6 +16,14 @@ All source paths below are repository-relative.
 | Server | `api/src/RecipeApi/Controllers/RecipeController.cs`, `api/src/RecipeApi/Services/RecipeService.cs` | Member/input checks, image and metadata storage, recipe/search-sidecar persistence, workflow launch, 202 response. |
 | Processing | `api/src/RecipeApi/Workflows/recipe-import.yaml` | Extract → generate hero → sync → categorize ingredients → categorize recipe → recipe ready → complete import report. |
 | Pending / notifications | `pwa/src/store/captureStore.ts`, `pwa/src/hooks/useScheduleStream.ts`, `pwa/src/store/libraryStore.ts` | In-memory pending IDs; SSE matches and removes pending entries, then queues ready/failed notifications. |
+
+## Cross-spec boundaries
+
+- [CAP-02 URL capture and PWA share target](../cap-02-url-capture-share-target/) shares the capture route and pending-notification mechanics, but owns URL/share input and `POST /api/recipes/capture-url`.
+- [CAP-06 Import progress and completion](../cap-06-import-progress-completion/) owns the broader user-facing meaning of pending/ready state. This packet only records how a photo upload registers for existing completion feedback.
+- [CAP-07 Import failure recovery](../cap-07-import-failure-recovery/) owns the failed-capture list, retry, and clear flows. A `recipe_failed` notification here is not a retry policy.
+- [PLAT-01 Shared real-time state](../plat-01-shared-real-time-state/) owns stream delivery and reconnect behavior; capture's in-memory correlation does not add replay or persistence guarantees.
+- [PLAT-02 Background workflow engine](../plat-02-background-workflow-engine/) owns workflow triggering, retries, and durable lifecycle state. [PLAT-03 Recipe search indexing](../plat-03-recipe-search-indexing/) and [PLAT-04 Ingredient categorization](../plat-04-ingredient-categorization/) own the post-persistence side effects reached from this route.
 
 ## Request and persistence flow
 
@@ -52,4 +60,4 @@ Labeled camera/gallery/remove buttons coexist with a pointer-only dish-selection
 | `api/src/RecipeApi.Tests/Services/RecipeImportLifecycleTests.cs` | Import-report lifecycle, newest attempt, guarded transitions | Not proof of initial photo upload/launch success; not rerun. |
 | `pwa/e2e/capture-flow.spec.ts` | Existing browser journey coverage | Not rerun; no live model/database claim. |
 
-Current results and review findings belong in [tasks](tasks.md). A future correction must use the approved contract → tests → implementation sequence; this baseline does not silently resolve drift in favor of code.
+This map is source-grounded rather than a guarantee of live qualification. A future correction must use the approved contract → tests → implementation sequence; this baseline does not silently resolve drift in favor of code.

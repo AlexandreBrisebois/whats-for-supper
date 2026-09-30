@@ -10,10 +10,32 @@ export function PreviewFeaturesSection() {
   const flags = useFeatureFlagStore((state) => state.flags);
   const pending = useFeatureFlagStore((state) => state.pending);
   const errors = useFeatureFlagStore((state) => state.mutationErrors);
+  const error = useFeatureFlagStore((state) => state.error);
+  const refresh = useFeatureFlagStore((state) => state.refresh);
   const setEnabled = useFeatureFlagStore((state) => state.setEnabled);
   const available = Object.values(flags).filter((flag) => flag.mode === 'opt-in');
 
-  if (available.length === 0) return null;
+  if (available.length === 0) {
+    if (!error) return null;
+
+    return (
+      <section
+        data-testid="preview-features-section"
+        className="w-full min-w-0 max-w-full rounded-[2rem] border border-terracotta/20 bg-white/40 p-6 shadow-glass backdrop-blur-xl"
+      >
+        <p className="text-sm font-semibold text-charcoal" role="alert">
+          {error}
+        </p>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="mt-3 min-h-11 rounded-xl px-3 text-sm font-bold text-terracotta underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+        >
+          Retry
+        </button>
+      </section>
+    );
+  }
 
   const change = async (key: string, enabled: boolean) => {
     const saved = await setEnabled(key, enabled);
@@ -23,7 +45,7 @@ export function PreviewFeaturesSection() {
   return (
     <section
       data-testid="preview-features-section"
-      className="w-full rounded-[2rem] border border-ochre/20 bg-white/40 shadow-glass backdrop-blur-xl"
+      className="w-full min-w-0 max-w-full rounded-[2rem] border border-ochre/20 bg-white/40 shadow-glass backdrop-blur-xl"
     >
       <button
         type="button"

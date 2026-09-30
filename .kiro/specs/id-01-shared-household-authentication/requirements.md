@@ -1,71 +1,33 @@
 # ID-01 — Shared household authentication: requirements
 
-## Status and derivation
+## Status and scope
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), ID-01.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
+- **Source artifact:** Current PWA and API source, with [`docs/feature-inventory.md`](../../../docs/feature-inventory.md) as historical inventory only.
+
+This packet owns household access authentication. It does not own choosing a member (ID-02) or member creation, naming, and invite presentation (ID-03).
 
 ## Outcome
 
-A visitor can establish household-level access, including through a valid invitation, without creating an individual account.
+A visitor can obtain household access with the configured shared passphrase or a valid signed invite token. Access alone is not a selected member identity.
 
-## Terms and state ownership
+## Implemented behavior
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is household credential cookie and invite query parameters. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
+- **ID-01-AC-01 — Passphrase access.** `/welcome` disables an empty or pending submission, validates the submitted passphrase in the `authenticateWithPassphrase` server action, writes its returned signed token to the HttpOnly `h_access` cookie, and replaces the route with `/onboarding`. An incorrect result and an unexpected action failure produce different localized messages.
+- **ID-01-AC-02 — Invitation access.** `/invite` reads `secret`, optional `memberId`, and optional `redirect`. It validates `secret` in a server action, writes it to `h_access`, and replaces the route with `redirect` or `/home`. When `memberId` is supplied, it also writes the member cookie and asks the family store to select that member before navigating. A missing, invalid, or failed token validation renders the localized invalid-invite recovery link to `/welcome`.
+- **ID-01-AC-03 — Demo convenience.** `/welcome` asks `/api/health` whether demo mode is enabled. If so, it pre-fills `Swipe-Match-Cook` only while the input is empty; health failure does not prevent ordinary sign-in.
+- **ID-01-AC-04 — Access and context gates.** `proxy.ts` permits `/welcome`, `/invite`, `/join`, and `/api` through the household access gate. Other PWA routes require a valid `h_access` token; routes outside the public/context-exempt set also require `x-family-member-id` and otherwise redirect to `/onboarding`. The API has a global authenticated-user filter backed by `HearthAuthenticationHandler`, which accepts the configured raw header, a bearer token, or `h_access`.
 
-## Scope
+## Preserved boundaries and non-goals
 
-### In scope
+- Household access is a shared-secret model, not an individual account, role, or household-record authorization model.
+- The `h_access` and selected-member cookies are separate: a valid access cookie without a member is directed to onboarding for protected app routes.
+- Member selection and stale-member recovery belong to ID-02. Invitation link generation and its copy/share UI belong to ID-03.
+- This baseline does not authorize a new auth provider, token format, API contract, database migration, or change to PWA/API cookie scope.
 
-- Submitting a nonblank household passphrase validates it and, on success, stores the returned household credential before navigating to onboarding.
-- Opening an invite with a valid signed secret stores that credential; an optional member identity is selected before the requested in-app redirect.
-- When health reports demo mode, the welcome form offers the showcase passphrase without preventing replacement.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
+## Known limitations
 
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/app/(auth)/welcome/page.tsx`
-- `pwa/src/app/(auth)/invite/page.tsx`
-- `pwa/src/lib/auth.ts`
-- `api/src/RecipeApi/Infrastructure/HearthAuthenticationHandler.cs`
-- `api/src/RecipeApi/Program.cs`
-- `specs/openapi.yaml`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **ID-01-AC-01 — Primary outcome.** Submitting a nonblank household passphrase validates it and, on success, stores the returned household credential before navigating to onboarding.
-- **ID-01-AC-02 — Complete path.** Opening an invite with a valid signed secret stores that credential; an optional member identity is selected before the requested in-app redirect.
-- **ID-01-AC-03 — Boundary behavior.** When health reports demo mode, the welcome form offers the showcase passphrase without preventing replacement.
-- **ID-01-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **ID-01-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **ID-01-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **ID-01-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
-
-## Preserved behavior
-
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `ID-01-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+- Signed tokens are HMACs of a timestamp, but both PWA and API validation verify only the signature; there is no expiry, revocation, or invite-specific record. The one-year cookie lifetime does not make the token itself expire.
+- Invite tokens remain in the initial query string until the client-side replacement. The implementation has no one-time consumption, redirect allowlist, or audit trail.
+- The current component tests cover demo prefill and Playwright covers normal passphrase and invite redirects; they do not demonstrate invalid invite, expiry/revocation, or token-query handling.

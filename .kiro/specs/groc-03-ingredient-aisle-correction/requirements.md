@@ -1,72 +1,32 @@
 # GROC-03 — Ingredient aisle correction: requirements
 
-## Status and derivation
+## Status
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), GROC-03.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
 
 ## Outcome
 
-A normalized ingredient can be assigned a more accurate aisle so grocery organization is recomputed consistently.
+A shopper can change a displayed normalized ingredient's grocery section; the server records manual category authority and recomputes every stored weekly grocery list containing that key.
 
-## Terms and state ownership
+## Implemented behavior
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is normalized ingredient category override and recomputed schedule grocery lines. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
+- **GROC-03-AC-01 — Planner interaction.** Every grocery row exposes a separate reclassify control. It opens the fixed ten-section picker, does nothing when the chosen section matches the current one, and prevents a second request for the same normalized key while pending.
+- **GROC-03-AC-02 — API validation and persistence.** The browser sends `PATCH /api/ingredients/{normalizedKey}/category` with `{ grocerySection }`. `IngredientsController` accepts only the ten known display values. `IngredientCategoryService` inserts or updates `IngredientCategories` with `Source = "manual"`, confidence `1.0`, and timestamps, then invokes recomputation.
+- **GROC-03-AC-03 — Recompute.** `GroceryRecomputeService.RecomputeForIngredientAsync` finds persisted weekly lists containing the normalized key and recomputes each. During recompute, an exact normalized-key category wins over legacy-key lookup and keyword mapping.
+- **GROC-03-AC-04 — Initiator feedback.** After `204`, `GroceryList` changes matching current-week rows locally and closes the picker only if the user remains on the originating week. Failure retains the picker, marks a temporary error, and clears the pending flag.
 
-## Scope
+## Scope and boundaries
 
-### In scope
+GROC-03 owns the grocery-list correction interaction and the route-to-recompute handoff. `plat-04-ingredient-categorization` owns normalization rules, category data model, automated categorization, and vocabulary policy. GROC-01 owns list derivation. This feature does not create a standalone administration surface or alter ingredient text, recipe content, or nutrition data.
 
-- A category correction identifies the normalized ingredient key and target category.
-- On acceptance, grocery organization is recomputed and current displays can reconcile to the updated category.
-- No family-facing entry point is accepted by this baseline; its location and authorization are an open product decision.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
+## Current limitations
 
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/lib/api/ingredients.ts`
-- `pwa/src/store/weekStore.ts`
-- `pwa/src/lib/grocery/aisleMapper.ts`
-- `api/src/RecipeApi/Controllers/IngredientsController.cs`
-- `api/src/RecipeApi/Services/IngredientCategoryService.cs`
-- `api/src/RecipeApi/Services/GroceryRecomputeService.cs`
-- `api/src/RecipeApi.Tests/Integration/IngredientCategoryIntegrationTests.cs`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **GROC-03-AC-01 — Primary outcome.** A category correction identifies the normalized ingredient key and target category.
-- **GROC-03-AC-02 — Complete path.** On acceptance, grocery organization is recomputed and current displays can reconcile to the updated category.
-- **GROC-03-AC-03 — Boundary behavior.** No family-facing entry point is accepted by this baseline; its location and authorization are an open product decision.
-- **GROC-03-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **GROC-03-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **GROC-03-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **GROC-03-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
+- A correction is household-global in its persisted category lookup; this route does not take a member ID or express per-member preferences.
+- Only open current-week initiators receive a direct local section update. A section-only recompute generally publishes no line-refresh event, so other devices and other weeks need their next schedule fetch/snapshot to observe the new section.
+- The affected-week query searches the serialized grocery-items JSON. It only reaches lists already persisted with that exact normalized key; recipe plans not yet recomputed are not eagerly materialized.
+- The picker has temporary, non-localized failure indication and no retry affordance. Its buttons use visible text but no dialog/focus-trap semantics are implemented.
 
 ## Preserved behavior
 
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `GROC-03-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+Manual category data overrides automatic/keyword classification on later recomputation. Invalid sections produce `400`; success is `204` with no body. No API exposes deletion/reset of a manual override.

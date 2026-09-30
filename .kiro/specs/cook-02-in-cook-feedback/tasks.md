@@ -1,46 +1,9 @@
-# COOK-02 — In-cook recipe feedback future tasks
+# COOK-02 — In-cook recipe feedback future work
 
-> **Status:** Proposed audit/change plan only. Nothing here is authorized or marked pending implementation; current shipped behavior is not represented as unfinished work.
+This implemented baseline has no implementation backlog. Select and authorize a task before changing application behavior.
 
-## Traceability
+- [ ] **COOK-02-T1 — Decide durable concurrency for report edits and workflow launch.** Replace or document the process-local lock only after selecting a multi-replica-safe conflict/idempotency policy.
+  - **Test seam:** `RecipeImportReportService` tests and real-database import-report integration tests; Playwright: two sessions save changed feedback while a re-import starts and receive the approved conflict/retry result; mock owner: this COOK-02 vertical slice; `POST /api/recipes/{id}/import-report`; request `{ reasons, note }`, response is authoritative recipe plus outcome or documented `409` problem.
 
-| Proposed task | Requirements | Design area | Required assertions/checks |
-|---|---|---|---|
-| T1 Baseline audit | R1–R8 | Integration map | Evidence table matches current contract, UI, server, and tests |
-| T2 Resolve policy decisions | R4–R5, R7 | State/security | Product-approved idempotency, notification, locale, and member-switch decisions |
-| T3 Contract-first delta (only if approved) | R2–R5 | Client/contract/server flow | OpenAPI lint/generation and compatibility assertions |
-| T4 Vertical behavior delta (only if approved) | R1–R8 | UI through persistence/workflow | Focus, failure, concurrency, async, privacy, localization assertions |
-| T5 Acceptance review | R1–R8 | Verification | Targeted unit, contract, integration, database, and E2E evidence |
-
-## Proposed execution details
-
-### T1 — Re-verify baseline (required before any future change)
-
-- Read only current non-archived paths named in `design.md`; compare implementation and generated client to `specs/openapi.yaml`.
-- Record demonstrated behavior separately from assumptions and product decisions.
-- **Checks:** targeted existing tests named in the design, OpenAPI validation, and `git diff --check`.
-- **Stop:** stop on contract/code divergence, inaccessible environment, or ownership ambiguity; document it rather than silently choosing a source.
-
-### T2 — Decide consequential policy (required before dependent change)
-
-- Obtain product decisions for the open questions in `requirements.md`; preserve stable requirement IDs when meaning is unchanged.
-- **Assertions:** accepted vs complete wording, cross-device conflict behavior, notification recipient, and processing/interface language boundary are unambiguous.
-- **Stop:** unresolved decisions block only dependent tasks; they do not authorize guessed behavior.
-
-### T3 — Specify and test contract delta (conditional, not authorized)
-
-- If an approved decision changes HTTP/events/models, update OpenAPI first, then contract tests/generated clients, then server tests.
-- **Checks:** repository OpenAPI generation/parity task, affected API test filter, and compile/typecheck.
-- **Stop:** do not edit consumers until the approved contract and failing acceptance test agree.
-
-### T4 — Implement one vertical slice (conditional, not authorized)
-
-- Change only files required by the approved delta, retaining current recovery and household isolation.
-- Add deterministic assertions for happy, validation, failure, late async, repeat activation, keyboard/focus, and locale behavior.
-- **Stop:** halt on data migration, destructive compatibility, new secret/PII exposure, or cross-feature policy not covered by approval.
-
-### T5 — Review and evidence (conditional)
-
-- Run targeted component/API/integration tests plus the smallest relevant end-to-end journey; review requirement → design → assertion coverage.
-- Record exact commands and results; do not check off shipped behavior based on history.
-- **Stop:** unresolved required acceptance or contract drift prevents completion; unrelated failures are reported, not repaired without scope.
+- [ ] **COOK-02-T2 — Provide an approved in-cook status refresh for background re-import.** Choose polling, detail invalidation, or a versioned stream event; do not infer completion from workflow acceptance.
+  - **Test seam:** report integration/workflow tests, `CooksMode.test.tsx`, and the chosen stream/poll hook test; Playwright: submit content feedback, leave the sheet, complete the workflow, and observe the approved ready/failure status on return; mock owner: this COOK-02 vertical slice; `GET /api/recipes/{id}` or selected stream route/event; response/event carries recipe `importIssue` status and safe failure fields.

@@ -1,46 +1,9 @@
-# COOK-01 — Step-by-step Cook's Mode future tasks
+# COOK-01 — Step-by-step Cook's Mode future work
 
-> **Status:** Proposed audit/change plan only. Nothing here is authorized or marked pending implementation; current shipped behavior is not represented as unfinished work.
+This implemented baseline has no implementation backlog. Select and authorize a task before changing application behavior.
 
-## Traceability
+- [ ] **COOK-01-T1 — Guard or cancel stale recipe-detail loads.** Define the expected behavior when Cook's Mode changes recipe or closes while its detail fetch is pending.
+  - **Test seam:** `CooksMode.test.tsx` and recipe API mock tests; Playwright: open recipe A, switch/close, then resolve A after recipe B is active and confirm B remains visible; mock owner: this COOK-01 vertical slice; `GET /api/recipes/{id}`; response is the existing recipe-detail object or documented failure.
 
-| Proposed task | Requirements | Design area | Required assertions/checks |
-|---|---|---|---|
-| T1 Baseline audit | R1–R8 | Integration map | Evidence table matches current contract, UI, server, and tests |
-| T2 Resolve policy decisions | R4–R5, R7 | State/security | Product-approved idempotency, notification, locale, and member-switch decisions |
-| T3 Contract-first delta (only if approved) | R2–R5 | Client/contract/server flow | OpenAPI lint/generation and compatibility assertions |
-| T4 Vertical behavior delta (only if approved) | R1–R8 | UI through persistence/workflow | Focus, failure, concurrency, async, privacy, localization assertions |
-| T5 Acceptance review | R1–R8 | Verification | Targeted unit, contract, integration, database, and E2E evidence |
-
-## Proposed execution details
-
-### T1 — Re-verify baseline (required before any future change)
-
-- Read only current non-archived paths named in `design.md`; compare implementation and generated client to `specs/openapi.yaml`.
-- Record demonstrated behavior separately from assumptions and product decisions.
-- **Checks:** targeted existing tests named in the design, OpenAPI validation, and `git diff --check`.
-- **Stop:** stop on contract/code divergence, inaccessible environment, or ownership ambiguity; document it rather than silently choosing a source.
-
-### T2 — Decide consequential policy (required before dependent change)
-
-- Obtain product decisions for the open questions in `requirements.md`; preserve stable requirement IDs when meaning is unchanged.
-- **Assertions:** accepted vs complete wording, cross-device conflict behavior, notification recipient, and processing/interface language boundary are unambiguous.
-- **Stop:** unresolved decisions block only dependent tasks; they do not authorize guessed behavior.
-
-### T3 — Specify and test contract delta (conditional, not authorized)
-
-- If an approved decision changes HTTP/events/models, update OpenAPI first, then contract tests/generated clients, then server tests.
-- **Checks:** repository OpenAPI generation/parity task, affected API test filter, and compile/typecheck.
-- **Stop:** do not edit consumers until the approved contract and failing acceptance test agree.
-
-### T4 — Implement one vertical slice (conditional, not authorized)
-
-- Change only files required by the approved delta, retaining current recovery and household isolation.
-- Add deterministic assertions for happy, validation, failure, late async, repeat activation, keyboard/focus, and locale behavior.
-- **Stop:** halt on data migration, destructive compatibility, new secret/PII exposure, or cross-feature policy not covered by approval.
-
-### T5 — Review and evidence (conditional)
-
-- Run targeted component/API/integration tests plus the smallest relevant end-to-end journey; review requirement → design → assertion coverage.
-- Record exact commands and results; do not check off shipped behavior based on history.
-- **Stop:** unresolved required acceptance or contract drift prevents completion; unrelated failures are reported, not repaired without scope.
+- [ ] **COOK-01-T2 — Make completion semantics consistent across entry points.** Product must decide whether recipe-detail completion is view-only or should validate an assigned day; preserve Home's schedule ownership if it changes.
+  - **Test seam:** `CooksMode.test.tsx`, `todayStore` tests, and schedule integration tests; Playwright: complete from each supported entry and see the approved schedule result; mock owner: this COOK-01/Home vertical slice; `POST /api/schedule/day/{date}/validate`; request `{ status: 2 }`, response is the documented success envelope/updated schedule state.

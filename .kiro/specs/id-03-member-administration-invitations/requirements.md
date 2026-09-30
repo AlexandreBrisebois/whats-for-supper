@@ -1,72 +1,34 @@
 # ID-03 — Household member administration and invitations: requirements
 
-## Status and derivation
+## Status and scope
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), ID-03.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
+- **Source artifact:** Current PWA/API/OpenAPI source and focused tests; `docs/feature-inventory.md` is historical context only.
+
+This packet owns member-management presentation and the invitation link UI. It reuses the selection and family CRUD ownership from ID-02 and the credential semantics from ID-01.
 
 ## Outcome
 
-A household can maintain member names and create a member-scoped way to join the shared experience.
+An authenticated user can view, add, rename, and invite a family member from the existing family-management surface.
 
-## Terms and state ownership
+## Implemented behavior
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is server family records plus selected identity cookies. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
+- **ID-03-AC-01 — Member administration.** `FamilyManagement` renders `FamilySelector`; the selector lists existing members, exposes add, and lets `FamilyMemberList` open inline rename editing. Add and rename trim blank names in the PWA, call `POST /api/family` or `PUT /api/family/{id}`, and replace/append the local returned member on success. The API service also rejects blank names.
+- **ID-03-AC-02 — Member-specific invite UI.** In the management surface each listed member has an Invite control. `InviteLinkDialog` calls the `getInviteLink` server action with the browser origin and member ID, displays the generated `/invite?secret=…&memberId=…` link, enables copy when a link exists, and conditionally renders native share when `navigator.share` is available.
+- **ID-03-AC-03 — Delete capability boundary.** `DELETE /api/family/{id}` and `familyStore.removeMember` exist; deleting the selected member clears its selection cookies and removes it from store state. The current `FamilyManagement`/`FamilyMemberList` presentation supplies no delete control, confirmation, or recovery UX.
+- **ID-03-AC-04 — Response and authorization boundary.** `FamilyController` delegates CRUD to `FamilyService`, whose records are persisted in `RecipeDbContext`. The API's global authentication filter applies; generated PWA API calls consume the success wrapper documented in `specs/openapi.yaml`. The controller itself does not impose per-target-member ownership checks.
 
-## Scope
+## Preserved boundaries and non-goals
 
-### In scope
+- This is a shared family-management model, not role-based administration or household-scoped authorization. The current `FamilyMember` persistence/query path is global.
+- Link generation is a server action, but it reuses the same shared HMAC credential as ordinary household access; it is not a separately persisted invitation.
+- Selection, cookie persistence, and stale-identity recovery belong to ID-02. Invite acceptance/token validation belongs to ID-01.
+- This baseline does not authorize delete UX, confirmation policy, a new permission model, invitation revocation/expiry, or contract/schema changes.
 
-- A user can add a nonblank member, rename an existing member, and select the active member.
-- A member-specific invitation can be generated and exposed through copy and supported native sharing.
-- The API deletion capability remains documented but family-facing removal is not accepted until product policy confirms safeguards.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
+## Known limitations
 
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/components/profile/FamilyManagement.tsx`
-- `pwa/src/components/common/InviteLinkDialog.tsx`
-- `pwa/src/store/familyStore.ts`
-- `pwa/src/lib/api/family.ts`
-- `pwa/src/lib/auth.ts`
-- `api/src/RecipeApi/Controllers/FamilyController.cs`
-- `api/src/RecipeApi/Services/FamilyService.cs`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **ID-03-AC-01 — Primary outcome.** A user can add a nonblank member, rename an existing member, and select the active member.
-- **ID-03-AC-02 — Complete path.** A member-specific invitation can be generated and exposed through copy and supported native sharing.
-- **ID-03-AC-03 — Boundary behavior.** The API deletion capability remains documented but family-facing removal is not accepted until product policy confirms safeguards.
-- **ID-03-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **ID-03-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **ID-03-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **ID-03-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
-
-## Preserved behavior
-
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `ID-03-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+- Rename/add failures set a shared store error, but `FamilyManagement` does not render that error; the dialog silently ignores generation, clipboard, and native-share failures.
+- Invitation links are bearer-like reusable household-access credentials in a URL; they are neither member-bound cryptographically nor expiring/revocable. The member ID is a separate query value.
+- API delete is available despite absent family-facing controls; deletion has no shown confirmation or server-side target-authorization policy in this path.
+- Existing API tests cover CRUD and service validation, and onboarding Playwright covers creation. There is no focused current test for rename controls, invitation dialog failure/copy/share behavior, or deletion via the store.

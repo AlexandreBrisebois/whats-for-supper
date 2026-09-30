@@ -59,8 +59,10 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
         description: 'After getting ready, scroll through all the cooking steps on one page.',
       },
     ]);
-    await page.setViewportSize({ width: 1180, height: 820 });
     await page.goto('/profile/settings');
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
     const disclosure = page.getByRole('button', { name: /Preview features/i });
     await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
     await disclosure.click();
@@ -90,7 +92,7 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await page.reload();
     await page.getByRole('button', { name: /Preview features/i }).click();
     await expect(page.getByRole('switch', { name: /Recipe on one page/i })).toBeChecked();
-    await page.screenshot({ path: 'test-results/settings-preview-ipad.png', fullPage: true });
+    await page.screenshot({ path: 'test-results/settings-preview-mobile.png', fullPage: true });
   });
 
   test('language toggle selection persists on navigation', async ({ page }) => {

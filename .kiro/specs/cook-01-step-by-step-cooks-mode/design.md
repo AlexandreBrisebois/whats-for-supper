@@ -1,57 +1,25 @@
 # COOK-01 — Step-by-step Cook's Mode design
 
-> **Status:** Proposed design derived from `COOK-01` requirements and verified current sources. Implementation is not authorized.
-
 ## Integration map
 
-1. **UI/entry:** `CooksMode` launched from recipe detail/planner actions.
-2. **Client boundary:** API helpers in `pwa/src/lib/api/recipes.ts` or `pwa/src/lib/api/captures.ts`; generated models under `pwa/src/lib/api/generated/`.
-3. **Contract:** `specs/openapi.yaml`: `GET /api/recipes/{id}`; client-owned progress in `plannerStore`.
-4. **Server/workflow:** no dedicated cooking endpoint; recipe detail is authoritative and `stepParser.ts` adapts structured/legacy instructions.
-5. **Evidence:** `CooksMode.test.tsx`, `stepParser.test.ts`, and `RecipeDetailSheet.test.tsx`.
+`RecipeDetailSheet` and `HomeCommandCenter` own entry visibility and mount `CooksMode`. The overlay calls `getRecipe` for `GET /api/recipes/{id}`, then feeds `recipeInstructions` to `parseRecipeSteps`. `plannerStore` owns only `cookProgress`; component state owns fetched detail, parsed/fallback steps, ingredient checks, edit UI, celebration, and report context.
 
-## State and data flow
+Instruction edits use `updateRecipe` and the existing recipe `PATCH /api/recipes/{id}` contract; there is no Cook's Mode controller. Completion returns through the optional callback: Home delegates to `todayStore.markCooked`, which posts `{ status: 2 }` to `POST /api/schedule/day/{date}/validate`; recipe-detail has no equivalent callback. Schedule SSE reconciliation is therefore a Home/today concern, not Cook's Mode state.
 
-1. The member enters with authenticated household/member context. Device-local draft and busy/error state remain owned by the initiating UI/store.
-2. Client validation rejects structurally invalid input before transport and locks submission during the request.
-3. The generated/manual API adapter sends the documented representation. The controller validates identity and maps the request to service/persistence or a workflow trigger.
-4. A synchronous success updates from the response. A 202 response stores its recipe/import/workflow identifier and represents **pending**, never ready.
-5. Workflow processors update durable recipe/import state. Polling, refetch, or household-scoped SSE reconciles the client; ready entities enter normal recipe surfaces only when readiness rules pass.
-6. Errors are separated into local validation, HTTP authorization/conflict/not-found, workflow launch failure, and later processing failure. Retry never assumes the prior attempt had no effect.
+## State flow
 
-## Behavioral design decisions
+```text
+entry recipe id -> GET recipe -> parser or fallback -> local step/progress UI
+final step -> optional Home callback -> schedule validate -> today/stream state
+instruction edit -> PATCH recipe -> local detail + reparsed steps
+```
 
-- Reuse the existing capture/detail/cook/issue components and OpenAPI-generated boundary; do not introduce a parallel state model.
-- Treat server responses as authoritative after every mutation. Guard async callbacks by recipe/import/attempt identity.
-- Preserve draft/navigation state until the accepted result or explicit cancel makes it safe to clear.
-- progress is client-local and last local update wins; cross-device synchronization is not established
-- late recipe fetch must apply only to the active recipe; close/reopen preserves store progress
-
-## Security, privacy, and household isolation
-
-Protected mutations carry family-member identity according to `specs/openapi.yaml`; controllers must re-establish authorization and never trust a client recipe/import association. Asset/source access and import diagnostics remain household-scoped. Logs may retain correlation IDs and technical causes, while normal UI receives allow-listed family-safe reasons. Uploaded/shared content must be treated as untrusted input.
-
-## Accessibility, devices, and localization
-
-Use semantic buttons/inputs/fieldset/dialog naming, visible focus, focus restoration, keyboard escape where cancellation is safe, and live status for async outcomes. Do not make swipe, camera, hover, or color the only mechanism. Preserve safe-area and touch targets. Route copy through `pwa/src/locales/en/common.json` and `pwa/src/locales/fr/common.json` when future changes are approved; never infer recipe processing language from UI locale.
+The feature flag selects paged versus single-page presentation; it does not change the recipe instruction representation. COOK-02 is mounted as a nested sheet and returns updated recipe detail without changing the progress map.
 
 ## Failure and recovery
 
-- Client validation: retain draft, focus/associate the error, make no request.
-- Request uncertainty: retain identifier/draft, disable blind duplicate resubmission until authoritative lookup/refetch.
-- 401/403/404: disclose no cross-household existence; return to a safe surface.
-- 409/concurrent action: explain the active/conflicting state and refetch.
-- Accepted workflow failure: retain durable failure/report state and correlation ID; expose only safe retry/clear actions.
-- Offline/reconnect: do not claim cancellation; reconcile status before permitting a duplicate action.
+Initial detail failure yields fallback steps and still permits navigation. Edit failure retains the editor and supplies retry; save does not lock the non-single-page Save control through its `editPending` state. There is no error state for the initial fetch, no cancellation of old requests, and no recovery for a failed Home cooked validation beyond later store/server updates.
 
-## Verification strategy
+## Evidence seams and dependencies
 
-- Component tests assert entry, validation, keyboard/focus, pending locks, family-safe errors, and late-result guards.
-- API contract tests assert exact request/response/error shapes and generated-client parity.
-- Server unit/integration tests assert authorization, eligibility, persistence transitions, idempotency/conflicts, and workflow launch failure.
-- Real-database tests cover concurrent updates and durable status where the feature writes workflow/import state.
-- End-to-end tests cover the complete happy path plus one recoverable failure without mocking away the selected seam.
-
-## Alternatives and unresolved decisions
-
-A purely client-side duplicate/concurrency policy is simpler but cannot guarantee cross-device correctness; a server idempotency/version contract is preferred if product requires that guarantee. SSE-only feedback is lower latency but polling/refetch remains necessary for reconnect and missed events. Exact policies remain blocked by the open questions in `requirements.md`.
+`CooksMode.test.tsx` covers detail loading, parsing/fallback, progress, flag variants, edits, and reporting entry; `stepParser.test.ts` covers representations. `RecipeDetailSheet.test.tsx` covers detail entry. `todayStore` tests and schedule API tests own cooked validation. Contracts are recipe GET/PATCH and schedule-day validate in `specs/openapi.yaml`. This packet depends on LIB-02/LIB-03, Home/today and schedule state, and COOK-02 without duplicating their ownership.

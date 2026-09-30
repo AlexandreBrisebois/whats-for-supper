@@ -9,11 +9,32 @@ vi.mock('@/lib/api/featureFlags', () => ({
 }));
 
 describe('PreviewFeaturesSection', () => {
-  beforeEach(() => useFeatureFlagStore.setState({ flags: {}, pending: {}, mutationErrors: {} }));
+  beforeEach(() =>
+    useFeatureFlagStore.setState({
+      flags: {},
+      pending: {},
+      mutationErrors: {},
+      error: null,
+      refresh: vi.fn(),
+    })
+  );
 
   it('is absent when no opt-in previews are available', () => {
     render(<PreviewFeaturesSection />);
     expect(screen.queryByTestId('preview-features-section')).toBeNull();
+  });
+
+  it('shows a retryable diagnostic when the preview snapshot cannot load', async () => {
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    useFeatureFlagStore.setState({ error: 'Unable to load preview features.', refresh });
+
+    render(<PreviewFeaturesSection />);
+
+    expect(screen.getByTestId('preview-features-section')).toHaveTextContent(
+      'Unable to load preview features.'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledOnce());
   });
 
   it('discloses an accessible preview switch', async () => {
