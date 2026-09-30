@@ -64,10 +64,29 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     const disclosure = page.getByRole('button', { name: /Preview features/i });
     await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
     await disclosure.click();
-    const previewSwitch = page.getByRole('switch', { name: /Recipe on one page/i });
+    const previewSwitch = page.getByTestId('feature-toggle-single-page-recipe-steps');
     await expect(previewSwitch).toBeVisible();
-    await previewSwitch.check();
+    await expect(previewSwitch).toHaveAccessibleName(/Recipe on one page/i);
+
+    // Effective state changes only after server confirmation. Hold the response
+    // so the pending state is covered independently of network timing.
+    let confirmSave!: () => void;
+    const saveAllowed = new Promise<void>((resolve) => {
+      confirmSave = resolve;
+    });
+    await page.route('**/api/feature-flags/single-page-recipe-steps', async (route) => {
+      if (route.request().method() === 'PATCH') await saveAllowed;
+      await route.fallback();
+    });
+    try {
+      await previewSwitch.click();
+      await expect(previewSwitch).toBeDisabled();
+      await expect(previewSwitch).not.toBeChecked();
+    } finally {
+      confirmSave();
+    }
     await expect(previewSwitch).toBeChecked();
+    await expect(previewSwitch).toBeEnabled();
     await page.reload();
     await page.getByRole('button', { name: /Preview features/i }).click();
     await expect(page.getByRole('switch', { name: /Recipe on one page/i })).toBeChecked();
