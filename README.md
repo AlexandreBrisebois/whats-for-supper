@@ -37,6 +37,7 @@ The public Synology release is in preparation and is **not available to install 
 ## Read on
 
 - [Family guide](docs/user-guide.md) — how planning, shopping, choosing, and cooking fit together.
+- [Feature inventory](docs/feature-inventory.md) — the current capability catalog and starting point for feature specifications.
 - [Architecture](docs/architecture.md) — a concise technical view for contributors and operators.
 - [Synology operator guide](release-template/synology/README.md) — the current template; physical deployment, recovery, and public-release qualification remain outstanding.
 - [Local development guide](LOCAL_DEV_LOOP.md) — contributor setup and day-to-day development.
