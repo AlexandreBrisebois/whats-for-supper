@@ -19,7 +19,10 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
   const { selectedFamilyMemberId, updateMemberPreferences } = useFamilyStore();
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-10 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
+    <div
+      data-testid="settings-content"
+      className="mx-auto flex w-full min-w-0 max-w-sm flex-col gap-10 px-6 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out"
+    >
       {/* Decorative background element */}
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-20%,#FDFCF0_0%,#FFFFFF_100%)]" />
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[150%] h-[40%] -z-10 bg-terracotta/[0.03] blur-[120px] rounded-[100%]" />
@@ -43,25 +46,9 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
       </div>
 
       <div className="flex min-w-0 flex-col gap-8">
-        <section aria-labelledby="settings-household-heading" className="min-w-0 space-y-3">
-          <h2
-            id="settings-household-heading"
-            className="px-2 font-heading text-lg font-bold text-charcoal"
-          >
-            Your household
-          </h2>
-          <FamilyManagement />
-        </section>
+        <FamilyManagement />
 
-        <section aria-labelledby="settings-meal-defaults-heading" className="min-w-0 space-y-3">
-          <h2
-            id="settings-meal-defaults-heading"
-            className="px-2 font-heading text-lg font-bold text-charcoal"
-          >
-            Meal defaults
-          </h2>
-          <FamilyGOTOSettings />
-        </section>
+        <FamilyGOTOSettings />
 
         <FailedCapturesSection />
 

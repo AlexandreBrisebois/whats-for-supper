@@ -387,5 +387,38 @@
     "retrying": "Nouvel essai...",
     "clearFailedCapture": "Effacer la capture échouée",
     "clearFailedCaptureConfirm": "Effacer cette capture échouée?"
+  },
+  "previewFeatures": {
+    "title": "Fonctionnalités en aperçu",
+    "subtitle": "Essayez les nouveautés à votre rythme.",
+    "notice": "Les aperçus peuvent évoluer. Vous pouvez les désactiver à tout moment.",
+    "badge": "Aperçu",
+    "retry": "Réessayer",
+    "tryAgain": "Réessayer",
+    "saving": "Enregistrement…",
+    "loadError": "Impossible de charger les fonctionnalités en aperçu.",
+    "saveError": "Impossible d’enregistrer. Réessayez.",
+    "enabled": "Aperçu activé",
+    "disabled": "Aperçu désactivé",
+    "flags": {
+      "single-page-recipe-steps": {
+        "name": "Recette sur une seule page",
+        "description": "Après la préparation, faites défiler toutes les étapes sur une seule page."
+      }
+    }
+  },
+  "familyGoto": {
+    "title": "Repas de secours",
+    "description": "Vos repas de secours quand rien n’est prévu. Ils s’affichent à tour de rôle sur l’accueil : confirmez votre choix d’un seul geste.",
+    "empty": "Aucun repas de secours pour le moment.",
+    "add": "Ajouter un repas",
+    "remove": "Retirer {{name}}",
+    "close": "Fermer",
+    "search": "Chercher dans la bibliothèque",
+    "searchDescription": "Trouvez la recette, puis touchez l’étoile pour en faire un repas de secours.",
+    "describe": "Décrire un plat",
+    "describeDescription": "L’IA crée une recette complète à partir de votre description",
+    "capture": "Prendre une photo",
+    "captureDescription": "Photographiez une fiche recette, un emballage ou une note manuscrite"
   }
 }

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   loadSetting: vi.fn(),
@@ -57,6 +57,7 @@ vi.mock('@/lib/api/api-client', () => ({
 import { FamilyGOTOSettings } from './FamilyGOTOSettings';
 
 describe('FamilyGOTOSettings', () => {
+  afterEach(() => localStorage.removeItem('locale'));
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.loadSetting.mockResolvedValue(null);
@@ -78,6 +79,21 @@ describe('FamilyGOTOSettings', () => {
 
     expect(mocks.push).toHaveBeenCalledWith('/recipes');
     expect(screen.queryByTestId('quick-find-modal')).not.toBeInTheDocument();
+  });
+
+  it('translates the card and all add-meal options into French', () => {
+    localStorage.setItem('locale', 'fr');
+    render(<FamilyGOTOSettings />);
+    expect(screen.getByRole('heading', { name: 'Repas de secours' })).toBeInTheDocument();
+    expect(screen.getByText('Aucun repas de secours pour le moment.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter un repas' }));
+    expect(
+      screen.getByRole('button', { name: /Chercher dans la bibliothèque/ })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Décrire un plat/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Prendre une photo/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer' }));
+    expect(screen.queryByTestId('goto-search-library')).not.toBeInTheDocument();
   });
 
   // Migrated from settings.spec.ts: GOTO ready/pending rendering

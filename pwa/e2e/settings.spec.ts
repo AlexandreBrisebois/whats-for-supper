@@ -43,6 +43,129 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
 
   // GOTO ready/pending rendering is covered by FamilyGOTOSettings.test.tsx.
 
+  for (const scenario of [
+    {
+      label: 'ordinary names without previews',
+      names: ['Alex', 'Jordan'],
+      preview: false,
+      locale: 'en',
+    },
+    {
+      label: 'ordinary names with previews',
+      names: ['Alex', 'Jordan'],
+      preview: true,
+      locale: 'en',
+    },
+    { label: 'French previews', names: ['Alex', 'Jordan'], preview: true, locale: 'fr' },
+    {
+      label: 'long names with previews',
+      locale: 'en',
+      names: ['Alexandertheverylongfamilymembername', 'Jordan Alexandra Montgomery'],
+      preview: true,
+    },
+  ] as const) {
+    test.describe(scenario.label, () => {
+      test.use({ appLocale: scenario.locale });
+      for (const width of [320, 390, 820]) {
+        test(`${scenario.label} fit at ${width}px`, async ({ page }) => {
+          await page.setViewportSize({ width, height: 844 });
+          await page.route('**/api/family', async (route) => {
+            if (route.request().method() !== 'GET') return route.fallback();
+            await route.fulfill({
+              json: {
+                data: [
+                  builders.familyMember({ name: scenario.names[0] }),
+                  builders.familyMember({
+                    id: MOCK_IDS.MEMBER_JORDAN,
+                    name: scenario.names[1],
+                  }),
+                ],
+              },
+            });
+          });
+          await mockFeatureFlags(
+            page,
+            scenario.preview
+              ? [
+                  {
+                    key: 'single-page-recipe-steps',
+                    enabled: false,
+                    mode: 'opt-in',
+                    memberEnabled: false,
+                    displayName: 'Recipe on one page',
+                    description: 'Scroll through all the cooking steps on one page.',
+                  },
+                ]
+              : []
+          );
+          await page.goto('/profile/settings');
+          await expect(
+            page.getByRole('heading', {
+              name: scenario.locale === 'fr' ? 'Paramètres' : 'Settings',
+              exact: true,
+            })
+          ).toBeVisible();
+          const member = page.getByTestId(`family-member-${MOCK_IDS.MEMBER_ALEX}`);
+          await expect(member).toContainText(scenario.names[0]);
+          const contentBounds = await page.getByTestId('settings-content').boundingBox();
+          expect(contentBounds!.width).toBeLessThanOrEqual(384);
+          const expectFits = async () => {
+            await expect
+              .poll(() =>
+                page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+              )
+              .toBe(true);
+            for (const control of await page.locator('[data-testid^="family-member-"]').all()) {
+              const bounds = await control.boundingBox();
+              expect(bounds).not.toBeNull();
+              expect(bounds!.x).toBeGreaterThanOrEqual(0);
+              expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+            }
+          };
+          await expectFits();
+          await page.getByTestId(`family-member-edit-${MOCK_IDS.MEMBER_ALEX}`).click();
+          await expect(
+            page.getByTestId(`family-member-edit-input-${MOCK_IDS.MEMBER_ALEX}`)
+          ).toBeVisible();
+          await expectFits();
+          await page.getByTestId(`family-member-cancel-${MOCK_IDS.MEMBER_ALEX}`).click();
+          if (scenario.preview) {
+            const preview = page.getByTestId('preview-features-toggle');
+            await preview.scrollIntoViewIfNeeded();
+            await expect(preview).toBeInViewport();
+            await preview.click();
+            const toggle = page.getByTestId('feature-toggle-single-page-recipe-steps');
+            await expect(toggle).toHaveAccessibleName(
+              scenario.locale === 'fr' ? /Recette sur une seule page/ : /Recipe on one page/
+            );
+            await toggle.scrollIntoViewIfNeeded();
+            await expect(toggle).toBeInViewport();
+            const label = page.locator('label[for="feature-single-page-recipe-steps"]');
+            const labelBounds = await label.boundingBox();
+            const toggleBounds = await toggle.boundingBox();
+            expect(labelBounds!.x).toBeGreaterThanOrEqual(0);
+            expect(labelBounds!.x + labelBounds!.width).toBeLessThanOrEqual(width);
+            expect(toggleBounds!.x + toggleBounds!.width).toBeLessThanOrEqual(width);
+            if (width < 640) {
+              expect(toggleBounds!.y).toBeGreaterThanOrEqual(labelBounds!.y + labelBounds!.height);
+              expect(labelBounds!.width).toBeGreaterThan(160);
+            }
+            await expect
+              .poll(() => label.evaluate((element) => element.scrollWidth <= element.clientWidth))
+              .toBe(true);
+          } else {
+            await expect(page.getByTestId('preview-features-section')).toHaveCount(0);
+          }
+          await expectFits();
+          await page.screenshot({
+            path: `test-results/settings-${scenario.label.replaceAll(' ', '-')}-${width}px.png`,
+            fullPage: true,
+          });
+        });
+      }
+    });
+  }
+
   test('hides Preview features when no opt-in flags are available', async ({ page }) => {
     await page.goto('/profile/settings');
     await expect(page.getByTestId('preview-features-section')).toHaveCount(0);
