@@ -5,6 +5,14 @@ Repository: AlexandreBrisebois/whats-for-supper, main, inspected through GitHub 
 
 Branch correction: feature-flag implementation was subsequently inspected on `codex/create-new-branch-for-feature-flags`. PDF implementation should target that branch or a branch containing it. Capture/workflow findings above came from main and must be revalidated on that implementation base. Feature flags are existing code on codex, not a new framework dependency.
 
+## Accepted preview tradeoffs
+
+User decision, 2026-10-01: completion feedback is best-effort and may be lost when the app closes or an event is missed. Members can find completed recipes by browsing when they are ready. Durable client pending state, reconnect reconciliation, and recovery of missed completion notifications are not required for this preview.
+
+Retries after an uncertain response may create duplicate recipes. Members can identify, flag and delete duplicates using existing controls. Server idempotency, cross-tab duplicate prevention and exactly-once submission are not required. Retain the local submission lock to prevent accidental repeated taps during an active request. Do not add duplicate management UI to this slice.
+
+These decisions accept missing feedback and duplicate results; they do not change extraction correctness or justify saying a recipe is ready before it is. Workflow-launch errors remain an inherited limitation of the reused creation path, rather than a mandate for a new durable queue/recovery system.
+
 ## Outcome and scope
 
 Mom can select a recipe PDF or share it from another app, confirm the file, and save it without choosing an extraction method. PDF import is a preview, off by default, with server-side enforcement. Support one PDF containing one recipe per submission, including scanned PDFs and a recipe spanning multiple pages. Do not silently truncate pages or split a cookbook into recipes.
@@ -39,7 +47,7 @@ With preview disabled, render the current capture experience unchanged. With pre
 
 Selecting a PDF opens a compact confirmation: filename, “Add this recipe to your library”, Save recipe and Cancel. No required title, rating, notes, dish-photo selection or instructions. PDF and .txt bundle confirmations remain separate because the bundle already contains a structured recipe.
 
-Sharing a PDF opens that same confirmation directly, bypassing the capture chooser. Save uploads/converts the file with honest progress (“Preparing your PDF…”). After the API returns an accepted recipe ID, add it to the existing pending capture store and navigate to Home immediately. Existing ready/failure feedback handles background extraction. Never claim that parsing or upload means the recipe is ready.
+Sharing a PDF opens that same confirmation directly, bypassing the capture chooser. Save uploads/converts the file with honest progress (“Preparing your PDF…”). After the API returns an accepted recipe ID, add it to the existing pending capture store and navigate to Home immediately. Existing ready/failure feedback is best-effort while the session remains active. Members can browse for the recipe when ready; no completion notification after app closure is promised. Never claim that parsing or upload means the recipe is ready.
 
 Cancellation makes no API mutation. Choosing a PDF must not discard an existing photo draft. Return to the prior capture state on cancel. Retry retains the file while the page remains open; a lost or expired staged file offers Choose file again.
 
@@ -67,7 +75,7 @@ Candidate preview limits: 20 MB input and 10 pages, plus bounded rendered dimens
 
 The renderer is the new dependency and operational risk. Verify supported deployment images/architectures, license, packaging and failure isolation. Do not assume the current image library can render PDFs. If rendering cannot fit a bounded upload request, stop and revise the design to a separately approved asynchronous source-storage slice rather than introducing a new workflow unnoticed.
 
-Existing CreateRecipe logs workflow enqueue failures yet returns an ID. This is an observed inherited risk: test failed enqueue in the PDF slice and ensure the user has a real recovery path. Do not label an import queued without a durable workflow, or undertake unrelated queue infrastructure changes without a revised scope.
+Existing CreateRecipe logs workflow enqueue failures yet returns an ID. Preserve this inherited limitation in the adapter scope and record it in tests/evidence; 202 establishes acceptance/persistence, not readiness or guaranteed workflow launch. Do not add durable queue/recovery infrastructure for this preview. Use acceptance copy that does not claim the recipe is ready or that launch was verified.
 
 No PDF-specific recipe columns, new workflow IDs, extraction prompts, summary queries or sourceType enum are required by this design. PDFs become page-image imports; recipe sourceType remains photos. Add PDF provenance later only if it becomes an explicit requirement.
 
@@ -77,7 +85,7 @@ Change the advertised target to POST /share-target with multipart/form-data, pre
 
 The worker intercepts only this exact same-origin POST, applies basic file/count/size checks and stages the file in IndexedDB under an unpredictable token. Await staging before redirecting with 303 to /capture?share=<token>. Preserve text fields with the staged record. Do not upload to the API from the worker or auto-save on launch. Staging needs a TTL, bounded total storage and cleanup after success/cancel/expiry. IndexedDB failure must produce a recoverable page, not a success redirect. Do not put document bytes, recipe content or member credentials in URLs/logs.
 
-Keep the staged file across household unlock/member selection; attach it to a recipe only after confirmed member identity and Save. Clear it after accepted upload. Submission locking prevents double taps; importing on Save rather than an effect prevents reload/StrictMode duplicate submissions. Do not promise exactly-once delivery after an ambiguous network failure without a server idempotency contract; that is a specific decision to resolve before implementation.
+Keep the staged file across household unlock/member selection; attach it to a recipe only after confirmed member identity and Save. Clear it after accepted upload. Submission locking prevents double taps; importing on Save rather than an effect prevents reload/StrictMode duplicate submissions. An ambiguous network failure may produce a duplicate on retry; this is an accepted preview tradeoff. Reuse existing flag/delete controls for duplicates and do not add a server idempotency contract.
 
 Installed Android Chromium PWA sharing is the primary qualification target. iPhone/iPad PWA file share targets are not a supported equivalent; retain the file picker as the no-training fallback. A native iOS share extension would be a separate project. Verify Mom's device before treating share-target support as the main delivery path.
 
@@ -100,8 +108,8 @@ Write contract and tests before runtime code, using valid GUID builders and sche
 | --- | --- |
 | Flag | Off hides PDF entry and rejects direct API calls with no conversion/storage/DB/workflow effects; loading failure defaults off; member switch clears prior enablement; on/opt-in behave as specified |
 | Conversion | Text and scanned recipe fixtures, ordered multipage recipe, encrypted/corrupt/non-PDF/empty/oversized/over-page-limit documents; bounded resources, timeout and cleanup; no recipe on rejected conversion |
-| API/persistence | Real PostgreSQL and faithful workflow factory: one recipe/search sidecar, persisted originals/info, correct member, no finished-dish page, one import workflow; enqueue failure and recovery behavior |
-| UI | Picker cancel, PDF dispatch versus .txt bundle, confirmation, submission lock, upload failure/retry, accepted-ID requirement, pending-store/Home navigation, early and late readiness, failure/retry |
+| API/persistence | Real PostgreSQL and faithful workflow factory: one recipe/search sidecar per successful request, persisted originals/info, correct member, no finished-dish page, import workflow when launch succeeds; document inherited enqueue-failure behavior |
+| UI | Picker cancel, PDF dispatch versus .txt bundle, confirmation, local submission lock, upload failure/retry, accepted-ID requirement, pending-store/Home navigation and existing session feedback; completed recipe remains browseable without notification |
 | Share receiver | Multipart PDF with app open/closed, text/url POST, existing GET links, missing/extra/invalid files, storage failure/expiry, refresh, auth/member selection, disabled preview, no submission on launch |
 | Legacy regression | Photo upload/limits and feedback, link/manual review and errors, describe/GOTO, .txt bundle acceptance, duplicate behavior, original-image reimport, ready/failure notifications, API/SSE bypass in worker |
 | Device | Actual installed Android OS share sheet cold/warm launches and manifest update; actual iOS picker fallback. Synthetic Playwright navigation alone cannot establish OS registration |
@@ -110,7 +118,7 @@ Run affected API tests, PWA unit tests, focused capture/share E2E, typecheck/lin
 
 ## Implementation sequence and stopping points
 
-1. Revalidate source at a pinned checkout containing codex/create-new-branch-for-feature-flags; confirm manifest serving. Reuse its flag implementation. Resolve Mom's platform, conversion limits/library, enqueue semantics and ambiguous retry policy.
+1. Revalidate source at a pinned checkout containing codex/create-new-branch-for-feature-flags; confirm manifest serving. Reuse its flag implementation. Resolve Mom's platform and conversion limits/library. Preserve existing enqueue semantics and the accepted duplicate-on-retry tradeoff.
 2. Approve the PDF contract. Write API conversion/persistence/flag tests before adding the renderer adapter, registry definition and endpoint; reuse current recipe creation and workflow.
 3. Write UI tests, then add the PDF helper, confirmation and one preview capture boundary. Keep legacy capture intact with flag off.
 4. Write worker/manifest tests, then add bounded staging and multipart share handling, preserving text/link shares. Qualify real devices before advertising support.
