@@ -5,7 +5,9 @@ Reviewed branch: codex/pdf-recipe-import-preview, after design commit 48fc7a66fe
 Reviewed design: [design.md](design.md). Source reads used the branch ref, not an immutable checkout; revalidate at implementation.
 Lens: [.agents/prompts/mere-designer.md](../../../.agents/prompts/mere-designer.md), applied directly to interruptions, cognitive load, recovery and family effects.
 
-Recommendation: revise the design before implementation. The page-image adapter remains a promising minimal seam, but the current spec does not yet substantiate its interruption-safe or no-support-needed outcome. The findings below distinguish new design risks from inherited limitations. No application tests were executed.
+Product disposition, 2026-10-01: the user accepts best-effort completion feedback and manually managing duplicate recipes. R2's durable feedback/reconciliation requirement and R3's idempotency requirement are withdrawn. Their observations remain documented below; they are not implementation blockers. R1, R4 and the other UX findings still apply.
+
+Recommendation: revise the remaining design gaps before implementation. The page-image adapter remains a promising minimal seam, but the current spec does not yet substantiate its interruption-safe or no-support-needed outcome. The findings below distinguish new design risks from inherited limitations. No application tests were executed.
 
 ## R1 — P1: flag refresh can discard a file or photo draft
 
@@ -17,27 +19,19 @@ Smallest correction: put draft ownership above the feature decision and keep an 
 
 Acceptance: enabled capture with photos/notes → picker → focus refresh false/loading → enabled again retains all draft data. Repeat with network failure, real off response and member change. No upload happens automatically.
 
-## R2 — P1: “leave and we'll handle it” lacks recoverable import status
+## R2 — Accepted tradeoff: completion feedback may be missed
 
-Design line 42 relies on the current pending store and background notifications. CAP-01's implemented baseline explicitly documents session-only pending state and no reconnect reconciliation. pwa/src/store/captureStore.ts and libraryStore.ts are in-memory. useScheduleStream.ts lines 158–199 only creates ready/failed notifications when getPending(recipeId) exists.
+The pending and notification stores are session-only, and SSE feedback may be missed after app closure or when an event arrives before pending registration. The user accepts this: completed recipes can be found through browsing when ready.
 
-Trigger A: a fast worker emits readiness before the upload response and addPending. The event is ignored for notifications; adding pending afterward does not recover it.
-Trigger B: Mom saves, closes the app to deal with dinner, and reopens. Pending tracking is gone. Ready recipes may later be found in the library, but the promised feedback and route to a failed/pending import are not guaranteed.
-Trigger C: workflow launch throws. RecipeService.CreateRecipe lines 104–119 logs the failure and still returns an ID. No failed workflow necessarily exists for the current failure banner to retry.
+No durable pending-state persistence, resume reconciliation, or missed-notification recovery is required for the PDF preview. Verify that a completed recipe is browseable without a toast or pending entry. Preserve best-effort existing feedback.
 
-Smallest correction: define a PDF acceptance/recovery contract backed by persisted recipe/workflow state. Reconcile status after receiving the ID and on resume, including missed early events. Specify how an accepted-but-not-launched import is recovered; a 202 alone cannot justify “queued.” Reuse existing status/retry seams where suitable. If durable pending lookup or launch recovery needs more code, enumerate that bounded change rather than promise reuse supplies it.
+RecipeService can also persist a recipe without successful workflow launch. This is a separate inherited limitation: acceptance copy must not imply readiness or verified launch. Record the limitation; do not expand this slice into a new durable queue/recovery system.
 
-Acceptance: event before response, event after navigation, SSE disconnect/reconnect, close/reopen before completion, and launch failure each end in a visible ready/pending/failed outcome with a working recovery action. Recovery cannot create a second recipe.
+## R3 — Accepted tradeoff: uncertain retries may create duplicates
 
-## R3 — P1: retry after a lost response can create duplicate family recipes
+The UI lock prevents repeated taps during one active request; it does not prevent a second recipe after a lost response and retry. The user accepts identifying, flagging and deleting duplicates with existing controls.
 
-Design line 80 leaves uncertain-response retry unresolved. A UI lock only protects simultaneous clicks in one mounted component. RecipeService.CreateRecipe assigns a fresh GUID on every call.
-
-Trigger: the API saves the recipe but the response is lost. Mom sees an error and retries, or a child retries after a reload. Two recipes can become ready, creating duplicate search results and potentially extra discovery choices.
-
-Smallest correction: settle a bounded PDF submission identity/idempotency contract before implementation. Repeated attempts for one confirmed import must recover the same result. A later intentional import can use a new identity; do not prohibit two members from deliberately importing the same file forever.
-
-Acceptance: concurrent repeat, timeout after persistence, reload then retry, and two tabs retrying the same staged submission produce one recipe/workflow result. A distinct intentional submission remains possible.
+Server idempotency, cross-tab submission deduplication and exactly-once recovery are not requirements for this preview. Keep the local lock and ordinary retry behavior. Confirm existing duplicate-management actions remain usable for page-image imports; do not add new management UI.
 
 ## R4 — P1: Family GOTO intent is dropped by unconditional Home navigation
 
@@ -89,14 +83,14 @@ Acceptance: Mom imports → child with preview off can view/cook after readiness
 
 The design promises Cancel creates no mutation, but that can only hold before Save is sent. After Save begins, an aborted browser request can still complete on the server. It also promises preservation of an existing photo draft on PDF cancel, yet automatic Home navigation after PDF success will unmount that draft.
 
-Smallest correction: distinguish pre-submission Cancel from leaving during an in-flight import. Never imply an abort erased server work. Use R3's submission identity for uncertain outcomes. Define handling of an unsaved photo draft when starting a PDF import: preferably prevent mixing and offer Keep editing photos / Choose PDF with an explicit discard decision, or preserve the draft beyond the PDF route. Settle long-running conversion copy and reachable status before using immediate Home navigation.
+Smallest correction: distinguish pre-submission Cancel from leaving during an in-flight import. Never imply an abort erased server work. Ordinary retry may create a duplicate under the accepted tradeoff; no submission identity/reconciliation is required. Define handling of an unsaved photo draft when starting a PDF import: preferably prevent mixing and offer Keep editing photos / Choose PDF with an explicit discard decision, or preserve the draft beyond the PDF route. Settle long-running conversion copy before using immediate Home navigation.
 
-Acceptance: cancel before Save produces no request; leaving during upload produces a reconcilable outcome; Save PDF with existing photos/notes does not silently discard them; timeout has a clear next step and no duplicate.
+Acceptance: cancel before Save produces no request; leaving during upload does not falsely claim server work was cancelled; Save PDF with existing photos/notes does not silently discard them; timeout offers retry, with duplicate results accepted.
 
 ## Preserved decisions and review limits
 
 The dedicated PDF endpoint, unchanged image-only photo validation, finishedDishImageIndex=-1, unknown rating, shared workflow reuse, default-off flag and iOS picker fallback are sensible boundaries. Keep them unless fixture evidence requires a change.
 
-Mom's actual phone and unaided usability remain unverified. This review establishes source/spec risks, not observed device failures or passing tests. Do not declare all PDF promises covered by the current “reuse” design until R1–R4 are resolved and the family acceptance scenarios are explicit. Do not turn inherited photo limitations into an unbounded cleanup project.
+Mom's actual phone and unaided usability remain unverified. This review establishes source/spec risks, not observed device failures or passing tests. Do not declare all PDF promises covered by the current “reuse” design until R1 and R4 are resolved and the family acceptance scenarios are explicit. R2 and R3 are accepted tradeoffs, not prerequisites. Do not turn inherited photo limitations into an unbounded cleanup project.
 
-Review delta: one new review document only; application code, contracts and the proposed design remain unchanged. Repository Task harness unavailable without a local checkout; review used GitHub connector reads and a new-file commit, with remote content verification.
+Initial review delta: one new review document only. Follow-up disposition updates this review and the proposed design to record the user's accepted feedback/duplicate tradeoffs; no application code or API contract changes. Repository Task harness unavailable without a local checkout; review used GitHub connector reads and a new-file commit, with remote content verification.
