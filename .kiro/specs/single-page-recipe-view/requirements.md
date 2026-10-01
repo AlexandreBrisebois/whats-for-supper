@@ -4,7 +4,11 @@
 
 **Status:** Approved for implementation on 2026-09-30
 
-**Feature flag:** `single-page-recipe-steps`
+**Feature flag:** `preview-single-page-recipe-view`
+
+The key above is the approved naming target. Runtime still uses
+`single-page-recipe-steps`; coordinated adoption is tracked in
+[feature-flags Task 8](../feature-flags/tasks.md#task-8--adopt-preview-flag-naming).
 
 ## Outcome
 
@@ -32,7 +36,7 @@ available and shall not depend on the feature flag.
 
 ### SPRV-02 — Single decision boundary
 
-After preparation, `single-page-recipe-steps` shall select either the existing
+After preparation, `preview-single-page-recipe-view` shall select either the existing
 focused-step presentation or the single-page presentation at one named boundary.
 Loading, missing, unknown, or failed flag state shall select the focused-step path.
 
@@ -40,7 +44,7 @@ Loading, missing, unknown, or failed flag state shall select the focused-step pa
 
 The feature path shall render every parsed cooking step in recipe order within one
 vertical scrolling surface. It shall not require Next or Previous to read another
-instruction. The explicit completion action shall remain available, labeled **Finish cooking**
+instruction. The explicit completion action shall remain available, labeled **Cooked**
 in the single-page presentation. Scrolling shall update reading position, preserve
 the step bookmark for reopening, and never mark the meal cooked.
 
@@ -91,7 +95,7 @@ opt-in observation period.
 
 ## Removal checklist
 
-1. Set `WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS=on` and verify both target viewports.
+1. Set `WFS_FEATURE_PREVIEW_SINGLE_PAGE_RECIPE_VIEW=on` and verify both target viewports.
 2. Replace the decision boundary with the single-page path.
 3. Delete focused-step-only presentation and dual-path tests.
 4. Rename preview symbols to durable Cook's Mode names.

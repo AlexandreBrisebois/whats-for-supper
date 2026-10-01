@@ -139,7 +139,11 @@ describe('CooksMode', () => {
     expect(screen.queryByRole('heading', { name: 'Step 1' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Cooking steps' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Simmer gently' })).toBeInTheDocument();
-    expect(screen.getByTestId('cooks-mode-step-next')).toHaveTextContent('Finish cooking');
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveTextContent('Cooked');
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveAccessibleName(
+      'Mark recipe as cooked'
+    );
+    expect(screen.getByTestId('cooks-mode-step-next').querySelector('svg')).toBeNull();
     const scroll = screen.getByTestId('cooks-mode-instructions');
     const row = screen.getByTestId('single-page-step-2');
     vi.spyOn(scroll, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect);
@@ -193,7 +197,11 @@ describe('CooksMode', () => {
     expect(screen.getByTestId('cooks-mode-step-indicator')).toHaveTextContent('1 / 2');
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
     expect(screen.getByRole('heading', { name: 'Step 2' })).toBeInTheDocument();
-    expect(screen.getByTestId('cooks-mode-step-next')).toHaveTextContent('Done');
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveTextContent('Cooked');
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveAccessibleName(
+      'Mark recipe as cooked'
+    );
+    expect(screen.getByTestId('cooks-mode-step-next').querySelector('svg')).toBeNull();
     fireEvent.click(screen.getByTestId('cooks-mode-step-prev'));
     expect(screen.getByTestId('cooks-mode-step-text')).toHaveTextContent('Boil water');
     expect(screen.queryByTestId('single-page-recipe-steps')).not.toBeInTheDocument();

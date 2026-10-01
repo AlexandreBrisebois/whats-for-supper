@@ -16,7 +16,7 @@ export function FamilyManagement() {
   return (
     <div className="flex flex-col gap-6">
       {/* Member List & Add Section */}
-      <div className="w-full min-w-0 rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-4 sm:p-8 shadow-glass">
+      <div className="w-full min-w-0 rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-8 shadow-glass">
         <div className="flex items-center gap-3 mb-8">
           <Settings2 className="h-4 w-4 text-terracotta" />
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-terracotta">

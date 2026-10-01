@@ -93,9 +93,6 @@ export function PreviewFeaturesSection() {
                     htmlFor={`feature-${flag.key}`}
                     className="min-w-0 w-full flex-1 cursor-pointer break-words sm:w-auto"
                   >
-                    <span className="mb-2 inline-flex rounded-full bg-ochre/20 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-charcoal">
-                      {t('previewFeatures.badge', 'Preview')}
-                    </span>
                     <span className="block font-heading text-base font-bold text-charcoal">
                       {t(`previewFeatures.flags.${flag.key}.name`, flag.displayName ?? '')}
                     </span>

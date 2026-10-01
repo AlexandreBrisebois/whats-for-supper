@@ -61,8 +61,11 @@ not add anxiety or compete with everyday household tasks.
    surprising everyone sharing the household.
 4. Only flags in `opt-in` mode appear in Settings. `off` flags are unavailable;
    `on` flags are normal product behavior and no longer presented as choices.
-5. New flag keys are stable, lowercase kebab-case identifiers. Display copy is
-   separate and localizable.
+5. Temporary preview flag keys use `preview-<feature-slug>`, where the feature
+   slug is the stable spec-registry slug. Keep the key unchanged through `off`,
+   `opt-in`, and `on`; delete it at graduation. Environment variables use
+   `WFS_FEATURE_` followed by the uppercase key with hyphens replaced by underscores.
+   Display copy is separate and localizable.
 6. Flag checks occur at a coarse route, workflow, component, or service boundary.
    They must not be scattered through both implementations.
 7. Database changes used by a feature remain backward compatible while either path
@@ -197,9 +200,17 @@ enable a disabled server capability.
 8. After graduation, a repository search finds neither the flag key nor its
    environment variable, and only the promoted implementation remains.
 
+## Naming adoption
+
+The approved target key is `preview-single-page-recipe-view`, with environment
+variable `WFS_FEATURE_PREVIEW_SINGLE_PAGE_RECIPE_VIEW`. Existing application code
+and deployment configuration still use `single-page-recipe-steps` and
+`WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS`. The examples here describe the target;
+Task 8 tracks coordinated migration before claiming runtime adoption.
+
 ## Approved proving slice
 
-- **Feature:** `single-page-recipe-steps`, specified independently in
+- **Feature:** `preview-single-page-recipe-view`, specified independently in
   [`../single-page-recipe-view/requirements.md`](../single-page-recipe-view/requirements.md).
 - **Member copy:** **Recipe on one page** — “After getting ready, scroll through all
   the cooking steps on one page.”

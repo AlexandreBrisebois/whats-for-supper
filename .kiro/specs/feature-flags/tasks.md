@@ -9,7 +9,7 @@
 ## Approval gate
 
 The approval gate is resolved in the requirements. The implementation must deliver
-the feature-flag capability and the `single-page-recipe-steps` proving feature from
+the feature-flag capability and the `preview-single-page-recipe-view` proving feature from
 [`../single-page-recipe-view/tasks.md`](../single-page-recipe-view/tasks.md) together.
 Task 7 remains a later lifecycle task and is not authorized now.
 
@@ -200,3 +200,38 @@ been explicitly accepted.
 | FF-11 | Security/privacy; rollout | 3, 6 |
 | FF-12 | Graduation workflow | 7 |
 | FF-13 | Security/privacy | 1–3 |
+
+## Task 8 — Adopt preview flag naming
+
+**Required follow-up; not executed by the naming documentation change.**
+
+**Requirements:** FF-01–FF-05, FF-12; Product decision 5.
+
+Rename `single-page-recipe-steps` to `preview-single-page-recipe-view` and
+`WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS` to
+`WFS_FEATURE_PREVIEW_SINGLE_PAGE_RECIPE_VIEW` in a coordinated migration.
+
+**Scope:** API registry, approved OpenAPI examples, PWA flag consumers and locale
+keys, API/PWA tests, Docker and Synology configuration and deployment documentation.
+Keep the spec folder and unrelated component/test identifiers stable.
+
+**Implementation review:** inspect `FeatureFlagService.cs`, persisted member
+flag-key overrides, `CooksMode.tsx`, Settings consumers, `specs/openapi.yaml`,
+`docker/compose/`, and `release-template/synology/` before edits. Determine whether
+old overrides/configuration are deployed. Preserve existing member choices and
+explicit deployment modes during migration; document any temporary compatibility
+mapping and its removal. Do not silently reset opt-ins or enable a disabled flag.
+
+**Test seam:** `FeatureFlagServiceTests.cs`, `featureFlagStore.test.ts`,
+`PreviewFeaturesSection.test.tsx`, and `CooksMode.test.tsx`; Playwright
+`settings.spec.ts` and `cook-mode-steps.spec.ts`. The mock owner is
+`pwa/e2e/mock-api.ts`; `GET /api/feature-flags` retains
+`{ data: FeatureFlagDto[] }` and `PATCH /api/feature-flags/{key}` retains its approved
+mutation envelope. Exercise the new key through opt-in, reload, and the cooking
+boundary; verify all three deployment modes and migration of existing overrides.
+
+**Checks:** focused API/PWA tests, Settings/Cook's Mode E2E, contract/client checks,
+configuration reference review, and applicable repository completion checks.
+
+**Stop if:** existing deployed configuration or override migration cannot be
+established safely. Record that uncertainty before dependent migration work.

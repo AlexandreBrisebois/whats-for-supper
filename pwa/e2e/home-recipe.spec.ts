@@ -933,14 +933,15 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     const nextBtn = page.getByTestId('cooks-mode-step-next');
     await expect(nextBtn).toBeVisible({ timeout: 15_000 });
 
-    // Click Next until "Done"
+    // Stop at completion so it is clicked exactly once.
     for (let i = 0; i < 5; i++) {
-      const text = await nextBtn.textContent();
-      if (text?.toLowerCase().includes('done')) break;
+      if ((await nextBtn.getAttribute('aria-label')) === 'Mark recipe as cooked') break;
       await nextBtn.click();
     }
 
-    await nextBtn.click(); // Click "Done"
+    await expect(nextBtn).toHaveText('Cooked');
+    await expect(nextBtn).toHaveAccessibleName('Mark recipe as cooked');
+    await nextBtn.click();
 
     // Verify implicit cooked call
     await expect.poll(() => validateCalled).toBe(true);

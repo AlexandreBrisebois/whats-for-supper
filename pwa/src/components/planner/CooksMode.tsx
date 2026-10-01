@@ -130,6 +130,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const isPrepStep = currentStep === 0;
   const activeRecipeStepIndex = Math.max(currentStep - 1, 0);
   const singlePageCooking = singlePageEnabled && !isPrepStep;
+  const isCompletionAction = !isPrepStep && (singlePageEnabled || currentStep === steps.length);
   const instructionScrollRef = useRef<HTMLDivElement>(null);
 
   // Restore only when entering the list. Reading-position updates must not remount
@@ -696,7 +697,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         {/* Controls */}
         <div
           data-testid="cooks-mode-controls"
-          className={`${singlePageCooking ? 'p-3 md:px-8 grid grid-cols-1' : 'p-6 md:p-8 grid grid-cols-[1fr_1.5fr]'} gap-4 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
+          className={`p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-[calc(2rem+env(safe-area-inset-bottom))] grid ${singlePageCooking ? 'grid-cols-1' : 'grid-cols-[1fr_1.5fr]'} gap-4 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
         >
           <Button
             variant="secondary"
@@ -722,18 +723,19 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 : nextStep
             }
             data-testid="cooks-mode-step-next"
-            className={`${singlePageCooking ? 'h-14 md:h-16 w-full md:w-auto md:min-w-64 md:justify-self-end' : 'h-16 md:h-20'} rounded-[1.5rem] md:rounded-[2rem] bg-terracotta text-white text-xl md:text-2xl font-black flex items-center justify-center space-x-2 md:space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all`}
+            aria-label={
+              isCompletionAction ? t('cook.markCooked', 'Mark recipe as cooked') : undefined
+            }
+            className={`h-16 md:h-20 ${singlePageCooking ? 'w-full md:w-auto md:min-w-64 md:justify-self-end' : ''} rounded-[1.5rem] md:rounded-[2rem] bg-terracotta text-white text-xl md:text-2xl font-black flex items-center justify-center space-x-2 md:space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all`}
           >
             <span>
-              {!isPrepStep && singlePageEnabled
-                ? t('cook.finishCooking', 'Finish cooking')
-                : currentStep === steps.length
-                  ? t('cook.done', 'Done')
-                  : isPrepStep
-                    ? t('cook.letsCook', "Let's Cook")
-                    : t('cook.next', 'Next')}
+              {isCompletionAction
+                ? t('cook.cooked', 'Cooked')
+                : isPrepStep
+                  ? t('cook.letsCook', "Let's Cook")
+                  : t('cook.next', 'Next')}
             </span>
-            {singlePageCooking ? <Check size={24} /> : <ChevronRight size={24} />}
+            {!isCompletionAction && <ChevronRight size={24} />}
           </Button>
         </div>
       </div>

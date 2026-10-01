@@ -75,8 +75,8 @@ Add a backend registry whose code entries are immutable deployment metadata:
 
 ```csharp
 new FeatureFlagDefinition(
-    Key: "single-page-recipe-steps",
-    EnvironmentVariable: "WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS",
+    Key: "preview-single-page-recipe-view",
+    EnvironmentVariable: "WFS_FEATURE_PREVIEW_SINGLE_PAGE_RECIPE_VIEW",
     Owner: "cooking-experience",
     DisplayNameKey: "featureFlags.singlePageRecipeSteps.name",
     DescriptionKey: "featureFlags.singlePageRecipeSteps.description",
@@ -105,7 +105,7 @@ Authenticated by the existing family-member identity. Suggested response:
 {
   "data": [
     {
-      "key": "single-page-recipe-steps",
+      "key": "preview-single-page-recipe-view",
       "mode": "opt-in",
       "enabled": false,
       "memberEnabled": false,

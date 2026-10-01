@@ -108,7 +108,16 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
           const member = page.getByTestId(`family-member-${MOCK_IDS.MEMBER_ALEX}`);
           await expect(member).toContainText(scenario.names[0]);
           const contentBounds = await page.getByTestId('settings-content').boundingBox();
-          expect(contentBounds!.width).toBeLessThanOrEqual(384);
+          await expect(page.getByTestId('settings-content')).toHaveCSS('padding-left', '0px');
+          await expect(page.getByTestId('settings-content')).toHaveCSS('padding-right', '0px');
+          // Keep the roomy v0.1.5 layout: use the available mobile width
+          // without adding a second gutter inside the shared page layout.
+          if (width < 640) {
+            expect(contentBounds!.width).toBeGreaterThanOrEqual(width - 32);
+          } else {
+            // The original content-sized layout can be exactly one GOTO card wide.
+            expect(contentBounds!.width).toBeGreaterThanOrEqual(384);
+          }
           const expectFits = async () => {
             await expect
               .poll(() =>

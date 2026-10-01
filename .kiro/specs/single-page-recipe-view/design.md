@@ -35,7 +35,7 @@ action where eligible, and a 44px edit action. Generic “Step N” titles and t
 identical to the instruction are hidden in this presentation. The list has no
 repeated page-level step or cooking headings. Instructions use the full card width.
 The established left hero, close action, colors, typography, and celebration remain.
-The bottom control area contains a single prominent **Finish cooking** action after preparation. Scrolling updates
+The bottom control area contains a single prominent **Cooked** action after preparation. Scrolling updates
 the reading-position indicator and device-local step bookmark without marking the
 meal cooked. Reopening restores that step; scrolling does not remount the list or
 editor. The focused-step path retains its headings, Next/Back navigation and Done

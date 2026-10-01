@@ -21,7 +21,7 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
   return (
     <div
       data-testid="settings-content"
-      className="mx-auto flex w-full min-w-0 max-w-sm flex-col gap-10 px-6 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out"
+      className="flex min-w-0 flex-col gap-10 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out"
     >
       {/* Decorative background element */}
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-20%,#FDFCF0_0%,#FFFFFF_100%)]" />

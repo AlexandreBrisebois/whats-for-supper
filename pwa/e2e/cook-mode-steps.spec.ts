@@ -165,7 +165,16 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       await expect(page.getByRole('heading', { name: /^Step \d+$/ })).toHaveCount(0);
       await expect(page.getByRole('heading', { name: 'Cooking steps' })).toHaveCount(0);
       await expect(page.getByRole('heading', { name: 'Cook the pasta' })).toHaveCount(1);
-      await expect(page.getByTestId('cooks-mode-step-next')).toHaveText('Finish cooking');
+      await expect(page.getByTestId('cooks-mode-step-next')).toHaveText('Cooked');
+      const completion = page.getByTestId('cooks-mode-step-next');
+      await expect(completion).toHaveAccessibleName('Mark recipe as cooked');
+      await expect(completion.locator('svg')).toHaveCount(0);
+      const buttonBounds = await completion.boundingBox();
+      const footerBounds = await page.getByTestId('cooks-mode-controls').boundingBox();
+      expect(buttonBounds!.height).toBeGreaterThanOrEqual(64);
+      expect(
+        footerBounds!.y + footerBounds!.height - buttonBounds!.y - buttonBounds!.height
+      ).toBeGreaterThanOrEqual(24);
       const scroll = page.getByTestId('cooks-mode-instructions');
       await scroll.evaluate((surface) => {
         const row = surface.querySelector<HTMLElement>('[data-cooking-step="3"]')!;
@@ -241,12 +250,12 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     });
     await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
 
-    // Step through all steps until Done appears
+    // Step through all steps until Cooked appears
     let isDone = false;
     for (let i = 0; i < 20; i++) {
       const nextBtn = page.getByTestId('cooks-mode-step-next');
       const label = await nextBtn.textContent();
-      if (label?.toLowerCase().includes('done')) {
+      if (label?.toLowerCase().includes('cooked')) {
         isDone = true;
         break;
       }
