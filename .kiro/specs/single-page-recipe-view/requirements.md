@@ -40,7 +40,9 @@ Loading, missing, unknown, or failed flag state shall select the focused-step pa
 
 The feature path shall render every parsed cooking step in recipe order within one
 vertical scrolling surface. It shall not require Next or Previous to read another
-instruction. The existing explicit **Done** action shall remain available.
+instruction. The explicit completion action shall remain available, labeled **Finish cooking**
+in the single-page presentation. Scrolling shall update reading position, preserve
+the step bookmark for reopening, and never mark the meal cooked.
 
 ### SPRV-04 — Existing tablet composition
 

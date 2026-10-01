@@ -30,10 +30,17 @@ The feature key occurs only at `CookingInstructionsBoundary`.
 
 ## Single-page presentation
 
-The right-hand instruction surface becomes an ordered stack. Each step has a number,
-title, instruction, contextual issue action where eligible, and a 44px edit action.
+The right-hand instruction surface becomes an ordered stack. Each step has a number, an optional meaningful title, instruction, contextual issue
+action where eligible, and a 44px edit action. Generic “Step N” titles and titles
+identical to the instruction are hidden in this presentation. The list has no
+repeated page-level step or cooking headings. Instructions use the full card width.
 The established left hero, close action, colors, typography, and celebration remain.
-The bottom control area contains a single prominent **Done** action after preparation.
+The bottom control area contains a single prominent **Finish cooking** action after preparation. Scrolling updates
+the reading-position indicator and device-local step bookmark without marking the
+meal cooked. Reopening restores that step; scrolling does not remount the list or
+editor. The focused-step path retains its headings, Next/Back navigation and Done
+action. The phone cooking banner and list spacing are compact; tablet imagery
+remains beside the instructions.
 
 On phone the stack uses one readable column. At tablet widths the existing hero and
 content split remains; the implementation does not add a second text column.
