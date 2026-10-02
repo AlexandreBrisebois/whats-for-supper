@@ -1,6 +1,6 @@
 # PDF recipe import preview — consolidated design
 
-Status: proposed technical design with approved product scope. No application implementation or OpenAPI change.
+Status: implementation authorized for T01–T08; approved transport schemas synchronized in OpenAPI. See implementation-evidence.md for source and check evidence.
 Kind: feature specification; design-first, gated cadence; source artifact this design with approved user decisions.
 Revision baseline: 9eb64bb06339b25861e45b559284629064c30f7a. [requirements.md](requirements.md) is the current stable acceptance checklist; [tasks.md](tasks.md) is the synchronized plan. [review.md](review.md) separates current findings from historical evidence.
 This specification-update turn stops before implementation; an explicit complete-package implementation instruction selects T01–T08. OQ-01 architecture is resolved by the separate workflow processor decision; OQ-04 manifest strategy is approved; remaining OQ-02 schema details and OQ-03 resource qualification are assigned to early implementation tasks, resolved before dependent code/release checks; approved wire decisions remain fixed and exact remaining schemas are finalized before dependent tests/code.
@@ -104,3 +104,7 @@ Named commands/checks and task-to-requirement mapping are in tasks.md. Renderer/
 User accepts resolving renderer measurements, final resource limits and exact API schema details during implementation. T01 verifies source; T02 qualifies PDFtoImage/native packaging and records measurable render/timeout/resource values, starting at 200 DPI PNG; T03 finalizes approved field/default/error-body schemas in OpenAPI before dependent tests/code. T06 establishes orphan-cleanup/transient staging limits within the approved single-share policy. These are implementation dependencies, not product-approval checkpoints for routine details.
 
 Keep approved product behavior fixed. If evidence requires a behavior/scope/consequential constraint change, present one proposition and wait; otherwise resolve routine details directly and synchronize spec/contracts/tasks/evidence. Final fixture/resource/NAS/device qualification gates rollout. Missing device access is blocked evidence, never a passed claim, and does not stop independent source implementation. Complete-package kickoff selects the ordered required tasks together; this current turn changes specs only.
+
+## T03 exact transport schema (2026-10-02)
+
+OpenAPI now defines PdfCaptureRequest/PdfCaptureAccepted/PdfCaptureError. Exactly one file field; optional decimal rating 0–3 defaults to 0; trim notes and store blank as null. Require .pdf extension and application/pdf MIME (case-insensitive); no document parse/signature rejection at upload. Errors are unwrapped {status,message}; missing/invalid member is 400 and existing household authentication applies. Multipart overhead is separate from the 20,971,520-byte file limit. OQ-03 measurements remain pending, not inferred from static source.

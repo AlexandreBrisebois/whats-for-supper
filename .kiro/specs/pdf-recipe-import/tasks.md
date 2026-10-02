@@ -1,6 +1,6 @@
 # PDF recipe import preview — tasks and checks
 
-Status: synchronized proposed plan, no implementation started or authorized. All tasks unchecked. The package may start with T01–T03 when implementation is instructed.
+Status: T01 static reconnaissance recorded; T02 qualification packet in progress; T03 approved wire contract synchronized. User authorized T01–T08 and connector implementation. Runtime/device completion remains unverified; see [implementation-evidence.md](implementation-evidence.md).
 Kind: feature specification; design-first from design.md, gated approval. Product acceptance: requirements.md PDF-R01–15. OQ-01 architecture is resolved by a separate PDF processor in existing recipe-import; OQ-04 manifest strategy is approved; OQ-02/OQ-03 are early implementation follow-ups; resolve them from repository conventions/measurements before dependent tests/code, not by guessing.
 Required/optional: T01–T08 are required within the approved preview. No optional task is a hidden completion condition. Listing tasks does not authorize executing them. An explicit complete-package kickoff selects T01–T08 together; routine internal dependencies do not require repeated selection/confirmation.
 Dependencies/shared-file ownership: execute dependent changes sequentially. One writer owns OpenAPI/client/mock updates and each shared capture/recovery file within its selected task. Do not parallelize overlapping contract, capture, failure-service, worker/manifest or template mutations.
