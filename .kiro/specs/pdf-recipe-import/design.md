@@ -104,7 +104,7 @@ Request sequence:
 
 Conversion completes during the API upload request, before acceptance; AI extraction remains asynchronous. Accepted-ID responses establish persistence, not completed extraction or verified workflow launch. Client progress covers upload and API preparation. Apply the previously specified renderer timeout/resource limits; if bounded conversion cannot fit this request boundary, revise the design explicitly rather than silently moving conversion into the browser or another workflow.
 
-View original uses the stored page images through the existing original-image endpoints. The retained source PDF is a separate artifact and does not count as an image.
+Approved user decision, 2026-10-02: retain the unchanged source PDF as an internal recipe artifact for this preview. View original displays the stored rendered page images through the existing original-image endpoints/viewer. Do not add an original-PDF download/export action or a PDF viewer. The retained source PDF is separate from the page images and does not count as an image; preserve it through the established storage lifecycle.
 
 
 User decision: retain the original PDF with the recipe, convert its pages to ordered images, and feed those images through the normal photo-import flow. View original reads the stored page images using the existing image viewer. Direct PDF submission to Gemini is not the selected approach. Model selection remains governed by the normal extraction configuration.
