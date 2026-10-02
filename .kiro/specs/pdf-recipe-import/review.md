@@ -136,3 +136,62 @@ Specification follow-up, 2026-10-02: approved photo-import progress and return-t
 Specification follow-up, 2026-10-02: approved internal-only retention of the unchanged PDF for the preview. View original shows readable rendered pages via the existing image viewer; no PDF download/export action or PDF viewer is added. Retention/storage lifecycle requirements remain in force. No application or OpenAPI changes; remote content verification used because the local checkout/Task harness remains unavailable.
 
 Specification clarification, 2026-10-02: navigating away resets unsaved capture selection/state, including PDF/images, rating and notes; returning requires selecting a new PDF or image. Staged Android shares are temporary initial delivery, not recoverable drafts. Discard an abandoned active capture's staged share; accepted server work continues. The proposed 24-hour pending-draft lifetime was not approved. Orphaned staging still needs bounded storage/cleanup, with implementation resource limits to be specified. No unrelated photo-flow cleanup, application or OpenAPI changes authorized; remote content verification used because the local checkout/Task harness remains unavailable.
+
+## Mère-Designer busy-day re-review — 2026-10-02
+
+Status: findings only, awaiting disposition; no new product decisions, design edits, OpenAPI changes or implementation.
+Reviewed immutable commit: 25497758098da8757273cd3167021b1661588612.
+Sources: design.md and review.md, verified against their pinned blob identities, plus .agents/prompts/mere-designer.md. The spec directory contains only design.md and review.md; requirements.md is absent. Requirements were therefore assessed as embedded in design.md, not as an independently verified requirements document.
+Method: scenario walkthrough of Android sharing while interrupted, initial unlock/member selection, rating/notes entry, navigating away, uncertain submission, rejected documents and later household cooking. No runtime/source revalidation, application tests, device tests or observed usability results. Local checkout/Task harness unavailable; private baseline is the reviewed commit and fetched blob identities.
+
+### What works for a busy day
+
+Photo remains primary with familiar actions in place. Android PDF sharing opens confirmation directly, avoiding a repeated source-choice step. Rating/notes use the familiar photo flow; no cooked-dish page choice, PDF Cancel action or mandatory extracted-recipe editing is introduced. After acceptance, Home returns attention to supper while ordinary processing continues. View original uses readable page images in the existing viewer. Existing household access and Family GOTO behavior remain intact.
+
+Accepted draft resets, uncertain-retry duplicates, missed feedback and shared-device notifications remain accepted. This review does not reopen them or propose durable draft recovery, idempotency, notification ownership, cookbook detection or a new queue.
+
+### B1 — P1: “launched” can imply safety before upload reaches the server
+
+Interaction: Mom taps Save on a scanned PDF while mobile reception is poor, then switches apps to answer a call or closes the PWA. Mom's interaction says Save launches server processing and leaving does not retract launched work. The execution boundary still requires the browser upload and synchronous API conversion before an accepted ID. Neither a tap nor an incomplete upload establishes that the server has the entire document; inherited workflow-launch failure also means acceptance is not verified workflow execution.
+
+Household consequence: she can assume the recipe is safely underway when nothing usable reached the server, then discover it missing at supper. This is a false-certainty gap, distinct from the accepted loss of completion feedback.
+
+Smallest useful correction (proposal only): distinguish uploading, server preparation and accepted recipe ID in the requirement wording and existing progress UI. Promise continuation only for work that actually reached the server; do not tell the member that a Save tap guarantees receipt, completion or workflow launch. Keep no Cancel and ordinary retry/duplicate behavior. Do not add durable delivery infrastructure.
+
+Acceptance to approve/qualify: interrupt before upload completion, after full receipt during conversion, and after accepted ID. Verify honest progress/outcome copy and the existing failure/retry behavior; no early success claim. The server-work continuation requirement itself needs implementation evidence, not a spec assertion.
+
+### B2 — P2: initial delivery versus abandoned capture needs an explicit boundary
+
+Interaction: a cold Android share goes through unlock/member selection before confirmation. “Receiving a shared file” preserves the token through that initial delivery but deletes it when navigation leaves active capture. The exact point at which capture becomes active, and which transitions are authentication delivery versus abandonment, is unspecified.
+
+Household consequence: cleanup can delete the PDF during required unlock, making the Android share path fail before Mom reaches Save. Alternatively, treating all navigation as initial delivery could restore a draft she deliberately abandoned, contrary to the approved reset behavior.
+
+Smallest useful correction (proposal only): define the delivery boundary as initial share handoff through required unlock/member selection into confirmation, then treat leaving the active confirmation/capture as abandonment. Specify how cold launch, member change and app suspension are classified. Do not equate losing browser focus with navigating away; do not add resume persistence.
+
+Acceptance to approve/qualify: locked cold share reaches confirmation once with no submission; unlock/member selection does not prematurely delete the file; leaving active capture resets PDF/rating/notes, and returning cannot restore the abandoned token. Test an incoming second share so cleanup cannot delete the newer handoff.
+
+### B3 — P2: limits and rejection copy do not yet give a concrete quick next step
+
+Interaction: Mom shares an 11-page recipe, a password-protected PDF, or a corrupt download. Confirmation names the one-recipe scope but does not explicitly expose the approved 20 MB/10-page limits; the design says errors have a next step without specifying the member-facing distinction.
+
+Household consequence: she can enter rating/notes and wait before learning the file cannot be accepted, then repeatedly try the same unsupported file. The accepted draft-reset tradeoff makes repeated preparation especially costly.
+
+Smallest useful correction (proposal only): show compact guidance near file selection/confirmation, such as “One recipe · up to 10 pages · 20 MB”. Reuse existing error presentation with concrete reasons and Choose another file. Explain that encrypted files need an unlocked copy; do not add password entry or page editing. For a known validation/conversion rejection, say no recipe was added; for an uncertain transport outcome, do not make that promise. Keep this copy distinct from the approved preview-disabled path.
+
+Acceptance to approve/qualify: oversize/over-page, encrypted, corrupt and uncertain network cases each have an understandable next action. Keyboard-open notes entry leaves Save and errors reachable with one hand; rating/notes semantics remain identical to photos. This is qualification, not a new form redesign.
+
+### B4 — P2: historical review acceptance can reintroduce rejected behavior
+
+Interaction: an implementer turns the older review's Acceptance paragraphs into tests. R1 still demands retained drafts, R4 still demands PDF GOTO promotion, R6 still demands no lost file through Settings, and R9 still mentions Cancel and forbids silent draft loss. Disposition paragraphs supersede them, but the old imperatives remain interleaved with current scope.
+
+Household consequence: implementation can reintroduce recovery/discard dialogs, PDF GOTO behavior or cancellation controls that the user explicitly excluded. Requirements are spread across the design, historical findings and repeated follow-up notes, with no separate requirements.md.
+
+Smallest useful correction (proposal only): consolidate a current requirements/acceptance section and clearly label or relocate superseded review acceptance as historical evidence. Preserve decision history without treating old corrections as live requirements. No behavior or approved decision needs changing.
+
+Acceptance to approve/qualify: a reviewer can derive one unambiguous current set of requirements for navigation resets, no Cancel, GOTO exclusion, Android sharing, rating/notes, source retention, single-recipe limits and existing household feedback without resolving historical contradictory imperatives.
+
+### Review conclusion and evidence limits
+
+The approved scope is suitable for a lightweight import preview, but a claim that it handles interruptions unaided remains unqualified. Prioritize B1's receipt/continuation wording; then clarify handoff cleanup and concrete rejection paths before implementation acceptance is finalized. Renderer readability/performance, real Android cross-app sharing and phone usability remain release evidence to obtain, not passing results from this review.
+
+Review-only delta: appended this findings section to review.md; design and embedded requirements remain unchanged. Proposals require user disposition one at a time under the existing session instruction.
