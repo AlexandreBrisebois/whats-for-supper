@@ -11,7 +11,11 @@ User decision, 2026-10-01: completion feedback is best-effort and may be lost wh
 
 Retries after an uncertain response may create duplicate recipes. Members can identify, flag and delete duplicates using existing controls. Server idempotency, cross-tab duplicate prevention and exactly-once submission are not required. Retain the local submission lock to prevent accidental repeated taps during an active request. Do not add duplicate management UI to this slice.
 
-These decisions accept missing feedback and duplicate results; they do not change extraction correctness or justify saying a recipe is ready before it is. Workflow-launch errors remain an inherited limitation of the reused creation path, rather than a mandate for a new durable queue/recovery system.
+User decision, 2026-10-02: unsaved capture drafts may be lost during flag refresh, navigation, or switching to PDF import. Draft persistence, ownership above the preview boundary, recovery, and a discard-confirmation flow are not requirements for this preview. This supersedes draft-preservation promises below; server-side flag enforcement remains required.
+
+User decision, 2026-10-02: Family GOTO retains its existing photo capture flow. PDFs stay outside that contextual chooser, even when the PDF preview is enabled. PDF import from ordinary capture or external share adds a library recipe only and does not create or promote a pending GOTO entry. Keep existing GOTO attribution, pending promotion and return behavior for its photo flow.
+
+These decisions accept missing feedback, duplicate results and draft loss; they do not change extraction correctness or justify saying a recipe is ready before it is. Workflow-launch errors remain an inherited limitation of the reused creation path, rather than a mandate for a new durable queue/recovery system.
 
 ## Outcome and scope
 
@@ -43,13 +47,15 @@ The current photo contract names its binary array `images`, while the hook/helpe
 
 ## Mom's interaction
 
-With preview disabled, render the current capture experience unchanged. With preview enabled, retain Take photo as the primary action and Choose photos as the familiar secondary action. Keep Paste a link visible. Move Describe a recipe and Import recipe file into a compact, accessible Other ways disclosure; label the latter Choose recipe file and accept both existing .txt bundles and PDFs. Dispatch by validated format, never send a PDF through the JSON bundle parser. This is the entire capture layout change for the preview.
+Pending approval, 2026-10-02: preserve the current capture layout and action positions, keep photo import primary, and extend the existing recipe-file picker to accept PDFs alongside .txt bundles when enabled, outside Family GOTO. Do not add Other ways or move existing actions without approval. The earlier layout proposal in the next paragraph is historical and has not been approved; settle this decision before implementation.
+
+Earlier proposal (awaiting replacement approval): with preview disabled, render the current capture experience unchanged. With preview enabled, retain Take photo as the primary action and Choose photos as the familiar secondary action. Keep Paste a link visible. Move Describe a recipe and Import recipe file into a compact, accessible Other ways disclosure; label the latter Choose recipe file and accept both existing .txt bundles and PDFs. Dispatch by validated format, never send a PDF through the JSON bundle parser. This is the entire capture layout change for the preview.
 
 Selecting a PDF opens a compact confirmation: filename, “Add this recipe to your library”, Save recipe and Cancel. No required title, rating, notes, dish-photo selection or instructions. PDF and .txt bundle confirmations remain separate because the bundle already contains a structured recipe.
 
 Sharing a PDF opens that same confirmation directly, bypassing the capture chooser. Save uploads/converts the file with honest progress (“Preparing your PDF…”). After the API returns an accepted recipe ID, add it to the existing pending capture store and navigate to Home immediately. Existing ready/failure feedback is best-effort while the session remains active. Members can browse for the recipe when ready; no completion notification after app closure is promised. Never claim that parsing or upload means the recipe is ready.
 
-Cancellation makes no API mutation. Choosing a PDF must not discard an existing photo draft. Return to the prior capture state on cancel. Retry retains the file while the page remains open; a lost or expired staged file offers Choose file again.
+Cancel before Save sends no API request. Leaving after Save begins does not guarantee cancellation of server work. Existing photo/file/notes drafts may be lost under the accepted preview tradeoff; preservation or restoration on cancel or successful navigation is not required. Retry can reuse the file while it remains available; a lost or expired file offers Choose file again.
 
 ## Preview flag and rollout
 
