@@ -18,7 +18,7 @@ Stop: verify the approved OQ-01 processor integration/retry/cleanup against sour
 
 Requirements: PDF-R05–07/14; design D4. Depends: T01.
 Allowed effects when selected: bounded qualification artifacts/fixtures and spec evidence; production code/container changes require separate selection.
-Outcome: qualify PDFtoImage version/native libraries/fonts/licenses on actual Synology/Ubuntu chiseled .NET; identify enforceable resource/time limits. Initial candidate 200 DPI PNG only.
+Outcome: qualify PDFtoImage version/native libraries/fonts/licenses on actual Synology/Ubuntu chiseled .NET; identify enforceable resource/time limits. Approved starting point: 200 DPI PNG per page. This approves the evaluation baseline, not unmeasured production render settings or resource guarantees.
 Checks: text/scanned/bilingual/single-recipe multipage/cover-page readability, quantities/units/order, source bytes, input limits, corrupt/encrypted PDFs, startup/native load, bytes/pixels/memory/disk/time, synchronous-call timeout behavior, sequential disposal and cleanup. Multi-recipe fixture documents unsupported behavior, not a detector.
 Stop: present OQ-03 measured choices for approval, including process isolation if required. Mark actual target-architecture results separately; do not claim both x64/arm64 unless tested.
 

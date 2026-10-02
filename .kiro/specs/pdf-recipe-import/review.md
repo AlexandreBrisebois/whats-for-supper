@@ -61,6 +61,10 @@ User accepts immediate 400 for missing file/invalid metadata, 413 above 20 MiB, 
 User accepts one deployment-selected /manifest.json, off retaining link sharing and opt-in/on registering Android PDF sharing. Same PDF environment setting in PWA/API via Synology compose/.env.example; registration refresh delay is documented. Evidence: root layout metadata links /manifest.json; current public manifest has GET /capture title/text/url target. Future implementation replaces competing static ownership with a single server-served manifest, preserving app identity/icons/shortcuts. No deployed/template/PWA code changes in this specification revision.
 Writer/reviewer synchronization: PDF-R03/15, D6/D8, T01/T06/T07 and OQ-04 status updated. Remaining gates are exact schema/error-body synchronization (OQ-02) and resource/renderer/staging qualification (OQ-03). Remote content/scope verification; application/device tests not run.
 
+## Approved renderer qualification starting point — 2026-10-02
+
+User accepts starting qualification at 200 DPI PNG per page. Measure small-text readability, extraction accuracy, page/output bytes and actual Synology memory use before proposing final render settings and resource budgets. requirements/design/tasks synchronized. OQ-03 remains for measured settings, native timeout/failure isolation and staging bounds; 200 DPI is not a tested production guarantee. No fixture spike, renderer code or runtime tests performed in this specification-only revision; remote content verification is the completion check.
+
 ## Historical archive — non-authoritative
 
 <details>
