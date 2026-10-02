@@ -10,6 +10,19 @@ namespace RecipeApi.Tests.Services;
 
 public class FeatureFlagServiceTests
 {
+    [Fact]
+    public void Pdf_registry_defaults_off_and_uses_existing_modes()
+    {
+        foreach (var mode in new[] { "off", "opt-in", "on", "invalid" })
+        {
+            var registry = new FeatureFlagRegistry(
+                new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = mode }).Build(),
+                NullLogger<FeatureFlagRegistry>.Instance);
+            Assert.Equal(mode == "on" ? FeatureFlagMode.On : mode == "opt-in" ? FeatureFlagMode.OptIn : FeatureFlagMode.Off,
+                registry.Get("preview-pdf-recipe-import")!.Mode);
+        }
+    }
+
     [Theory]
     [InlineData(null, FeatureFlagMode.Off)]
     [InlineData("off", FeatureFlagMode.Off)]
