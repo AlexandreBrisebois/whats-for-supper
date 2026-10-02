@@ -67,6 +67,18 @@ The service worker cannot decide member flags or authorization. It stages an inc
 
 ## PDF processing: retained source and page-image adapter
 
+### Approved renderer: PDFtoImage
+
+The user approved [PDFtoImage](https://github.com/sungaila/PDFtoImage), which uses PDFium for PDF rendering and SkiaSharp for image encoding. Use it in the dedicated API conversion service. Pin a tested package version through the repository dependency procedure; no particular version is approved by this design.
+
+PDFtoImage itself is free to use under its [MIT license](https://github.com/sungaila/PDFtoImage/blob/master/LICENSE), including modification and commercial use. Retain its copyright/license notice when distributing it. Include the applicable PDFium, SkiaSharp and bundled third-party notices for the actual dependency/native binaries shipped in the container; the wrapper's license is not a substitute for those notices.
+
+Qualification must use the actual production Ubuntu chiseled .NET container on the Synology CPU architecture. Package the required native libraries and any fonts during the image build; do not depend on installation at container startup. Verify both linux-x64 and linux-arm64 before claiming both architectures supported. A PDFtoImage library compatibility result alone does not establish production-container compatibility.
+
+Render and persist one page at a time, disposing each bitmap promptly. PDFtoImage serializes PDFium calls within a process; do not introduce parallel rendering for this household preview. Start fixture evaluation at 200 DPI PNG and choose final settings based on small-text readability, scanned recipes, output bytes and NAS memory use. This DPI is a starting candidate, not an untested fixed acceptance guarantee.
+
+Acceptance includes renderer startup/load, ordered page output, readable View original, unchanged retained PDF bytes, invalid/encrypted document errors, resource limits and temporary-file cleanup. Verify enforceable timeout behavior: cancellation of an API request must not be assumed to interrupt a synchronous native rendering call. If process isolation is necessary to meet the approved limits, record that bounded packaging/execution change explicitly.
+
 ### Execution boundary: API-side conversion
 
 PDF-to-image conversion runs server-side in the API process, through a dedicated PDF conversion service invoked by POST /api/recipes/capture-pdf. The browser and service worker upload/stage the PDF only; neither renders pages nor calls Gemini. The API deployment packages the renderer and its runtime dependencies.
@@ -92,7 +104,7 @@ Propose POST /api/recipes/capture-pdf, authenticated, multipart field `file`, ex
 
 The adapter checks actual content, not filename/MIME alone, renders all pages to bounded JPEG/PNG images in order, and calls the current image-based recipe creation path once. Default finishedDishImageIndex=-1 prevents a recipe page from being treated as the finished dish. Text PDFs are rendered too: one ingestion path supports text and scans without new extraction modes. Stored rendered pages remain available for original-image display and reimport. Retain the accepted source PDF unchanged alongside the recipe's original page images, under a fixed internal filename such as original/source.pdf using the existing storage abstraction. Do not infer image count from all files in that directory: source.pdf is a document artifact, not an image. Preserve page order and readable resolution through the existing original-image endpoints/viewer. Source retention does not require a new PDF viewer or download action for this preview.
 
-Candidate preview limits: 20 MB input and 10 pages, plus bounded rendered dimensions, total pixels, memory, temporary disk and conversion time. These are proposed product/resource limits, not existing guarantees. Select exact runtime limits and renderer dependency only after a fixture/performance spike on both supported container architectures. Validate output against existing image constraints before calling CreateRecipe. Reject the entire document before recipe persistence when validation/conversion fails; clean temporary conversion files on every exit. After successful conversion, retain the source PDF and generated images with the accepted recipe. On failed acceptance, clean only artifacts created by this submission or account for them under the existing recovery convention. Never delete an accepted recipe's retained PDF during temporary-file cleanup. Avoid filename-derived filesystem paths.
+Candidate preview limits: 20 MB input and 10 pages, plus bounded rendered dimensions, total pixels, memory, temporary disk and conversion time. These are proposed product/resource limits, not existing guarantees. Select exact runtime limits and qualify the approved PDFtoImage dependency through a fixture/performance spike on both supported container architectures. Validate output against existing image constraints before calling CreateRecipe. Reject the entire document before recipe persistence when validation/conversion fails; clean temporary conversion files on every exit. After successful conversion, retain the source PDF and generated images with the accepted recipe. On failed acceptance, clean only artifacts created by this submission or account for them under the existing recovery convention. Never delete an accepted recipe's retained PDF during temporary-file cleanup. Avoid filename-derived filesystem paths.
 
 The renderer is the new dependency and operational risk. Verify supported deployment images/architectures, license, packaging and failure isolation. Do not assume the current image library can render PDFs. If rendering cannot fit a bounded upload request, stop and revise the design to a separately approved asynchronous source-storage slice rather than introducing a new workflow unnoticed.
 
@@ -139,7 +151,7 @@ Run affected API tests, PWA unit tests, focused capture/share E2E, typecheck/lin
 
 ## Implementation sequence and stopping points
 
-1. Revalidate source at a pinned checkout containing codex/create-new-branch-for-feature-flags; confirm manifest serving. Reuse its flag implementation. Resolve Mom's platform and conversion limits/library. Preserve existing enqueue semantics and the accepted duplicate-on-retry tradeoff.
+1. Revalidate source at a pinned checkout containing codex/create-new-branch-for-feature-flags; confirm manifest serving. Reuse its flag implementation. Resolve Mom's platform and conversion limits; qualify the approved PDFtoImage library. Preserve existing enqueue semantics and the accepted duplicate-on-retry tradeoff.
 2. Approve the PDF contract. Write API conversion/persistence/flag tests before adding the renderer adapter, registry definition and endpoint; reuse current recipe creation and workflow.
 3. Write UI tests, then add the PDF helper, confirmation and one preview capture boundary. Keep legacy capture intact with flag off.
 4. Write worker/manifest tests, then add bounded staging and multipart share handling, preserving text/link shares. Qualify real devices before advertising support.
