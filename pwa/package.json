@@ -38,7 +38,7 @@
     "@microsoft/kiota-http-fetchlibrary": "^1.0.0-preview.108",
     "@microsoft/kiota-serialization-form": "^1.0.0-preview.108",
     "@microsoft/kiota-serialization-json": "^1.0.0-preview.108",
-    "@microsoft/kiota-serialization-multipart": "^1.0.0-preview.108",
+    "@microsoft/kiota-serialization-multipart": "^1.0.0-preview.109",
     "@microsoft/kiota-serialization-text": "^1.0.0-preview.108",
     "@swc/helpers": "^0.5.23",
     "axios": "^1.20.0",
