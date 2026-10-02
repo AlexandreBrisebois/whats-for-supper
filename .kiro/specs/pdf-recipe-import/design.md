@@ -47,9 +47,7 @@ The current photo contract names its binary array `images`, while the hook/helpe
 
 ## Mom's interaction
 
-Pending approval, 2026-10-02: preserve the current capture layout and action positions, keep photo import primary, and extend the existing recipe-file picker to accept PDFs alongside .txt bundles when enabled, outside Family GOTO. Do not add Other ways or move existing actions without approval. The earlier layout proposal in the next paragraph is historical and has not been approved; settle this decision before implementation.
-
-Earlier proposal (awaiting replacement approval): with preview disabled, render the current capture experience unchanged. With preview enabled, retain Take photo as the primary action and Choose photos as the familiar secondary action. Keep Paste a link visible. Move Describe a recipe and Import recipe file into a compact, accessible Other ways disclosure; label the latter Choose recipe file and accept both existing .txt bundles and PDFs. Dispatch by validated format, never send a PDF through the JSON bundle parser. This is the entire capture layout change for the preview.
+Approved user decision, 2026-10-02: preserve the current capture layout and existing action positions in both preview states. Photo import remains primary: keep Take photo, Choose photos, Paste a link, Describe a recipe and the existing recipe-file action where they are. Extend the existing recipe-file picker to accept PDFs alongside .txt bundles only when PDF preview is enabled and outside Family GOTO. Do not add Other ways or move existing actions. Dispatch by validated format; never send a PDF through the JSON bundle parser. Preserve existing .txt bundle behavior and direct mode=describe and mode=photo links.
 
 Selecting a PDF opens a compact confirmation: filename, “Add this recipe to your library”, Save recipe and Cancel. No required title, rating, notes, dish-photo selection or instructions. PDF and .txt bundle confirmations remain separate because the bundle already contains a structured recipe.
 
@@ -65,7 +63,7 @@ The current registry hardcodes one definition; minimally construct/register a se
 
 The existing proving feature still uses single-page-recipe-steps at runtime; its preview naming migration is a separate task. Leave it outside the PDF change. Verify localized PDF display copy through the actual settings consumer rather than assuming display-name keys exist in the registry (current definitions hold strings).
 
-Resolve the effective flag on the API using the established member identity. Gate the entire new capture layout/entry at one PWA boundary and gate the PDF API before conversion or persistence. Unresolved or failed flag loading defaults to disabled. Clear flags on member switch. Turning the preview off blocks new PDF submissions but does not hide saved recipes or stop accepted image-based jobs/retries.
+Resolve the effective flag on the API using the established member identity. Gate PDF selection/confirmation at one PWA boundary while preserving the existing capture layout and gate the PDF API before conversion or persistence. Unresolved or failed flag loading defaults to disabled. Clear flags on member switch. Turning the preview off blocks new PDF submissions but does not hide saved recipes or stop accepted image-based jobs/retries.
 
 PWA installation metadata is not a live per-member toggle. Use deployment-level manifest selection: off keeps the existing GET link target; opt-in/on advertises the multipart target. Choose a single manifest implementation rather than maintaining conflicting static and dynamic manifests. Confirm the current manifest linkage and serving strategy before coding. Installed apps may retain old metadata until updated; document that delay. Runtime receiving and API checks remain necessary for stale registrations.
 
@@ -132,7 +130,7 @@ Installed Android Chromium PWA sharing is the primary qualification target. iPho
 
 Applied .agents/prompts/mere-designer.md directly; this is a review lens, not a separate persona or approval gate.
 
-1. A fifth equally prominent capture option makes Mom scan technical source types. Small correction: keep camera/photos/link familiar, group occasional file/description actions under Other ways. Test discovery of that label with Mom; do not hide her most frequent action on an assumption.
+1. Approved layout decision supersedes the earlier Other ways recommendation: preserve familiar action positions and extend the existing recipe-file picker for enabled PDFs. Photo import remains primary; no additional prominent capture action or disclosure is introduced.
 2. Share → capture chooser asks her to repeat a decision she already made. Small correction: open file confirmation directly. One Save action makes the consequence visible without training.
 3. A mandatory extracted-recipe review or processing countdown demands attention during interruptions. Small correction: confirm the file, then return Home after acceptance and use existing background feedback. Current capture has a ten-second countdown; leave that legacy behavior outside this preview slice.
 4. Rating, notes and dish-photo choices are unrelated work at import time. Omit them from PDF confirmation; do not redesign existing photo forms.
@@ -141,7 +139,7 @@ Applied .agents/prompts/mere-designer.md directly; this is a review lens, not a 
 
 ## Test-first acceptance and regression scope
 
-Write contract and tests before runtime code, using valid GUID builders and schema-compliant mocks. Extend pwa/e2e/capture-flow.spec.ts for the affected entry points; keep existing assertions in off fixtures rather than globally rewriting them for the preview layout.
+Write contract and tests before runtime code, using valid GUID builders and schema-compliant mocks. Extend pwa/e2e/capture-flow.spec.ts for the affected entry points; keep existing assertions in off fixtures while verifying unchanged action positions in both preview states.
 
 | Boundary | Necessary evidence |
 | --- | --- |
@@ -163,4 +161,4 @@ Run affected API tests, PWA unit tests, focused capture/share E2E, typecheck/lin
 4. Write worker/manifest tests, then add bounded staging and multipart share handling, preserving text/link shares. Qualify real devices before advertising support.
 5. Execute scoped checks; record passed/failed/blocked/not-run evidence. Roll out off → opt-in → on only after qualification. Emergency off blocks new imports; accepted jobs continue.
 
-Graduation criterion: confirmed picker/share success on the supported device matrix, fixture extraction quality accepted, reliable retry/cleanup, and household feedback showing Mom completes imports unaided. Removal task: remove preview boundary/legacy layout, registry key/environment mode/member overrides, manifest mode branching and obsolete flag tests; retain PDF adapter/share acceptance tests.
+Graduation criterion: confirmed picker/share success on the supported device matrix, fixture extraction quality accepted, reliable retry/cleanup, and household feedback showing Mom completes imports unaided. Removal task: remove PDF preview gating, registry key/environment mode/member overrides, manifest mode branching and obsolete flag tests; retain PDF adapter/share acceptance tests.
