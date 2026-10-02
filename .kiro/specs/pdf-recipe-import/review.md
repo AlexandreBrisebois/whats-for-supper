@@ -52,6 +52,10 @@ Requirements/design/tasks are synchronized, including exact boundary checks (20,
 
 User approves multipart/form-data file (one PDF), rating and notes on POST /api/recipes/capture-pdf, returning 202 {data:{id}} after pending source/recipe persistence and before workflow conversion. id is the pending recipe GUID, not a workflow ID or readiness guarantee. Requirements/design/tasks are synchronized; source/default/error schema details remain OQ-02 for later contract work. No OpenAPI/client/runtime changes in this specification revision; remote content verification performed.
 
+## Approved upload-request error mapping — 2026-10-02
+
+User accepts immediate 400 for missing file/invalid metadata, 413 above 20 MiB, 415 unsupported file type and 409 preview disabled; preserve existing auth responses. These are request rejections before pending import/workflow persistence. Corrupt/encrypted PDFs and page-limit failures are conversion-processor failures in existing Settings recovery. Requirements/design/tasks synchronized; exact error-body/field schemas remain OQ-02. No OpenAPI/runtime changes; remote content verification performed.
+
 ## Historical archive — non-authoritative
 
 <details>
