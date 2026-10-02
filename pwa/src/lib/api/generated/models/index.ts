@@ -5,6 +5,7 @@
 import {
   createUntypedNodeFromDiscriminatorValue,
   type AdditionalDataHolder,
+  type ApiError,
   type DateOnly,
   type Guid,
   type Parsable,
@@ -431,6 +432,39 @@ export function createPaginationDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoPaginationDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PdfCaptureAccepted_data}
+ */
+// @ts-ignore
+export function createPdfCaptureAccepted_dataFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPdfCaptureAccepted_data;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PdfCaptureAccepted}
+ */
+// @ts-ignore
+export function createPdfCaptureAcceptedFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPdfCaptureAccepted;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PdfCaptureError}
+ */
+// @ts-ignore
+export function createPdfCaptureErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPdfCaptureError;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1671,6 +1705,56 @@ export function deserializeIntoPaginationDto(
     },
     total: (n) => {
       paginationDto.total = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PdfCaptureAccepted The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPdfCaptureAccepted(
+  pdfCaptureAccepted: Partial<PdfCaptureAccepted> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    data: (n) => {
+      pdfCaptureAccepted.data = n.getObjectValue<PdfCaptureAccepted_data>(
+        createPdfCaptureAccepted_dataFromDiscriminatorValue
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PdfCaptureAccepted_data The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPdfCaptureAccepted_data(
+  pdfCaptureAccepted_data: Partial<PdfCaptureAccepted_data> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    id: (n) => {
+      pdfCaptureAccepted_data.id = n.getGuidValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PdfCaptureError The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPdfCaptureError(
+  pdfCaptureError: Partial<PdfCaptureError> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      pdfCaptureError.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      pdfCaptureError.status = n.getNumberValue();
     },
   };
 }
@@ -3366,6 +3450,28 @@ export interface PaginationDto extends AdditionalDataHolder, Parsable {
    */
   total?: number | null;
 }
+export interface PdfCaptureAccepted extends AdditionalDataHolder, Parsable {
+  /**
+   * The data property
+   */
+  data?: PdfCaptureAccepted_data | null;
+}
+export interface PdfCaptureAccepted_data extends AdditionalDataHolder, Parsable {
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+}
+export interface PdfCaptureError extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
 export interface PreSelectedRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The dayIndex property
@@ -4709,6 +4815,65 @@ export function serializePaginationDto(
   writer.writeNumberValue('page', paginationDto.page);
   writer.writeNumberValue('total', paginationDto.total);
   writer.writeAdditionalData(paginationDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PdfCaptureAccepted The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePdfCaptureAccepted(
+  writer: SerializationWriter,
+  pdfCaptureAccepted: Partial<PdfCaptureAccepted> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!pdfCaptureAccepted || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<PdfCaptureAccepted_data>(
+    'data',
+    pdfCaptureAccepted.data,
+    serializePdfCaptureAccepted_data
+  );
+  writer.writeAdditionalData(pdfCaptureAccepted.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PdfCaptureAccepted_data The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePdfCaptureAccepted_data(
+  writer: SerializationWriter,
+  pdfCaptureAccepted_data: Partial<PdfCaptureAccepted_data> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!pdfCaptureAccepted_data || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('id', pdfCaptureAccepted_data.id);
+  writer.writeAdditionalData(pdfCaptureAccepted_data.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PdfCaptureError The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePdfCaptureError(
+  writer: SerializationWriter,
+  pdfCaptureError: Partial<PdfCaptureError> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!pdfCaptureError || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', pdfCaptureError.messageEscaped);
+  writer.writeNumberValue('status', pdfCaptureError.status);
+  writer.writeAdditionalData(pdfCaptureError.additionalData);
 }
 /**
  * Serializes information the current object
