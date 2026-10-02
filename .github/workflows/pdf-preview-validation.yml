@@ -1,0 +1,76 @@
+name: PDF preview validation (no deployment)
+on:
+  push:
+    branches: [codex/pdf-recipe-import-preview]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pdf-preview-validation
+  cancel-in-progress: true
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '11.0.100-preview.6.26359.118'
+      - name: API tests
+        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --logger trx --results-directory results
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pdf-api-results
+          path: results
+  pwa:
+    runs-on: ubuntu-latest
+    env:
+      HEARTH_SECRET: Paris-Montreal
+      CI: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: npm ci
+        working-directory: pwa
+      - run: npm run typecheck
+        working-directory: pwa
+      - run: npm run lint
+        working-directory: pwa
+      - run: npm run test:unit
+        working-directory: pwa
+      - run: node --test public/pdf-share.test.mjs
+        working-directory: pwa
+      - run: npm run build
+        working-directory: pwa
+      - run: npx playwright install chromium --with-deps
+        working-directory: pwa
+      - run: npx playwright test e2e/pdf-capture.spec.ts e2e/capture-flow.spec.ts e2e/settings.spec.ts e2e/recipe-original-viewer.spec.ts
+        working-directory: pwa
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pdf-pwa-results
+          path: pwa/playwright-report
+  generated-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.100-preview.6.26359.118
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: dotnet tool restore
+      - run: npm ci
+        working-directory: pwa
+      - run: python3 scripts/agent/kiota_client.py generate
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pdf-generated-client
+          path: pwa/src/lib/api/generated

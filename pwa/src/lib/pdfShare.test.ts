@@ -12,3 +12,4 @@ describe('PDF share ownership', () => {
     expect(discard).toHaveBeenCalledWith('older');
   });
 });
+

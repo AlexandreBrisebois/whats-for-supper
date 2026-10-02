@@ -1,5 +1,7 @@
 import { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import { Suspense } from 'react';
+import { PdfShareLifecycle } from '@/components/capture/PdfShareLifecycle';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 import { LocaleProvider } from '@/components/common/LocaleProvider';
@@ -113,6 +115,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</Script>
       </head>
       <body className="min-h-dvh bg-cream text-charcoal antialiased">
+        <Script src="/pdf-share.js" strategy="beforeInteractive" />
+        <Suspense fallback={null}><PdfShareLifecycle /></Suspense>
         <LocaleProvider>
           <IdentityValidator>{children}</IdentityValidator>
         </LocaleProvider>
@@ -120,3 +124,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+

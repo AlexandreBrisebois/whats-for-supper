@@ -28,3 +28,4 @@ describe('PDF confirmation', () => {
     expect(screen.getByTestId('pdf-save')).toBeDisabled();
   });
 });
+

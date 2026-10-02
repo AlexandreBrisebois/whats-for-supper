@@ -65,8 +65,8 @@ public class FeatureFlagServiceTests
         await service.SetOverrideAsync(first.Id, "single-page-recipe-steps", true);
         await service.SetOverrideAsync(first.Id, "single-page-recipe-steps", false);
 
-        Assert.False((await service.GetSnapshotAsync(first.Id)).Single().Enabled);
-        Assert.False((await service.GetSnapshotAsync(second.Id)).Single().Enabled);
+        Assert.False((await service.GetSnapshotAsync(first.Id)).Single(flag => flag.Key == "single-page-recipe-steps").Enabled);
+        Assert.False((await service.GetSnapshotAsync(second.Id)).Single(flag => flag.Key == "single-page-recipe-steps").Enabled);
         Assert.Single(db.FeatureFlagOverrides);
     }
 
@@ -88,3 +88,4 @@ public class FeatureFlagServiceTests
         return new RecipeDbContext(options);
     }
 }
+

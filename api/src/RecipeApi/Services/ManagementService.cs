@@ -807,6 +807,7 @@ public class ManagementService(
         logger.LogInformation("Found {Count} recipes in store", recipeIds.Count);
         var missingMemberIds = new HashSet<Guid>();
         var recipesToRestore = new List<Recipe>();
+        var pendingPdfIds = new HashSet<Guid>();
 
         foreach (var recipeId in recipeIds)
         {
@@ -832,7 +833,10 @@ public class ManagementService(
                     var info = await recipeStore.ReadInfoAsync(recipeId, ct);
                     if (info != null)
                     {
-                        if (info.Id != recipeId || string.IsNullOrWhiteSpace(info.Name))
+                        await using var pdfSource = await recipeStore.ReadSourcePdfAsync(recipeId, ct);
+                        var pendingPdf = pdfSource is not null && string.IsNullOrWhiteSpace(info.Name);
+                        if (pendingPdf) pendingPdfIds.Add(recipeId);
+                        if (info.Id != recipeId || (string.IsNullOrWhiteSpace(info.Name) && !pendingPdf))
                             throw new InvalidDataException($"Recipe info for {recipeId} is missing its required current id or name.");
 
                         logger.LogDebug("Loaded recipe.info for {RecipeId}: name={Name}", recipeId, info.Name);
@@ -848,6 +852,7 @@ public class ManagementService(
                             Description = info.Description,
                             Name = info.Name,
                             ImageCount = info.ImageCount,
+                            FinishedDishIndex = info.FinishedDishImageIndex,
                             IsSynthesized = info.IsSynthesized,
                             CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
                             UpdatedAt = DateTimeOffset.UtcNow,
@@ -859,7 +864,7 @@ public class ManagementService(
                             TotalTime = info.TotalTime,
                             LastCookedDate = info.LastCookedDate,
                             SourceUrl = info.SourceUrl,
-                            IsReady = true
+                            IsReady = !pendingPdf
                         };
                     }
                 }
@@ -983,7 +988,7 @@ public class ManagementService(
                     existing.SourceUrl = recipe.SourceUrl;
                     existing.CuisineType = recipe.CuisineType;
                     existing.MealTypes = recipe.MealTypes;
-                    existing.IsReady = true;
+                    existing.IsReady = !pendingPdfIds.Contains(recipe.Id);
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
                 }
@@ -1589,3 +1594,4 @@ public class ManagementService(
             report.LastError);
     }
 }
+

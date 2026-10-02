@@ -89,6 +89,20 @@
       "1": "Pas pour moi",
       "2": "C'était correct",
       "3": "On a adoré !"
+    },
+    "pdf": {
+      "title": "Ajouter cette recette à votre bibliothèque",
+      "guidance": "Choisissez un PDF contenant une recette · 10 pages maximum · 20 Mio.",
+      "preparing": "Préparation de votre PDF…",
+      "receipt": "Attendez la fin du téléversement. Un téléversement interrompu peut nécessiter un nouvel essai.",
+      "uncertain": "Impossible de confirmer le téléversement. Réessayez; un nouvel envoi peut créer un doublon.",
+      "disabled": "L’import PDF en aperçu n’est pas activé. Ce fichier n’a pas été ajouté.",
+      "size": "Choisissez un PDF de 20 Mio maximum.",
+      "type": "Choisissez un fichier PDF.",
+      "restart": "Choisissez ou partagez le PDF à nouveau.",
+      "loading": "Chargement des fonctionnalités en aperçu…",
+      "previewFeatures": "Fonctionnalités en aperçu",
+      "chooseAnotherWay": "Choisir une autre méthode"
     }
   },
   "profile": {

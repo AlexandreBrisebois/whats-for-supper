@@ -62,7 +62,8 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
 
 # Preserve the notices shipped with the pinned wrapper/native dependencies.
 COPY licenses/ /app/publish/licenses/
-RUN mkdir -p /app/publish/licenses/nuget && \
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    mkdir -p /app/publish/licenses/nuget && \
     find /root/.nuget/packages/pdftoimage /root/.nuget/packages/bblanchon.pdfium.linux \
          /root/.nuget/packages/skiasharp /root/.nuget/packages/skiasharp.nativeassets.linux.nodependencies \
          -type f \( -iname '*license*' -o -iname '*notice*' -o -iname '*copying*' \) \

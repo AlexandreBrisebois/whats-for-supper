@@ -11,6 +11,7 @@ public sealed class PdfCaptureController(FeatureFlagService flags, PdfCaptureSer
 {
     [HttpPost("capture-pdf")]
     [SkipWrapping]
+    [RequestFormLimits(MultipartBodyLengthLimit = 20 * 1024 * 1024)]
     [RequestSizeLimit(500 * 1024 * 1024)] // Multipart envelope is separate from the 20 MiB file bound.
     public async Task<IActionResult> Capture(
         [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId,
@@ -27,6 +28,7 @@ public sealed class PdfCaptureController(FeatureFlagService flags, PdfCaptureSer
         IFormCollection form;
         try { form = await Request.ReadFormAsync(ct); }
         catch (BadHttpRequestException ex) when (ex.StatusCode == 413) { return Reject(413, "Choose a PDF up to 20 MiB."); }
+        catch (InvalidDataException ex) when (ex.Message.Contains("length limit", StringComparison.OrdinalIgnoreCase)) { return Reject(413, "Choose a PDF up to 20 MiB."); }
         catch (InvalidDataException) { return Reject(400, "The upload form is invalid."); }
         if (form.Files.Count != 1 || form.Files[0].Name != "file")
             return Reject(400, "Choose exactly one PDF.");
@@ -42,7 +44,7 @@ public sealed class PdfCaptureController(FeatureFlagService flags, PdfCaptureSer
             return Reject(400, "The upload metadata is invalid.");
         var rating = 0;
         if (form.ContainsKey("rating")
-            && (!int.TryParse(form["rating"], NumberStyles.Integer, CultureInfo.InvariantCulture, out rating) || rating is < 0 or > 3))
+            && (!int.TryParse(form["rating"][0], NumberStyles.Integer, CultureInfo.InvariantCulture, out rating) || rating is < 0 or > 3))
             return Reject(400, "Choose a rating between 0 and 3.");
         try
         {

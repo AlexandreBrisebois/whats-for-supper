@@ -14,3 +14,4 @@ describe('deployment-selected manifest', () => {
     expect(manifest.share_target).toMatchObject({ enctype: 'multipart/form-data', params: { title: 'title', text: 'text', url: 'url', files: [{ name: 'files', accept: ['application/pdf', '.pdf'] }] } });
   });
 });
+

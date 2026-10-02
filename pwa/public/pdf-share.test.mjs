@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 
 function helper(stage = async () => 'opaque') {
-  const context = vm.createContext({ URL, Request, Response, File, crypto, Date, console,
+  const context = vm.createContext({ URL, URLSearchParams, Request, Response, File, crypto, Date, console,
     location: { origin: 'https://supper.example' } });
   vm.runInContext(fs.readFileSync(new URL('./pdf-share.js', import.meta.url), 'utf8'), context);
   context.WfsPdfShare.stage = stage;

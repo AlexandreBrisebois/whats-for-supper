@@ -734,3 +734,27 @@ export async function getRecipeImage(recipeId: string, index: number): Promise<s
   const blob = await response.blob();
   return URL.createObjectURL(blob);
 }
+
+
+
+/** Dedicated PDF multipart seam; identity is captured at Save, never re-read after awaiting. */
+export async function createPdfRecipe(file: File, rating: number, notes: string, memberId: string): Promise<string> {
+  const { pdfCaptureForm } = await import('@/lib/pdfCapture');
+  const { t } = await import('@/locales');
+  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/capture-pdf`, {
+    method: 'POST', credentials: 'same-origin', body: pdfCaptureForm(file, rating, notes),
+    headers: { 'X-Family-Member-Id': memberId },
+  });
+  if (!response.ok) {
+    const key = response.status === 413 ? 'size' : response.status === 409 ? 'disabled' : response.status === 415 || response.status === 400 ? 'type' : 'uncertain';
+    const defaults = {
+      size: 'Choose a PDF up to 20 MiB.', disabled: 'PDF import preview isn’t enabled. This file hasn’t been added.',
+      type: 'Choose a PDF file.', uncertain: 'Couldn’t confirm the upload. Try again; another submission may create a duplicate.',
+    };
+    throw new Error(t(`capture.pdf.${key}`, defaults[key]));
+  }
+  const result: { data?: { id?: string } } = await response.json();
+  if (!result.data?.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result.data.id))
+    throw new Error(t('capture.pdf.uncertain', 'Couldn’t confirm the upload. Try again; another submission may create a duplicate.'));
+  return result.data.id;
+}

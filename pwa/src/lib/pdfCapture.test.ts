@@ -21,3 +21,4 @@ describe('PDF capture transport', () => {
     expect(() => pdfCaptureForm(file, 4, '')).toThrow();
   });
 });
+
