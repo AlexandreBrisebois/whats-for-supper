@@ -15,7 +15,9 @@ User decision, 2026-10-02: unsaved capture drafts may be lost during flag refres
 
 User decision, 2026-10-02: Family GOTO retains its existing photo capture flow. PDFs stay outside that contextual chooser, even when the PDF preview is enabled. PDF import from ordinary capture or external share adds a library recipe only and does not create or promote a pending GOTO entry. Keep existing GOTO attribution, pending promotion and return behavior for its photo flow.
 
-These decisions accept missing feedback, duplicate results and draft loss; they do not change extraction correctness or justify saying a recipe is ready before it is. Workflow-launch errors remain an inherited limitation of the reused creation path, rather than a mandate for a new durable queue/recovery system.
+Approved user decision, 2026-10-02: retain existing session feedback behavior across member switches on a shared device. Another member may see completion feedback for the household's import. No member-specific notification filtering or feedback-store ownership redesign is required for this preview. Recipe attribution remains the authenticated member who submitted the request; switching members afterward does not reattribute an accepted recipe.
+
+These decisions accept missing feedback, duplicate results, draft loss and shared-device completion feedback; they do not change extraction correctness or justify saying a recipe is ready before it is. Workflow-launch errors remain an inherited limitation of the reused creation path, rather than a mandate for a new durable queue/recovery system.
 
 ## Outcome and scope
 
@@ -153,7 +155,7 @@ Write contract and tests before runtime code, using valid GUID builders and sche
 | UI | Picker cancel, PDF dispatch versus .txt bundle, confirmation, local submission lock, upload failure/retry, accepted-ID requirement, pending-store/Home navigation and existing session feedback; completed recipe remains browseable without notification |
 | Share receiver | Multipart PDF with app open/closed, text/url POST, existing GET links, missing/extra/invalid files, storage failure/expiry, refresh, auth/member selection, disabled preview, no submission on launch |
 | Legacy regression | Photo upload/limits and feedback, link/manual review and errors, describe/GOTO, .txt bundle acceptance, duplicate behavior, original-image reimport, ready/failure notifications, API/SSE bypass in worker; retained PDF is excluded from image enumeration, preserved through backup/restore and soft deletion, and removed on permanent purge |
-| Household access | Ready PDF-derived recipe remains accessible under existing rules to a member with preview off; existing readiness/discovery eligibility remains unchanged; import alone leaves votes, meal plans, groceries and Family GOTO unchanged |
+| Household access | Ready PDF-derived recipe remains accessible under existing rules to a member with preview off; existing readiness/discovery eligibility remains unchanged; import alone leaves votes, meal plans, groceries and Family GOTO unchanged; member switch preserves submitting-member attribution while existing session feedback may remain visible to another member |
 | Device | Actual installed Android OS share sheet cold/warm launches and manifest update; actual iOS picker fallback. Synthetic Playwright navigation alone cannot establish OS registration |
 
 Run affected API tests, PWA unit tests, focused capture/share E2E, typecheck/lint, contract/client/mock parity checks and a production PWA build. Renderer packaging and real-device checks are explicit release requirements. No tests were run during this read-only design investigation.
