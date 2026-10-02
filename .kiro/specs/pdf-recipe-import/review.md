@@ -5,11 +5,13 @@ Reviewed branch: codex/pdf-recipe-import-preview, after design commit 48fc7a66fe
 Reviewed design: [design.md](design.md). Source reads used the branch ref, not an immutable checkout; revalidate at implementation.
 Lens: [.agents/prompts/mere-designer.md](../../../.agents/prompts/mere-designer.md), applied directly to interruptions, cognitive load, recovery and family effects.
 
-Product disposition, 2026-10-01: the user accepts best-effort completion feedback and manually managing duplicate recipes. R2's durable feedback/reconciliation requirement and R3's idempotency requirement are withdrawn. Their observations remain documented below; they are not implementation blockers. R1, R4 and the other UX findings still apply.
+Product disposition, 2026-10-01: the user accepts best-effort completion feedback and manually managing duplicate recipes. R2's durable feedback/reconciliation requirement and R3's idempotency requirement are withdrawn. Their observations remain documented below; they are not implementation blockers. Further disposition, 2026-10-02: draft loss is accepted, withdrawing R1's preservation/recovery requirement and R9's draft-preservation/discard-confirmation requirement. Family GOTO keeps its existing photo flow; PDFs are excluded from that chooser, resolving R4 by exclusion. R5's proposal to preserve the existing capture layout and extend the recipe-file picker to PDFs is awaiting approval. Remaining findings still apply within these decisions.
 
 Recommendation: revise the remaining design gaps before implementation. The page-image adapter remains a promising minimal seam, but the current spec does not yet substantiate its interruption-safe or no-support-needed outcome. The findings below distinguish new design risks from inherited limitations. No application tests were executed.
 
-## R1 — P1: flag refresh can discard a file or photo draft
+## R1 — Accepted tradeoff: flag refresh can discard a file or photo draft
+
+Disposition, 2026-10-02: unsaved draft loss is accepted. The correction and retention acceptance below are historical recommendations, not preview requirements. Do not add draft persistence, stable editor ownership, recovery or discard confirmation for this slice. Keep API-side feature enforcement and established member identity checks.
 
 Design lines 38 and 54 select a complete capture layout by effective flag and default to legacy while unresolved. In pwa/src/components/featureFlags/FeatureFlagProvider.tsx, window focus calls refresh. In pwa/src/store/featureFlagStore.ts, refresh calls load, which immediately empties flags even for the same member. The hook consequently returns false.
 
@@ -33,7 +35,9 @@ The UI lock prevents repeated taps during one active request; it does not preven
 
 Server idempotency, cross-tab submission deduplication and exactly-once recovery are not requirements for this preview. Keep the local lock and ordinary retry behavior. Confirm existing duplicate-management actions remain usable for page-image imports; do not add new management UI.
 
-## R4 — P1: Family GOTO intent is dropped by unconditional Home navigation
+## R4 — Resolved by scope: Family GOTO retains its photo flow
+
+Disposition, 2026-10-02: exclude PDFs from the Family GOTO chooser regardless of preview enablement. Preserve its existing photo flow, pending promotion and return context. Ordinary and externally shared PDFs add library recipes only and do not mutate GOTO. The support recommendation below is superseded; acceptance now checks exclusion and unchanged GOTO photo behavior.
 
 Design line 42 always navigates Home and the PDF proposal carries no GOTO intent behavior. MinimalCapture currently branches on intent=goto and photo/link/description handlers save pending GOTO entries; the GOTO path provides a Settings destination.
 
@@ -83,6 +87,8 @@ Acceptance: Mom imports → child with preview off can view/cook after readiness
 
 ## R9 — P2: upload interruption and cancellation semantics are incomplete
 
+Disposition, 2026-10-02: draft loss is accepted; the preservation and explicit-discard recommendations below are withdrawn. Cancel before Save sends no request. After Save begins, leaving or aborting the browser request does not guarantee server cancellation. Preserve honest copy and the accepted duplicate-on-retry tradeoff; no draft recovery requirement remains.
+
 The design promises Cancel creates no mutation, but that can only hold before Save is sent. After Save begins, an aborted browser request can still complete on the server. It also promises preservation of an existing photo draft on PDF cancel, yet automatic Home navigation after PDF success will unmount that draft.
 
 Smallest correction: distinguish pre-submission Cancel from leaving during an in-flight import. Never imply an abort erased server work. Ordinary retry may create a duplicate under the accepted tradeoff; no submission identity/reconciliation is required. Define handling of an unsaved photo draft when starting a PDF import: preferably prevent mixing and offer Keep editing photos / Choose PDF with an explicit discard decision, or preserve the draft beyond the PDF route. Settle long-running conversion copy before using immediate Home navigation.
@@ -93,6 +99,8 @@ Acceptance: cancel before Save produces no request; leaving during upload does n
 
 The dedicated PDF endpoint, unchanged image-only photo validation, finishedDishImageIndex=-1, unknown rating, shared workflow reuse, default-off flag and iOS picker fallback are sensible boundaries. Keep them unless fixture evidence requires a change.
 
-Mom's actual phone and unaided usability remain unverified. This review establishes source/spec risks, not observed device failures or passing tests. Do not declare all PDF promises covered by the current “reuse” design until R1 and R4 are resolved and the family acceptance scenarios are explicit. R2 and R3 are accepted tradeoffs, not prerequisites. Do not turn inherited photo limitations into an unbounded cleanup project.
+Mom's actual phone and unaided usability remain unverified. This review establishes source/spec risks, not observed device failures or passing tests. Do not declare all PDF promises covered by the current “reuse” design until the remaining decisions and family acceptance scenarios are explicit. R1 is an accepted tradeoff and R4 is resolved by excluding PDFs from Family GOTO. R2 and R3 are accepted tradeoffs, not prerequisites. Do not turn inherited photo limitations into an unbounded cleanup project.
 
 Initial review delta: one new review document only. Follow-up disposition updates this review and the proposed design to record the user's accepted feedback/duplicate tradeoffs; no application code or API contract changes. Repository Task harness unavailable without a local checkout; review used GitHub connector reads and a new-file commit, with remote content verification.
+
+Specification follow-up, 2026-10-02: recorded accepted draft loss and Family GOTO exclusion in design/review only. Capture-layout/file-picker proposal remains pending approval. No runtime implementation or approved API contract changes. Local checkout and Task harness were unavailable because Git clone could not reach the configured proxy; baseline used branch HEAD and fetched blob identities, followed by remote content verification.
