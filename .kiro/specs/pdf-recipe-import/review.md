@@ -61,9 +61,11 @@ Smallest correction: specify three receiver states: resolving identity/flags, op
 
 Acceptance: separate opted-in and non-opted-in members, stale manifest, unknown identity, flag request failure, Settings detour and browser Back. No lost file, accidental opt-in or unexplained empty capture screen. This is a usability issue, not a request for a new parental permission system.
 
-## R7 — P2: source preservation and one-recipe scope can produce misleading results
+## R7 — P2: one-recipe scope and source readability need qualification
 
-Design lines 10–12 promise one recipe but leave multiple-recipe behavior unqualified. The confirmation only shows a filename. Pages are rasterized and the PDF is discarded, while sourceType remains photos.
+Source-retention decision: the user explicitly requires retaining the unchanged original PDF and converting its pages to images for the normal photo-import flow. View original must display those readable page images. The earlier proposal to discard the PDF is superseded; direct Gemini PDF input is not selected.
+
+Design lines 10–12 promise one recipe but leave multiple-recipe behavior unqualified. The confirmation only shows a filename. The revised design rasterizes pages, retains the source PDF and keeps sourceType as photos. Source storage must exclude the PDF from image enumeration.
 
 Trigger: Mom shares a short collection or a file with nutrition/cover pages. Existing extraction might merge recipes or return an apparently plausible result. A child cooking from it could see mismatched quantities or steps. This is an unverified quality risk, not an established extraction defect.
 
