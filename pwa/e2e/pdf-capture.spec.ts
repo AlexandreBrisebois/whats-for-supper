@@ -54,4 +54,47 @@ test.describe('PDF import preview', () => {
     await page.getByTestId('import-recipe-file-input').setInputFiles({ ...pdf, buffer: Buffer.alloc(20971521) });
     await expect(page.getByTestId('bundle-import-error')).toContainText(/20 MiB/);
   });
+  test('a staged cold share is claimed once; a warm replacement owns its token', async ({ page }) => {
+    await enable(page);
+    await page.goto('/capture');
+    await page.waitForFunction(() => Boolean(window.WfsPdfShare));
+    const stage = async (name: string) => page.evaluate(async (filename) => {
+      const bridge = window.WfsPdfShare as unknown as { stage(file: File): Promise<string> };
+      return bridge.stage(new File(['%PDF-corrupt'], filename, { type: 'application/pdf' }));
+    }, name);
+    const old = await stage('old.pdf');
+    const token = await stage('new.pdf');
+    await page.evaluate(async (stale) => { await window.WfsPdfShare?.discard(stale); }, old);
+    await page.goto('/capture?share=' + token);
+    await expect(page.getByTestId('pdf-confirmation')).toContainText('new.pdf');
+    await page.reload();
+    await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
+    await expect(page.getByRole('alert')).toContainText(/again/);
+    const warm = await stage('warm.pdf');
+    await page.goto('/capture?share=' + warm);
+    await expect(page.getByTestId('pdf-confirmation')).toContainText('warm.pdf');
+  });
+  test('interruption while claiming a share cannot restore a draft', async ({ page }) => {
+    await enable(page);
+    await page.addInitScript(() => {
+      const poll = window.setInterval(() => {
+        if (!window.WfsPdfShare) return;
+        window.clearInterval(poll);
+        window.WfsPdfShare.claim = async (token) => {
+          Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+          document.dispatchEvent(new Event('visibilitychange'));
+          await new Promise((resolve) => window.setTimeout(resolve, 50));
+          Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+          return { token, file: new File(['%PDF'], 'interrupted.pdf', { type: 'application/pdf' }) };
+        };
+      }, 0);
+    });
+    await page.goto('/capture');
+    await page.waitForFunction(() => Boolean(window.WfsPdfShare));
+    await page.evaluate(() => { window.history.pushState(null, '', '/capture?share=interrupted'); window.dispatchEvent(new PopStateEvent('popstate')); });
+    await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
+    await page.waitForTimeout(100);
+    await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
+  });
+
 });
