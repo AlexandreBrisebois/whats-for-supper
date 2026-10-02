@@ -195,3 +195,13 @@ Acceptance to approve/qualify: a reviewer can derive one unambiguous current set
 The approved scope is suitable for a lightweight import preview, but a claim that it handles interruptions unaided remains unqualified. Prioritize B1's receipt/continuation wording; then clarify handoff cleanup and concrete rejection paths before implementation acceptance is finalized. Renderer readability/performance, real Android cross-app sharing and phone usability remain release evidence to obtain, not passing results from this review.
 
 Review-only delta: appended this findings section to review.md; design and embedded requirements remain unchanged. Proposals require user disposition one at a time under the existing session instruction.
+
+## Busy-day review disposition — user clarification, 2026-10-02
+
+B1: interruption requires the user to restart; no durable delivery/recovery guarantee or additional interruption flow is requested. Launched server work still has no cancellation control; a tap or incomplete upload must not be described as completed receipt.
+B2: the initial-unlock preservation proposal is declined. Unlock/member change has the same reset effect as leaving capture, including the staged PDF, rating and notes. The user restarts/selects again; Android staging bridges only the foreground handoff.
+B3: rejected/failed submitted PDFs use existing Settings import-job Retry/Delete like links/photos. No separate PDF recovery UI is selected. Pre-recipe validation/conversion rejection needs explicit failed-capture integration and retained source for retry; this is a remaining specification seam, not verified reuse.
+B4: historical-assertion consolidation remains awaiting approval. Proposed option: one current requirements/acceptance document, with superseded assertions in this review clearly marked historical. No consolidation performed yet.
+
+Added required implementation deliverables to design.md: docs/user-guide.md; process documentation under docs/flows; release-template/synology/compose.yaml, .env.example and README.md. Deployment/runtime files are not changed in this specification-only turn. Live .env values are applied during deployment rather than committed.
+Evidence: inspected existing CAP-07 recovery design, photo-upload data-flow and Synology template/env example at the branch commit. No application tests or device checks. Scope delta: design/review only; remote content verification used because local checkout/Task harness remains unavailable.
