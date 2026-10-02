@@ -105,7 +105,7 @@ Acceptance: cancel before Save produces no request; leaving during upload does n
 
 ## Preserved decisions and review limits
 
-The dedicated PDF endpoint, unchanged image-only photo validation, finishedDishImageIndex=-1, unknown rating, shared workflow reuse, default-off flag and iOS picker fallback are sensible boundaries. Keep them unless fixture evidence requires a change.
+The dedicated PDF endpoint, unchanged image-only photo validation, finishedDishImageIndex=-1, photo-import rating/notes semantics, shared workflow reuse, default-off flag and iOS picker fallback are sensible boundaries. Keep them unless fixture evidence requires a change.
 
 Mom's actual phone and unaided usability remain unverified. This review establishes source/spec risks, not observed device failures or passing tests. Do not declare all PDF promises covered by the current “reuse” design until the remaining decisions and family acceptance scenarios are explicit. R1 is an accepted tradeoff and R4 is resolved by excluding PDFs from Family GOTO. R2 and R3 are accepted tradeoffs, not prerequisites. Do not turn inherited photo limitations into an unbounded cleanup project.
 
@@ -124,3 +124,5 @@ Specification follow-up, 2026-10-02: approved existing session completion feedba
 Specification follow-up, 2026-10-02: approved per-PDF input limits of 20 MB and 10 pages. Exceeding either rejects the whole document before recipe acceptance; no page truncation. Exact byte threshold must be specified in the approved contract following repository conventions. Renderer dimensions/pixels, memory, temporary disk and timeout limits still require specification and production-container qualification. No application or OpenAPI changes; remote content verification used because the local checkout/Task harness remains unavailable.
 
 Specification follow-up, 2026-10-02: removed the PDF Cancel action per user decision. Launched work is server-side and proceeds through conversion and the reused photo-import workflow; leaving does not request cancellation. API conversion-before-acceptance remains unchanged. No application or OpenAPI changes; remote content verification used because the local checkout/Task harness remains unavailable.
+
+Specification follow-up, 2026-10-02: user requires PDF import to provide the same rating and notes controls/defaults/validation as photo import and preserve supplied values through recipe creation/workflow. The earlier rating/notes omission and forced unknown-rating proposals are superseded. No cooked/finished-dish photo selection; PDF pages remain source images with finishedDishImageIndex=-1. Updated proposed endpoint metadata and acceptance scope, without changing OpenAPI or application code. Remote content verification used because the local checkout/Task harness remains unavailable.
