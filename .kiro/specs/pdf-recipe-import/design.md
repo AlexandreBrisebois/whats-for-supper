@@ -67,7 +67,9 @@ Resolve the effective flag on the API using the established member identity. Gat
 
 PWA installation metadata is not a live per-member toggle. Use deployment-level manifest selection: off keeps the existing GET link target; opt-in/on advertises the multipart target. Choose a single manifest implementation rather than maintaining conflicting static and dynamic manifests. Confirm the current manifest linkage and serving strategy before coding. Installed apps may retain old metadata until updated; document that delay. Runtime receiving and API checks remain necessary for stale registrations.
 
-The service worker cannot decide member flags or authorization. It stages an incoming share, then the foreground app resolves identity and feature state. Disabled incoming PDF: “PDF import preview isn't enabled”, with Back and Choose another way; do not silently lose the staged file. Allow visiting Preview features where available, without enabling it automatically. Explicitly discard or expire staged content afterward.
+The service worker cannot decide member flags or authorization. It stages an incoming share, then the foreground app resolves identity and feature state. While identity/flags are resolving, do not show a disabled verdict or submit the file; failed flag loading keeps submission disabled.
+
+Approved user decision, 2026-10-02: for a shared PDF when the preview is disabled, show “PDF import preview isn’t enabled. This file hasn’t been added.” Offer Preview features only when opt-in is available, and Choose another way returning to ordinary Capture. This explicit destination works without browser history; do not rely on Back returning to the external app. Never enable the preview, switch member identity or save automatically. Returning from Settings may require selecting/sharing the file again under the accepted draft-loss tradeoff; no staged-token preservation or automatic return-to-file recovery is required. Explicitly discard or expire staged content under the normal cleanup rules.
 
 ## PDF processing: retained source and page-image adapter
 
