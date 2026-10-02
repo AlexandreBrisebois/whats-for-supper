@@ -93,9 +93,9 @@ Smallest correction: state that the PDF flag gates acquisition only. Existing re
 
 Acceptance: Mom imports → child with preview off can view/cook after readiness and participate in existing discovery when eligible. Pending/failed recipes do not appear as cookable. Planning/vote/grocery state is unchanged by importing alone. Test member switch during upload and completion for attribution and confusing notifications.
 
-## R9 — P2: upload interruption and cancellation semantics are incomplete
+## R9 — Resolved: no PDF cancellation; server processing continues
 
-Disposition, 2026-10-02: draft loss is accepted; the preservation and explicit-discard recommendations below are withdrawn. Cancel before Save sends no request. After Save begins, leaving or aborting the browser request does not guarantee server cancellation. Preserve honest copy and the accepted duplicate-on-retry tradeoff; no draft recovery requirement remains.
+Disposition, 2026-10-02: draft loss is accepted; the preservation and explicit-discard recommendations below are withdrawn. Further user decision, 2026-10-02: no PDF-specific Cancel action. Save launches server-side conversion and the normal photo-import workflow; leaving the screen does not request cancellation or retract launched server work. Merely choosing/sharing a file does not submit it. No new client/server cancellation mechanism or durable upload/queue guarantee is added. Preserve honest copy and the accepted duplicate-on-retry tradeoff; no draft recovery requirement remains. Cancellation recommendations below are historical and superseded.
 
 The design promises Cancel creates no mutation, but that can only hold before Save is sent. After Save begins, an aborted browser request can still complete on the server. It also promises preservation of an existing photo draft on PDF cancel, yet automatic Home navigation after PDF success will unmount that draft.
 
@@ -122,3 +122,5 @@ Specification follow-up, 2026-10-02: approved acquisition-only flag scope and un
 Specification follow-up, 2026-10-02: approved existing session completion feedback across shared-device member switches, with submitting-member attribution preserved. R8 is resolved within existing household behavior; no application or OpenAPI changes. Remote content verification used because the local checkout/Task harness remains unavailable.
 
 Specification follow-up, 2026-10-02: approved per-PDF input limits of 20 MB and 10 pages. Exceeding either rejects the whole document before recipe acceptance; no page truncation. Exact byte threshold must be specified in the approved contract following repository conventions. Renderer dimensions/pixels, memory, temporary disk and timeout limits still require specification and production-container qualification. No application or OpenAPI changes; remote content verification used because the local checkout/Task harness remains unavailable.
+
+Specification follow-up, 2026-10-02: removed the PDF Cancel action per user decision. Launched work is server-side and proceeds through conversion and the reused photo-import workflow; leaving does not request cancellation. API conversion-before-acceptance remains unchanged. No application or OpenAPI changes; remote content verification used because the local checkout/Task harness remains unavailable.
