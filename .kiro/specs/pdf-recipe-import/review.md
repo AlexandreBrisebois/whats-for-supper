@@ -15,7 +15,7 @@ Consolidation preserves: primary photo chooser layout; enabled PDF file extensio
 ## Spec-reviewer findings, risks and open questions
 
 - **Finding F1 / OQ-01 — architecture resolved by user:** conversion is a separate processor in existing recipe-import after pending PDF source acceptance. Existing automatic retries and failed-task Settings Retry/Delete apply; corrupt/encrypted PDFs stay failed for the user to delete. Requirements/design/tasks now replace synchronous conversion-before-acceptance. Source/metadata retention, safe partial-page retries and existing cleanup/listing still need implementation evidence.
-- **Open question Q2 — contract gate:** design D3 / OQ-02. Exact PDF multipart/error/page-limit envelope are not yet approved OpenAPI. The photo contract has an existing files-versus-images mismatch; leave its rename out of scope. Approve PDF wire semantics after tracing actual contracts; tests/mocks must not decide them.
+- **Open question Q2 — contract gate:** design D3 / OQ-02. PDF multipart field names file/rating/notes and 202 {data:{id}} are now approved, but exact field schemas/transport errors remain to be synchronized in OpenAPI. Page/content failure belongs to the conversion processor. The photo contract has an existing files-versus-images mismatch; leave its rename out of scope. Approve PDF wire semantics after tracing actual contracts; tests/mocks must not decide them.
 - **Risk R3 — runtime qualification:** design D4/D6 / OQ-03. Renderer/native timeout, production memory/disk/quality, architecture compatibility and orphan-share limits are not measured. 200 DPI PNG is a candidate. Qualify before setting release guarantees; do not infer cancellation or supported CPU from library documentation.
 - **Open question Q4 — manifest/config gate:** design D6 / OQ-04. Actual serving/linkage and deployment-wide selection must be chosen consistently for API/PWA/Synology before advertising required Android PDF sharing.
 
@@ -47,6 +47,10 @@ Current checks: stable requirement/task/gate IDs and remote text/content scope v
 
 User accepts 20 MiB = 20,971,520 bytes, matching the existing photo convention, enforced at API upload before pending-import persistence. The separate workflow conversion processor checks 10 pages; over-limit documents fail the whole job in existing Settings recovery with no truncation. API/schema details remain OQ-02; this resolves only the byte/page boundary decision.
 Requirements/design/tasks are synchronized, including exact boundary checks (20,971,520 versus 20,971,521 bytes; 10 versus 11 pages). Historical 20 MB wording remains evidence only; current specification uses 20 MiB. No application/OpenAPI changes or runtime qualification; remote content verification is the completion check.
+
+## Approved PDF acceptance wire decision — 2026-10-02
+
+User approves multipart/form-data file (one PDF), rating and notes on POST /api/recipes/capture-pdf, returning 202 {data:{id}} after pending source/recipe persistence and before workflow conversion. id is the pending recipe GUID, not a workflow ID or readiness guarantee. Requirements/design/tasks are synchronized; source/default/error schema details remain OQ-02 for later contract work. No OpenAPI/client/runtime changes in this specification revision; remote content verification performed.
 
 ## Historical archive — non-authoritative
 
