@@ -69,6 +69,11 @@ User accepts starting qualification at 200 DPI PNG per page. Measure small-text 
 
 User accepts one pending Android-shared PDF at a time. A new share replaces the prior unsaved selection; leaving capture, unlock or member change clears it. Already submitted workflow jobs continue independently. Requirements/design/tasks synchronized, including token ownership and replacement checks; orphan-cleanup TTL and transient staging bounds still require implementation qualification. No runtime/worker changes; remote content verification is the completion check.
 
+## Approved implementation-time follow-ups — 2026-10-02
+
+User approves moving renderer measurements, final resource limits and exact API schema details into implementation work. OQ-02/OQ-03 are now dependency-ordered follow-ups in T02/T03/T06, not missing product decisions blocking T01–T03. Use existing conventions and measurements for routine details; synchronize specs/contracts before dependent tests/code. Changed approved behavior/scope/consequential constraints still require a proposition and user approval, one at a time.
+Writer/reviewer updates requirements/design/tasks and registry next action; earlier “blocked before implementation” language is superseded by this disposition. Complete-package implementation kickoff selects required T01–T08 together without repeated task-start prompts; this turn remains specification-only. Real NAS/device/resource results gate rollout and must be recorded passed/failed/blocked/not-run; they are not passing evidence from this review. No runtime/OpenAPI/deployment/template implementation performed. Remote content and scope verification used.
+
 ## Historical archive — non-authoritative
 
 <details>
