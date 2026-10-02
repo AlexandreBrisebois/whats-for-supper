@@ -175,6 +175,9 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<IValidationService, ValidationService>();
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
+        builder.Services.AddScoped<PdfCaptureService>();
+        builder.Services.AddSingleton<FeatureFlagRegistry>();
+        builder.Services.AddScoped<FeatureFlagService>();
         builder.Services.AddScoped<RecipePurgeService>();
         builder.Services.AddScoped<CaptureFailureService>();
         builder.Services.AddScoped<RecipeSearchService>();
@@ -319,3 +322,4 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             Directory.Delete(_dataRoot, recursive: true);
     }
 }
+

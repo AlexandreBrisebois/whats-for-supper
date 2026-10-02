@@ -19,6 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="PDFtoImage" Version="5.4.0" />
     <!-- AI / Agents -->
     <PackageReference Include="Microsoft.Agents.AI" Version="1.23.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="11.0.0-preview.6.26359.118" />
@@ -67,3 +68,4 @@
   </ItemGroup>
 
 </Project>
+

@@ -30,8 +30,14 @@ public interface IRecipeStore
     Task<bool> HasHeroImageAsync(Guid recipeId, CancellationToken ct = default);
     Task<bool> HasOriginalImagesAsync(Guid recipeId, CancellationToken ct = default);
 
+    // Internal PDF source is never an image or public download.
+    Task SaveSourcePdfAsync(Guid recipeId, Stream source, CancellationToken ct = default);
+    Task<Stream?> ReadSourcePdfAsync(Guid recipeId, CancellationToken ct = default);
+    Task ReplacePdfPagesAsync(Guid recipeId, IReadOnlyList<byte[]> pages, CancellationToken ct = default);
+
     // ── lifecycle ────────────────────────────────────────────────────────────
 
     Task DeleteAsync(Guid recipeId, CancellationToken ct = default);
     Task<IReadOnlyList<Guid>> ListRecipeIdsAsync(CancellationToken ct = default);
 }
+

@@ -12,6 +12,7 @@ ENV ASPNETCORE_URLS=http://+:9001
 FROM ubuntu:resolute AS extractor
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgssapi-krb5-2 \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Robust architecture-agnostic library extraction for GSSAPI
@@ -23,6 +24,9 @@ RUN LIB_PATH=$(find /usr/lib -name "libgssapi_krb5.so.2" | head -n 1 | xargs dir
     cp -P ${LIB_PATH}/libcom_err.so* /rootfs${LIB_PATH}/ && \
     cp -P ${LIB_PATH}/libkrb5support.so* /rootfs${LIB_PATH}/ && \
     cp -P ${LIB_PATH}/libkeyutils.so* /rootfs${LIB_PATH}/
+
+# Fonts are baked into the chiseled image; never installed at startup.
+RUN mkdir -p /rootfs/usr/share/fonts && cp -a /usr/share/fonts/truetype /rootfs/usr/share/fonts/
 
 # =============================================================================
 # Stage 3 — Development (Hot Reload)
@@ -56,6 +60,14 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
     --output /app/publish \
     /p:UseAppHost=false
 
+# Preserve the notices shipped with the pinned wrapper/native dependencies.
+COPY licenses/ /app/publish/licenses/
+RUN mkdir -p /app/publish/licenses/nuget && \
+    find /root/.nuget/packages/pdftoimage /root/.nuget/packages/bblanchon.pdfium.linux \
+         /root/.nuget/packages/skiasharp /root/.nuget/packages/skiasharp.nativeassets.linux.nodependencies \
+         -type f \( -iname '*license*' -o -iname '*notice*' -o -iname '*copying*' \) \
+         -exec cp --parents {} /app/publish/licenses/nuget/ \;
+
 # =============================================================================
 # Stage 5 — Production (Chiseled - NAS Environment)
 # =============================================================================
@@ -72,3 +84,4 @@ FROM production AS demo
 # Install AWS Lambda Web Adapter
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0 /lambda-adapter /opt/extensions/lambda-adapter
 # Inherits ENTRYPOINT and WORKDIR from the production stage
+
