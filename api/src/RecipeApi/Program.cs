@@ -25,8 +25,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 // Isolated native worker entrypoint: no web host, database, credentials or workflow bootstrap.
 if (args.Length > 0 && args[0] == "--render-pdf")
 {
-    Environment.ExitCode = PdfNativeWorker.Run(args);
-    return;
+    return PdfNativeWorker.Run(args);
 }
 
 // Bootstrap logger for startup errors before full Serilog is configured.
