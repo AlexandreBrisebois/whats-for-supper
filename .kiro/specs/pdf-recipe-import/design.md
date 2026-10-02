@@ -130,7 +130,9 @@ The worker intercepts only this exact same-origin POST, applies basic file/count
 
 Keep the staged file across household unlock/member selection; attach it to a recipe only after confirmed member identity and Save. Clear it after accepted upload. Submission locking prevents double taps; importing on Save rather than an effect prevents reload/StrictMode duplicate submissions. An ambiguous network failure may produce a duplicate on retry; this is an accepted preview tradeoff. Reuse existing flag/delete controls for duplicates and do not add a server idempotency contract.
 
-Installed Android Chromium PWA sharing is the primary qualification target. iPhone/iPad PWA file share targets are not a supported equivalent; retain the file picker as the no-training fallback. A native iOS share extension would be a separate project. Verify Mom's device before treating share-target support as the main delivery path.
+Approved user decision, 2026-10-02: Android sharing to the installed app is a required preview capability, not an optional enhancement. Register the installed Android Chromium PWA as a PDF share target so a member can share a recipe PDF from any source app that offers a compatible PDF file share to the Android share sheet. Do not restrict the receiver to a particular originating app. Open the existing PDF confirmation with rating and notes; never auto-save on receipt. Preserve current link/text sharing. Qualify actual OS registration and end-to-end receiving on the user's Android device, across representative originating apps and cold/warm launches, before declaring this requirement met. Source apps must actually expose a shareable PDF; arbitrary text/links are handled by the existing text/link flow, not claimed as PDF shares.
+
+Approved iOS strategy: use the existing recipe-file picker for PDF import on iPhone/iPad. Equivalent PWA PDF file share-target support and a native iOS share extension are outside this preview.
 
 ## Mère-Designer review and reflection
 
@@ -156,7 +158,7 @@ Write contract and tests before runtime code, using valid GUID builders and sche
 | Share receiver | Multipart PDF with app open/closed, text/url POST, existing GET links, missing/extra/invalid files, storage failure/expiry, refresh, auth/member selection, disabled preview, no submission on launch |
 | Legacy regression | Photo upload/limits and feedback, link/manual review and errors, describe/GOTO, .txt bundle acceptance, duplicate behavior, original-image reimport, ready/failure notifications, API/SSE bypass in worker; retained PDF is excluded from image enumeration, preserved through backup/restore and soft deletion, and removed on permanent purge |
 | Household access | Ready PDF-derived recipe remains accessible under existing rules to a member with preview off; existing readiness/discovery eligibility remains unchanged; import alone leaves votes, meal plans, groceries and Family GOTO unchanged; member switch preserves submitting-member attribution while existing session feedback may remain visible to another member |
-| Device | Actual installed Android OS share sheet cold/warm launches and manifest update; actual iOS picker fallback. Synthetic Playwright navigation alone cannot establish OS registration |
+| Device | Required installed Android PDF share target: OS registration, shares from representative PDF-capable source apps without origin restrictions, cold/warm launches and manifest update; confirmation includes rating/notes, no auto-save; actual iOS picker fallback. Synthetic Playwright navigation alone cannot establish OS registration |
 
 Run affected API tests, PWA unit tests, focused capture/share E2E, typecheck/lint, contract/client/mock parity checks and a production PWA build. Renderer packaging and real-device checks are explicit release requirements. No tests were run during this read-only design investigation.
 
