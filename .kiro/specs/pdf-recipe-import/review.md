@@ -1,3 +1,47 @@
+# PDF recipe import preview — current review and historical evidence
+
+Status: specification consolidation reviewed; product decisions recorded, technical gates remain unresolved. No implementation approval.
+Reviewed source baseline: 9eb64bb06339b25861e45b559284629064c30f7a, followed by this authorized revision.
+Workflow: .agents/prompts/spec-writer.md → .agents/core/specification-workflow.md, then .agents/prompts/spec-reviewer.md. Applied sequentially to this package; no external agent/persona output is claimed.
+
+## Current authority and consolidation
+
+Current acceptance is [requirements.md](requirements.md) PDF-R01–15; approach is [design.md](design.md) D1–D8; dependent work/checks are [tasks.md](tasks.md) T01–T08. Feature specification, design-first, gated cadence, planned lifecycle. Stable IDs are new for the consolidated checklist. The existing package is registered with current capture/recovery/storage/flag dependencies.
+
+Only the current sections above the historical archive carry review status. The archive preserves past findings, rejected proposals and user dispositions as evidence. Every archived correction, Acceptance paragraph and “pending” label is historical, superseded by the current artifacts. Do not convert archived draft preservation, PDF GOTO promotion, Cancel, unlock staging retention, rating/notes omission, original-PDF export or multi-recipe detection proposals into implementation requirements.
+
+Consolidation preserves: primary photo chooser layout; enabled PDF file extension/Android sharing; iOS picker; rating/notes/no dish designation; server PDFtoImage + normal workflow; unchanged retained PDF/internal page-image viewer; one recipe/20 MB/10 pages; no Cancel; restart/reset on interruption/navigation/unlock/member change; existing Settings failed-job Retry/Delete; best-effort/shared-session feedback/uncertain duplicates; acquisition-only flag and unchanged GOTO/household eligibility. User guide/flow docs/Synology template/env remain required future deliverables.
+
+## Spec-reviewer findings, risks and open questions
+
+- **Finding F1 — P1, implementation gate:** design D5 / requirements OQ-01 / T03–T05. Existing CaptureFailureService lists paused url-import/recipe-import workflows with failed tasks; API-side conversion rejection before workflow creation cannot appear in that list. Requirement PDF-R10 is preserved, but architecture remains unresolved. Consequence: an implementer could produce an unlisted/unretryable failure or silently introduce a new workflow/queue. Minimal correction: source-grounded architecture decision for failed-job creation/source retention/retry/delete/member attribution before the dependent slice. Consolidation does not guess the solution.
+- **Open question Q2 — contract gate:** design D3 / OQ-02. Exact PDF multipart/error/page-limit envelope and bytes are not yet approved OpenAPI. The photo contract has an existing files-versus-images mismatch; leave its rename out of scope. Approve PDF wire semantics after tracing actual contracts; tests/mocks must not decide them.
+- **Risk R3 — runtime qualification:** design D4/D6 / OQ-03. Renderer/native timeout, production memory/disk/quality, architecture compatibility and orphan-share limits are not measured. 200 DPI PNG is a candidate. Qualify before setting release guarantees; do not infer cancellation or supported CPU from library documentation.
+- **Open question Q4 — manifest/config gate:** design D6 / OQ-04. Actual serving/linkage and deployment-wide selection must be chosen consistently for API/PWA/Synology before advertising required Android PDF sharing.
+
+Historical assertion contradiction B4 is resolved by this consolidation and archive boundary. B1 interruption and B2 unlock/member reset follow the user's restart decision; no recovery architecture is required for unsaved selections. B3 recovery follows Settings import-job requirement and is covered by F1's remaining technical gate. These dispositions do not reopen accepted preview tradeoffs.
+
+## Review checklist and actual evidence
+
+- Writer registry search: repository spec_registry.py searches pdf (no registered PDF match), capture and import (existing photo/url/bundle/progress/recovery baselines). This is a revision/registration of the existing descriptive package, not a new duplicate.
+- Bounded source evidence at the pinned baseline: CapturesController, CaptureFailureService, FeatureFlagService, photo capture and failed-capture requirements, recipes helper and FailedCapturesSection; prior source maps remain explicitly subject to T01 revalidation. Source observations affect requirements, seam design and task order rather than being just a file list.
+- Semantic/traceability review: all PDF-R01–15 map to D1–D8 and required T01–T08/checks; tasks name affected browser/API route, scenario, mock owner and envelope/proposal state. Gates block dependent tasks; no successor is authorized.
+- Scope: requirements/design/tasks/review, registry and rendered index only. Application, OpenAPI, user docs, deployment templates and live .env are unchanged; their updates are planned deliverables.
+- Validation results are recorded after the final content check below. Application/API/device/container checks are not run (specification-only); full checkout Task session tooling is unavailable. Private baseline uses pinned HEAD/blob identities and remote path inventory.
+
+## Consolidation validation results
+
+Passed: python3 -B scripts/agent/spec_registry.py render and check pdf-recipe-import on a materialized specification snapshot using the repository script; selected-package artifact/dependency checks and exact generated-index comparison passed.
+Passed: full registry/dependency/active-package artifact-path comparison against pinned remote Git tree plus new local artifacts; no unregistered active directory or missing active artifact path. This is path-existence validation, not a full materialized-checkout task spec:check run.
+Passed: static checklist has exactly PDF-R01–15, T01–T08 required task sections, explicit OQ-01–04 gates, and a boundary before preserved historical text. Semantic writer/reviewer pass maps requirements to design/tasks/checks and preserves user decisions; F1/Q2/R3/Q4 remain explicitly unresolved.
+Not run: application/API tests, browser/device/renderer/container/compose qualification and full-checkout Task session/spec commands; no runtime/template/OpenAPI implementation performed. Local checkout unavailable; remote baseline 9eb64bb06339b25861e45b559284629064c30f7a and blob identities retained privately.
+Completion delta limited to requirements.md, design.md, tasks.md, review.md, spec-registry.yaml and generated SPEC_INDEX.md. Original historical review content preserved under the non-authoritative archive.
+
+## Historical archive — non-authoritative
+
+<details>
+<summary>Prior reviews and decision history (superseded assertions; evidence only)</summary>
+
 # PDF preview regression and family-experience review
 
 Status: findings only; no runtime fixes or approved-contract changes.
@@ -205,3 +249,5 @@ B4: historical-assertion consolidation remains awaiting approval. Proposed optio
 
 Added required implementation deliverables to design.md: docs/user-guide.md; process documentation under docs/flows; release-template/synology/compose.yaml, .env.example and README.md. Deployment/runtime files are not changed in this specification-only turn. Live .env values are applied during deployment rather than committed.
 Evidence: inspected existing CAP-07 recovery design, photo-upload data-flow and Synology template/env example at the branch commit. No application tests or device checks. Scope delta: design/review only; remote content verification used because local checkout/Task harness remains unavailable.
+
+</details>

@@ -287,3 +287,11 @@ entries:
     path: .kiro/specs/diet-agent
     aliases: [diet agent, dietary agent]
     next_action: Reconcile legacy prompts into one approved outcome before implementation.
+  - slug: pdf-recipe-import
+    name: PDF recipe import preview
+    kind: planned-feature
+    lifecycle: planned
+    path: .kiro/specs/pdf-recipe-import
+    aliases: [pdf capture, android pdf sharing]
+    depends_on: [feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery]
+    next_action: Resolve failed-job architecture and remaining contract/resource/manifest gates before implementation.

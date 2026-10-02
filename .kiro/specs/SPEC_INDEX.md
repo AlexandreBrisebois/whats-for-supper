@@ -68,6 +68,7 @@ stable paths and are not a numbering scheme for new work.
 | Dietary preferences and planning exploration | exploration | [Dietary preferences and planning exploration](diet-agent/) | — | Reconcile legacy prompts into one approved outcome before implementation. |
 | Feature flags | planned-feature | [Feature flags](feature-flags/) | — | Select the first bounded implementation task. |
 | Model routing | platform-initiative | [Model routing](model-routing/) | — | Select increment 1 only. |
+| PDF recipe import preview | planned-feature | [PDF recipe import preview](pdf-recipe-import/) | feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery | Resolve failed-job architecture and remaining contract/resource/manifest gates before implementation. |
 | PWA cache coherence | platform-initiative | [PWA cache coherence](pwa-caching/) | — | Normalize legacy session prompts before selecting work. |
 | Recipe on one page | planned-feature | [Recipe on one page](single-page-recipe-view/) | feature-flags | Implement after the feature-flag decision boundary exists. |
 

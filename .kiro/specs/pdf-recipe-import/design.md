@@ -1,191 +1,98 @@
-# PDF recipe import preview — proposed specification
+# PDF recipe import preview — consolidated design
 
-Status: proposed design; no application implementation performed. Specification branch: `codex/pdf-recipe-import-preview`, created from `codex/create-new-branch-for-feature-flags`.
-Repository: AlexandreBrisebois/whats-for-supper, main, inspected through GitHub on 2026-10-01. Reads were not pinned to one commit. Search results referenced 44dcd91dd987b46f3612c6942db886e82fb75613; revalidate against the implementation checkout.
+Status: proposed technical design with approved product scope. No application implementation or OpenAPI change.
+Kind: feature specification; design-first, gated cadence; source artifact this design with approved user decisions.
+Revision baseline: 9eb64bb06339b25861e45b559284629064c30f7a. [requirements.md](requirements.md) is the current stable acceptance checklist; [tasks.md](tasks.md) is the synchronized plan. [review.md](review.md) separates current findings from historical evidence.
+Stop before implementation. Open questions OQ-01–04 block affected tasks; consolidation is not approval of a wire contract or unresolved architecture.
+Registry: pdf-recipe-import, planned-feature/planned; revision of the existing package. Existing capture/progress/recovery/storage/flags are dependencies, not new frameworks.
 
-Branch correction: feature-flag implementation was subsequently inspected on `codex/create-new-branch-for-feature-flags`. PDF implementation should target that branch or a branch containing it. Capture/workflow findings above came from main and must be revalidated on that implementation base. Feature flags are existing code on codex, not a new framework dependency.
+## D1 — Capture and acquisition (PDF-R01–05, PDF-R09, PDF-R12–13)
 
-## Accepted preview tradeoffs
+Keep Take photo, Choose photos, Paste a link, Describe a recipe and the recipe-file action in their existing positions; photo remains primary. Enabled ordinary capture extends existing file picker to PDF alongside .txt bundles; dispatch validated formats separately. Preserve direct mode=describe/mode=photo. Family GOTO retains existing photo path and excludes PDFs.
 
-User decision, 2026-10-01: completion feedback is best-effort and may be lost when the app closes or an event is missed. Members can find completed recipes by browsing when they are ready. Durable client pending state, reconnect reconciliation, and recovery of missed completion notifications are not required for this preview.
+PDF confirmation shows filename, Choose a PDF containing one recipe, Add this recipe to your library, rating/notes and Save recipe. Reuse current photo rating choices/validation (0 unknown, 1–3) and notes trim/omit behavior. No user photo selection accompanies a PDF; no cooked/finished-dish designation (finishedDishImageIndex=-1), Cancel, required title/instructions or extracted-recipe review.
 
-Retries after an uncertain response may create duplicate recipes. Members can identify, flag and delete duplicates using existing controls. Server idempotency, cross-tab duplicate prevention and exactly-once submission are not required. Retain the local submission lock to prevent accidental repeated taps during an active request. Do not add duplicate management UI to this slice.
+Android installed Chromium PWA PDF share target is required, from any compatible PDF-sharing app. It enters confirmation directly without auto-saving; representative OS cold/warm tests are required. iPhone/iPad uses the existing file picker; native iOS sharing is out of scope. One recipe per PDF, text/scanned/multipage, 20 MB/10 pages; no multi-recipe support/detection, page splitting/selection or silent truncation. Exact bytes remain OQ-02.
 
-User decision, 2026-10-02: unsaved capture drafts may be lost during flag refresh, navigation, or switching to PDF import. Draft persistence, ownership above the preview boundary, recovery, and a discard-confirmation flow are not requirements for this preview. User clarification, 2026-10-02: interruption, navigating away, household unlock or member change resets unsaved selection and capture state (PDF/images, rating and notes); the user restarts and chooses a new PDF or image. Do not restore an abandoned capture from a staged-share token. This is the intended capture behavior for this slice, not authorization for unrelated photo-flow cleanup. This supersedes draft-preservation promises below; server-side flag enforcement remains required.
+## D2 — Flag and shared-device state (PDF-R01, PDF-R09, PDF-R11–13)
 
-User decision, 2026-10-02: Family GOTO retains its existing photo capture flow. PDFs stay outside that contextual chooser, even when the PDF preview is enabled. PDF import from ordinary capture or external share adds a library recipe only and does not create or promote a pending GOTO entry. Keep existing GOTO attribution, pending promotion and return behavior for its photo flow.
+Reuse FeatureFlagRegistry/FeatureFlagService, PWA provider/store/hook and Settings Preview features. Proposed registry key preview-pdf-recipe-import and environment WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT=off|opt-in|on, default off. Register a second definition using existing parser. Use GetSnapshotAsync effective value or a small service method sharing Resolve; unknown key returns false. Do not add another resolver/store/database table. Leave existing single-page-recipe-steps naming migration out of scope.
 
-Approved user decision, 2026-10-02: retain existing session feedback behavior across member switches on a shared device. Another member may see completion feedback for the household's import. No member-specific notification filtering or feedback-store ownership redesign is required for this preview. Recipe attribution remains the authenticated member who submitted the request; switching members afterward does not reattribute an accepted recipe.
+Resolve established member identity/effective flag before PDF conversion or import persistence; unresolved/failed loading cannot enable Save. Clear enablement on member switch. Gate only PDF selection/confirmation; preserve existing action layout. Acquisition-only flag does not hide saved recipes or stop already accepted image-based jobs. Retry of pre-conversion failed sources after disabling remains OQ-01.
 
-These decisions accept missing feedback, duplicate results, draft loss and shared-device completion feedback; they do not change extraction correctness or justify saying a recipe is ready before it is. Workflow-launch errors remain an inherited limitation of the reused creation path, rather than a mandate for a new durable queue/recovery system.
+Interruption, leaving capture, unlock or member change resets local file/images/rating/notes and requires restart. Share staging is only foreground delivery; do not carry it through unlock/member change or restore an abandoned token. If a locked Android launch requires unlock, the user unlocks then shares/selects again. No durable draft, discard dialog or 24-hour resume promise. Do not redesign unrelated photo capture state.
 
-## Outcome and scope
+Disabled share message: PDF import preview isn’t enabled. This file hasn’t been added. Preview features only where opt-in exists; Choose another way returns ordinary Capture, including no-history launch. No automatic enablement/member switching/submission; a Settings detour resets the capture.
 
-Mom can select a recipe PDF or share it from another app, confirm the file, and save it without choosing an extraction method. PDF import is a preview, off by default, with server-side enforcement. Approved user decision, 2026-10-02: support one PDF containing exactly one recipe per submission, including scanned PDFs and a single recipe spanning multiple pages. PDFs containing multiple recipes are unsupported. Do not split a cookbook, create several recipes from one PDF, or silently truncate pages.
+Keep existing session feedback and pending stores; missed feedback and another member seeing completion are accepted. Accepted recipe attribution stays with authenticated submitting member. Keep local active-request Save lock; uncertain retries may duplicate and existing flag/delete controls remain. No server idempotency or durable reconciliation.
 
-Exclude cookbook splitting, page selection/editor, password entry, native mobile wrappers, PDF source-type migrations, original-PDF export, and a general capture rewrite. Reject encrypted, malformed, over-limit and unsupported documents with a next step. Reuse normal photo extraction without adding automatic multiple-recipe detection. This limitation does not make multi-recipe PDFs supported. Qualify single-recipe extraction and readable page images with representative fixtures before rollout; use multi-recipe fixtures to document unsupported-input behavior, not to claim detection or splitting.
+## D3 — PDF handoff and proposed wire seam (PDF-R03, PDF-R06, PDF-R08–10)
 
-## Observed seams
+Dedicated authenticated POST /api/recipes/capture-pdf accepts one PDF plus rating/notes. Keep POST /api/recipes image-only. Proposed multipart field file, rating and notes; proposed 202 accepted-ID convention. Invalid document 400, disabled 409, bytes 413 and unsupported format 415 were earlier proposals, not approved schemas. Page-limit/error/failure-job representation and exact envelope remain OQ-01/OQ-02. Specify approved OpenAPI before tests/code; regenerate client and align mocks atomically in implementation.
 
-| Source | Current behavior | Proposed delta |
+Proposed success sequence:
+1. Resolve member/auth and effective PDF flag.
+2. Validate actual content, not extension/MIME alone; enforce complete-document input/render budgets.
+3. API-side PDFtoImage renders all supported pages sequentially, disposing each bitmap promptly. Conversion failure accepts no recipe; route submitted failures to existing Settings recovery through the still-unresolved D5 seam.
+4. Retain unchanged source and ordered page images via storage abstraction, preserving rating/notes and no dish designation.
+5. Reuse existing recipe creation/search sidecar and recipe-import workflow once; sourceType remains photos. Normal extraction/model configuration applies; neither browser nor worker renders or calls Gemini.
+6. Return accepted recipe ID after conversion/persistence. Existing workflow runs background extraction/categorization/readiness.
+
+Client shows Preparing your PDF… during upload/server preparation, then registers accepted ID and returns Home. Reuse photo progress/feedback conventions without a new PDF countdown/screen; do not claim literal parity with legacy photo countdown. Acceptance is persistence, not ready or verified launch. Existing CreateRecipe enqueue failure remains an inherited limitation, not authorization for a durable queue.
+No Cancel action. Save tap or incomplete upload is not guaranteed receipt; interruption means restart. Navigation does not request cancellation of received server work. No new durable upload or cancellation contract.
+
+## D4 — Renderer, source storage and lifecycle (PDF-R05–07, PDF-R14)
+
+Approved renderer: PDFtoImage (PDFium rendering, SkiaSharp encoding). Pin a tested version under repository dependency procedure; no specific version yet approved. Retain MIT wrapper notice plus actual PDFium/SkiaSharp/native third-party notices shipped.
+
+Qualify actual production Ubuntu chiseled .NET container and Synology CPU. Bake native libraries/fonts into image, never install at startup. Verify linux-x64 and linux-arm64 separately before claiming either/both. PDFium calls serialize within process; no household-preview parallel rendering. Start fixture evaluation at 200 DPI PNG; final resolution/format, dimensions/pixels, memory/disk/time and enforceable native-call timeout remain OQ-03. Request cancellation is not proof a synchronous native call stops. Any needed process isolation requires an explicit bounded decision.
+
+Render all pages in order; reject encrypted/corrupt/unsupported/over-limit PDFs without accepting a recipe. Verify small-text quantities/units and ordered instructions, bilingual/scanned/multipage/cover-page fixtures and phone readability. Multi-recipe fixtures document unsupported behavior; do not infer a new detector.
+
+Accepted PDF is internal artifact (candidate fixed path original/source.pdf) alongside page images via existing storage abstraction; never derive filesystem paths from supplied filename. Exclude it from image count/enumeration, original-image endpoints, reimport image decoding and existing bundle-export image handling. View original displays rendered pages in existing viewer; no PDF viewer/download/export.
+
+Soft delete retains artifacts, restore preserves them, permanent purge removes source/pages, backup/recovery includes source. Temporary cleanup removes only temporary/submission-owned residue, never accepted artifacts or source retained for failed-job retry. D5 defines failed-source ownership; blanket cleanup of every rejected source is not valid.
+
+## D5 — Failed imports / Settings recovery (PDF-R10; OQ-01)
+
+Approved behavior: submitted rejected/failed PDFs appear in existing Settings import-job recovery with Retry/Delete like links/photos. UI remains FailedCapturesSection, not PDF-specific recovery. Keep sufficient source and rating/notes for supported retry and clean job artifacts on Delete. An invalid source may fail again; no promise Retry makes it valid.
+
+Pinned source evidence:
+- CapturesController lists GET /api/captures/failures with {data:{items}}, retries POST /api/captures/failures/{id}/retry with 202 {data:{queued:true}}, clears DELETE /api/captures/failures/{id} with 202 {data:{cleared:true,cleanupCommandId}}.
+- CaptureFailureService lists paused url-import/recipe-import workflow instances having failed tasks, derives member from recipe, retries by making failed task Pending, and queues DeleteFailedCaptureResidue maintenance command on clear.
+- A PDF rejected before recipe/workflow creation does not meet that predicate; merely adding PDF UI cannot make it appear or become retryable.
+
+OQ-01 is an architecture gate: define failed-job creation, member/source ownership, retry execution, cleanup and flag-off retry while preserving API conversion and no dedicated PDF workflow. Do not invent a workflow record/schema or silently move conversion to a new asynchronous workflow during consolidation. No persistence effect for disabled/auth-rejected calls or abandoned/incomplete submissions; define submitted content failure separately. T01/T03 require seam approval before execution.
+
+## D6 — Android share worker / manifest (PDF-R03, PDF-R09, PDF-R13–15)
+
+Proposed target POST /share-target multipart/form-data, existing title/text/url names plus files accepting application/pdf and .pdf. Preserve text-only POST link review, legacy GET /capture and direct URLs. Worker handles only exact same-origin share-target POST; preserve API/SSE bypass and existing GET cache behavior. It validates basic count/bytes and stages under unpredictable token in IndexedDB, awaiting handoff before 303 /capture?share=<token>. No API upload or auto-save in worker; no content/credentials in URLs/logs. IndexedDB failure requires restart/share again, not false success.
+
+Discard staged share on abandonment/unlock/member change, after accepted upload, and under bounded orphan cleanup. Storage cap/TTL remains OQ-03 as implementation resource bound, not recoverable draft window. Guard handoff cleanup ownership so an older capture cannot remove a newer incoming share.
+
+Manifest is deployment-wide, not member-specific: off retains current link target; opt-in/on advertises multipart PDF target. Stale installed metadata can persist; runtime/API gates still apply. OQ-04 must verify linkage/serving and select one manifest strategy, consistent with Synology config; no simultaneous conflicting static/dynamic registrations.
+
+## D7 — Household, documentation and deployment (PDF-R12, PDF-R15)
+
+Once ready, imports obey existing shared-library access, search/discovery/voting/planning/cooking eligibility even when another member's PDF flag is off. Import alone casts no vote, changes no plan/groceries and alters no GOTO. Existing readiness rules control pending/failed cookability; no immediate promotion.
+
+Required implementation deliverables:
+- docs/user-guide.md: preview opt-in, Android PDF share and iOS picker, one recipe/20 MB/10 pages, rating/notes, no cooked-dish choice, resets/restart, Settings Retry/Delete and View original. No renderer/API details in user flow.
+- docs/flows: PDF user process and data flow covering share/picker → identity/flags/reset → confirmation → API conversion/source retention → normal workflow → accepted/Home → readiness/Settings recovery, including attribution and cleanup. Link/update affected existing photo/failure flows after revalidating their stale status/sequence details.
+- release-template/synology/compose.yaml, .env.example and README.md: PDF mode default off, off/opt-in/on description, API and selected PWA manifest config, installation metadata refresh, renderer packaging and rollout. Apply documented value to deployed .env during deployment; never commit live secrets. No actual deployment files changed by this spec revision.
+
+## D8 — Integration map and verification traceability
+
+| Existing seam / owner | Evidence and proposed effect | Requirements / tasks |
 | --- | --- | --- |
-| pwa/src/app/(app)/capture/page.tsx | GET url/title/text parameters reach MinimalCapture | Resolve an opaque staged-share token as an additional entry path |
-| pwa/src/components/capture/MinimalCapture.tsx | Photo, link, description and .txt recipe-bundle paths in one large component | One preview boundary plus small PDF confirmation component; keep processing logic out of this component |
-| pwa/src/hooks/useCapture.ts | Images only; sends files, rating, finishedDishImageIndex and notes | Preserve image validation and photo submission |
-| pwa/src/lib/api/recipes.ts | Multipart photo helper uses native fetch | Dedicated PDF multipart helper using the same authenticated adapter conventions |
-| pwa/public/manifest.json | GET share target at /capture; title/text/url only | Preview deployment advertises multipart POST share target with PDF files and existing text fields |
-| pwa/public/sw.js | Ignores every non-GET request and API requests | Narrow handler for same-origin share-target POST only; preserve GET caching and API/SSE bypass |
-| api/src/RecipeApi/Controllers/RecipeController.cs | POST /api/recipes returns 202 id | Separate flag-checked PDF operation; existing photo route remains image-only |
-| api/src/RecipeApi/Services/RecipeService.cs | Validates images, persists originals/recipe.info, recipe and search sidecar; triggers indexing and recipe-import | Feed rendered page images through the existing creation path; finishedDishImageIndex=-1; pass member-provided rating and notes using photo-import semantics |
-| api/src/RecipeApi/Services/ValidationService.cs | JPEG/PNG/WebP only, 20 MB/image, 20 images | Preserve these rules; independent PDF validation and conversion limits |
-| api/src/RecipeApi/Services/RecipeImportService.cs | Retries recipe-import for stored images | Reuse without adding a PDF workflow |
-| api/src/RecipeApi/Workflows/recipe-import.yaml | ExtractRecipe → GenerateHero → SyncRecipe → categorization → RecipeReady → CompleteRecipeImportReport | Preserve workflow and downstream processors |
-| specs/openapi.yaml | Authoritative API contract | Add explicit PDF operation and error schemas; regenerate client and sync mocks |
-| api/src/RecipeApi/Services/FeatureFlagService.cs (codex branch) | FeatureFlagRegistry, startup off/opt-in/on parsing, member overrides and shared Resolve logic | Add one PDF registry definition; reuse resolution at the PDF API boundary |
-| pwa/src/store/featureFlagStore.ts (codex branch) | Snapshot, confirmed mutations, member-version guards and useFeatureFlag | Reuse the existing hook; no PDF-specific flag store |
-| pwa/src/components/featureFlags/FeatureFlagProvider.tsx (codex branch) | Mounted in authenticated app layout; loads on member change and focus | Reuse provider and existing Preview features settings |
+| pwa/src/app/(app)/capture/page.tsx; MinimalCapture.tsx; useCapture.ts | Preserve photo layout/form; small PDF confirmation/helper, same metadata semantics, explicit reset and session lock/pending behavior. Original capture observations require T01 pinned revalidation. | PDF-R02/04/08/09/11/12, T01/T05 |
+| pwa/src/lib/api/recipes.ts; specs/openapi.yaml; generated client; pwa/e2e/mock-api.ts | Dedicated PDF transport; image-only photo API preserved. Existing files-vs-images photo mismatch is out of scope. Approve exact contract before code/mock/client changes. | PDF-R06/08/10, T03/T04/T05 |
+| api/src/RecipeApi/Services/FeatureFlagService.cs; PWA featureFlagStore/provider | Existing registry/Resolve/member Settings opt-in; add PDF definition and API gate, no new framework. | PDF-R01/12/13, T03/T04/T05/T07 |
+| RecipeController/RecipeService/ValidationService; RecipeImportService; recipe-import.yaml; storage abstraction | New API renderer/service adapts to ordered images; retained document excluded from image handling. Original main observations are insertion-point evidence, not yet tested on implementation checkout. | PDF-R05–08/14, T01/T02/T04 |
+| CapturesController; CaptureFailureService; FailedCapturesSection | Existing failed workflow predicate/retry/delete is verified at baseline; pre-workflow PDF rejection remains OQ-01. | PDF-R10, T01/T03/T04/T05 |
+| pwa/public/sw.js; manifest.json | Narrow handoff/manifest registration, no client rendering, no unlock draft preservation. Actual linkage needs OQ-04. | PDF-R03/09/13/14, T01/T06/T07 |
+| docs/user-guide.md; docs/flows; Synology compose/.env.example/README | Required guides/process and deployment default-off/manifest consistency; no existing template claims PDF support. | PDF-R15, T07 |
+| Existing household/storage/backup/purge consumers | Preserve eligibility and state; protect source lifecycle and page ordering/counts. | PDF-R07/12, T04/T08 |
 
-The current photo contract names its binary array `images`, while the hook/helper and controller use `files`. Record this existing mismatch for contract review; do not fold a photo-route rename into PDF implementation. The PDF operation must use one explicit field name end to end.
-
-## Mom's interaction
-
-Approved user decision, 2026-10-02: preserve the current capture layout and existing action positions in both preview states. Photo import remains primary: keep Take photo, Choose photos, Paste a link, Describe a recipe and the existing recipe-file action where they are. Extend the existing recipe-file picker to accept PDFs alongside .txt bundles only when PDF preview is enabled and outside Family GOTO. Do not add Other ways or move existing actions. Dispatch by validated format; never send a PDF through the JSON bundle parser. Preserve existing .txt bundle behavior and direct mode=describe and mode=photo links.
-
-Selecting a PDF opens a compact confirmation: filename, “Choose a PDF containing one recipe”, “Add this recipe to your library”, Save recipe. There is no PDF-specific Cancel action. Approved user decision, 2026-10-02: provide the same rating and notes controls, defaults and validation as photo import, and carry the member's supplied values through creation and the normal workflow. Do not force rating to unknown when a member supplies one. No cooked/finished-dish photo selection is needed: PDF pages are recipe source images and finishedDishImageIndex remains -1. No additional required title or instructions. PDF and .txt bundle confirmations remain separate because the bundle already contains a structured recipe.
-
-Sharing a PDF opens that same confirmation directly, bypassing the capture chooser. Approved user decision, 2026-10-02: reuse photo-import progress and return-to-Home behavior. After Save, show “Preparing your PDF…” during upload and server-side conversion. Once the API returns an accepted recipe ID, add it to the existing pending capture store and navigate Home while normal background extraction continues. Reuse existing photo-import progress/feedback components and conventions; do not introduce a separate PDF processing screen or countdown. Existing ready/failure feedback is best-effort while the session remains active. Members can browse for the recipe when ready; no completion notification after app closure is promised. Never claim that parsing or upload means the recipe is ready.
-
-Approved user decision, 2026-10-02: no PDF Cancel action is needed. Save launches server-side processing: conversion runs on the server and valid converted pages enter the normal photo-import workflow. Leaving the screen does not request cancellation or retract launched server work; no client cancellation control or new server cancellation operation is required. Before Save, merely selecting or sharing a file does not submit it. Existing photo/file/notes drafts may be lost under the accepted preview tradeoff; draft restoration is not required. Retry can reuse the file while it remains available; a lost or expired file offers Choose file again. This does not add a durable upload/queue guarantee or change the existing API-side conversion-before-acceptance boundary.
-
-## Preview flag and rollout
-
-Proposed spec slug: `pdf-recipe-import`. Registry key: `preview-pdf-recipe-import`; environment mode: `WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT=off|opt-in|on`, default off. This follows the codex branch's approved preview naming convention. Owner: recipe capture. Member-facing name: “Recipes from PDFs”; description: “Save a recipe from a PDF file.” Reuse the existing Settings → Preview features mechanism, with no onboarding prompt or nagging on Capture. Add the definition to FeatureFlagRegistry in FeatureFlagService.cs and the environment setting to the existing deployment configuration. No new flag endpoint, provider, database table or settings redesign is required.
-
-The current registry hardcodes one definition; minimally construct/register a second definition using its existing Create parser. FeatureFlagService currently offers GetSnapshotAsync and static Resolve, but no dedicated per-key effective-state method. For the first backend consumer, reuse the snapshot result's enabled value or add a small IsEnabledAsync(memberId, key) method inside this service using the same registry/override/Resolve logic; unknown keys return false. Do not introduce the separate FeatureFlagResolver class shown in the design diagram unless needed by approved implementation scope.
-
-The existing proving feature still uses single-page-recipe-steps at runtime; its preview naming migration is a separate task. Leave it outside the PDF change. Verify localized PDF display copy through the actual settings consumer rather than assuming display-name keys exist in the registry (current definitions hold strings).
-
-Resolve the effective flag on the API using the established member identity. Gate PDF selection/confirmation at one PWA boundary while preserving the existing capture layout and gate the PDF API before conversion or persistence. Unresolved or failed flag loading defaults to disabled. Clear flags on member switch. Turning the preview off blocks new PDF submissions but does not hide saved recipes or stop accepted image-based jobs/retries.
-
-Approved user decision, 2026-10-02: the PDF preview flag gates acquisition only. Imported recipes follow existing household access, readiness and eligibility rules for viewing, search, discovery, voting, planning and cooking, including members whose PDF preview is off. No new immediate promotion is introduced; pending/failed recipes follow existing readiness rules. Importing alone must not cast votes, assign meals, change grocery lists or add/promote Family GOTO entries.
-
-PWA installation metadata is not a live per-member toggle. Use deployment-level manifest selection: off keeps the existing GET link target; opt-in/on advertises the multipart target. Choose a single manifest implementation rather than maintaining conflicting static and dynamic manifests. Confirm the current manifest linkage and serving strategy before coding. Installed apps may retain old metadata until updated; document that delay. Runtime receiving and API checks remain necessary for stale registrations.
-
-The service worker cannot decide member flags or authorization. It stages an incoming share, then the foreground app resolves identity and feature state. While identity/flags are resolving, do not show a disabled verdict or submit the file; failed flag loading keeps submission disabled.
-
-Approved user decision, 2026-10-02: for a shared PDF when the preview is disabled, show “PDF import preview isn’t enabled. This file hasn’t been added.” Offer Preview features only when opt-in is available, and Choose another way returning to ordinary Capture. This explicit destination works without browser history; do not rely on Back returning to the external app. Never enable the preview, switch member identity or save automatically. Returning from Settings may require selecting/sharing the file again under the accepted draft-loss tradeoff; no staged-token preservation or automatic return-to-file recovery is required. Explicitly discard or expire staged content under the normal cleanup rules.
-
-## PDF processing: retained source and page-image adapter
-
-### Approved renderer: PDFtoImage
-
-The user approved [PDFtoImage](https://github.com/sungaila/PDFtoImage), which uses PDFium for PDF rendering and SkiaSharp for image encoding. Use it in the dedicated API conversion service. Pin a tested package version through the repository dependency procedure; no particular version is approved by this design.
-
-PDFtoImage itself is free to use under its [MIT license](https://github.com/sungaila/PDFtoImage/blob/master/LICENSE), including modification and commercial use. Retain its copyright/license notice when distributing it. Include the applicable PDFium, SkiaSharp and bundled third-party notices for the actual dependency/native binaries shipped in the container; the wrapper's license is not a substitute for those notices.
-
-Qualification must use the actual production Ubuntu chiseled .NET container on the Synology CPU architecture. Package the required native libraries and any fonts during the image build; do not depend on installation at container startup. Verify both linux-x64 and linux-arm64 before claiming both architectures supported. A PDFtoImage library compatibility result alone does not establish production-container compatibility.
-
-Render and persist one page at a time, disposing each bitmap promptly. PDFtoImage serializes PDFium calls within a process; do not introduce parallel rendering for this household preview. Start fixture evaluation at 200 DPI PNG and choose final settings based on small-text readability, scanned recipes, output bytes and NAS memory use. This DPI is a starting candidate, not an untested fixed acceptance guarantee.
-
-Acceptance includes renderer startup/load, ordered page output, readable View original, unchanged retained PDF bytes, invalid/encrypted document errors, resource limits and temporary-file cleanup. Verify enforceable timeout behavior: cancellation of an API request must not be assumed to interrupt a synchronous native rendering call. If process isolation is necessary to meet the approved limits, record that bounded packaging/execution change explicitly.
-
-### Execution boundary: API-side conversion
-
-PDF-to-image conversion runs server-side in the API process, through a dedicated PDF conversion service invoked by POST /api/recipes/capture-pdf. The browser and service worker upload/stage the PDF only; neither renders pages nor calls Gemini. The API deployment packages the renderer and its runtime dependencies.
-
-Request sequence:
-
-1. Resolve household/member identity and enforce the effective PDF preview flag.
-2. Validate the uploaded document and enforce input/conversion resource limits.
-3. Render every supported page server-side into ordered image files. Conversion failure rejects the document without accepting a recipe.
-4. Persist the unchanged source PDF with the recipe's original page images through the storage abstraction.
-5. Feed the generated images into the existing recipe creation and recipe-import workflow, with no finished-dish page designation.
-6. Return the accepted recipe ID using the established API response convention. The PWA returns Home; AI extraction and subsequent recipe processing run in the existing background workflow.
-
-Conversion completes during the API upload request, before acceptance; AI extraction remains asynchronous. Accepted-ID responses establish persistence, not completed extraction or verified workflow launch. Client progress covers upload and API preparation. Apply the previously specified renderer timeout/resource limits; if bounded conversion cannot fit this request boundary, revise the design explicitly rather than silently moving conversion into the browser or another workflow.
-
-Approved user decision, 2026-10-02: retain the unchanged source PDF as an internal recipe artifact for this preview. View original displays the stored rendered page images through the existing original-image endpoints/viewer. Do not add an original-PDF download/export action or a PDF viewer. The retained source PDF is separate from the page images and does not count as an image; preserve it through the established storage lifecycle.
-
-
-User decision: retain the original PDF with the recipe, convert its pages to ordered images, and feed those images through the normal photo-import flow. View original reads the stored page images using the existing image viewer. Direct PDF submission to Gemini is not the selected approach. Model selection remains governed by the normal extraction configuration.
-
-
-Approved user decision, 2026-10-02: use a dedicated authenticated POST /api/recipes/capture-pdf accepting exactly one PDF plus rating and notes with the same semantics/defaults/validation as photo capture. Keep the existing photo endpoint image-only; both feed the normal photo-import workflow. Proposed wire contract: multipart field `file`; success 202 using the existing id response envelope convention. Errors distinguish invalid document (400), disabled preview (409), byte limit (413), and unsupported format (415); normal household authentication responses still apply. Specify exact schemas in OpenAPI before tests and implementation.
-
-The adapter checks actual content, not filename/MIME alone, renders all pages to bounded JPEG/PNG images in order, and calls the current image-based recipe creation path once. Default finishedDishImageIndex=-1 prevents a recipe page from being treated as the finished dish. Text PDFs are rendered too: one ingestion path supports text and scans without new extraction modes. Stored rendered pages remain available for original-image display and reimport. Retain the accepted source PDF unchanged alongside the recipe's original page images, under a fixed internal filename such as original/source.pdf using the existing storage abstraction. Do not infer image count from all files in that directory: source.pdf is a document artifact, not an image. Preserve page order and readable resolution through the existing original-image endpoints/viewer. Source retention does not require a new PDF viewer or download action for this preview.
-
-Approved user decision, 2026-10-02: each PDF is limited to 20 MB input and 10 pages. Reject the entire document before recipe acceptance if either limit is exceeded; never truncate pages. These are approved input limits, not yet implemented or verified guarantees. Bounded rendered dimensions, total pixels, memory, temporary disk and conversion time remain to be specified and qualified. Define the exact byte threshold in the approved contract before implementation, following repository size conventions. Qualify runtime resource limits and the approved PDFtoImage dependency through a fixture/performance spike on both supported container architectures. Validate output against existing image constraints before calling CreateRecipe. Reject the entire document before recipe persistence when validation/conversion fails; clean temporary conversion files on every exit. After successful conversion, retain the source PDF and generated images with the accepted recipe. On failed acceptance, clean only artifacts created by this submission or account for them under the existing recovery convention. Never delete an accepted recipe's retained PDF during temporary-file cleanup. Avoid filename-derived filesystem paths.
-
-The renderer is the new dependency and operational risk. Verify supported deployment images/architectures, license, packaging and failure isolation. Do not assume the current image library can render PDFs. If rendering cannot fit a bounded upload request, stop and revise the design to a separately approved asynchronous source-storage slice rather than introducing a new workflow unnoticed.
-
-Existing CreateRecipe logs workflow enqueue failures yet returns an ID. Preserve this inherited limitation in the adapter scope and record it in tests/evidence; 202 establishes acceptance/persistence, not readiness or guaranteed workflow launch. Do not add durable queue/recovery infrastructure for this preview. Use acceptance copy that does not claim the recipe is ready or that launch was verified.
-
-Extend source storage and its lifecycle to include the retained PDF: normal soft deletion retains recipe artifacts, restoration preserves them, and permanent purge removes both the source PDF and page images. Verify backup/recovery includes the PDF and that image enumeration, original-image view, reimport and existing bundle export do not attempt to decode it as an image. No PDF-specific recipe columns, new workflow IDs, extraction prompts, summary queries or sourceType enum are required by this design. PDFs become page-image imports; recipe sourceType remains photos. Add PDF provenance later only if it becomes an explicit requirement.
-
-## Receiving a shared file
-
-Change the advertised target to POST /share-target with multipart/form-data, preserving title/text/url names and adding a files field accepting application/pdf and .pdf. Handle text-only POST shares by navigating to the existing link review path; preserve legacy GET /capture shares and direct URLs.
-
-The worker intercepts only this exact same-origin POST, applies basic file/count/size checks and stages the file in IndexedDB under an unpredictable token. Await staging before redirecting with 303 to /capture?share=<token>. Preserve text fields with the staged record. Do not upload to the API from the worker or auto-save on launch. Staging is a temporary delivery bridge from the Android share handler to the foreground receiver, not draft persistence. Clear/discard the staged share when capture is abandoned or navigation leaves the active capture, and after accepted submission. Bound total staging storage and clean orphaned records from interrupted delivery; an orphan-cleanup TTL is an implementation resource limit still to be specified, not a user-visible resume window. The proposed 24-hour draft lifetime was not approved. Returning after navigation requires a new selection/share. IndexedDB failure must explain that the user needs to restart/select or share again, not produce a success redirect. Do not put document bytes, recipe content or member credentials in URLs/logs.
-
-Use temporary staging only for the Android share-handler handoff to foreground capture; it is not preserved through household unlock or member change. Approved user clarification, 2026-10-02: unlock/member change is treated like leaving capture—reset the selection, rating and notes, discard the staged share, and require the user to restart with a new selection/share. Interruption likewise requires restart, with no promised delivery recovery. Attach an import only after established member identity and explicit Save; accepted server work is not reattributed or cancelled by a later reset. Clear it after accepted upload. Submission locking prevents double taps; importing on Save rather than an effect prevents reload/StrictMode duplicate submissions. An ambiguous network failure may produce a duplicate on retry; this is an accepted preview tradeoff. Reuse existing flag/delete controls for duplicates and do not add a server idempotency contract.
-
-Approved user decision, 2026-10-02: Android sharing to the installed app is a required preview capability, not an optional enhancement. Register the installed Android Chromium PWA as a PDF share target so a member can share a recipe PDF from any source app that offers a compatible PDF file share to the Android share sheet. Do not restrict the receiver to a particular originating app. Open the existing PDF confirmation with rating and notes; never auto-save on receipt. Preserve current link/text sharing. Qualify actual OS registration and end-to-end receiving on the user's Android device, across representative originating apps and cold/warm launches, before declaring this requirement met. Source apps must actually expose a shareable PDF; arbitrary text/links are handled by the existing text/link flow, not claimed as PDF shares.
-
-Approved iOS strategy: use the existing recipe-file picker for PDF import on iPhone/iPad. Equivalent PWA PDF file share-target support and a native iOS share extension are outside this preview.
-
-## Failed imports and existing Settings recovery
-
-Approved user clarification, 2026-10-02: rejected/failed submitted PDFs follow the same import-job recovery experience as failed links/photos. The member finds the failed import in existing Settings and can Retry or Delete the import job. Do not introduce a separate PDF recovery UI or require durable unsaved-capture drafts. Navigating away resets local capture; failure recovery is for a submitted import job, not an abandoned selection.
-
-The earlier conversion-before-recipe-acceptance boundary must be reconciled with this requirement: validation/conversion rejection may create no recipe, but the submitted failure still needs representation in the existing failed-capture job path. Trace CapturesController → CaptureFailureService → FailedCapturesSection and the current capture-failure contract before specifying the PDF integration. Preserve enough source PDF and submitted rating/notes for supported retry under that job's existing storage/cleanup lifecycle; Delete must clean its artifacts through existing recovery semantics. This does not authorize a new queue or workflow. Exact failed-job creation, source retention and retry/delete contract details remain unresolved specification seams; do not claim existing behavior covers pre-recipe PDF rejection without evidence. Earlier blanket cleanup-on-rejection wording is subordinate to retained failed-job retry requirements.
-
-## Documentation and Synology deployment deliverables
-
-Required user additions, 2026-10-02; implementation has not started:
-
-- Update docs/user-guide.md for preview opt-in, Android PDF sharing, iOS/file-picker import, one-recipe/20 MB/10-page scope, rating/notes, no cooked-dish selection, navigation/unlock/member-change resets, existing Settings Retry/Delete, and View original page images. Keep user instructions free of renderer/API implementation detail.
-- Document the end-to-end process under docs/flows: Android share handoff/picker → identity/flag checks → confirmation/rating/notes → server conversion with PDFtoImage → unchanged PDF retention and ordered page images → normal photo-import workflow → acceptance/Home, readiness and Settings recovery. Include interruption/reset, failed-job retry/delete, attribution, and the acquisition-only flag. Revalidate linked existing photo/failure-flow documentation; do not copy its unverified status codes as contract evidence.
-- Update release-template/synology/compose.yaml and release-template/synology/.env.example for WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT=off|opt-in|on, default off. Wire the API effective flag and the selected PWA deployment-level manifest strategy consistently. Document values, rollout and installed-manifest refresh in release-template/synology/README.md. The actual deployed .env receives the documented setting during deployment; do not commit secrets or a live environment file.
-- Qualify production Synology renderer/native dependencies and resource limits as already required. Validate the deployment template and default-off behavior, including required Android share registration in opt-in/on deployments.
-
-These are scoped implementation/release deliverables, not a claim that documentation, deployment files or runtime behavior have already been updated.
-
-## Mère-Designer review and reflection
-
-Applied .agents/prompts/mere-designer.md directly; this is a review lens, not a separate persona or approval gate.
-
-1. Approved layout decision supersedes the earlier Other ways recommendation: preserve familiar action positions and extend the existing recipe-file picker for enabled PDFs. Photo import remains primary; no additional prominent capture action or disclosure is introduced.
-2. Share → capture chooser asks her to repeat a decision she already made. Small correction: open file confirmation directly. One Save action makes the consequence visible without training.
-3. A mandatory extracted-recipe review or processing countdown demands attention during interruptions. Small correction: confirm the file, then return Home after acceptance and use existing background feedback. Preserve unrelated legacy behavior; the approved PDF flow uses the existing photo-import progress/feedback conventions and returns Home after accepted ID, without a new PDF countdown.
-4. Approved user decision supersedes the earlier omission proposal: include photo-import rating and notes controls in PDF confirmation. Omit cooked/finished-dish photo selection; do not redesign existing photo forms.
-5. “Imported” before extraction finishes creates false certainty. Use Preparing, then queued/ready/failed states backed by actual outcomes. Failures need Retry or Choose another file.
-6. A share target that works only on the son's test device creates support work. Qualify Mom's actual phone; keep Choose recipe file available, and avoid presenting installation instructions as a routine capture step.
-
-## Test-first acceptance and regression scope
-
-Write contract and tests before runtime code, using valid GUID builders and schema-compliant mocks. Extend pwa/e2e/capture-flow.spec.ts for the affected entry points; keep existing assertions in off fixtures while verifying unchanged action positions in both preview states.
-
-| Boundary | Necessary evidence |
-| --- | --- |
-| Flag | Off hides PDF entry and rejects direct API calls with no conversion/storage/DB/workflow effects; loading failure defaults off; member switch clears prior enablement; on/opt-in behave as specified |
-| Conversion | Text and scanned recipe fixtures, ordered multipage recipe, encrypted/corrupt/non-PDF/empty/oversized/over-page-limit documents; bounded resources, timeout and temporary-file cleanup; unchanged retained PDF bytes, readable ordered page images and no recipe on rejected conversion |
-| API/persistence | Real PostgreSQL and faithful workflow factory: one recipe/search sidecar per successful request, persisted originals/info, correct member, supplied rating/notes preserved with photo-import defaults and validation, no finished-dish page, import workflow when launch succeeds; document inherited enqueue-failure behavior |
-| UI | Picker cancel, PDF dispatch versus .txt bundle, confirmation with photo-import rating/notes controls and no cooked-dish selection, local submission lock, upload failure/retry, accepted-ID requirement, pending-store/Home navigation and existing session feedback; completed recipe remains browseable without notification |
-| Share receiver | Multipart PDF with app open/closed, text/url POST, existing GET links, missing/extra/invalid files, storage failure/expiry, refresh, auth/member selection, disabled preview, no submission on launch |
-| Legacy regression | Photo upload/limits and feedback, link/manual review and errors, describe/GOTO, .txt bundle acceptance, duplicate behavior, original-image reimport, ready/failure notifications, API/SSE bypass in worker; retained PDF is excluded from image enumeration, preserved through backup/restore and soft deletion, and removed on permanent purge |
-| Household access | Ready PDF-derived recipe remains accessible under existing rules to a member with preview off; existing readiness/discovery eligibility remains unchanged; import alone leaves votes, meal plans, groceries and Family GOTO unchanged; member switch preserves submitting-member attribution while existing session feedback may remain visible to another member |
-| Device | Required installed Android PDF share target: OS registration, shares from representative PDF-capable source apps without origin restrictions, cold/warm launches and manifest update; confirmation includes rating/notes, no auto-save; actual iOS picker fallback. Synthetic Playwright navigation alone cannot establish OS registration |
-
-Run affected API tests, PWA unit tests, focused capture/share E2E, typecheck/lint, contract/client/mock parity checks and a production PWA build. Renderer packaging and real-device checks are explicit release requirements. No tests were run during this read-only design investigation.
-
-## Implementation sequence and stopping points
-
-1. Revalidate source at a pinned checkout containing codex/create-new-branch-for-feature-flags; confirm manifest serving. Reuse its flag implementation. Resolve Mom's platform and remaining conversion resource limits; enforce the approved 20 MB/10-page input limits and qualify the approved PDFtoImage library. Preserve existing enqueue semantics and the accepted duplicate-on-retry tradeoff.
-2. Approve the PDF contract. Write API conversion/persistence/flag tests before adding the renderer adapter, registry definition and endpoint; reuse current recipe creation and workflow.
-3. Write UI tests, then add the PDF helper, confirmation and one preview capture boundary. Keep legacy capture intact with flag off.
-4. Write worker/manifest and failed-job recovery tests, then add bounded share handoff and multipart share handling, preserving text/link shares and applying reset-on-unlock/member-change. Integrate Settings Retry/Delete for submitted PDF failures after resolving its contract/source-retention seam. Qualify real devices before advertising support.
-5. Update user guide, process-flow documentation, Synology compose/env example and deployment README; validate the deployment configuration and consistent default-off/opt-in/on behavior.
-6. Execute scoped checks; record passed/failed/blocked/not-run evidence. Roll out off → opt-in → on only after qualification. Emergency off blocks new imports; accepted jobs continue.
-
-Graduation criterion: confirmed picker/share success on the supported device matrix, fixture extraction quality accepted, reliable retry/cleanup, and household feedback showing Mom completes imports unaided. Removal task: remove PDF preview gating, registry key/environment mode/member overrides, manifest mode branching and obsolete flag tests; retain PDF adapter/share acceptance tests.
+Test-before-code acceptance: API real PostgreSQL and faithful workflow factory; feature off no-side-effect checks; source byte retention, ordered readable pages, rating/notes, limits/errors/cleanup and Settings failure retry/delete. PWA units and focused capture/share/settings/original-viewer E2E own schema-compliant mocks with GUID builders. Device OS share registration cannot be established by synthetic navigation.
+Named commands/checks and task-to-requirement mapping are in tasks.md. Renderer/resource/device evidence remains required release qualification, not executed results. Open questions in requirements.md retain their IDs; derived artifacts become stale if those source decisions change.
