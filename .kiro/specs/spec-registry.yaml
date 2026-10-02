@@ -294,4 +294,4 @@ entries:
     path: .kiro/specs/pdf-recipe-import
     aliases: [pdf capture, android pdf sharing]
     depends_on: [feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery]
-    next_action: Resolve remaining contract/resource/manifest gates; separate workflow conversion processor is approved.
+    next_action: Complete contract schema and resource qualification; workflow processor and single manifest strategy are approved.

@@ -17,7 +17,7 @@ Consolidation preserves: primary photo chooser layout; enabled PDF file extensio
 - **Finding F1 / OQ-01 — architecture resolved by user:** conversion is a separate processor in existing recipe-import after pending PDF source acceptance. Existing automatic retries and failed-task Settings Retry/Delete apply; corrupt/encrypted PDFs stay failed for the user to delete. Requirements/design/tasks now replace synchronous conversion-before-acceptance. Source/metadata retention, safe partial-page retries and existing cleanup/listing still need implementation evidence.
 - **Open question Q2 — contract gate:** design D3 / OQ-02. PDF multipart field names file/rating/notes and 202 {data:{id}} are now approved, but exact field schemas/transport errors remain to be synchronized in OpenAPI. Page/content failure belongs to the conversion processor. The photo contract has an existing files-versus-images mismatch; leave its rename out of scope. Approve PDF wire semantics after tracing actual contracts; tests/mocks must not decide them.
 - **Risk R3 — runtime qualification:** design D4/D6 / OQ-03. Renderer/native timeout, production memory/disk/quality, architecture compatibility and orphan-share limits are not measured. 200 DPI PNG is a candidate. Qualify before setting release guarantees; do not infer cancellation or supported CPU from library documentation.
-- **Open question Q4 — manifest/config gate:** design D6 / OQ-04. Actual serving/linkage and deployment-wide selection must be chosen consistently for API/PWA/Synology before advertising required Android PDF sharing.
+- **Q4 / OQ-04 — strategy resolved by user:** one deployment-selected /manifest.json, off retaining existing GET link target and opt-in/on advertising Android multipart PDF target. Same PDF mode setting for PWA/API through Synology template. Root layout linkage/current static manifest verified; serving implementation/cache/installed refresh remain qualification, not an open architecture choice.
 
 Historical assertion contradiction B4 is resolved by this consolidation and archive boundary. B1 interruption and B2 unlock/member reset follow the user's restart decision; no recovery architecture is required for unsaved selections. B3 recovery follows Settings import-job requirement and is covered by F1's remaining technical gate. These dispositions do not reopen accepted preview tradeoffs.
 
@@ -55,6 +55,11 @@ User approves multipart/form-data file (one PDF), rating and notes on POST /api/
 ## Approved upload-request error mapping — 2026-10-02
 
 User accepts immediate 400 for missing file/invalid metadata, 413 above 20 MiB, 415 unsupported file type and 409 preview disabled; preserve existing auth responses. These are request rejections before pending import/workflow persistence. Corrupt/encrypted PDFs and page-limit failures are conversion-processor failures in existing Settings recovery. Requirements/design/tasks synchronized; exact error-body/field schemas remain OQ-02. No OpenAPI/runtime changes; remote content verification performed.
+
+## Approved manifest strategy — 2026-10-02
+
+User accepts one deployment-selected /manifest.json, off retaining link sharing and opt-in/on registering Android PDF sharing. Same PDF environment setting in PWA/API via Synology compose/.env.example; registration refresh delay is documented. Evidence: root layout metadata links /manifest.json; current public manifest has GET /capture title/text/url target. Future implementation replaces competing static ownership with a single server-served manifest, preserving app identity/icons/shortcuts. No deployed/template/PWA code changes in this specification revision.
+Writer/reviewer synchronization: PDF-R03/15, D6/D8, T01/T06/T07 and OQ-04 status updated. Remaining gates are exact schema/error-body synchronization (OQ-02) and resource/renderer/staging qualification (OQ-03). Remote content/scope verification; application/device tests not run.
 
 ## Historical archive — non-authoritative
 

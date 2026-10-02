@@ -1,7 +1,7 @@
 # PDF recipe import preview — tasks and checks
 
 Status: synchronized proposed plan, no implementation started or authorized. All tasks unchecked.
-Kind: feature specification; design-first from design.md, gated approval. Product acceptance: requirements.md PDF-R01–15. OQ-01 architecture is resolved by a separate PDF processor in existing recipe-import; open gates OQ-02–04 are not guessed contracts.
+Kind: feature specification; design-first from design.md, gated approval. Product acceptance: requirements.md PDF-R01–15. OQ-01 architecture is resolved by a separate PDF processor in existing recipe-import; OQ-04 manifest strategy is approved; remaining gates OQ-02/OQ-03 are not guessed contracts.
 Required/optional: T01–T08 are required within the approved preview. No optional task is a hidden completion condition. Listing tasks does not authorize executing them.
 Dependencies/shared-file ownership: execute dependent changes sequentially. One writer owns OpenAPI/client/mock updates and each shared capture/recovery file within its selected task. Do not parallelize overlapping contract, capture, failure-service, worker/manifest or template mutations.
 
@@ -12,7 +12,7 @@ Outcome: revalidate remaining source at pinned checkout containing existing feat
 Allowed effects when selected: spec evidence/design/task refinements only; no runtime edits.
 Context: capture/page.tsx → MinimalCapture/useCapture → helpers; RecipeController → RecipeService/ValidationService/storage → workflow; FeatureFlagService/provider/store; sw/manifest serving; CapturesController → CaptureFailureService → FailedCapturesSection; source lifecycle/backup/purge; nearby OpenAPI/tests/mocks.
 Checks: record member/metadata representation and persistence effects; photo rating/defaults/notes; accepted-ID/launch caveat; actual manifest linkage; Settings workflow-failure predicate and source cleanup ownership.
-Stop: verify the approved OQ-01 processor integration/retry/cleanup against source, OQ-02 schema evidence, OQ-04 manifest options; propose decisions individually. Do not invent a new queue/workflow. Source reconnaissance is not runtime passing evidence.
+Stop: verify the approved OQ-01 processor integration/retry/cleanup against source, OQ-02 schema evidence, approved OQ-04 single /manifest.json strategy; propose decisions individually. Do not invent a new queue/workflow. Source reconnaissance is not runtime passing evidence.
 
 ## T02 — Required: renderer/container/resource qualification packet
 
@@ -56,8 +56,8 @@ Stop: no new Other ways/discard dialog/notification filtering/recovery UI; do no
 
 ## T06 — Required: Android share handoff and deployment manifest slice
 
-Requirements: PDF-R01/03/09/13/14; design D2/D6. Depends: T01, T03/T05; OQ-03 staging bounds and OQ-04 strategy approved.
-Allowed effects when selected: exact share-target handler in pwa/public/sw.js, chosen manifest serving/linkage and handoff integration, focused worker/receiver tests and schema-compliant mocks.
+Requirements: PDF-R01/03/09/13/14; design D2/D6. Depends: T01, T03/T05; OQ-03 staging bounds approved; OQ-04 single /manifest.json strategy is already approved.
+Allowed effects when selected: exact share-target handler in pwa/public/sw.js, single deployment-selected /manifest.json serving/linkage and handoff integration, focused worker/receiver tests and schema-compliant mocks.
 Test seam:
 - Units: new share-target handler/staging tests naming storage/count/bytes/orphan cleanup and token ownership; no worker API upload.
 - Playwright pwa/e2e/capture-flow.spec.ts: cold/warm simulated POST /share-target multipart PDF → confirmation; text-only POST → existing link review; disabled message/destinations; unlock/member switch discards share; staging failure requires restart. Preserve GET /capture and API/SSE bypass.
@@ -67,9 +67,9 @@ Stop: no native iOS extension, unlock share recovery or second conflicting manif
 
 ## T07 — Required: user guide, process documentation and Synology template/env
 
-Requirements: PDF-R03/05/07–10/12–15; design D7. Depends: agreed T03 failure semantics, T05/T06 flow and OQ-04 manifest strategy.
+Requirements: PDF-R03/05/07–10/12–15; design D7. Depends: agreed T03 failure semantics, T05/T06 flow and the approved OQ-04 single manifest strategy.
 Allowed effects when selected: docs/user-guide.md, PDF user/data-flow docs under docs/flows and directly affected links; release-template/synology/compose.yaml, .env.example and README.md; approved renderer packaging documentation. Do not edit deployed secrets or publish/deploy.
-Outcome: document actual supported process and existing Settings Retry/Delete; add default-off PDF off/opt-in/on setting with consistent API/PWA manifest linkage. Document installing/refreshing share registration without adding capture onboarding nags.
+Outcome: document actual supported process and existing Settings Retry/Delete; add default-off WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT off/opt-in/on to both API and PWA service environments, selected by the same .env value, with consistent /manifest.json selection. Document installing/refreshing share registration without adding capture onboarding nags.
 Test seam (configuration/flow check): validate rendered Synology compose using synthetic env in off/opt-in/on; chosen PWA manifest target matches mode and API flag config. Reuse T06 POST /share-target and T05 capture scenarios, with mock owner pwa/e2e/mock-api.ts and T03 envelope; do not invent a new deployment API.
 Checks: user docs omit internal API/renderer details; flow doc includes source/page storage, failed-job ownership/retry/delete, resets and normal workflow; no PDF download promise. Env example has no live secrets; actual .env change is a deployment step not performed here. Validate documentation links, compose/template syntax and production build config; revalidate stale existing photo-flow details within directly affected docs.
 Stop: docs/template changes are not runtime deployment authorization; no new source workflow or flag framework.

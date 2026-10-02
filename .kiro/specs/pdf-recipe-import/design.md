@@ -3,7 +3,7 @@
 Status: proposed technical design with approved product scope. No application implementation or OpenAPI change.
 Kind: feature specification; design-first, gated cadence; source artifact this design with approved user decisions.
 Revision baseline: 9eb64bb06339b25861e45b559284629064c30f7a. [requirements.md](requirements.md) is the current stable acceptance checklist; [tasks.md](tasks.md) is the synchronized plan. [review.md](review.md) separates current findings from historical evidence.
-Stop before implementation. OQ-01 architecture is resolved by the separate workflow processor decision; OQ-02–04 block affected tasks; consolidation is not approval of a wire contract or unresolved architecture.
+Stop before implementation. OQ-01 architecture is resolved by the separate workflow processor decision; OQ-04 manifest strategy is approved; remaining OQ-02 schema details and OQ-03 resource qualification block affected tasks; consolidation is not approval of a wire contract or unresolved architecture.
 Registry: pdf-recipe-import, planned-feature/planned; revision of the existing package. Existing capture/progress/recovery/storage/flags are dependencies, not new frameworks.
 
 ## D1 — Capture and acquisition (PDF-R01–05, PDF-R09, PDF-R12–13)
@@ -72,7 +72,7 @@ Proposed target POST /share-target multipart/form-data, existing title/text/url 
 
 Discard staged share on abandonment/unlock/member change, after accepted upload, and under bounded orphan cleanup. Storage cap/TTL remains OQ-03 as implementation resource bound, not recoverable draft window. Guard handoff cleanup ownership so an older capture cannot remove a newer incoming share.
 
-Manifest is deployment-wide, not member-specific: off retains current link target; opt-in/on advertises multipart PDF target. Stale installed metadata can persist; runtime/API gates still apply. OQ-04 must verify linkage/serving and select one manifest strategy, consistent with Synology config; no simultaneous conflicting static/dynamic registrations.
+Manifest is deployment-wide, not member-specific: off retains current link target; opt-in/on advertises multipart PDF target. Stale installed metadata can persist; runtime/API gates still apply. Approved OQ-04 decision: serve one deployment-selected manifest at /manifest.json. Existing pwa/src/app/layout.tsx links that URL and current pwa/public/manifest.json defines GET /capture sharing. Replace static ownership with a single server-served manifest response selected from the PWA deployment environment; do not leave a public file and dynamic route competing at the same URL. Preserve current app id, icons, shortcuts and installation metadata apart from share-target mode. Wire WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT with identical deployment mode into PWA and API in Synology compose/.env.example (default off). off retains GET link sharing; opt-in/on advertises multipart PDF target with text/link fields. Member-level enablement stays a foreground/API gate, not manifest logic. Verify cache behavior and installed Android registration refresh; runtime gating handles stale metadata.
 
 ## D7 — Household, documentation and deployment (PDF-R12, PDF-R15)
 
@@ -92,7 +92,7 @@ Required implementation deliverables:
 | api/src/RecipeApi/Services/FeatureFlagService.cs; PWA featureFlagStore/provider | Existing registry/Resolve/member Settings opt-in; add PDF definition and API gate, no new framework. | PDF-R01/12/13, T03/T04/T05/T07 |
 | RecipeController/RecipeService/ValidationService; RecipeImportService; recipe-import.yaml; storage abstraction | API stores pending PDF; separate recipe-import processor adapts it to ordered images; retained document excluded from image handling. Original main observations are insertion-point evidence, not yet tested on implementation checkout. | PDF-R05–08/14, T01/T02/T04 |
 | CapturesController; CaptureFailureService; FailedCapturesSection | Existing failed workflow predicate/retry/delete is verified at baseline; separate PDF workflow processor creates standard failed-task recovery; verify existing retry/delete integration. | PDF-R10, T01/T03/T04/T05 |
-| pwa/public/sw.js; manifest.json | Narrow handoff/manifest registration, no client rendering, no unlock draft preservation. Actual linkage needs OQ-04. | PDF-R03/09/13/14, T01/T06/T07 |
+| pwa/public/sw.js; manifest.json | Narrow handoff/manifest registration, no client rendering, no unlock draft preservation. Existing /manifest.json linkage is verified; approved deployment-selected single response needs implementation/cache/device qualification. | PDF-R03/09/13/14, T01/T06/T07 |
 | docs/user-guide.md; docs/flows; Synology compose/.env.example/README | Required guides/process and deployment default-off/manifest consistency; no existing template claims PDF support. | PDF-R15, T07 |
 | Existing household/storage/backup/purge consumers | Preserve eligibility and state; protect source lifecycle and page ordering/counts. | PDF-R07/12, T04/T08 |
 
